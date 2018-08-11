@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+  <div class="container">
+  <h1 class="text-center">{{ object.name|mush_to_html }}</h1>
+  <div class="well">{{ object.desc|mush_to_html }}</div>
+    <hr />
+    {% for update in object.updates.all %}
+        <div class="row">
+        <div class="well">{{ update.desc|mush_to_html }}</div>
+        {% with actions=update.actions.all %}
+            {% if actions and update in updates_with_actions %}
+        <button class="btn btn-primary btn-block align-center" data-toggle="collapse" data-target="#actions{{ forloop.counter }}">View actions</button>
+        <div id="actions{{ forloop.counter }}" class="collapse">
+        {% for action in actions %}
+            {% if action in viewable_actions %}
+            {% include "dominion/_action_display.html" %}
+            {% endif %}
+        {% endfor %}
+        </div>
+            {% endif %}
+        {% endwith %}
+        <hr />
+        </div>
+    {% endfor %}
+  </div>
+{% endblock %}

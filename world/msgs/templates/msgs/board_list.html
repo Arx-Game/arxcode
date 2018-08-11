@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+<div class="container">
+	<div class="row">
+		<form method="get" action="./search" class="navbar-form pull-right">
+			<label><input type="text" class="input-medium search-query" name="search" placeholder="Search"/>
+			<input type="submit" class="btn" value="Search" >
+		</form>
+	</div>
+	{% if user.is_authenticated %}
+	{% include "msgs/_board_list_settings.html" %}
+    <a href="{% url 'msgs:post_view_unread' %}">All Unread Posts</a>
+	{% endif %}
+	<table class="table table-hover">
+		<tr class="danger">
+			<td>Board</td>
+			<td>Unread Posts</td>
+			<td>Last Post</td>
+		</tr>
+		{% for board in boards %}
+		<tr>
+			<td>{% if board.unread > 0 %}<b>{% endif %}</b>
+				<a href="{% url 'msgs:post_list' board_id=board.id %}">{{ board.name }}</a>
+				{% if board.unread > 0 %}</b>{% endif %}
+			</td>
+			<td>{{ board.unread }}</td>
+			<td>{{ board.last_date }}</td>
+		</tr>
+		{% endfor %}
+	</table>
+	<ul>
+	</ul>
+</div>
+{% endblock %}

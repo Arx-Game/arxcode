@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+	
+    
+	<h2 class="text-center">Rumors circulating around the city...</h2>
+	<hr />
+	
+	{% for obj in object_list %}
+		<h2 class="text-center">{{obj.elapsed_time}}</h2>
+		<div class="well">{{obj.story|mush_to_html}}</div>
+		<hr />
+	{% endfor %}
+	
+	{% if is_paginated %}
+	<div class="pagination">
+	    <ul class="pagination nav navbar-nav">
+				{% if page_obj.has_previous %}
+					<li><a href="?page={{ page_obj.previous_page_number }}">previous</a></li>
+				{% endif %}
+                {% for pnum in page_obj_begin %}
+                     <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}">{{ pnum }}</a></li>
+                {% endfor %}
+                {% if page_obj_middle %}
+                    <li><strong>...</strong></li>
+
+                    {% for pnum in page_obj_middle %}
+                       <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}">{{ pnum }}</a></li>
+                    {% endfor %}
+                {% endif %}
+
+                {% if page_obj_end %}
+                    <li><strong>...</strong></li>
+
+                    {% for pnum in page_obj_end %}
+                        <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}">{{ pnum }}</a></li>
+                    {% endfor %}
+                {% endif %}
+
+
+				{% if page_obj.has_next %}
+					<li><a href="?page={{ page_obj.next_page_number }}">next</a></li>
+				{% endif %}
+        </ul>
+	</div>
+	{% endif %}
+	<div>
+	<a href="{% url 'dominion:list_events' %}" class="btn btn-primary" role="button">Back to list</a>
+	</div>
+	
+{% endblock %}

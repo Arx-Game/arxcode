@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+	<div class="text-center">
+	<ul class="nav nav-pills nav-justified">
+	<li {% if roster_name == "Active" %}class="active"{% endif %}>
+		<a href="{% url 'character:active_roster' %}">Active</a></li>
+	<li {% if roster_name == "Available" %}class="active"{% endif %}>
+		<a href="{% url 'character:available_roster' %}">Available</a></li>
+    <li {% if roster_name == "Gone" %}class="active"{% endif %}>
+		<a href="{% url 'character:gone_roster' %}">RIP</a></li>
+	{% if show_hidden %}
+	<li {% if roster_name == "Inactive" %}class="active"{% endif %}>
+		<a href="{% url 'character:inactive_roster' %}">Inactive</a></li>
+	<li {% if roster_name == "Unavailable" %}class="active"{% endif %}>
+		<a href="{% url 'character:unavailable_roster' %}">Unavailable</a></li>
+	<li {% if roster_name == "Incomplete" %}class="active"{% endif %}>
+		<a href="{% url 'character:incomplete_roster' %}">Incomplete</a></li>
+	{% endif %}
+    </ul>
+	</div>
+	<table class="table table-hover">
+	<tr class="danger">
+		<td>Name</td>
+		<td><a href="{% url 'help_topics:topic' 'gender'%}">Gender</a></td>
+		<td><a href="{% url 'help_topics:topic' 'age'%}">Age</a></td>
+		<td><a href ="{% url 'help_topics:topic' 'concept' %}">Concept</a></td>
+		<td><a href="{% url 'help_topics:topic' 'fealty' %}">Fealty</a></td>
+		<td><a href="{% url 'help_topics:topic' 'social_rank' %}">Social Rank</a></td>
+		{% if show_hidden %}
+		<td>Alts</td>
+		{% endif %}
+	</tr>
+    {% for char in object_list %}
+	  <tr class="{% cycle 'success' 'info' %}">
+        <td>{% if char.get_absolute_url %}<a href="{{ char.get_absolute_url }}">{{ char.key }}</a>{% else %}{{ char.key }}{% endif %}</td>
+		<td>{{ char.db.gender }}</td>
+		<td>{{ char.db.age }}</td>
+		<td>{{char.db.concept}}</td>
+		<td>{{char.db.fealty}}</td>
+		<td>{{char.db.social_rank}}</td>
+		{% if show_hidden %}
+		<td>{% for alt in char.roster.alts %}{% if alt.character.get_absolute_url %}<a href="{{ alt.character.get_absolute_url }}">{{alt}}</a>{% else %}{{ alt }}{% endif %}{% endfor %}</td>
+		{% endif %}
+	  </tr>
+    {% empty %}
+      <li>No characters found.</li>
+    {% endfor %}
+	</table>
+        <div class="pagination">
+			<!--span class="step-links"-->
+			<ul class="pagination nav navbar-nav">
+				{% if page_obj.has_previous %}
+					<li><a href="?page={{ page_obj.previous_page_number }}">previous</a></li>
+				{% endif %}
+
+				{% for page in page_obj.paginator.pages %}
+					<li {% if page_obj == page %}class="active"{% endif %}><a href="?page={{page.number }}">{{ page }}</a></li>
+				{% endfor %}
+
+				{% if page_obj.next_page_number <= page_obj.paginator.num_pages %}
+					<li><a href="?page={{ page_obj.next_page_number }}">next</a></li>
+				{% endif %}
+			</ul>
+			<!--/span-->
+		</div>
+	
+	
+    
+    
+{% endblock %}

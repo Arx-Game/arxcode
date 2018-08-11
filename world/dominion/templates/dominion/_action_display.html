@@ -1,0 +1,10 @@
+{% comment "Usage" %}
+    Usage: {% include "dominion/_action_display.html" %}
+{% endcomment %}
+{% load app_filters %}
+<div class="row"><div class="text-center"><h2>{{ action }} </h2>
+    <em>{% if action.public %}(Public Action{% else %}(Private Action{% endif %}{% if action.date_submitted %}, OOC Date: {{ action.date_submitted }}{% endif %})</em></div>
+    <div class="well"><p class="text-primary">{{ action.actions|mush_to_html }}</p>
+    {% for assist in action.assisting_actions.all %}<p class="text-success">{{ assist.actions|mush_to_html }}</p>{% endfor %}
+    <p class="text-danger">{{ action.story|mush_to_html }}</p></div>
+</div>

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+
+<img src="map.png{{ regen_link }}" usemap="#domains" width='{{ img_width }}' height='{{ img_height }}'/>
+
+{{ imagemap_html|safe }}
+
+{% endblock %}

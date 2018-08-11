@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+<div class="container">
+    {% include "msgs/_journal_search.html" %}
+    <ul class="nav nav-pills">
+        <li><a href="{% url 'msgs:list_journals' %}">Unread Journals</a></li>
+        <li class="active"><a data-toggle="pill" href="#readjournals">Read Journals</a></li>
+        <li> <a data-toggle="pill" href="#writejournal">Write Journal Entry</a></li>
+    </ul>
+    <div class="tab-content">
+        <div id="writejournal" class="tab-pane fade">
+        <form action="." method="post">
+            {% csrf_token %}
+            <!--table class="table"-->
+            {{ write_journal_form.as_p }}
+            <!--/table-->
+            <br><button class="btn btn-success" type="submit" name="write_journal">Submit Journal Entry</button>
+        </form>
+        </div> <!-- write journals-->
+        <div id="readjournals" class="tab-pane fade in active">
+        {% for obj in object_list %}
+            {% include "msgs/_journal_display.html" %}
+                {% if fav_tag and fav_tag not in obj.tags.all %}
+                    <form action="." method="post">
+                    {% csrf_token %}
+                    <input type="hidden" value="{{obj.id}}" name="tagged" />
+                    <button class="btn btn-primary" type="submit" name="mark_favorite">Mark journal as favorite</button>
+                    </form>
+                {% else %}
+                    <form action="." method="post">
+                    {% csrf_token %}
+                    <input type="hidden" value="{{obj.id}}" name="untagged" />
+                    <button class="btn btn-default" type="submit" name="remove_favorite">Remove journal as favorite</button>
+                    </form>
+                {% endif %}
+            <hr />
+        {% endfor %}
+    {% include "msgs/_search_paginator.html" %}
+    </div> <!--readjournals-->
+    </div> <!--tab content-->
+</div> <!--container-->
+{% endblock %}

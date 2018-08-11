@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+<div class="container">
+	<h2>{{ subject }}</h2>
+	<div class="newsData">Posted by <b>{{ poster }}</b> on {{ date }}</div>
+	<div class="well"><span style="font-family: monospace;">{{ text|mush_to_html|urlize }}</span></div>
+</div>
+{% endblock %}

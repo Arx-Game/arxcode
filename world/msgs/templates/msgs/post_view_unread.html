@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+{% for post in posts %}
+<div class="container">
+	<h2>{{ post.board }}: {{ post.subject }}</h2>
+	<div class="newsData">Posted by <b>{{ post.poster }}</b> on {{ post.date }}</div>
+	<div class="well"><span style="font-family: monospace;">{{ post.text|mush_to_html|urlize }}</span></div>
+</div>
+{% endfor %}
+{% endblock %}

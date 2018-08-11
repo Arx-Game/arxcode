@@ -1,0 +1,5 @@
+<map name="domains">
+{% for maplink in imagemap_links %}
+	<area shape='rect' coords='{{ maplink.x1 }},{{ maplink.y1 }},{{ maplink.x2 }},{{ maplink.y2 }}' title='{{ maplink.title }}' href='{{ maplink.url }}'/>
+{% endfor %}
+</map>

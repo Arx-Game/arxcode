@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+  <div class="text-center">
+  <h1>{{ org.name|title }}</h1><hr />
+  {% with liege=org.assets.estate.liege %}
+  {% if liege %}<h2>Vassal of {{ liege }}</h2>{% endif %}
+  {% endwith %}
+  <p>{{ org.desc|mush_to_html }}</p><hr />
+  <h1>Members</h1>
+  <ul class="nav nav-pills nav-justified">
+	<li {% if not active_tab or active_tab == "all" %}class="active"{% endif %}>
+		<a href="?active_tab=all">All</a></li>
+    <li {% if active_tab == "active" %}class="active"{% endif %}>
+		<a href="?active_tab=active">Active</a></li>
+	<li {% if active_tab == "available" %}class="active"{% endif %}>
+		<a href="?active_tab=available">Available</a></li>
+    <li {% if active_tab == "gone" %}class="active"{% endif %}>
+		<a href="?active_tab=gone">RIP</a></li>
+    </ul>
+  <table class="table table-hover">
+  <tr class="danger">
+	<td>Name</td>
+	<td>Rank</td>
+	<td>Title</td>
+	<td>Description</td>
+  </tr>
+  {% for member in members %}
+  {% if not org.secret or rank_display < member.rank %}
+      {% if not member.secret or show_secret < member.rank %}
+  <tr>
+  {% if member.player.player.char_ob %}
+  <td width="25%"><a href="{% url 'character:sheet' member.player.player.char_ob.id %}">{{ member }}</a>{% if member.secret %}(Secret){% endif %}</td>
+  {% else %}
+  <td width="25%">{{ member }}{% if member.secret %}(Secret){% endif %}</td>
+  {% endif %}
+  <td width="25%">{{ member.rank }}</td>
+  <td width="25%">{{ member.rank_title }}</td>
+  <td width="25%">{% if member.desc == 'True' %} --- {% else %}{{ member.desc }}{% endif %}</td>
+  </tr>
+          {% endif %}
+  {% endif %}
+  {% endfor %}
+  </table>
+  {% if show_secret < 11 and show_money %}
+  <h1>Assets</h1>
+  <ul class="list-inline">
+  <li>Prestige: {{ org.assets.prestige }}</li>
+  <li>Current Vault: {{ org.assets.vault }}</li>
+  <li>Gross Income: {{ org.assets.income}}</li>
+  <li>Costs: {{ org.assets.costs}}</li>
+  <li>Net Income: {{ org.assets.net_income }}</li>
+  <li>Economic Resources: {{ org.assets.economic }}</li>
+  <li>Social Resources: {{ org.assets.social }}</li>
+  <li>Military Resources: {{ org.assets.military }}</li>
+  </ul>
+  {% endif %}
+  {% if holdings %}
+  <hr />
+      <h2>Ruler: {{ org.assets.estate.castellan }}</h2><br />
+      {% if org.assets.estate.ministers.all %}
+          <table class="table table-hover">
+          <tr class="danger">
+            <td>Minister</td>
+            <td>Category</td>
+            <td>Title</td>
+          </tr>
+      {% for minister in org.assets.estate.ministers.all %}
+          <tr>
+          <td width="20%">{{ minister.player }}</td>
+          <td width="20%">{{ minister.get_category_display }}</td>
+          <td width="60%">{{ minister.title }}</td>
+          </tr>
+          {% endfor %}</table>{% endif %}
+  <h1>Land Holdings</h1>
+  
+  {% for domain in holdings %}
+      <h2>{{ domain.name}}</h2>
+      <p>Description: {{ domain.desc|mush_to_html}}</p>
+      {% if show_secret < 11  %}
+          <ul class="list-inline text-left">
+          <li>Mines: {{domain.num_mines}}</li>
+          <li>Lumber: {{domain.num_lumber_yards}}</li>
+          <li>Mills: {{domain.num_mills}}</li>
+          <li>Housing: {{domain.num_housing}}</li>
+          <li>Farms: {{domain.num_farms}}</li>
+          <li>Unassigned Serfs: {{domain.unassigned_serfs}}</li>
+          <li>Serfs working in mining: {{domain.mining_serfs}}</li>
+          <li>Serfs working in lumber: {{domain.lumber_serfs}}</li>
+          <li>Serfs working in farming: {{domain.farming_serfs}}</li>
+          <li>Serfs working in mills: {{domain.mill_serfs}}</li>
+          </ul>
+      {% endif %}
+  {% endfor %}
+  {% endif %}
+  </div>
+{% endblock %}

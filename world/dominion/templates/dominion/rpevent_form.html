@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% load crispy_forms_tags %}
+{% block content %}
+    {% if form.errors %}
+        {{ form.errors }}
+    {% endif %}
+    <form method="post">{% csrf_token %}
+    {{ form|crispy }}
+    <input class="btn btn-success" type="submit" value="Submit" />
+</form>
+{% endblock %}

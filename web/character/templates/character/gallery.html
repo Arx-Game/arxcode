@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load cloudinary %}
+{% block content %}
+  <h1>{{ character.key }} Images</h1>
+  <div class="photos">
+    <p>
+      Following are the images uploaded by you. You can also upload more pictures.
+
+      You can click on each picture to view its original size, and see more info about and additional transformations.<br />
+      {% if can_upload %}
+      <a class="upload_link" href="{% url "character:upload" character.id %}">Upload Images...</a>
+      {% endif %}
+    </p>
+    {% if not photos %}
+      <p>No images were uploaded yet.</p>
+    {% endif %}
+	<div class="container">
+	<div class="row">
+    {% for photo in photos %}
+		<div class="col-sm-3">
+          <a href="{{ photo.image.url }}" target="_blank" class="public_id_link">
+            <div class='public_id'>{% if photo.title %}
+                                     {{ photo.title }}
+                                   {% else %}
+                                     {{ photo.image.public_id }}
+                                   {% endif %}</div>
+            {# Renders an IMG tag for a CloudinaryImage objects. #}
+            {# THUMBNAIL defined in context_processors #}
+            {% if photo.alt_text %}
+                  {% cloudinary photo.image crop="fill" title=photo.alt_text height=150 width=150 %}
+            {% else %}
+            {% cloudinary photo.image THUMBNAIL %}
+            {% endif %}
+          </a>
+		</div>
+    {% endfor %}
+	</div>
+	</div>
+  <a href="{% url "character:sheet" character.id %}"><h2>Back to {{ character.key }}</h2></a>
+  </div>
+  <div class="container">
+  <div class="row">
+  <div class="col-sm-6">
+  <h2>Character portrait</h2>
+      {% if not character.portrait %}
+            <p>No portrait selected yet.</p>
+      {% else %}
+            {% if character.portrait.alt_text %}
+              {% cloudinary character.portrait.image crop="fit" title=character.portrait.alt_text height=pheight width=pwidth %}
+            {% else %}
+              {% cloudinary character.portrait.image crop="fit" height=pheight width=pwidth %}
+            {% endif %}
+      {% endif %}
+      {% if can_upload %}
+            <form action="{% url 'character:select_portrait' character.id %}" method="post">
+            {% csrf_token %}
+			<table>
+            {{ portrait_form.as_table }}
+			</table>
+            <br><input type="submit" value="Set Portrait">
+            </form>
+      {% endif %}
+  </div> <!-- portrait div -->
+  {% if can_upload %}
+  <div class="col-sm-6">
+	<h2>Edit Pictures</h2>
+			<form action="{% url 'character:edit_photo' character.id %}" method="post">
+            {% csrf_token %}
+			<table>
+            {{ edit_form.as_table }}
+			</table>
+            <br><input type="submit" value="Edit Photo">
+            </form>
+  
+	<hr />
+	<h2>Remove Pictures</h2>
+	<form action="{% url 'character:delete_photo' character.id %}" method="post">
+            {% csrf_token %}
+			<table>
+            {{ delete_form.as_table }}
+			</table>
+            <br><input type="submit" value="Delete Photo">
+            </form>
+  </div> <!-- edit/remove pictures -->
+  {% endif %}
+  </div>
+  </div>
+{% endblock %}
+            
+{% block javascript %}
+  $(function () {
+    $('.toggle_info').click(function () {
+      $(this).closest('.photo').toggleClass('show_more_info');
+      return false;
+    });
+  });
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+	<div class="container">
+	
+	
+	
+	
+	
+	
+	
+	
+	<div class="row {% cycle 'bg-success' 'bg-info' as rowcolors %}">
+	<h1 class="text-center"><span class="label label-primary">Player Commands</span></h1>
+	<p>Commands that are available while in an @ooc state</p>
+	<ul class="list-inline text-center">
+    {% for cmd in player_cmds %}
+                
+        <li><a href="{% url 'help_topics:command_help' cmd.key %}">{{ cmd.key }}</a></li>
+        
+      {% empty %}
+        <li>No commands found.</li>
+     
+    {% endfor %}
+	</ul>
+	</div>
+	<div class="row"><br><hr /></div>
+	
+	<div class="row {% cycle rowcolors %}">
+	
+	<h1 class="text-center"><span class="label label-primary">Character Commands</span></h1>
+	<p>Commands that are available while in an @ic state</p>
+	<ul class="list-inline text-center">
+    {% for cmd in character_cmds %}
+                
+        <li><a href="{% url 'help_topics:command_help' cmd.key %}">{{ cmd.key }}</a></li>
+        
+      {% empty %}
+        <li>No commands found.</li>
+     
+    {% endfor %}
+	</ul>
+	</div>
+	
+	<div class="row"><br><hr /></div>
+	
+	<div class="row {% cycle rowcolors %}">
+	
+	<h1 class="text-center"><span class="label label-primary">Situational Commands</span></h1>
+	<p>Commands that are only available in special circumstances, such as in a specific room, your home, in combat, etc</p>
+	<ul class="list-inline text-center">
+    {% for cmd in situational_cmds %}
+                
+        <li><a href="{% url 'help_topics:command_help' cmd.key %}">{{ cmd.key }}</a></li>
+        
+      {% empty %}
+        <li>No commands found.</li>
+     
+    {% endfor %}
+	</ul>
+	</div>
+	
+	</div> <!--Container -->
+{% endblock %}

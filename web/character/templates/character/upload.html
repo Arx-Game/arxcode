@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load cloudinary %}
+{% load staticfiles %}
+
+{% block content %}
+  <!-- A standard form for sending the image data to your server -->
+  <div id='backend_upload'>
+    <h1>Upload to your gallery</h1>
+    <form action="{% url "character:upload" character.id %}" method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+	  <table class="table-bordered">
+      {{ backend_form.as_table }}
+	  </table>
+      <input type="submit" value="Upload">  
+    </form>
+     <a href="{% url "character:gallery" character.id %}" class="back_link">Back to list...</a>
+    {% if posted %}
+      <div class="results">
+        {% if posted.errors %}
+          Errors: {{ posted.errors }}
+        {% else %}
+          <div class="uploaded_info">
+            <div class="data">
+              <table>
+                {% if show_hidden %}
+                {% for key, value in posted.image.metadata.items %}
+                  <tr><td>{{ key }}</td><td>{{ value }}</td></tr>
+                {% endfor %}
+                {% endif %}
+              </table>
+            </div>
+            <div class="image">
+              {% cloudinary posted.image THUMBNAIL %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+  <!-- Per Apostate's request, removing DirectUpload for simplicity for time being. They may be needed for mobile -->
+  <!-- A form for direct uploading using a jQuery plug-in. 
+  	The cloudinary_direct_upload_field method generates the required HTML and JavaScript to    
+    allow uploading directly from the browser to your Cloudinary account -->
+  <!--div id='direct_upload'>
+    <h1>Direct {% if unsigned %}unsigned {% endif %}upload from the browser</h1>
+
+    <form action="{% url "character:direct_upload_complete" character.id %}" method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ direct_form }}
+      {# altenatively, could use: {% cloudinary_direct_upload_field request=request %} #}
+    </form>
+
+    <!-- status box -->
+    <!--div class="status">
+      <h2>Status</h2>
+      <span class="status_value">Idle</span>
+    </div>
+    <div class="uploaded_info_holder">
+   
+    {% if unsigned %}
+      <a href="?unsigned=false">Switch to signed upload</a>
+    {% else %}
+      <a href="?unsigned=true">Switch to unsigned upload</a>
+    {% endif %}
+  </div-->
+{% endblock %}
+{% block javascript %}
+  function prettydump(obj) {
+    ret = ""
+    $.each(obj, function(key, value) {
+      ret += "<tr><td>" + key + "</td><td>" + value + "</td></tr>";
+    });
+    return ret;
+  }
+  $(function () {
+    $('#direct_upload input[type="file"]')
+    .fileupload({
+      dropZone: '#direct_upload',
+      start: function () {
+        $('.status_value').text('Starting direct upload...');
+      },
+      progress: function () {
+        $('.status_value').text('Uploading...');
+      },
+    })
+    .on('cloudinarydone', function (e, data) {
+        $('.status_value').text('Updating backend...');
+        $.post(this.form.action, $(this.form).serialize()).always(function (result, status, jqxhr) {
+          $('.status_value').text(result.errors ? JSON.stringify(result.errors) : status);
+        });
+        var info = $('<div class="uploaded_info"/>');
+        $(info).append($('<div class="data"/>').append(prettydump(data.result)));
+        $(info).append($('<div class="image"/>').append(
+           $.cloudinary.image(data.result.public_id, {
+           format: data.result.format, width: 150, height: 150, crop: "fill"
+           })
+        ));
+        $('.uploaded_info_holder').append(info);
+    });
+  });
+{% endblock %}

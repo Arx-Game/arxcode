@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+  <h1><center>{{ topic.key|title }}</center></h1>
+  <p>{{ topic.entrytext|mush_to_html|urlize }}</p>
+    
+{% endblock %}

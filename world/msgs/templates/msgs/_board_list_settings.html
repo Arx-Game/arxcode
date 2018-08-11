@@ -1,0 +1,9 @@
+{% comment "Usage" %}
+    {% include "msgs/_board_list_settings.html" %}
+{% endcomment %}
+<div class="row">
+    <form method="get" action="." class="navbar-form pull-right">
+        <input type="hidden" name="save_unread" value="true"/>
+        <label><input type="checkbox" class="input-medium search-query" name="unread_only" {{ unread_only }} onchange="this.form.submit()"> Only Show Boards with Unread</label>
+    </form>
+</div>

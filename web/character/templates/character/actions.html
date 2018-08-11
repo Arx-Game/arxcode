@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+    <div class="container">
+ <a class="btn btn-primary" href="{% url "character:sheet" character.id %}">Back to {{ character.key }}</a>
+    <h1 class="text-center">Past Actions</h1>
+    <hr />
+    {% for action in object_list %}
+        {% include "dominion/_action_display.html" %}
+    {% endfor %}
+    </div>
+{% endblock %}

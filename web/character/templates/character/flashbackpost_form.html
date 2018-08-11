@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+    <div class="container">
+    <a class="btn btn-primary" href="{% url "character:sheet" character.id %}">Back to {{ character.key }}</a>
+        <h2 class="text-center">{{ flashback }}</h2>
+            <div class="well text-center">{{ flashback.summary|mush_to_html }}</div>
+            {% for post in flashback.posts.all %}
+                <hr/>
+            <div>By {{ post.poster }}<p>{{ post.actions|mush_to_html }}</p></div>
+            {% endfor %}
+        <div id="add_post">
+            <form action="." method="post">
+                {% csrf_token %}
+                <!--table class="table"-->
+                {{ form.as_p }}
+                <!--/table-->
+                <br><button class="btn btn-success" type="submit" name="add_post">Submit Post</button>
+            </form>
+        </div> <!-- write post-->
+    </div>
+{% endblock %}

@@ -1,0 +1,40 @@
+body { 
+background-color: #FFFFF0; 
+font-family: Arial, Verdana, sans-serif; 
+font-size: 18px; 
+color: #00008B;
+}
+
+a { font-family: Arial, Verdana, sans-serif; font-size: 18px; color: #483D8B; text-decoration: underline}
+
+a:hover { font-family: Arial, Verdana, sans-serif; font-size: 18px; color: #A52A2A; background-color: #FAEBD7}
+
+h1 { font-family: Arial, Verdana, sans-serif; font-size: 32px; color: #A52A2A }
+h2 { font-family: Arial, Verdana, sans-serif; font-size: 24px; color: #A52A2A }
+
+hr{ color:brown; background-color:tan; width:90%; height:2px; } 
+
+table {
+font-family: Arial, Verdana, sans-serif;
+font-size: 18px;
+color: #00008B;
+margin-top: 0px;
+margin-right: 0px;
+margin-bottom: 0px;
+margin-left: 0px;
+padding-top: 0px;
+padding-right: 0px;
+padding-bottom: 0px;
+padding-left: 0px;
+}
+
+.note {
+font-family: Arial, Verdana, sans-serif;
+font-size: 14px;
+color: purple;
+font-weight: bold;
+}
+
+#main-copy {
+	background-image: url("/static/images/ornate_small1.png");
+} 

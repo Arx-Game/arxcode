@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+	<div class="container">
+	
+	<div class="row">
+	<figure class="text-center">
+	<figcaption><h1>Map of Arvum</h1></figcaption>
+	<a href="/dom/map/">
+	<img src="/dom/map/map.png" height='618' width='846' />
+	</a>
+	<hr />
+	</figure>
+	</div>
+	
+	<div class="row">
+	<div class="col-sm-6">
+	<figure class="text-center">
+	<figcaption><h1>Map of Central Arx</h1></figcaption>
+	<a href="/static/images/ailith_map_inner.jpg">
+	<img src="/static/images/ailith_map_inner.jpg" height='200' width='200' />
+	</a>
+	</figure>
+	</div>
+	<div class="col-sm-6">
+	<figure class="text-center">
+	<figcaption><h1>Map of Outer Districts</h1></figcaption>
+	<a href="/static/images/ailith_map_outer.jpg">
+	<img src="/static/images/ailith_map_outer.jpg" height='200' width='200' />
+	</a>
+	</figure>
+	</div>	
+	</div>
+	<hr />
+	
+	<div class="row {% cycle 'bg-success' 'bg-info' as rowcolors %} text-center">
+	<button data-toggle="collapse" data-target="#Topics">
+	<h1 class="bg-primary">Lore Topics</h1></button>
+	</div> <!--button-->
+	<div id="Topics" class="collapse in">
+    {% for category in all_categories %}
+	<div class="row {% cycle 'bg-success' 'bg-info' as rowcolors %}">
+      <h2 class="text-center bg-danger">{{ category }}</h2>
+	  <ul class="list-inline text-center">
+      {% for topic in all_topics %}
+        {% if topic.help_category.capitalize == category %}         
+          <li class="text-center"><a href="{% url 'help_topics:topic' topic.key %}">{{ topic.key }}</a></li>
+        {% endif %}
+      {% empty %}
+        <li>No topics found for this category.</li>
+      {% endfor %}
+	  </ul>
+	</div><!-- div in for loop -->
+    {% empty %}
+      <li>No categories found.</li>
+    {% endfor %}
+	</div><!-- collapse-in -->
+	<div class="row"><br><hr /></div>
+	
+	<div class="row {% cycle rowcolors %}">
+	<h1 class="text-center"><span class="label label-primary">Organizations</span></h1>
+	<ul class="list-inline text-center">
+    {% for org in all_orgs %}
+                
+        <li><a href="..{% url 'help_topics:display_org' org.id %}">{{ org.name }}</a></li>
+        
+      {% empty %}
+        <li>No organizations found.</li>
+     
+    {% endfor %}
+	</ul>
+	</div>
+	<div class="row"><br><hr /></div>
+	
+	{% if secret_orgs %}
+	<div class="row {% cycle rowcolors %}">
+	
+	<h2 class="text-center">Secret Organizations</h2>
+	<ul class="list-inline text-center">
+	{% for org in secret_orgs %}
+		<li><a href="..{% url 'help_topics:display_org' org.id %}">{{ org.name }}</a></li>
+	{% endfor %}	
+	</ul>
+	</div>
+	{% endif %}
+	<div class="row"><br><hr /></div>
+	<h1 class="text-center">Cheat Sheets/Resources</h2>
+	<div class="row">
+	<a href="recipes"><h2 class="text-center"><span class="label label-primary">Recipes and Materials</span></h2></a>
+	</div>
+	<div class="row">
+	<a href="{% url 'help_topics:list_commands' %}"><h2 class="text-center"><span class="label label-primary">Commands</span></h2></a>
+	</div>	
+	
+	<div class="row">
+	<div class="col-sm-6">
+	<figure class="text-center">
+	<figcaption><h2>Color Codes</h1></figcaption>
+	<a href="/static/images/xterm_chart.jpg">
+	<img src="/static/images/xterm_chart.jpg" height='200' width='200' />
+	</a>
+	</figure>
+	</div>
+	<div class="col-sm-6">
+	<figure class="text-center">
+	<figcaption><h2>Modes of Address</h1></figcaption>
+	<a href="/static/images/modes_of_address.jpg">
+	<img src="/static/images/modes_of_address.jpg" height='200' width='200' />
+	</a>
+	</figure>
+	</div>
+	</div>
+	
+	<h1 class="text-center">External Resources/Links</h2>
+	<div class="row">
+	<ul class="list-inline text-center">
+	
+	<li><a href="https://1drv.ms/f/s!AkPSk6gZp9dYajlqeS76Y8epPX4">Hellfrog's Picture References</a></li>
+	<li><a href="https://www.pinterest.com/cyanista/arx-fashions/">Fashion Picture References</a></li>
+    <li><a href="http://arx.mythicus.net">Totally Unofficial Arx Wiki</a></li>
+    <li><a href="http://tehomcd.github.io">Tehom's Self-Indulgent Dev Blog and Shameless Donation Links</a></li>
+	</ul>
+	</div>
+	</div>
+{% endblock %}

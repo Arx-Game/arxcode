@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+  <div class="container">
+  <h1 class="text-center">{{ object.name|mush_to_html }}</h1>
+  <div class="well">{{ object.desc|mush_to_html }}</div>
+  <h2 class="text-center">Date</h2> <p class="text-center">{{object.date}}</p>
+  <h2 class="text-center">Hosted By</h2> <p class="text-center">{% for obj in object.hosts.all %}
+      {% if obj.get_absolute_url %}<a href="{{ obj.get_absolute_url }}">{{ obj }}</a>{% else %}{{ obj }}
+      {% endif %}
+  {% endfor %}</p>
+  {% if object.gms.all %}
+      <h2 class="text-center">GM'd By</h2> <p class="text-center">{% for obj in object.gms.all %}
+  {% if obj.get_absolute_url %}<a href="{{ obj.get_absolute_url }}">{{ obj }}</a>{% else %}{{ obj }}
+      {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% if object.public_event or user.is_staff or user.Dominion in object.hosts.all or user.Dominion in object.gms.all %}
+  <h2 class="text-center">Participants</h2> <p class="text-center">{% for obj in object.participants.all %}
+      {% if obj.get_absolute_url %}<a href="{{ obj.get_absolute_url }}">{{ obj }}</a>{% else %}{{ obj }}
+      {% endif %}
+  {% endfor %}</p>
+  {% endif %}
+  <h2 class="text-center">Organizations</h2> <p class="text-center">{% for obj in object.orgs.all %}
+      {% if obj.get_absolute_url %}<a href="{{ obj.get_absolute_url }}">{{ obj }}</a>{% else %}{{ obj }}
+      {% endif %}
+  {% endfor %}</p>
+  <h2 class="text-center">Location</h2> <p class="text-center">{{ object.location.key|mush_to_html}}</p>
+  <h2 class="text-center">Largesse Level</h2> <p class="text-center">{{ object.get_celebration_tier_display }}</p>
+  {% if object.public_event or can_view %}
+  <h3>Comments and Log</h3>
+  <ul class="nav nav-pills">
+  <li><a data-toggle="pill" href="#comments">Comments</a></li>
+  <li class="active"><a data-toggle="pill" href="#Log">Log</a></li>
+  </ul>
+  <div class="tab-content">
+  <div id="comments" class="tab-pane fade">
+  {% with comments=object.public_comments %}
+  {% for comment in comments %}
+  <h2 class="text-center">{% if comment.senders.0.get_absolute_url %}
+      <a href="{{ comment.senders.0.get_absolute_url }}">{{ comment.senders.0 }}</a>
+  {% else %}{{ comment.senders.0 }}{% endif %}</h2>
+  <div class="well">{{ comment.db_message|mush_to_html }}</div>
+  {% endfor %}
+  {% endwith %}
+  {% if user.db.char_ob %}
+  <br>
+  <button class="btn btn-info" data-toggle="collapse" data-target="#writecomment">Write Journal Entry</button>
+  <div id="writecomment" class="collapse">
+  
+      <form action="{% url 'dominion:event_comment' object.id %}" method="post">
+            {% csrf_token %}
+			<table class="table-bordered">
+            {{ form.as_table }}
+			</table>
+            <br><input type="submit" value="Submit Journal Entry">
+      </form>
+  </div>
+  {% endif %}
+  </div>
+  <div id="Log" class="tab-pane fade in active">
+  <div class="well">
+  {{ object.log|mush_to_html|linebreaks}}
+  </div>
+  </div>
+  </div>
+  {% endif %}
+  
+  <br />
+  
+  <hr />
+  <a href="{% url 'dominion:list_events' %}" class="btn btn-primary" role="button">Back to list</a>
+  </div>
+    
+{% endblock %}

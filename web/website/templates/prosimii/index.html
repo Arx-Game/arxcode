@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block sidebar %}
+{% endblock %}
+
+{% block header_ext %}
+{% endblock %}
+
+{% block content %}
+{% load app_filters %}
+<div class="rowOfBoxes">
+   <!--div class="twoThirds noBorderOnLeft"-->
+   <div class="noBorderOnLeft">
+      <center><h1>Welcome!</h1></center>
+      <!--p>Welcome to your new installation of <a href="http://evennia.com">Evennia</a>, your friendly
+      neighborhood next-generation MUD development system and server. You are looking at Evennia's web
+      presence, which can be expanded to a full-fledged site as
+      needed. Through the <a href="/admin">admin interface</a> you can view and edit the
+      database without logging into the game.
+        {% if webclient_enabled %}
+        You can also connect to the game directly from your browser using our
+        <a href='/webclient'>online client</a>!<br></br>
+        {% endif %}
+      For more info, take your time to
+      peruse our extensive online <a href="http://code.google.com/p/evennia/wiki/Index">documentation</a>.
+      <p>
+      Should you have any questions, concerns, bug reports, or
+      if you want to help out, don't hesitate to join the Evennia community to make your voice heard! Drop a mail to the
+      <a href="http://evennia.com/discussions">mailing list</a> or to come say hi in the <a href="http://webchat.freenode.net/?channels=evennia">developer chatroom</a>. If you find bugs, please report them to our <a href="http://code.google.com/p/evennia/issues/list">Issue tracker</a>.
+      </p-->
+      <p>The common people of Arvum wouldn't really call the last thousand years a 'golden age'. Since the founding of the Compact of Arvum,
+      the five great noble houses of the realm have schemed and warred against one another, locked in a millennium-old struggle for dominance
+      kept only in check by the occasional powerful monarch. But even as the fragile peace frays with the latest dynastic crisis, creating
+      courtly intrigues in the capital city of Arx, ancient foes that took mankind to the brink of extinction a thousand years ago stir once more.</div>
+
+   <!-- news app commented out since there are no news in the database originally -->
+
+   <div class="oneThird">
+      <h1>Latest News</h1>
+      {% for entry in news_entries %}
+         <a href="/news/show/{{entry.id}}" class="newsHeading">{{entry.topic.name}}: {{entry.title}}</a>
+         <p class="newsDate">By {{entry.author.username}} on {{entry.date_posted|time}}</p>
+         <p class="newsSummary">{{entry.body|truncatewords:20}}</p>
+      {% endfor %}
+
+      <div class="more"><a href="/news/archive">More News &raquo;</a></div>
+
+      <p class="filler"><!-- Filler para to extend left vertical line--></p>
+   </div>
+   <div class="oneThird">
+	  <h1>Current Story</h1>
+	  <a href="/character/story/" class="newsHeading">{{ chapter.story.name}}: {{chapter.name}}</a>
+	  <p class="newsSummary">{{chapter.synopsis|mush_to_html|truncatewords:80}}</p>
+	  <p class="filler"></p>
+   </div>
+   <div class="oneThird">
+	  <h1>Upcoming Events</h1>
+	  {% for event in events %}
+	  <a href="{% url 'dominion:display_event' event.id %}" class="newsHeading">{{event.name}}</a>
+	  <p class="newsDate">{{event.date}}</p>
+	  <p class="newsSummary">{{event.desc|mush_to_html|truncatewords:20}}</p>
+	  {% endfor %}
+	  <div class="more"><a href="{% url 'dominion:list_events' %}">More Events &raquo;</a></div>
+   </div>
+</div>
+
+<div class="rowOfBoxes dividingBorderAbove">
+
+   <div class="quarter noBorderOnLeft">
+      <h1>Players</h1>
+      <p>
+      There's currently <strong>{{num_players_connected}}</strong> connected out of a total of <strong>{{num_players_registered}}</strong> players registered. <!--Of these, <strong>{{num_players_registered_recent}}</strong> were created this week, and <strong>{{num_players_connected_recent}}</strong> have connected within the last seven days.-->
+      </p>
+   </div>
+
+   <div class="quarter">
+      <h1>Recently Connected</h1>
+      <ul>
+      {% for player in players_connected_recent %}
+      <li>{{player.username}} -- <em>{{player.last_login|timesince}} ago</em></li>
+      {% endfor %}
+      </ul>
+      <p class="filler"><!-- Filler para to extend left vertical line --></p>
+   </div>
+
+   <div class="quarter">
+      <h1>Database Stats</h1>
+      <ul>
+      <li>{{num_players_registered}} players (+ {{num_characters}} characters)</li>
+      <li>{{num_rooms}} rooms (+ {{num_exits}} exits)</li>
+      <li>{{num_others}} other objects</li>
+
+      </ul>
+   </div>
+
+   <div class="quarter">
+      <h1>Telnet Address</h1>
+      <p>play.arxmush.org:3000</p>
+   </div>
+
+</div>
+{% endblock %}

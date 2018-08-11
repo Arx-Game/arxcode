@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block header_ext %}
+{% endblock %}
+
+
+{% block content %}
+{% load app_filters %}
+<div class="container">
+    <div class="row">
+        <form method="get" action="." class="navbar-form pull-right">
+        <label for="sel1">View chapters for story:</label>
+      <select class="form-control" id="sel1" name="story_name">
+          {% for story_name in all_stories %}
+            <option>{{ story_name.name }}</option>
+          {% endfor %}
+      </select>
+        <input type="submit" class="btn" value="Search" >
+        </form>
+    </div>
+    <div class="row">
+        <h3 class="text-center">{{story.name}}</h3>
+        <p>{{story.synopsis|mush_to_html}}</p>
+    </div>
+    {% for chapter in object_list %}
+    <div class="row">
+        <h1 class="text-center">Chapter {{chapter.name}}</h1>
+        <p>{{chapter.synopsis|mush_to_html}}</p>
+        {% with episodes=chapter.episodes.all %}
+        {% if episodes %}
+        <h2 class="text-center">Episodes</h2>
+        <ul class="list-inline text-center">
+            {% for episode in episodes %}
+            <li><a href="{% url 'character:episode' episode.id %}">{{ episode.name }}</a></li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+        {% with crises=chapter.crises.all %}
+            {% if crises %}
+                <h2 class="text-center">Crises</h2>
+                <ul class="list-inline text-center">
+                {% for crisis in crises %}
+                    {% if crisis in viewable_crises %}
+                    <li><a href="{% url 'dominion:display_crisis' crisis.id %}">{{ crisis.name }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

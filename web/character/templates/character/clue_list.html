@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+    <div class="container">
+		{% include "character/_clue_search.html" %}
+ <a class="btn btn-primary" href="{% url "character:sheet" character.id %}">Back to {{ character.key }}</a>
+    <h1 class="text-center">Clues</h1>
+    <hr />
+	<table class="table table-hover">
+		<tr class="danger">
+			<td width="5%">#</td>
+			<td width="30%">Name</td>
+			<td>Clue Text</td>
+		</tr>
+		{% for clue in object_list %}
+		<tr>
+            <td valign="top">{{ clue.id }}</td>
+			<td valign="top"><b>{{ clue.clue.name }}</b></td>
+            <td valign="top">{{ clue.clue.desc|mush_to_html }}
+			{% if clue.message %}
+				<br/>&nbsp;<br/>
+				{{ clue.message|mush_to_html }}
+			{% endif %}
+			</td>
+		</tr>
+		{% endfor %}
+	</table>
+    {% include "character/_clue_paginator.html" %}
+{% endblock %}

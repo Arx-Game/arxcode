@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block header_ext %}
+  <!-- check for preferred style defined in the character -->
+  {% if character.db.style %}
+  {% else %} <!-- use default if no preferred style defined -->
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% load cloudinary %}
+{% load app_filters %}
+    <div class="container-fluid">
+    <div class="row">
+
+    {% if character.db.longname %}
+      <h1 class="text-center">{{ character.db.longname }}</h1>
+    {% else %}
+      <h1 class="text-center">{{ character.key }}</h1>
+    {% endif %}
+
+    </div>
+    {% if character.db.quote %}
+        <div class="row"><div class="text-center"><q><em>{{ character.db.quote }}</em></q></div></div>
+    {% endif %}
+	<div class="row">
+	
+    {% if character.portrait %}
+	<div class="col-md-7 text-center">
+      {% if character.portrait.alt_text %}
+        {% cloudinary character.portrait.image crop="fit" title=character.portrait.alt_text height=pheight width=pwidth %}
+      {% else %}
+        {% cloudinary character.portrait.image crop="fit" height=pheight width=pwidth %}
+      {% endif %}
+	</div>
+    {% endif %}
+    <div class="col-md-5 text-left">
+    <p><b>Social Rank:</b> {{ character.db.social_rank }}<br><b>Concept:</b> {{ character.db.concept }}<br>
+	{% if character.db.real_concept and show_hidden %}<b>Real Concept:</b> {{ character.db.real_concept}}<br>{% endif %}
+    <b>Fealty:</b> 
+	{% if fealty_org_id %}
+	<a href="{% url 'help_topics:display_org' fealty_org_id.id %}">{{ character.db.fealty }}</a>
+	{% else %}{{ character.db.fealty}}
+	{% endif %}
+	<br><b>Family:</b>
+	{% if family_org_id %}
+	<a href="{% url 'help_topics:display_org' family_org_id.id %}">{{ character.db.family }}</a>
+	{% else %}{{ character.db.family}}
+	{% endif %}
+	<br>
+    <b>Gender:</b> {{ character.db.gender }}<br><b>Age:</b> {{ character.db.age }}<br>
+    <b>Religion:</b> {{ character.db.religion }}<br><b>Vocation:</b> {{character.db.vocation|capfirst }}<br>
+	<b>Height:</b> {{ character.db.height}}<br><b>Hair Color:</b> {{character.db.haircolor}}<br>
+	<b>Eye Color:</b> {{ character.db.eyecolor}}<br><b>Skintone:</b> {{character.db.skintone}}</p>
+    {% if character.titles %}
+    <b>Titles:</b> {{ character.titles }} {% endif %}
+	</div>
+	</div>
+    {% if character.db.obituary %}
+    <p><b>Obituary:</b> {{ character.db.obituary|mush_to_html }}</p>{% endif %}
+    <p><b>Description:</b> {{ character.perm_desc|mush_to_html }}</p>
+
+    <p><b>Personality:</b> {{ character.db.personality|mush_to_html }}</p>
+
+    <p><b>Background:</b> {{ character.db.background|mush_to_html }}</p>
+    {% if character.db.relationship_short %}
+      <h2>Relationship Summary</h2>
+      {% for type,value in character.db.relationship_short.items %}
+        {% if type != 'secret' or show_hidden %}
+          <br /><b>{{ type|capfirst }}:</b>
+          {% for relname, reldesc in value %}
+            <li>{{ relname|title }} - {{ reldesc }}</li>
+          {% endfor %}
+        {% endif %}
+      {% empty %}
+        <li>This character has no relationships yet.</li>
+      {% endfor %}
+    {% endif %}
+    {% if show_hidden %}
+    {% if character.db.secrets %}
+    <h2 class="text-center">Secrets</h2>
+    {% for secret in character.db.secrets %}
+    <p>{{ forloop.counter}} : {{ secret|mush_to_html }}</p>
+    {% endfor %}
+    {% endif %}
+    {% if character.db.gm_notes %}
+        {% if request.user.is_staff %}
+            <h2 class="text-center">GM Notes</h2>
+            {{  character.db.gm_notes }}
+        {% endif %}
+    {% endif %}
+    <style>
+    td { text-align:center }
+	th { text-align:center}
+    </style>
+    
+    <table class="table table-bordered">
+    <caption><h2 class="text-center">Stats</h2></caption>
+      <thead>
+        <tr>
+          <th width="20%" class="success">Physical</th>
+          <th width="10%" class="success">Value</th>
+          <th width="20%" class="success">Social</th>
+          <th width="10%" class="success">Value</th>
+          <th width="20%" class="success">Mental</th>
+          <th width="10%" class="success">Value</th>
+          <th width="20%" class="success">Special</th>
+          <th width="10%" class="success">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="info">Strength</td>
+          <td class="info">{{ character.db.strength }}</td>
+          <td class="info">Charm</td>
+          <td class="info">{{ character.db.charm }}</td>
+          <td class="info">Intellect</td>
+          <td class="info">{{ character.db.intellect }}</td>
+          <td class="info">Mana</td>
+          <td class="info">{{ character.db.mana }}</td>
+        </tr>
+        <tr>
+          <td class="info">Dexterity</td>
+          <td class="info">{{ character.db.dexterity }}</td>
+          <td class="info">Command</td>
+          <td class="info">{{ character.db.command }}</td>
+          <td class="info">Perception</td>
+          <td class="info">{{ character.db.perception }}</td>
+          <td class="info">Luck</td>
+          <td class="info">{{ character.db.luck }}</td>
+        </tr>
+        <tr>
+          <td class="info">Stamina</td>
+          <td class="info">{{ character.db.stamina }}</td>
+          <td class="info">Composure</td>
+          <td class="info">{{ character.db.composure }}</td>
+          <td class="info">Wits</td>
+          <td class="info">{{ character.db.wits }}</td>
+          <td class="info">Willpower</td>
+          <td class="info">{{ character.db.willpower }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="text-center">Skills</h2>
+    <ul class="list-inline text-center">
+      {% for skill,value in character.db.skills.items %}
+        <li class="text-center"><b>{{ skill }}:</b> {{ value }}</li>
+      {% empty %}
+        <li>This character has no skills yet.</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+	<!-- Until these are replaced by new comment system
+    <h2>Comments</h2>
+    <ul>
+      {% for commenter,commentlist in character.db.comments.items %}
+        <li><b>{{ commenter|capfirst }}</b> wrote:</li>
+        {% for entry in commentlist %}
+          <blockquote>{{ entry.header }} : <q>{{ entry.message }}</q></blockquote>
+        {% empty %}
+          No comments.<br>
+        {% endfor %}
+      {% empty %}
+        No comments left for {{ character.key }} yet.
+      {% endfor %}
+    </ul>
+    {% if can_comment %}
+      <form action="{% url 'character:comment' character.id %}" method="post">
+      {% csrf_token %}
+      <textarea name="comment" rows="4" cols="50" placeholder="Type IC Comment Here"></textarea>
+      <br><input type="submit" value="Submit Comment">
+      </form>
+    {% endif %}
+	-->
+    <div class="row">
+        <div class="col-md-4 text-center">
+            <h1 class="text-center"><a href="{% url 'character:gallery' character.id %}"><span class="label label-primary">Gallery</span></a></h1>
+            </div>
+        <div class="col-md-4 text-center">
+            <h1 class="text-center"><a href="{% url 'character:character_story' character.id %}"><span class="label label-primary">Past Actions</span></a></h1>
+            </div>
+        {% if show_hidden %}
+            <div class="col-md-4 text-center">
+                <h1 class="text-center"><a href="{% url 'character:list_flashbacks' character.id %}">
+                    <span class="label label-primary">Flashbacks</span></a></h1></div>
+            <div class="col-md-4 text-center">
+                <h1 class="text-center"><a href="{% url 'character:list_clues' character.id %}">
+                    <span class="label label-primary">Clues</span></a></h1></div>
+        {% endif %}
+    </div>
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <button data-toggle="collapse" data-target="#Impressions">
+            <h2>First Impressions</h2></button>
+            <div id="Impressions" class="collapse">
+                <table class="table table-hover">
+                <tr class="danger">
+                    <td>Name</td>
+                    <td>Summary</td>
+                </tr>
+                {% if show_hidden %}
+                    {% for impression in character.roster.public_impressions_of_me %}
+                        <tr>
+                        <td width="20%">{{ impression.writer }}</td>
+                        <td width="80%">{{ impression.summary }}</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    {% for impression in character.roster.impressions_for_all %}
+                        <tr>
+                        <td width="20%">{{ impression.writer }}</td>
+                        <td width="80%">{{ impression.summary }}</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+                </table>
+            </div>
+        </div>
+
+    </div>
+    
+ </div>
+  {% endblock %}

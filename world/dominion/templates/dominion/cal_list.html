@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+
+    <div class="text-left">
+    <a href="{% url 'dominion:list_task_stories' %}" class="btn btn-primary" role="button">Rumors/Stories</a>
+    <a href="{%  url 'dominion:create_event' %}" class="btn btn-primary" role="button">Create New Event</a>
+    </div>
+
+    <form method="get" action="." class="navbar-form">
+    <input type="text" id="searchBox" class="input-medium search-query" name="search_text" placeholder="Search Text">
+    <div class="form-group">
+    <label for="sel1">Event Type:</label>
+        <select class="form-control input-sm" id="sel1" name="event_type">
+            <option value="">All</option>
+            <option value="gm_only">GM Event</option>
+            <option value="prp_only">Player-Run Plot</option>
+        </select>
+    </div>
+    <input type="submit" class="btn" value="Search" >
+    </form>
+    <h2 class="text-center">Upcoming Events</h2>
+
+    <hr />
+    <table class="table table-hover">
+    <tr class="danger">
+        <td>Name</td>
+        <td>Date</td>
+        <td>Location</td>
+        <td>Level</td>
+    </tr>
+    {% for obj in view.unfinished %}
+        <tr>
+        <td width="25%"><a href="{% url 'dominion:display_event' obj.id %}">{{ obj.name|mush_to_html }}</a></td>
+        <td width="25%">{{ obj.date }}</td>
+        <td width="25%">{{ obj.location.key|mush_to_html }}</td>
+        <td width="25%">{{ obj.get_celebration_tier_display }}</td>
+        </tr>
+    {% endfor %}
+    </table>
+    <hr />
+    <h2 class="text-center">Previous Events</h2>
+    <table class="table table-hover">
+    <tr class="danger">
+        <td>Name</td>
+        <td>Date</td>
+        <td>Location</td>
+        <td>Level</td>
+    </tr>
+    {% for obj in object_list %}
+        <tr>
+        <td width="25%"><a href="{% url 'dominion:display_event' obj.id %}">{{ obj.name|mush_to_html }}</a></td>
+        <td width="25%">{{ obj.date }}</td>
+        <td width="25%">{{ obj.location.key|mush_to_html }}</td>
+        <td width="25%">{{ obj.get_celebration_tier_display }}</td>
+        </tr>
+    {% endfor %}
+    </table>
+    {% if is_paginated %}
+    <div class="pagination">
+    <ul class="pagination nav navbar-nav">
+                {% if page_obj.has_previous %}
+                    <li><a href="?page={{ page_obj.previous_page_number }}{{search_tags}}">previous</a></li>
+                {% endif %}
+                {% for pnum in page_obj_begin %}
+                     <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}{{ search_tags }}">{{ pnum }}</a></li>
+                {% endfor %}
+                {% if page_obj_middle %}
+                    <li><strong>...</strong></li>
+
+                    {% for pnum in page_obj_middle %}
+                       <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}{{ search_tags }}">{{ pnum }}</a></li>
+                    {% endfor %}
+                {% endif %}
+
+                {% if page_obj_end %}
+                    <li><strong>...</strong></li>
+
+                    {% for pnum in page_obj_end %}
+                        <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}{{ search_tags }}">{{ pnum }}</a></li>
+                    {% endfor %}
+                {% endif %}
+
+
+                {% if page_obj.has_next %}
+                    <li><a href="?page={{ page_obj.next_page_number }}{{ search_tags }}">next</a></li>
+                {% endif %}
+            </ul>
+    </div>
+    {% endif %}
+
+
+{% endblock %}

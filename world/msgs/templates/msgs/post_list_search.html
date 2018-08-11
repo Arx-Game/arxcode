@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+<div class="container">
+	<h2>Search Results</h2>
+    <br/>
+	<table class="table table-hover">
+		<tr class="danger">
+			<td>Subject</td>
+			<td>Poster</td>
+			<td>Date</td>
+		</tr>
+        {% for post in posts %}
+        <tr>
+            <td>
+                {% if post.unread %}<b>{% endif %}
+                <a href="{% url 'msgs:post_view' board_id=post.board.id post_id=post.id %}">{{ post.subject }}</a>
+                {% if post.unread %}</b>{% endif %}
+            </td>
+            <td>{{ post.poster }}</td>
+            <td>{{ post.date }}</td>
+        </tr>
+    {% endfor %}
+    </table>
+</div>
+{% endblock %}

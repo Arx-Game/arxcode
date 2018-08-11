@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block header_ext %}
+{% endblock %}
+
+
+{% block content %}
+{% load app_filters %}
+<div class="container">
+<div class="row">
+<h3 class="text-center">{{episode.name}}</h3>
+{% if episode.synopsis %}
+<p>{{episode.synopsis|mush_to_html}}</p>
+{% endif %}
+</div>
+
+{% if emits %}
+<div class="row"><h2 class="text-center">Story Emits</h2>
+{% for emit in emits %}
+<hr /><em>{{emit.text|mush_to_html}}</em>
+{% endfor %}
+</div>
+{% endif %}
+    {% if updates %}
+        <div class="row"><h2 class="text-center">Crisis Updates</h2>
+        {% for update in updates %}
+        <hr /><em>{{update.desc|mush_to_html}}</em>
+        {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

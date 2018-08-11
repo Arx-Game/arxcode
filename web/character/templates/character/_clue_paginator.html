@@ -1,0 +1,27 @@
+{% if is_paginated %}
+    <div class="pagination">
+    <ul class="pagination nav navbar-nav">
+        {% if page_obj.has_previous %}
+            <li><a href="?page={{ page_obj.previous_page_number }}{{ search_tags }}">previous</a></li>
+        {% endif %}
+        {% for pnum in page_obj_begin %}
+             <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}{{ search_tags }}">{{ pnum }}</a></li>
+        {% endfor %}
+        {% if page_obj_middle %}
+            <li><strong>...</strong></li>
+            {% for pnum in page_obj_middle %}
+               <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}{{ search_tags }}">{{ pnum }}</a></li>
+            {% endfor %}
+        {% endif %}
+        {% if page_obj_end %}
+            <li><strong>...</strong></li>
+            {% for pnum in page_obj_end %}
+                <li class="{% if page_obj.number == pnum  %}active{% endif %}"><a href="?page={{ pnum }}{{ search_tags }}">{{ pnum }}</a></li>
+            {% endfor %}
+        {% endif %}
+        {% if page_obj.has_next %}
+            <li><a href="?page={{ page_obj.next_page_number }}{{ search_tags }}">next</a></li>
+        {% endif %}
+    </ul>
+    </div>
+{% endif %}

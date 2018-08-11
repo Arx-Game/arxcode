@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+
+{% load cloudinary %}
+{% load staticfiles %}
+
+<html lang="en">
+  <head>
+    <script type='text/javascript' src='http://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js'></script>
+    {% cloudinary_includes %}
+    {% cloudinary_js_config %}
+    <script>
+      {% block javascript %}{% endblock %}
+    </script>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Tehom" />
+    <meta name="generator" content="Tehom" />
+	<meta name="google-site-verification" content="eujyaGTB3QPukaOKbMEWqnayaGHaomLgTvBfiK1YSiI" />
+	<meta http-equiv="content-type", content="text/html; charset=UTF-8" />
+	<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+	
+    {% if sidebar %}
+    <link rel="stylesheet" type="text/css" href="/static/css/prosimii-screen-alt.css" media="screen" title="Prosimii (Sidebar)" />
+    {% else %}
+    <link rel="stylesheet" type="text/css" href="/static/css/prosimii-screen.css" media="screen" title="Prosimii" />
+    
+    {% endif %}
+    <link rel="stylesheet alternative" type="text/css" href="/static/css/prosimii-print.css" media="screen" title="Print Preview" />
+    <link rel="stylesheet" type="text/css" href="/static/css/prosimii-print.css" media="print" />
+
+    {% block header_ext %}
+    {% endblock %}
+
+    <title>Arx - {% if flatpage %}{{flatpage.title}}{% else %}{% block titleblock %}{{page_title}}{% endblock %}{% endif %}</title>
+  </head>
+
+  <body>
+    <!-- For non-visual user agents: -->
+      <div id="top"><a href="#main-copy" class="doNotDisplay doNotPrint">Skip to main content.</a></div>
+
+    <!-- ##### Header ##### -->
+
+    <div id="header">
+      <div class="superHeader">
+        <!--span>Sites:</span-->
+        <!--a href="http://evennia.com" title="The Python-based MUD server">Evennia.com</a-->
+      </div>
+
+      <div class="midHeader">
+        <img src="/static/images/arx_badge.png" height='100' width='100' align='left'/> <h1 class="headerTitle" lang="la">Arx, After the Reckoning</h1>
+        <div class="headerSubTitle" title="Slogan">
+        <!-- Insert a slogan here if you want -->
+        {{game_slogan}}			&nbsp;
+        </div>
+
+        <br class="doNotDisplay doNotPrint" />
+
+        <div class="headerLinks">
+          <span class="doNotDisplay">Tools:</span>
+          {% if user.is_authenticated %}
+            <a href="/accounts/logout/">Log Out &laquo;</a>
+            <span class="doNotDisplay">|</span>
+            {% if user.db.char_ob %}
+              <a href="/character/sheet/{{ user.db.char_ob.id }}"> Logged in as {{ user.username }} &laquo;</a>
+            {% else %}
+              Logged in as {{user.username}} &laquo;
+            {% endif %}
+          {% else %}
+            <a href="/accounts/login/?next={{ request.get_full_path|urlencode }}">Log In &laquo;</a>
+            <span class="doNotDisplay">|</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="subHeader">
+        <!--span class="doNotDisplay">Navigation:</span-->
+        <a href="/">Home</a> |
+        <a href="/character/{% if user.is_authenticated %}active{% else %}available{% endif %}">Characters</a> |
+        <a href="/topics/">World</a> |
+        <a href="/character/story/">Story</a> |
+		<a href="/dom/cal/list/">Events</a> |
+		<a href="/comms/journals/list/">Journals</a> |
+        <a href="/comms/boards/">Boards</a>
+        {% if user.is_authenticated and user.is_staff %}
+         | <a href="/admin/">Admin Interface</a>
+         | <a href="/support/">Requests</a>
+        {% endif %}
+        {% if webclient_enabled %}
+         | <a href="/webclient">Play Online</a>
+        {% endif %}
+        
+      </div>
+    </div>
+
+    <!-- ##### Side Menu ##### -->
+    {% block sidebar %}{% endblock %}
+    <!-- ##### Main Copy ##### -->
+
+    <div id="main-copy">
+      {% block content %}
+      {% endblock %}
+    </div>
+
+    <!-- ##### Footer ##### -->
+
+    <div id="footer">
+      <span class="doNotPrint">
+        Template design by 
+        <a href="https://tehomcd.github.io"
+        title="Self-indulgent Blog">Tehom</a>. 
+        Powered by  
+        <a href="http://evennia.com">Evennia.</a>
+        <br \>
+      </span>
+    </div>
+  </body>
+</html>

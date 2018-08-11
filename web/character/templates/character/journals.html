@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+	<div class="text-center">
+	<button data-toggle="collapse" data-target="#Active">
+    <h2>White Journals</h2></button><hr /></div>
+	<div id="Active" class="collapse in">
+	<table class="table table-hover">
+	<tr class="danger">
+		<td>Name</td>
+		<td><a href="{% url 'help_topics:topic' 'gender'%}">Gender</a></td>
+		<td><a href="{% url 'help_topics:topic' 'age'%}">Age</a></td>
+		<td><a href ="{% url 'help_topics:topic' 'concept' %}">Concept</a></td>
+		<td><a href="{% url 'help_topics:topic' 'fealty' %}">Fealty</a></td>
+		<td><a href="{% url 'help_topics:topic' 'social_rank' %}">Social Rank</a></td>
+	</tr>
+    {% for char in active %}
+	  <tr class="{% cycle 'success' 'info' %}">
+        <td><a href="{% url 'character:sheet' char.id %}">{{ char.key }}</a></td>
+		<td>{{ char.db.gender }}</td>
+		<td>{{ char.db.age }}</td>
+		<td>{{char.db.concept}}</td>
+		<td>{{char.db.fealty}}</td>
+		<td>{{char.db.social_rank}}</td>
+		{% if show_hidden %}
+		<td>{{char.player_ob.email}}</td>
+		{% endif %}
+	  </tr>
+    {% empty %}
+      <li>No characters found.</li>
+    {% endfor %}
+	</table>
+	</div>
+    {% if show_hidden %}
+      <button data-toggle="collapse" data-target="#Unavailable">
+    <h2>Black Journals</h2></button>
+	<div id="Unavailable" class="collapse">
+	  <table class="table table-hover">
+	  <tr class="danger">
+		<td>Name</td>
+		<td><a href="{% url 'help_topics:topic' 'gender'%}">Gender</a></td>
+		<td><a href="{% url 'help_topics:topic' 'age'%}">Age</a></td>
+		<td><a href ="{% url 'help_topics:topic' 'concept' %}">Concept</a></td>
+		<td><a href="{% url 'help_topics:topic' 'fealty' %}">Fealty</a></td>
+		<td><a href="{% url 'help_topics:topic' 'social_rank' %}">Social Rank</a></td>
+		<td>Email</td>
+	  </tr>
+      {% for char in unavailable%}
+        <tr class="{% cycle 'success' 'info' %}">
+        <td><a href="{% url 'character:sheet' char.id %}">{{ char.key }}</a></td>
+		<td>{{ char.db.gender }}</td>
+		<td>{{ char.db.age }}</td>
+		<td>{{char.db.concept}}</td>
+		<td>{{char.db.fealty}}</td>
+		<td>{{char.db.social_rank}}</td>
+		<td>{{char.player_ob.email}}</td>
+	  </tr>
+      {% empty %}
+        <li>No characters found.</li>
+      {% endfor %}
+	  </table>
+	  </div>
+      <button data-toggle="collapse" data-target="#Incomplete">
+    <h2>Incomplete Characters</h2></button><hr />
+	  <div id="Incomplete" class="collapse">
+	  <table class="table table-hover">
+	  <tr class="danger">
+		<td>Name</td>
+		<td><a href="{% url 'help_topics:topic' 'gender'%}">Gender</a></td>
+		<td><a href="{% url 'help_topics:topic' 'age'%}">Age</a></td>
+		<td><a href ="{% url 'help_topics:topic' 'concept' %}">Concept</a></td>
+		<td><a href="{% url 'help_topics:topic' 'fealty' %}">Fealty</a></td>
+		<td><a href="{% url 'help_topics:topic' 'social_rank' %}">Social Rank</a></td>
+		<td>Email</td>
+	  </tr>
+      {% for char in incomplete %}
+        <tr class="{% cycle 'success' 'info' %}">
+        <td><a href="{% url 'character:sheet' char.id %}">{{ char.key }}</a></td>
+		<td>{{ char.db.gender }}</td>
+		<td>{{ char.db.age }}</td>
+		<td>{{char.db.concept}}</td>
+		<td>{{char.db.fealty}}</td>
+		<td>{{char.db.social_rank}}</td>
+		<td>{{char.player_ob.email}}</td>
+	  </tr>
+      {% empty %}
+        <li>No characters found.</li>
+      {% endfor %}
+	  </table>
+	  </div>
+    {% endif %}
+	
+    
+    
+{% endblock %}

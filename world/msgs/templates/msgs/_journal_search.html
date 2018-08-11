@@ -1,0 +1,12 @@
+{% comment "Usage" %}
+    {% include "msgs/_journal_search.html" %}
+{% endcomment %}
+<div class="row">
+    <form method="get" action="." class="navbar-form pull-right">
+    <input type="text" id="searchBox" class="input-medium search-query" name="sender_name" placeholder="Written By">
+    <input type="text" id="searchBox" class="input-medium search-query" name="receiver_name" placeholder="Relationship Note On">
+    <input type="text" id="searchBox" class="input-medium search-query" name="search_text" placeholder="Journal Text">
+    <label><input type="checkbox" id="searchBox" class="input-medium search-query" name="favorites">Only Favorites</label>
+    <input type="submit" class="btn" value="Search" >
+    </form>
+</div>
