@@ -1611,7 +1611,11 @@ class CmdArmy(ArxPlayerCommand):
                 caller.msg("You don't hold rank in %s for building armies." % org)
                 return
             # create army
-            org.assets.armies.create(name=name)
+            try:
+                domain = org.assets.estate.holdings.first()
+            except AttributeError:
+                domain = None
+            org.assets.armies.create(name=name, domain=domain)
             self.msg("Army created.")
             return
         # checks if the switch is one requiring unit permissions

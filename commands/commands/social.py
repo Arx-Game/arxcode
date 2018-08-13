@@ -1667,7 +1667,8 @@ class CmdCalendar(ArxPlayerCommand):
             room = self.caller.character.location
         if not room:
             raise self.CalCmdError("No room found.")
-        self.set_form_or_event_attribute("location", room.id, event)
+        id_or_instance = room if event else room.id
+        self.set_form_or_event_attribute("location", id_or_instance, event)
         self.msg("Room set to %s." % room)
 
     def set_event_desc(self, event):
@@ -1701,7 +1702,8 @@ class CmdCalendar(ArxPlayerCommand):
                     msg += "  %d: %s (%s)" % (room.id, room.name, room.get_detailed_region_name())
                 raise self.CalCmdError(msg)
             plotroom = plotrooms[0]
-            self.set_form_or_event_attribute("plotroom", plotroom.id, event)
+            id_or_instance = plotroom if event else plotroom.id
+            self.set_form_or_event_attribute("plotroom", id_or_instance, event)
             msg = "Plot room for event set to %s: %s (in %s)\n" % (plotroom, plotroom.ansi_name(),
                                                                    plotroom.get_detailed_region_name())
             msg += "If you wish to remove the plotroom later, use this command with no left-hand-side argument."

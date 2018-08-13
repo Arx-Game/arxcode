@@ -839,7 +839,7 @@ def display_relationships(caller, character, show_hidden=False):
     be done by @relationship command separately.
     """
     if hasattr(character, 'get_fancy_name'):
-        name = character.get_fancy_name(short=False)
+        name = character.get_fancy_name(short=False, display_mask=False)
     else:
         name = character.key
     if not name:

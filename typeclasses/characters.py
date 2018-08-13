@@ -397,11 +397,11 @@ class Character(NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
         roll = do_dice_check(self, stat="perception", stat_keep=True, difficulty=difficulty)
         return roll
 
-    def get_fancy_name(self, short=False):
+    def get_fancy_name(self, short=False, display_mask=True):
         """
         Returns either an illusioned name, a long_name with titles, or our key.
         """
-        if self.db.false_name:
+        if self.db.false_name and display_mask:
             return self.db.false_name
         if not short and self.db.longname:
             return self.db.longname

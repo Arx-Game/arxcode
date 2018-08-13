@@ -667,6 +667,10 @@ class AssetOwner(SharedMemoryModel):
             return self._cached_costs
         for debt in self.debts.filter(do_weekly=True).exclude(category="vassal taxes"):
             costs += debt.weekly_amount
+        for army in self.armies.filter(domain__isnull=True):
+            costs += army.costs
+        for army in self.loaned_armies.filter(domain__isnull=True):
+            costs += army.costs
         if not hasattr(self, 'estate'):
             return costs
         for domain in self.estate.holdings.all():
@@ -5518,6 +5522,8 @@ class RPEvent(SharedMemoryModel):
             return True
         dom = player.Dominion
         if dom in self.gms.all() or dom in self.hosts.all() or dom in self.participants.all():
+            return True
+        if dom.current_orgs.filter(events=self).exists():
             return True
 
     def can_end_or_move(self, player):
