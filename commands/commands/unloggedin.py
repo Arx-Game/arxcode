@@ -109,10 +109,10 @@ class CmdGuestConnect(ArxCommand):
                 # maximum loop check just in case
                 if num_guests > 5000:
                     break
-            guest = create.create_player(key, "guest@guest.com", "DefaultGuestPassword",
-                                         typeclass=GUEST,
-                                         is_superuser=False,
-                                         locks=None, permissions="Guests", report_to=session)
+            guest = create.create_account(key, "guest@guest.com", "DefaultGuestPassword",
+                                          typeclass=GUEST,
+                                          is_superuser=False,
+                                          locks=None, permissions="Guests", report_to=session)
         # now connect the player to the guest account
         session.msg("Logging in as %s" % guest.key)
         session.sessionhandler.login(session, guest)

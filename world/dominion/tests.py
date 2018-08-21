@@ -103,5 +103,5 @@ class TestGeneralDominionCommands(ArxCommandTest):
                       'You have increased the economic influence of Orgtest by 25.\n'
                       'Current modifier is 0, progress to next is 1/100.')
         self.call_cmd("/score orgtest2", "No match for an org by the name: orgtest2.")
-        self.call_cmd("/score orgtest", 'Member      Total Work Total Invested \n'
-                                        'TestAccount 3          25')
+        self.call_cmd("/score orgtest", 'Member      Total Work Total Invested Combined \n'
+                                        'Testaccount 3          25             28')

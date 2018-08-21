@@ -6,7 +6,7 @@ to make changes.
 from ast import literal_eval
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, F
 
 from evennia import CmdSet
 from evennia.objects.models import ObjectDB
@@ -3588,19 +3588,26 @@ class CmdWork(ArxPlayerCommand):
 
     def do_score(self):
         """Lists scoreboard for members"""
+        from django.db.models import ExpressionWrapper, IntegerField
         if not self.caller.is_staff:
             org = self.get_member(org_name=self.lhs).organization
             if org.secret:
                 raise CommandError("Cannot list data for secret orgs.")
+            qs = org.active_members.exclude(secret=True)
         else:
             try:
                 org = Organization.objects.get(name__iexact=self.lhs)
             except Organization.DoesNotExist:
                 raise CommandError("Bad name for org: %s" % self.lhs)
-        members = org.active_members.exclude(secret=True).values_list('player__player__username',
-                                                                      'work_total', 'investment_total')
-        table = PrettyTable(["Member", "Total Work", "Total Invested"])
+            qs = org.active_members
+        members = (qs.annotate(combined=ExpressionWrapper(F('work_total') + F('investment_total'),
+                                                          output_field=IntegerField()))
+                     .exclude(combined__lte=0)
+                     .values_list('player__player__username', 'work_total', 'investment_total', 'combined')
+                     .order_by('-combined'))
+        table = PrettyTable(["Member", "Total Work", "Total Invested", "Combined"])
         for member in members:
+            member = [member[0].capitalize()] + list(member[1:])
             table.add_row(member)
         self.msg(str(table))
 
