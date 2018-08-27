@@ -220,7 +220,8 @@ class Wieldable(Wearable):
         return damage, diffmod, flat_damage_bonus
 
     def calc_armor(self):
-        return
+        """Sheathed/worn weapons have no armor value or other modifiers"""
+        return 0, 0, 0
 
     def check_fashion_ready(self):
         from world.fashion.mixins import FashionableMixins

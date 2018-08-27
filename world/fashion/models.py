@@ -111,7 +111,7 @@ class FashionOutfit(FashionCommonMixins):
     A collection of wearable and wieldable items that all fit on a character
     at the same time.
     """
-    name = models.CharField(max_length=80, unique=True)
+    name = models.CharField(max_length=80, db_index=True)
     owner = models.ForeignKey('dominion.PlayerOrNpc', related_name='fashion_outfits', on_delete=models.CASCADE)
     fashion_items = models.ManyToManyField('objects.ObjectDB', through='ModusOrnamenta', blank=True)
     db_date_created = models.DateTimeField(auto_now_add=True)
