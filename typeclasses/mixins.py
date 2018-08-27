@@ -377,16 +377,17 @@ class AppearanceMixins(BaseObjectMixins):
             if con.destination:
                 exits.append(key)
             # Only display worn items in inventory to other characters
-            elif con.db.currently_worn:
-                worn.append(con)
-            elif con.db.wielded_by == self:
+            elif hasattr(con, 'wear') and con.is_worn:
+                if con.decorative:
+                    worn.append(con)
+                else:
+                    sheathed.append(key)
+            elif hasattr(con, 'wield') and con.is_wielded:
                 if not con.db.stealth:
                     wielded.append(key)
                 elif hasattr(pobject, 'sensing_check') and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0:
-                    key += "{w(hidden){n"
+                    key += "{w (hidden){n"
                     wielded.append(key)
-            elif con.db.sheathed_by == self:
-                sheathed.append(key)
             elif con.has_player:
                 # we might have either a title or a fake name
                 lname = con.name

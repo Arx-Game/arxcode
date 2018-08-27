@@ -2,16 +2,13 @@
 Wearable objects. Clothing and armor. No distinction between
 clothing and armor except armor will have an armor value
 defined as an attribute.
-
-is_wearable boolean is the check to see if we're a wearable
-object. currently_worn is a boolean saying our worn state - True if being worn,
-False if not worn.
 """
 
 from typeclasses.objects import Object
 from time import time
 from typeclasses.containers.container import Container
 from world.fashion.mixins import FashionableMixins
+from typeclasses.exceptions import EquipError
 
 
 # noinspection PyMethodMayBeStatic
@@ -24,75 +21,84 @@ class Wearable(FashionableMixins, Object):
         """
         Run at Wearable creation.
         """
-        self.db.currently_worn = False
+        self.is_worn = False
         self.db.desc = "A piece of clothing or armor."
         self.db.armor_class = 0
         self.at_init()
 
-    def remove(self, wearer):
-        """
-        Takes off the armor
-        """
-        if not self.at_pre_remove(wearer):
-            return False
-        self.db.currently_worn = False
-        self.at_post_remove(wearer)
-        return True
-
     def softdelete(self):
         """Fake-deletes the object so that it can still be cancelled, is purged in weekly maintenance"""
-        wearer = self.location
+        if self.is_worn:
+            wearer = self.location
+            self.is_worn = False
+            self.at_post_remove(wearer)
+        modi = self.modusornamenta_set.all()
+        for mo in modi:
+            outfit = mo.fashion_outfit
+            mo.delete()
+            if outfit.pk:
+                outfit.invalidate_outfit_caches()
+                outfit.check_existence()
+        self.invalidate_snapshots_cache()
         super(Wearable, self).softdelete()
-        self.db.currently_worn = False
-        self.at_post_remove(wearer)
-
-    # noinspection PyAttributeOutsideInit
-    def wear(self, wearer):
-        """
-        Puts item on the wearer
-        """
-        # Assume any fail messages are written in at_pre_wear
-        if not self.at_pre_wear(wearer):
-            return False
-        self.db.currently_worn = True
-        if self.location != wearer:
-            self.location = wearer
-        self.db.worn_time = time()
-        self.calc_armor()
-        self.at_post_wear(wearer)
-        return True
 
     def at_before_move(self, destination, **kwargs):
         """Checks if the object can be moved"""
         caller = kwargs.get('caller', None)
-        if caller and self.db.currently_worn:
+        if caller and self.is_worn:
             caller.msg("%s is currently worn and cannot be moved." % self)
             return False
         return super(Wearable, self).at_before_move(destination, **kwargs)
 
     def at_after_move(self, source_location, **kwargs):
         """If new location is not our wearer, remove."""
-        location = self.location
-        wearer = source_location
-        if self.db.currently_worn and location != wearer:
-            self.remove(wearer)
+        if self.is_worn and self.location != source_location:
+            self.remove(source_location)
+        super(Wearable, self).at_after_move(source_location, **kwargs)
+
+    def remove(self, wearer):
+        """
+        Takes off the armor
+        """
+        if not self.is_worn:
+            raise EquipError("not equipped")
+        self.is_worn = False
+        self.at_post_remove(wearer)
+
+    def at_post_remove(self, wearer):
+        """Hook called after removing succeeds."""
+        return True
+
+    # noinspection PyAttributeOutsideInit
+    def wear(self, wearer):
+        """
+        Puts item on the wearer.
+        """
+        # Assume fail exceptions are raised at_pre_wear
+        self.at_pre_wear(wearer)
+        self.is_worn = True
+        if self.decorative:
+            self.db.worn_time = time()
+        self.at_post_wear(wearer)
 
     def at_pre_wear(self, wearer):
         """Hook called before wearing for any checks."""
-        return True
+        if self.is_worn:
+            raise EquipError("already worn")
+        if self.location != wearer:
+            raise EquipError("misplaced")
+        self.slot_check(wearer)
+
+    def slot_check(self, wearer):
+        slot, slot_limit = self.slot, self.slot_limit
+        if slot and slot_limit:
+            worn = [ob for ob in wearer.worn if ob.slot == slot]
+            if len(worn) >= slot_limit:
+                raise EquipError("%s slot full" % slot)
 
     def at_post_wear(self, wearer):
-        """Hook called after wearing for any checks."""
-        return True
-
-    def at_pre_remove(self, wearer):
-        """Hook called before removing."""
-        return True
-
-    def at_post_remove(self, wearer):
-        """Hook called after removing."""
-        self.attributes.remove("worn_by")
-        return True
+        """Hook called after wearing succeeds."""
+        self.calc_armor()
 
     def calc_armor(self):
         """
@@ -100,11 +106,8 @@ class Wearable(FashionableMixins, Object):
         quality.
         """
         quality = self.quality_level
-        recipe_id = self.db.recipe
-        from world.dominion.models import CraftingRecipe
-        try:
-            recipe = CraftingRecipe.objects.get(id=recipe_id)
-        except CraftingRecipe.DoesNotExist:
+        recipe = self.recipe
+        if not recipe:
             return self.db.armor_class or 0, self.db.penalty or 0, self.db.armor_resilience or 0
         base = float(recipe.resultsdict.get("baseval", 0.0))
         scaling = float(recipe.resultsdict.get("scaling", (base/10.0) or 0.2))
@@ -123,26 +126,29 @@ class Wearable(FashionableMixins, Object):
             armor = base + (scaling * quality)
         except (TypeError, ValueError):
             armor = 0
-        self.ndb.purported_value = armor
-        if self.db.forgery_penalty:
-            try:
-                armor /= self.db.forgery_penalty
-            except (ValueError, TypeError):
-                armor = 0
         self.ndb.cached_armor_value = armor
         self.ndb.cached_penalty_value = penalty
         self.ndb.cached_resilience = resilience
         return armor, penalty, resilience
 
-    def _get_armor(self):
+    def check_fashion_ready(self):
+        super(Wearable, self).check_fashion_ready()
+        if not self.is_worn:
+            from world.fashion.exceptions import FashionError
+            raise FashionError("Please wear %s before trying to model it as fashion." % self)
+        return True
+
+    @property
+    def armor(self):
         # if we have no recipe or we are set to ignore it, use armor_class
-        if not self.db.recipe or self.db.ignore_crafted:
+        if not self.recipe or self.db.ignore_crafted:
             return self.db.armor_class
         if self.ndb.cached_armor_value is not None:
             return self.ndb.cached_armor_value
         return self.calc_armor()[0]
 
-    def _set_armor(self, value):
+    @armor.setter
+    def armor(self, value):
         """
         Manually sets the value of our armor, ignoring any crafting recipe we have.
         """
@@ -150,16 +156,14 @@ class Wearable(FashionableMixins, Object):
         self.db.ignore_crafted = True
         self.ndb.cached_armor_value = value
 
-    armor = property(_get_armor, _set_armor)
-
-    def _get_penalty(self):
+    @property
+    def penalty(self):
         # if we have no recipe or we are set to ignore it, use penalty
         if not self.db.recipe or self.db.ignore_crafted:
             return self.db.penalty or 0
         if self.ndb.cached_penalty_value is not None:
             return self.ndb.cached_penalty_value
         return self.calc_armor()[1]
-    penalty = property(_get_penalty)
 
     @property
     def armor_resilience(self):
@@ -183,17 +187,33 @@ class Wearable(FashionableMixins, Object):
         """how many can be worn on that slot"""
         recipe = self.recipe
         if not recipe:
-            return self.db.slot_limit or 0
+            return self.db.slot_limit or 1
         try:
             return int(recipe.resultsdict.get("slot_limit", 1))
         except (TypeError, ValueError):
             return 1
 
-    def check_fashion_ready(self):
-        super(Wearable, self).check_fashion_ready()
-        if not self.db.currently_worn:
-            from server.utils.exceptions import FashionError
-            raise FashionError("Please wear %s before trying to model it as fashion." % self)
+    @property
+    def is_wearable(self):
+        return True
+
+    @property
+    def is_worn(self):
+        return self.db.currently_worn
+
+    @is_worn.setter
+    def is_worn(self, bull):
+        """Bool luvs u"""
+        self.db.currently_worn = bull
+
+    @property
+    def is_equipped(self):
+        """shared property just for checking worn/wielded/otherwise-used status."""
+        return self.is_worn
+
+    @property
+    def decorative(self):
+        """Armor and clothing is always decorative."""
         return True
 
 
@@ -216,9 +236,9 @@ class WearableContainer(Wearable, Container):
             self.cmdset.add_default(self.create_container_cmdset(self), permanent=False)
             self.ndb.container_reset = False
 
-    def _get_armor(self):
-        return 0
-
-    def _calc_armor(self):
+    def calc_armor(self):
         return
-    armor = property(_get_armor)
+
+    @property
+    def armor(self):
+        return 0

@@ -2853,7 +2853,7 @@ class CrisisAction(AbstractAction):
 
     def invite(self, dompc):
         """Invites an assistant, sending them an inform"""
-        if dompc in self.assistants.all():
+        if self.assistants.filter(player=dompc.player).exists():
             raise ActionSubmissionError("They have already been invited.")
         if dompc == self.dompc:
             raise ActionSubmissionError("The owner of an action cannot be an assistant.")

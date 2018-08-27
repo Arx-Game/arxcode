@@ -100,7 +100,7 @@ class ArxChannelCommand(command.Command):
         if "%r" in msg or "{/" in msg or "|/" in msg:
             caller.msg("Channel messages may not contain newline characters.")
             return
-        if len(msg) > self.max_length and not caller.check_permstring("builders"):
+        if len(msg) > self.max_length and not caller.check_permstring("helpers"):
             self.msg("Channel messages may not exceed %d characters in length." % self.max_length)
             return
         if msg == "who" or msg == "?" or msg == "all" or msg == "list":

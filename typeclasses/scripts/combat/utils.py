@@ -21,7 +21,7 @@ def npc_target_choice(targ, targets, prev_targ, switch_chance):
     # try to use a lot of our attacks on our 'main' target the player set for the npc
     if len(targets) > 1:
         removed_previous = False
-        if prev_targ and not prev_targ.db.num_living:
+        if prev_targ and not prev_targ.db.num_living and prev_targ in targets:
             removed_previous = True
             targets.remove(prev_targ)
         if randint(1, 100) <= switch_chance:

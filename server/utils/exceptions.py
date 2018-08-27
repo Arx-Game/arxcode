@@ -36,7 +36,3 @@ class PayError(CommandError):
 
 class ActionSubmissionError(CommandError):
     pass
-
-
-class FashionError(CommandError):
-    pass

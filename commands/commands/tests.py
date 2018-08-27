@@ -493,6 +493,14 @@ class SocialTests(ArxCommandTest):
         # cleanup property mock
         type(self.char1).social_clout = old
 
+    def test_room_mood(self):
+        self.setup_cmd(social.CmdRoomMood, self.char)
+        self.call_cmd("this is a test mood", 'Old mood was: |'
+                                             '(OOC)The scene set/room mood is now set to: this is a test mood')
+        self.assertEqual(self.room1.db.room_mood[2], "this is a test mood")
+        self.call_cmd("", "Old mood was: this is a test mood|Mood erased.")
+        self.assertEqual(self.room1.db.room_mood, None)
+
 
 # noinspection PyUnresolvedReferences
 class SocialTestsPlus(ArxCommandTest):

@@ -297,10 +297,6 @@ class CmdRequest(ArxPlayerCommand):
     also be for simple requests to have descriptions or other
     aspects of your character editted/changed.
 
-    To request GMing of an action you wish to take, use the
-    +storyrequest command. There is a restriction of how often this
-    command may be used.
-
     To request information about a player-run-plot that you wish
     to run, use +prprequest.
 

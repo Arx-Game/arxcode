@@ -58,11 +58,11 @@ class Attack(object):
     'None' doesn't necessarily mean 'False' in this case.
     """
     AUTO_HIT = 9999
-    
+
     # noinspection PyUnusedLocal
     def __init__(self, target=None, attacker=None, attack_penalty=0, defense_penalty=0,
                  dmg_penalty=0, allow_botch=None, free_attack=False, targets=None,
-                 attacker_name=None, combat=None, stance=None, prev_targ=None, 
+                 attacker_name=None, combat=None, stance=None, prev_targ=None,
                  can_cleave=False, switch_chance=None, affect_real_dmg=None, can_be_parried=None,
                  lost_turn_penalty=0, atk_modifiers=0, difficulty_mod=0,
                  attack_stat="", attack_skill="", can_be_blocked=None, can_be_dodged=None,
@@ -145,7 +145,7 @@ class Attack(object):
             self.risk = risk
         self.attack_dmgs = defaultdict(int)
         self.riposte_dmgs = []
-        
+
     def __str__(self):
         return str(self.attacker_name)
 
@@ -169,7 +169,7 @@ class Attack(object):
             self.take_damage(target, dmg)
         for riposte in self.riposte_dmgs:
             riposte.take_damage(self.attacker, riposte.riposte_dmg)
-        
+
     def make_attacks(self, attack_list):
         """
         Iterate the attack list by rolling for attacker and defender and calculating damage
@@ -289,7 +289,7 @@ class Attack(object):
             self.attack_penalty += 5
         # modifiers from our stance (aggressive, defensive, etc)
         self.attack_penalty += combat_settings.STANCE_ATK_MOD[self.stance]
-        
+
     def build_attack_list(self):
         """Who are we killing, again? Oh everyone? Fun! --Emerald"""
         attack_list = self.targets if self.cleaving and not self.free_attack else [self.target]
@@ -299,7 +299,7 @@ class Attack(object):
                 attack_list.append(npc_target_choice(self.target, self.targets, self.prev_targ,
                                                      self.switch_chance))
         return attack_list
-        
+
     def get_modifier(self, target, check_type):
         """
         Gets a modifier for a roll based on what the type is and who's rolling
@@ -328,10 +328,10 @@ class Attack(object):
         autohit = self.damage is not None
         diff = 2  # base difficulty before mods
         penalty -= self.atk_modifiers
-        diff += penalty       
+        diff += penalty
         diff += self.difficulty_mod
         if not autohit:
-            roll = do_dice_check(self.attacker, stat=self.attack_stat, skill=self.attack_skill, 
+            roll = do_dice_check(self.attacker, stat=self.attack_stat, skill=self.attack_skill,
                                  difficulty=diff)
         else:
             roll_object = Roll()
@@ -350,10 +350,10 @@ class Attack(object):
         if not autohit:
             roll += self.get_modifier(target, RollModifier.ATTACK)
         return roll
-    
+
     def handle_atk_botch(self, a_roll, result, target):
         """
-        Processes the results of botching an executed attack. 
+        Processes the results of botching an executed attack.
         Returns the riposte Attack object.
         """
         botcher = self.attacker
@@ -367,7 +367,7 @@ class Attack(object):
                 if can_riposte and target and botcher:
                     riposte_attack = target.combat.do_attack(botcher, allow_botch=False, free_attack=True,
                                                              is_riposte=True)
-                else:    
+                else:
                     self.lost_turn_penalty = 1  # Not += because cleave might accumulate a bunch
         return riposte_attack
 
@@ -379,7 +379,7 @@ class Attack(object):
 
     def roll_defense(self, target, penalty=0):
         """
-        Returns target's roll to avoid being hit. We use the highest roll out of 
+        Returns target's roll to avoid being hit. We use the highest roll out of
         parry, block, and dodge. Half of our roll is then randomized.
         """
         if not target.conscious:
@@ -392,7 +392,7 @@ class Attack(object):
         if defense.state:
             defense.state.times_attacked += 1
         total = None
-        
+
         def change_total(current_total, new_roll):
             """Helper function to change total of defense rolls"""
             if new_roll >= 2:
@@ -407,7 +407,7 @@ class Attack(object):
             elif new_roll > current_total:
                 current_total = (current_total + new_roll)//2
             return current_total, new_roll
-        
+
         if self.can_be_parried and defense.can_parry:
             parry_diff = diff + 10
             parry_roll = int(do_dice_check(target, stat=defense.attack_stat, skill=self.attack_skill,
@@ -447,7 +447,7 @@ class Attack(object):
         else:
             defense.last_defense_method = "dodge"
         return total
-    
+
     def roll_damage(self, target, penalty=0, dmgmult=1.0):
         """
         Returns our roll for damage against target. If damage is to be
@@ -459,7 +459,7 @@ class Attack(object):
         except (TypeError, AttributeError, ValueError):
             pass
         if keep_dice < 3:
-            keep_dice = 3       
+            keep_dice = 3
         diff = 0  # base difficulty before mods
         diff += penalty
         damage = do_dice_check(self.attacker, stat=self.handler.damage_stat, stat_keep=True, difficulty=diff,
@@ -527,14 +527,14 @@ class Attack(object):
         """
         This is where the consequences of final damage are applied to a victim. They can
         be knocked unconscious or killed, and any combat they're in is informed.
-        Characters who are incapacitated are moved to the appropriate dictionary. 
+        Characters who are incapacitated are moved to the appropriate dictionary.
         Health rating is 10xsta + 10.
         Unconsciousness checks are after health rating is exceeded. When
         damage is double health rating, death checks begin. Player characters
         will always fall unconscious first, then be required to make death
         checks after further damage, with the exception of extraordinary
         situations. NPCs, on the other hand, can be killed outright.
-        
+
             Args:
                 victim: Our target
                 dmg: The amount of damage after all mitgation/reductions
@@ -625,16 +625,16 @@ class Attack(object):
     def modify_difficulty_by_risk(self, difficulty):
         """Calculate difference in difficulty based on the risk"""
         risk = self.risk
-        return int(difficulty * risk * 0.25) 
+        return int(difficulty * risk * 0.25)
 
     def build_and_broadcast_story(self, attack_prefix, hits_and_misses):
         """
         Takes a dict of targets/outcomes of this attack & transform into a story.
-        
+
             Args:
                 attack_prefix (string): Introduces the attacker.
                 hits_and_misses (dict): Each target's list of responses to attacks.
-        
+
         Counts attacks against a target and groups the outcomes thereafter. Example:
         'Emerald attacks Bob 2 times (hit for major damage, parry), Jane (graze for no damage),
         and Bill (riposte for no damage).'
@@ -651,7 +651,7 @@ class Attack(object):
         message = attack_prefix + list_to_string(all_target_msgs) + "."
         self.story = self.story_spacer + message
         self.send_story_to_combat()
-        
+
     def send_story_to_combat(self):
         """Walrus says Story or GTFO."""
         if self.combat:
@@ -672,26 +672,26 @@ class Attack(object):
             target.location.msg_contents(message, options={'roll': True})
             if mit_msg:
                 target.msg(mit_msg)
-            
+
     def send_message_to_attacker(self, attacker_summaries):
         """
         Sends a summary of damage to whomever is responsible for dealing it.
-        
+
             Args:
-                attacker_summaries (list): List of strings that show victim and 
-                    the outcome of attack. When the resulting message is for an 
+                attacker_summaries (list): List of strings that show victim and
+                    the outcome of attack. When the resulting message is for an
                     attacker, strings are verbose with dice/damage numbers.
-        
+
         Example for self.inflictor:
-        'The trap springs! You inflict 30. Bob is harmed for critical damage, Bill is unharmed, 
+        'The trap springs! You inflict 30. Bob is harmed for critical damage, Bill is unharmed,
         and Jane is harmed for minor damage.'
-        
+
         Example for self.attacker:
-        'YOU attack Bob 32 vs 4: graze for minor damage (6), Jane -16 vs 4: parry, 
+        'YOU attack Bob 32 vs 4: graze for minor damage (6), Jane -16 vs 4: parry,
         and Bill -32 vs 17: riposte for minor damage.'
         """
         if self.inflictor:
-            self.inflictor.msg("%s%sYou inflict %s. %s." % (self.story, self.story_spacer, self.damage, 
+            self.inflictor.msg("%s%sYou inflict %s. %s." % (self.story, self.story_spacer, self.damage,
                                list_to_string(attacker_summaries)), options={'roll': True})
         elif self.attacker:
             self.attacker.msg("YOU attack %s." % list_to_string(attacker_summaries), options={'roll': True})

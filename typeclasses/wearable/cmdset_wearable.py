@@ -11,6 +11,7 @@ from django.conf import settings
 from evennia.commands.cmdset import CmdSet
 from evennia import utils
 from server.utils.arx_utils import ArxCommand
+from typeclasses.exceptions import EquipError
 
 # ------------------------------------------------------------
 # Commands defined for wearable
@@ -19,83 +20,60 @@ from server.utils.arx_utils import ArxCommand
 
 class CmdWear(ArxCommand):
     """
-    Put on an item of clothing or armor.
+    Put on or take off an article of clothing or armor.
 
     Usage:
-        wear <item>
+        wear <item name or "all">
+        wear/outfit <outfit name>
+        remove <item or "all">
+        remove/outfit <outfit name>
+        undress
 
-    Wears the given item on your character. The object must be in
-    your inventory to wear it.
+    Wears the item on your character. Typing "all" attempts to wear all gear
+    in your inventory. If you have created an outfit (see 'help outfit') the
+    /outfit switch will first undress you and then attempt to put it on.
+
+    'Remove' will take off specified worn items, with 'undress' being an
+    alias for 'remove all'.
     """
     key = "wear"
     locks = "cmd:all()"
+    aliases = ["remove", "undress", "removeall"]
+    undress_cmds = ("undress", "removeall")
 
     def func(self):
-        """Look for object in inventory that matches args to wear"""
-        caller = self.caller
-        args = self.args
-        if not args:
-            caller.msg("Wear what?")
-            return
-        if args == "all":
-            obj_list = [ob for ob in caller.contents if hasattr(ob, 'wear')]
-        else:
-            obj = caller.search(args, location=caller)
-            if not obj:
+        cmdstr = self.cmdstring.lower()
+        undress = cmdstr in self.undress_cmds
+        remove_all = all((cmdstr == "remove", self.args, self.args == "all"))
+        from typeclasses.scripts.combat.combat_settings import CombatError
+        from world.fashion.exceptions import FashionError
+        try:
+            if undress or remove_all:
+                self.caller.undress()
                 return
-            obj_list = [obj]
-        success = []
-        for obj in obj_list:
-            if not hasattr(obj, 'wear'):
-                caller.msg("You can't wear that.")
-                continue
-            if obj.db.currently_worn:
-                caller.msg("You're already wearing %s." % obj.name)
-                continue
-            slot_limit = obj.slot_limit
-            slot = obj.slot
-            if slot_limit and slot:
-                worn = [ob for ob in caller.contents if ob.db.currently_worn and ob.slot == slot]
-                if len(worn) >= slot_limit:
-                    caller.msg("You are wearing too many things on your %s for it to fit." % slot)
-                    continue
-            if obj.wear(caller):
-                success.append(obj)
-        if not success:
-            self.msg("You wore nothing.")
-            return
-        self.msg("You put on %s." % ", ".join(obj.name for obj in success))
+            elif not self.args:
+                raise EquipError("What are you trying to %s?" % cmdstr)
+            if "outfit" in self.switches or "outfits" in self.switches:
+                self.equip_or_remove_outfit()
+            else:
+                self.wear_or_remove_item()
+        except (CombatError, EquipError, FashionError) as err:
+            self.msg(err)
 
+    def equip_or_remove_outfit(self):
+        from world.fashion.fashion_commands import get_caller_outfit_from_args
+        outfit = get_caller_outfit_from_args(self.caller, self.args)
+        if not outfit.is_carried:
+            raise EquipError("Outfit components must be on your person and not in any containers.")
+        getattr(outfit, self.cmdstring.lower())()
 
-class CmdRemove(ArxCommand):
-    """
-    Remove an item of clothing or armor.
-    Usage:
-        remove <item>
-
-    Takes off the given item from your character. The object must
-    be in your inventory and currently worn to remove it.
-    """
-    key = "remove"
-    locks = "cmd:all()"
-
-    def func(self):
-        """Look for object in inventory that matches args to wear"""
-        caller = self.caller
-        args = self.args
-        if not args:
-            caller.msg("Remove what?")
-            return
-        obj = caller.search(args, location=caller)
-        if not obj:
-            return
-        if not obj.db.currently_worn and not obj.db.sheathed_by:
-            caller.msg("You're not wearing %s." % obj.name)
-            return
-        if obj.remove(caller):
-            caller.msg("You take off %s." % obj.name)
-            return
-        pass
+    def wear_or_remove_item(self):
+        item_list = []
+        if not "all" == self.args.lower():
+            item_list = [self.caller.search(self.args, location=self.caller)]
+            if not any(item_list):
+                return
+        self.caller.equip_or_remove(self.cmdstring.lower(), item_list)
 
 
 class DefaultCmdSet(CmdSet):
@@ -125,4 +103,3 @@ class WearCmdSet(CmdSet):
     def at_cmdset_creation(self):
         """Init the cmdset"""
         self.add(CmdWear())
-        self.add(CmdRemove())

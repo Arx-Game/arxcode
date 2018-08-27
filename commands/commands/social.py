@@ -1472,9 +1472,9 @@ class CmdCalendar(ArxPlayerCommand):
         if not event.can_view(self.caller):
             raise self.CalCmdError("You can't view this event.")
         if check_host and not event.can_end_or_move(self.caller):
-            raise self.CalCmdError("You do not have permission to move or end the event.")
+            raise self.CalCmdError("You do not have permission to change the event.")
         if check_admin and not event.can_admin(self.caller):
-            raise self.CalCmdError("You do not have permission to change that event.")
+            raise self.CalCmdError("Only the main host can cancel the event.")
         return event
 
     def do_form_switches(self):
@@ -1511,7 +1511,7 @@ class CmdCalendar(ArxPlayerCommand):
         """Sets a value for the form or changes an existing event's attribute"""
         event = None
         if self.rhs:
-            event = self.get_event_from_args(self.rhs, check_admin=True)
+            event = self.get_event_from_args(self.rhs, check_host=True)
         else:
             proj = self.caller.ndb.event_creation
             if not proj:
@@ -1556,8 +1556,8 @@ class CmdCalendar(ArxPlayerCommand):
 
     def do_admin_switches(self):
         """Starts an event or cancels it"""
-        event = self.get_event_from_args(self.lhs, check_admin=True)
         if "cancel" in self.switches:
+            event = self.get_event_from_args(self.lhs, check_admin=True)
             if event.id in self.event_manager.db.active_events:
                 self.msg("You must /end an active event.")
                 return
@@ -1567,6 +1567,7 @@ class CmdCalendar(ArxPlayerCommand):
             self.event_manager.cancel_event(event)
             self.msg("You have cancelled the event.")
         elif "starteventearly" in self.switches:
+            event = self.get_event_from_args(self.lhs, check_host=True)
             if self.rhs and self.rhs.lower() == "here":
                 loc = self.caller.db.char_ob.location
                 if not loc:
@@ -1731,6 +1732,8 @@ class CmdCalendar(ArxPlayerCommand):
         except AttributeError:
             return
         if event:
+            if host == event.main_host:
+                raise self.CalCmdError("The main host cannot be removed.")
             if host in event.hosts:
                 event.change_host_to_guest(host)
                 msg = "Changed host to a regular guest. Use /uninvite to remove them completely."
@@ -2132,7 +2135,7 @@ class CmdRoomMood(ArxCommand):
     describing what is going on for people who enter.
     """
     key = "+room_mood"
-    aliases = ["+roommood"]
+    aliases = ["+roommood", "setscene"]
     locks = "cmd:all()"
     help_category = "Social"
 
@@ -2147,7 +2150,7 @@ class CmdRoomMood(ArxCommand):
             return
         mood = (caller, time.time(), self.args)
         caller.location.db.room_mood = mood
-        self.msg("New mood is: %s" % mood[2])
+        self.caller.location.msg_contents("{w(OOC)The scene set/room mood is now set to:{n %s" % mood[2])
 
 
 class CmdSocialScore(ArxCommand):

@@ -8,8 +8,8 @@ creation commands.
 
 """
 from evennia.objects.objects import DefaultCharacter
-from server.utils.arx_utils import lowercase_kwargs
 from typeclasses.mixins import MsgMixins, ObjectMixins, NameMixins
+from typeclasses.wearable.mixins import UseEquipmentMixins
 from world.msgs.messagehandler import MessageHandler
 from world.msgs.languagehandler import LanguageHandler
 from evennia.utils.utils import lazy_property, variable_from_module
@@ -17,7 +17,7 @@ import time
 from world.stats_and_skills import do_dice_check
 
 
-class Character(NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
+class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
     """
     The Character defaults to reimplementing some of base Object's hook methods with the
     following functionality:
@@ -152,7 +152,7 @@ class Character(NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
         if script:
             scent = script.db.scent
             if scent:
-                string += "\n\n%s" % scent
+                string += "\n\n%s{n" % scent
         if health_appearance:
             string += "\n\n%s" % health_appearance
         string += self.return_contents(pobject, detailed, strip_ansi=strip_ansi)
@@ -407,39 +407,6 @@ class Character(NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
             return self.db.longname
         return self.db.colored_name or self.key
 
-    def _get_worn(self):
-        """Returns list of items in inventory currently being worn."""
-        return [ob for ob in self.contents if ob.db.currently_worn]
-
-    @property
-    def armor(self):
-        """
-        Returns armor value of all items the character is wearing plus any
-        armor in their attributes.
-        """
-        armor = self.db.armor_class or 0
-        for ob in self.worn:
-            try:
-                ob_armor = ob.armor or 0
-            except AttributeError:
-                ob_armor = 0
-            armor += ob_armor
-        return int(round(armor))
-
-    @armor.setter
-    def armor(self, value):
-        self.db.armor_class = value
-
-    def _get_armor_penalties(self):
-        penalty = 0
-        for ob in self.worn:
-            try:
-                penalty += ob.penalty
-            except (AttributeError, ValueError, TypeError):
-                pass
-        return penalty
-    armor_penalties = property(_get_armor_penalties)
-
     @property
     def max_hp(self):
         """Returns our max hp"""
@@ -507,8 +474,6 @@ class Character(NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
         elif start_script:
             self.scripts.add("typeclasses.scripts.recovery.Recovery")
 
-    worn = property(_get_worn)
-
     @property
     def xp(self):
         return self.db.xp or 0
@@ -561,53 +526,6 @@ class Character(NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
             except (ValueError, TypeError, AttributeError):
                 pass
         self.ndb.following = None
-
-    def get_fakeweapon(self):
-        return self.db.fakeweapon
-
-    def _get_weapondata(self):
-        wpndict = dict(self.get_fakeweapon() or {})
-        wpn = self.db.weapon
-        if wpn:
-            wpndict['attack_skill'] = wpn.db.attack_skill or 'crushing melee'
-            wpndict['attack_stat'] = wpn.db.attack_stat or 'dexterity'
-            wpndict['damage_stat'] = wpn.db.damage_stat or 'strength'
-            try:
-                wpndict['weapon_damage'] = wpn.damage_bonus or 0
-            except AttributeError:
-                wpndict['weapon_damage'] = wpn.db.damage_bonus or 0
-            wpndict['attack_type'] = wpn.db.attack_type or 'melee'
-            wpndict['can_be_parried'] = wpn.db.can_be_parried
-            wpndict['can_be_blocked'] = wpn.db.can_be_blocked
-            wpndict['can_be_dodged'] = wpn.db.can_be_dodged
-            wpndict['can_parry'] = wpn.db.can_parry or False
-            wpndict['can_riposte'] = wpn.db.can_parry or wpn.db.can_riposte or False
-            wpndict['reach'] = wpn.db.weapon_reach or 1
-            wpndict['minimum_range'] = wpn.db.minimum_range or 0
-            try:
-                wpndict['difficulty_mod'] = wpn.difficulty_mod or 0
-            except AttributeError:
-                wpndict['difficulty_mod'] = wpn.db.difficulty_mod or 0
-            try:
-                wpndict['flat_damage'] = wpn.flat_damage or 0
-            except AttributeError:
-                wpndict['flat_damage'] = wpn.db.flat_damage_bonus or 0
-            wpndict['modifier_tags'] = wpn.modifier_tags
-        boss_rating = self.boss_rating
-        if boss_rating:
-            wpndict['weapon_damage'] = wpndict.get('weapon_damage', 1) + boss_rating
-            wpndict['flat_damage'] = wpndict.get('flat_damage', 0) + boss_rating * 10
-        return wpndict
-
-    weapondata = property(_get_weapondata)
-
-    @property
-    def weapons_hidden(self):
-        """Returns True if we have a hidden weapon, false otherwise"""
-        try:
-            return self.weapondata['hidden_weapon']
-        except (AttributeError, KeyError):
-            return False
 
     def msg_watchlist(self, msg):
         """
@@ -1148,39 +1066,8 @@ class Character(NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
             pass
         return name
 
-    @lowercase_kwargs("target_tags", "stat_list", "skill_list", "ability_list", default_append="")
-    def get_total_modifier(self, check_type, target_tags=None, stat_list=None, skill_list=None, ability_list=None):
-        """Gets all modifiers from their location and worn/wielded objects."""
-        from django.db.models import Sum
-        from world.conditions.models import RollModifier
-        user_tags = self.modifier_tags or []
-        user_tags.append("")
-        # get modifiers from worn stuff we have and our location, if any
-        if hasattr(self, 'worn'):
-            all_objects = self.worn
-        else:
-            all_objects = []
-        if self.location:
-            all_objects.append(self.location)
-        all_objects.append(self)
-        if self.db.weapon:
-            all_objects.append(self.db.weapon)
-        all_objects = [ob.id for ob in all_objects]
-        check_types = RollModifier.get_check_type_list(check_type)
-        return RollModifier.objects.filter(object_id__in=all_objects or [], check__in=check_types or [],
-                                           user_tag__in=user_tags or [], target_tag__in=target_tags or [],
-                                           stat__in=stat_list or [], skill__in=skill_list or [],
-                                           ability__in=ability_list or []).aggregate(Sum('value'))['value__sum'] or 0
-
-    @property
-    def armor_resilience(self):
-        """Determines how hard it is to penetrate our armor"""
-        value = self.db.armor_resilience or 15
-        for ob in self.worn:
-            value += ob.armor_resilience
-        return int(value)
-
     @property
     def dompc(self):
         """Returns our Dominion object"""
         return self.player_ob.Dominion
+

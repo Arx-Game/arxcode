@@ -1,20 +1,18 @@
 """
-wieldable objects. Weapons.
+wieldable objects. Weapons. While worn, wieldable objects are
+considered 'sheathed' unless specified otherwise.
 
 is_wieldable boolean is the check to see if we're a wieldable
-object. wielded_by returns the object wielding us. currently_wielded
-is a boolean saying our wielded state - True if being wielded,
-False if not wielded.
+object. is_wielded is a boolean saying our wielded state
 """
-
-from typeclasses.objects import Object
+from typeclasses.exceptions import EquipError
 from cmdset_wieldable import WeaponCmdSet
-from world.fashion.mixins import FashionableMixins
+from wearable import Wearable
 
 
 # noinspection PyMethodMayBeStatic
 # noinspection PyUnusedLocal
-class Wieldable(FashionableMixins, Object):
+class Wieldable(Wearable):
     """
     Class for wieldable objects
     API: Properties are all a series of database attributes,
@@ -24,16 +22,18 @@ class Wieldable(FashionableMixins, Object):
     'stealth' determines if the weapon will give an echo to the room when it is
     wielded. Poisons, magic, stealthy daggers, etc, fall into this category.
     """
+    SHEATHED_LIMIT = 6
 
     def at_object_creation(self):
         """
         Run at wieldable creation. The defaults are for a generic melee
         weapon.
         """
+        self.is_worn = False
         self.db.is_wieldable = True
-        self.db.wielded_by = None
-        self.db.currently_wielded = False
+        self.is_wielded = False
         self.db.desc = "A weapon of some kind."
+        self.db.armor_class = 0
         # phrase that is seen when we equip it
         self.db.stealth = False  # whether it can be seen in character desc
         self.db.sense_difficulty = 15  # default if stealth is set to true
@@ -48,10 +48,13 @@ class Wieldable(FashionableMixins, Object):
         self.db.can_be_countered = True
         self.db.can_parry = True
         self.db.can_riposte = True
-        self.db.sheathed_by = None
         self.db.difficulty_mod = 0
         self.cmdset.add_default(WeaponCmdSet, permanent=True)
         self.at_init()
+
+    def softdelete(self):
+        self.cease_wield()
+        super(Wieldable, self).softdelete()
 
     def ranged_mode(self):
         self.db.can_be_parried = False
@@ -65,95 +68,114 @@ class Wieldable(FashionableMixins, Object):
         self.db.can_parry = True
         self.db.attack_type = "melee"
 
-    def sheathe(self, wielder):
-        """
-        Puts the weapon in a sheathe or otherwise worn on our person,
-        rather than removed into inventory.
-        """
-        if not self.remove(wielder):
+    def at_before_move(self, destination, **kwargs):
+        """Checks if the object can be moved"""
+        caller = kwargs.get('caller', None)
+        if caller and self.is_wielded:
+            caller.msg("%s is currently wielded and cannot be moved." % self)
             return False
-        self.db.sheathed_by = wielder
-        return True
+        return super(Wieldable, self).at_before_move(destination, **kwargs)
+
+    def at_after_move(self, source_location, **kwargs):
+        """If new location is not our wielder, remove."""
+        if self.is_wielded and self.location != source_location:
+            self.cease_wield(source_location)
+        super(Wieldable, self).at_after_move(source_location, **kwargs)
 
     def remove(self, wielder):
         """
-        Takes off the weapon
+        Takes off the weapon entirely, wielded or worn.
         """
-        if not self.at_pre_remove(wielder):
-            return False
-        self.db.sheathed_by = None  # in case we're dropped, no longer sheathed
-        self.db.wielded_by = None
-        self.db.currently_wielded = False
-        if wielder:
-            wielder.db.weapon = None
+        if not self.cease_wield():
+            super(Wieldable, self).remove(wielder)
+
+    def at_post_remove(self, wielder):
+        """Hook called after removing succeeds."""
         return True
 
-    def softdelete(self):
-        super(Wieldable, self).softdelete()
-        wielder = self.db.wielded_by
+    def wear(self, wearer):
+        """
+        Puts item on the wearer.
+        """
+        super(Wieldable, self).wear(wearer)
+
+    def at_pre_wear(self, wearer):
+        """Hook called before wearing to cease wielding and perform checks."""
+        self.cease_wield()
+        super(Wieldable, self).at_pre_wear(wearer)
+
+    def slot_check(self, wearer):
+        if self.decorative:
+            super(Wieldable, self).slot_check(wearer)
+        else:
+            sheathed = wearer.sheathed
+            if len(sheathed) >= self.SHEATHED_LIMIT:
+                raise EquipError("sheathed limit reached")
+
+    def at_post_wear(self, wearer):
+        """Hook called after wearing this weapon."""
+        return True
+
+    def cease_wield(self, wielder=None):
+        """
+        Only resets wielded traits: Not part of 'remove' because other
+        reasons to cease wielding exist, such as wearing.
+        """
+        if self.is_wielded:
+            wielder = wielder if wielder else self.location
+            wielder.weapon = None
+            self.is_wielded = False
+            self.at_post_cease_wield(wielder)
+            return True
+
+    def at_post_cease_wield(self, wielder):
+        """Hook called after cease_wield succeeds."""
         if wielder:
-            wielder.db.weapon = None
-        self.db.currently_wielded = False
-        self.db.wielded_by = None
-        self.db.sheathed_by = None
+            wielder.combat.setup_weapon(wielder.weapondata)
 
     # noinspection PyAttributeOutsideInit
-    def wield_by(self, wielder):
+    def wield(self, wielder):
         """
-        Puts item on the wielder
+        Puts item on the wielder.
         """
-        # Assume any fail messages are written in at_pre_wield
-        if not self.at_pre_wield(wielder):
-            return False
-        self.db.wielded_by = wielder
-        self.db.currently_wielded = True
-        wielder.db.weapon = self
-        self.db.sheathed_by = None
-        if self.location != wielder:
-            self.location = wielder
-        self.calc_weapon()
-        return True
-
-    def at_before_move(self, destination, **kwargs):
-        caller = kwargs.get('caller', None)
-        if caller:
-            wielded = self.db.wielded_by
-            if wielded:
-                caller.msg("%s is currently wielded by %s and cannot be moved." % (self, wielded))
-                return False
-        return super(Wieldable, self).at_before_move(destination, **kwargs)
-
-    def at_after_move(self, source_location):
-        """If new location is not our wielder, remove."""
-        location = self.location
-        wielder = self.db.wielded_by or self.db.sheathed_by
-        if not location:
-            self.remove(wielder)
-            return
-        if wielder and location != wielder:
-            self.remove(wielder)
+        # Assume fail exceptions are raised at_pre_wield
+        self.at_pre_wield(wielder)
+        self.is_wielded = True
+        wielder.weapon = self
+        self.at_post_wield(wielder)
 
     def at_pre_wield(self, wielder):
         """Hook called before wielding for any checks."""
-        return True
+        if self.is_wielded:
+            raise EquipError("already wielded")
+        if self.location != wielder:
+            raise EquipError("misplaced")
+        if any(wielder.wielded):
+            raise EquipError("other weapon in use")
+        if self.is_worn:
+            self.remove(wielder)
 
     def at_post_wield(self, wielder):
-        """Hook called after wielding for any checks."""
+        """Hook called after wielding succeeds."""
+        self.calc_weapon()
         if wielder:
-            cdat = wielder.combat
-            cdat.setup_weapon(wielder.weapondata)
-        return True
+            wielder.combat.setup_weapon(wielder.weapondata)
+        self.announce_wield(wielder)
 
-    def at_pre_remove(self, wielder):
-        """Hook called before removing."""
-        return True
-
-    def at_post_remove(self, wielder):
-        """Hook called after removing."""
-        if wielder:
-            cdat = wielder.combat
-            cdat.setup_weapon(wielder.weapondata)
-        return True
+    def announce_wield(self, wielder):
+        """
+        Makes a list of room occupants who are aware this weapon has
+        been wielded, and tells them.
+        """
+        exclude = [wielder]
+        if self.db.stealth:
+            # checks for sensing a stealthed weapon being wielded. those who fail are put in exclude list
+            chars = [char for char in wielder.location.contents if hasattr(char, 'sensing_check') and char != wielder]
+            for char in chars:
+                if char.sensing_check(self, diff=self.db.sensing_difficulty) < 1:
+                    exclude.append(char)
+        msg = self.db.ready_phrase or "wields %s" % self.name
+        wielder.location.msg_contents("%s %s." % (wielder.name, msg), exclude=exclude)
 
     def calc_weapon(self):
         """
@@ -161,7 +183,7 @@ class Wieldable(FashionableMixins, Object):
         quality.
         """
         quality = self.quality_level
-        recipe_id = self.db.recipe
+        recipe = self.recipe
         diffmod = self.db.difficulty_mod or 0
         flat_damage_bonus = self.db.flat_damage_bonus or 0
         if self.db.attack_skill == "huge wpn":
@@ -171,10 +193,7 @@ class Wieldable(FashionableMixins, Object):
             diffmod -= 10
         elif self.db.attack_skill == "small wpn":
             diffmod -= 1
-        from world.dominion.models import CraftingRecipe
-        try:
-            recipe = CraftingRecipe.objects.get(id=recipe_id)
-        except CraftingRecipe.DoesNotExist:
+        if not recipe:
             return self.db.damage_bonus or 0, diffmod, flat_damage_bonus
         base = float(recipe.resultsdict.get("baseval", 0))
         if quality >= 10:
@@ -195,28 +214,33 @@ class Wieldable(FashionableMixins, Object):
         except (TypeError, ValueError):
             print "Error setting up weapon ID: %s" % self.id
             damage = 0
-        self.ndb.purported_value = damage
-        if self.db.forgery_penalty:
-            try:
-                damage /= self.db.forgery_penalty
-                diffmod += self.db.forgery_penalty
-                flat_damage_bonus /= self.db.forgery_penalty
-            except (ValueError, TypeError):
-                damage = 0
         self.ndb.cached_damage_bonus = damage
         self.ndb.cached_difficulty_mod = diffmod
         self.ndb.cached_flat_damage_bonus = flat_damage_bonus
         return damage, diffmod, flat_damage_bonus
 
-    def _get_damage_bonus(self):
-        # if we have no recipe or we are set to ignore it, use armor_class
-        if not self.db.recipe or self.db.ignore_crafted:
+    def calc_armor(self):
+        return
+
+    def check_fashion_ready(self):
+        from world.fashion.mixins import FashionableMixins
+        FashionableMixins.check_fashion_ready(self)
+        if not (self.is_wielded or self.is_worn):
+            from world.fashion.exceptions import FashionError
+            verb = "wear" if self.decorative else "sheathe"
+            raise FashionError("Please wield or %s %s before trying to model it as fashion." % (verb, self))
+        return True
+
+    @property
+    def damage_bonus(self):
+        if not self.recipe or self.db.ignore_crafted:
             return self.db.damage_bonus
         if self.ndb.cached_damage_bonus is not None:
             return self.ndb.cached_damage_bonus
         return self.calc_weapon()[0]
 
-    def _set_damage_bonus(self, value):
+    @damage_bonus.setter
+    def damage_bonus(self, value):
         """
         Manually sets the value of our weapon, ignoring any crafting recipe we have.
         """
@@ -224,27 +248,44 @@ class Wieldable(FashionableMixins, Object):
         self.db.ignore_crafted = True
         self.ndb.cached_damage_bonus = value
 
-    def _get_difficulty_mod(self):
+    @property
+    def difficulty_mod(self):
         if not self.db.recipe or self.db.ignore_crafted:
             return self.db.difficulty_mod or 0
         if self.ndb.cached_difficulty_mod is not None:
             return self.ndb.cached_difficulty_mod
         return self.calc_weapon()[1]
 
-    def _get_flat_damage(self):
+    @property
+    def flat_damage(self):
         if not self.db.recipe or self.db.ignore_crafted:
             return self.db.flat_damage_bonus or 0
         if self.ndb.cached_flat_damage_bonus is not None:
             return self.ndb.cached_flat_damage_bonus
         return self.calc_weapon()[2]
 
-    damage_bonus = property(_get_damage_bonus, _set_damage_bonus)
-    difficulty_mod = property(_get_difficulty_mod)
-    flat_damage = property(_get_flat_damage)
+    @property
+    def armor(self):
+        return 0
 
-    def check_fashion_ready(self):
-        super(Wieldable, self).check_fashion_ready()
-        if not self.db.currently_wielded:
-            from server.utils.exceptions import FashionError
-            raise FashionError("Please wield %s before trying to model it as fashion." % self)
+    @property
+    def is_wieldable(self):
         return True
+
+    @property
+    def is_wielded(self):
+        return self.db.currently_wielded
+
+    @is_wielded.setter
+    def is_wielded(self, bull):
+        self.db.currently_wielded = bull
+
+    @property
+    def is_equipped(self):
+        """shared property just for checking worn/wielded/otherwise-used status."""
+        return self.is_worn or self.is_wielded
+
+    @property
+    def decorative(self):
+        """Weapons are not decorative. Unless they are."""
+        return False

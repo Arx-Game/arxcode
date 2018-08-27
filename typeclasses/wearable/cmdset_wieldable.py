@@ -10,6 +10,7 @@ cmdset - this way you can often re-use the commands too.
 from django.conf import settings
 from evennia import CmdSet, utils
 from server.utils.arx_utils import ArxCommand
+from typeclasses.exceptions import EquipError
 
 # error return function, needed by wear/remove command
 AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
@@ -21,115 +22,37 @@ AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(
 
 class CmdWield(ArxCommand):
     """
-    Chooses the method you use to attack.
+    Manages the weapon you use to attack.
     Usage:
-            wield
-            wield <weapon>
-            
-    Makes a weapon ready for use. 'Weapon' is something of an abstraction
-    in that it can be a sword, a pair of daggers, a rock you intend to
-    throw at someone, vile magics, poison, whatever. The command just shows
-    your intent and readiness to use it in a manner that could be detected,
-    either in the very obvious case (brandishing a sword), to the very
-    subtle (magical auras, discreet poisons).
+        wield <weapon name>
+        sheathe <weapon name>
+        remove <weapon name>
+
+    Wield makes a weapon ready for combat, showing your intent and readiness
+    to use it in a manner that could be detected. Sheathe lets you wear the
+    weapon. Remove places the weapon in your inventory, neither worn nor
+    wielded.
     """
     key = "wield"
     locks = "cmd:all()"
+    aliases = ["sheathe"]
     help_category = "Combat"
 
     def func(self):
-        """Look for object in inventory that matches args to wear"""
-        caller = self.caller
-        args = self.args
-        if not args:
-            caller.msg("Wear what?")
-            return
-        # Because the wear command by definition looks for items
-        # in inventory, call the search function using location = caller
-        results = caller.search(args, location=caller, quiet=True)
-        # now we send it into the error handler (this will output consistent
-        # error messages if there are problems).
-        obj = AT_SEARCH_RESULT(results, caller, args, False,
-                               nofound_string="You don't carry %s." % args,
-                               multimatch_string="You carry more than one %s:" % args)
-        if not obj:
-            return
+        from typeclasses.scripts.combat.combat_settings import CombatError
+        try:
+            if not self.args:
+                raise EquipError("What are you trying to %s?" % self.cmdstring.lower())
+            self.wield_or_sheathe_item()
+        except (CombatError, EquipError) as err:
+            self.msg(err)
 
-        if not obj.db.is_wieldable:
-            caller.msg("You can't wield that.")
+    def wield_or_sheathe_item(self):
+        item_list = [self.caller.search(self.args, location=self.caller)]
+        if not any(item_list):
             return
-        if obj.db.currently_wielded:
-            caller.msg("You're already wielding %s." % obj.name)
-            return
-        if caller.db.weapon:
-            caller.msg("You are already wielding a weapon. Sheathe it first.")
-            return
-        cscript = caller.location.ndb.combat_manager
-        if cscript and caller in cscript.ndb.combatants:
-            if cscript.ndb.phase == 2:
-                caller.msg("You may only change weapons during the setup phase.")
-                return
-        if obj.wield_by(caller):
-            caller.msg("You equip %s." % obj.name)
-            exclude = [caller]
-            if obj.db.stealth:
-                # checks for sensing a stealthed weapon being wielded. those who fail are put in exclude list
-                chars = [char for char in caller.location.contents if hasattr(char, 'sensing_check') and char != caller]
-                for char in chars:
-                    if char.sensing_check(obj, diff=obj.db.sensing_difficulty) < 1:
-                        exclude.append(char)
-            msg = obj.db.ready_phrase or "wields %s" % obj.name
-            caller.location.msg_contents("%s %s." % (caller.name, msg),
-                                         exclude=exclude)
-            obj.at_post_wield(caller)
-            return
+        self.caller.equip_or_remove(self.cmdstring.lower(), item_list)
 
-
-class CmdUnwield(ArxCommand):
-    """
-    Removes a weapon from its current state of readiness.
-    Usage:
-        sheathe <item>
-        
-    Unequips a weapon. Since 'weapon' is a bit of an abstraction, this can
-    take the form of sheathing a sword, slinging a bow around your back,
-    discreetly wiping away poison with a rag, etc.
-    """
-    key = "sheathe"
-    aliases = ["unwield"]
-    locks = "cmd:all()"
-
-    def func(self):
-        """Look for object in inventory that matches args to wear"""
-        caller = self.caller
-        args = self.args
-        if not args:
-            caller.msg("Unwield what?")
-            return
-        # Because the wear command by definition looks for items
-        # in inventory, call the search function using location = caller
-        results = caller.search(args, location=caller, quiet=True)
-
-        # now we send it into the error handler (this will output consistent
-        # error messages if there are problems).
-        obj = AT_SEARCH_RESULT(results, caller, args, False,
-                               nofound_string="You don't carry %s." % args,
-                               multimatch_string="You carry more than one %s:" % args)
-        if not obj:
-            return
-        if not obj.db.currently_wielded or obj.db.wielded_by != caller:
-            caller.msg("You're not wielding %s." % obj.name)
-            return
-        cscript = caller.location.ndb.combat_manager
-        if cscript and caller in cscript.ndb.combatants:
-            if cscript.ndb.phase == 2:
-                caller.msg("You may only change weapons during the setup phase.")
-                return
-        if obj.sheathe(caller):
-            caller.msg("You put away %s." % obj.name)
-            obj.at_post_remove(caller)
-            return
-        
 
 class WeaponCmdSet(CmdSet):
     """
@@ -150,7 +73,6 @@ class WeaponCmdSet(CmdSet):
     def at_cmdset_creation(self):
         """Init the cmdset"""
         self.add(CmdWield())
-        self.add(CmdUnwield())
 
 
 # prevent errors with old saved typeclass paths

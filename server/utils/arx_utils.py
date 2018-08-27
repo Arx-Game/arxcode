@@ -441,13 +441,6 @@ class ArxCommmandMixins(object):
         """Checks if the commands switches are inside switch_set"""
         return set(self.switches) & set(switch_set)
 
-    def feedback_invalid_switch(self):
-        self.caller.msg("Invalid Switch.")
-
-    def feedback_command_error(self, requirement=""):
-        msg = "Command incorrect. " + requirement
-        self.caller.msg(msg)
-
 
 class ArxCommand(ArxCommmandMixins, MuxCommand):
     """Base command for Characters for Arx"""

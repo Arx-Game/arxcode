@@ -28,7 +28,7 @@ class CmdBriefMode(ArxCommand):
     key = "brief"
     locks = "cmd:all()"
     help_category = "Settings"
-    
+
     def func(self):
         """ Handles the toggle """
         caller = self.caller
@@ -64,19 +64,22 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/verbose_where
         @settings/emit_label
 
-    Switches: /brief suppresses room descs when moving through rooms. /posebreak 
-    adds a newline between poses from characters. /lrp flags your name in the 
-    who list as looking for scenes. /afk shows you are away from the keyboard 
-    with an optional message. /nomessengerpreview removes the echo of messengers 
-    that you send. /bbaltread allows you to read @bb messages on your alts. 
-    /ignore_messenger_notifications will suppress notifications of your unread 
-    messengers. /ignore_messenger_deliveries will ignore message deliveries to 
-    others. /private_mode prevents logging any messages that are sent to you. 
-    /ic_only prevents you from receiving pages. /quote_color lets you set a color 
-    for the dialogue appearing in poses/emits, and /name_color for any occurance 
-    of your character's name. /verbose_where shows any roomtitle information that 
-    someone has set about their current activities, when using the +where command. 
-    /emit_label will prefix emits with author.
+    Switches: /brief suppresses room descs when moving through rooms.
+    /posebreak adds a newline between poses from characters.
+    /lrp flags your name in the who list as looking for scenes.
+    /afk shows you are away from the keyboard with an optional message.
+    /nomessengerpreview removes the echo of messengers that you send.
+    /bbaltread allows you to read @bb messages on your alts.
+    /ignore_messenger_notifications suppresses messenger notifications.
+    /ignore_messenger_deliveries will ignore message deliveries to others.
+    /private_mode prevents logging any messages that are sent to you.
+    /ic_only prevents you from receiving pages.
+    /quote_color lets you set a color for dialogue inside quotations.
+    /name_color sets any occurance of your character's name to that color.
+    (Note: name_color currently doesn't revert to quote_color mid-quote)
+    /verbose_where shows any roomtitle information that someone has set
+    about their current activities, when using the +where command.
+    /emit_label will prefix each emit with its author.
     """
     key = "@settings"
     locks = "cmd:all()"
@@ -113,7 +116,7 @@ class CmdGameSettings(ArxPlayerCommand):
         else:
             char.db.pose_quote_color = self.args
         char.msg('Text will appear inside quotes "%slike this.{n"' % self.args)
-        
+
     def set_name_color(self, char):
         """Sets name color for the caller"""
         if not self.args:
@@ -249,7 +252,7 @@ class CmdShout(ArxCommand):
     key = "shout"
     locks = "cmd:all()"
     help_category = "Social"
-    
+
     def func(self):
         """ Handles the toggle """
         caller = self.caller
@@ -345,7 +348,7 @@ class CmdDitch(ArxCommand):
                 follower.stop_follow()
         caller.ndb.followers = []
         return
-        
+
 
 # Note that if extended_room's Extended Look is defined, this is probably not used
 class CmdLook(ArxCommand):
@@ -671,7 +674,7 @@ class CmdPage(ArxPlayerCommand):
                     # blocking someone removes them from the allow list
                     if targ in caller.allow_list:
                         caller.allow_list.remove(targ)
-                else: 
+                else:
                     caller.block_list.remove(targ)
             self.disp_allow()
             return
@@ -812,7 +815,7 @@ class CmdPage(ArxPlayerCommand):
                 if hasattr(pobj, 'player') and pobj.player:
                     pobj = pobj.player
                 recobjs.append(pobj)
-                    
+
         if not recobjs:
             self.msg("No one found to page.")
             return
@@ -867,7 +870,7 @@ class CmdPage(ArxPlayerCommand):
         if r_strings:
             self.msg("\n".join(r_strings))
         if received:
-            if pagepose:          
+            if pagepose:
                 self.msg("Long distance to %s: %s" % (", ".join(received), message))
             else:
                 self.msg("You paged %s with: '%s'." % (", ".join(received), message))
@@ -927,7 +930,7 @@ class CmdOOCSay(ArxCommand):
 
 
 # implement CmdMail. player.db.Mails is List of Mail
-# each Mail is tuple of 3 strings - sender, subject, message        
+# each Mail is tuple of 3 strings - sender, subject, message
 class CmdMail(ArxPlayerCommand):
     """
     Send and check player mail
@@ -1134,7 +1137,7 @@ class CmdDirections(ArxCommand):
     key = "@directions"
     help_category = "Travel"
     locks = "cmd:all()"
-    
+
     def func(self):
         """ Handles the toggle """
         caller = self.caller
@@ -1184,11 +1187,11 @@ class CmdPut(ArxCommand):
     """
     key = "put"
     locks = "cmd:all()"
-    
+
     def put_money(self, args, destination):
         """
         Puts silver in a destination object.
-        
+
             Args:
                 args(str): String we'll get values from
                 destination (ObjectDB): What we're putting money in
@@ -1293,7 +1296,7 @@ class CmdGradient(ArxPlayerCommand):
                 output += "%s%s" % (tag, text[x])
                 continue
             diff = (end[0]-current[0], end[1]-current[1], end[2]-current[2])
-            previous = current        
+            previous = current
             step = (self.get_step(len(text), diff[0]), self.get_step(len(text), diff[1]), self.get_step(len(text),
                                                                                                         diff[2]))
             if step[0] and x % step[0] == 0:
@@ -1319,7 +1322,7 @@ class CmdGradient(ArxPlayerCommand):
             else:
                 output += text[x]
         return output
-    
+
     def func(self):
         """Executes gradient command"""
         caller = self.caller
@@ -1607,62 +1610,11 @@ class CmdKeyring(ArxCommand):
         return
 
 
-class CmdUndress(ArxCommand):
-    """
-    Completely remove all worn and wielded items on your person.
-    Usage:
-        undress
-
-    Undress will completely remove all worn and wielded items on your person at once.
-    """
-    key = "undress"
-    aliases = ["removeall"]
-    locks = "cmd:all()"
-
-    def func(self):
-        """Executes undress command"""
-        caller = self.caller
-
-        # Get the combat script if one is present
-        cscript = caller.location.ndb.combat_manager
-
-        # If there is a combat script present and the caller is one of the combatants we'll want to make some
-        # additional checks about whether or not we can continue
-        if cscript and caller in cscript.ndb.combatants:
-
-            # If the current stage is not setup then we can't allow people to undress as we also unwield weapons
-            if cscript.ndb.phase != 1:
-                caller.msg("You cannot undress in combat outside of the setup phase.")
-                return
-
-        # Iterate over all the contents of the caller's inventory
-        for obj in caller.contents:
-            # Ensure the item is currently worn and that it's worn by the wearer - just in case
-            if obj.db.currently_worn:
-                # Remove the wearable, setting the fact it is worn and who it is worn by to false/null
-                obj.remove(caller)
-
-                # Call the post-command hook explicitly - this might change to something internal to obj.remove later
-                obj.at_post_remove(caller)
-
-            # Ensure the item is currently wielded and that it's wielded by the wearer - just in case
-            if obj.db.currently_wielded and obj.db.wielded_by == caller:
-                # Remove the wieldable, setting the fact it is wielded and who it is wielded by to false/null
-                obj.sheathe(caller)
-
-                # Call the post-command hook explicitly - this might change to something internal to obj.sheathe later
-                obj.at_post_remove(caller)
-
-        # Throw a simple message to the caller only. We don't need to alert the room unless this design decision changes
-        caller.msg("You undress.")
-        return
-
-
 class CmdDump(ArxCommand):
     """
-    Empty a container of all its objects. Great for re-sorting items or making 
+    Empty a container of all its objects. Great for re-sorting items or making
     a complete mess of someone's room.
-    
+
     Usage:
         dump <container>
 
