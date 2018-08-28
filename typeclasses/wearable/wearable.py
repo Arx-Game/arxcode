@@ -237,7 +237,8 @@ class WearableContainer(Wearable, Container):
             self.ndb.container_reset = False
 
     def calc_armor(self):
-        return
+        """Wearable containers have no armor value."""
+        return 0, 0, 0
 
     @property
     def armor(self):
