@@ -18,7 +18,7 @@ from evennia.utils.utils import make_iter
 from evennia.scripts.models import ScriptDB
 
 from commands.commands.roster import format_header
-from server.utils.exceptions import PayError
+from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
 from server.utils.arx_utils import inform_staff, time_from_now
 from typeclasses.characters import Character
@@ -1372,7 +1372,8 @@ class CmdCalendar(ArxPlayerCommand):
         if self.caller.check_permstring("builders"):
             qs = RPEvent.objects.all()
         else:
-            qs = RPEvent.objects.filter(Q(public_event=True) | Q(dompcs=self.caller.Dominion))
+            dompc = self.caller.Dominion
+            qs = RPEvent.objects.filter(Q(public_event=True) | Q(dompcs=dompc) | Q(orgs__in=dompc.current_orgs))
         if "old" in self.switches:  # display finished events
             finished = qs.filter(finished=True).distinct().order_by('-date')
             from server.utils import arx_more
@@ -3484,3 +3485,178 @@ class CmdGetInLine(ArxCommand):
         if "loop" in self.switches:
             self.toggle_loop()
             return
+
+
+class CmdFavor(ArxPlayerCommand):
+    """
+    Applies favor or disfavor from an organization to a character
+
+    Usage:
+        favor <organization>
+        favor/add <organization>=<character>,<value>
+        favor/gossip <organization>=<character>/<text>
+        favor/remove <organization>=<character>
+
+    The favor command allows an organization's leadership to show whether
+    a character outside the organization has pleased or angered them, which
+    applies 5 percent of the organization's fame + legend to the character's
+    propriety per favor point. To show that someone has earned the good
+    graces of your organization, the favor value should be positive. If
+    someone has annoyed you, the value is negative. Positive and negative
+    favor are each capped by the social modifier of the organization.
+
+    The cost of applying favor is 200 social resources per point. This value
+    is modified by the respect and affection npcs in the organization hold
+    toward the character, if any. Positive values make positive favor cheaper
+    and negative favor more expensive, and vice-versa.
+
+    Favor cannot be granted to characters in the organization, unless the
+    organization is a noble house and the character is of vassal rank. If a
+    character joins the organization or is promoted above vassal rank, their
+    favor is immediately set to 0.
+
+    The gossip switch allows you to set a textstring that corresponds to what
+    npc gossip would hold as the reason for a character being in favor or
+    disfavor. If the favor is removed from the character, the gossip is
+    removed as well. Gossip may not be changed once set, only removed with
+    favor being reset.
+    """
+    key = "favor"
+    help_category = "Social"
+
+    def func(self):
+        """Executes the favor command"""
+        try:
+            if not self.switches:
+                return self.list_favor()
+            if "add" in self.switches:
+                return self.add_favor()
+            if "gossip" in self.switches:
+                return self.add_gossip()
+            if "remove" in self.switches:
+                return self.remove_favor()
+            raise CommandError("Invalid switch.")
+        except CommandError as err:
+            self.msg(err)
+
+    def list_favor(self):
+        """Lists who is in favor/disfavor for an organization"""
+        org = self.get_organization(check_perm=False)
+        favors = org.reputations.filter(Q(favor__gt=0) | Q(favor__lt=0)).order_by('-favor')
+        msg = "{wThose Favored/Disfavored by %s{n\n" % org
+        msg += "\n\n".join("{c%s{w (%s):{n %s" % (ob.player, ob.favor, ob.npc_gossip) for ob in favors)
+        self.msg(msg)
+
+    def get_organization(self, check_perm=True):
+        """Gets an organization and sees if we have permissions to set favor"""
+        try:
+            org = Organization.objects.get(name__iexact=self.lhs)
+        except Organization.DoesNotExist:
+            raise CommandError("No organization by the name '%s'." % self.lhs)
+        if check_perm and not org.access(self.caller, "favor"):
+            raise CommandError("You do not have permission to set favor.")
+        return org
+
+    def add_favor(self):
+        """Adds favor to a character, assuming we have points to spare and can afford the cost."""
+        org = self.get_organization()
+        try:
+            target = self.caller.search(self.rhslist[0])
+            amount = int(self.rhslist[1])
+        except (IndexError, ValueError, TypeError):
+            raise CommandError("You must provide both a target and an amount.")
+        if not target:
+            return
+        if not amount:
+            raise CommandError("Amount cannot be 0.")
+        self.check_cap(org, amount)
+        try:
+            member = org.active_members.get(player=target.Dominion)
+            if org.category != "noble":
+                raise CommandError("Cannot set favor for a member.")
+            if member.rank < 5:
+                raise CommandError("Favor can only be set for vassals or non-members.")
+        except Member.DoesNotExist:
+            pass
+        cost = self.get_cost(org, target, amount)
+        if self.caller.ndb.favor_cost_confirmation != cost:
+            self.caller.ndb.favor_cost_confirmation = cost
+            raise CommandError("Cost will be %s. Repeat the command to confirm." % cost)
+        self.caller.ndb.favor_cost_confirmation = None
+        if not self.caller.pay_resources("social", cost):
+            raise CommandError("You cannot afford to pay %s resources." % cost)
+        self.set_target_org_favor(target, org, amount)
+
+    def set_target_org_favor(self, target, org, amount):
+        """Sets the amount of favor for target's reputation with org"""
+        rep, _ = target.Dominion.reputations.get_or_create(organization=org)
+        rep.favor = amount
+        rep.npc_gossip = ""
+        rep.date_gossip_set = None
+        rep.save()
+        self.msg("Set %s's favor in %s to %s." % (target, org, amount))
+
+    @staticmethod
+    def check_cap(org, amount):
+        """Sees if we have enough points remaining"""
+        from django.db.models import Sum, Q
+        if amount < 0:
+            query = Q(favor__lt=0)
+        else:
+            query = Q(favor__gt=0)
+        total = abs(org.reputations.filter(query).aggregate(Sum('favor')).values()[0] or 0) + abs(amount)
+        mod = org.social_modifier
+        if total > mod:
+            noun = "favor" if amount > 0 else "disfavor"
+            raise CommandError("That would bring your total %s to %s, and you can only spend %s." % (noun, total, mod))
+
+    @staticmethod
+    def get_cost(org, target, amount):
+        """Gets the total cost in social resources for setting favor for target by the amount."""
+        rep, _ = target.Dominion.reputations.get_or_create(organization=org)
+        base = 200
+        if amount > 0:
+            base -= rep.respect + rep.affection
+        else:
+            base += rep.respect + rep.affection
+        if base < 0:
+            base = 0
+        return base * abs(amount)
+
+    def remove_favor(self):
+        """Revokes the favor set for a character."""
+        org = self.get_organization()
+        target = self.caller.search(self.rhs)
+        if not target:
+            return
+        try:
+            rep = target.Dominion.reputations.get(organization=org)
+        except Reputation.DoesNotExist:
+            raise CommandError("They have no favor with %s." % org)
+        rep.wipe_favor()
+        self.msg("Favor for %s removed." % target)
+
+    def add_gossip(self):
+        """Adds gossip to a character's reputation"""
+        org = self.get_organization()
+        try:
+            target, text = self.rhs.split("/")
+            target = self.caller.search(target)
+            if not text or not target:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise CommandError("Must provide both a target and a text message.")
+        self.set_target_org_gossip(target, org, text)
+        inform_staff("%s set gossip for %s's reputation with %s to: %s" % (self.caller, target, org, text))
+
+    def set_target_org_gossip(self, target, org, text):
+        """Sets the gossip for a given character"""
+        rep, _ = target.Dominion.reputations.get_or_create(organization=org)
+        if not rep.favor:
+            raise CommandError("You can only add gossip to someone with non-zero favor.")
+        if rep.date_gossip_set:
+            raise CommandError("You may only set the gossip string once.")
+        rep.npc_gossip = text
+        rep.date_gossip_set = datetime.now()
+        rep.save()
+        self.msg("Gossip for %s set to: %s" % (target, text))

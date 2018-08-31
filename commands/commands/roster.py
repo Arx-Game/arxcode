@@ -923,6 +923,10 @@ def display_recognition(caller, charob):
     propriety = ", ".join("%s (%s)" % ob for ob in
                           charob.player_ob.Dominion.assets.proprieties.values_list('name', 'percentage'))
     msg += "\n\n{wPropriety Modifiers:{n %s" % propriety
+    favor = "\n".join(ob.favor_description for ob in
+                      charob.player_ob.Dominion.reputations.filter(Q(favor__gt=0) | Q(favor__lt=0)))
+    if favor:
+        msg += "\n\n{wModifiers from Organization that hold them in favor/disfavor{n:\n%s" % favor
     caller.msg(msg)
 
 

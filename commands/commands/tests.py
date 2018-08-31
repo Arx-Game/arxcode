@@ -501,6 +501,47 @@ class SocialTests(ArxCommandTest):
         self.call_cmd("", "Old mood was: this is a test mood|Mood erased.")
         self.assertEqual(self.room1.db.room_mood, None)
 
+    @patch.object(social, "inform_staff")
+    def test_cmd_favor(self, mock_inform_staff):
+        from world.dominion.models import Organization, AssetOwner
+        org = Organization.objects.create(name="testorg", category="asdf")
+        org_assets = AssetOwner.objects.create(organization_owner=org)
+        self.setup_cmd(social.CmdFavor, self.account2)
+        self.call_cmd("", "No organization by the name ''.")
+        self.call_cmd("testorg", "Those Favored/Disfavored by testorg")
+        self.call_cmd("/add testorg=testaccount", "You do not have permission to set favor.")
+        org.members.create(player=self.dompc2, rank=1)
+        self.call_cmd("/add testorg=testaccount", "You must provide both a target and an amount.")
+        self.call_cmd("/add testorg=foo,5", "Could not find 'foo'.")
+        self.call_cmd("/add testorg=testaccount,5", "That would bring your total favor to 5, and you can only spend 0.")
+        org.social_influence = 3000
+        mem2 = org.members.create(player=self.dompc, rank=4)
+        self.call_cmd("/add testorg=testaccount,1", "Cannot set favor for a member.")
+        org.category = "noble"
+        self.call_cmd("/add testorg=testaccount,1", "Favor can only be set for vassals or non-members.")
+        mem2.rank = 6
+        self.call_cmd("/add testorg=testaccount,1", "Cost will be 200. Repeat the command to confirm.")
+        rep = self.dompc.reputations.get(organization=org)
+        rep.affection = 10
+        rep.respect = 5
+        self.call_cmd("/add testorg=testaccount,1", "Cost will be 185. Repeat the command to confirm.")
+        self.call_cmd("/add testorg=testaccount,1", "You cannot afford to pay 185 resources.")
+        self.assetowner2.social = 200
+        self.account2.ndb.favor_cost_confirmation = 185
+        self.call_cmd("/gossip testorg=testaccount/asdf", "You can only add gossip to someone with non-zero favor.")
+        self.call_cmd("/add testorg=testaccount,1", "Set Testaccount's favor in testorg to 1.")
+        self.call_cmd("/gossip testorg=testaccount/stuff", "Gossip for Testaccount set to: stuff")
+        mock_inform_staff.assert_called_with("Testaccount2 set gossip for Testaccount's reputation with "
+                                             "testorg to: stuff")
+        self.call_cmd("testorg", 'Those Favored/Disfavored by testorg\nTestaccount (1): stuff')
+        org_assets.fame = 50000
+        org_assets.legend = 10000
+        org_assets.save()
+        self.assertEqual(self.assetowner.propriety, 3000)
+        self.assertEqual(self.assetowner.propriety, rep.propriety_amount)
+        self.call_cmd("/remove testorg=testaccount", "Favor for Testaccount removed.")
+        self.assertEqual(self.assetowner.propriety, 0)
+
 
 # noinspection PyUnresolvedReferences
 class SocialTestsPlus(ArxCommandTest):
@@ -594,3 +635,20 @@ class StaffCommandTests(ArxCommandTest):
         self.assertEqual(org.emits.count(), 1)
         board.bb_post.assert_called_with(msg='blah', poster_name='Story', poster_obj=self.account,
                                          subject='test org Story Update')
+
+    def test_cmd_admin_propriety(self):
+        from world.dominion.models import Organization, AssetOwner
+        org1 = Organization.objects.create(name="testorg")
+        org2 = Organization.objects.create(name="Testorg2")
+        AssetOwner.objects.create(organization_owner=org1)
+        AssetOwner.objects.create(organization_owner=org2)
+        self.setup_cmd(staff_commands.CmdAdminPropriety, self.account)
+        self.call_cmd("/create test", "Must provide a value for the tag.")
+        self.call_cmd("/create test=50", "Created tag test with a percentage modifier of 50.")
+        self.call_cmd("/create test=30", "Already a tag by the name test.")
+        self.call_cmd("", "Propriety Tags: test(50)")
+        self.call_cmd("/add test=testaccount,testaccount2, testorg,testorg2",
+                      "Added to test: Testaccount, Testaccount2, testorg, Testorg2")
+        self.call_cmd("test", "Entities with test tag: Testaccount, Testaccount2, testorg, Testorg2")
+        self.call_cmd("/remove test=testaccount2,testorg2", "Removed from test: Testaccount2, Testorg2")
+        self.call_cmd("test", "Entities with test tag: Testaccount, testorg")

@@ -27,27 +27,31 @@ def get_caller_outfit_from_args(caller, args):
 class CmdFashionOutfit(ArxCommand):
     """
     Manage outfits made of wearable and wieldable items.
-
-    View Usage:
-        outfits [<name>]
-        outfits/archives
     Manage Usage:
-        outfit/archive <name>
-        outfit/create <name>
-        outfit/delete <name>
+        outfit/create <outfit name>
+        outfit/delete <outfit name>
+        outfit/archive <outfit name>
+    View Usage:
+        outfits [<outfit name>]
+        outfits/archives
+
+    Management: The /create switch makes a new outfit from your currently
+    worn, sheathed, and wielded items. The /delete switch deletes an existing
+    outfit, but its items still exist. Note that after deleting a modeled
+    outfit, each of its items' "buzz messages" will revert to their
+    individual value. Toggle the archive status of an outfit by specifying
+    its name after the /archive switch.
 
     Viewing: With no switch or name, view your non-archived outfits.
     Similarly, use the archive switch without a name to see archived outfits.
-    This table shows an appraisal of outfit worth if it's yet to be modeled,
+    This table shows appraisal* of fashion-worth if it's yet to be modeled,
     or the buzz impact it had when it was. (See 'help model' for modeling.)
     Specify any outfit name with no switches to see the items comprising it.
 
-    Management: Toggle the archive status of an outfit by specifying its name
-    after the /archive switch. The /create switch makes a new outfit from
-    your currently worn, sheathed, and wielded items. The /delete switch
-    deletes an existing outfit, but its items still exist. Note that after
-    deleting a modeled outfit, each of its items' "buzz messages" will
-    revert to their individual value.
+    *An outfit's appraisal is based on items that can be modeled. Items
+    that weren't crafted by mortals and pre-modeled items do not count
+    toward the modeling value of an outfit. Appraisal allows a fashion
+    model to compare the potential impact of outfits before events.
     """
     key = "outfit"
     aliases = ["outfits"]

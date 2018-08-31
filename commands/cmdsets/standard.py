@@ -157,6 +157,7 @@ class OOCCmdSet(CmdSet):
         self.add(xp.CmdVoteXP())
         self.add(social.CmdPosebreak())
         self.add(social.CmdSocialScore())
+        self.add(social.CmdFavor())
         self.add(overrides.SystemNoMatch())
 
 
@@ -309,6 +310,7 @@ class StaffCmdSet(CmdSet):
         self.add(staff_commands.CmdGMEvent())
         self.add(staff_commands.CmdRelocateExit())
         self.add(staff_commands.CmdAdminKey())
+        self.add(staff_commands.CmdAdminPropriety())
         self.add(extended_room.CmdExtendedDesc())
         self.add(xp.CmdAdjustSkill())
         self.add(xp.CmdAwardXP())

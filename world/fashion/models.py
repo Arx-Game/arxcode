@@ -317,7 +317,7 @@ class FashionOutfit(FashionCommonMixins):
         for item in self.fashion_items.all():
             if not item.modeled_by:
                 worth += item.item_worth
-        return str(worth or "")
+        return str(worth or "cannot model")
 
     @property
     def buzz(self):

@@ -4,6 +4,7 @@ Admin commands
 
 """
 from django.conf import settings
+from django.db.models import Q
 
 from evennia.server.sessionhandler import SESSIONS
 from evennia.utils import evtable
@@ -17,7 +18,7 @@ from server.utils import prettytable
 from server.utils.arx_utils import inform_staff, broadcast, create_gemit_and_post, ArxCommand, ArxPlayerCommand
 from server.utils.exceptions import CommandError
 from web.character.models import Clue
-from world.dominion.models import Organization, RPEvent
+from world.dominion.models import Organization, RPEvent, Propriety, AssetOwner
 from typeclasses.characters import Character
 
 PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
@@ -1620,3 +1621,77 @@ class CmdSetServerConfig(ArxPlayerCommand):
                 broadcast("|yServer Message of the Day:|n %s" % val)
             ServerConfig.objects.conf(key=real_key, value=val)
         self.list_config_values()
+
+
+class CmdAdminPropriety(ArxPlayerCommand):
+    """
+    Adds or removes propriety mods from several characters
+
+    Usage:
+        admin_propriety [<tag>]
+        admin_propriety/create <tag name>=<value>
+        admin_propriety/add <tag>=<char, org, char2, char3, org2, etc>
+        admin_propriety/remove <tag>=<char, org, char2, char3, org2, etc>
+    """
+    key = "admin_propriety"
+    locks = "cmd: perm(builders)"
+    help_category = "Admin"
+
+    def func(self):
+        """Executes admin_propriety command"""
+        try:
+            if not self.switches and not self.args:
+                return self.list_tags()
+            if not self.switches:
+                return self.list_tag()
+            if "create" in self.switches:
+                return self.create_tag()
+            if "add" in self.switches or "remove" in self.switches:
+                return self.tag_or_untag_owner()
+            raise CommandError("Invalid switch.")
+        except CommandError as err:
+            self.msg(err)
+
+    def list_tags(self):
+        """Lists tags with their values"""
+        tags = Propriety.objects.values_list('name', 'percentage')
+        self.msg("|wPropriety Tags:|n %s" % ", ".join("%s(%s)" % (tag[0], tag[1]) for tag in tags))
+
+    def list_tag(self):
+        """Lists characters with a given tag"""
+        tag = self.get_tag()
+        self.msg("Entities with %s tag: %s" % (tag, ", ".join(str(ob) for ob in tag.owners.all())))
+
+    def get_tag(self):
+        """Gets a given propriety tag"""
+        try:
+            return Propriety.objects.get(name__iexact=self.lhs)
+        except Propriety.DoesNotExist:
+            raise CommandError("Could not find a propriety tag by that name.")
+
+    def create_tag(self):
+        """Creates a new propriety tag"""
+        if Propriety.objects.filter(name__iexact=self.lhs).exists():
+            raise CommandError("Already a tag by the name %s." % self.lhs)
+        try:
+            value = int(self.rhs)
+        except (ValueError, TypeError):
+            raise CommandError("Must provide a value for the tag.")
+        Propriety.objects.create(name=self.lhs, percentage=value)
+        self.msg("Created tag %s with a percentage modifier of %s." % (self.lhs, value))
+
+    def tag_or_untag_owner(self):
+        """Adds or removes propriety tags"""
+        tag = self.get_tag()
+        query = Q()
+        for name in self.rhslist:
+            query |= Q(player__player__username__iexact=name) | Q(organization_owner__name__iexact=name)
+        owners = list(AssetOwner.objects.filter(query))
+        if not owners:
+            raise CommandError("No assetowners found by those names.")
+        if "add" in self.switches:
+            tag.owners.add(*owners)
+            self.msg("Added to %s: %s" % (tag, ", ".join(str(ob) for ob in owners)))
+        else:
+            tag.owners.remove(*owners)
+            self.msg("Removed from %s: %s" % (tag, ", ".join(str(ob) for ob in owners)))

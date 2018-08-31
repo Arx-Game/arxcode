@@ -18,7 +18,7 @@ from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from . import setup_utils
 from web.character.models import Clue
-from world.dominion.models import (Region, Domain, Land, PlayerOrNpc, Army, ClueForOrg,
+from world.dominion.models import (Region, Domain, Land, PlayerOrNpc, Army, ClueForOrg, Reputation,
                                    Castle, AssetOwner, Task, MilitaryUnit,
                                    Ruler, Organization, Member, SphereOfInfluence, SupportUsed, AssignedTask,
                                    TaskSupporter, InfluenceCategory, Minister, PlotRoom)
@@ -2075,6 +2075,11 @@ class CmdOrganization(ArxPlayerCommand):
             except Member.DoesNotExist:
                 secret = org.secret
                 member = caller.Dominion.memberships.create(organization=org, secret=secret)
+            try:
+                if org.category != "noble" or member.rank < 5:
+                    caller.Dominion.reputations.get(organization=org).wipe_favor()
+            except Reputation.DoesNotExist:
+                pass
             caller.msg("You have joined %s." % org.name)
             org.msg("%s has joined %s." % (caller, org.name))
             inform_staff("%s has joined {c%s{n." % (caller, org))
@@ -2248,6 +2253,12 @@ class CmdOrganization(ArxPlayerCommand):
                 return
             tarmember.rank = rank
             tarmember.save()
+            if rank < 5 and org.category == "noble":
+                try:
+                    rep = tarmember.player.reputations.get(organization=org)
+                    rep.wipe_favor()
+                except Reputation.DoesNotExist:
+                    pass
             caller.msg("You have set %s's rank to %s." % (player, rank))
             player.msg("Your rank has been set to %s in %s." % (rank, org))
             return

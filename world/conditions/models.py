@@ -188,16 +188,18 @@ class EffectTrigger(SharedMemoryModel):
                 triggered = False
         if self.conditional_check == self.PRESTIGE_RANK:
             # see if the target's prestige rank doesn't fall within the specified range
-            if not target.player_ob:
+            try:
+                owner = target.dompc.assets
+            except AttributeError:
                 triggered = False
             else:
                 rank = None
                 try:
-                    rank = self._cached_prestige_rankings.index(target)
+                    rank = self._cached_prestige_rankings.index(owner)
                 except (AttributeError, ValueError):
                     self.cache_prestige_rankings()
                     try:
-                        rank = self._cached_prestige_rankings.index(target)
+                        rank = self._cached_prestige_rankings.index(owner)
                     except ValueError:
                         pass
                 if rank is None or self.max_value < rank or rank < self.min_value:
@@ -246,9 +248,9 @@ class EffectTrigger(SharedMemoryModel):
     @classmethod
     def cache_prestige_rankings(cls):
         """Creates a list of all the active Characters ranked by their prestige order. caches it in the class."""
-        from typeclasses.characters import Character
-        qs = list(Character.objects.filter(roster__roster__name="Active"))
-        cls._cached_prestige_rankings = sorted(qs, key=lambda x: x.player_ob.Dominion.assets.prestige, reverse=True)
+        from world.dominion.models import AssetOwner
+        qs = list(AssetOwner.objects.filter(player__player__roster__roster__name="Active"))
+        cls._cached_prestige_rankings = sorted(qs, key=lambda x: x.prestige, reverse=True)
 
     def do_trigger_results(self, target):
         """
