@@ -117,7 +117,7 @@ class CmdGemit(ArxPlayerCommand):
                 create_gemit_and_post(msg, self.caller, episode_name, synopsis)
             else:
                 orgs_list = None
-                if "orgs" in self.switches:
+                if "orgs" in self.switches or "org" in self.switches:
                     if not self.lhs or not self.rhs:
                         raise CommandError("Specify at least one org and the message.")
                     orgs_list = []

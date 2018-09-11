@@ -3493,6 +3493,7 @@ class CmdFavor(ArxPlayerCommand):
 
     Usage:
         favor <organization>
+        favor/all
         favor/add <organization>=<character>,<value>
         favor/gossip <organization>=<character>/<text>
         favor/remove <organization>=<character>
@@ -3527,7 +3528,7 @@ class CmdFavor(ArxPlayerCommand):
     def func(self):
         """Executes the favor command"""
         try:
-            if not self.switches:
+            if not self.switches or "all" in self.switches:
                 return self.list_favor()
             if "add" in self.switches:
                 return self.add_favor()
@@ -3541,6 +3542,10 @@ class CmdFavor(ArxPlayerCommand):
 
     def list_favor(self):
         """Lists who is in favor/disfavor for an organization"""
+        if "all" in self.switches:
+            favors = Reputation.objects.exclude(favor=0)
+            self.msg("Characters with favor: %s" % ", ".join(str(ob) for ob in favors))
+            return
         org = self.get_organization(check_perm=False)
         favors = org.reputations.filter(Q(favor__gt=0) | Q(favor__lt=0)).order_by('-favor')
         msg = "{wThose Favored/Disfavored by %s{n\n" % org

@@ -539,8 +539,10 @@ class SocialTests(ArxCommandTest):
         org_assets.save()
         self.assertEqual(self.assetowner.propriety, 3000)
         self.assertEqual(self.assetowner.propriety, rep.propriety_amount)
+        self.call_cmd("/all", "Characters with favor: Testaccount for testorg (1)")
         self.call_cmd("/remove testorg=testaccount", "Favor for Testaccount removed.")
         self.assertEqual(self.assetowner.propriety, 0)
+        self.call_cmd("/all", "Characters with favor: ")
 
 
 # noinspection PyUnresolvedReferences
