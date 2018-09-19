@@ -85,14 +85,14 @@ class CmdBank(ArxCommand):
             debits += debt.weekly_amount
         debits += amt
         return account.vault - debits
-    
+
     def inform_owner(self, owner, verb, amt, attr_type="silver", mat_str="silver"):
         attr_name = "min_%s_for_inform" % attr_type
         if amt >= getattr(owner, attr_name):
             preposition = "to" if "deposit" in verb.lower() else "from"
-            msg = ("%s %s %s %s %s %s" % (self.caller, verb, amt, mat_str, preposition, owner))
+            msg = ("%s has %s %s %s %s %s account." % (self.caller, verb, amt, mat_str, preposition, owner))
             owner.inform(msg, category="Bank Transaction")
-        
+
     def func(self):
         """Execute command."""
         caller = self.caller
@@ -108,7 +108,7 @@ class CmdBank(ArxCommand):
             for acc in org_accounts:
                 if acc.can_be_viewed_by(caller) and acc.debts.all():
                     debts += list(acc.debts.all())
-            if not self.args:                
+            if not self.args:
                 caller.msg(str(self.get_debt_table(debts)), options={'box': True})
                 return
             if "endpayment" in self.switches or "adjustpayment" in self.switches:
@@ -176,7 +176,7 @@ class CmdBank(ArxCommand):
             msg += "\n"
             actable = evtable.EvTable("{wOwner{n", "{wBalance{n", "{wNet Income{n", "{wMaterials{n",
                                       "{wEcon{n", "{wSoc{n", "{wMil{n", width=78, border="cells")
-            
+
             for account in all_accounts:
                 if not account.can_be_viewed_by(self.caller):
                     continue
@@ -191,7 +191,7 @@ class CmdBank(ArxCommand):
                 actable.reformat_column(5, width=7)
                 actable.reformat_column(6, width=7)
                 incomes = account.incomes.all()
-                debts = account.debts.all()               
+                debts = account.debts.all()
                 if incomes:
                     msg += ("{w%s Incomes{n" % str(account)).center(60)
                     msg += "\n"
@@ -208,7 +208,7 @@ class CmdBank(ArxCommand):
                     msg += "\n"
             msg += str(actable)
             caller.msg(msg, options={'box': True})
-            return       
+            return
         if ("depositmats" in self.switches or "withdrawmats" in self.switches
                 or "depositres" in self.switches or "withdrawres" in self.switches):
             account = self.match_account(all_accounts)
@@ -274,7 +274,7 @@ class CmdBank(ArxCommand):
                     setattr(sender, matname, samt)
                     setattr(receiver, matname, tamt)
                     matname += " resources"
-                source.save()    
+                source.save()
                 targ.save()
                 caller.msg("You have transferred %s %s from %s to %s." % (
                     val, matname, sender, receiver))

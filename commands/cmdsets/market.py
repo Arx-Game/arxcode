@@ -34,7 +34,7 @@ other_items = {"book": [BOOK_PRICE, "parchment",
 class OtherMaterial(object):
     """Class for handling transactions of buying generic items in shop"""
     def __init__(self, otype):
-        self.name = "book"       
+        self.name = "book"
         self.value = other_items[otype][0]
         self.category = other_items[otype][1]
         self.path = other_items[otype][2]
@@ -89,13 +89,14 @@ class CmdMarket(ArxCommand):
         market/sell <material>=<amount>
         market/info <material>
         market/import <material>=<amount>
+    Purchase with silver:
         market/economic <amount>
         market/social <amount>
         market/military <amount>
 
     Used to buy and sell materials at the market. Materials can be
     sold to the market for 10% of the cost. Economic resources are worth
-    250 silver for buying materials, and cost 500 silver to purchase.
+    250 silver for buying materials. Resources cost 500 silver each.
     """
     key = "market"
     aliases = ["buy", "sell"]
@@ -152,7 +153,7 @@ class CmdMarket(ArxCommand):
                     material = materials.get(name__iexact=self.lhs)
                 except (CraftingMaterialType.DoesNotExist, CraftingMaterialType.MultipleObjectsReturned):
                     caller.msg("Unable to get a unique match for that.")
-                    return           
+                    return
         if 'buy' in self.switches or 'import' in self.switches:
             if not usemats:
                 amt = 1
@@ -164,7 +165,7 @@ class CmdMarket(ArxCommand):
                     return
                 if amt < 1:
                     caller.msg("Amount must be a positive number")
-                    return    
+                    return
             cost = material.value * amt
             try:
                 dompc = caller.player_ob.Dominion
@@ -187,7 +188,7 @@ class CmdMarket(ArxCommand):
                 if assets.economic < eamt:
                     caller.msg("That costs %s economic resources, and you have %s." % (eamt, assets.economic))
                     return
-                assets.economic -= eamt         
+                assets.economic -= eamt
                 assets.save()
                 paystr = "%s economic resources" % eamt
                 # check if they could have bought more than the amount they specified
@@ -195,7 +196,7 @@ class CmdMarket(ArxCommand):
                 if amt < optimal_amt:
                     caller.msg("You could get %s for the same price, so doing that instead." % optimal_amt)
                     amt = optimal_amt
-            if usemats:             
+            if usemats:
                 try:
                     mat = dompc.assets.materials.get(type=material)
                     mat.amount += amt
@@ -239,14 +240,14 @@ class CmdMarket(ArxCommand):
             caller.msg("You have sold %s %s for %s silver coins." % (amt, material.name, sale))
             return
         if 'info' in self.switches:
-            caller.msg("{wInformation on %s:{n" % material.name)
-            caller.msg(material.desc)
+            msg = "{wInformation on %s:{n %s\n" % (material.name, material.desc)
             price = material.value
-            caller.msg("{wPrice:{n %s" % price)
+            msg += "{wPrice in silver: {c%s{n\n" % price
             cost = price/250
             if price % 250:
                 cost += 1
-            caller.msg("{wPrice in economic resources:{n %s" % cost)
+            msg += "{wPrice in economic resources: {c%s{n" % cost
+            caller.msg(msg)
             return
         if "economic" in self.switches or "military" in self.switches or "social" in self.switches:
             try:
