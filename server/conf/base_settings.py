@@ -121,11 +121,12 @@ LOG_FORMAT = "%(asctime)s: %(message)s"
 DATE_FORMAT = "%m/%d/%Y %I:%M:%S"
 GLOBAL_DOMAIN_INCOME_MOD = 0.75
 
-SECRET_KEY = config('SECRET_KEY')
-HOST_BLOCKER_API_KEY = config('HOST_BLOCKER_API_KEY')
+SECRET_KEY = config('SECRET_KEY', default="PLEASEREPLACEME12345")
+HOST_BLOCKER_API_KEY = config('HOST_BLOCKER_API_KEY', default="SOME_KEY")
 import cloudinary
-cloudinary.config(cloud_name=config('CLOUDINARY_NAME'),
-                  api_key=config('CLOUDINARY_API_KEY'), api_secret=config('CLOUDINARY_API_SECRET'))
+cloudinary.config(cloud_name=config('CLOUDINARY_NAME', default="SOME_NAME"),
+                  api_key=config('CLOUDINARY_API_KEY', default="SOME_KEY"), api_secret=config('CLOUDINARY_API_SECRET',
+                                                                                              default="SOME_KEY"))
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='localhost')
