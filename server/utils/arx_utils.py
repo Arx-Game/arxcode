@@ -338,6 +338,7 @@ def post_roster_dompc_cleanup(player):
         dompc = player.Dominion
     except AttributeError:
         return
+    dompc.proteges.clear()
     dompc.patron = None
     dompc.save()
     for member in dompc.memberships.filter(rank=2):
