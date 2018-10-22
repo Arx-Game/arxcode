@@ -5,9 +5,9 @@ Tests for different general commands. Tests for other command sets or for differ
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 
-from server.utils.test_utils import ArxCommandTest
+from server.utils.test_utils import ArxCommandTest, TestTicketMixins
 from world.dominion.models import CrisisAction, Crisis, Army, RPEvent
-from . import story_actions, overrides, social, staff_commands, roster
+from . import story_actions, overrides, social, staff_commands, roster, jobs
 
 
 class StoryActionTests(ArxCommandTest):
@@ -654,3 +654,32 @@ class StaffCommandTests(ArxCommandTest):
         self.call_cmd("test", "Entities with test tag: Testaccount, Testaccount2, testorg, Testorg2")
         self.call_cmd("/remove test=testaccount2,testorg2", "Removed from test: Testaccount2, Testorg2")
         self.call_cmd("test", "Entities with test tag: Testaccount, testorg")
+
+
+class JobCommandTests(TestTicketMixins, ArxCommandTest):
+    def test_cmd_job(self):
+        self.setup_cmd(jobs.CmdJob, self.account)
+        self.call_cmd("", "# Player Request              Priority           \n"
+                          "1 Char2  Bishi too easy       3 Bugs             "
+                          "2 Char2  Let me kill a bishi? 3 Request          "
+                          "3 Char2  Sly Spareaven?       5 Typo             "
+                          "4 Char2  Command for licking  4 Code             "
+                          "5 Char2  Bring Sexy Back      3 PRP              "
+                          "6 Char2  Poison too hot       1 Bugs")
+        # Anything that saves ticket probably needs to be inside context manager, for stupid modified date
+        with patch('django.utils.timezone.now', Mock(return_value=self.fake_datetime)):
+            self.call_cmd("/move 6", "Usage: @job/move <#>=<queue> - Queues: Bugs, Request, Typo, Code, PRP.")
+            self.call_cmd("/move 6=code", "Ticket 6 is now in queue Coding Requests/Wishlist.")
+            self.call_cmd("/priority 6=hella", "Must be a number.")
+            self.call_cmd("/priority 6=4", "Ticket new priority is 4.")
+            self.call_cmd("/assign 6=hella", "Could not find hella.")
+            self.call_cmd("/assign 6=Char", "Char has assigned ticket 6 to Char.")
+            self.call_cmd("/followup 6", "Usage: @job/followup <#>=<msg>")
+            self.call_cmd("/followup 6=No Sly. stop. STOP.", "Followup added.")
+        self.call_cmd("6", "\nQueue: Coding Requests/Wishlist Priority: 4\nTicket Number: 6 By Player: Char2"
+                           "\nLocation: Room (#1)\nDate submitted: 08/27/78 12:08:00 Date modified: 08/27/78 12:08:00"
+                           "\nTitle: Poison too hot\nRequest: Let's make Poison an Iksar. Scaled for his pleasure?"
+                           "\nFollowup by Char: No Sly. stop. STOP.\nAssigned GM: Char\nGM Resolution: None")
+        # ... ^_^
+        self.call_cmd("", "No open tickets.")
+        pass

@@ -325,7 +325,7 @@ class Ticket(SharedMemoryModel):
         null=True,
         verbose_name=_('Assigned to'),
         )
-    
+
     submitting_player = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name='tickets',
@@ -341,7 +341,7 @@ class Ticket(SharedMemoryModel):
         verbose_name=_('Room where this was submitted'),
         on_delete=models.SET_NULL,
         )
-    
+
     status = models.IntegerField(
         _('Status'),
         choices=STATUS_CHOICES,
@@ -525,29 +525,26 @@ class Ticket(SharedMemoryModel):
             A string with ansi/Evennia markup that displays appropriate ticket
             information. Not meant to be used outside of telnet.
         """
-
-        msg = "\n{wQueue:{n %s" % self.queue
+        msg = "\n{wQueue:{n %s {wPriority:{n %s" % (self.queue, self.priority)
         msg += "\n{wTicket Number:{n %s" % self.id
         if self.submitting_player:
-            msg += "\n{wPlayer:{n %s" % self.submitting_player.key
-        msg += "\n{wDate submitted:{n %s" % self.db_date_created.strftime("%x %X")
-        msg += "\n{wLast modified:{n %s" % self.modified.strftime("%x %X")
-        msg += "\n{wTitle:{n %s" % self.title
+            msg += " {wBy Player:{c %s{n" % self.submitting_player.key
         room = self.submitting_room
         if room:
             msg += "\n{wLocation:{n %s (#%s)" % (room, room.id)
-        msg += "\n{wPriority:{n %s" % self.priority
+        msg += "\n{wDate submitted:{n %s" % self.db_date_created.strftime("%x %X")
+        msg += " {wLast modified:{n %s" % self.modified.strftime("%x %X")
+        msg += "\n{wTitle:{n %s" % self.title
         msg += self.request_and_response_body()
         return msg
 
     def request_and_response_body(self):
         msg = "\n{wRequest:{n %s" % self.description
-        if self.assigned_to:
-            msg += "\n{wGM:{n %s" % self.assigned_to.key
         for followup in self.followup_set.all():
-            msg += "\n{wFollowup by:{n %s" % followup.user
-            msg += "\n{wComment:{n %s" % followup.comment
-        msg += "\n\n{wGM Resolution:{n %s" % self.resolution
+            msg += "\n{wFollowup by {c%s{w:{n %s" % (followup.user, followup.comment)
+        if self.assigned_to:
+            msg += "\n{wAssigned GM:{n %s" % self.assigned_to.key
+        msg += "\n{wGM Resolution:{n %s" % self.resolution
         return msg
 
 

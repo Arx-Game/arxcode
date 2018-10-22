@@ -51,8 +51,7 @@ def get_apps_manager(caller):
 
 class CmdJob(ArxPlayerCommand):
     """
-    @job - read an unread post from boards you are subscribed to
-
+    @job - GM tools for answering player requests.
     Usage:
         @job - List all open tickets
         @job/only - only main Queue
@@ -122,15 +121,11 @@ class CmdJob(ArxPlayerCommand):
         table = prettytable.PrettyTable(["{w#",
                                          "{wPlayer",
                                          "{wRequest",
-                                         "{wPriority",
-                                         "{wQueue"])
+                                         "{wPriority"])
         for ticket in joblist:
-            if ticket.priority == 1:
-                prio = "{r%s{n" % ticket.priority
-            else:
-                prio = "{w%s{n" % ticket.priority
-            q = Queue.objects.get(id=ticket.queue_id)
-            table.add_row([str(ticket.id), str(ticket.submitting_player.key), str(ticket.title)[:20], prio, q.slug])
+            color = "|r" if ticket.priority == 1 else ""
+            q_category = "%s%s %s|n" % (color, ticket.priority, ticket.queue.slug)
+            table.add_row([str(ticket.id), str(ticket.submitting_player.key), str(ticket.title)[:20], q_category])
         self.msg("{wOpen Tickets:{n\n%s" % table)
 
     def func(self):
@@ -149,13 +144,13 @@ class CmdJob(ArxPlayerCommand):
                 ticknum = int(args)
             except ValueError:
                 self.display_open_tickets()
-                caller.msg("Usage: Argument must be a ticket number.") 
+                caller.msg("Usage: Argument must be a ticket number.")
                 return
             try:
                 ticket = Ticket.objects.get(id=ticknum)
             except Ticket.DoesNotExist:
                 self.display_open_tickets()
-                caller.msg("No ticket found by that number.")   
+                caller.msg("No ticket found by that number.")
                 return
             caller.msg(ticket.display())
             return
@@ -205,24 +200,17 @@ class CmdJob(ArxPlayerCommand):
             return
         if 'close' in switches:
             # Closing a ticket. Check formatting first
-            lhs = self.lhs
-            rhs = self.rhs
-            if not args or not lhs or not rhs:
+            if not self.rhs:
                 caller.msg("Usage: @job/close <#>=<GM Notes>")
                 return
-            try:
-                numticket = int(lhs)
-            except ValueError:
-                caller.msg("Must give a number for the open ticket.")
-                return
-            if helpdesk_api.resolve_ticket(caller, numticket, rhs):
+            if helpdesk_api.resolve_ticket(caller, ticket.id, self.rhs):
                 caller.msg("Ticket successfully closed.")
                 return
             else:
                 caller.msg("Ticket closure failed for unknown reason.")
                 return
         if 'assign' in switches:
-            player = self.caller.search(self.rhs)
+            player = self.caller.search(self.rhs) if self.rhs else None
             if not player:
                 return
             ticket.assigned_to = player
@@ -230,25 +218,24 @@ class CmdJob(ArxPlayerCommand):
             inform_staff("{w%s has assigned ticket %s to %s." % (caller, ticket.id, player))
             return
         if 'followup' in switches or 'update' in switches or "follow" in switches:
-            lhs = self.lhs
-            rhs = self.rhs
-            if not lhs or not rhs:
+            if not self.lhs or not self.rhs:
                 caller.msg("Usage: @job/followup <#>=<msg>")
                 return
-            if helpdesk_api.add_followup(caller, ticket, rhs):
+            if helpdesk_api.add_followup(caller, ticket, self.rhs):
                 caller.msg("Followup added.")
                 return
             caller.msg("Error in followup.")
             return
-
         if 'move' in switches:
+            slugs = ", ".join([str(q.slug) for q in Queue.objects.all()])
             if not self.lhs or not self.rhs:
-                self.msg("Usage: @job/move <#>=<msg>")
+                move_msg = "Usage: @job/move <#>=<queue> - Queues: %s." % slugs
+                self.msg(move_msg)
                 return
             try:
                 queue = Queue.objects.get(slug__iexact=self.rhs)
             except Queue.DoesNotExist:
-                self.msg("Queue must be one of the following: %s" % ", ".join(ob.slug for ob in Queue.objects.all()))
+                self.msg("Queue must be one of the following: %s" % slugs)
                 return
             ticket.queue = queue
             ticket.save()
@@ -266,29 +253,25 @@ class CmdJob(ArxPlayerCommand):
                 ticket.priority = int(self.rhs)
             except (TypeError, ValueError):
                 self.msg("Must be a number.")
+                return
             ticket.save()
             self.msg("Ticket new priority is %s." % self.rhs)
             return
-        if 'approve' in switches:
-            pass
-        if 'deny' in switches:
-            pass
         caller.msg("Invalid switch for @job.")
-               
+
 
 class CmdRequest(ArxPlayerCommand):
     """
     +request - Make a request for GM help
 
     Usage:
-       +request <message>
+       +request [<#>]
        +request <title>=<message>
        +911 <title>=<message>
-       bug <report>
-       typo <report>
-       +featurerequest <report>
+       bug [<title>=]<report>
+       typo [<title>=]<report>
+       +featurerequest <title>=<message>
        +request/followup <#>=<message>
-       +request <#>
        +prprequest <title>=<question about a player run plot>
 
     Send a message to the GMs for help. This is usually because
@@ -347,19 +330,19 @@ class CmdRequest(ArxPlayerCommand):
     def func(self):
         """Implement the command"""
         caller = self.caller
-        args = self.args
-        priority = 5
+        priority = 3
         if "followup" in self.switches or "comment" in self.switches:
             if not self.lhs or not self.rhs:
-                caller.msg("Missing arguments required.")
+                msg = "Usage: <#>=<message>"
                 ticketnumbers = ", ".join(str(ticket.id) for ticket in self.tickets)
-                caller.msg("Your tickets: %s" % ticketnumbers)
-                return
+                if ticketnumbers:
+                    msg += "\nYour tickets: %s" % ticketnumbers
+                return caller.msg(msg)
             ticket = self.get_ticket_from_args(self.lhs)
             if not ticket:
                 return
             if ticket.status == ticket.CLOSED_STATUS:
-                self.msg("That ticket is already closed. Make a new one.")
+                self.msg("That ticket is already closed. Please make a new one.")
                 return
             helpdesk_api.add_followup(caller, ticket, self.rhs, mail_player=False)
             caller.msg("Followup added.")
@@ -376,32 +359,26 @@ class CmdRequest(ArxPlayerCommand):
                 return
             self.display_ticket(ticket)
             return
-        optional_title = None
-        if self.lhs and self.rhs:
-            args = self.rhs
-            optional_title = self.lhs
-        email = caller.email
-        if email == "dummy@dummy.com":
-            email = None
+        optional_title = self.lhs if self.rhs else self.lhs[:30]
+        args = self.rhs if self.rhs else self.args
+        email = caller.email if caller.email != "dummy@dummy.com" else None
         if cmdstr == "bug":
-            optional_title = "Bug Report"
-            args = self.args
             queue = settings.BUG_QUEUE_ID
         elif cmdstr == "typo":
-            optional_title = "Typo found"
+            priority = 5
             queue = Queue.objects.get(slug="Typo").id
         elif cmdstr == "+featurerequest":
-            optional_title = "Features"
+            priority = 4
             queue = Queue.objects.get(slug="Code").id
         elif cmdstr == "+prprequest":
-            optional_title = "PRP"
             queue = Queue.objects.get(slug="PRP").id
         else:
             queue = settings.REQUEST_QUEUE_ID
-        if helpdesk_api.create_ticket(caller, args, priority, queue=queue, send_email=email,
-                                      optional_title=optional_title):
-            caller.msg("Thank you for submitting a request to the GM staff. Your ticket has been added "
-                       "to the queue.")
+        new_ticket = helpdesk_api.create_ticket(caller, args, priority, queue=queue, send_email=email,
+                                                optional_title=optional_title)
+        if new_ticket:
+            caller.msg("Thank you for submitting a request to the GM staff. Your ticket #%s "
+                       "has been added to the queue." % new_ticket.id)
             return
         else:
             caller.msg("Ticket submission has failed for unknown reason. Please inform the administrators.")
@@ -519,12 +496,12 @@ class CmdApp(ArxPlayerCommand):
                 return
             app = apps.view_app(int(self.lhs))
             if apps.close_app(int(self.lhs), caller, self.rhs, True):
-                caller.msg("Application successfully approved.") 
+                caller.msg("Application successfully approved.")
                 if app and app[1]:
                     inform_staff("{w%s has approved %s's application.{n" % (caller.key.capitalize(),
                                                                             app[1].key.capitalize()))
                 try:
-                    
+
                     entry = RosterEntry.objects.get(character__id=app[1].id,
                                                     player__id=app[1].player_ob.id)
                     active_roster = Roster.objects.get(name="Active")
@@ -552,7 +529,7 @@ class CmdApp(ArxPlayerCommand):
                             raise ValueError("No character found for setup gear")
                         setup_gear_for_char(entry.character)
                     except ValueError:
-                        traceback.print_exc()                   
+                        traceback.print_exc()
                 except (RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned, Roster.DoesNotExist,
                         Roster.MultipleObjectsReturned, AttributeError, ValueError, TypeError):
                     print("Error when attempting to mark closed application as active.")
