@@ -2754,7 +2754,7 @@ class CrisisAction(AbstractAction):
                   'social': self.total_social}
         totals = ", ".join("{c%s{n %s" % (key, value) for key, value in fields.items() if value > 0)
         if totals:
-            msg = "{wResources:{n %s" % totals
+            msg = "{wTotal resources:{n %s" % totals
         return msg
 
     def cancel(self):
