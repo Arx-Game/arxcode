@@ -781,8 +781,8 @@ class CmdRecipes(ArxCommand):
         recipes <ability or skill to filter by>
         recipes/learn <recipe name>
         recipes/info <recipe name>
+        recipes/cost <recipe name>
         recipes/teach <character>=<recipe name>
-        recipes/cost
 
     Check, learn, or teach recipes. Without an argument, recipes
     lists all recipes you know or can learn. The /info switch lists the
@@ -812,12 +812,11 @@ class CmdRecipes(ArxCommand):
         """Implement the command"""
         from django.db.models import Q
         caller = self.caller
-        filters = None
+        all_recipes = CraftingRecipe.objects.all()
+        recipes = all_recipes.filter(known_by__player__player=caller.player)
+        unknown = all_recipes.exclude(known_by__player__player=caller.player).order_by("additional_cost")
         if self.args and (not self.switches or 'known' in self.switches):
             filters = Q(name__iexact=self.args) | Q(skill__iexact=self.args) | Q(ability__iexact=self.args)
-        recipes = CraftingRecipe.objects.filter(known_by__player__player=caller.player)
-        unknown = CraftingRecipe.objects.exclude(known_by__player__player=caller.player).order_by("additional_cost")
-        if filters:
             recipes = recipes.filter(filters)
             unknown = unknown.filter(filters)
         recipes = list(recipes)
@@ -827,34 +826,30 @@ class CmdRecipes(ArxCommand):
         except PlayerOrNpc.DoesNotExist:
             dompc = setup_dom_for_char(caller)
         if not self.switches:
-            caller.msg("Recipes you know or can learn:")
             visible = recipes + can_learn
             self.display_recipes(visible)
             return
         if 'known' in self.switches:
-            self.msg("Recipes you know:")
             self.display_recipes(recipes)
             return
-        if 'learn' in self.switches:
+        if 'learn' in self.switches or 'cost' in self.switches:
             match = None
             if self.args:
                 match = [ob for ob in can_learn if ob.name.lower() == self.args.lower()]
             if not match:
-                caller.msg("No recipe by that name.")
-                caller.msg("\nRecipes you can learn:")
+                caller.msg("No learnable recipe by that name. Recipes you can learn:")
                 self.display_recipes(can_learn)
                 return
             match = match[0]
             cost = match.additional_cost
-            if cost > caller.db.currency:
-                caller.msg("It costs %s to learn %s, and you only have %s." % (cost, match.name, caller.db.currency))
-                return
+            cost_msg = "It costs %s to learn %s." % (cost or "nothing", match.name)
+            if 'cost' in self.switches:
+                return caller.msg(cost_msg)
+            elif cost > caller.db.currency:
+                return caller.msg("%s Unfortunately, you only have %s." % (cost_msg, caller.db.currency))
             caller.pay_money(cost)
             dompc.assets.recipes.add(match)
-            if cost:
-                coststr = " for %s silver" % cost
-            else:
-                coststr = ""
+            coststr = " for %s silver" % cost if cost else ""
             caller.msg("You have learned %s%s." % (match.name, coststr))
             return
         if 'info' in self.switches:
@@ -863,8 +858,7 @@ class CmdRecipes(ArxCommand):
             if self.args:
                 match = [ob for ob in info if ob.name.lower() == self.args.lower()]
             if not match:
-                caller.msg("No recipe by that name.")
-                caller.msg("Recipes you can get /info on:")
+                caller.msg("No recipe by that name. Recipes you can get /info on:")
                 self.display_recipes(info)
                 return
             match = match[0]
