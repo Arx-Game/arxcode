@@ -33,7 +33,7 @@
         <tr>
         <td width="25%"><a href="{% url 'dominion:display_event' obj.id %}">{{ obj.name|mush_to_html }}</a></td>
         <td width="25%">{{ obj.date }}</td>
-        <td width="25%">{{ obj.location.key|mush_to_html }}</td>
+        <td width="25%">{{ obj.location_name|mush_to_html }}</td>
         <td width="25%">{{ obj.get_celebration_tier_display }}</td>
         </tr>
     {% endfor %}
@@ -51,7 +51,7 @@
         <tr>
         <td width="25%"><a href="{% url 'dominion:display_event' obj.id %}">{{ obj.name|mush_to_html }}</a></td>
         <td width="25%">{{ obj.date }}</td>
-        <td width="25%">{{ obj.location.key|mush_to_html }}</td>
+        <td width="25%">{{ obj.location_name|mush_to_html }}</td>
         <td width="25%">{{ obj.get_celebration_tier_display }}</td>
         </tr>
     {% endfor %}

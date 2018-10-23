@@ -27,3 +27,9 @@ class CrisisManager(Manager):
         else:
             qs = self.filter(Q(public=True) | Q(required_clue__discoveries__in=player.roster.finished_clues))
         return qs
+
+
+class LandManager(Manager):
+    def land_by_coord(self, x, y):
+        qs = self.filter(Q(x_coord=x) & Q(y_coord=y))
+        return qs
