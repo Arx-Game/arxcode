@@ -20,7 +20,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/learn Mask", "You have 1.0 silver. It will cost 10 for you to learn Mask.")
         self.char2.currency = 100
         self.call_cmd("/learn Mask", "You have learned Mask for 10 silver.")
-        self.assertEqual([self.char2.dompc.assets.recipes.all()], [self.recipe6])
+        self.assertEqual(list(self.char2.dompc.assets.recipes.all()), [self.recipe6])
         self.assertEqual(self.char2.currency, 90.0)
         self.call_cmd("/info Mask", "3 baffled raccoons in a display table")
         # TODO: Pretty sure I have to mock arx_more and use assert_called_with for these tables
