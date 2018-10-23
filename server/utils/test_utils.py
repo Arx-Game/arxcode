@@ -244,10 +244,11 @@ class TestEquipmentMixins(object):
         self.recipe7 = CraftingRecipe.objects.create(name="Medium Weapon", ability="weaponsmith",
                                                      primary_amount=4, level=4,
                                                      result="baseval:5")
-        self.recipes = (self.recipe1, self.recipe2, self.recipe3, self.recipe4, self.recipe5,
-                        self.recipe6, self.recipe7)
-        for recipe in self.recipes:
+        self.test_recipes = (self.recipe1, self.recipe2, self.recipe3, self.recipe4, self.recipe5,
+                             self.recipe6, self.recipe7)
+        for recipe in self.test_recipes:
             recipe.primary_materials.add(self.mat1)
+            recipe.locks.add("learn:all();teach:all()")
         # Top1 is a wearable object with no recipe or crafter designated
         self.top1 = create.create_object(wearable_typeclass, key="Top1", location=self.room1, home=self.room1)
         self.top1.db.quality_level = 6
@@ -322,6 +323,16 @@ class TestEquipmentMixins(object):
 
     def add_recipe_additional_costs(self, val):
         """Adds additional_cost to recipes and saves them."""
-        for recipe in self.recipes:
+        for recipe in self.test_recipes:
             recipe.additional_cost = val
+            recipe.save()
+
+    def match_recipe_locks_to_level(self):
+        """Replaces with locks appropriate to recipe difficulty."""
+        for recipe in self.test_recipes:
+            lvl = recipe.level
+            lockstr = "learn: ability(%s)" % lvl
+            if lvl < 6:
+                lockstr += ";teach: ability(%s)" % lvl + 1
+            recipe.locks.replace(lockstr)
             recipe.save()

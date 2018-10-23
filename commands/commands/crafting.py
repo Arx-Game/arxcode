@@ -795,16 +795,16 @@ class CmdRecipes(ArxCommand):
 
     def display_recipes(self, recipes):
         from server.utils import arx_more
+        if not recipes:
+            self.caller.msg("(No recipes qualify.)")
+            return
         known_list = CraftingRecipe.objects.filter(known_by__player__player=self.caller.player)
-        table = PrettyTable(["{wKnow{n", "{wName{n", "{wAbility{n",
-                             "{wDifficulty{n", "{wCost{n"])
+        table = PrettyTable(["{wKnown{n", "{wName{n", "{wAbility{n", "{wLvl{n", "{wCost{n"])
         from operator import attrgetter
-        recipes = sorted(recipes, key=attrgetter('ability', 'difficulty',
-                                                 'name'))
+        recipes = sorted(recipes, key=attrgetter('ability', 'difficulty', 'name'))
         for recipe in recipes:
             known = "{wX{n" if recipe in known_list else ""
-            table.add_row([known, recipe.name, recipe.ability,
-                           recipe.difficulty, recipe.additional_cost])
+            table.add_row([known, str(recipe), recipe.ability, recipe.difficulty, recipe.additional_cost])
         arx_more.msg(self.caller, str(table), justify_kwargs=False)
 
     def func(self):
@@ -813,7 +813,7 @@ class CmdRecipes(ArxCommand):
         caller = self.caller
         all_recipes = CraftingRecipe.objects.all()
         recipes = all_recipes.filter(known_by__player__player=caller.player)
-        unknown = all_recipes.exclude(known_by__player__player=caller.player).order_by("additional_cost")
+        unknown = all_recipes.exclude(known_by__player__player=caller.player)
         if self.args and (not self.switches or 'known' in self.switches):
             filters = Q(name__iexact=self.args) | Q(skill__iexact=self.args) | Q(ability__iexact=self.args)
             recipes = recipes.filter(filters)
@@ -836,7 +836,8 @@ class CmdRecipes(ArxCommand):
             if self.args:
                 match = [ob for ob in can_learn if ob.name.lower() == self.args.lower()]
             if not match:
-                caller.msg("No learnable recipe by that name. Recipes you can learn:")
+                learn_msg = ("You cannot learn '%s'. " % self.rhs) if self.rhs else ""
+                caller.msg("%sRecipes you can learn:" % learn_msg)
                 self.display_recipes(can_learn)
                 return
             match = match[0]
@@ -870,10 +871,9 @@ class CmdRecipes(ArxCommand):
             if self.rhs:
                 match = [ob for ob in can_teach if ob.name.lower() == self.rhs.lower()]
             if not match:
-                caller.msg("Recipes you can teach:")
+                teach_msg = ("You cannot teach '%s'. " % self.rhs) if self.rhs else ""
+                caller.msg("%sRecipes you can teach:" % teach_msg)
                 self.display_recipes(can_teach)
-                if self.rhs:
-                    caller.msg("You entered: %s." % self.rhs)
                 return
             recipe = match[0]
             character = caller.search(self.lhs)
