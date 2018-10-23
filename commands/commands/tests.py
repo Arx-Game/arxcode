@@ -50,7 +50,7 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/readycheck 1", "Only the action leader can use that switch.")
         self.caller = self.account
         self.call_cmd("/add 1=foo,bar", "Invalid type of resource.")
-        self.call_cmd("/add 1=ap,50", "50 ap added. Action #1 Resources: extra action points 50")
+        self.call_cmd("/add 1=ap,50", "50 ap added. Action #1 Total resources: extra action points 50")
         self.call_cmd("/add 1=army,1", "You have successfully relayed new orders to that army.")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: True")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: False")
@@ -148,7 +148,7 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/invite 1=TestAccount", "You have new informs. Use @inform 1 to read them."
                                                "|You have invited Testaccount to join your action.")
         self.account2.pay_resources = Mock()
-        self.call_cmd("/charge 1=economic,2000", "2000 economic added. Action #1 Resources: economic 2000, silver 50")
+        self.call_cmd("/charge 1=economic,2000", "2000 economic added. Action #1 Total resources: economic 2000, silver 50")
         self.account2.pay_resources.assert_called_with("economic", 2000)
         self.caller.inform = Mock()
         self.account2.inform = Mock()
@@ -183,7 +183,7 @@ class StoryActionTests(ArxCommandTest):
                            "Testaccount2 OOC intentions: ooc intent test\n\nOOC Notes and GM responses\n"
                            "Testaccount2 OOC Question: foo inform\nReply by Testaccount: Sure go nuts\n"
                            "Testaccount2 OOC Question: another test question\nOutcome Value: 0\nStory Result: \n"
-                           "Secret Story sekritfoo\nResources: economic 2000, silver 50\n[STATUS: Pending Resolution]")
+                           "Secret Story sekritfoo\nTotal resources: economic 2000, silver 50\n[STATUS: Pending Resolution]")
         self.call_cmd("/publish 1=story test", "You have published the action and sent the players informs.")
         self.assertEquals(action.status, CrisisAction.PUBLISHED)
         self.account2.inform.assert_called_with('{wGM Response to story action of Testaccount2\n'
