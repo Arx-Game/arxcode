@@ -340,8 +340,8 @@ class SocialTests(ArxCommandTest):
         self.setup_cmd(social.CmdIAmHelping, self.account)
         self.account2.inform = Mock()
         ap_cap = self.roster_entry.max_action_points
-        self.call_cmd("", "You have 0 AP remaining.")
-        self.call_cmd("Char2=30", "You do not have enough AP.")
+        self.call_cmd("", "You have 100 AP remaining.")
+        self.call_cmd("Char2=102", "You do not have enough AP.")
         self.roster_entry2.action_points = 250
         self.roster_entry.action_points = 300
         # TODO: test attempt to give to account1's alt
