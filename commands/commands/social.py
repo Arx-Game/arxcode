@@ -2918,7 +2918,7 @@ class CmdIAmHelping(ArxPlayerCommand):
     Allows you to donate AP to other players (with some restrictions) to
     represent helping them out with whatever they're up to: gathering supplies
     for a crafter, acting as a menial servant/helping their servants manage
-    their affairs, discreetly having annoying npcs killed, etc. It's much more 
+    their affairs, discreetly having annoying npcs killed, etc. It's much more
     effective to assist directly with investigations, crisis actions, etc,
     using those respective commands. Rate of AP conversion is 3 to 1.
     """
@@ -2950,7 +2950,7 @@ class CmdIAmHelping(ArxPlayerCommand):
             if not self.caller.pay_action_points(val):
                 raise CommandError("You do not have enough AP.")
             targ.pay_action_points(-receive_amt)
-            self.msg("You have given %s %s AP." % (targ, receive_amt))
+            self.msg("Using %s of your AP, you have given %s %s AP." % (val, targ, receive_amt))
             msg = "%s has given you %s AP." % (self.caller, receive_amt)
             targ.inform(msg, category=msg)
         except CommandError as err:
