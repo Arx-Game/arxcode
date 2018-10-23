@@ -17,12 +17,12 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/cost Bag", "It will cost nothing for you to learn Bag.")
         self.add_recipe_additional_costs(10)
         self.char2.currency = 1
-        self.call_cmd("/learn Mask", "You have 1 silver. It will cost 10 for you to learn Mask.")
+        self.call_cmd("/learn Mask", "You have 1.0 silver. It will cost 10 for you to learn Mask.")
         self.char2.currency = 100
         self.call_cmd("/learn Mask", "You have learned Mask for 10 silver.")
         slysets = self.account2.dompc.assets
         self.assertEqual([slysets.recipes.all()], [self.recipe6])
-        self.assertEqual(self.char2.currency, 90)
+        self.assertEqual(self.char2.currency, 90.0)
         self.call_cmd("/info Mask", "3 baffled raccoons in a display table")
         # TODO: Pretty sure I have to mock arx_more and use assert_called_with for these tables
         self.call_cmd("/learn", "Recipes you can learn:|"
@@ -53,7 +53,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual([self.char.assets.recipes], [self.recipe6])
         self.call_cmd("/teach Char=Mask", "They already know Mask.")
         self.caller = self.char  # Char is staff
-        self.call_cmd("/cost Hairpins", "It costs nothing for you to learn Hairpins.")
+        self.call_cmd("/cost Hairpins", "It will cost nothing for you to learn Hairpins.")
 
 
 class StoryActionTests(ArxCommandTest):
