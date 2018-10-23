@@ -341,15 +341,15 @@ class SocialTests(ArxCommandTest):
         self.account2.inform = Mock()
         ap_cap = self.roster_entry.max_action_points
         self.call_cmd("", "You have 100 AP remaining.")
-        self.call_cmd("Char2=102", "You do not have enough AP.")
+        self.call_cmd("testaccount2=102", "You do not have enough AP.")
         self.roster_entry2.action_points = 250
         self.roster_entry.action_points = 300
         # TODO: test attempt to give to account1's alt
-        self.call_cmd("Char2=1", "Must transfer at least 3 AP.")
-        self.call_cmd("Char2=aipl", "AP needs to be a number.")
-        self.call_cmd("Char2=300", "That would put them over %s AP." % ap_cap)
-        self.call_cmd("Char2=90", "Using 90 of your AP, you have given Char2 30 AP.")
-        inform_msg = "Char has given you 30 AP."
+        self.call_cmd("testaccount2=1", "Must transfer at least 3 AP.")
+        self.call_cmd("testaccount2=aipl", "AP needs to be a number.")
+        self.call_cmd("testaccount2=300", "That would put them over %s AP." % ap_cap)
+        self.call_cmd("testaccount2=90", "Using 90 of your AP, you have given TestAccount2 30 AP.")
+        inform_msg = "TestAccount has given you 30 AP."
         self.account2.inform.assert_called_with(inform_msg, append=False, category=inform_msg)
         self.assertEqual(self.roster_entry2.action_points, 280)
         self.assertEqual(self.roster_entry.action_points, 210)
