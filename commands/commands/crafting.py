@@ -58,7 +58,7 @@ def create_wearable(recipe, roll, proj, caller):
 
 
 def create_decorative_weapon(recipe, roll, proj, caller):
-    skill = recipe.resultsdict.get("weapon_skill", "small wpn")                           
+    skill = recipe.resultsdict.get("weapon_skill", "small wpn")
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(DECORATIVE_WIELD, proj[1], caller, caller, quality)
     obj.db.attack_skill = skill
@@ -226,13 +226,13 @@ def get_quality_lvl(roll, diff):
     if roll < diff * 10:
         return 9
     return 10
-    
+
 
 def change_quality(crafting_object, new_quality):
     """
     Given a crafted crafting_object, change various attributes in it
     based on its new quality level and recipe.
-    """    
+    """
     recipe = crafting_object.db.recipe
     recipe = CraftingRecipe.objects.get(id=recipe)
     otype = recipe.type
@@ -250,7 +250,7 @@ def change_quality(crafting_object, new_quality):
 class CmdCraft(ArxCommand):
     """
     Crafts an object
-    
+
     Usage:
         craft
         craft <recipe name>
@@ -266,26 +266,26 @@ class CmdCraft(ArxCommand):
         craft/changename <object>=<new name>
         craft/addadorn <object>=<material type>,<amount>
 
-    To start crafting, you must know recipes related to your crafting profession. 
-    Select a recipe then describe the object with /name and /desc. To add extra 
+    To start crafting, you must know recipes related to your crafting profession.
+    Select a recipe then describe the object with /name and /desc. To add extra
     materials such as gemstones, use /adorn. No materials or silver are used
     until you are ready to /finish the project and make the roll for its quality.
-    
-    For things such as perfume, the desc is the description that appears on the 
-    character, not a description of the bottle. When crafting masks, the name is 
-    used to identify its wearer: "A Fox Mask" will bestow "Someone wearing A Fox 
-    Mask" upon its wearer, and the altdesc switch is used for their temporary 
+
+    For things such as perfume, the desc is the description that appears on the
+    character, not a description of the bottle. When crafting masks, the name is
+    used to identify its wearer: "A Fox Mask" will bestow "Someone wearing A Fox
+    Mask" upon its wearer, and the altdesc switch is used for their temporary
     description. For any desc, ascii can be enclosed in <ascii> tags that
     will note to not display them to screenreaders. Use <ascii> and <ascii/> with
     the desc between the opening and closing tags.
-    
-    If the item should contain words in a foreign tongue that you know, use 
+
+    If the item should contain words in a foreign tongue that you know, use
     translated_text to display what the translated words actually say.
 
-    To finish a project, use /finish, or /abandon if you wish to stop and do 
-    something else. To attempt to change the quality level of a finished object, 
-    use /refine. Refinement cost is based on how much it took to create, and 
-    can never make the object worse. Use /addadorn to embellish an item with 
+    To finish a project, use /finish, or /abandon if you wish to stop and do
+    something else. To attempt to change the quality level of a finished object,
+    use /refine. Refinement cost is based on how much it took to create, and
+    can never make the object worse. Use /addadorn to embellish an item with
     extra materials post-creation.
 
     Craft with no arguments will display the status of a current project.
@@ -343,7 +343,7 @@ class CmdCraft(ArxCommand):
             self.msg("The maximum amount you can invest is %s." % recipe.value)
             return
         return True
-        
+
     def func(self):
         """Implement the command"""
         caller = self.caller
@@ -363,7 +363,7 @@ class CmdCraft(ArxCommand):
             assets = dompc.assets
         recipes = crafter.player_ob.Dominion.assets.recipes.all()
         if not self.args and not self.switches:
-            # display recipes and any crafting project we have unfinished           
+            # display recipes and any crafting project we have unfinished
             materials = assets.materials.all()
             caller.msg("{wAvailable recipes:{n %s" % ", ".join(recipe.name for recipe in recipes))
             caller.msg("{wYour materials:{n %s" % ", ".join(str(mat) for mat in materials))
@@ -512,7 +512,7 @@ class CmdCraft(ArxCommand):
                 self.pay_owner(price, "%s has refined '%s', a %s, at your shop and you earn %s silver." % (caller, targ,
                                                                                                            recipe.name,
                                                                                                            price))
-    
+
                 roll = do_crafting_roll(crafter, recipe, diffmod, diffmult=0.75, room=caller.location)
                 quality = get_quality_lvl(roll, recipe.difficulty)
                 old = targ.db.quality_level or 0
@@ -770,15 +770,14 @@ class CmdCraft(ArxCommand):
             caller.msg("It is of %s quality." % quality)
             caller.db.crafting_project = None
             return
-            
+
 
 class CmdRecipes(ArxCommand):
     """
     recipes
     Usage:
-        recipes
+        recipes [<ability or skill to filter by>]
         recipes/known
-        recipes <ability or skill to filter by>
         recipes/learn <recipe name>
         recipes/info <recipe name>
         recipes/cost <recipe name>
@@ -797,7 +796,7 @@ class CmdRecipes(ArxCommand):
     def display_recipes(self, recipes):
         from server.utils import arx_more
         known_list = CraftingRecipe.objects.filter(known_by__player__player=self.caller.player)
-        table = PrettyTable(["{wKnown{n", "{wName{n", "{wAbility{n",
+        table = PrettyTable(["{wKnow{n", "{wName{n", "{wAbility{n",
                              "{wDifficulty{n", "{wCost{n"])
         from operator import attrgetter
         recipes = sorted(recipes, key=attrgetter('ability', 'difficulty',
@@ -841,15 +840,15 @@ class CmdRecipes(ArxCommand):
                 self.display_recipes(can_learn)
                 return
             match = match[0]
-            cost = match.additional_cost
-            cost_msg = "It costs %s to learn %s." % (cost or "nothing", match.name)
+            cost = 0 if caller.check_permstring('builders') else match.additional_cost
+            cost_msg = "It costs %s for you to learn %s." % (cost or "nothing", match.name)
             if 'cost' in self.switches:
                 return caller.msg(cost_msg)
             elif cost > caller.db.currency:
-                return caller.msg("%s Unfortunately, you only have %s." % (cost_msg, caller.db.currency))
+                return caller.msg("%s You only have %s silver." % (cost_msg, caller.db.currency))
             caller.pay_money(cost)
             dompc.assets.recipes.add(match)
-            coststr = " for %s silver" % cost if cost else ""
+            coststr = (" for %s silver" % cost) if cost else ""
             caller.msg("You have learned %s%s." % (match.name, coststr))
             return
         if 'info' in self.switches:
@@ -980,7 +979,7 @@ class CmdJunk(ArxCommand):
             except CraftingMaterials.DoesNotExist:
                 pmat = pmats.create(type=cmat)
             pmat.amount += amount
-            pmat.save()            
+            pmat.save()
             refunded.append("%s %s" % (amount, cmat.name))
         caller.msg("By destroying %s, you have received: %s" % (obj, ", ".join(refunded) or "Nothing."))
         obj.softdelete()

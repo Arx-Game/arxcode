@@ -223,30 +223,30 @@ class TestEquipmentMixins(object):
         AssetOwner.objects.create(organization_owner=self.org)
         self.org.members.create(player=self.dompc)
         self.mat1 = CraftingMaterialType.objects.create(name="Mat1", value=100)
-        self.recipe1 = CraftingRecipe.objects.create(name="Top 1 Slot",
+        self.recipe1 = CraftingRecipe.objects.create(name="Top 1 Slot", ability="tailor",
                                                      primary_amount=5, level=5,
                                                      result="slot:chest;slot_limit:1;baseval:1;penalty:2")
-        self.recipe2 = CraftingRecipe.objects.create(name="Top 2 Slot",
+        self.recipe2 = CraftingRecipe.objects.create(name="Top 2 Slot", ability="leatherworker",
                                                      primary_amount=6, level=6,
                                                      result="slot:chest;slot_limit:2")
-        self.recipe3 = CraftingRecipe.objects.create(name="Bag",
+        self.recipe3 = CraftingRecipe.objects.create(name="Bag", ability="leatherworker",
                                                      primary_amount=5, level=5,
                                                      result="slot:bag;slot_limit:2;baseval:40")
-        self.recipe4 = CraftingRecipe.objects.create(name="Small Weapon",
+        self.recipe4 = CraftingRecipe.objects.create(name="Small Weapon", ability="weaponsmith",
                                                      primary_amount=4, level=4,
                                                      result="baseval:1;weapon_skill:small wpn")
-        self.recipe5 = CraftingRecipe.objects.create(name="Hairpins",
+        self.recipe5 = CraftingRecipe.objects.create(name="Hairpins", ability="weaponsmith",
                                                      primary_amount=4, level=4,
                                                      result="slot:hair;slot_limit:2;baseval:4;")
-        self.recipe6 = CraftingRecipe.objects.create(name="Mask",
+        self.recipe6 = CraftingRecipe.objects.create(name="Mask", ability="apothecary",
                                                      primary_amount=4, level=4,
                                                      result="slot:face;slot_limit:1;fashion_mult:6")
-        self.recipe7 = CraftingRecipe.objects.create(name="Medium Weapon",
+        self.recipe7 = CraftingRecipe.objects.create(name="Medium Weapon", ability="weaponsmith",
                                                      primary_amount=4, level=4,
                                                      result="baseval:5")
-        recipes = (self.recipe1, self.recipe2, self.recipe3, self.recipe4, self.recipe5,
-                   self.recipe6, self.recipe7)
-        for recipe in recipes:
+        self.recipes = (self.recipe1, self.recipe2, self.recipe3, self.recipe4, self.recipe5,
+                        self.recipe6, self.recipe7)
+        for recipe in self.recipes:
             recipe.primary_materials.add(self.mat1)
         # Top1 is a wearable object with no recipe or crafter designated
         self.top1 = create.create_object(wearable_typeclass, key="Top1", location=self.room1, home=self.room1)
@@ -319,3 +319,9 @@ class TestEquipmentMixins(object):
         for item in worn:
             outfit.add_fashion_item(item=item)
         return outfit
+
+    def add_recipe_additional_costs(self, val):
+        """Adds additional_cost to recipes and saves them."""
+        for recipe in self.recipes:
+            recipe.additional_cost = val
+            recipe.save()
