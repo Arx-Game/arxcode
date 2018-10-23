@@ -14,27 +14,30 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
     def test_cmd_recipes(self):
         self.setup_cmd(crafting.CmdRecipes, self.char2)
+        self.call_cmd("/cost Bag", "It will cost nothing for you to learn Bag.")
         self.add_recipe_additional_costs(10)
-        self.call_cmd("/cost Bag", "It costs 10 for you to learn Bag.")
-        self.call_cmd("", "Known Name          Ability       Lvl Cost     \n"
-                          "      Mask          apothecary    4   10"
-                          "      Bag           leatherworker 5   10"
-                          "      Top 2 Slot    leatherworker 6   10"
-                          "      Top 1 Slot    tailor        5   10"
-                          "      Hairpins      weaponsmith   4   10"
-                          "      Medium Weapon weaponsmith   4   10"
-                          "      Small Weapon  weaponsmith   4   10")
-        self.call_cmd("tailor", "Known Name       Ability Lvl Cost"
-                                "      Top 1 Slot tailor  5   10")
-        self.call_cmd("/info Mask", "3 baffled raccoons in a display table")
-        self.call_cmd("/learn Mask", "It costs 10 for you to learn Mask. You only have 0 silver.")
+        self.call_cmd("/learn Mask", "It will cost 10 for you to learn Mask. You have 0 silver.")
         self.char2.currency = 100
         self.call_cmd("/learn Mask", "You have learned Mask for 10 silver.")
         self.assertEqual([self.char2.assets.recipes], [self.recipe6])
         self.assertEqual(self.char2.currency, 90)
+        self.call_cmd("/info Mask", "3 baffled raccoons in a display table")
+        # TODO: Pretty sure I have to mock arx_more and use assert_called_with for these tables
+        self.call_cmd("/learn", "Recipes you can learn:|"
+                                "Known Name          Ability       Lvl Cost     \n"
+                                "      Bag           leatherworker 5   10"
+                                "      Top 2 Slot    leatherworker 6   10"
+                                "      Top 1 Slot    tailor        5   10"
+                                "      Hairpins      weaponsmith   4   10"
+                                "      Medium Weapon weaponsmith   4   10"
+                                "      Small Weapon  weaponsmith   4   10")
+        self.call_cmd("tailor", "Known Name       Ability Lvl Cost"
+                                "      Top 1 Slot tailor  5   10")
         self.call_cmd("/known" "Known Name Ability    Lvl Cost"
                                "X     Mask apothecary 4   10")
         self.match_recipe_locks_to_level()  # recipe locks become level-appropriate
+        self.call_cmd("", "Known Name Ability    Lvl Cost     \n"
+                          "X     Mask apothecary 4   10")
         self.call_cmd("/learn Bag", "You cannot learn 'Bag'. Recipes you can learn:|"
                                     "(No recipes qualify.)")
         self.call_cmd("/teach Char=Mask", "You cannot teach 'Mask'. Recipes you can teach:|"

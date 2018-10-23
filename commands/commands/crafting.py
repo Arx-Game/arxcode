@@ -842,11 +842,11 @@ class CmdRecipes(ArxCommand):
                 return
             match = match[0]
             cost = 0 if caller.check_permstring('builders') else match.additional_cost
-            cost_msg = "It costs %s for you to learn %s." % (cost or "nothing", match.name)
+            cost_msg = "It will cost %s for you to learn %s." % (cost or "nothing", match.name)
             if 'cost' in self.switches:
                 return caller.msg(cost_msg)
             elif cost > caller.db.currency:
-                return caller.msg("%s You only have %s silver." % (cost_msg, caller.db.currency))
+                return caller.msg("%s You have %s silver." % (cost_msg, caller.db.currency))
             caller.pay_money(cost)
             dompc.assets.recipes.add(match)
             coststr = (" for %s silver" % cost) if cost else ""
