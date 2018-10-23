@@ -249,6 +249,7 @@ class TestEquipmentMixins(object):
         for recipe in self.test_recipes:
             recipe.primary_materials.add(self.mat1)
             recipe.locks.add("learn:all();teach:all()")
+            recipe.save()
         # Top1 is a wearable object with no recipe or crafter designated
         self.top1 = create.create_object(wearable_typeclass, key="Top1", location=self.room1, home=self.room1)
         self.top1.db.quality_level = 6

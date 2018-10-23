@@ -15,6 +15,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
     def test_cmd_recipes(self):
         self.setup_cmd(crafting.CmdRecipes, self.char2)
         self.add_recipe_additional_costs(10)
+        self.call_cmd("/cost Bag", "It costs 10 for you to learn Bag.")
         self.call_cmd("", "Known Name          Ability       Lvl Cost     \n"
                           "      Mask          apothecary    4   10"
                           "      Bag           leatherworker 5   10"
@@ -25,7 +26,6 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
                           "      Small Weapon  weaponsmith   4   10")
         self.call_cmd("tailor", "Known Name       Ability Lvl Cost"
                                 "      Top 1 Slot tailor  5   10")
-        self.call_cmd("/cost Bag", "It costs 10 for you to learn Bag.")
         self.call_cmd("/info Mask", "3 baffled raccoons in a display table")
         self.call_cmd("/learn Mask", "It costs 10 for you to learn Mask. You only have 0 silver.")
         self.char2.currency = 100
