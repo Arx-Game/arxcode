@@ -845,8 +845,8 @@ class CmdRecipes(ArxCommand):
             cost_msg = "It will cost %s for you to learn %s." % (cost or "nothing", match.name)
             if 'cost' in self.switches:
                 return caller.msg(cost_msg)
-            elif cost > caller.db.currency:
-                return caller.msg("%s You have %s silver." % (cost_msg, caller.db.currency))
+            elif cost > caller.currency:
+                return caller.msg("You have %s silver. %s" % (caller.currency, cost_msg))
             caller.pay_money(cost)
             dompc.assets.recipes.add(match)
             coststr = (" for %s silver" % cost) if cost else ""
