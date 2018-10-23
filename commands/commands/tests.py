@@ -351,9 +351,9 @@ class SocialTests(ArxCommandTest):
         self.call_cmd("testaccount2=1", "Must transfer at least 3 AP.")
         self.call_cmd("testaccount2=aipl", "AP needs to be a number.")
         self.call_cmd("testaccount2=300", "That would put them over %s AP." % ap_cap)
-        inform_msg = "TestAccount has given you 30 AP."
+        inform_msg = "Testaccount has given you 30 AP."
         self.call_cmd("testaccount2=90", "You use 90 action points and have 210 remaining this week."
-                                         "|Using 90 of your AP, you have given TestAccount2 30 AP.")
+                                         "|Using 90 of your AP, you have given Testaccount2 30 AP.")
         self.account2.inform.assert_called_with(inform_msg, category=inform_msg)
         self.assertEqual(self.roster_entry2.action_points, 280)
         self.assertEqual(self.roster_entry.action_points, 210)
