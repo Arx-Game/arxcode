@@ -748,13 +748,13 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             self.call_cmd("/followup 6", "Usage: @job/followup <#>=<msg>")
             self.call_cmd("/followup 6=No Sly. stop. STOP.", "Followup added.")
             self.call_cmd("/close 6=Perforce it is not feasible to transmogrify the dark princess.",
-                          "Ticket successfully closed.")
+                          "Ticket #6 successfully closed.")
         self.call_cmd("6", "\n[Ticket #6] Poison too hot"
                            "\nQueue: Coding Requests/Wishlist - Priority 4"
                            "\nPlayer: TestAccount2\nLocation: Room (#1)"
                            "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
                            "\nRequest: Let's make Poison an Iksar. Scaled for his pleasure?"
-                           "\nFollowup by Testaccount: No Sly. stop. STOP.\nAssigned GM: Testaccount"
+                           "\nFollowup by Testaccount: No Sly. stop. STOP.\nAssigned GM: TestAccount"
                            "\nGM Resolution: Perforce it is not feasible to transmogrify the dark princess.")
         self.call_cmd("/delete 7", "Cannot delete a storyaction. Please move it to a different queue first.")
         self.call_cmd("/delete 1", "Deleting ticket #1.")
@@ -814,7 +814,10 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             self.tix3.status = self.tix3.CLOSED_STATUS
             self.tix3.save()
         self.call_cmd("/followup 3=GRR.", "That ticket is already closed. Please make a new one.")
-        self.call_cmd("/followup 7=Poison?", "No ticket found by that number.")
-        self.call_cmd("", "Closed tickets: 3\nOpen tickets: 1, 2, 4, 5, 6, 8, 9, 10\n"
+        self.call_cmd("/followup 7=Poison?", "No ticket found by that number.|Closed tickets: 3\n"
+                                             "Open tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
+                                             "Use +request <#> to view an individual ticket. "
+                                             "Use +request/followup <#>=<comment> to add a comment.")
+        self.call_cmd("", "Closed tickets: 3\nOpen tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
                           "Use +request <#> to view an individual ticket. "
                           "Use +request/followup <#>=<comment> to add a comment.")
