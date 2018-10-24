@@ -88,7 +88,6 @@ INSTALLED_APPS += ('world.dominion',
                    'web.help_topics',
                    'cloudinary',
                    'django.contrib.humanize',
-                   'markdown_deux',
                    'bootstrapform',
                    'crispy_forms',
                    )

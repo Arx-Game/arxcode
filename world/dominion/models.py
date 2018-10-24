@@ -68,7 +68,7 @@ from . import unit_types, unit_constants
 from .reports import WeeklyReport
 from .battle import Battle
 from .agenthandler import AgentHandler
-from .managers import CrisisManager, OrganizationManager
+from .managers import CrisisManager, OrganizationManager, LandManager
 from server.utils.arx_utils import get_week, inform_staff, passthrough_properties
 from server.utils.exceptions import ActionSubmissionError, PayError
 from typeclasses.npcs import npc_types
@@ -1114,6 +1114,8 @@ class Land(SharedMemoryModel):
     region = models.ForeignKey('Region', on_delete=models.SET_NULL, blank=True, null=True)
     # whether we can have boats here
     landlocked = models.BooleanField(default=True, blank=True)
+
+    objects = LandManager()
 
     def _get_farming_mod(self):
         """
@@ -2754,7 +2756,7 @@ class CrisisAction(AbstractAction):
                   'social': self.total_social}
         totals = ", ".join("{c%s{n %s" % (key, value) for key, value in fields.items() if value > 0)
         if totals:
-            msg = "{wResources:{n %s" % totals
+            msg = "{wTotal resources:{n %s" % totals
         return msg
 
     def cancel(self):
@@ -5636,6 +5638,15 @@ class RPEvent(SharedMemoryModel):
         """GMs for GM Events or PRPs"""
         return self.dompcs.filter(event_participation__gm=True)
 
+    @property
+    def location_name(self):
+        if self.plotroom:
+            return self.plotroom.ansi_name()
+        elif self.location:
+            return self.location.key
+        else:
+            return ""
+
     def display(self):
         """Returns string display for event"""
         msg = "{wName:{n %s\n" % self.name
@@ -5649,9 +5660,7 @@ class RPEvent(SharedMemoryModel):
         orgs = self.orgs.all()
         if orgs:
             msg += "{wOrgs:{n %s\n" % ", ".join(str(ob) for ob in orgs)
-        location_name = self.location if self.location else \
-            (self.plotroom.ansi_name() if self.plotroom else "None")
-        msg += "{wLocation:{n %s\n" % location_name
+        msg += "{wLocation:{n %s\n" % self.location_name
         if not self.public_event:
             msg += "{wPrivate:{n Yes\n"
         msg += "{wEvent Scale:{n %s\n" % self.get_celebration_tier_display()
