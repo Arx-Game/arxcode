@@ -741,7 +741,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             self.call_cmd("/move 6=code", "Ticket 6 is now in queue Coding Requests/Wishlist.")
             self.call_cmd("/priority 6=hella", "Must be a number.")
             self.call_cmd("/priority 6=4", "Ticket new priority is 4.")
-            self.call_cmd("/assign 6=hella", "Could not find hella.")
+            self.call_cmd("/assign 6=hella", "Could not find 'hella'.")
             self.call_cmd("/assign 6=Testaccount", "Testaccount has assigned ticket #6 to Testaccount.")
             self.call_cmd("/followup 6", "Usage: @job/followup <#>=<msg>")
             self.call_cmd("/followup 6=No Sly. stop. STOP.", "Followup added.")
@@ -779,7 +779,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             self.call_cmd("help it's Khirath!=Ok I'mma have to knife fight a bishi brb.",
                           "You have new informs. Use @inform 1 to read them.|"
                           "Thank you for submitting a request to the GM staff. Your ticket (#9) "
-                          "has been added to the queue.", cmdstr="+911")
+                          "has been added to the queue.", cmdstring="+911")
             # confirms "+911" elevates priority to 1:
             self.call_cmd("9", "\n[Ticket #9] help it's Khirath!"
                                "\nQueue: Request for GM action - Priority 1"
@@ -790,7 +790,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             self.call_cmd("Khirath strangely resistant to slinky squirms.",
                           "You have new informs. Use @inform 1 to read them.|"
                           "Thank you for submitting a request to the GM staff. Your ticket (#10) "
-                          "has been added to the queue.", cmdstr="bug")
+                          "has been added to the queue.", cmdstring="bug")
             # confirms "bug" changes the queue:
             self.call_cmd("10", "\n[Ticket #10] Khirath strangely resistant..."
                                 "\nQueue: Bug reports/Technical issues - Priority 3"
@@ -801,7 +801,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             self.call_cmd("Seriously it is Deraven not Spareaven who keeps saying this???",
                           "You have new informs. Use @inform 1 to read them.|"
                           "Thank you for submitting a request to the GM staff. Your ticket (#11) "
-                          "has been added to the queue.", cmdstr="typo")
+                          "has been added to the queue.", cmdstring="typo")
             # confirms "typo" changes priority and queue:
             self.call_cmd("11", "\n[Ticket #11] Seriously it is Deraven not..."
                                 "\nQueue: Typos - Priority 5"
