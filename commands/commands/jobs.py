@@ -121,7 +121,7 @@ class CmdJob(ArxPlayerCommand):
         table = prettytable.PrettyTable(["{w#",
                                          "{wPlayer",
                                          "{wRequest",
-                                         "{wPriority"])
+                                         "{wPriority/Q"])
         for ticket in joblist:
             color = "|r" if ticket.priority == 1 else ""
             q_category = "%s%s %s|n" % (color, ticket.priority, ticket.queue.slug)
@@ -204,10 +204,10 @@ class CmdJob(ArxPlayerCommand):
                 caller.msg("Usage: @job/close <#>=<GM Notes>")
                 return
             if helpdesk_api.resolve_ticket(caller, ticket.id, self.rhs):
-                caller.msg("Ticket successfully closed.")
+                caller.msg("Ticket #%s successfully closed." % ticket.id)
                 return
             else:
-                caller.msg("Ticket closure failed for unknown reason.")
+                caller.msg("Failed to close ticket #%s." % ticket.id)
                 return
         if 'assign' in switches:
             player = self.caller.search(self.rhs) if self.rhs else None
@@ -215,7 +215,7 @@ class CmdJob(ArxPlayerCommand):
                 return
             ticket.assigned_to = player
             ticket.save()
-            inform_staff("{w%s has assigned ticket %s to %s." % (caller, ticket.id, player))
+            inform_staff("{w%s has assigned ticket #%s to %s." % (caller, ticket.id, player))
             return
         if 'followup' in switches or 'update' in switches or "follow" in switches:
             if not self.lhs or not self.rhs:
@@ -229,7 +229,7 @@ class CmdJob(ArxPlayerCommand):
         if 'move' in switches:
             slugs = ", ".join([str(q.slug) for q in Queue.objects.all()])
             if not self.lhs or not self.rhs:
-                move_msg = "Usage: @job/move <#>=<queue> - Queues: %s." % slugs
+                move_msg = "|wUsage:|n @job/move <#>=<queue> |wQueue options:|n %s." % slugs
                 self.msg(move_msg)
                 return
             try:
@@ -245,8 +245,8 @@ class CmdJob(ArxPlayerCommand):
             if ticket.queue.slug == "Story":
                 self.msg("Cannot delete a storyaction. Please move it to a different queue first.")
                 return
+            self.msg("Deleting ticket #%s." % ticket.id)
             ticket.delete()
-            self.msg("Ticket #%s deleted." % self.lhs)
             return
         if 'priority' in switches:
             try:
