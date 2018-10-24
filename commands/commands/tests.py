@@ -5,7 +5,7 @@ Tests for different general commands. Tests for other command sets or for differ
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 
-from server.utils.test_utils import ArxCommandTest, TestTicketMixins
+from server.utils.test_utils import ArxCommandTest, TestTicketMixins, TestTicketMixins
 from world.dominion.models import CrisisAction, Crisis, Army, RPEvent
 from . import story_actions, overrides, social, staff_commands, roster, jobs
 
