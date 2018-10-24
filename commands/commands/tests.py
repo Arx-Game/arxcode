@@ -14,6 +14,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
     def test_cmd_recipes(self):
         self.setup_cmd(crafting.CmdRecipes, self.char2)
+        self.instance.display_recipes = Mock()  # this builds a table & sends it to arx_more
+        rtable = self.instance.display_recipes
         self.call_cmd("/cost Bag", "It will cost nothing for you to learn Bag.")
         self.add_recipe_additional_costs(10)
         self.char2.currency = 1
@@ -24,33 +26,27 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.char2.currency, 90.0)
         self.call_cmd("/info Mask", "Name: Mask\nDescription: None\nSilver: 10\nPrimary Materials:\n"
                                     "Mat1: 4 (0/4)")
-        # TODO: Pretty sure I have to mock arx_more and use assert_called_with for these tables
-        self.call_cmd("/learn", "Recipes you can learn:|"
-                                "Known Name          Ability       Lvl Cost     \n"
-                                "      Bag           leatherworker 5   10"
-                                "      Top 2 Slot    leatherworker 6   10"
-                                "      Top 1 Slot    tailor        5   10"
-                                "      Hairpins      weaponsmith   4   10"
-                                "      Medium Weapon weaponsmith   4   10"
-                                "      Small Weapon  weaponsmith   4   10")
-        self.call_cmd("tailor", "Known Name       Ability Lvl Cost"
-                                "      Top 1 Slot tailor  5   10")
-        self.call_cmd("/known" "Known Name Ability    Lvl Cost"
-                               "X     Mask apothecary 4   10")
+        self.call_cmd("/learn", "Recipes you can learn:")
+        rtable.assert_called_with([self.recipe1, self.recipe2, self.recipe3, self.recipe4,
+                                  self.recipe5, self.recipe7])
+        self.call_cmd("tailor", "")
+        rtable.assert_called_with([self.recipe1])
+        self.call_cmd("/known" "")
+        rtable.assert_called_with([self.recipe6])
         self.match_recipe_locks_to_level()  # recipe locks become level-appropriate
-        self.call_cmd("", "Known Name Ability    Lvl Cost     \n"
-                          "X     Mask apothecary 4   10")
-        self.call_cmd("/learn Bag", "You cannot learn 'Bag'. Recipes you can learn:|"
-                                    "(No recipes qualify.)")
-        self.call_cmd("/teach Char=Mask", "You cannot teach 'Mask'. Recipes you can teach:|"
-                                          "(No recipes qualify.)")
+        self.call_cmd("", "")
+        rtable.assert_called_with([self.recipe6])
+        self.call_cmd("/learn Bag", "You cannot learn 'Bag'. Recipes you can learn:")
+        rtable.assert_called_with([])
+        self.call_cmd("/teach Char=Mask", "You cannot teach 'Mask'. Recipes you can teach:")
+        rtable.assert_called_with([])
         self.recipe6.locks.replace("teach:all();learn: ability(4)")
         self.recipe6.save()
         self.call_cmd("/teach Char=Mask", "They cannot learn Mask.")
         self.recipe6.locks.replace("teach:all();learn:all()")
         self.recipe6.save()
         self.call_cmd("/teach Char=Mask", "Taught Char Mask.")
-        self.assertEqual([self.char.assets.recipes], [self.recipe6])
+        self.assertEqual(list(self.char.dompc.assets.recipes.all()), [self.recipe6])
         self.call_cmd("/teach Char=Mask", "They already know Mask.")
         self.caller = self.char  # Char is staff
         self.call_cmd("/cost Hairpins", "It will cost nothing for you to learn Hairpins.")

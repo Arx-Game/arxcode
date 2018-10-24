@@ -117,13 +117,15 @@ class ArxCommandTest(ArxTestConfigMixin, CommandTest):
     """
     cmd_class = None
     caller = None
+    instance = None
 
     def setup_cmd(self, cmd_cls, caller):
         self.cmd_class = cmd_cls
         self.caller = caller
+        self.instance = self.cmd_class()
 
     def call_cmd(self, args, msg, **kwargs):
-        self.call(self.cmd_class(), args, msg, caller=self.caller, **kwargs)
+        self.call(self.instance, args, msg, caller=self.caller, **kwargs)
 
     # noinspection PyBroadException
     def call(self, cmdobj, args, msg=None, cmdset=None, noansi=True, caller=None, receiver=None, cmdstring=None,
@@ -244,8 +246,8 @@ class TestEquipmentMixins(object):
         self.recipe7 = CraftingRecipe.objects.create(name="Medium Weapon", ability="weaponsmith",
                                                      primary_amount=4, level=4,
                                                      result="baseval:5")
-        self.test_recipes = (self.recipe1, self.recipe2, self.recipe3, self.recipe4, self.recipe5,
-                             self.recipe6, self.recipe7)
+        self.test_recipes = [self.recipe1, self.recipe2, self.recipe3, self.recipe4, self.recipe5,
+                             self.recipe6, self.recipe7]
         for recipe in self.test_recipes:
             recipe.primary_materials.add(self.mat1)
             recipe.locks.add("learn:all();teach:all()")
