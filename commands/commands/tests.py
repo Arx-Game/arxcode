@@ -31,7 +31,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
                                   self.recipe5, self.recipe7])
         self.call_cmd("tailor", "")
         rtable.assert_called_with([self.recipe1])
-        self.call_cmd("/known" "")
+        self.call_cmd("/known", "")
         rtable.assert_called_with([self.recipe6])
         self.match_recipe_locks_to_level()  # recipe locks become level-appropriate
         self.call_cmd("", "")
