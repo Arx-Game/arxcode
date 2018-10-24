@@ -836,7 +836,7 @@ class CmdRecipes(ArxCommand):
             if self.args:
                 match = [ob for ob in can_learn if ob.name.lower() == self.args.lower()]
             if not match:
-                learn_msg = ("You cannot learn '%s'. " % self.rhs) if self.rhs else ""
+                learn_msg = ("You cannot learn '%s'. " % self.lhs) if self.lhs else ""
                 caller.msg("%sRecipes you can learn:" % learn_msg)
                 self.display_recipes(can_learn)
                 return
