@@ -215,7 +215,7 @@ class CmdJob(ArxPlayerCommand):
                 return
             ticket.assigned_to = player
             ticket.save()
-            inform_staff("{w%s has assigned ticket #%s to %s." % (caller, ticket.id, player))
+            inform_staff("|w%s assigned ticket #%s to |c%s|w." % (caller, ticket.id, player))
             return
         if 'followup' in switches or 'update' in switches or "follow" in switches:
             if not self.lhs or not self.rhs:
