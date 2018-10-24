@@ -338,6 +338,6 @@ class TestEquipmentMixins(object):
             lvl = recipe.level
             lockstr = "learn: ability(%s)" % lvl
             if lvl < 6:
-                lockstr += ";teach: ability(%s)" % lvl + 1
+                lockstr += ";teach: ability(%s)" % (lvl + 1)
             recipe.locks.replace(lockstr)
             recipe.save()
