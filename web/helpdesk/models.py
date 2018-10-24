@@ -325,7 +325,7 @@ class Ticket(SharedMemoryModel):
         null=True,
         verbose_name=_('Assigned to'),
         )
-    
+
     submitting_player = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name='tickets',
@@ -341,7 +341,7 @@ class Ticket(SharedMemoryModel):
         verbose_name=_('Room where this was submitted'),
         on_delete=models.SET_NULL,
         )
-    
+
     status = models.IntegerField(
         _('Status'),
         choices=STATUS_CHOICES,
@@ -525,31 +525,33 @@ class Ticket(SharedMemoryModel):
             A string with ansi/Evennia markup that displays appropriate ticket
             information. Not meant to be used outside of telnet.
         """
-
-        msg = "\n{wQueue:{n %s" % self.queue
-        msg += "\n{wTicket Number:{n %s" % self.id
+        priority = self.priority
+        priority_color = "|w"
+        if priority == 1:
+            priority_color = "|r"
+        elif priority >= 5:
+            priority_color = "|333"
+        msg = "\n|w[Ticket #%s]|n %s" % (self.id, self.title)
+        msg += "\n|wQueue:|n %s - %sPriority %s|n" % (self.queue, priority_color, priority)
         if self.submitting_player:
-            msg += "\n{wPlayer:{n %s" % self.submitting_player.key
-        msg += "\n{wDate submitted:{n %s" % self.db_date_created.strftime("%x %X")
-        msg += "\n{wLast modified:{n %s" % self.modified.strftime("%x %X")
-        msg += "\n{wTitle:{n %s" % self.title
+            msg += "\n|wPlayer: |c%s|n" % self.submitting_player.key
         room = self.submitting_room
         if room:
-            msg += "\n{wLocation:{n %s (#%s)" % (room, room.id)
-        msg += "\n{wPriority:{n %s" % self.priority
+            msg += "\n|wLocation:|n %s |n(#%s)" % (room, room.id)
+        msg += "\n|wSubmitted:|n %s" % self.db_date_created.strftime("%x %X")
+        if self.modified:
+            msg += " - |wLast Update:|n %s" % self.modified.strftime("%x %X")
         msg += self.request_and_response_body()
         return msg
 
     def request_and_response_body(self):
-        msg = "\n{wRequest:{n %s" % self.description
-        if self.assigned_to:
-            msg += "\n{wGM:{n %s" % self.assigned_to.key
+        msg = "\n|wRequest:|n %s" % self.description
         for followup in self.followup_set.all():
-            msg += "\n{wFollowup by:{n %s" % followup.user
-            msg += "\n{wComment:{n %s" % followup.comment
-        msg += "\n\n{wGM Resolution:{n %s" % self.resolution
+            msg += "\n|wFollowup by |c%s|w:|n %s" % (followup.user, followup.comment)
+        if self.assigned_to:
+            msg += "\n|wAssigned GM:|n %s" % self.assigned_to.key
+        msg += "\n|wGM Resolution:|n %s" % self.resolution
         return msg
-
 
 
 class FollowUpManager(models.Manager):

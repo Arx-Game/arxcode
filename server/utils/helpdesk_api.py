@@ -11,10 +11,10 @@ from datetime import datetime
 from web.helpdesk.models import Ticket, Queue, FollowUp
 
 
-def create_ticket(caller, message, priority=5, queue=settings.REQUEST_QUEUE_ID,
+def create_ticket(caller, message, priority=3, queue=settings.REQUEST_QUEUE_ID,
                   send_email=True, optional_title=None):
     """
-    Creates a new ticket.
+    Creates a new ticket and returns it.
     """
     try:
         q = Queue.objects.get(id=queue)
@@ -22,11 +22,13 @@ def create_ticket(caller, message, priority=5, queue=settings.REQUEST_QUEUE_ID,
         if send_email and caller.email != "dummy@dummy.com":
             email = caller.email
         if not optional_title:
-            optional_title = message if len(message) < 15 else "%s..." % message[:12]
+            optional_title = message if len(message) <= 15 else "%s+" % message[:14]
         try:
-            room = caller.db.char_ob.location
+            room = caller.char_ob.location
         except AttributeError:
             room = None
+        # not a fan of emojis in tickets, tbh
+        message = message.rstrip(" ;)").rstrip(" :p").rstrip(" :P").rstrip(" ;P").rstrip(" ;p")
         ticket = Ticket(title=optional_title,
                         queue=q,
                         db_date_created=datetime.now(),
@@ -35,21 +37,18 @@ def create_ticket(caller, message, priority=5, queue=settings.REQUEST_QUEUE_ID,
                         submitting_room=room,
                         description=message,
                         priority=priority,)
-        # not a fan of emojis in tickets, tbh                
-        message = message.rstrip(" ;)").rstrip(" :p").rstrip(" :P").rstrip(" ;P").rstrip(" ;p")
     except Exception as err:
-        inform_staff("ERROR: Error when attempting to create ticket: %s" % err)
+        inform_staff("ERROR when attempting to create ticket: %s" % err)
         return False
     ticket.save()
-    msg = "{c%s{n: %s" % (caller, "[%s] %s" % (optional_title, message) if optional_title else message)
-    staff_msg = "{w[%s]{n: Ticket ID: %s, %s" % (str(q), ticket.id, msg)
+    staff_msg = "{w[%s]{n Ticket #%s by {c%s{n: %s" % (str(q), ticket.id, caller, message)
     inform_staff(staff_msg)
     # to do: mail player
     player_msg = "You have successfully created a new ticket.\n\n"
     player_msg += "{wTicket ID:{n %s\n" % ticket.id
     player_msg += "{wIssue:{n %s" % message
     caller.inform(player_msg, category="requests", append=False)
-    return True
+    return ticket
 
 
 def add_followup(caller, ticket, message, mail_player=True):
@@ -63,7 +62,7 @@ def add_followup(caller, ticket, message, mail_player=True):
         new_followup = FollowUp(user_id=caller.id, date=datetime.now(), ticket=ticket, comment=message, public=False)
         new_followup.save()
     except Exception as err:
-        inform_staff("ERROR: Error when attempting to add followup to ticket: %s" % err)
+        inform_staff("ERROR when attempting to add followup to ticket: %s" % err)
         return False
     inform_staff("{w[Requests]{n: %s has left a comment on ticket %s: %s" % (caller.key, ticket.id, message))
     if mail_player:

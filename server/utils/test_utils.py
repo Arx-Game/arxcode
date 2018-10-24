@@ -5,7 +5,7 @@ whitespace characters don't match.
 """
 import re
 
-from mock import Mock
+from mock import Mock, patch
 
 from evennia.commands.default.tests import CommandTest
 from evennia.server.sessionhandler import SESSIONS
@@ -341,3 +341,39 @@ class TestEquipmentMixins(object):
                 lockstr += ";teach: ability(%s)" % (lvl + 1)
             recipe.locks.replace(lockstr)
             recipe.save()
+
+
+class TestTicketMixins(object):
+    def setUp(self):
+        from web.helpdesk.models import Ticket, Queue
+        super(TestTicketMixins, self).setUp()
+        self.q_req = Queue.objects.create(slug="Request", title="Request for GM action")
+        self.q_bug = Queue.objects.create(slug="Bug", title="Bug reports/Technical issues")
+        self.q_typ = Queue.objects.create(slug="Typo", title="Typos")
+        self.q_cod = Queue.objects.create(slug="Code", title="Coding Requests/Wishlist")
+        self.q_prp = Queue.objects.create(slug="PRP", title="PRP Questions")
+        self.q_sto = Queue.objects.create(slug="Story", title="Story Actions")
+        pout = Ticket.objects.create
+        with patch('django.utils.timezone.now', Mock(return_value=self.fake_datetime)):
+            self.tix1 = pout(title="Bishi too easy", queue=self.q_bug, submitter_email="sly@vix.com",
+                             submitting_player=self.account2, submitting_room=self.room,
+                             description="Galvanion didn't last longer than three minutes. Wtf.")
+            self.tix2 = pout(title="Let me kill a bishi?", queue=self.q_req, submitter_email="sly@vix.com",
+                             submitting_player=self.account2, submitting_room=self.room,
+                             description="Somehow Darain is still alive, as a paladin. Can't let it slide.")
+            self.tix3 = pout(title="Sly Spareaven?", queue=self.q_typ, submitter_email="sly@vix.com",
+                             submitting_player=self.account2, submitting_room=self.room, priority=5,
+                             description="What's a Spareaven anyway? I am -the- sexiest Deraven.")
+            self.tix4 = pout(title="Command for licking paladins", queue=self.q_cod, submitter_email="sly@vix.com",
+                             submitting_player=self.account2, submitting_room=self.room, priority=4,
+                             description="Need a command to let me steal souls like Poison. /lick maybe?")
+            self.tix5 = pout(title="Bring Sexy Back", queue=self.q_prp, submitter_email="sly@vix.com",
+                             submitting_player=self.account2, submitting_room=self.room,
+                             description="Propose an event with so many shy bishis, and 0 Dark Princesses.")
+            self.tix6 = pout(title="Poison too hot", queue=self.q_bug, submitter_email="sly@vix.com",
+                             submitting_player=self.account2, submitting_room=self.room, priority=1,
+                             description="Let's make Poison an Iksar. Scaled for his pleasure?")
+            # this ticket's player is char1 instead:
+            self.tix7 = pout(title="3 Raccoons in a Trenchcoat", queue=self.q_sto, submitter_email="p@ison.com",
+                             submitting_player=self.account, submitting_room=self.room,
+                             description="Just when you thought you'd met the perfect girl.")
