@@ -736,8 +736,8 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
                           "6 TestAccount2 Poison too hot       1 Bug")
         # Anything that saves ticket prob needs to be inside context manager, for stupid datetime
         with patch('django.utils.timezone.now', Mock(return_value=self.fake_datetime)):
-            self.call_cmd("/move 6", "Usage: @job/move <#>=<queue> Queue options: Request, Bug, Typo, Code, "
-                                     "PRP, Story")
+            self.call_cmd("/move 6", "Usage: @job/move <#>=<queue> Queue options: Bug, Code, PRP, Request, "
+                                     "Story, Typo")
             self.call_cmd("/move 6=code", "Ticket 6 is now in queue Coding Requests/Wishlist.")
             self.call_cmd("/priority 6=hella", "Must be a number.")
             self.call_cmd("/priority 6=4", "Ticket new priority is 4.")
@@ -749,7 +749,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
                           "Ticket successfully closed.")
         self.call_cmd("6", "\n[Ticket #6] Poison too hot"
                            "\nQueue: Coding Requests/Wishlist - Priority 4"
-                           "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                           "\nPlayer: TestAccount2\nLocation: Room (#1)"
                            "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
                            "\nRequest: Let's make Poison an Iksar. Scaled for his pleasure?"
                            "\nFollowup by Testaccount: No Sly. stop. STOP.\nAssigned GM: Testaccount"
@@ -771,7 +771,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             # confirms followup was added:
             self.call_cmd("8", "\n[Ticket #8] Basic request"
                                "\nQueue: Request for GM action - Priority 3"
-                               "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                               "\nPlayer: TestAccount2\nLocation: Room (#1)"
                                "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
                                "\nRequest: Hey bishi can I get 3 minutes of your time?"
                                "\nFollowup by Testaccount2: I'll just wait by your vanity mirror. "
@@ -783,7 +783,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             # confirms "+911" elevates priority to 1:
             self.call_cmd("9", "\n[Ticket #9] help it's Khirath!"
                                "\nQueue: Request for GM action - Priority 1"
-                               "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                               "\nPlayer: TestAccount2\nLocation: Room (#1)"
                                "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
                                "\nRequest: Ok I'mma have to knife fight a bishi brb."
                                "\nGM Resolution: None")
@@ -794,7 +794,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             # confirms "bug" changes the queue:
             self.call_cmd("10", "\n[Ticket #10] Khirath strangely resistant..."
                                 "\nQueue: Bug reports/Technical issues - Priority 3"
-                                "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                                "\nPlayer: TestAccount2\nLocation: Room (#1)"
                                 "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
                                 "\nRequest: Khirath strangely resistant to slinky squirms."
                                 "\nGM Resolution: None")
@@ -805,7 +805,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             # confirms "typo" changes priority and queue:
             self.call_cmd("11", "\n[Ticket #11] Seriously it is Deraven not..."
                                 "\nQueue: Typos - Priority 5"
-                                "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                                "\nPlayer: TestAccount2\nLocation: Room (#1)"
                                 "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
                                 "\nRequest: Seriously it is Deraven not Spareaven who keeps saying this???"
                                 "\nGM Resolution: None")
