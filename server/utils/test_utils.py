@@ -5,7 +5,7 @@ whitespace characters don't match.
 """
 import re
 
-from mock import Mock
+from mock import Mock, patch
 
 from evennia.commands.default.tests import CommandTest
 from evennia.server.sessionhandler import SESSIONS
@@ -325,7 +325,7 @@ class TestEquipmentMixins(object):
         for item in worn:
             outfit.add_fashion_item(item=item)
         return outfit
-      
+
     def add_recipe_additional_costs(self, val):
         """Adds additional_cost to recipes and saves them."""
         for recipe in self.test_recipes:
