@@ -657,6 +657,7 @@ class StaffCommandTests(ArxCommandTest):
 
 
 class JobCommandTests(TestTicketMixins, ArxCommandTest):
+
     def test_cmd_job(self):
         self.setup_cmd(jobs.CmdJob, self.account)
         self.call_cmd("", "# Player       Request              Priority/Q          \n"
@@ -689,3 +690,57 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/delete 1", "Deleting ticket #1.")
         self.call_cmd("1", "No ticket found by that number.")
         # ... ^_^ TODO: test the various ways to list tickets: /old, /mine, /all, /moreold, /only, etc
+
+    def test_cmd_request(self):
+        self.setup_cmd(jobs.CmdRequest, self.account2)
+        with patch('django.utils.timezone.now', Mock(return_value=self.fake_datetime)):
+            self.call_cmd("Basic request=Hey bishi can I get 3 minutes of your time?",
+                          "Thank you for submitting a request to the GM staff. Your ticket (#8) "
+                          "has been added to the queue.")
+            self.call_cmd("/followup 8=I'll just wait by your vanity mirror. This is a comfy stool.",
+                          "Followup added.")
+            # confirms followup was added:
+            self.call_cmd("8", "\n[Ticket #8] Basic request"
+                               "\nQueue: Request for GM action - Priority 3"
+                               "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                               "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
+                               "\nRequest: Hey bishi can I get 3 minutes of your time?"
+                               "\nFollowup by Testaccount2: I'll just wait by your vanity mirror. "
+                               "This is a comfy stool.\nGM Resolution: None")
+            self.call_cmd("help it's Khirath!=Ok I'mma have to knife fight a bishi brb.",
+                          "Thank you for submitting a request to the GM staff. Your ticket (#9) "
+                          "has been added to the queue.", cmdstr="+911")
+            # confirms "+911" elevates priority to 1:
+            self.call_cmd("9", "\n[Ticket #9] help it's Khirath!"
+                               "\nQueue: Request for GM action - Priority 1"
+                               "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                               "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
+                               "\nRequest: Ok I'mma have to knife fight a bishi brb."
+                               "\nGM Resolution: None")
+            self.call_cmd("Khirath strangely resistant to slinky squirms.",
+                          "Thank you for submitting a request to the GM staff. Your ticket (#10) "
+                          "has been added to the queue.", cmdstr="bug")
+            # confirms "bug" changes the queue:
+            self.call_cmd("10", "\n[Ticket #10] Khirath strangely resistant..."
+                                "\nQueue: Bug reports/Technical issues - Priority 3"
+                                "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                                "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
+                                "\nRequest: Khirath strangely resistant to slinky squirms."
+                                "\nGM Resolution: None")
+            self.call_cmd("Seriously it is Deraven not Spareaven who keeps saying this???",
+                          "Thank you for submitting a request to the GM staff. Your ticket (#11) "
+                          "has been added to the queue.", cmdstr="typo")
+            # confirms "typo" changes priority and queue:
+            self.call_cmd("11", "\n[Ticket #11] Seriously it is Deraven not..."
+                                "\nQueue: Typos - Priority 5"
+                                "\nPlayer: Testaccount2\nLocation: Room (#1)"
+                                "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
+                                "\nRequest: Seriously it is Deraven not Spareaven who keeps saying this???"
+                                "\nGM Resolution: None")
+            self.tix3.status = self.tix3.CLOSED_STATUS
+            self.tix3.save()
+        self.call_cmd("/followup 3=GRR.", "That ticket is already closed. Please make a new one.")
+        self.call_cmd("/followup 7=Poison?", "No ticket found by that number.")
+        self.call_cmd("", "Closed tickets: 3\nOpen tickets: 1, 2, 4, 5, 6, 8, 9, 10\n"
+                          "Use +request <#> to view an individual ticket. "
+                          "Use +request/followup <#>=<comment> to add a comment.")

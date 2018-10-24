@@ -310,13 +310,13 @@ class CmdRequest(ArxPlayerCommand):
 
     def list_tickets(self):
         """List tickets for the caller"""
-        self.msg("{wClosed tickets:{n %s" % ", ".join(str(ticket.id) for ticket in self.tickets.filter(
-                status__in=[Ticket.CLOSED_STATUS, Ticket.RESOLVED_STATUS])))
-        self.msg("{wOpen tickets:{n %s" % ", ".join(str(ticket.id) for ticket in self.tickets.filter(
-            status=Ticket.OPEN_STATUS)
-        ))
-        self.msg("Use {w+request <#>{n to view an individual ticket.")
-        self.msg("Use {w+request/followup <#>=<comment>{n to add a comment.")
+        closed = self.tickets.filter(status__in=[Ticket.CLOSED_STATUS, Ticket.RESOLVED_STATUS])
+        tickets = self.tickets.filter(status=Ticket.OPEN_STATUS)
+        msg = "{wClosed tickets:{n %s" % ", ".join(str(ticket.id) for ticket in closed)
+        msg += "\n{wOpen tickets:{n %s" % ", ".join(str(ticket.id) for ticket in tickets)
+        msg += "\nUse {w+request <#>{n to view an individual ticket. "
+        msg += "Use {w+request/followup <#>=<comment>{n to add a comment."
+        self.msg(msg)
 
     def get_ticket_from_args(self, args):
         """Retrieve ticket or display valid choices if not found"""
@@ -359,7 +359,7 @@ class CmdRequest(ArxPlayerCommand):
                 return
             self.display_ticket(ticket)
             return
-        optional_title = self.lhs if self.rhs else self.lhs[:30]
+        optional_title = self.lhs if self.rhs else (self.lhs[:27] + "...")
         args = self.rhs if self.rhs else self.args
         email = caller.email if caller.email != "dummy@dummy.com" else None
         if cmdstr == "bug":
@@ -377,7 +377,7 @@ class CmdRequest(ArxPlayerCommand):
         new_ticket = helpdesk_api.create_ticket(caller, args, priority, queue=queue, send_email=email,
                                                 optional_title=optional_title)
         if new_ticket:
-            caller.msg("Thank you for submitting a request to the GM staff. Your ticket #%s "
+            caller.msg("Thank you for submitting a request to the GM staff. Your ticket (#%s) "
                        "has been added to the queue." % new_ticket.id)
             return
         else:
