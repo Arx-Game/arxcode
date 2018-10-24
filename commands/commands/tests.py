@@ -758,7 +758,13 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
                            "\nGM Resolution: Perforce it is not feasible to transmogrify the dark princess.")
         self.call_cmd("/delete 7", "Cannot delete a storyaction. Please move it to a different queue first.")
         self.call_cmd("/delete 1", "Deleting ticket #1.")
-        self.call_cmd("1", "No ticket found by that number.")
+        self.call_cmd("1", "Open Tickets:\n\n"
+                           "# Player       Request              Priority/Q \n"
+                           "2 TestAccount2 Let me kill a bishi? 3 Request  "
+                           "3 TestAccount2 Sly Spareaven?       5 Typo     "
+                           "4 TestAccount2 Command for licking  4 Code     "
+                           "5 TestAccount2 Bring Sexy Back      3 PRP      "
+                           "|No ticket found by that number.")
         # ... ^_^ TODO: test the various ways to list tickets: /old, /mine, /all, /moreold, /only, etc
 
     def test_cmd_request(self):
