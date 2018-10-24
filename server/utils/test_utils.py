@@ -347,12 +347,12 @@ class TestTicketMixins(object):
     def setUp(self):
         from web.helpdesk.models import Ticket, Queue
         super(TestTicketMixins, self).setUp()
-        self.q_req = Queue.objects.create(slug="Request")
-        self.q_bug = Queue.objects.create(slug="Bug")
-        self.q_typ = Queue.objects.create(slug="Typo")
-        self.q_cod = Queue.objects.create(slug="Code")
-        self.q_prp = Queue.objects.create(slug="PRP")
-        self.q_sto = Queue.objects.create(slug="Story")
+        self.q_req = Queue.objects.create(slug="Request", title="Request for GM action")
+        self.q_bug = Queue.objects.create(slug="Bug", title="Bug reports/Technical issues")
+        self.q_typ = Queue.objects.create(slug="Typo", title="Typos")
+        self.q_cod = Queue.objects.create(slug="Code", title="Coding Requests/Wishlist")
+        self.q_prp = Queue.objects.create(slug="PRP", title="PRP Questions")
+        self.q_sto = Queue.objects.create(slug="Story", title="Story Actions")
         pout = Ticket.objects.create
         with patch('django.utils.timezone.now', Mock(return_value=self.fake_datetime)):
             self.tix1 = pout(title="Bishi too easy", queue=self.q_bug, submitter_email="sly@vix.com",

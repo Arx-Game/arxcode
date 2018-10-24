@@ -229,7 +229,7 @@ class CmdJob(ArxPlayerCommand):
         if 'move' in switches:
             slugs = ", ".join([str(q.slug) for q in Queue.objects.all()])
             if not self.lhs or not self.rhs:
-                move_msg = "|wUsage:|n @job/move <#>=<queue> |wQueue options:|n %s." % slugs
+                move_msg = "|wUsage:|n @job/move <#>=<queue> |wQueue options:|n %s" % slugs
                 self.msg(move_msg)
                 return
             try:
