@@ -117,13 +117,17 @@ class ArxCommandTest(ArxTestConfigMixin, CommandTest):
     """
     cmd_class = None
     caller = None
+    instance = None
 
     def setup_cmd(self, cmd_cls, caller):
         self.cmd_class = cmd_cls
         self.caller = caller
+        self.instance = self.cmd_class()
 
     def call_cmd(self, args, msg, **kwargs):
-        self.call(self.cmd_class(), args, msg, caller=self.caller, **kwargs)
+        if not self.instance:
+            self.instance = self.cmd_class()
+        self.call(self.instance, args, msg, caller=self.caller, **kwargs)
 
     # noinspection PyBroadException
     def call(self, cmdobj, args, msg=None, cmdset=None, noansi=True, caller=None, receiver=None, cmdstring=None,
@@ -223,31 +227,33 @@ class TestEquipmentMixins(object):
         AssetOwner.objects.create(organization_owner=self.org)
         self.org.members.create(player=self.dompc)
         self.mat1 = CraftingMaterialType.objects.create(name="Mat1", value=100)
-        self.recipe1 = CraftingRecipe.objects.create(name="Top 1 Slot",
+        self.recipe1 = CraftingRecipe.objects.create(name="Top 1 Slot", ability="tailor",
                                                      primary_amount=5, level=5,
                                                      result="slot:chest;slot_limit:1;baseval:1;penalty:2")
-        self.recipe2 = CraftingRecipe.objects.create(name="Top 2 Slot",
+        self.recipe2 = CraftingRecipe.objects.create(name="Top 2 Slot", ability="leatherworker",
                                                      primary_amount=6, level=6,
                                                      result="slot:chest;slot_limit:2")
-        self.recipe3 = CraftingRecipe.objects.create(name="Bag",
+        self.recipe3 = CraftingRecipe.objects.create(name="Bag", ability="leatherworker",
                                                      primary_amount=5, level=5,
                                                      result="slot:bag;slot_limit:2;baseval:40")
-        self.recipe4 = CraftingRecipe.objects.create(name="Small Weapon",
+        self.recipe4 = CraftingRecipe.objects.create(name="Small Weapon", ability="weaponsmith",
                                                      primary_amount=4, level=4,
                                                      result="baseval:1;weapon_skill:small wpn")
-        self.recipe5 = CraftingRecipe.objects.create(name="Hairpins",
+        self.recipe5 = CraftingRecipe.objects.create(name="Hairpins", ability="weaponsmith",
                                                      primary_amount=4, level=4,
                                                      result="slot:hair;slot_limit:2;baseval:4;")
-        self.recipe6 = CraftingRecipe.objects.create(name="Mask",
+        self.recipe6 = CraftingRecipe.objects.create(name="Mask", ability="apothecary",
                                                      primary_amount=4, level=4,
                                                      result="slot:face;slot_limit:1;fashion_mult:6")
-        self.recipe7 = CraftingRecipe.objects.create(name="Medium Weapon",
+        self.recipe7 = CraftingRecipe.objects.create(name="Medium Weapon", ability="weaponsmith",
                                                      primary_amount=4, level=4,
                                                      result="baseval:5")
-        recipes = (self.recipe1, self.recipe2, self.recipe3, self.recipe4, self.recipe5,
-                   self.recipe6, self.recipe7)
-        for recipe in recipes:
+        self.test_recipes = [self.recipe1, self.recipe2, self.recipe3, self.recipe4, self.recipe5,
+                             self.recipe6, self.recipe7]
+        for recipe in self.test_recipes:
             recipe.primary_materials.add(self.mat1)
+            recipe.locks.add("learn:all();teach:all()")
+            recipe.save()
         # Top1 is a wearable object with no recipe or crafter designated
         self.top1 = create.create_object(wearable_typeclass, key="Top1", location=self.room1, home=self.room1)
         self.top1.db.quality_level = 6
@@ -319,3 +325,19 @@ class TestEquipmentMixins(object):
         for item in worn:
             outfit.add_fashion_item(item=item)
         return outfit
+
+    def add_recipe_additional_costs(self, val):
+        """Adds additional_cost to recipes and saves them."""
+        for recipe in self.test_recipes:
+            recipe.additional_cost = val
+            recipe.save()
+
+    def match_recipe_locks_to_level(self):
+        """Replaces with locks appropriate to recipe difficulty."""
+        for recipe in self.test_recipes:
+            lvl = recipe.level
+            lockstr = "learn: ability(%s)" % lvl
+            if lvl < 6:
+                lockstr += ";teach: ability(%s)" % (lvl + 1)
+            recipe.locks.replace(lockstr)
+            recipe.save()
