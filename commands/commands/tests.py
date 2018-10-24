@@ -48,6 +48,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/teach Char=Mask", "Taught Char Mask.")
         self.assertEqual(list(self.char.dompc.assets.recipes.all()), [self.recipe6])
         self.call_cmd("/teach Char=Mask", "They already know Mask.")
+        self.recipe5.locks.replace("teach:all();learn:all()")
+        self.recipe5.save()
         self.caller = self.char  # Char is staff
         self.call_cmd("/cost Hairpins", "It will cost nothing for you to learn Hairpins.")
 
