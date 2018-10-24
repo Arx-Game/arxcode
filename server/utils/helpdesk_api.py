@@ -14,7 +14,7 @@ from web.helpdesk.models import Ticket, Queue, FollowUp
 def create_ticket(caller, message, priority=3, queue=settings.REQUEST_QUEUE_ID,
                   send_email=True, optional_title=None):
     """
-    Creates a new ticket.
+    Creates a new ticket and returns it.
     """
     try:
         q = Queue.objects.get(id=queue)
@@ -48,7 +48,7 @@ def create_ticket(caller, message, priority=3, queue=settings.REQUEST_QUEUE_ID,
     player_msg += "{wTicket ID:{n %s\n" % ticket.id
     player_msg += "{wIssue:{n %s" % message
     caller.inform(player_msg, category="requests", append=False)
-    return True
+    return ticket
 
 
 def add_followup(caller, ticket, message, mail_player=True):
