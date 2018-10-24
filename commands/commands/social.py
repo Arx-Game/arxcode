@@ -2915,49 +2915,46 @@ class CmdIAmHelping(ArxPlayerCommand):
         Usage:
             +iamhelping <player>=<AP>
 
-    Allows you to donate AP to other players with some restrictions to
+    Allows you to donate AP to other players (with some restrictions) to
     represent helping them out with whatever they're up to: gathering supplies
     for a crafter, acting as a menial servant/helping their servants manage
-    their affairs, discreetly having annoying npcs killed, etc. This has a
-    poor conversion rate, so it's much more effective to assist them
-    directly with investigations, crisis actions, etc, with the accustomed
-    commands.
-
-    Current rate of exchange is 3 to 1.
+    their affairs, discreetly having annoying npcs killed, etc. It's much more
+    effective to assist directly with investigations, crisis actions, etc,
+    using those respective commands. Rate of AP conversion is 3 to 1.
     """
     key = "+iamhelping"
     help_category = "Social"
+    ap_conversion = 3
 
     def func(self):
         """Executes the +iamhelping command"""
-        if not self.args:
-            self.msg("You have %s AP remaining." % self.caller.roster.action_points)
-            return
-        targ = self.caller.search(self.lhs)
-        if not targ:
-            return
         try:
-            val = int(self.rhs)
-        except (ValueError, TypeError):
-            self.msg("AP needs to be a number.")
-            return
-        receive_amt = val/3
-        if receive_amt < 1:
-            self.msg("Must transfer at least 1 AP to them.")
-            return
-        if targ.roster.action_points + receive_amt > 100:
-            self.msg("That would put them over 100 AP.")
-            return
-        if not self.caller.pay_action_points(val):
-            self.msg("You do not have enough AP.")
-            return
-        if self.caller.roster.current_account == targ.roster.current_account:
-            self.msg("You cannot give AP to an alt.")
-            return
-        targ.pay_action_points(-receive_amt)
-        self.msg("You have given %s %s AP." % (targ, receive_amt))
-        msg = "%s has given you %s AP." % (self.caller, receive_amt)
-        targ.inform(msg, category=msg)
+            if not self.args:
+                self.msg("You have %s AP remaining." % self.caller.roster.action_points)
+                return
+            targ = self.caller.search(self.lhs)
+            if not targ:
+                return
+            try:
+                val = int(self.rhs)
+            except (ValueError, TypeError):
+                raise CommandError("AP needs to be a number.")
+            if self.caller.roster.current_account == targ.roster.current_account:
+                raise CommandError("You cannot give AP to an alt.")
+            receive_amt = val/self.ap_conversion
+            if receive_amt < 1:
+                raise CommandError("Must transfer at least %s AP." % self.ap_conversion)
+            max_ap = targ.roster.max_action_points
+            if targ.roster.action_points + receive_amt > max_ap:
+                raise CommandError("That would put them over %s AP." % max_ap)
+            if not self.caller.pay_action_points(val):
+                raise CommandError("You do not have enough AP.")
+            targ.pay_action_points(-receive_amt)
+            self.msg("Using %s of your AP, you have given %s %s AP." % (val, targ, receive_amt))
+            msg = "%s has given you %s AP." % (self.caller, receive_amt)
+            targ.inform(msg, category=msg)
+        except CommandError as err:
+            self.msg(err)
 
 
 class CmdRPHooks(ArxPlayerCommand):
