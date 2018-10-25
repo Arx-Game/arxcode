@@ -127,7 +127,13 @@ try:
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in petition commands: %s" % err)
+try:
+    from typeclasses.containers.container import CmdRoot
+except Exception as err:
+    print("<<ERROR>>: Error encountered in container commands: %s" % err)
+
 from evennia.commands.cmdset import CmdSet
+
 
 
 class OOCCmdSet(CmdSet):
@@ -326,3 +332,4 @@ class StaffCmdSet(CmdSet):
         self.add(home.CmdAllowBuilding())
         self.add(home.CmdBuildRoom())
         self.add(home.CmdManageRoom())
+        self.add(CmdRoot())

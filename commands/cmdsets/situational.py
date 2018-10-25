@@ -28,3 +28,4 @@ class SituationalCmdSet(CmdSet):
         self.add(readable.WriteCmdSet())
         self.add(readable.SignCmdSet())
         self.add(container.CmdChestKey())
+
