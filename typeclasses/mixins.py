@@ -921,7 +921,7 @@ class LockMixins(object):
         :return: str
         """
         currently_open = not self.db.locked
-        show_contents = currently_open and show_contents
+        show_contents = (currently_open or self.tags.get("displayable")) and show_contents
         base = super(LockMixins, self).return_appearance(pobject, detailed=detailed,
                                                          format_desc=format_desc, show_contents=show_contents)
         return base + "\nIt is currently %s." % ("locked" if self.db.locked else "unlocked")
