@@ -87,7 +87,9 @@ def create_container(recipe, roll, proj, caller):
     obj = create_obj(CONTAINER, proj[1], caller, caller, quality)
     obj.db.max_volume = base + int(scaling * quality)
     if recipe.resultsdict.get("displayable") == "true":
-       obj.tags.add("displayable")
+        obj.tags.add("displayable")
+    if recipe.resultsdict.get("display_by_line") == "true":
+        obj.tags.add("display_by_line")
     try:
         obj.grantkey(caller)
     except (TypeError, AttributeError, ValueError):

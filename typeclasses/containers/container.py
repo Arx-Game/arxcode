@@ -193,7 +193,7 @@ class Container(LockMixins, DefaultObject):
 
     def return_contents(self, pobject, detailed=True, show_ids=False,
                         strip_ansi=False, show_places=True, sep=", "):
-        if self.db.recipe == 129:
+        if self.db.recipe == 129 or self.tags.get("display_by_line"):
             return super(Container, self).return_contents(pobject, detailed, show_ids, strip_ansi, show_places,
                                                           sep="\n         ")
         return super(Container, self).return_contents(pobject, detailed, show_ids, strip_ansi, show_places, sep)
