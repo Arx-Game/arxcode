@@ -747,7 +747,7 @@ class CmdGameTime(ArxCommand):
 
     # noinspection PyUnusedLocal
     def get_help(self, caller, cmdset):
-        return self.__doc__ + "\n\nGame time moves %s faster than real time." % settings.TIME_FACTOR
+        return self.__doc__ + "\n\nGame time moves %s times faster than real time." % gametime.time_factor()
 
     def func(self):
         """Reads time info from current room"""
@@ -764,6 +764,55 @@ class CmdGameTime(ArxCommand):
             hour, minute = time[4], time[5]
             from server.utils.arx_utils import get_date
             self.caller.msg("Today's date: %s. Current time: %s:%02d" % (get_date(), hour, minute))
+
+
+class CmdSetGameTimescale(ArxCommand):
+    """
+    Sets or checks the multiplier for the current IC timescale.
+
+    Usage:
+        timescale
+        timescale/set <new>
+
+    The first form of this command will display what the current time
+    factor is, the speed at which IC time runs compared to normal time.
+    The second form will set a new time factor.
+    """
+    key = "timescale"
+    locks = "cmd:perm(Wizards)"
+
+    def func(self):
+        if "set" in self.switches:
+            try:
+                factor = float(self.args)
+                gametime.set_time_factor(factor)
+                self.msg("IC time now runs at {}:1 scale.".format(factor))
+            except ValueError:
+                self.msg("You need to provide a number for the new time factor.")
+            return
+
+        elif "history" in self.switches:
+            from datetime import datetime
+            from evennia.utils.evtable import EvTable
+            table = EvTable("Real Time", "Game Date", "Multiplier")
+            for tdict in gametime.time_intervals():
+                dt = datetime.fromtimestamp(tdict['real'])
+                ic_time = gametime._format(tdict['game'], gametime.YEAR, gametime.MONTH, gametime.WEEK, gametime.DAY,
+                                           gametime.HOUR, gametime.MIN)
+                month, day, year = ic_time[1] + 1, ic_time[3] + 1, ic_time[0] + 1001
+
+                real_time = dt.strftime("%m/%d/%Y %H:%M")
+                ic_timestamp = "{}/{}/{} {}:{}".format(month, day, year, ic_time[4], ic_time[5])
+
+                multiplier = tdict['multiplier']
+
+                table.add_row(real_time, ic_timestamp, multiplier)
+
+            self.msg(table)
+            return
+
+        factor = gametime.time_factor()
+        self.msg("IC time is running at {}:1 scale".format(factor))
 
 
 class TempRoom(ArxRoom):

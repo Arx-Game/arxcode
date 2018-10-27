@@ -1,32 +1,16 @@
-"""
-The gametime module handles the global passage of time in the mud.
+import time
 
-It also supplies some useful methods to convert between
-in-mud time and real-world time as well allows to get the
-total runtime of the server and the current uptime.
-"""
-
-from time import time
-from django.conf import settings
-from .scripts import Script
 from evennia.utils.create import create_script
 
-GAMETIME_SCRIPT_NAME = "sys_game_time"
+from .scripts import Script
+from server.conf import settings
 
-# Speed-up factor of the in-game time compared
-# to real time.
+SERVER_START = time.time()
+SERVER_RUNTIME = 0.0
 
 TIMEFACTOR = settings.TIME_FACTOR
 
-# Common real-life time measure, in seconds.
-# You should not change this.
-
-REAL_MIN = 60.0  # seconds per minute in real world
-
-# Game-time units, in real-life seconds. These are supplied as
-# a convenient measure for determining the current in-game time,
-# e.g. when defining in-game events. The words month, week and year can
-# be used to mean whatever units of time are used in the game.
+GAMETIME_SCRIPT_NAME = "sys_game_time"
 
 MIN = 60
 HOUR = MIN * 60
@@ -35,20 +19,84 @@ WEEK = DAY * 7
 MONTH = WEEK * 4
 YEAR = MONTH * 12
 
-# Cached time stamps
-# SERVER_STARTTIME = time()
-#added it as a constant in case the module is ever reloaded
-SERVER_STARTTIME = time()
-SERVER_RUNTIME = 0.0
-LOGPATH = settings.LOG_DIR
-BACKUP_FILE = LOGPATH + "/gametime_backup_log.txt"
-
 
 class GameTime(Script):
     """
-    This script repeatedly saves server times so
-    it can be retrieved after server downtime.
+    This script maintains IC game time, allowing you to set a multiplier.
+    It remembers at what point the multipliers were changed, so it doesn't
+    alter the IC game time when you alter the multiplier; it merely changes
+    things going forward.
     """
+
+    def _upgrade(self):
+        """
+        Internal function to upgrade from the old gametime script
+        """
+        if not self.attributes.has("intervals"):
+            # Convert from old script style
+            run_time = self.attributes.get("run_time", default=0.0)
+            game_time = run_time * 2
+            self.mark_time(runtime=run_time, gametime=game_time, multiplier=TIMEFACTOR)
+
+    def mark_time(self, runtime=0.0, gametime=0.0, multiplier=TIMEFACTOR):
+        """
+        Mark a time interval
+        :param runtime: The amount of RL time the game has been running, in seconds,
+                        minus downtime.
+        :param gametime: The IC timestamp since the IC epoch, in seconds.
+        :param multiplier: The multiplier.
+        :return:
+        """
+        tdict = {'run': runtime, 'game': gametime, "multiplier": multiplier, "real": time.time()}
+        times = list(self.intervals)
+        times.append(tdict)
+        self.attributes.add("intervals", times)
+
+        from evennia.utils import logger
+        logger.log_info("Gametime: Marked new time {}".format(tdict))
+
+    @property
+    def intervals(self):
+        """
+        The runtime/gametime marker pairs.
+        """
+        return self.attributes.get("intervals") or []
+
+    @property
+    def last_mark(self):
+        """
+        The last runtime / gametime / multiplier marker, returned in that order.
+        """
+        if len(self.intervals) == 0:
+            return 0, 0, 2.0
+
+        tdict = self.intervals[-1]
+        return tdict['run'], tdict['game'], tdict['multiplier']
+
+    @property
+    def runtime(self):
+        """
+        How long we've been running, total, since our first run,
+        minus downtimes.
+        """
+        return SERVER_RUNTIME + self.uptime
+
+    @property
+    def uptime(self):
+        """
+        How long we've been running since our last restart.
+        """
+        return time.time() - SERVER_START
+
+    @property
+    def gametime(self):
+        """
+        The game time, in seconds since the in-game epoch
+        """
+        run, game, multi = self.last_mark
+        timesince = self.runtime - run
+        return game + (timesince * multi)
+
     def at_script_creation(self):
         """
         Setup the script
@@ -58,25 +106,13 @@ class GameTime(Script):
         self.interval = 60
         self.persistent = True
         self.start_delay = True
-        self.attributes.add("run_time", 0.0)  # OOC time
-        self.attributes.add("up_time", 0.0)  # OOC time
-        try:
-            logfile = open(BACKUP_FILE)
-            lines = [line.strip() for line in logfile if line[0].isdigit()]
-            #get the last recorded time in file
-            last_time = float(lines[-1])
-            if last_time:
-                self.attributes.add("run_time", last_time)
-        except Exception:
-            from evennia.utils import logger
-            logger.log_trace()
 
     def at_repeat(self):
         """
         Called every minute to update the timers.
         """
-        self.attributes.add("run_time", runtime())
-        self.attributes.add("up_time", uptime())
+        self.attributes.add("run_time", self.runtime)
+        self.attributes.add("up_time", self.uptime)
         # Despite having checks elsewhere, apparently sometimes
         # the script can restart without ever calling at_start
         # or at_script_creation. So a final check here, just
@@ -88,7 +124,6 @@ class GameTime(Script):
         except Exception:
             from evennia.utils import logger
             logger.log_trace()
-        
 
     def at_start(self):
         """
@@ -97,39 +132,24 @@ class GameTime(Script):
         times.
         """
         global SERVER_RUNTIME
-        SERVER_RUNTIME = self.attributes.get("run_time")
-        #In case of an error loading script from database, we'll check time
-        #versus the last saved gametime in the logfile
-        try:
-            logfile = open(BACKUP_FILE)
-            lines = [line.strip() for line in logfile if line[0].isdigit()]
-            #get the last recorded time in file
-            last_time = float(lines[-1])
-            if SERVER_RUNTIME < last_time:
-                SERVER_RUNTIME = last_time
-        except Exception:
-            from evennia.utils import logger
-            logger.log_trace()
+        SERVER_RUNTIME = self.attributes.get("run_time", 0.0)
+        self._upgrade()
 
-def save():
-    "Force save of time. This is called by server when shutting down/reloading."
+
+def get_script():
+    """
+    Returns the ScriptDB instance
+    :return:
+    """
     from evennia.scripts.models import ScriptDB
     try:
         script = ScriptDB.objects.get(db_key=GAMETIME_SCRIPT_NAME)
-        script.at_repeat()
-    except Exception:
-        from evennia.utils import logger
-        logger.log_trace()
-    try:
-        with open(BACKUP_FILE, 'r+') as logfile:
-            data = logfile.readline()
-            if not data or float(data) < runtime():
-                logfile.seek(0)
-                logfile.write(str(runtime()))
-                logfile.close()
-    except Exception:
-        from evennia.utils import logger
-        logger.log_trace()
+        return script
+    except ScriptDB.DoesNotExist:
+        return create_script(GameTime)
+
+
+# Legacy definitions
 
 def _format(seconds, *divisors) :
     """
@@ -155,68 +175,71 @@ def _format(seconds, *divisors) :
     return tuple(results)
 
 
-# Access functions
-
 def runtime(format=False):
-    "Get the total runtime of the server since first start (minus downtimes)"
-    runtime = SERVER_RUNTIME + (time() - SERVER_STARTTIME)
+    """
+    Returns the amount of time, in seconds, the game has been running, not
+    counting downtime.  If format is True, splits it into year, month, week,
+    day, hour, min.
+    :param format: Whether to parse into elements.
+    """
+    script = get_script()
+    run_time = script.runtime
     if format:
-        return _format(runtime, 31536000, 2628000, 604800, 86400, 3600, 60)
-    return runtime
+        return _format(run_time, YEAR, MONTH, WEEK, DAY, HOUR, MIN)
+    return run_time
+
 
 def uptime(format=False):
-    "Get the current uptime of the server since last reload"
-    uptime = time() - SERVER_STARTTIME
+    """
+    Returns the amount of time, in seconds, since our last restart.  If format
+    is true, splits it into year, month, week, day, hour, min.
+    :param format: Whether to parse into elements.
+    """
+    script = get_script()
+    up_time = script.uptime
     if format:
-        return _format(uptime, 31536000, 2628000, 604800, 86400, 3600, 60)
-    return uptime
+        return _format(up_time, YEAR, MONTH, WEEK, DAY, HOUR, MIN)
+    return up_time
+
 
 def gametime(format=False):
-    "Get the total gametime of the server since first start (minus downtimes)"
-    gametime = runtime() * TIMEFACTOR
+    """
+    Returns the amount of time, in seconds, since our last restart.  If format
+    is true, splits it into year, month, week, day, hour, min.
+    :param format: Whether to parse into elements.
+    """
+    script = get_script()
+    game_time = script.gametime
     if format:
-        return _format(gametime, YEAR, MONTH, WEEK, DAY, HOUR, MIN)
-    return gametime
+        return _format(game_time, YEAR, MONTH, WEEK, DAY, HOUR, MIN)
+    return game_time
 
 
-def gametime_to_realtime(secs=0, mins=0, hrs=0, days=0,
-                         weeks=0, months=0, yrs=0, format=False):
+def time_factor():
     """
-    This method helps to figure out the real-world time it will take until an
-    in-game time has passed. E.g. if an event should take place a month later
-    in-game, you will be able to find the number of real-world seconds this
-    corresponds to (hint: Interval events deal with real life seconds).
-
-    Example:
-     gametime_to_realtime(days=2) -> number of seconds in real life from
-                                now after which 2 in-game days will have passed.
+    Returns the current IC time multiplier.
     """
-    realtime = (secs + mins * MIN + hrs * HOUR + days * DAY + weeks * WEEK + \
-                months * MONTH + yrs * YEAR) / TIMEFACTOR
-    if format:
-        return _format(realtime, 31536000, 2628000, 604800, 86400, 3600, 60)
-    return realtime
+    script = get_script()
+    _, _, multiplier = script.last_mark
+    return multiplier
 
 
-def realtime_to_gametime(secs=0, mins=0, hrs=0, days=0,
-                         weeks=0, months=0, yrs=0, format=False):
+def set_time_factor(factor=2):
     """
-    This method calculates how much in-game time a real-world time
-    interval would correspond to. This is usually a lot less interesting
-    than the other way around.
-
-     Example:
-      realtime_to_gametime(days=2) -> number of game-world seconds
-                                      corresponding to 2 real days.
+    Sets the IC time multiplier going forward.
+    :param factor: The new IC time multiplier.
     """
-    gametime = TIMEFACTOR * (secs + mins * 60 + hrs * 3600 + days * 86400 +
-                             weeks * 604800 + months * 2628000 + yrs * 31536000)
-    if format:
-        return _format(gametime, YEAR, MONTH, WEEK, DAY, HOUR, MIN)
-    return gametime
+    script = get_script()
+    script.mark_time(runtime=runtime(), gametime=gametime(), multiplier=factor)
 
 
-# Time administration routines
+def time_intervals():
+    """
+    Return all our historical time-intervals
+    """
+    script = get_script()
+    return script.intervals
+
 
 def init_gametime():
     """
