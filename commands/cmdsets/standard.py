@@ -135,6 +135,10 @@ try:
     from world.weather import weather_commands
 except Exception as err:
     print("<<ERROR>>: Error encountered in weather commands: %s" % err)
+try:
+    from world.templates.template_commands import CmdTemplateForm
+except Exception as err:
+    print("<<ERROR>>: Error encountered in container commands: %s" % err)
 
 
 from evennia.commands.cmdset import CmdSet
@@ -340,3 +344,6 @@ class StaffCmdSet(CmdSet):
         self.add(home.CmdBuildRoom())
         self.add(home.CmdManageRoom())
         self.add(CmdRoot())
+
+        # still pending implementation of additional details
+        self.add(CmdTemplateForm())

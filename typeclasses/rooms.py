@@ -527,7 +527,7 @@ class CmdStudyRawAnsi(ArxCommand):
             targ.msg("%s sent you this @study on %s: " % (caller, ob))
             caller.msg("Sent to %s." % targ)
         targ.msg("Escaped name: %s" % raw(ob.name))
-        targ.msg("Escaped desc: %s" % raw(ob.return_appearance(caller, detailed=False)))
+        targ.msg("Escaped desc: %s" % raw(ob.desc))
 
 
 # Custom build commands for setting seasonal descriptions
