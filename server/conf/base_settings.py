@@ -90,6 +90,7 @@ INSTALLED_APPS += ('world.dominion',
                    'django.contrib.humanize',
                    'bootstrapform',
                    'crispy_forms',
+                   'world.weather',
                    )
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'

@@ -4,6 +4,7 @@ from evennia.utils.create import create_script
 
 from .scripts import Script
 from server.conf import settings
+from evennia.server.models import ServerConfig
 
 SERVER_START = time.time()
 SERVER_RUNTIME = 0.0
@@ -32,9 +33,14 @@ class GameTime(Script):
         """
         Internal function to upgrade from the old gametime script
         """
+        from evennia.utils import logger
+        if not ServerConfig.objects.conf(key="run_time", default=None):
+            logger.log_info("Upgrading or configuring gametime as ServerConfig value...")
+            run_time = self.attributes.get("run_time", default=0.0)
+            ServerConfig.objects.conf(key="run_time", value=run_time)
         if not self.attributes.has("intervals"):
             # Convert from old script style
-            run_time = self.attributes.get("run_time", default=0.0)
+            run_time = ServerConfig.objects.conf("run_time", default=0.0)
             game_time = run_time * 2
             self.mark_time(runtime=run_time, gametime=game_time, multiplier=TIMEFACTOR)
 
@@ -111,8 +117,8 @@ class GameTime(Script):
         """
         Called every minute to update the timers.
         """
+        ServerConfig.objects.conf(key="run_time", value=self.runtime)
         self.attributes.add("run_time", self.runtime)
-        self.attributes.add("up_time", self.uptime)
         # Despite having checks elsewhere, apparently sometimes
         # the script can restart without ever calling at_start
         # or at_script_creation. So a final check here, just
@@ -132,8 +138,8 @@ class GameTime(Script):
         times.
         """
         global SERVER_RUNTIME
-        SERVER_RUNTIME = self.attributes.get("run_time", 0.0)
         self._upgrade()
+        SERVER_RUNTIME = ServerConfig.objects.conf("run_time")
 
 
 def get_script():
@@ -239,6 +245,42 @@ def time_intervals():
     """
     script = get_script()
     return script.intervals
+
+
+# Initialize our values only once.
+MONTHS_PER_YEAR = 12
+SEASONAL_BOUNDARIES = (3 / 12.0, 6 / 12.0, 9 / 12.0)
+HOURS_PER_DAY = 24
+DAY_BOUNDARIES = (0, 6 / 24.0, 12 / 24.0, 18 / 24.0)
+
+
+def get_time_and_season():
+    # get the current time as parts of year and parts of day
+    # returns a tuple (years,months,weeks,days,hours,minutes,sec)
+    current_time = gametime(format=True)
+    month, hour = current_time[1], current_time[4]
+    season = float(month) / MONTHS_PER_YEAR
+    timeslot = float(hour) / HOURS_PER_DAY
+
+    # figure out which slots these represent
+    if SEASONAL_BOUNDARIES[0] <= season < SEASONAL_BOUNDARIES[1]:
+        curr_season = "spring"
+    elif SEASONAL_BOUNDARIES[1] <= season < SEASONAL_BOUNDARIES[2]:
+        curr_season = "summer"
+    elif SEASONAL_BOUNDARIES[2] <= season < 1.0 + SEASONAL_BOUNDARIES[0]:
+        curr_season = "autumn"
+    else:
+        curr_season = "winter"
+
+    if DAY_BOUNDARIES[0] <= timeslot < DAY_BOUNDARIES[1]:
+        curr_timeslot = "night"
+    elif DAY_BOUNDARIES[1] <= timeslot < DAY_BOUNDARIES[2]:
+        curr_timeslot = "morning"
+    elif DAY_BOUNDARIES[2] <= timeslot < DAY_BOUNDARIES[3]:
+        curr_timeslot = "afternoon"
+    else:
+        curr_timeslot = "evening"
+    return curr_season, curr_timeslot
 
 
 def init_gametime():

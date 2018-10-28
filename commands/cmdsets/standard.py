@@ -131,9 +131,13 @@ try:
     from typeclasses.containers.container import CmdRoot
 except Exception as err:
     print("<<ERROR>>: Error encountered in container commands: %s" % err)
+try:
+    from world.weather import weather_commands
+except Exception as err:
+    print("<<ERROR>>: Error encountered in weather commands: %s" % err)
+
 
 from evennia.commands.cmdset import CmdSet
-
 
 
 class OOCCmdSet(CmdSet):
@@ -166,6 +170,8 @@ class OOCCmdSet(CmdSet):
         self.add(social.CmdSocialScore())
         self.add(social.CmdFavor())
         self.add(overrides.SystemNoMatch())
+        self.add(weather_commands.CmdAdminWeather())
+        self.add(weather_commands.CmdWeather())
 
 
 class StateIndependentCmdSet(CmdSet):
