@@ -6,6 +6,7 @@ from .models import WeatherType, WeatherEmit
 from typeclasses.scripts import gametime
 from evennia.server.models import ServerConfig
 from evennia.server.sessionhandler import SESSION_HANDLER
+from evennia.utils import logger
 from random import randint
 
 
@@ -20,12 +21,14 @@ def weather_emits(weathertype, season=None, time=None, intensity=5):
     """
     if not season:
         season, _ = gametime.get_time_and_season()
+    season = season.lower()
 
     if not time:
         _, time = gametime.get_time_and_season()
+    time = time.lower()
 
     qs = WeatherEmit.objects.filter(weather=weathertype)
-    qs.filter(intensity_min__lte=intensity, intensity_max__gte=intensity)
+    qs = qs.filter(intensity_min__lte=intensity, intensity_max__gte=intensity)
     if season == 'spring':
         qs = qs.filter(in_spring=True)
     elif season == 'summer':
@@ -80,6 +83,7 @@ def pick_emit(weathertype, season=None, time=None, intensity=None):
     emits = weather_emits(weathertype, season=season, time=time, intensity=intensity)
 
     if emits.count() == 0:
+        logger.log_err("Weather: Unable to find any matching emits.")
         return None
 
     if emits.count() == 1:
@@ -102,7 +106,7 @@ def pick_emit(weathertype, season=None, time=None, intensity=None):
     if not result:
         result = values[sorted(values.keys())[-1]]
 
-    return result.text if result else None
+    return result.text
 
 
 def set_weather_type(value=1):
@@ -176,6 +180,7 @@ def emits_for_season(season='fall'):
     :param season: 'summer', 'autumn', 'winter', or 'spring'
     """
     qs = WeatherEmit.objects.all()
+    season = season.lower()
     if season == 'spring':
         qs = qs.filter(in_spring=True)
     elif season == 'summer':
@@ -296,6 +301,16 @@ def choose_current_weather():
     weather_intensity = get_weather_intensity()
 
     emit = pick_emit(weather_type, intensity=weather_intensity)
+    while not emit:
+        # Just in case there's no available weather for a given
+        # target intensity of during our current season/time;
+        # we'll advance the weather until we do have something.
+        season, time = gametime.get_time_and_season()
+        logger.log_err("Weather: No available weather for type {} intensity {} during {} {}"
+                       .format(weather_type, weather_intensity, season, time))
+        weather_type, weather_intensity = advance_weather()
+        emit = pick_emit(weather_type, intensity=weather_intensity)
+
     ServerConfig.objects.conf(key='weather_last_emit', value=emit)
     return emit
 

@@ -17,6 +17,7 @@ class CmdAdminWeather(ArxCommand):
         @admin_weather/lock
         @admin_weather/unlock
         @admin_weather/set [custom weather emit]
+        @admin_weather/settype <weather_id>=<intensity>
         @admin_weather/start
 
         The first form of this command will show you current weather information.
@@ -29,7 +30,10 @@ class CmdAdminWeather(ArxCommand):
         changes from happening.
         The sixth will set a custom weather pattern, for unusual GM'd weather events.
         Remember to lock, or it'll go away when the weather changes again!
-        The seventh is used to restart the Weather system if, for some reason,
+        The seventh will set the weather to a specific weather type and intensity,
+        skipping all intermediate steps.  Mostly useful for testing, or GM'ing
+        a specific weather type without setting a single GM emit.
+        The eighth is used to restart the Weather system if, for some reason,
         it hasn't been running.
     """
 
@@ -75,6 +79,29 @@ class CmdAdminWeather(ArxCommand):
         if "unlock" in self.switches:
             ServerConfig.objects.conf('weather_locked', delete=True)
             self.msg("Weather is now unlocked and will change again as normal.")
+            return
+
+        if "settype" in self.switches:
+            if not self.lhs:
+                self.msg("You must provide a weather type ID!")
+                return
+            if not self.rhs:
+                self.msg("You must provide an intensity!")
+                return
+            try:
+                weather_type = int(self.lhs)
+            except ValueError:
+                self.msg("The weather type must be an integer!")
+                return
+            try:
+                weather_intensity = int(self.rhs)
+            except ValueError:
+                self.msg("The weather intensity must be an integer!")
+                return
+            utils.set_weather_type(weather_type)
+            utils.set_weather_intensity(weather_itensity)
+            self.msg("Set weather type to {} and intensity to {}."
+                     .format(weather_type, weather_intensity))
             return
 
         if "start" in self.switches:
