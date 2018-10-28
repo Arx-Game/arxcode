@@ -5,8 +5,8 @@ from models import WeatherEmit, WeatherType
 class WeatherEmitInline(admin.StackedInline):
     model = WeatherEmit
     extra = 0
-    fieldsets = [(None, {'fields': [('text')]}),
-                 ('Details', {'fields': [('weather', 'intensity_min', 'intensity_max', 'weight', 'gm_notes')], 'classes': ['collapse']}),
+    fieldsets = [(None, {'fields': [('text',)]}),
+                 ('Details', {'fields': [('intensity_min', 'intensity_max', 'weight', 'gm_notes')], 'classes': ['collapse']}),
                  ('Seasons', {'fields': [('in_summer', 'in_fall', 'in_winter', 'in_spring')], 'classes': ['collapse']}),
                  ('Times', {'fields': [('at_morning', 'at_afternoon', 'at_evening', 'at_night')], 'classes': ['collapse']})]
 
@@ -25,7 +25,7 @@ class WeatherEmitAdmin(admin.ModelAdmin):
     ordering = ('id',)
     extra = 0
     fieldsets = [(None, {'fields': [('weather', 'text')]}),
-                 ('Details', {'fields': [('weather', 'intensity_min', 'intensity_max', 'weight', 'gm_notes')]}),
+                 ('Details', {'fields': [('intensity_min', 'intensity_max', 'weight', 'gm_notes')]}),
                  ('Seasons', {'fields': [('in_summer', 'in_fall', 'in_winter', 'in_spring')]}),
                  ('Times', {'fields': [('at_morning', 'at_afternoon', 'at_evening', 'at_night')]})]
 

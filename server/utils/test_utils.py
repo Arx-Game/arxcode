@@ -127,7 +127,7 @@ class ArxCommandTest(ArxTestConfigMixin, CommandTest):
     def call_cmd(self, args, msg, **kwargs):
         if not self.instance:
             self.instance = self.cmd_class()
-        self.call(self.instance, args, msg, caller=self.caller, **kwargs)
+        return self.call(self.instance, args, msg, caller=self.caller, **kwargs)
 
     # noinspection PyBroadException
     def call(self, cmdobj, args, msg=None, cmdset=None, noansi=True, caller=None, receiver=None, cmdstring=None,
