@@ -4,7 +4,8 @@ from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import parse_ansi
 
 from world.conditions.triggerhandler import TriggerHandler
-
+from world.templates.models import Template
+from world.templates.mixins import TemplateMixins
 
 class DescMixins(object):
     """
@@ -49,6 +50,7 @@ class DescMixins(object):
         if self.db.general_desc:
             # general desc is our fallback
             self.db.general_desc = val
+        self.ndb.cached_template_desc = None
     desc = property(_desc_get, _desc_set)
 
     def __temp_desc_get(self):
@@ -66,6 +68,7 @@ class DescMixins(object):
             self.db.raw_desc = self.db.desc
         if not self.db.general_desc:
             self.db.desc = self.db.desc
+        self.ndb.cached_template_desc = None
         self.db.desc = val
 
     def __temp_desc_del(self):
@@ -78,6 +81,7 @@ class DescMixins(object):
         if not self.db.general_desc:
             self.db.general_desc = self.db.desc
         self.db.desc = ""
+        self.ndb.cached_template_desc = None
     temp_desc = property(__temp_desc_get, __temp_desc_set, __temp_desc_del)
 
     def __perm_desc_get(self):
@@ -93,6 +97,7 @@ class DescMixins(object):
         """
         self.db.general_desc = val
         self.db.raw_desc = val
+        self.ndb.cached_template_desc = None
     perm_desc = property(__perm_desc_get, __perm_desc_set)
 
     def __get_volume(self):
@@ -333,7 +338,7 @@ class BaseObjectMixins(object):
         return self.location.get_room()
 
 
-class AppearanceMixins(BaseObjectMixins):
+class AppearanceMixins(BaseObjectMixins, TemplateMixins):
     def return_contents(self, pobject, detailed=True, show_ids=False,
                         strip_ansi=False, show_places=True, sep=", "):
         """
@@ -509,6 +514,14 @@ class AppearanceMixins(BaseObjectMixins):
                 string += "\n%s{n" % desc
         else:  # for crafted objects, respect formatting
             string += "\n%s{n" % desc
+
+            if self.ndb.cached_template_desc:
+                string = self.ndb.cached_template_desc
+            else:
+                templates = Template.objects.in_list(self.find_template_ids(string))
+                if templates.exists():
+                    string = self.replace_template_values(string, templates)
+                self.ndb.cached_template_desc = string
         if contents and show_contents:
             string += contents
         return string

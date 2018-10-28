@@ -7,10 +7,116 @@ from datetime import datetime, timedelta
 
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
 from world.dominion.models import CrisisAction, Crisis, Army, RPEvent
+
+from world.templates.models import Template
+from web.character.models import PlayerAccount
+
+from commands.commands.crafting import CmdCraft
+from world.dominion.models import CraftingRecipe
+from typeclasses.readable.readable import CmdWrite
+
 from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
+    paccount1 = None
+    paccount2 = None
+    template1 = None
+    template2 = None
+
+    def setup(self):
+        self.paccount1 = PlayerAccount.objects.create(email="myawesome_email@test.org")
+        self.paccount2 = PlayerAccount.objects.create(email="myawesome_email_2@test.org")
+
+        self.char1.roster.current_account = self.paccount1
+        self.char1.roster.save()
+
+        self.char2.roster.current_account = self.paccount2
+        self.char2.roster.save()
+
+        self.char2.sessions.add(self.session)
+
+        self.template1 = Template(owner=self.paccount1,
+                                  desc="This is a templated description! It is so awesome",
+                                  attribution="freddy",
+                                  apply_attribution=True,
+                                  title="cool template",
+                                  access_level="PR")
+
+        self.template2 = Template(owner=self.paccount1,
+                                  desc="This is a templated description! It is so awesome",
+                                  attribution="freddy",
+                                  apply_attribution=True,
+                                  title="cool template",
+                                  access_level="RS")
+
+        self.template1.save()
+        self.template2.save()
+
+    def test_craft_with_templates(self):
+        self.setup()
+
+        recipe = CraftingRecipe.objects.create(name="Thing", ability="all", result="")
+
+        self.char1.dompc.assets.recipes.add(recipe)
+        self.char2.dompc.assets.recipes.add(recipe)
+
+        self.setup_cmd(CmdCraft, self.char1)
+        self.call_cmd("{}".format(recipe.name), None)
+        self.call_cmd("/name object", None)
+        self.call_cmd("/desc [[TEMPLATE_1]]", "Desc set to:\n[[TEMPLATE_1]]")
+        self.call_cmd("/finish", None)
+
+        created_obj = self.char1.contents[0]
+
+        self.assertEqual(created_obj.desc, "[[TEMPLATE_1]]")
+        self.assertEqual(self.template1.applied_to.get(), created_obj)
+
+        created_obj.return_appearance(self.char1)
+
+        self.assertIsNotNone(created_obj.ndb.cached_template_desc)
+
+        self.template1.save()
+
+        self.assertIsNone(created_obj.ndb.cached_template_desc)
+
+        self.setup_cmd(CmdCraft, self.char2)
+        self.call_cmd("{}".format(recipe.name), None)
+        self.call_cmd("/name object", None)
+        self.call_cmd("/desc [[TEMPLATE_1]] and [[TEMPLATE_2]]",
+                      "You attempted to add the following templates that you do not have access to: [[TEMPLATE_1]], [[TEMPLATE_2]] to your desc.")
+
+    def test_write_with_templates(self):
+        self.setup()
+
+        from evennia.utils import create
+
+        typeclass = "typeclasses.readable.readable.Readable"
+
+        book1 = create.create_object(typeclass=typeclass, key="book1", location=self.char1, home=self.char1)
+        book2 = create.create_object(typeclass=typeclass, key="book2", location=self.char1, home=self.char1)
+
+        self.setup_cmd(CmdWrite, self.char1)
+        self.call_cmd("[[TEMPLATE_1]]", "Desc set to:\n[[TEMPLATE_1]]", obj=book1)
+        self.call_cmd("/title SuperAwesomeBook", None, obj=book1)
+        self.call_cmd("/finish", None, obj=book1)
+
+        created_obj = self.char1.contents[0]
+
+        self.assertEqual(created_obj.desc, "[[TEMPLATE_1]]")
+        self.assertEqual(self.template1.applied_to.get(), created_obj)
+
+        created_obj.return_appearance(self.char1)
+
+        self.assertIsNotNone(created_obj.ndb.cached_template_desc)
+
+        self.template1.save()
+
+        self.assertIsNone(created_obj.ndb.cached_template_desc)
+
+        self.setup_cmd(CmdWrite, self.char2)
+        self.call_cmd("[[TEMPLATE_1]] and [[TEMPLATE_2]]",
+                      "You attempted to add the following templates that you do not have access to: [[TEMPLATE_1]], [[TEMPLATE_2]] to your desc.", obj=book2)
 
     def test_cmd_recipes(self):
         self.setup_cmd(crafting.CmdRecipes, self.char2)

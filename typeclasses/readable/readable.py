@@ -5,6 +5,7 @@ Readable/Writable objects
 from typeclasses.objects import Object
 from evennia import CmdSet
 from server.utils.arx_utils import ArxCommand
+from world.templates.mixins import TemplateMixins
 
 
 class Readable(Object):
@@ -105,7 +106,7 @@ class CmdSign(ArxCommand):
         return
 
 
-class CmdWrite(ArxCommand):
+class CmdWrite(ArxCommand, TemplateMixins):
     """
     Write upon a scroll/book/letter.
     
@@ -143,9 +144,12 @@ class CmdWrite(ArxCommand):
         """Look for object in inventory that matches args to wear"""
         caller = self.caller
         obj = self.obj
+
         if not self.args and not self.switches:
             self.switches.append("proof")
         if not self.switches or 'desc' in self.switches:
+            if not self.can_apply_templates(caller, self.args):
+                return
             obj.ndb.desc = self.args
             caller.msg("Desc set to:\n%s" % self.args)
             return
@@ -189,7 +193,10 @@ class CmdWrite(ArxCommand):
             obj.desc = desc
             if obj.ndb.transtext:
                 obj.db.translation = obj.ndb.transtext
-            obj.save()        
+            obj.save()
+            
+            self.apply_templates_to(obj)
+
             caller.msg("You have written on %s." % obj.name)
             obj.attributes.remove("quality_level")
             obj.attributes.remove("can_stack")
@@ -198,5 +205,6 @@ class CmdWrite(ArxCommand):
             obj.cmdset.delete_default()
             obj.cmdset.add_default(SignCmdSet, permanent=True)
             obj.aliases.add("book")
+
             return
         caller.msg("Unrecognized syntax for write.")

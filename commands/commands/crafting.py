@@ -11,6 +11,7 @@ from server.utils.prettytable import PrettyTable
 from server.utils.arx_utils import validate_name, inform_staff
 from evennia.utils import utils
 from evennia.utils.utils import make_iter
+from world.templates.mixins import TemplateMixins
 
 AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
 
@@ -251,7 +252,7 @@ def change_quality(crafting_object, new_quality):
         crafting_object.calc_armor()
 
 
-class CmdCraft(ArxCommand):
+class CmdCraft(ArxCommand, TemplateMixins):
     """
     Crafts an object
 
@@ -549,6 +550,10 @@ class CmdCraft(ArxCommand):
             if not self.args:
                 caller.msg("Describe it how?")
                 return
+
+            if not self.can_apply_templates(self.caller, self.args):
+                return
+
             proj[2] = self.args
             caller.db.crafting_project = proj
             caller.msg("Desc set to:\n%s" % self.args)
@@ -750,6 +755,9 @@ class CmdCraft(ArxCommand):
             # finish stuff universal to all crafted objects
             obj.desc = proj[2]
             obj.save()
+
+            self.apply_templates_to(obj)
+
             obj.db.materials = mats
             obj.db.recipe = recipe.id
             obj.db.adorns = proj[3]

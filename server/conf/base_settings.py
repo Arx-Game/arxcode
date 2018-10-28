@@ -91,6 +91,7 @@ INSTALLED_APPS += ('world.dominion',
                    'bootstrapform',
                    'crispy_forms',
                    'world.weather',
+                   'world.templates.apps.TemplateConfig'
                    )
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
