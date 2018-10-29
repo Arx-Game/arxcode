@@ -51,7 +51,8 @@ class CmdAdminWeather(ArxCommand):
             weather, intensity = utils.advance_weather()
             weatherobj = WeatherType.objects.get(pk=weather)
             self.msg("Current weather is now {} ({}), intensity {}.  "
-                     "Remember to {}/announce if you want players to know.".format(weatherobj.name, weather, intensity, self.cmdstring))
+                     "Remember to {}/announce if you want players to know.".format(weatherobj.name, weather, intensity,
+                                                                                   self.cmdstring))
             return
 
         if "announce" in self.switches:
@@ -99,7 +100,7 @@ class CmdAdminWeather(ArxCommand):
                 self.msg("The weather intensity must be an integer!")
                 return
             utils.set_weather_type(weather_type)
-            utils.set_weather_intensity(weather_itensity)
+            utils.set_weather_intensity(weather_intensity)
             self.msg("Set weather type to {} and intensity to {}."
                      .format(weather_type, weather_intensity))
             return

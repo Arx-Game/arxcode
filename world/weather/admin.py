@@ -6,14 +6,17 @@ class WeatherEmitInline(admin.StackedInline):
     model = WeatherEmit
     extra = 0
     fieldsets = [(None, {'fields': [('text',)]}),
-                 ('Details', {'fields': [('intensity_min', 'intensity_max', 'weight', 'gm_notes')], 'classes': ['collapse']}),
-                 ('Seasons', {'fields': [('in_summer', 'in_fall', 'in_winter', 'in_spring')], 'classes': ['collapse']}),
-                 ('Times', {'fields': [('at_morning', 'at_afternoon', 'at_evening', 'at_night')], 'classes': ['collapse']})]
+                 ('Details', {'fields': [('intensity_min', 'intensity_max', 'weight', 'gm_notes')],
+                              'classes': ['collapse']}),
+                 ('Seasons', {'fields': [('in_summer', 'in_fall', 'in_winter', 'in_spring')],
+                              'classes': ['collapse']}),
+                 ('Times', {'fields': [('at_morning', 'at_afternoon', 'at_evening', 'at_night')],
+                            'classes': ['collapse']})]
 
 
 class WeatherTypeAdmin(admin.ModelAdmin):
     model = WeatherType
-    list_display = ('id', 'name', 'gm_notes', 'emit_count')
+    list_display = ('id', 'name', 'gm_notes', 'emit_count', 'automated')
     ordering = ('id',)
     extra = 0
     inlines = (WeatherEmitInline,)

@@ -44,8 +44,8 @@ def weather_emits(weathertype, season=None, time=None, intensity=5):
         qs = qs.filter(at_morning=True)
     elif time == 'afternoon':
         qs = qs.filter(at_afternoon=True)
-    elif time == 'night':
-        qs = qs.filter(at_night=True)
+    elif time == 'evening':
+        qs = qs.filter(at_evening=True)
 
     return qs
 
@@ -83,7 +83,8 @@ def pick_emit(weathertype, season=None, time=None, intensity=None):
     emits = weather_emits(weathertype, season=season, time=time, intensity=intensity)
 
     if emits.count() == 0:
-        logger.log_err("Weather: Unable to find any matching emits.")
+        logger.log_err("Weather: Unable to find any matching emits for {} intensity {} on a {} {}."
+                       .format(weathertype.name, intensity, season, time))
         return None
 
     if emits.count() == 1:
@@ -207,10 +208,11 @@ def random_weather(season='fall'):
     weathers = {}
     total_weight = 0
     for emit in emits:
-        weatherweight = weathers[emit.weather.id] if emit.weather.id in weathers else 0
-        weatherweight += emit.weight
-        weathers[emit.weather.id] = weatherweight
-        total_weight += emit.weight
+        if emit.weather.automated:
+            weatherweight = weathers[emit.weather.id] if emit.weather.id in weathers else 0
+            weatherweight += emit.weight
+            weathers[emit.weather.id] = weatherweight
+            total_weight += emit.weight
 
     # Create our picker list
     values = {}
@@ -271,9 +273,11 @@ def advance_weather():
         return current_weather, current_intensity
 
     if current_weather != target_weather:
-        current_intensity -= randint(1, 4)
+        current_intensity -= randint(1, 6)
         if current_intensity <= 0:
-            current_intensity = 1
+            current_intensity = abs(current_intensity)
+            if current_intensity == 0:
+                current_intensity = 1
             current_weather = target_weather
     else:
         if current_intensity < target_intensity:

@@ -6,6 +6,7 @@ class WeatherType(SharedMemoryModel):
 
     name = models.CharField('Weather Name', max_length=25)
     gm_notes = models.TextField('GM Notes', blank=True, null=True)
+    automated = models.BooleanField('Automated', help_text="Should this weather ever occur automatically?", default=True)
 
     def __repr__(self):
         return self.name
@@ -40,12 +41,3 @@ class WeatherEmit(SharedMemoryModel):
     weight = models.PositiveIntegerField('Weight', default=10)
     text = models.TextField('Emit', blank=False, null=False)
     gm_notes = models.TextField('GM Notes', blank=True, null=True)
-
-    def __repr__(self):
-        return self.weather + ": " + self.text
-
-    def __unicode__(self):
-        return self.weather + ": " + self.text
-
-    def __str__(self):
-        return self.weather + ": " + self.text
