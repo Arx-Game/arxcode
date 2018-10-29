@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Arx-Game/arxcode.svg?branch=stable_orphan)](https://travis-ci.org/Arx-Game/arxcode)
+
 Arx is a game based on Evennia. I decided to make an orphan branch open source to let people
 use code as they like for their own games and contribute if they like. In general we should
 be compatible with any given Evennia branch, though I tend to stay on master and occasionally
