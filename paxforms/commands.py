@@ -11,6 +11,7 @@ class PaxformCommand(ArxCommand):
         self._form = None
         if not self.__doc__ or len(self.__doc__) == 0:
             self.__doc__ = self.__docstring
+        self.extra_values = None
 
     @property
     def form(self):
@@ -38,7 +39,8 @@ class PaxformCommand(ArxCommand):
     def at_pre_cmd(self):
         form = self.form
         values = self.caller.attributes.get(form.key, default=None)
-        form.deserialize(values)
+        if values:
+            self.extra_values = form.deserialize(values)
 
     def set_extra_field(self, key, value):
         if not key:
@@ -60,6 +62,15 @@ class PaxformCommand(ArxCommand):
             return values[key]
         else:
             return default
+
+    def remove_extra_field(self, key):
+        if not key:
+            raise ValueError
+
+        values = self.caller.attributes.get(self.form.key, default=None)
+        if values:
+            del values[key]
+            self.caller.attributes.add(self.form.key, values)
 
     def display_extra_fields(self):
         pass
@@ -121,7 +132,8 @@ class PaxformCommand(ArxCommand):
                 self.msg("{} set to: {}".format(f.full_name, self.args.strip(" ")))
 
             new_values = form.serialize()
-            new_values.update(values)
+            if self.extra_values:
+                new_values.update(self.extra_values)
             self.caller.attributes.add(form.key, new_values)
 
         else:

@@ -270,7 +270,6 @@ def advance_weather():
         set_weather_target_type(target_weather)
         target_intensity = randint(1, 10)
         set_weather_target_intensity(target_intensity)
-        return current_weather, current_intensity
 
     if current_weather != target_weather:
         current_intensity -= randint(1, 6)
