@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from mock import Mock
-from server.utils.test_utils import ArxCommandTest
+from evennia.commands.default.tests import CommandTest
 from . import commands, forms, fields
 
 
@@ -34,24 +34,23 @@ class CmdTestForm(commands.PaxformCommand):
     form_class = TestForm
 
 
-class TestFormCommand(ArxCommandTest):
+class TestFormCommand(CommandTest):
 
     def test_form_command(self):
-        self.setup_cmd(CmdTestForm, self.char1)
-        self.call_cmd("", "No form in progress.  Please use @testform/create first!")
-        self.call_cmd("/create",
-                      "Creating form...|"
-                      "one: None|"
-                      "two: 10|"
-                      "three: Choice2|"
-                      "four: None")
-        self.call_cmd("/one 1234567890123456789012345", "one was longer than 20 characters.")
-        self.call_cmd("/one Test Field", "one set to: Test Field")
-        self.call_cmd("/two 10", "two set to: 10")
-        self.call_cmd("/submit", "Required field four was left blank. ")
-        self.call_cmd("/three Choice1", "three set to: Choice1")
-        self.call_cmd("/four yes", "four set to: yes")
-        self.call_cmd("/submit", "Submitted successfully!")
+        self.call(CmdTestForm(), "", "No form in progress.  Please use @testform/create first!")
+        self.call(CmdTestForm(), "/create",
+                                 "Creating form...|"
+                                 "one: None|"
+                                 "two: 10|"
+                                 "three: Choice2|"
+                                 "four: None")
+        self.call(CmdTestForm(), "/one 1234567890123456789012345", "one was longer than 20 characters.")
+        self.call(CmdTestForm(), "/one Test Field", "one set to: Test Field")
+        self.call(CmdTestForm(), "/two 10", "two set to: 10")
+        self.call(CmdTestForm(), "/submit", "Required field four was left blank. ")
+        self.call(CmdTestForm(), "/three Choice1", "three set to: Choice1")
+        self.call(CmdTestForm(), "/four yes", "four set to: yes")
+        self.call(CmdTestForm(), "/submit", "Submitted successfully!")
         cmd = CmdTestForm()
         docstring = cmd.__doc__
         assert (docstring == '''

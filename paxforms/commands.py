@@ -8,50 +8,50 @@ class PaxformCommand(ArxCommand):
 
     def __init__(self):
         super(ArxCommand, self).__init__()
-        self._form = None
+        self._form = self.__class__.form_class()
         if not self.__doc__ or len(self.__doc__) == 0:
             self.__doc__ = self.__docstring
-        self.extra_values = None
+        self._extras = None
 
     @property
     def form(self):
         if not self._form:
-            self._form = self.form_class()
+            self._form = self.__class__.form_class()
         return self._form
 
     @property
     def __docstring(self):
         cls = self.__class__
-        if self.form is None or not isinstance(self.form, Paxform):
+        form = self._form
+        if form is None or not isinstance(form, Paxform):
             return "Something has gone horribly wrong with this command, and we cannot generate a helpfile."
         result = "\n    "
-        result += self.form.form_purpose or "A useful command."
+        result += form.form_purpose or "A useful command."
         result += "\n\n"
         result += "    Usage:\n"
         result += "      {}/create\n".format(cls.key)
-        for f in self.form.fields:
+        for f in form.fields:
             result += "      {}/{} {}\n".format(cls.key, f.key, f.get_display_params())
         result += "      {}/cancel\n".format(cls.key)
         result += "      {}/submit\n".format(cls.key)
-        result += "{}".format(self.form.form_description)
+        result += "{}".format(form.form_description)
         return result
 
     def at_pre_cmd(self):
         form = self.form
         values = self.caller.attributes.get(form.key, default=None)
-        if values:
-            self.extra_values = form.deserialize(values)
+        self._extras = form.deserialize(values)
 
     def set_extra_field(self, key, value):
         if not key:
             raise ValueError
-
-        values = self.caller.attributes.get(self.form.key, default=None)
+        form = self.form
+        values = self.caller.attributes.get(form.key, default=None)
         if not value:
             del values[key]
         else:
             values[key] = value
-        self.caller.attributes.add(self.form.key, values)
+        self.caller.attributes.add(form.key, values)
 
     def get_extra_field(self, key, default=None):
         if not key:
@@ -62,15 +62,6 @@ class PaxformCommand(ArxCommand):
             return values[key]
         else:
             return default
-
-    def remove_extra_field(self, key):
-        if not key:
-            raise ValueError
-
-        values = self.caller.attributes.get(self.form.key, default=None)
-        if values:
-            del values[key]
-            self.caller.attributes.add(self.form.key, values)
 
     def display_extra_fields(self):
         pass
@@ -131,8 +122,8 @@ class PaxformCommand(ArxCommand):
                 self.msg("{} set to: {}".format(f.full_name, self.args.strip(" ")))
 
             new_values = form.serialize()
-            if self.extra_values:
-                new_values.update(self.extra_values)
+            if self._extras:
+                new_values.update(self._extras)
             self.caller.attributes.add(form.key, new_values)
 
         else:
