@@ -103,6 +103,7 @@ def pick_emit(weathertype, season=None, time=None, intensity=None):
         if key >= picker:
             result = values[last_value]
             continue
+        last_value = key
 
     if not result:
         result = values[sorted(values.keys())[-1]]

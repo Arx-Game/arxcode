@@ -1,5 +1,6 @@
 import string
 import re
+import django
 
 
 class Paxfield(object):
@@ -57,6 +58,10 @@ class Paxfield(object):
     def required(self):
         return self._required
 
+    @property
+    def webform_field(self):
+        return None
+
 
 class TextField(Paxfield):
     """
@@ -100,6 +105,16 @@ class TextField(Paxfield):
 
         return True, None
 
+    @property
+    def webform_field(self):
+        options = {'label': self.full_name}
+        if self.required is not None:
+            options['required'] = self.required
+        if self._max_length is None or self._max_length > 120:
+            return django.forms.CharField(widget=django.forms.Textarea, **options)
+        else:
+            return django.forms.CharField(**options)
+
 
 class IntegerField(Paxfield):
 
@@ -137,6 +152,13 @@ class IntegerField(Paxfield):
             return False, "{} was above the maximum value of {}. {}".format(self.full_name, self._max_value, self.help_text or "")
 
         return True, None
+
+    @property
+    def webform_field(self):
+        options = {'label': self.full_name}
+        if self.required is not None:
+            options['required'] = self.required
+        return django.forms.IntegerField(**options)
 
 
 class BooleanField(Paxfield):
@@ -176,6 +198,13 @@ class BooleanField(Paxfield):
             return False, "Required field {} was left blank. {}".format(self.full_name, self.help_text or "")
 
         return True, None
+
+    @property
+    def webform_field(self):
+        options = {'label': self.full_name}
+        if self.required is not None:
+            options['required'] = self.required
+        return django.forms.BooleanField(**options)
 
 
 class ChoiceField(Paxfield):
@@ -228,4 +257,12 @@ class ChoiceField(Paxfield):
             return False, "Required field {} was left blank. {}".format(self.full_name, self.help_text or "")
 
         return True, ""
+
+    @property
+    def webform_field(self):
+        options = {'label': self.full_name}
+        if self.required is not None:
+            options['required'] = self.required
+        options['choices'] = self._choices
+        return django.forms.ChoiceField(**options)
 

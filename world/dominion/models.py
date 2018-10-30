@@ -530,10 +530,11 @@ class AssetOwner(SharedMemoryModel):
         if hasattr(self, '_cached_propriety'):
             return self._cached_propriety
         percentage = max(sum(ob.percentage for ob in self.proprieties.all()), -100)
-        # if we have negative fame, then have negative propriety make the value more negative
-        if self.fame < 0:
+        base = self.fame + self.total_legend
+        # if we have negative fame, then positive propriety mods lessens that, while neg mods makes it worse
+        if base < 0:
             percentage *= -1
-        value = int(self.fame * percentage/100.0)
+        value = int(base * percentage/100.0)
         if self.player:
             favor = (self.player.reputations.filter(Q(favor__gt=0) | Q(favor__lt=0))
                                             .annotate(val=((F('organization__assets__fame')

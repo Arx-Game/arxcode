@@ -1,4 +1,5 @@
 from .fields import Paxfield
+import django
 
 
 class Paxform(object):
@@ -74,3 +75,16 @@ class Paxform(object):
     def submit(self, caller, values):
         pass
 
+    @property
+    def web_form(self):
+        web_fields = {}
+        for f in self.fields:
+            web_fields[f.key] = f.webform_field
+
+        new_class = type("PaxWebform_" + self.key, (django.forms.Form,), web_fields)
+        return new_class
+
+    def from_web_form(self, webform):
+        for f in self.fields:
+            value = webform.cleaned_values[f.key]
+            f.set(value)

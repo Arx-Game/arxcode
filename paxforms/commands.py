@@ -123,7 +123,6 @@ class PaxformCommand(ArxCommand):
             if not self.args:
                 f.set(None)
                 self.msg("{} cleared.".format(f.full_name))
-                return
             else:
                 valid, reason = f.set(self.args)
                 if not valid:
