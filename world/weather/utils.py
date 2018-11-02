@@ -212,7 +212,7 @@ def random_weather(season='fall'):
         if emit.weather.automated:
             weatherweight = weathers[emit.weather.id] if emit.weather.id in weathers else 0
             weatherweight += emit.weight
-            weathers[emit.weather.id] = weatherweight
+            weathers[emit.weather.id] = weatherweight * emit.weather.multiplier
             total_weight += emit.weight
 
     # Create our picker list
@@ -264,14 +264,6 @@ def advance_weather():
     current_weather = ServerConfig.objects.conf('weather_type_current', default=1)
     current_intensity = ServerConfig.objects.conf('weather_intensity_current', default=1)
 
-    if current_weather == target_weather and current_intensity == target_intensity:
-        # We hit our target.  Let's pick a new one and return.
-        new_weather = random_weather(season=season)
-        target_weather = new_weather.id
-        set_weather_target_type(target_weather)
-        target_intensity = randint(1, 10)
-        set_weather_target_intensity(target_intensity)
-
     if current_weather != target_weather:
         current_intensity -= randint(1, 6)
         if current_intensity <= 0:
@@ -291,6 +283,14 @@ def advance_weather():
 
     set_weather_type(current_weather)
     set_weather_intensity(current_intensity)
+
+    if current_weather == target_weather and current_intensity == target_intensity:
+        # We hit our target.  Let's pick a new one and return.
+        new_weather = random_weather(season=season)
+        target_weather = new_weather.id
+        set_weather_target_type(target_weather)
+        target_intensity = randint(1, 10)
+        set_weather_target_intensity(target_intensity)
 
     return current_weather, current_intensity
 

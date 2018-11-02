@@ -135,23 +135,3 @@ class CmdAdminWeather(ArxCommand):
         if locked:
             self.msg("And weather currently is locked, and will not change. {}/unlock to restore normal weather"
                      .format(self.cmdstring))
-
-
-class CmdWeather(ArxCommand):
-    """
-    Displays the current weather conditions.
-
-    Usage:
-        weather
-
-    This will show you the current time and weather.  That's about it.
-    """
-    key = "weather"
-    locks = "cmd:all()"
-
-    def func(self):
-        season, time = gametime.get_time_and_season()
-        pref = "an" if season == "autumn" else "a"
-        weather = utils.get_last_emit()
-
-        self.msg("It is {} {} {}. {}".format(pref, season, time, weather or ""))

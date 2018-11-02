@@ -175,7 +175,6 @@ class OOCCmdSet(CmdSet):
         self.add(social.CmdFavor())
         self.add(overrides.SystemNoMatch())
         self.add(weather_commands.CmdAdminWeather())
-        self.add(weather_commands.CmdWeather())
 
 
 class StateIndependentCmdSet(CmdSet):

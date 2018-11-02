@@ -16,10 +16,9 @@ class WeatherEmitInline(admin.StackedInline):
 
 class WeatherTypeAdmin(admin.ModelAdmin):
     model = WeatherType
-    list_display = ('id', 'name', 'gm_notes', 'emit_count', 'automated')
+    list_display = ('id', 'name', 'gm_notes', 'automated', 'emit_count', 'total_weight')
     ordering = ('id',)
     extra = 0
-    inlines = (WeatherEmitInline,)
 
 
 class WeatherEmitAdmin(admin.ModelAdmin):

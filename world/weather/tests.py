@@ -21,11 +21,6 @@ class TestWeatherCommands(ArxCommandTest):
         ServerConfig.objects.conf('weather_type_target', value=2)
         ServerConfig.objects.conf('weather_intensity_target', value=5)
 
-    def test_cmd_weather(self):
-        self.setup_cmd(weather_commands.CmdWeather, self.char1)
-        result = self.call_cmd("", None)
-        assert(result.startswith("It is a"))
-
     def test_cmd_adminweather(self):
         self.setup_cmd(weather_commands.CmdAdminWeather, self.char1)
         self.call_cmd("", "Weather pattern is Test (intensity 5), moving towards Test2 (intensity 5).")

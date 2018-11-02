@@ -79,6 +79,8 @@ from typeclasses.scripts import gametime
 from typeclasses.mixins import NameMixins, ObjectMixins
 from world.msgs.messagehandler import MessageHandler
 
+from world.weather import utils as weather_utils
+
 # error return function, needed by Extended Look command
 _AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
 
@@ -705,20 +707,23 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
 # Simple command to view the current time and season
 class CmdGameTime(ArxCommand):
     """
-    Check the game time
+    Check the game time and weather
 
     Usage:
       time
 
-    Shows the current in-game time and season.
+    Shows the current in-game time, season, and the last weather emit, in case you
+    missed it or have emits turned off.  (To turn off weather emits, use the
+    @settings command to toggle the 'ignore_weather' setting.)
     """
     key = "time"
     locks = "cmd:all()"
     help_category = "General"
+    aliases = "weather"
 
     # noinspection PyUnusedLocal
     def get_help(self, caller, cmdset):
-        return self.__doc__ + "\n\nGame time moves %s times faster than real time." % gametime.time_factor()
+        return self.__doc__ + "\nGame time moves %s times faster than real time." % gametime.time_factor()
 
     def func(self):
         """Reads time info from current room"""
@@ -730,7 +735,8 @@ class CmdGameTime(ArxCommand):
             prep = "a"
             if season == "autumn":
                 prep = "an"
-            self.caller.msg("It's %s %s day, in the %s." % (prep, season.capitalize(), timeslot))
+            weather = weather_utils.get_last_emit()
+            self.caller.msg("It's %s %s day, in the %s.  %s" % (prep, season.capitalize(), timeslot, weather))
             time = gametime.gametime(format=True)
             hour, minute = time[4], time[5]
             from server.utils.arx_utils import get_date
