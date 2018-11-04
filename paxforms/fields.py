@@ -219,29 +219,13 @@ class ChoiceField(Paxfield):
             return self.default
 
     def set(self, value):
-        try:
-            if value is None:
-                self._value = None
+        for p in self._choices:
+            if p[1].lower() == str(value).lower():
+                self._value = p[0]
                 return True, None
-
-            int_value = int(value)
-            self._value = int_value
-            return True, None
-        except ValueError:
-            for p in self._choices:
-                value = str(value).lower()
-                # need to check /both/ values because of the deserialization step
-
-                values = [p[1].lower()]
-
-                try:
-                    values.append(p[0].lower())
-                except AttributeError:
-                    values.append(p[0])
-
-                if value in values:
-                    self._value = p[0]
-                    return True, None
+            if str(p[0]).lower() == str(value).lower():
+                self._value = p[0]
+                return True, None
 
         choices = [c[1] for c in self._choices]
         choice_list = string.join(choices, ", ")
