@@ -446,7 +446,7 @@ def map_wrapper(request):
     return render(request, "dominion/map_pregen.html", context)
 
 
-def fealty_chart(request):
+def generate_fealty_chart(request, filename, include_npcs=False):
 
     node_colors = {
         'Ruling Prince': 'lightblue',
@@ -477,7 +477,8 @@ def fealty_chart(request):
                 org_name = org_name + "\n(" + org_rank_1.player.player.key.title() + ")"
 
             for vassal in org.assets.estate.vassals.all():
-                if vassal.house and not vassal.house.organization_owner.name.startswith("Vassal of"):
+                is_npc = vassal.house.organization_owner.living_members.all().count() > 0
+                if vassal.house and (not is_npc or include_npcs):
                     node_color = node_colors.get(vassal.house.organization_owner.rank_1_male, None)
                     name = vassal.house.organization_owner.name
 
@@ -495,12 +496,12 @@ def fealty_chart(request):
     if request.user.is_authenticated():
         regen = request.GET.get("regenerate")
 
-    if not os.path.exists("world/dominion/fealty/fealty_graph.png"):
+    if not os.path.exists(filename + ".png"):
         regen = True
 
     if not regen:
         response = HttpResponse(content_type="image/png")
-        fealtyimage = Image.open("world/dominion/fealty/fealty_graph.png")
+        fealtyimage = Image.open(filename + ".png")
         fealtyimage.save(response, "PNG")
         return response
 
@@ -510,13 +511,22 @@ def fealty_chart(request):
         crown = Organization.objects.get(id=145)
         add_vassals(G, crown)
 
-        G.render("world/dominion/fealty/fealty_graph", cleanup=True)
+        G.render(filename, cleanup=True)
 
         response = HttpResponse(content_type="image/png")
-        fealtyimage = Image.open("world/dominion/fealty/fealty_graph.png")
+        fealtyimage = Image.open(filename + ".png")
         fealtyimage.save(response, "PNG")
         return response
 
     except Exception as e:
         print e
         raise Http404
+
+
+def fealty_chart(request):
+    return generate_fealty_chart(request, "world/dominion/fealty/fealty_graph", include_npcs=False)
+
+
+def fealty_chart_full(request):
+    return generate_fealty_chart(request, "world/dominion/fealty/fealty_graph_full", include_npcs=True)
+

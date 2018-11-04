@@ -72,5 +72,6 @@ world/dominion/map/arxmap_imagesize.cfg
 
 # generated fealty graph
 world/dominion/fealty/fealty_graph.png
+world/dominion/fealty/fealty_graph_full.png
 config.env
 settings.ini

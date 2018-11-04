@@ -19,5 +19,6 @@ urlpatterns = [
     url(r'^crisis/(?P<pk>\d+)/$', views.CrisisDetailView.as_view(), name="display_crisis"),
     url(r'^map/map.png$', views.map_image, name='map_image'),
     url(r'^map/$', views.map_wrapper, name='map'),
-    url(r'^fealties/chart.png$', views.fealty_chart, name='fealties')
+    url(r'^fealties/chart.png$', views.fealty_chart, name='fealties'),
+    url(r'^fealties/chart_full.png$', views.fealty_chart_full, name='fealties_full')
 ]
