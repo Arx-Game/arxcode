@@ -41,7 +41,7 @@ class TemplateForm(Paxform):
       +template/list 
       +template/grantees <id of template you want the list of grantees for>
       +template/markup <id of template you want markup for>
-      +template/change_access [PRIVATE|RESTRICTED|OPEN]
+      +template/change_access [PRIVATE||RESTRICTED||OPEN]
       +template <id of template you want details on>
     """
 
