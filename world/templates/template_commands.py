@@ -14,23 +14,34 @@ class TemplateForm(Paxform):
 
     form_key = "template_form"
 
-    form_purpose = """Manages templates which are used to store ASCII or text details. Once
-    a template is 'saved', the description is immutable. Access control to
-    use the template can be managed after creation, however. Once created,
-    the markup tag can be input into a description (for crafting or writing)
-    and will evaluate to the description at hand.
+    form_purpose = """
+    Manages templates which store ASCII or text details. Once a template
+    has been submitted, the description is immutable. By default, only the
+    template creator can see their template (or use them). However, each
+    of the access settings, however, they may grant access to individuals,
+    as long as access control is set to 'RESTRICTED' and everyone can
+    see templates with 'OPEN' access control. When changing from 'RESTRICTED'
+    to 'OPEN' or 'PRIVATE' all previous grantees of the template are removed.
 
-    @study however, will only return the value of the markup tag!
+    The markup tag, of the form [[TEMPLATE_<id>]] can be inserted into a
+    description (if you have access to it). Attempting to do so without
+    access (or if it does not exist) will raise an error.
+
+    When an object with a markup tag is looked at, the markup resolves
+    to the description associated with template.
+
+    The @study command, however, will NOT resolve the template markup.
     """
 
     form_description = """
     
     Non-form switches:
-      +template/grant <template_id>=<playername to grant use of the template>
-      +template/revoke <template_id>=<playername to remove use of the template from>
+      +template/grant <playername to grant use of the template>=<template_id>
+      +template/revoke <playername to remove use of the template from>=<template_id>
       +template/list 
       +template/grantees <id of template you want the list of grantees for>
       +template/markup <id of template you want markup for>
+      +template/change_access [PRIVATE|RESTRICTED|OPEN]
       +template <id of template you want details on>
     """
 
@@ -48,7 +59,6 @@ class TemplateForm(Paxform):
     apply_attribution = fields.BooleanField(required=True, default=False, full_name="Show Attribution", help_text="Whether or not to show attribution.")
 
     def submit(self, caller, values):
-
         template = Template(
             owner=caller.roster.current_account,
             title=values['title'],
@@ -185,11 +195,18 @@ class CmdTemplateForm(PaxformCommand):
         return template
 
     def list(self, caller):
-        table = PrettyTable(["{wId{n", "{wName{n", "{wAttribution{n", "{wMarkup{n"])
+        table = PrettyTable(["{wId{n", "{wName{n", "{wAttribution{n", "{wMarkup{n", "{wAccess Level{n"])
 
         for template in Template.objects.accessible_by(self.caller):
             attribution = template.attribution if template.apply_attribution else ""
-            table.add_row([template.id, template.title, attribution, template.markup()])
+
+            access_level = ""
+
+            for var in Template.ACCESS_LEVELS:
+                if template.access_level == var[0]:
+                    access_level = var[1]
+
+            table.add_row([template.id, template.title, attribution, template.markup(), access_level])
         arx_more.msg(caller, str(table), justify_kwargs=False)
 
     def display(self, template):

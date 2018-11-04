@@ -211,9 +211,16 @@ class TemplateTests(ArxCommandTest, TemplateMixins):
                         access_level=access_level)
 
     def create_table_view(self, templates):
-        table = PrettyTable(["Id", "Name", "Attribution", "Markup"])
+        table = PrettyTable(["Id", "Name", "Attribution", "Markup", "Access Level"])
         for template in templates:
             attribution = template.attribution if template.apply_attribution else ""
-            table.add_row([template.id, template.title, attribution, template.markup()])
+
+            access_level = ""
+
+            for var in Template.ACCESS_LEVELS:
+                if template.access_level == var[0]:
+                    access_level = var[1]
+
+            table.add_row([template.id, template.title, attribution, template.markup(), access_level])
         return ArxCommandTest.format_returned_msg([str(table)], True)
 
