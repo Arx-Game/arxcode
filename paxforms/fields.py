@@ -229,7 +229,17 @@ class ChoiceField(Paxfield):
             return True, None
         except ValueError:
             for p in self._choices:
-                if p[1].lower() == str(value).lower():
+                value = str(value).lower()
+                # need to check /both/ values because of the deserialization step
+
+                values = [p[1].lower()]
+
+                try:
+                    values.append(p[0].lower())
+                except AttributeError:
+                    values.append(p[0])
+
+                if value in values:
                     self._value = p[0]
                     return True, None
 
