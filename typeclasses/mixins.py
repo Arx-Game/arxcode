@@ -220,6 +220,7 @@ class NameMixins(object):
         val = sub_old_ansi(val)
         self.db.colored_name = val
         self.key = parse_ansi(val, strip_ansi=True)
+        self.ndb.cached_template_desc = None
         self.save()
     name = property(__name_get, __name_set)
 
