@@ -5,13 +5,14 @@
         <a class="btn btn-primary" href="{% url "character:list_actions" object_id %}">Back to actions</a>
         <div>
             {% if form_errors %}
-                {{ form_errors }}
+            <h2 class="text-danger">{{ form_errors }}</h2>
             {% endif %}
             <form method="post">{% csrf_token %}
                 <table width="100%">
                 {{ form.as_p }}
                 </table>
-            <input class="btn btn-success" type="submit" value="Submit Changes" />
+            <input class="btn btn-success" type="submit" name="save" value="Save Changes" />
+            <input class="btn btn-success" type="submit" name="submit" value="Submit Action" />
         </div>
     </div>
 {% endblock %}

@@ -563,7 +563,8 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         @gm/mine
         @gm/old
         @gm[/needgm, /needplayer, /cancelled, /pending, /draft, /everyone]
-        
+        @gm/search <search term>
+
         Commands for modifying an action stats or results:
         @gm/story <action #>=<the IC result of their action, told as a story>
         @gm/secretstory <action #>=<the IC result of their secret actions>
@@ -619,7 +620,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
     key = "@gm"
     locks = "cmd:perm(builders)"
     help_category = "GMing"
-    list_switches = ("old", "pending", "draft", "cancelled", "needgm", "needplayer")
+    list_switches = ("old", "pending", "draft", "cancelled", "needgm", "needplayer", "search")
     gming_switches = ("story", "secretstory", "charge", "check", "checkall", "stat", "skill", "diff")
     followup_switches = ("ooc", "markanswered")
     admin_switches = ("publish", "markpending", "cancel", "assign", "gemit", "allowedit", "invite",
@@ -687,6 +688,12 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             qs = qs.filter(status=pending_status)
         elif "cancelled" in self.switches:
             qs = qs.filter(status=cancelled_status)
+        elif "search" in self.switches:
+            qs = qs.filter(Q(story__icontains=self.args) |
+                           Q(actions__icontains=self.args) |
+                           Q(secret_actions__icontains=self.args) |
+                           Q(assisting_actions__actions__icontains=self.args) |
+                           Q(assisting_actions__secret_actions__icontains=self.args))
         else:
             unanswered_questions = ActionOOCQuestion.objects.filter(answers__isnull=True,
                                                                     mark_answered=False).exclude(is_intent=True)
@@ -696,7 +703,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             qs = qs.filter(gm=self.caller)
         elif not self.args and "everyone" not in self.switches:
             qs = qs.filter(gm__isnull=True)
-        if self.args:
+        if self.args and not "search" in self.switches:
             name = self.args
             qs = qs.filter(Q(crisis__name__iexact=name) | Q(dompc__player__username__iexact=name) |
                            Q(category__iexact=name) | Q(assistants__player__username__iexact=name) |

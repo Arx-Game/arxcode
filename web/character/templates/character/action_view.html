@@ -19,7 +19,7 @@
             <tr>
                 <td valign="top"><b>Action Id:</b> {{ action.id }}</td>
                 <td valign="top"><b>Crisis:</b> {{ action.crisis }}</td>
-                <td colspan="2" valign="top">
+                <td colspan="2" valign="top" style="max-width: 400px">
                     <b>Participants:</b> {{ action.commafied_participants }}
                 </td>
             </tr>
@@ -39,6 +39,7 @@
             </tr>
             <tr>
                 <td colspan="4">
+                    <br/>
                     {% if action.silver > 0 %}
                     <b>Silver:</b> {{ action.silver }}<br/>
                     {% endif %}
@@ -57,40 +58,49 @@
                 </td>
             </tr>
             </table>
+            <hr style="border-bottom: 1px solid black; border-top: none; border-radius: 0; "/>
             <h2>Action by <b>{{ action.dompc }}</b></h2>
             <p>{{ action.actions|mush_to_html }}</p>
             {% if user.is_staff or user.char_ob.dompc == action.dompc %}
             {% if action.secret_actions %}
             <h2>Secret Action by <b>{{ action.dompc }}</b></h2>
-            <p>{{ action.secret_actions }}</p>
+            <p>{{ action.secret_actions|mush_to_html }}</p>
             {% endif %}
+            <p><b>OOC Intentions:</b> {{ action.ooc_intent.text|mush_to_html }}</p>
             <p><b>Roll:</b> {{ action.stat_used}} + {{ action.skill_used }}
             {% if action.traitor %}
                 <span class="text-danger">(TRAITOR)</span>
             {% endif %}
+            {% if action.roll_is_set %}
+            = {{ action.roll }}
+            {% endif %}
             </p>
             {% endif %}
             {% for assist in action.assisting_actions.all %}
-            <hr/>
+            <hr style="border-bottom: 1px solid black; border-top: none; border-radius: 0; "/>
             <h2>Action by <b>{{ assist.dompc }}</b></h2>
             <p>{{ assist.actions|mush_to_html }}</p>
             {% if user.is_staff or user.char_ob.dompc == assist.dompc %}
             {% if assist.secret_actions %}
             <h2>Secret Action by <b>{{ assist.dompc }}</b></h2>
-            <p>{{ assist.secret_actions }}</p>
+            <p>{{ assist.secret_actions|mush_to_html }}</p>
             {% endif %}
+            <p><b>OOC Intentions:</b> {{ assist.ooc_intent.text|mush_to_html }}</p>
             <p><b>Roll:</b> {{ assist.stat_used}} + {{ assist.skill_used }}
             {% if assist.traitor %}
                 <span class="text-danger">(TRAITOR)</span>
+            {% endif %}
+            {% if assist.roll_is_set %}
+            = {{ assist.roll }}
             {% endif %}
             </p>
             {% endif %}
             {% endfor %}
             {% if action.status == 5 %}
-            <hr/>
+            <hr style="border-bottom: 1px solid black; border-top: none; border-radius: 0; "/>
             <h2>Result</h2>
-            {% if action.roll_is_set %}
-            <p><b>Roll Result:</b> {{ action.roll }}</p>
+            {% if action.outcome_value %}
+            <p><b>Roll Result:</b> {{ action.outcome_value }}</p>
             {% endif %}
             <p class="text-primary">{{ action.story|mush_to_html }}</p>
             {% endif %}

@@ -20,11 +20,13 @@ from django.views.generic import ListView, DetailView, CreateView
 from evennia.objects.models import ObjectDB
 from evennia.utils.ansi import strip_ansi
 
+from collections import OrderedDict
+
 from commands.commands import roster
 from server.utils.name_paginator import NamePaginator
 from server.utils.view_mixins import LimitPageMixin
 from typeclasses.characters import Character
-from world.dominion.models import Organization, CrisisAction
+from world.dominion.models import Organization, CrisisAction, ActionSubmissionError
 from .forms import (PhotoForm, PhotoDirectForm, PhotoUnsignedDirectForm, PortraitSelectForm,
                     PhotoDeleteForm, PhotoEditForm, FlashbackPostForm, FlashbackCreateForm)
 from .models import Photo, Story, Episode, Chapter, Flashback, ClueDiscovery, DISCO_MULT
@@ -528,29 +530,21 @@ def new_action_view(request, object_id, action_id):
         for assist in crisis_action.assisting_actions.all():
             if assist.dompc.player.char_ob.id == int(object_id):
                 found = True
+                editable = assist.editable
 
         if not found:
             raise Http404
+    else:
+        editable = crisis_action.editable
 
     if require_public and not crisis_action.public:
         raise Http404
-
-    if crisis_action.status == CrisisAction.DRAFT:
-        if request.user.char_ob == character():
-            editable = crisis_action.editable
-        else:
-            editable = False
-            for assist in crisis_action.assistants.all():
-                if assist.dompc == request.user.char_ob.dompc:
-                    editable = assist.editable
-    else:
-        editable = False
 
     context = {'page_title': str(crisis_action), 'action': crisis_action, 'object_id': object_id, 'editable': editable}
     return render(request, 'character/action_view.html', context)
 
 
-class ActionForm(forms.Form):
+class AssistForm(forms.Form):
 
     stats = (
         ('strength', 'Strength'),
@@ -567,29 +561,45 @@ class ActionForm(forms.Form):
         ('willpower', 'Willpower')
     )
 
-    action_text = forms.CharField(widget=forms.Textarea(attrs={'rows': 10, 'class': 'form-control'}), required=True, label='Action')
-    secret_action = forms.CharField(widget=forms.Textarea(attrs={'rows': 10, 'class': 'form-control'}), required=False, label='Secret Action')
+    tldr = forms.CharField(widget=forms.Textarea(attrs={'rows': 1, 'class': 'form-control'}), required=True,
+                           label='Provide a brief one-sentence summary of this action.')
+    action_text = forms.CharField(widget=forms.Textarea(attrs={'rows': 10, 'class': 'form-control'}), required=True, label='What are you doing in this action?')
+    secret_action = forms.CharField(widget=forms.Textarea(attrs={'rows': 10, 'class': 'form-control'}), required=False, label='What, if anything, are you doing secretly in this action?')
+    ooc_intent = forms.CharField(widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}), required=True, label="What do you want to achieve with this action?  This is so we know as GMs what you're hoping for.")
     stat_choice = forms.ChoiceField(choices=stats, label='Stat to Roll')
     skill_choice = forms.ChoiceField(choices=[], label='Skill to Roll')
-    attending = forms.BooleanField(label='Physically Attending', required=False)
-    traitor = forms.BooleanField(label='Sabotaging the Action', required=False)
+    attending = forms.BooleanField(label='I am physically present for this action.', required=False)
+    traitor = forms.BooleanField(label='I am trying to sabotage this action.', required=False)
 
     def __init__(self, caller, *args, **kwargs):
-        super(ActionForm,self).__init__(*args, **kwargs)
+        super(AssistForm,self).__init__(*args, **kwargs)
         skills = []
         for k, v in caller.db.skills.iteritems():
             skills.append((k, k.capitalize()))
         self.fields['skill_choice'] = forms.ChoiceField(choices=skills, label='Skill to Roll')
 
 
-def new_action(request, object_id):
-    def character():
-        """The main character of the actions"""
-        return get_object_or_404(Character, id=object_id)
+class ActionForm(AssistForm):
 
-    if request.user.char_ob != character():
-        raise Http404
+    CATEGORY_CHOICES = (
+        (CrisisAction.UNKNOWN, 'Unknown'),
+        (CrisisAction.COMBAT, 'Combat'),
+        (CrisisAction.SUPPORT, 'Support'),
+        (CrisisAction.SABOTAGE, 'Sabotage'),
+        (CrisisAction.DIPLOMACY, 'Diplomacy'),
+        (CrisisAction.SCOUTING, 'Scouting'),
+        (CrisisAction.RESEARCH, 'Research')
+    )
 
+    def __init__(self, caller, *args, **kwargs):
+        super(ActionForm,self).__init__(caller, *args, **kwargs)
+
+        # Do black magic to prepend the Category field
+        keys = self.fields.keys()
+        self.fields['category'] = forms.ChoiceField(choices=self.CATEGORY_CHOICES, label='What type of action is this?')
+        keys.insert(0, 'category')
+        new_fields = (OrderedDict)([k, self.fields[k]] for k in keys)
+        self.fields = new_fields
 
 
 def edit_action(request, object_id, action_id):
@@ -634,31 +644,63 @@ def edit_action(request, object_id, action_id):
     if not editable:
         raise Http404
 
+    form_errors = None
+
     if request.method == "POST":
-        form = ActionForm(request.user.char_ob, request.POST)
+        if real_action.main_action == real_action:
+            form = ActionForm(request.user.char_ob, request.POST)
+        else:
+            form = AssistForm(request.user.char_ob, request.POST)
+
         if not form.is_valid():
             raise Http404
 
+        real_action.topic = form.cleaned_data['tldr']
         real_action.actions = form.cleaned_data['action_text']
         real_action.secret_actions = form.cleaned_data['secret_action']
         real_action.stat_used = form.cleaned_data['stat_choice']
         real_action.skill_used = form.cleaned_data['skill_choice']
         real_action.attending = form.cleaned_data['attending']
         real_action.traitor = form.cleaned_data['traitor']
+        real_action.set_ooc_intent(form.cleaned_data['ooc_intent'])
+
+        if real_action.main_action == real_action:
+            real_action.category = form.cleaned_data['category']
         real_action.save()
 
-        return new_action_view(request, object_id, action_id)
+        if "save" in request.POST:
+            return new_action_view(request, object_id, action_id)
 
-    initial = {'action_text': strip_ansi(real_action.actions),
+        # We're trying to submit the form!
+        try:
+            real_action.submit()
+            return new_action_view(request, object_id, action_id)
+        except ActionSubmissionError as err:
+            form_errors = strip_ansi(str(err))
+
+    ooc_intent_raw = real_action.ooc_intent
+    if not ooc_intent_raw:
+        ooc_intent = ""
+    else:
+        ooc_intent = ooc_intent_raw.text
+
+    initial = {'tldr': strip_ansi(real_action.topic),
+               'action_text': strip_ansi(real_action.actions),
                'secret_action': strip_ansi(real_action.secret_actions),
                'stat_choice': real_action.stat_used,
                'skill_choice': real_action.skill_used,
                'attending': real_action.attending,
-               'traitor': real_action.traitor}
+               'traitor': real_action.traitor,
+               'ooc_intent': ooc_intent}
 
-    form = ActionForm(request.user.char_ob, initial=initial)
+    if real_action.main_action == real_action:
+        initial['category'] = real_action.category
+        form = ActionForm(request.user.char_ob, initial=initial)
+    else:
+        form = AssistForm(request.user.char_ob, initial=initial)
 
-    context = {'page_title': 'Edit Action', 'form': form, 'action': crisis_action, 'object_id': object_id}
+    context = {'page_title': 'Edit Action', 'form': form, 'action': crisis_action, 'object_id': object_id,
+               'form_errors': form_errors}
 
     return render(request, 'character/action_edit.html', context)
 
