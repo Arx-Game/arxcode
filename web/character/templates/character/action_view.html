@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+    <div class="container">
+        <table width="100%">
+            <tr>
+                <td>
+                    <a class="btn btn-primary" href="{% url "character:list_actions" object_id %}">Back to actions</a>
+                </td>
+                <td align="right">
+                    {% if editable %}
+                    <a class="btn btn-primary" href="{% url "character:edit_action" object_id action.id %}">Edit</a>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+        <br/>
+        <table width="100%">
+            <tr>
+                <td valign="top"><b>Action Id:</b> {{ action.id }}</td>
+                <td valign="top"><b>Crisis:</b> {{ action.crisis }}</td>
+                <td colspan="2" valign="top">
+                    <b>Participants:</b> {{ action.commafied_participants }}
+                </td>
+            </tr>
+            <tr>
+                <td valign="top"><b>Status:</b> {{ action.get_status_display }}</td>
+                <td valign="top">{% if action.date_submitted %}<b>Submitted:</b> {{ action.date_submitted}}{% endif %}</td>
+                <td valign="top">
+                    {% if action.status == 5 %}
+                    <b>Public:</b> {{ action.public }}
+                    {% endif %}
+                </td>
+                <td valign="top">
+                    {% if action.status == 5 %}
+                    <b>GM:</b> {{ action.gm }}
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td colspan="4">
+                    {% if action.silver > 0 %}
+                    <b>Silver:</b> {{ action.silver }}<br/>
+                    {% endif %}
+                    {% if action.economic > 0 %}
+                    <b>Economic Resources:</b> {{ action.economic }}<br/>
+                    {% endif %}
+                    {% if action.military > 0 %}
+                    <b>Military Resources:</b> {{ action.military }}<br/>
+                    {% endif %}
+                    {% if action.social > 0 %}
+                    <b>Social Resources:</b> {{ action.social }}<br/>
+                    {% endif %}
+                    {% if action.action_points > 0 %}
+                    <b>Action Points:</b> {{ action.action_points }}<br/>
+                    {% endif %}
+                </td>
+            </tr>
+            </table>
+            <h2>Action by <b>{{ action.dompc }}</b></h2>
+            <p>{{ action.actions|mush_to_html }}</p>
+            {% if user.is_staff or user.char_ob.dompc == action.dompc %}
+            {% if action.secret_actions %}
+            <h2>Secret Action by <b>{{ action.dompc }}</b></h2>
+            <p>{{ action.secret_actions }}</p>
+            {% endif %}
+            <p><b>Roll:</b> {{ action.stat_used}} + {{ action.skill_used }}
+            {% if action.traitor %}
+                <span class="text-danger">(TRAITOR)</span>
+            {% endif %}
+            </p>
+            {% endif %}
+            {% for assist in action.assisting_actions.all %}
+            <hr/>
+            <h2>Action by <b>{{ assist.dompc }}</b></h2>
+            <p>{{ assist.actions|mush_to_html }}</p>
+            {% if user.is_staff or user.char_ob.dompc == assist.dompc %}
+            {% if assist.secret_actions %}
+            <h2>Secret Action by <b>{{ assist.dompc }}</b></h2>
+            <p>{{ assist.secret_actions }}</p>
+            {% endif %}
+            <p><b>Roll:</b> {{ assist.stat_used}} + {{ assist.skill_used }}
+            {% if assist.traitor %}
+                <span class="text-danger">(TRAITOR)</span>
+            {% endif %}
+            </p>
+            {% endif %}
+            {% endfor %}
+            {% if action.status == 5 %}
+            <hr/>
+            <h2>Result</h2>
+            {% if action.roll_is_set %}
+            <p><b>Roll Result:</b> {{ action.roll }}</p>
+            {% endif %}
+            <p class="text-primary">{{ action.story|mush_to_html }}</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

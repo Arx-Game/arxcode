@@ -2570,6 +2570,18 @@ class CrisisAction(AbstractAction):
         return "%s by %s%s" % (self.NOUN, self.author, crisis)
 
     @property
+    def commafied_participants(self):
+        dompc_list = [str(self.dompc),]
+        for assist in self.assistants.all():
+            dompc_list.append(str(assist))
+        if len(dompc_list) == 1:
+            return str(self.dompc)
+        elif len(dompc_list) == 2:
+            return dompc_list[0] + " and " + dompc_list[1]
+        else:
+            return ", ".join(dompc_list[:-2] + [" and ".join(dompc_list[-2:])])
+
+    @property
     def pretty_str(self):
         """Returns formatted display of this action"""
         if self.crisis:

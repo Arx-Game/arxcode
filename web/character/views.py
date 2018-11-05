@@ -12,11 +12,13 @@ from cloudinary.forms import cl_init_js_callbacks
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db.models import Q, F
+from django import forms
 from django.http import Http404, HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import ListView, DetailView, CreateView
 from evennia.objects.models import ObjectDB
+from evennia.utils.ansi import strip_ansi
 
 from commands.commands import roster
 from server.utils.name_paginator import NamePaginator
@@ -468,6 +470,197 @@ class ActionListView(ListView):
         context = super(ActionListView, self).get_context_data(**kwargs)
         context['character'] = self.character
         return context
+
+
+class NewActionListView(ListView, LimitPageMixin):
+    """View for listing the CrisisActions of a given character"""
+    model = CrisisAction
+    template_name = "character/action_list.html"
+    paginate_by = 20
+
+    @property
+    def character(self):
+        """The main character of the actions"""
+        return get_object_or_404(Character, id=self.kwargs['object_id'])
+
+    def get_queryset(self):
+        """Display only public actions if we're not staff or a participant"""
+        qs = self.character.valid_actions.order_by('-id')
+        user = self.request.user
+        if not user or not user.is_authenticated():
+            return qs.filter(public=True).filter(status=CrisisAction.PUBLISHED)
+        if user.is_staff or user.check_permstring("builders") or user.char_ob == self.character:
+            return qs
+        return qs.filter(public=True).filter(status=CrisisAction.PUBLISHED)
+
+    def get_context_data(self, **kwargs):
+        """Gets context for the template"""
+        context = super(NewActionListView, self).get_context_data(**kwargs)
+        context['character'] = self.character
+        return context
+
+
+def new_action_view(request, object_id, action_id):
+
+    def character():
+        """The main character of the actions"""
+        return get_object_or_404(Character, id=object_id)
+
+    def action():
+        try:
+            return CrisisAction.objects.get(id=action_id)
+        except CrisisAction.DoesNotExist, CrisisAction.MultipleObjectsReturned:
+            raise Http404
+
+    if not request.user or not request.user.is_authenticated():
+        require_public = True
+    elif request.user.is_staff or request.user.check_permstring("builders") or request.user.char_ob == character():
+        require_public = False
+    else:
+        require_public = True
+
+    crisis_action = action()
+
+    # Make sure the crisis action has this character as a
+    # participant.
+    if crisis_action.dompc.player.char_ob.id != int(object_id):
+        found = False
+        for assist in crisis_action.assisting_actions.all():
+            if assist.dompc.player.char_ob.id == int(object_id):
+                found = True
+
+        if not found:
+            raise Http404
+
+    if require_public and not crisis_action.public:
+        raise Http404
+
+    if crisis_action.status == CrisisAction.DRAFT:
+        if request.user.char_ob == character():
+            editable = crisis_action.editable
+        else:
+            editable = False
+            for assist in crisis_action.assistants.all():
+                if assist.dompc == request.user.char_ob.dompc:
+                    editable = assist.editable
+    else:
+        editable = False
+
+    context = {'page_title': str(crisis_action), 'action': crisis_action, 'object_id': object_id, 'editable': editable}
+    return render(request, 'character/action_view.html', context)
+
+
+class ActionForm(forms.Form):
+
+    stats = (
+        ('strength', 'Strength'),
+        ('dexterity', 'Dexterity'),
+        ('stamina', 'Stamina'),
+        ('charm', 'Charm'),
+        ('command', 'Command'),
+        ('composure', 'Composure'),
+        ('intellect', 'Intellect'),
+        ('perception', 'Perception'),
+        ('wits', 'Wits'),
+        ('mana', 'Mana'),
+        ('luck', 'Luck'),
+        ('willpower', 'Willpower')
+    )
+
+    action_text = forms.CharField(widget=forms.Textarea(attrs={'rows': 10, 'class': 'form-control'}), required=True, label='Action')
+    secret_action = forms.CharField(widget=forms.Textarea(attrs={'rows': 10, 'class': 'form-control'}), required=False, label='Secret Action')
+    stat_choice = forms.ChoiceField(choices=stats, label='Stat to Roll')
+    skill_choice = forms.ChoiceField(choices=[], label='Skill to Roll')
+    attending = forms.BooleanField(label='Physically Attending', required=False)
+    traitor = forms.BooleanField(label='Sabotaging the Action', required=False)
+
+    def __init__(self, caller, *args, **kwargs):
+        super(ActionForm,self).__init__(*args, **kwargs)
+        skills = []
+        for k, v in caller.db.skills.iteritems():
+            skills.append((k, k.capitalize()))
+        self.fields['skill_choice'] = forms.ChoiceField(choices=skills, label='Skill to Roll')
+
+
+def new_action(request, object_id):
+    def character():
+        """The main character of the actions"""
+        return get_object_or_404(Character, id=object_id)
+
+    if request.user.char_ob != character():
+        raise Http404
+
+
+
+def edit_action(request, object_id, action_id):
+    def character():
+        """The main character of the actions"""
+        return get_object_or_404(Character, id=object_id)
+
+    def action():
+        try:
+            return CrisisAction.objects.get(id=action_id)
+        except CrisisAction.DoesNotExist, CrisisAction.MultipleObjectsReturned:
+            raise Http404
+
+    if request.user.char_ob != character():
+        raise Http404
+
+    crisis_action = action()
+    real_action = crisis_action
+    # Make sure the crisis action has this character as a
+    # participant.
+    if crisis_action.dompc.player.char_ob.id != int(object_id):
+        found = False
+        for assist in crisis_action.assisting_actions.all():
+            if assist.dompc.player.char_ob.id == int(object_id):
+                found = True
+                real_action = assist
+
+        if not found:
+            raise Http404
+
+    if crisis_action.status == CrisisAction.DRAFT:
+        if request.user.char_ob == character():
+            editable = crisis_action.editable
+        else:
+            editable = False
+            for assist in crisis_action.assistants.all():
+                if assist.dompc == character().Dominion:
+                    editable = assist.editable
+    else:
+        editable = False
+
+    if not editable:
+        raise Http404
+
+    if request.method == "POST":
+        form = ActionForm(request.user.char_ob, request.POST)
+        if not form.is_valid():
+            raise Http404
+
+        real_action.actions = form.cleaned_data['action_text']
+        real_action.secret_actions = form.cleaned_data['secret_action']
+        real_action.stat_used = form.cleaned_data['stat_choice']
+        real_action.skill_used = form.cleaned_data['skill_choice']
+        real_action.attending = form.cleaned_data['attending']
+        real_action.traitor = form.cleaned_data['traitor']
+        real_action.save()
+
+        return new_action_view(request, object_id, action_id)
+
+    initial = {'action_text': strip_ansi(real_action.actions),
+               'secret_action': strip_ansi(real_action.secret_actions),
+               'stat_choice': real_action.stat_used,
+               'skill_choice': real_action.skill_used,
+               'attending': real_action.attending,
+               'traitor': real_action.traitor}
+
+    form = ActionForm(request.user.char_ob, initial=initial)
+
+    context = {'page_title': 'Edit Action', 'form': form, 'action': crisis_action, 'object_id': object_id}
+
+    return render(request, 'character/action_edit.html', context)
 
 
 class CharacterMixin(object):

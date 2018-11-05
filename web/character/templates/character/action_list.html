@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+    <div class="container">
+ <a class="btn btn-primary" href="{% url "character:sheet" character.id %}">Back to {{ character.key }}</a>
+    <h1 class="text-center">Actions</h1>
+    <hr />
+	<table class="table table-hover">
+		<tr class="danger">
+			<td width="10%">#</td>
+			<td width="10%">Status</td>
+			<td width="20%">Crisis</td>
+			<td width="50%">Participants</td>
+			<td width="10%">Public?</td>
+		</tr>
+		{% for action in object_list %}
+		<tr>
+			<td valign="top"><a href="{% url "character:view_action" character.id action.id %}">{{ action.id }}</a></td>
+			<td valign="top">{{ action.get_status_display }}</td>
+			<td valign="top">{% if action.crisis %}{{ action.crisis }}{% endif %}</td>
+			<td valign="top">{{ action.commafied_participants }}</td>
+			<td valign="top">{{ action.public }}</td>
+		</tr>
+		{% endfor %}
+	</table>
+    {% include "character/_action_paginator.html" %}
+{% endblock %}

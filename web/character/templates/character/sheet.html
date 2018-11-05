@@ -178,7 +178,7 @@
             <h1 class="text-center"><a href="{% url 'character:gallery' character.id %}"><span class="label label-primary">Gallery</span></a></h1>
             </div>
         <div class="col-md-4 text-center">
-            <h1 class="text-center"><a href="{% url 'character:character_story' character.id %}"><span class="label label-primary">Past Actions</span></a></h1>
+            <h1 class="text-center"><a href="{% url 'character:list_actions' character.id %}"><span class="label label-primary">Story Actions</span></a></h1>
             </div>
         {% if show_hidden %}
             <div class="col-md-4 text-center">

@@ -1028,6 +1028,13 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, Default
         return False
 
     @property
+    def valid_actions(self):
+        from world.dominion.models import CrisisAction
+        from django.db.models import Q
+        return CrisisAction.objects.filter(Q(dompc=self.dompc) | Q(assistants=self.dompc)).exclude(
+            status=CrisisAction.CANCELLED).distinct()
+
+    @property
     def past_actions(self):
         return self.player_ob.past_actions
 

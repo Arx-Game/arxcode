@@ -32,5 +32,8 @@ urlpatterns = [
     url(r'^sheet/(?P<object_id>\d+)/scenes/(?P<flashback_id>\d+)/$', views.FlashbackAddPostView.as_view(),
         name="flashback_post"),
     url(r'^sheet/(?P<object_id>\d+)/clues/$', views.KnownCluesView.as_view(), name="list_clues"),
+    url(r'^sheet/(?P<object_id>\d+)/actions/$', views.NewActionListView.as_view(), name="list_actions"),
+    url(r'^sheet/(?P<object_id>\d+)/actions/(?P<action_id>\d+)/$', views.new_action_view, name="view_action"),
+    url(r'^sheet/(?P<object_id>\d+)/actions/(?P<action_id>\d+)/edit$', views.edit_action, name="edit_action"),
     url(r'^api/$', views.character_list, name="character_list")
 ]
