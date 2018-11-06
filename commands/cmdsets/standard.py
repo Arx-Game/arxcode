@@ -139,6 +139,10 @@ try:
     from world.templates.template_commands import CmdTemplateForm
 except Exception as err:
     print("<<ERROR>>: Error encountered in container commands: %s" % err)
+try:
+    from world.exploration import commands as exploration_commands
+except Exception as err:
+    print("<<ERROR>>: Error encountered in exploration commands: %s" % err)
 
 
 from evennia.commands.cmdset import CmdSet
@@ -175,6 +179,9 @@ class OOCCmdSet(CmdSet):
         self.add(social.CmdFavor())
         self.add(overrides.SystemNoMatch())
         self.add(weather_commands.CmdAdminWeather())
+
+        # Exploration!
+        self.add(exploration_commands.CmdExplorationCmdSet())
 
 
 class StateIndependentCmdSet(CmdSet):

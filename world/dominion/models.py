@@ -6002,7 +6002,7 @@ class PlotRoom(SharedMemoryModel):
     domain = models.ForeignKey('Domain', related_name='plot_rooms', blank=True, null=True)
     wilderness = models.BooleanField(default=True)
 
-    shardhaven_type = models.ForeignKey('ShardhavenType', related_name='tilesets', blank=True, null=True)
+    shardhaven_type = models.ForeignKey('exploration.ShardhavenType', related_name='tilesets', blank=True, null=True)
 
     @property
     def land(self):
@@ -6119,70 +6119,3 @@ class Landmark(SharedMemoryModel):
 
     def __str__(self):
         return "<Landmark #%d: %s>" % (self.id, self.name)
-
-
-class ShardhavenType(SharedMemoryModel):
-    """
-    This model is to bind together Shardhavens and plotroom tilesets, as well as
-    eventually the types of monsters and treasures that one finds there.  This is
-    simply a model so we can easily add new types without having to update Choice
-    fields in Shardhaven, Plotroom, and others.
-    """
-    name = models.CharField(blank=False, null=False, max_length=32, db_index=True)
-    description = models.TextField(max_length=2048)
-
-    def __str__(self):
-        return self.name
-
-
-class Shardhaven(SharedMemoryModel):
-    """
-    This model represents an actual Shardhaven.  Right now, it's just meant to
-    be used for storing the Shardhavens we create so we can easily refer back to them
-    later.  Down the road, it will be used for the exploration system.
-    """
-    name = models.CharField(blank=False, null=False, max_length=78, db_index=True)
-    description = models.TextField(max_length=4096)
-    location = models.ForeignKey('MapLocation', related_name='shardhavens', blank=True, null=True)
-    haven_type = models.ForeignKey('ShardhavenType', related_name='havens', blank=False, null=False)
-    required_clue_value = models.IntegerField(default=0)
-    discovered_by = models.ManyToManyField('PlayerOrNpc', blank=True, related_name="discovered_shardhavens",
-                                           through="ShardhavenDiscovery")
-
-    def __str__(self):
-        return self.name or "Unnamed Shardhaven (#%d)" % self.id
-
-
-class ShardhavenDiscovery(SharedMemoryModel):
-    """
-    This model maps a player's discovery of a shardhaven
-    """
-    class Meta:
-        verbose_name_plural = "Shardhaven Discoveries"
-
-    TYPE_UNKNOWN = 0
-    TYPE_EXPLORATION = 1
-    TYPE_CLUES = 2
-    TYPE_STAFF = 3
-
-    CHOICES_TYPES = (
-        (TYPE_UNKNOWN, 'Unknown'),
-        (TYPE_EXPLORATION, 'Exploration'),
-        (TYPE_CLUES, 'Clues'),
-        (TYPE_STAFF, 'Staff Ex Machina')
-    )
-
-    player = models.ForeignKey('PlayerOrNpc', related_name='shardhaven_discoveries')
-    shardhaven = models.ForeignKey(Shardhaven, related_name='discoveries')
-    discovered_on = models.DateTimeField(blank=True, null=True)
-    discovery_method = models.PositiveSmallIntegerField(choices=CHOICES_TYPES, default=TYPE_UNKNOWN)
-
-
-class ShardhavenClue(SharedMemoryModel):
-    """
-    This model shows clues that might be used for a shardhaven,
-    knowledge about it or hints that it exists.
-    """
-    shardhaven = models.ForeignKey(Shardhaven, related_name='related_clues')
-    clue = models.ForeignKey(Clue, related_name='related_shardhavens')
-    required = models.BooleanField(default=False)

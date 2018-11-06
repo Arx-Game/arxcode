@@ -9,10 +9,11 @@ from .models import (PlayerOrNpc, Organization, Domain, Agent, AgentOb, Minister
                      RPEvent, AccountTransaction, AssignedTask, Crisis, CrisisAction, CrisisUpdate,
                      OrgRelationship, Reputation, TaskSupporter, InfluenceCategory,
                      Renown, SphereOfInfluence, TaskRequirement, ClueForOrg, ActionOOCQuestion,
-                     PlotRoom, Landmark, Shardhaven, ShardhavenType, ShardhavenClue, ShardhavenDiscovery,
-                     Honorific, Propriety, PCEventParticipation, OrgEventParticipation, Fealty)
+                     PlotRoom, Landmark, Honorific, Propriety, PCEventParticipation,
+                     OrgEventParticipation, Fealty)
 
 from web.help_topics.templatetags.app_filters import mush_to_html
+from world.exploration.models import Shardhaven, ShardhavenClue
 
 
 class DomAdmin(admin.ModelAdmin):
@@ -598,42 +599,6 @@ class LandAdmin(DomAdmin):
         return ", ".join(str(ob) for ob in obj.locations.all())
 
 
-class ShardhavenClueInline(admin.TabularInline):
-    """Inline for Clues about Shardhavens"""
-    model = ShardhavenClue
-    raw_id_fields = ('clue',)
-    extra = 0
-
-
-class ShardhavenDiscoveryInline(admin.TabularInline):
-    """Inline for players knowing about Shardhaven locations"""
-    model = ShardhavenDiscovery
-    raw_id_fields = ('player',)
-    extra = 0
-
-
-class ShardhavenAdmin(DomAdmin):
-    """Admin for shardhavens, Arx's very own abyssal-corrupted dungeons. Happy adventuring!"""
-    list_display = ('id', 'name', 'location', 'haven_type')
-    search_fields = ('name', 'description')
-    inlines = (ShardhavenClueInline, )
-    list_filter = ('haven_type', RegionFilter,)
-
-
-class ShardhavenTypeAdmin(DomAdmin):
-    """Admin for specifying types of Shardhavens"""
-    list_display = ('id', 'name', 'description')
-    search_fields = ('name',)
-    ordering = ('id',)
-
-
-class ShardhavenDiscoveryAdmin(DomAdmin):
-    """Non-inline admin for Shardhaven discoveries"""
-    list_display = ('id', 'player', 'shardhaven')
-    raw_id_fields = ('player', 'shardhaven')
-    search_fields = ('player__name', 'shardhaven__name')
-
-
 class WorkSettingAdmin(DomAdmin):
     """Non-inline admin for WorkSettings"""
     list_display = ('organization', 'resource', 'stat', 'skill', 'message')
@@ -694,9 +659,6 @@ admin.site.register(AssignedTask, AssignedTaskAdmin)
 admin.site.register(InfluenceCategory, InfluenceCategoryAdmin)
 admin.site.register(PlotRoom, PlotRoomAdmin)
 admin.site.register(Landmark, LandmarkAdmin)
-admin.site.register(Shardhaven, ShardhavenAdmin)
-admin.site.register(ShardhavenType, ShardhavenTypeAdmin)
-admin.site.register(ShardhavenDiscovery, ShardhavenDiscoveryAdmin)
 admin.site.register(WorkSetting, WorkSettingAdmin)
 admin.site.register(PraiseOrCondemn, PraiseAdmin)
 admin.site.register(Honorific, HonorificAdmin)
