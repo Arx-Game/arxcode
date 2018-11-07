@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container">
+        <h2>Lore Topics</h2>
+        <table class="table table-hover">
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+            </tr>
+            {% for entry in lore %}
+            <tr>
+                <td><a href="/admin/character/loretopic/{{ entry.id }}/change">{{ entry.id }}</a></td>
+                <td>{{ entry.name }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h2>Clues</h2>
+        <table class="table table-hover">
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+            </tr>
+            {% for clue in clues %}
+            <tr>
+                <td><a href="/admin/character/clue/{{ clue.id }}/change">{{ clue.id }}</a></td>
+                <td>{{ clue.name }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h2>Crisis Actions</h2>
+        <table class="table table-hover">
+            <tr>
+                <th>ID</th>
+                <th>Participants</th>
+                <th>Status</th>
+                <th>Date Submitted</th>
+            </tr>
+            {% for action in crisis_actions %}
+            <tr>
+                <td><a href="/character/sheet/{{ action.dompc.player.char_ob.id }}/actions/{{ action.id }}/">{{ action.id }}</a></td>
+                <td>{{ action.commafied_participants }}</td>
+                <td>{{ action.get_status_display }}</td>
+                <td>{{ action.date_submitted }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+{% endblock %}

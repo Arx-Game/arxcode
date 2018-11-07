@@ -44,6 +44,8 @@ urlpatterns = [
     url(r'^static/(?P<path>.*)$', serve,
         {'document_root': settings.STATIC_ROOT}),
     url(r'^support/', include('web.helpdesk.urls')),
+
+    url(r'^admintools/', include('web.admintools.urls', namespace='admintools', app_name='admintools')),
                        
 ]
 
