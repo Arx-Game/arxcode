@@ -2159,14 +2159,15 @@ class CmdSocialScore(ArxCommand):
     The who's-who of Arx
 
     Usage:
-        +score
-        +score/orgs
-        +score/personal
-        +score/legend
+        +score[/all]
+        +score/orgs[/all]
+        +score/org[/all] <organization>
+        +score/personal[/all]
+        +score/legend[/all]
         +score/renown [<category>]
         +score/reputation[/bad] [<organization>][=<start #>,<stop #>]
-        +score/commoners
-        +score/nobles
+        +score/commoners[/all]
+        +score/nobles[/all]
 
     Checks the organizations and players who have the highest prestige.
     Renown measures the influence a character has built with different npc
@@ -2177,7 +2178,7 @@ class CmdSocialScore(ArxCommand):
     key = "+score"
     locks = "cmd:all()"
     help_category = "Information"
-    prestige_switches = ("orgs", "personal", "legend", "nobles", "commoners")
+    prestige_switches = ("orgs", "personal", "legend", "nobles", "commoners", "org", "all")
 
     def func(self):
         """Execute command."""
@@ -2259,26 +2260,38 @@ class CmdSocialScore(ArxCommand):
             else:
                 return queryset
         if "orgs" in self.switches:
-            assets = AssetOwner.objects.filter(organization_owner__secret=False)
-            assets = sorted(assets, key=lambda x: x.prestige, reverse=True)[:20]
+            assets = AssetOwner.objects.filter(organization_owner__secret=False).filter(
+                organization_owner__members__player__player__roster__roster__name="Active").distinct()
+            assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
         elif "legend" in self.switches:
             assets = sort_queryset_by_social_rank(
-                AssetOwner.objects.filter(player__player__roster__character__isnull=False))
-            assets = sorted(assets, key=lambda x: x.total_legend, reverse=True)[:20]
+                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+            assets = sorted(assets, key=lambda x: x.total_legend, reverse=True)
         else:
-            assets = [ob.Dominion.assets for ob in Account.objects.filter(roster__roster__name="Active")]
+            if "org" in self.switches:
+                try:
+                    org = Organization.objects.get(name__iexact=self.args, secret=False)
+                except Organization.DoesNotExist:
+                    self.msg("No organization by that name.")
+                    return
+                assets = [ob.player.assets for ob in org.active_members.filter(secret=False)]
+            else:
+                assets = [ob.Dominion.assets for ob in Account.objects.filter(roster__roster__name="Active")]
             assets = sort_queryset_by_social_rank(assets)
             if "personal" in self.switches:
-                assets = sorted(assets, key=lambda x: x.fame + x.legend, reverse=True)[:20]
+                assets = sorted(assets, key=lambda x: x.fame + x.legend, reverse=True)
             else:
-                assets = sorted(assets, key=lambda x: x.prestige, reverse=True)[:20]
+                assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
+        if "all" not in self.switches:
+            assets = assets[:20]
         self.display_prestige_table(assets)
 
     def display_prestige_table(self, assets):
         """Prints out a table of prestige"""
         table = PrettyTable(["{wName{n", "{wPrestige{n", "{wFame{n", "{wLegend{n", "{wGrandeur{n", "{wPropriety{n"])
         for asset in assets:
-            table.add_row([str(asset), asset.prestige, asset.fame, asset.total_legend, asset.grandeur, asset.propriety])
+            table.add_row([str(asset)[:21], asset.prestige, asset.fame, asset.total_legend, asset.grandeur,
+                           asset.propriety])
         self.msg(str(table))
 
 

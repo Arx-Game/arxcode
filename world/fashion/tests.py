@@ -155,6 +155,14 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
                                                      "- Lickyknife1 has already been used to model fashion.\n"
                                                      "No valid items remain! Try modeling a different outfit.")
         self.assertFalse(outfit2.modeled)
+        with patch.object(fashion_commands, 'datetime') as mock_datetime:
+            from datetime import timedelta
+            mock_datetime.now = Mock(return_value=fake_dt)
+            self.call_cmd("/outfit Friendliest=Orgtest",
+                          'You may only model up to three items a week before the public tires of you.')
+            mock_datetime.now = Mock(return_value=fake_dt + timedelta(days=8))
+            self.call_cmd("/outfit Friendliest=Orgtest",
+                          'You have displayed fashion too recently for Orgtest to bring them more acclaim.')
         # test leaderboards:
         self.call_cmd("", "Fashion Model Fame  Items Avg Item Fame \n"
                           "TestAccount2  72016 6     12002         "

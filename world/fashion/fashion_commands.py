@@ -1,11 +1,13 @@
 """
 Commands for the fashion app.
 """
-from server.utils.arx_utils import ArxCommand, list_to_string
+from datetime import datetime, timedelta
+
+from server.utils.arx_utils import ArxCommand
 from server.utils.prettytable import PrettyTable
 from world.dominion.models import Organization
 from world.fashion.exceptions import FashionError
-from world.fashion.models import FashionSnapshot as Snapshot, FashionOutfit as Outfit, ModusOrnamenta as MO
+from world.fashion.models import FashionSnapshot as Snapshot, FashionOutfit as Outfit
 
 
 def get_caller_outfit_from_args(caller, args):
@@ -177,6 +179,7 @@ class CmdFashionModel(ArxCommand):
         if not item or not org:
             return
         player = self.caller.player
+        self.check_recency(org)
         try:
             fame = item.model_for_fashion(player, org)
         except AttributeError:
@@ -192,6 +195,7 @@ class CmdFashionModel(ArxCommand):
         org = Organization.objects.get_public_org(self.rhs, self.caller)
         if not outfit or not org:
             return
+        self.check_recency(org)
         fame = outfit.model_outfit_for_fashion(org)
         self.emit_modeling_result(outfit, org, fame)
 
@@ -252,6 +256,17 @@ class CmdFashionModel(ArxCommand):
                 q[0] = q[0].capitalize()
             table.add_row(q)
         self.msg(str(table))
+
+    def check_recency(self, org=None):
+        """Raises an error if we've modelled too recently"""
+        week_ago = datetime.now() - timedelta(days=7)
+        qs = self.caller.dompc.fashion_snapshots
+        if qs.filter(db_date_created__gte=week_ago).count() >= 3:
+            raise FashionError("You may only model up to three items a week before the public tires of you.")
+        if org:
+            two_weeks_ago = datetime.now() - timedelta(days=14)
+            if qs.filter(db_date_created__gte=two_weeks_ago, org=org):
+                raise FashionError("You have displayed fashion too recently for %s to bring them more acclaim." % org)
 
 
 class CmdAdminFashion(ArxCommand):

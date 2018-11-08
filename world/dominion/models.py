@@ -101,7 +101,7 @@ LIFESTYLES = {
     5: (1500, 7000),
     6: (5000, 10000),
     }
-PRESTIGE_DECAY_AMOUNT = 0.2
+PRESTIGE_DECAY_AMOUNT = 0.35
 
 PAGEROOT = "http://play.arxgame.org"
 
@@ -566,10 +566,12 @@ class AssetOwner(SharedMemoryModel):
             return prestige ** (1. / 3.)
         return -(-prestige) ** (1. / 3.)
 
-    def get_bonus_resources(self, base_amount):
+    def get_bonus_resources(self, base_amount, random_percentage=None):
         """Calculates the amount of bonus resources we get from prestige."""
         mod = self.prestige_mod
         bonus = (mod * base_amount)/100.0
+        if random_percentage is not None:
+            bonus = (bonus * randint(1, random_percentage))/100.0
         return int(bonus)
 
     def get_bonus_income(self, base_amount):
@@ -4845,12 +4847,18 @@ class Member(SharedMemoryModel):
             if amount <= 0:
                 return
             current = getattr(assets, resource_type)
-            bonus = assets.get_bonus_resources(amount)
+            bonus = assets.get_bonus_resources(amount, random_percentage=120)
+            bonus_msg = ""
+            if randint(0, 100) < 4:
+                # we got a big crit, hooray. Add a base of 1-30 resources to bonus, then triple the bonus
+                bonus += randint(1, 30)
+                bonus *= 3
+                bonus_msg = " Luck has gone %s's way, and they get a bonus!" % self
             setattr(assets, resource_type, current + amount + bonus)
             assets.save()
-            bonus_msg = ""
+
             if bonus:
-                bonus_msg = " Amount modified by %s%s resources due to prestige." % ("+" if bonus > 0 else "", bonus)
+                bonus_msg += " Amount modified by %s%s resources due to prestige." % ("+" if bonus > 0 else "", bonus)
             if assets != self.player.assets:
                 inform_msg = "%s has been hard at work, and %s has gained %s %s resources." % (
                               self, assets, amount, resource_type)
