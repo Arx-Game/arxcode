@@ -750,6 +750,9 @@ class CmdGameTime(ArxCommand):
 
             parsed = time.mktime(parsed)
             game_time = gametime.realtime_to_gametime(parsed)
+            if game_time is None:
+                self.caller.msg("Real date |w{}|n was before the game started!".format(to_parse))
+                return
             from server.utils.arx_utils import get_date
             self.caller.msg("Real date |w{}|n was about |w{}|n in game time.".format(to_parse, get_date(game_time)))
             return

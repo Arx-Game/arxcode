@@ -1,10 +1,13 @@
 import time
+import datetime
 
 from evennia.utils.create import create_script
 
 from .scripts import Script
 from server.conf import settings
 from evennia.server.models import ServerConfig
+
+from world.msgs.models import Journal
 
 SERVER_START = time.time()
 SERVER_RUNTIME = 0.0
@@ -301,6 +304,18 @@ def runtime_to_gametime(runtime, format=False):
     return game_time
 
 
+def closest_journal(realtime_secs):
+
+    result = None
+    target = datetime.datetime.fromtimestamp(realtime_secs)
+    target2 = datetime.datetime.fromtimestamp(realtime_secs - 86400)
+    results = Journal.objects.filter(db_date_created__lte=target,db_date_created__gte=target2).order_by('-db_date_created')
+    if results.count() > 0:
+        result = results[0]
+
+    return result
+
+
 def realtime_to_gametime(realtime_secs, format=False):
     script = get_script()
     runtime_marks = script.runtime_marks
@@ -308,8 +323,6 @@ def realtime_to_gametime(realtime_secs, format=False):
     # This is not accurate, but it's the best we can do for defaults
     last_realtime = time.time() - script.runtime
     last_runtime = 0
-
-    current_runtime = script.runtime
 
     # Try to find better default
     for mark in reversed(script.intervals):
@@ -321,6 +334,25 @@ def realtime_to_gametime(realtime_secs, format=False):
         if mark['realtime'] < realtime_secs:
             last_realtime = mark['realtime']
             last_runtime = mark['runtime']
+
+    if last_runtime == 0:
+        journal = closest_journal(realtime_secs)
+        if journal is not None:
+            journal_ic_date = journal.parse_header().get('date')
+            journal_ic_date = journal_ic_date.replace(" AR", "")
+            journal_date_elements = journal_ic_date.split("/")
+            base_realtime = time.mktime(journal.db_date_created.timetuple())
+            base_gametime = (int(journal_date_elements[2]) - 1001) * YEAR
+            base_gametime += (int(journal_date_elements[0]) - 1) * MONTH
+            base_gametime += (int(journal_date_elements[1]) - 1) * DAY
+            timediff = realtime_secs - base_realtime
+            game_time = base_gametime + (timediff * 2)
+            if format:
+                return _format(game_time, YEAR, MONTH, WEEK, DAY, HOUR, MIN)
+            else:
+                return game_time
+        else:
+            return None
 
     time_diff = realtime_secs - last_realtime
     run_time = last_runtime + time_diff
