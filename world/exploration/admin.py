@@ -83,6 +83,12 @@ class ShardhavenDiscoveryAdmin(admin.ModelAdmin):
     search_fields = ('player__name', 'shardhaven__name')
 
 
+class ShardhavenMoodFragmentAdmin(admin.ModelAdmin):
+
+    list_display = ('id', 'shardhaven_type', 'text')
+    list_filter = (ShardhavenTypeFilter,)
+
+
 class ShardhavenLayoutAdmin(admin.ModelAdmin):
 
     list_display = ('id', 'haven', 'width', 'height')
@@ -100,12 +106,12 @@ class ShardhavenLayoutSquareAdmin(admin.ModelAdmin):
 
 
 class ShardhavenLayoutExitAdmin(admin.ModelAdmin):
-
     pass
 
 
 admin.site.register(Shardhaven, ShardhavenAdmin)
 admin.site.register(ShardhavenType, ShardhavenTypeAdmin)
+admin.site.register(ShardhavenMoodFragment, ShardhavenMoodFragmentAdmin)
 admin.site.register(ShardhavenDiscovery, ShardhavenDiscoveryAdmin)
 admin.site.register(ShardhavenLayout, ShardhavenLayoutAdmin)
 admin.site.register(ShardhavenLayoutSquare, ShardhavenLayoutSquareAdmin)

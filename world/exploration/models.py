@@ -74,6 +74,12 @@ class ShardhavenClue(SharedMemoryModel):
     required = models.BooleanField(default=False)
 
 
+class ShardhavenMoodFragment(SharedMemoryModel):
+
+    shardhaven_type = models.ForeignKey(ShardhavenType, related_name='+')
+    text = models.TextField(blank=False, null=False)
+
+
 class ShardhavenLayoutExit(SharedMemoryModel):
     """
     This class represents a single exit between two ShardhavenLayoutSquares
@@ -169,8 +175,18 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
 
         room = create.create_object(typeclass='typeclasses.rooms.ArxRoom',
                                     key=namestring)
-        room.db.raw_desc = self.tile.description
-        room.db.desc = self.tile.description
+
+        final_description = self.tile.description
+
+        fragments = ShardhavenMoodFragment.objects.filter(shardhaven_type=self.layout.haven_type)
+        fragments = [fragment.text for fragment in fragments]
+        random.shuffle(fragments)
+
+        while "{}" in final_description:
+            final_description = final_description.replace("{}", fragments.pop(), 1)
+
+        room.db.raw_desc = final_description
+        room.db.desc = final_description
 
         self.room = room
         return room
@@ -275,6 +291,7 @@ class ShardhavenLayout(SharedMemoryModel):
         ShardhavenLayoutSquare.objects.bulk_create(bulk_rooms)
         layout.cache_room_matrix()
 
+        bulk_exits = []
         for x in range(width):
             for y in range(height):
                 room = layout.matrix[x][y]
@@ -290,23 +307,24 @@ class ShardhavenLayout(SharedMemoryModel):
                         room_exit = ShardhavenLayoutExit(layout=layout)
                         room_exit.room_east = room
                         room_exit.room_west = west
-                        room_exit.save()
+                        bulk_exits.append(room_exit)
                     if east and not ShardhavenLayoutExit.objects.filter(room_west=room).count():
                         room_exit = ShardhavenLayoutExit(layout=layout)
                         room_exit.room_east = east
                         room_exit.room_west = room
-                        room_exit.save()
+                        bulk_exits.append(room_exit)
                     if north and not ShardhavenLayoutExit.objects.filter(room_south=room).count():
                         room_exit = ShardhavenLayoutExit(layout=layout)
                         room_exit.room_north = north
                         room_exit.room_south = room
-                        room_exit.save()
+                        bulk_exits.append(room_exit)
                     if south and not ShardhavenLayoutExit.objects.filter(room_north=room).count():
                         room_exit = ShardhavenLayoutExit(layout=layout)
                         room_exit.room_north = room
                         room_exit.room_south = south
-                        room_exit.save()
+                        bulk_exits.append(room_exit)
 
+        ShardhavenLayoutExit.objects.bulk_create(bulk_exits)
         layout.save()
 
         # TODO: Create exit events

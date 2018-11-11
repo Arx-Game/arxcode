@@ -711,10 +711,14 @@ class CmdGameTime(ArxCommand):
 
     Usage:
       time
+      time <YYYY-mm-dd[ HH:MM]>
 
     Shows the current in-game time, season, and the last weather emit, in case you
     missed it or have emits turned off.  (To turn off weather emits, use the
     @settings command to toggle the 'ignore_weather' setting.)
+
+    The second format will show what the in-game date was for a given real date
+    (and optional time).
     """
     key = "time"
     locks = "cmd:all()"
@@ -727,6 +731,29 @@ class CmdGameTime(ArxCommand):
 
     def func(self):
         """Reads time info from current room"""
+        if self.args:
+            parsed = None
+            to_parse = self.args.strip()
+            try:
+                import time
+                parsed = time.strptime(to_parse, "%Y/%m/%d %H:%M")
+            except ValueError:
+                try:
+                    parsed = time.strptime(to_parse, "%Y/%m/%d")
+                except ValueError:
+                    pass
+
+            if not parsed:
+                self.caller.msg("Unable to understand that date!  It must be in the format "
+                                "|wYYYY/mm/dd|n or |wYYYY/mm/dd HH:MM|n to be understood.")
+                return
+
+            parsed = time.mktime(parsed)
+            game_time = gametime.realtime_to_gametime(parsed)
+            from server.utils.arx_utils import get_date
+            self.caller.msg("Real date |w{}|n was about |w{}|n in game time.".format(to_parse, get_date(game_time)))
+            return
+
         location = self.caller.location
         if not location or not hasattr(location, "get_time_and_season"):
             self.caller.msg("No location available - you are outside time.")
@@ -736,7 +763,7 @@ class CmdGameTime(ArxCommand):
             if season == "autumn":
                 prep = "an"
             weather = weather_utils.get_last_emit()
-            self.caller.msg("It's %s %s day, in the %s.  %s" % (prep, season.capitalize(), timeslot, weather))
+            self.caller.msg("It's %s %s day, in the %s.  %s" % (prep, season, timeslot, weather))
             time = gametime.gametime(format=True)
             hour, minute = time[4], time[5]
             from server.utils.arx_utils import get_date

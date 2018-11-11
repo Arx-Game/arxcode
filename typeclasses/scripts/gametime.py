@@ -62,6 +62,13 @@ class GameTime(Script):
         logger.log_info("Gametime: Marked new time {}".format(tdict))
 
     @property
+    def runtime_marks(self):
+        """
+        The runtime/realtime marker pairs.
+        """
+        return self.attributes.get("runtime_marks") or []
+
+    @property
     def intervals(self):
         """
         The runtime/gametime marker pairs.
@@ -140,6 +147,30 @@ class GameTime(Script):
         global SERVER_RUNTIME
         self._upgrade()
         SERVER_RUNTIME = ServerConfig.objects.conf("run_time")
+        from evennia.utils import logger
+        if self.attributes.has("check_run_time_since") or not self.attributes.has("runtime_marks"):
+            last_realtime = self.attributes.get("check_run_time_since") or 0
+            self.attributes.remove("check_run_time_since")
+            if time.time() - last_realtime > 300:
+                runtime_marks = self.runtime_marks
+                runtime_marks.append({'runtime': self.runtime, 'realtime': time.time()})
+                self.attributes.add('runtime_marks', runtime_marks)
+
+    def at_server_shutdown(self):
+        """
+        This is called when the server is shutting down; we
+        store a marker so we know to map our run-time to our
+        IC time.
+        """
+        self.attributes.add("check_run_time_since", time.time())
+
+    def at_server_reload(self):
+        """
+        This is called when the server is reloading; we
+        store a marker so we know to map our run-time to our
+        IC time.
+        """
+        self.attributes.add("check_run_time_since", time.time())
 
 
 def get_script():
@@ -197,7 +228,7 @@ def runtime(format=False):
 
 def uptime(format=False):
     """
-    Returns the amount of time, in seconds, since our last restart.  If format
+    Returns the amount of time, in seconds, since the last server restart.  If format
     is true, splits it into year, month, week, day, hour, min.
     :param format: Whether to parse into elements.
     """
@@ -208,14 +239,16 @@ def uptime(format=False):
     return up_time
 
 
-def gametime(format=False):
+def gametime(game_time=None, format=False):
     """
-    Returns the amount of time, in seconds, since our last restart.  If format
+    Returns the amount of time, in seconds, since the in-game epoch.  If format
     is true, splits it into year, month, week, day, hour, min.
+    :param game_time: A specific game time, in seconds, to parse.
     :param format: Whether to parse into elements.
     """
-    script = get_script()
-    game_time = script.gametime
+    if not game_time:
+        script = get_script()
+        game_time = script.gametime
     if format:
         return _format(game_time, YEAR, MONTH, WEEK, DAY, HOUR, MIN)
     return game_time
@@ -245,6 +278,53 @@ def time_intervals():
     """
     script = get_script()
     return script.intervals
+
+
+def runtime_to_gametime(runtime, format=False):
+    intervals = time_intervals()
+    last_runtime = 0
+    last_gametime = 0
+    last_timescale = 2
+    for interval in reversed(intervals):
+        if interval['run'] < runtime:
+            last_runtime = interval['run']
+            last_gametime = interval['game']
+            last_timescale = interval['multiplier']
+
+    timediff = runtime - last_runtime
+    game_time = last_gametime + (timediff * last_timescale)
+
+    current_game_time = get_script().gametime
+
+    if format:
+        return _format(game_time, YEAR, MONTH, WEEK, DAY, HOUR, MIN)
+    return game_time
+
+
+def realtime_to_gametime(realtime_secs, format=False):
+    script = get_script()
+    runtime_marks = script.runtime_marks
+
+    # This is not accurate, but it's the best we can do for defaults
+    last_realtime = time.time() - script.runtime
+    last_runtime = 0
+
+    current_runtime = script.runtime
+
+    # Try to find better default
+    for mark in reversed(script.intervals):
+        if mark['real'] < realtime_secs:
+            last_runtime = mark['run']
+            last_realtime = mark['real']
+
+    for mark in reversed(runtime_marks):
+        if mark['realtime'] < realtime_secs:
+            last_realtime = mark['realtime']
+            last_runtime = mark['runtime']
+
+    time_diff = realtime_secs - last_realtime
+    run_time = last_runtime + time_diff
+    return runtime_to_gametime(run_time, format=format)
 
 
 # Initialize our values only once.

@@ -4849,14 +4849,8 @@ class Member(SharedMemoryModel):
             current = getattr(assets, resource_type)
             bonus = assets.get_bonus_resources(amount, random_percentage=120)
             bonus_msg = ""
-            if randint(0, 100) < 4:
-                # we got a big crit, hooray. Add a base of 1-30 resources to bonus, then triple the bonus
-                bonus += randint(1, 30)
-                bonus *= 3
-                bonus_msg = " Luck has gone %s's way, and they get a bonus!" % self
             setattr(assets, resource_type, current + amount + bonus)
             assets.save()
-
             if bonus:
                 bonus_msg += " Amount modified by %s%s resources due to prestige." % ("+" if bonus > 0 else "", bonus)
             if assets != self.player.assets:
@@ -4875,6 +4869,11 @@ class Member(SharedMemoryModel):
             return total
 
         patron_amount = get_amount_after_clout(clout, minimum=randint(1, 10))
+        if randint(0, 100) < 4:
+            # we got a big crit, hooray. Add a base of 1-30 resources to bonus, then triple the bonus
+            patron_amount += randint(1, 30)
+            patron_amount *= 3
+            msg += " Luck has gone %s's way, and they get a bonus!" % self
         msg += "You have gained %s %s resources." % (patron_amount, resource_type)
         adjust_resources(self.player.assets, patron_amount)
         org_amount = patron_amount//5
