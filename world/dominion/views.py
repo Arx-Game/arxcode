@@ -4,6 +4,7 @@ Views related to the Dominion app
 from django.views.generic import ListView, DetailView, CreateView
 from .models import RPEvent, AssignedTask, Crisis, Land, Domain, Organization
 from .forms import RPEventCommentForm, RPEventCreateForm
+from .view_utils import EventHTMLCalendar
 from django.http import HttpResponseRedirect, HttpResponse
 from django.http import Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -11,11 +12,14 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
 from django.template.loader import render_to_string
+from django.utils.safestring import mark_safe
 from server.utils.view_mixins import LimitPageMixin
 from PIL import Image, ImageDraw, ImageFont
 from graphviz import Graph
 from math import trunc
 import os.path
+import datetime
+import calendar
 
 
 class RPEventListView(LimitPageMixin, ListView):
@@ -135,6 +139,58 @@ class RPEventCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse("dominion:list_events")
+
+
+def event_calendar(request):
+    after_day = request.GET.get('day__gte', None)
+    extra_context = {}
+
+    if not after_day:
+        d = datetime.date.today()
+    else:
+        try:
+            split_after_day = after_day.split('-')
+            d = datetime.date(year=int(split_after_day[0]), month=int(split_after_day[1]), day=1)
+        except:
+            d = datetime.date.today()
+
+    previous_month = datetime.date(year=d.year, month=d.month, day=1)  # find first day of current month
+    previous_month = previous_month - datetime.timedelta(days=1)  # backs up a single day
+    previous_month = datetime.date(year=previous_month.year, month=previous_month.month,
+                                   day=1)  # find first day of previous month
+
+    last_day = calendar.monthrange(d.year, d.month)
+    next_month = datetime.date(year=d.year, month=d.month, day=last_day[1])  # find last day of current month
+    next_month = next_month + datetime.timedelta(days=1)  # forward a single day
+    next_month = datetime.date(year=next_month.year, month=next_month.month,
+                               day=1)  # find first day of next month
+
+    extra_context['previous_month'] = reverse('dominion:calendar') + '?day__gte=' + previous_month.strftime("%Y-%m-%d")
+    extra_context['next_month'] = reverse('dominion:calendar') + '?day__gte=' + next_month.strftime("%Y-%m-%d")
+
+    user = request.user
+    events = None
+    if user.is_staff:
+        try:
+            events = RPEvent.objects.filter(dompcs__isnull=False).distinct().order_by('-date')
+        except AttributeError:
+            pass
+    elif not user.is_authenticated():
+        events = RPEvent.objects.filter(dompcs__isnull=False,
+                                        public_event=True).distinct().order_by('-date')
+    else:
+        events = RPEvent.objects.filter((Q(public_event=True) | Q(dompcs__player_id=user.id) |
+                                         Q(orgs__in=user.Dominion.current_orgs))).distinct().order_by('-date')
+
+    cal = EventHTMLCalendar(events)
+
+    html_calendar = cal.formatmonth(d.year, d.month, withyear=True)
+    html_calendar = html_calendar.replace('<td ', '<td  width="150" height="150"')
+    extra_context['calendar'] = mark_safe(html_calendar)
+    extra_context['page_title'] = "Events Calendar"
+
+    return render(request, 'dominion/calendar.html', extra_context)
+
 
 
 class CrisisDetailView(DetailView):

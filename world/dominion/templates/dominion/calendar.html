@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<table border="0" width="100%" align="center">
+    <tr>
+        <td><a href="{{ previous_month }}">&lt; Previous Month</a></td>
+        <td align="right"><a href="{{ next_month }}">Next Month &gt;</a></td>
+    </tr>
+</table>
+<br/>
+<div align="center">
+{{ calendar }}
+</div>
+
+{% endblock %}

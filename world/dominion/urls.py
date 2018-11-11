@@ -11,6 +11,7 @@ from . import views
 
 
 urlpatterns = [
+    url(r'^cal/$', views.event_calendar, name="calendar"),
     url(r'^cal/list/$', views.RPEventListView.as_view(), name="list_events"),
     url(r'^cal/create/$', views.RPEventCreateView.as_view(), name="create_event"),
     url(r'^cal/detail/(?P<pk>\d+)/$', views.RPEventDetailView.as_view(), name='display_event'),
