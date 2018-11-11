@@ -65,6 +65,9 @@ class Template(SharedMemoryModel):
                or self.access_level == 'OP' \
                or self.grantees.filter(templategrantee__grantee=char.roster)
 
+    def in_use(self):
+        return self.applied_to.count() > 0
+
     def markup(self):
         return "[[TEMPLATE_%s]]" % self.id
 

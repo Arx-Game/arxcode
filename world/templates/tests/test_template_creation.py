@@ -11,7 +11,7 @@ from web.character.models import PlayerAccount
 from server.utils.prettytable import PrettyTable
 from server.utils.test_utils import ArxCommandTest
 
-from mixins import TemplateMixins
+from world.templates.mixins import TemplateMixins
 
 
 class TemplateTests(ArxCommandTest, TemplateMixins):
@@ -99,6 +99,8 @@ class TemplateTests(ArxCommandTest, TemplateMixins):
         self.setup_cmd(CmdTemplateForm, self.char1)
         self.call_cmd("/grant {}={}".format(self.char2.name, self.c2_template.id),
                       "You have granted {} access to [[TEMPLATE_{}]].".format(self.char2.name, self.c2_template.id))
+        self.call_cmd("/grant {}={}".format(self.char1.name, self.c2_template.id),
+                      "You cannot grant yourself access to a template.")
         self.call_cmd("/grant {}={}".format(self.char2.name, self.c2_template.id),
                       "{} already has access to [[TEMPLATE_{}]].".format(self.char2.name, self.c2_template.id))
 
@@ -182,6 +184,14 @@ class TemplateTests(ArxCommandTest, TemplateMixins):
         self.call_cmd("{}".format(self.c2_template.id),
                       "Creator: {}\nDesc: {}".format(self.c2_template.attribution, self.c2_template.desc))
 
+        self.setup_cmd(CmdTemplateForm, self.char2)
+        self.call_cmd("{}".format(self.c2_template.id), "You do not have access to a template with that id.")
+
+        TemplateGrantee(grantee=self.char2.roster, template=self.c2_template).save()
+
+        self.call_cmd("{}".format(self.c2_template.id),
+                      "Creator: {}\nDesc: {}".format(self.c2_template.attribution, self.c2_template.desc))
+
     def test_find_template_ids(self):
         template_1 = "[[TEMPLATE_1]]"
         template_2 = "[[TEMPLATE_21]]"
@@ -202,6 +212,43 @@ class TemplateTests(ArxCommandTest, TemplateMixins):
 
         self.assertEqual(self.replace_template_values(desc, Template.objects.in_list(self.find_template_ids(desc)).all()), parsed_desc)
 
+    def test_can_delete_if_not_in_use(self):
+        other_template = self.create_template_for(self.paccount1, title="My Restricted Template", access_level='RS', apply_attribution=True)
+        other_template.save()
+
+        id = other_template.id
+
+        self.setup_cmd(CmdTemplateForm, self.char2)
+        self.call_cmd("/delete {}".format(id), "You do not own a template with that id.")
+
+        self.assertEquals(Template.objects.filter(id=id).get(), other_template)
+
+        self.setup_cmd(CmdTemplateForm, self.char1)
+        self.call_cmd("/delete {}".format(id), "Deleted template {}".format(id))
+
+        self.assertEquals(Template.objects.filter(id=id).count(), 0)
+
+    def test_cannot_delete_if_in_use(self):
+        other_template = self.create_template_for(self.paccount1, title="My Restricted Template", access_level='RS', apply_attribution=True)
+        other_template.save()
+
+        id = other_template.id
+
+        from evennia.utils import create
+
+        typeclass = "typeclasses.readable.readable.Readable"
+
+        book1 = create.create_object(typeclass=typeclass, key="book1", location=self.char1, home=self.char1)
+
+        other_template.applied_to.add(book1)
+
+        self.assertEquals(Template.objects.filter(id=id).get(), other_template)
+
+        self.setup_cmd(CmdTemplateForm, self.char1)
+        self.call_cmd("/delete {}".format(id), "You cannot delete a template that is in use!")
+
+        self.assertEquals(Template.objects.filter(id=id).get(), other_template)
+
     def create_template_for(self, account, title="My Test Template", access_level="PR", apply_attribution=False):
         return Template(owner=account,
                         desc="This is a templated description! It is so awesome",
@@ -211,7 +258,7 @@ class TemplateTests(ArxCommandTest, TemplateMixins):
                         access_level=access_level)
 
     def create_table_view(self, templates):
-        table = PrettyTable(["Id", "Name", "Attribution", "Markup", "Access Level"])
+        table = PrettyTable(["Id", "Name", "Attribution", "Markup", "Access Level", "In Use"])
         for template in templates:
             attribution = template.attribution if template.apply_attribution else ""
 
@@ -221,6 +268,11 @@ class TemplateTests(ArxCommandTest, TemplateMixins):
                 if template.access_level == var[0]:
                     access_level = var[1]
 
-            table.add_row([template.id, template.title, attribution, template.markup(), access_level])
+            in_use = "TRUE" if template.in_use() else "FALSE"
+
+            if template.owner != self.caller.roster.current_account:
+                in_use = ""
+
+            table.add_row([template.id, template.title, attribution, template.markup(), access_level, in_use])
         return ArxCommandTest.format_returned_msg([str(table)], True)
 

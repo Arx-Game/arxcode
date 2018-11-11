@@ -61,6 +61,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.char1.dompc.assets.recipes.add(recipe)
         self.char2.dompc.assets.recipes.add(recipe)
 
+        self.assertEquals(self.template1.applied_to.count(), 0)
+
         self.setup_cmd(CmdCraft, self.char1)
         self.call_cmd("{}".format(recipe.name), None)
         self.call_cmd("/name object", None)
@@ -68,6 +70,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/finish", None)
 
         created_obj = self.char1.contents[0]
+
+        self.assertEquals(self.template1.applied_to.count(), 1)
 
         self.assertEqual(created_obj.desc, "[[TEMPLATE_1]]")
         self.assertEqual(self.template1.applied_to.get(), created_obj)
@@ -86,6 +90,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/desc [[TEMPLATE_1]] and [[TEMPLATE_2]]",
                       "You attempted to add the following templates that you do not have access to: [[TEMPLATE_1]], [[TEMPLATE_2]] to your desc.")
 
+        self.template1.save()
+
     def test_write_with_templates(self):
         self.setup()
 
@@ -96,10 +102,14 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         book1 = create.create_object(typeclass=typeclass, key="book1", location=self.char1, home=self.char1)
         book2 = create.create_object(typeclass=typeclass, key="book2", location=self.char1, home=self.char1)
 
+        self.assertEquals(self.template1.applied_to.count(), 0)
+
         self.setup_cmd(CmdWrite, self.char1)
         self.call_cmd("[[TEMPLATE_1]]", "Desc set to:\n[[TEMPLATE_1]]", obj=book1)
         self.call_cmd("/title SuperAwesomeBook", None, obj=book1)
         self.call_cmd("/finish", None, obj=book1)
+
+        self.assertEquals(self.template1.applied_to.count(), 1)
 
         created_obj = self.char1.contents[0]
 

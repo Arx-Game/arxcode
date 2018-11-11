@@ -29,6 +29,9 @@ class TemplateForm(Paxform):
 
     When an object with a markup tag is looked at, the markup resolves
     to the description associated with template.
+    
+    Once a template has been created, it cannot be changed. A template
+    can be deleted, however, if it has not been applied to an object.
 
     The @study command, however, will NOT resolve the template markup.
     """
@@ -41,7 +44,8 @@ class TemplateForm(Paxform):
       +template/list 
       +template/grantees <id of template you want the list of grantees for>
       +template/markup <id of template you want markup for>
-      +template/change_access [PRIVATE||RESTRICTED||OPEN]
+      +template/change_access <id of template to change>=<[PRIVATE||RESTRICTED||OPEN]>
+      +template/delete <id of template to delete>
       +template <id of template you want details on>
     """
 
@@ -86,15 +90,36 @@ class CmdTemplateForm(PaxformCommand):
             if not args:
                 super(CmdTemplateForm, self).func()
             else:
-                template = self.find_template(args)
-                if template:
-                    self.caller.msg(self.display(template))
+                try:
+                    template = Template.objects.filter(id=args)[:1].get()
+
+                    if template.is_accessible_by(self.caller):
+                        self.caller.msg(self.display(template))
+                    else:
+                        self.caller.msg("You do not have access to a template with that id.")
+                except (Template.DoesNotExist, ValueError):
+                    self.caller.msg("You do not have access to a template with that id.")
         elif "list" in self.switches:
             self.list(self.caller)
+        elif "delete" in self.switches:
+            template = self.find_template(args)
+
+            if not template:
+                return
+            elif template.in_use():
+                self.caller.msg("You cannot delete a template that is in use!")
+            else:
+                id = template.id
+                template.delete()
+                self.caller.msg("Deleted template {}".format(id))
         elif "grant" in self.switches:
             template, char = self.char_and_template_for_access()
 
             if not template or not char:
+                return
+
+            if char == self.caller:
+                self.caller.msg("You cannot grant yourself access to a template.")
                 return
 
             grantees = TemplateGrantee.objects.filter(grantee=char.roster, template=template)
@@ -195,10 +220,15 @@ class CmdTemplateForm(PaxformCommand):
         return template
 
     def list(self, caller):
-        table = PrettyTable(["{wId{n", "{wName{n", "{wAttribution{n", "{wMarkup{n", "{wAccess Level{n"])
+        table = PrettyTable(["{wId{n", "{wName{n", "{wAttribution{n", "{wMarkup{n", "{wAccess Level{n", "{wIn Use{n"])
 
         for template in Template.objects.accessible_by(self.caller):
             attribution = template.attribution if template.apply_attribution else ""
+
+            in_use = "TRUE" if template.in_use() else "FALSE"
+
+            if template.owner != self.caller.roster.current_account:
+                in_use = ""
 
             access_level = ""
 
@@ -206,7 +236,7 @@ class CmdTemplateForm(PaxformCommand):
                 if template.access_level == var[0]:
                     access_level = var[1]
 
-            table.add_row([template.id, template.title, attribution, template.markup(), access_level])
+            table.add_row([template.id, template.title, attribution, template.markup(), access_level, in_use])
         arx_more.msg(caller, str(table), justify_kwargs=False)
 
     def display(self, template):
