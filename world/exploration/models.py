@@ -1,9 +1,10 @@
-from world.dominion.models import PlotRoom, Clue
+from typeclasses.scripts.combat import combat_settings
+from world.stats_and_skills import do_dice_check
 from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.utils import create
 from django.db import models
-from server.conf import settings
 from . import builder
+from server.utils.arx_utils import inform_staff
 import random
 
 
@@ -70,7 +71,7 @@ class ShardhavenClue(SharedMemoryModel):
     knowledge about it or hints that it exists.
     """
     shardhaven = models.ForeignKey(Shardhaven, related_name='related_clues')
-    clue = models.ForeignKey(Clue, related_name='related_shardhavens')
+    clue = models.ForeignKey("character.Clue", related_name='related_shardhavens')
     required = models.BooleanField(default=False)
 
 
@@ -78,6 +79,122 @@ class ShardhavenMoodFragment(SharedMemoryModel):
 
     shardhaven_type = models.ForeignKey(ShardhavenType, related_name='+')
     text = models.TextField(blank=False, null=False)
+
+
+class ShardhavenObstacle(SharedMemoryModel):
+
+    PASS_CHECK = 0
+    HAS_CLUE = 1
+
+    OBSTACLE_TYPES = (
+        (PASS_CHECK, "Pass a Dice Check"),
+        (HAS_CLUE, "Possess a Specific Clue")
+    )
+
+    INDIVIDUAL = 0
+    EVERY_TIME = 1
+    ANYONE = 2
+
+    OBSTACLE_PASS_TYPES = (
+        (INDIVIDUAL, "Everyone must pass once"),
+        (EVERY_TIME, "Everyone must pass every time"),
+        (ANYONE, "If anyone passes, that's enough"),
+    )
+
+    haven_types = models.ManyToManyField(ShardhavenType, related_name='+', blank=True)
+    obstacle_type = models.PositiveSmallIntegerField(choices=OBSTACLE_TYPES)
+    description = models.TextField(blank=False, null=False)
+    clue = models.ForeignKey("character.Clue", blank=True, null=True)
+    pass_type = models.PositiveSmallIntegerField(choices=OBSTACLE_PASS_TYPES, default=INDIVIDUAL,
+                                                 verbose_name="Requirements")
+
+    def msg(self, *args, **kwargs):
+        """
+        Keep the attack code happy.
+        """
+        pass
+
+    def handle_dice_check(self, calling_object, args):
+
+        if self.rolls.count() == 0:
+            return True
+
+        if not args:
+            calling_object.msg(self.description)
+            calling_object.msg("|/You have the following options:")
+            counter = 1
+            for roll in self.rolls.all():
+                calling_object.msg("{}: [{}+{}] {}".format(counter, roll.stat, roll.skill, roll.description))
+                counter += 1
+            calling_object.msg("|/Enter the direction followed by the number you choose, such as 'south 1'.")
+            return
+
+        try:
+            choice = int(args)
+        except ValueError:
+            calling_object.msg("Please provide a number from 1 to {}".format(self.rolls.count()))
+            return False
+
+        roll = self.rolls.all()[choice - 1]
+        result = do_dice_check(caller=calling_object, stat=roll.stat, skill=roll.skill, difficulty=roll.difficulty)
+        if result >= roll.target:
+            if roll.personal_success_msg:
+                calling_object.msg(roll.personal_success_msg)
+
+            message = roll.success_msg.replace("{name}", calling_object.key)
+            calling_object.location.msg_contents(message)
+            return True
+        else:
+            if roll.personal_failure_msg:
+                calling_object.msg(roll.personal_failure_msg)
+            message = roll.failure_msg.replace("{name}", calling_object.key)
+            calling_object.location.msg_contents(message)
+            if roll.damage_amt:
+                from typeclasses.scripts.combat.attacks import Attack
+                attack = Attack(targets=[calling_object], affect_real_dmg=True, damage=roll.damage_amt,
+                                use_mitigation=roll.damage_mit,
+                                can_kill=True, private=True, story=roll.damage_reason, inflictor=self)
+                try:
+                    attack.execute()
+                except combat_settings.CombatError as err:
+                    inform_staff("{} broke combat failing an obstacle check in a Shardhaven: {}"
+                                 .format(calling_object.name, str(err)))
+            return False
+
+    def handle_clue_check(self, calling_object):
+        if not self.clue:
+            return True
+
+        return self.clue in calling_object.discovered_clues
+
+    def handle_obstacle(self, calling_object, args=None):
+        if self.obstacle_type == ShardhavenObstacle.PASS_CHECK:
+            return self.handle_dice_check(calling_object, args)
+        elif self.obstacle_type == ShardhavenObstacle.HAS_CLUE:
+            return self.handle_clue_check(calling_object)
+        else:
+            return True
+
+
+class ShardhavenObstacleRoll(SharedMemoryModel):
+
+    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='rolls', blank=True, null=True)
+
+    stat = models.CharField(max_length=40, blank=False, null=False)
+    skill = models.CharField(max_length=40, blank=False, null=False)
+    difficulty = models.PositiveSmallIntegerField(blank=False, null=False)
+    target = models.PositiveSmallIntegerField(blank=False, null=False)
+
+    description = models.TextField(blank=False, null=False, verbose_name="Description Shown of this Challenge")
+    success_msg = models.TextField(blank=False, null=False, verbose_name="Message to room on Success")
+    personal_success_msg = models.TextField(blank=True, null=True, verbose_name="Message to character on Success")
+    failure_msg = models.TextField(blank=False, null=False, verbose_name="Message to room on Failure")
+    personal_failure_msg = models.TextField(blank=True, null=True, verbose_name="Message to character on Failure")
+    damage_amt = models.PositiveSmallIntegerField(blank=True, null=True,
+                                                  verbose_name="Amount to damage a character by on failure")
+    damage_mit = models.BooleanField(default=True, verbose_name="If damage is applied, should armor mitigate it?")
+    damage_reason = models.CharField(blank=True, null=True, max_length=255,
+                                     verbose_name="Short description of damage, for the damage system.")
 
 
 class ShardhavenLayoutExit(SharedMemoryModel):
@@ -92,7 +209,8 @@ class ShardhavenLayoutExit(SharedMemoryModel):
     room_north = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_south', null=True, blank=True)
     room_south = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_north', null=True, blank=True)
 
-    # TODO: Add optional ShardhavenEvent reference.
+    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='+', null=True, blank=True)
+    passed_by = models.ManyToManyField('objects.ObjectDB', blank=True)
 
     def __str__(self):
         string = str(self.layout) + " Exit: "
@@ -115,28 +233,32 @@ class ShardhavenLayoutExit(SharedMemoryModel):
     def create_exits(self):
         if self.room_south and self.room_south.room\
                 and self.room_north and self.room_north.room:
-            create.create_object(settings.BASE_EXIT_TYPECLASS,
-                                 key="North <N>",
-                                 location=self.room_south.room,
-                                 aliases=["north", "n"],
-                                 destination=self.room_north.room)
-            create.create_object(settings.BASE_EXIT_TYPECLASS,
-                                 key="South <S>",
-                                 location=self.room_north.room,
-                                 aliases=["south", "s"],
-                                 destination=self.room_south.room)
+            new_exit = create.create_object("typeclasses.exits.ShardhavenInstanceExit",
+                                            key="North <N>",
+                                            location=self.room_south.room,
+                                            aliases=["north", "n"],
+                                            destination=self.room_north.room)
+            new_exit.db.haven_exit_id = self.id
+            new_exit = create.create_object("typeclasses.exits.ShardhavenInstanceExit",
+                                            key="South <S>",
+                                            location=self.room_north.room,
+                                            aliases=["south", "s"],
+                                            destination=self.room_south.room)
+            new_exit.db.haven_exit_id = self.id
         if self.room_east and self.room_east.room\
                 and self.room_west and self.room_west.room:
-            create.create_object(settings.BASE_EXIT_TYPECLASS,
-                                 key="East <E>",
-                                 location=self.room_west.room,
-                                 aliases=["east", "e"],
-                                 destination=self.room_east.room)
-            create.create_object(settings.BASE_EXIT_TYPECLASS,
-                                 key="West <W>",
-                                 location=self.room_east.room,
-                                 aliases=["west", "w"],
-                                 destination=self.room_west.room)
+            new_exit = create.create_object("typeclasses.exits.ShardhavenInstanceExit",
+                                            key="East <E>",
+                                            location=self.room_west.room,
+                                            aliases=["east", "e"],
+                                            destination=self.room_east.room)
+            new_exit.db.haven_exit_id = self.id
+            new_exit = create.create_object("typeclasses.exits.ShardhavenInstanceExit",
+                                            key="West <W>",
+                                            location=self.room_east.room,
+                                            aliases=["west", "w"],
+                                            destination=self.room_west.room)
+            new_exit.db.haven_exit_id = self.id
 
 
 class ShardhavenLayoutSquare(SharedMemoryModel):
@@ -175,6 +297,7 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
 
         room = create.create_object(typeclass='typeclasses.rooms.ArxRoom',
                                     key=namestring)
+        room.square = self
 
         final_description = self.tile.description
 
@@ -263,6 +386,7 @@ class ShardhavenLayout(SharedMemoryModel):
 
     @classmethod
     def new_haven(cls, haven, width=9, height=9):
+        from world.dominion.models import PlotRoom
         if haven is None or not isinstance(haven, Shardhaven):
             raise ValueError("Must provide a shardhaven!")
 
@@ -291,7 +415,8 @@ class ShardhavenLayout(SharedMemoryModel):
         ShardhavenLayoutSquare.objects.bulk_create(bulk_rooms)
         layout.cache_room_matrix()
 
-        bulk_exits = []
+        obstacles = ShardhavenObstacle.objects.filter(haven_types__pk=layout.haven_type.id).all()
+
         for x in range(width):
             for y in range(height):
                 room = layout.matrix[x][y]
@@ -307,24 +432,43 @@ class ShardhavenLayout(SharedMemoryModel):
                         room_exit = ShardhavenLayoutExit(layout=layout)
                         room_exit.room_east = room
                         room_exit.room_west = west
-                        bulk_exits.append(room_exit)
+
+                        if random.randint(1,100) > 60:
+                            obstacle = random.choice(obstacles)
+                            room_exit.obstacle = obstacle
+
+                        room_exit.save()
                     if east and not ShardhavenLayoutExit.objects.filter(room_west=room).count():
                         room_exit = ShardhavenLayoutExit(layout=layout)
                         room_exit.room_east = east
                         room_exit.room_west = room
-                        bulk_exits.append(room_exit)
+
+                        if random.randint(1, 100) > 60:
+                            obstacle = random.choice(obstacles)
+                            room_exit.obstacle = obstacle
+
+                        room_exit.save()
                     if north and not ShardhavenLayoutExit.objects.filter(room_south=room).count():
                         room_exit = ShardhavenLayoutExit(layout=layout)
                         room_exit.room_north = north
                         room_exit.room_south = room
-                        bulk_exits.append(room_exit)
+
+                        if random.randint(1, 100) > 60:
+                            obstacle = random.choice(obstacles)
+                            room_exit.obstacle = obstacle
+
+                        room_exit.save()
                     if south and not ShardhavenLayoutExit.objects.filter(room_north=room).count():
                         room_exit = ShardhavenLayoutExit(layout=layout)
                         room_exit.room_north = room
                         room_exit.room_south = south
-                        bulk_exits.append(room_exit)
 
-        ShardhavenLayoutExit.objects.bulk_create(bulk_exits)
+                        if random.randint(1,100) > 60:
+                            obstacle = random.choice(obstacles)
+                            room_exit.obstacle = obstacle
+
+                        room_exit.save()
+
         layout.save()
 
         # TODO: Create exit events

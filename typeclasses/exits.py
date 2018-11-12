@@ -7,8 +7,9 @@ for allowing Characters to traverse the exit to its destination.
 
 """
 from evennia import DefaultExit
-from typeclasses.mixins import ObjectMixins, NameMixins, LockMixins
+from typeclasses.mixins import ObjectMixins, NameMixins, LockMixins, BaseObjectMixins
 from evennia.commands import command, cmdset
+from world.exploration.models import ShardhavenLayoutExit, ShardhavenObstacle
 
 
 class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
@@ -358,3 +359,77 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
         failures = self.password_failures.get(caller, 0)
         failures += 1
         self.password_failures[caller] = failures
+
+
+class ShardhavenInstanceExit(BaseObjectMixins, DefaultExit):
+    """
+    Class to hold obstacles and other data for an exit in a Shardhaven instance.
+    """
+
+    @property
+    def haven_exit(self):
+        if not self.db.haven_exit_id:
+            return None
+
+        try:
+            haven_exit = ShardhavenLayoutExit.objects.get(id=self.db.haven_exit_id)
+        except ShardhavenLayoutExit.DoesNotExist, ShardhavenLayoutExit.MultipleObjectsReturned:
+            return None
+
+        return haven_exit
+
+    def passable(self, traversing_object):
+        if not self.haven_exit or not self.haven_exit.obstacle:
+            return True
+
+        obstacle = self.haven_exit.obstacle
+        if obstacle.pass_type == ShardhavenObstacle.INDIVIDUAL:
+            return traversing_object in self.haven_exit.passed_by.all()
+        if obstacle.pass_type == ShardhavenObstacle.EVERY_TIME:
+            return False
+        if obstacle.pass_type == ShardhavenObstacle.ANYONE:
+            return self.haven_exit.passed_by.count() > 0
+
+    def create_exit_cmdset(self, exidbobj):
+
+        class ShardhavenExitCommand(command.Command):
+
+            def func(self):
+                if self.obj.can_traverse(self.caller):
+                    self.obj.at_traverse(self.caller, self.obj.destination, arguments=self.args)
+
+        exitkey = exidbobj.db_key.strip().lower()
+        exitaliases = list(exidbobj.aliases.all())
+        exitcmd = ShardhavenExitCommand(key=exitkey,
+                                        aliases=exitaliases,
+                                        locks=str(exidbobj.locks),
+                                        auto_help=False,
+                                        destination=exidbobj.db_destination,
+                                        is_exit=True,
+                                        obj=exidbobj)
+        exit_cmdset = cmdset.CmdSet(None)
+        exit_cmdset.key = '_exitset'
+        exit_cmdset.priority = 101  # equal to channel priority
+        exit_cmdset.duplicates = True
+        exit_cmdset.add(exitcmd)
+        return exit_cmdset
+
+    def can_traverse(self, character):
+        return True
+
+    def at_traverse(self, traversing_object, target_location, key_message=True, special_entrance=None, quiet=False,
+                    allow_follow=True, arguments=None):
+
+        if not self.passable(traversing_object):
+            result = self.haven_exit.obstacle.handle_obstacle(traversing_object, args=arguments)
+            if result:
+                self.haven_exit.passed_by.add(traversing_object)
+            else:
+                return
+
+        return super(ShardhavenInstanceExit, self).at_traverse(traversing_object, target_location,
+                                                               key_message=key_message,
+                                                               special_entrance=special_entrance,
+                                                               quiet=quiet, allow_follow=allow_follow)
+
+

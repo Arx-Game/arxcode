@@ -109,6 +109,16 @@ class ShardhavenLayoutExitAdmin(admin.ModelAdmin):
     pass
 
 
+class ShardhavenRollInline(admin.StackedInline):
+    model = ShardhavenObstacleRoll
+    extra = 0
+
+
+class ShardhavenObstacleAdmin(admin.ModelAdmin):
+    list_display = ('id', 'description')
+    inlines = (ShardhavenRollInline,)
+
+
 admin.site.register(Shardhaven, ShardhavenAdmin)
 admin.site.register(ShardhavenType, ShardhavenTypeAdmin)
 admin.site.register(ShardhavenMoodFragment, ShardhavenMoodFragmentAdmin)
@@ -116,3 +126,4 @@ admin.site.register(ShardhavenDiscovery, ShardhavenDiscoveryAdmin)
 admin.site.register(ShardhavenLayout, ShardhavenLayoutAdmin)
 admin.site.register(ShardhavenLayoutSquare, ShardhavenLayoutSquareAdmin)
 admin.site.register(ShardhavenLayoutExit, ShardhavenLayoutExitAdmin)
+admin.site.register(ShardhavenObstacle, ShardhavenObstacleAdmin)
