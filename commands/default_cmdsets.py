@@ -245,6 +245,8 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         self.add(starting_gear.CmdSetupGear())
         from world.fashion import fashion_commands
         self.add(fashion_commands.CmdAdminFashion())
+        from web.character import file_commands
+        self.add(file_commands.CmdAdminFile)
 
     @check_errors
     def add_investigation_commands(self):

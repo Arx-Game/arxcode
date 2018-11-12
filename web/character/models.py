@@ -17,7 +17,7 @@ from evennia.objects.models import ObjectDB
 from evennia.locks.lockhandler import LockHandler
 from django.db.models import Q, F
 from .managers import ArxRosterManager, AccountHistoryManager
-from datetime import datetime
+from datetime import datetime, date
 import random
 import traceback
 from world.stats_and_skills import do_dice_check
@@ -484,6 +484,81 @@ class PlayerAccount(SharedMemoryModel):
         return sum(ob.xp_earned for ob in qs)
 
 
+class PlayerSiteEntry(SharedMemoryModel):
+
+    account = models.ForeignKey(PlayerAccount, related_name='addresses')
+    address = models.CharField(blank=True, null=True, max_length=255)
+    last_seen = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        verbose_name_plural = "Site Entries"
+
+    @classmethod
+    def add_site_for_player(cls, player, site):
+        entries = AccountHistory.objects.filter(entry__character=player, end_date__isnull=True)
+        if entries.count() == 0 or entries.count() > 1:
+            return
+
+        account = entries[0].account
+
+        try:
+            entry = PlayerSiteEntry.objects.get(account=account, address=site)
+        except PlayerSiteEntry.DoesNotExist:
+            entry = PlayerSiteEntry(account=account, address=site)
+
+        entry.last_seen = date.today()
+        entry.save()
+
+
+class PlayerInfoEntry(SharedMemoryModel):
+    """
+    This is used to reference any event that we'd like to have a record of, tied to a given
+    PlayerAccount.
+    """
+
+    INFO = 0
+    RULING = 1
+    PRAISE = 2
+    CRITICISM = 3
+
+    entry_types = (
+        (INFO, 'Info'),
+        (RULING, 'Ruling'),
+        (PRAISE, 'Praise'),
+        (CRITICISM, 'Criticism'),
+    )
+
+    account = models.ForeignKey(PlayerAccount, related_name='entries')
+    entry_type = models.PositiveSmallIntegerField(choices=entry_types, default=INFO)
+    entry_date = models.DateTimeField(blank=True, null=True)
+    text = models.TextField(blank=True)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+', blank=True, null=True)
+
+    class Meta:
+        verbose_name_plural = "Info Entries"
+
+    @property
+    def type_name(self):
+        for type_entry in self.__class__.entry_types:
+            if type_entry[0] == self.entry_type:
+                return type_entry[1]
+
+        return "Unknown"
+
+    @classmethod
+    def type_for_name(cls, entry_type):
+        entry_type = entry_type.lower()
+        for type_entry in cls.entry_types:
+            if type_entry[1].lower() == entry_type:
+                return type_entry[0]
+
+        return None
+
+    @classmethod
+    def valid_types(cls):
+        return [et[1] for et in cls.entry_types]
+
+
 class AccountHistory(SharedMemoryModel):
     """Record of a PlayerAccount playing an individual character."""
     account = models.ForeignKey('PlayerAccount', db_index=True)
@@ -495,6 +570,10 @@ class AccountHistory(SharedMemoryModel):
     contacts = models.ManyToManyField('self', blank=True, through='FirstContact',
                                       related_name='contacted_by', symmetrical=False)
     objects = AccountHistoryManager()
+
+    class Meta:
+        verbose_name_plural = "Played Characters"
+        verbose_name = "Played Character"
 
     def __str__(self):
         start = ""

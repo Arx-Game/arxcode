@@ -23,6 +23,7 @@ several more options for customizing the Guest account system.
 """
 from evennia import DefaultAccount
 from typeclasses.mixins import MsgMixins, InformMixin
+from web.character.models import PlayerSiteEntry
 
 
 class Account(InformMixin, MsgMixins, DefaultAccount):
@@ -141,6 +142,13 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         # try to auto-connect to it by calling the @ic command
         # (this relies on player.db._last_puppet being set)
         self.execute_cmd("@bbsub/quiet story updates")
+
+        address = self.sessions.all()[-1].address
+        if isinstance(address, tuple):
+            address = address[0]
+
+        PlayerSiteEntry.add_site_for_player(self.char_ob, address)
+
         try:
             from commands.commands.bboards import get_unread_posts
             get_unread_posts(self)

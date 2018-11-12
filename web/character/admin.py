@@ -10,6 +10,7 @@ from .models import (Roster, RosterEntry, Photo, DISCO_MULT, SearchTag, Flashbac
                      Mystery, Revelation, Clue, Investigation,
                      MysteryDiscovery, RevelationDiscovery, ClueDiscovery,
                      RevelationForMystery, ClueForRevelation, Theory, TheoryPermissions,
+                     PlayerInfoEntry,
                      )
 from django.db.models import F, Subquery, OuterRef, IntegerField, ExpressionWrapper, Q, Sum
 
@@ -57,11 +58,17 @@ class AccountHistoryInline(admin.TabularInline):
     raw_id_fields = ('account', 'entry')
 
 
+class AccountEntryInline(admin.TabularInline):
+    """Inline for AccountHistory"""
+    model = PlayerInfoEntry
+    raw_id_fields = ('account',)
+
+
 class AccountAdmin(BaseCharAdmin):
     """Admin for AccountHistory"""
     list_display = ('id', 'email', 'player_characters')
     search_fields = ('email', 'characters__character__db_key')
-    inlines = [AccountHistoryInline]
+    inlines = (AccountHistoryInline, AccountEntryInline)
 
     @staticmethod
     def player_characters(obj):

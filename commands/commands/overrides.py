@@ -851,7 +851,7 @@ class CmdWho(ArxPlayerCommand):
                                              "{wOn for",
                                              "{wIdle",
                                              "{wRoom",
-                                             "{wProtocol",
+                                             "{wClient",
                                              "{wHost"])
             for session in session_list:
                 pc = session.get_account()
@@ -883,13 +883,27 @@ class CmdWho(ArxPlayerCommand):
                     already_counted.append(pc)
                     continue
                 pname = crop(pname, width=18)
-                protocol = "ajax" if "ajax" in session.protocol_key else session.protocol_key
+                if session.protocol_key == "websocket" or "ajax" in session.protocol_key:
+                    client_name = "Webclient"
+                else:
+                    # Get a sane client name to display.
+                    client_name = session.protocol_flags.get('CLIENTNAME')
+                    if not client_name:
+                        client_name = session.protocol_flags.get('TERM')
+                    if client_name and client_name.upper().endswith("-256COLOR"):
+                        client_name = client_name[:-9]
+
+                if client_name is None:
+                    client_name = "Unknown"
+
+                client_name = client_name.capitalize()
+
                 table.add_row([pname,
-                               time_format(delta_conn),
+                               time_format(delta_conn)[:6],
                                time_format(delta_cmd, 1),
                                hasattr(plr_pobject, "location") and plr_pobject.location and plr_pobject.location.dbref
                                or "None",
-                               protocol,
+                               client_name[:9],
                                isinstance(session.address, tuple) and session.address[0] or session.address])
                 already_counted.append(pc)
                 number_displayed += 1
