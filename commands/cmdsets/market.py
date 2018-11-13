@@ -95,7 +95,7 @@ class CmdMarket(ArxCommand):
         market/military <amount>
 
     Used to buy and sell materials at the market. Materials can be
-    sold to the market for 10% of the cost. Economic resources are worth
+    sold to the market for 5% of the cost. Economic resources are worth
     250 silver for buying materials. Resources cost 500 silver each.
     """
     key = "market"
@@ -234,7 +234,7 @@ class CmdMarket(ArxCommand):
             mat.amount -= amt
             mat.save()
             money = caller.db.currency or 0.0
-            sale = amt * material.value/10
+            sale = amt * material.value/20
             money += sale
             caller.db.currency = money
             caller.msg("You have sold %s %s for %s silver coins." % (amt, material.name, sale))
@@ -420,9 +420,9 @@ class HaggledDeal(object):
             cost = 500.0
         else:
             if self.transaction_type == "buy":
-                cost = round(pow(self.material.value, 1.05))
-            else:
                 cost = self.material.value
+            else:
+                cost = round(pow(self.material.value, 0.9))
         return cost
 
     def sell_materials(self):
