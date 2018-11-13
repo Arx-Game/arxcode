@@ -388,6 +388,10 @@ class CmdBroker(ArxCommand):
         material_type = None
         resource_types = dict(BrokeredSale.RESOURCE_TYPES)
         if sale_type == BrokeredSale.ACTION_POINTS:
+            from evennia.server.models import ServerConfig
+            disabled = ServerConfig.objects.conf(key="DISABLE_AP_TRANSFER")
+            if disabled:
+                raise self.BrokerError("Action Point sales are temporarily disabled.")
             if amount % 3:
                 raise self.BrokerError("Action Points must be a factor of 3, since it's divided by 3 when put on sale.")
             if not self.caller.player_ob.pay_action_points(amount):

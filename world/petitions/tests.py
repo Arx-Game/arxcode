@@ -11,6 +11,7 @@ class TestPetitionCommands(ArxCommandTest):
         from world.petitions.models import BrokeredSale
         from world.dominion.models import CraftingMaterialType
         from web.character.models import PlayerAccount
+        from evennia.server.models import ServerConfig
         mat = CraftingMaterialType.objects.create(name="testium", value=5000)
         sale = BrokeredSale.objects.create(owner=self.dompc2, sale_type=BrokeredSale.ACTION_POINTS, amount=50, price=5)
         self.setup_cmd(petitions_commands.CmdBroker, self.char1)
@@ -45,6 +46,9 @@ class TestPetitionCommands(ArxCommandTest):
         self.call_cmd("/sell ap=10,-20", "You must provide a positive number as the price.")
         self.call_cmd("/sell ap=10,100", "Action Points must be a factor of 3,"
                                          " since it's divided by 3 when put on sale.")
+        ServerConfig.objects.conf(key="DISABLE_AP_TRANSFER", value=True)
+        self.call_cmd("/sell ap=12,100", 'Action Point sales are temporarily disabled.')
+        ServerConfig.objects.conf(key="DISABLE_AP_TRANSFER", delete=True)
         self.call_cmd("/sell ap=12,100", "Created a new sale of 4 Action Points for 100 silver.")
         self.call_cmd("/sell ap=6,100", "Added 2 to the existing sale of Action Points for 100 silver.")
         self.call_cmd("/sell ap=600,500", "You do not have enough action points to put on sale.")

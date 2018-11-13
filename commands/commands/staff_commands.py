@@ -1565,7 +1565,8 @@ class CmdSetServerConfig(ArxPlayerCommand):
     key = "setconfig"
     help_category = "Admin"
     locks = "cmd: perm(wizards)"
-    shorthand_to_real_keys = {"motd": "MESSAGE_OF_THE_DAY", "income": "GLOBAL_INCOME_MOD"}
+    shorthand_to_real_keys = {"motd": "MESSAGE_OF_THE_DAY", "income": "GLOBAL_INCOME_MOD",
+                              "ap transfers disabled": "DISABLE_AP_TRANSFER"}
     valid_keys = shorthand_to_real_keys.keys()
 
     def get_help(self, caller, cmdset):
@@ -1619,6 +1620,8 @@ class CmdSetServerConfig(ArxPlayerCommand):
                 val = self.validate_income_value(self.rhs)
             if key == "motd":
                 broadcast("|yServer Message of the Day:|n %s" % val)
+            if key == "ap transfers disabled":
+                val = bool(self.rhs)
             ServerConfig.objects.conf(key=real_key, value=val)
         self.list_config_values()
 

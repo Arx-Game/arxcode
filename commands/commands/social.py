@@ -2942,9 +2942,12 @@ class CmdIAmHelping(ArxPlayerCommand):
     def func(self):
         """Executes the +iamhelping command"""
         try:
+            from evennia.server.models import ServerConfig
             if not self.args:
                 self.msg("You have %s AP remaining." % self.caller.roster.action_points)
                 return
+            if ServerConfig.objects.conf(key="DISABLE_AP_TRANSFER"):
+                raise CommandError("AP transfers are temporarily disabled.")
             targ = self.caller.search(self.lhs)
             if not targ:
                 return
