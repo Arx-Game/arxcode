@@ -114,9 +114,15 @@ class ShardhavenRollInline(admin.StackedInline):
     extra = 0
 
 
+class ShardhavenObstacleClueInline(admin.TabularInline):
+    model = ShardhavenObstacleClue
+    extra = 0
+    raw_id_fields = ('clue',)
+
+
 class ShardhavenObstacleAdmin(admin.ModelAdmin):
     list_display = ('id', 'description')
-    inlines = (ShardhavenRollInline,)
+    inlines = (ShardhavenRollInline, ShardhavenObstacleClueInline)
 
 
 admin.site.register(Shardhaven, ShardhavenAdmin)

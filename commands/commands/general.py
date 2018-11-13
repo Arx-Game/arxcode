@@ -64,6 +64,7 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/verbose_where
         @settings/emit_label
         @settings/ignore_weather
+        @settings/ignore_model_emits
 
     Switches: /brief suppresses room descs when moving through rooms.
     /posebreak adds a newline between poses from characters.
@@ -82,6 +83,8 @@ class CmdGameSettings(ArxPlayerCommand):
     about their current activities, when using the +where command.
     /emit_label will prefix each emit with its author.
     /ignore_weather will disable weather emits.
+    /ignore_model_emits will ignore modeling result emits, in case you
+    wish to cut down on such things at parties.
     """
     key = "@settings"
     locks = "cmd:all()"
@@ -91,7 +94,7 @@ class CmdGameSettings(ArxPlayerCommand):
                       'afk', 'nomessengerpreview', 'bbaltread', 'ignore_messenger_notifications',
                       'ignore_messenger_deliveries', 'newline_on_messages', 'private_mode',
                       'ic_only', 'ignore_bboard_notifications', 'quote_color', 'name_color',
-                      'emit_label', 'ignore_weather')
+                      'emit_label', 'ignore_weather', 'ignore_model_emits')
 
     def togglesetting(self, char, attr, tag=False):
         """Toggles a setting for the caller"""
@@ -193,6 +196,9 @@ class CmdGameSettings(ArxPlayerCommand):
             return
         if "ignore_weather" in switches:
             self.togglesetting(caller, "ignore_weather")
+            return
+        if "ignore_model_emits" in switches:
+            self.togglesetting(char, "ignore_model_emits")
             return
         caller.msg("Invalid switch. Valid switches are: %s" % ", ".join(self.valid_switches))
 

@@ -382,6 +382,9 @@ class ShardhavenInstanceExit(BaseObjectMixins, DefaultExit):
         if not self.haven_exit or not self.haven_exit.obstacle:
             return True
 
+        if self.ndb.override:
+            return True
+
         obstacle = self.haven_exit.obstacle
         if obstacle.pass_type == ShardhavenObstacle.INDIVIDUAL:
             return traversing_object in self.haven_exit.passed_by.all()
@@ -414,6 +417,7 @@ class ShardhavenInstanceExit(BaseObjectMixins, DefaultExit):
         exit_cmdset.add(exitcmd)
         return exit_cmdset
 
+    # noinspection PyMethodMayBeStatic
     def can_traverse(self, character):
         return True
 
@@ -421,9 +425,11 @@ class ShardhavenInstanceExit(BaseObjectMixins, DefaultExit):
                     allow_follow=True, arguments=None):
 
         if not self.passable(traversing_object):
-            result = self.haven_exit.obstacle.handle_obstacle(traversing_object, args=arguments)
+            result, override_obstacle = self.haven_exit.obstacle.handle_obstacle(traversing_object, args=arguments)
             if result:
                 self.haven_exit.passed_by.add(traversing_object)
+                if override_obstacle:
+                    self.ndb.override = True
             else:
                 return
 

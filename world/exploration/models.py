@@ -85,10 +85,12 @@ class ShardhavenObstacle(SharedMemoryModel):
 
     PASS_CHECK = 0
     HAS_CLUE = 1
+    HAS_ALL_CLUES = 2
 
     OBSTACLE_TYPES = (
         (PASS_CHECK, "Pass a Dice Check"),
-        (HAS_CLUE, "Possess a Specific Clue")
+        (HAS_CLUE, "Possess Any Associated Clue"),
+        (HAS_ALL_CLUES, "Possess All Associated Clues")
     )
 
     INDIVIDUAL = 0
@@ -104,7 +106,6 @@ class ShardhavenObstacle(SharedMemoryModel):
     haven_types = models.ManyToManyField(ShardhavenType, related_name='+', blank=True)
     obstacle_type = models.PositiveSmallIntegerField(choices=OBSTACLE_TYPES)
     description = models.TextField(blank=False, null=False)
-    clue = models.ForeignKey("character.Clue", blank=True, null=True)
     pass_type = models.PositiveSmallIntegerField(choices=OBSTACLE_PASS_TYPES, default=INDIVIDUAL,
                                                  verbose_name="Requirements")
 
@@ -117,7 +118,7 @@ class ShardhavenObstacle(SharedMemoryModel):
     def handle_dice_check(self, calling_object, args):
 
         if self.rolls.count() == 0:
-            return True
+            return True, False
 
         if not args:
             calling_object.msg(self.description)
@@ -127,13 +128,13 @@ class ShardhavenObstacle(SharedMemoryModel):
                 calling_object.msg("{}: [{}+{}] {}".format(counter, roll.stat, roll.skill, roll.description))
                 counter += 1
             calling_object.msg("|/Enter the direction followed by the number you choose, such as 'south 1'.")
-            return
+            return False, False
 
         try:
             choice = int(args)
         except ValueError:
             calling_object.msg("Please provide a number from 1 to {}".format(self.rolls.count()))
-            return False
+            return False, False
 
         roll = self.rolls.all()[choice - 1]
         result = do_dice_check(caller=calling_object, stat=roll.stat, skill=roll.skill, difficulty=roll.difficulty)
@@ -143,7 +144,7 @@ class ShardhavenObstacle(SharedMemoryModel):
 
             message = roll.success_msg.replace("{name}", calling_object.key)
             calling_object.location.msg_contents(message)
-            return True
+            return True, roll.override
         else:
             if roll.personal_failure_msg:
                 calling_object.msg(roll.personal_failure_msg)
@@ -159,21 +160,37 @@ class ShardhavenObstacle(SharedMemoryModel):
                 except combat_settings.CombatError as err:
                     inform_staff("{} broke combat failing an obstacle check in a Shardhaven: {}"
                                  .format(calling_object.name, str(err)))
-            return False
+            return False, False
 
-    def handle_clue_check(self, calling_object):
-        if not self.clue:
-            return True
+    def handle_clue_check(self, calling_object, require_all):
 
-        return self.clue in calling_object.discovered_clues
+        calling_object.msg(self.description + "|/")
+
+        for clue in self.clues.all():
+            if require_all:
+                if clue.clue not in calling_object.roster.discovered_clues:
+                    calling_object.msg("You lack the knowledge to pass this obstacle.")
+                    return False, False
+            else:
+                if clue.clue in calling_object.roster.discovered_clues:
+                    calling_object.msg("Your knowledge of \"{}\" allows you to pass.".format(clue.clue.name))
+                    return True, False
+
+        if not require_all:
+            calling_object.msg("You lack the knowledge to pass this obstacle.")
+            return False, False
+
+        return True, False
 
     def handle_obstacle(self, calling_object, args=None):
         if self.obstacle_type == ShardhavenObstacle.PASS_CHECK:
             return self.handle_dice_check(calling_object, args)
         elif self.obstacle_type == ShardhavenObstacle.HAS_CLUE:
-            return self.handle_clue_check(calling_object)
+            return self.handle_clue_check(calling_object, False)
+        elif self.obstacle_type == ShardhavenObstacle.HAS_ALL_CLUES:
+            return self.handle_clue_check(calling_object, True)
         else:
-            return True
+            return True, False
 
 
 class ShardhavenObstacleRoll(SharedMemoryModel):
@@ -185,6 +202,9 @@ class ShardhavenObstacleRoll(SharedMemoryModel):
     difficulty = models.PositiveSmallIntegerField(blank=False, null=False)
     target = models.PositiveSmallIntegerField(blank=False, null=False)
 
+    override = models.BooleanField(default=False, verbose_name="Override on Success",
+                                   help_text="Should succeeding on this roll make the obstacle open to everyone else?")
+
     description = models.TextField(blank=False, null=False, verbose_name="Description Shown of this Challenge")
     success_msg = models.TextField(blank=False, null=False, verbose_name="Message to room on Success")
     personal_success_msg = models.TextField(blank=True, null=True, verbose_name="Message to character on Success")
@@ -195,6 +215,12 @@ class ShardhavenObstacleRoll(SharedMemoryModel):
     damage_mit = models.BooleanField(default=True, verbose_name="If damage is applied, should armor mitigate it?")
     damage_reason = models.CharField(blank=True, null=True, max_length=255,
                                      verbose_name="Short description of damage, for the damage system.")
+
+
+class ShardhavenObstacleClue(SharedMemoryModel):
+
+    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='clues', blank=False, null=False)
+    clue = models.ForeignKey('character.Clue', blank=False, null=False)
 
 
 class ShardhavenLayoutExit(SharedMemoryModel):

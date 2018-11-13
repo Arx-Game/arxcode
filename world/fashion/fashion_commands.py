@@ -148,8 +148,17 @@ class CmdFashionModel(ArxCommand):
     A fashion model tests their composure & performance to earn fame. The
     organization sponsoring the model and the item's designer accrues a portion
     of fame as well. Although masks may be modeled, doing so will reveal the
-    model's identity in subsequent item labels and informs.
+    model's identity in subsequent item labels and informs.  Additionally,
+    modeling must have an audience; you cannot model in an empty room.  The
+    size and collective social rank of your audience will influence the amount
+    of fame generated; showing off for a single commoner will not merit as
+    much fame as modeling an outfit for the King!
+
     Without the /all switch for leaderboards, only Top 20 are displayed.
+
+    If you want to ignore modeling emits (such as at parties and other large
+    scenes), you can use the @settings command to turn on ignore_model_emit.
+    (See help @settings for more information.)
     """
     key = "model"
     aliases = ["models"]
@@ -180,6 +189,7 @@ class CmdFashionModel(ArxCommand):
             return
         player = self.caller.player
         self.check_recency(org)
+        self.check_audience()
         try:
             fame = item.model_for_fashion(player, org)
         except AttributeError:
@@ -196,6 +206,7 @@ class CmdFashionModel(ArxCommand):
         if not outfit or not org:
             return
         self.check_recency(org)
+        self.check_audience()
         fame = outfit.model_outfit_for_fashion(org)
         self.emit_modeling_result(outfit, org, fame)
 
@@ -203,7 +214,11 @@ class CmdFashionModel(ArxCommand):
         """A local emit and caller message about an outfit/item that has been modeled."""
         player = self.caller.player
         emit = Snapshot.get_emit_msg(player, thing, org, fame)
-        self.caller.location.msg_contents(emit)
+        for obj in self.caller.location.contents:
+            ignore_model = obj.db.ignore_model_emits or False
+            if not ignore_model:
+                obj.msg(emit)
+
         success = "For modeling %s{n you earn {c%d{n fame. " % (thing, fame)
         success += "Your prestige is now %d." % player.assets.prestige
         self.msg(success)
@@ -267,6 +282,15 @@ class CmdFashionModel(ArxCommand):
             two_weeks_ago = datetime.now() - timedelta(days=14)
             if qs.filter(db_date_created__gte=two_weeks_ago, org=org):
                 raise FashionError("You have displayed fashion too recently for %s to bring them more acclaim." % org)
+
+    def check_audience(self):
+        characters = []
+        for obj in self.caller.location.contents:
+            if obj.is_typeclass("typeclasses.characters.Character") and not obj == self.caller:
+                characters.append(obj)
+        if len(characters) == 0:
+            raise FashionError("There doesn't seem to be anyone here to model for!")
+
 
 
 class CmdAdminFashion(ArxCommand):

@@ -12,7 +12,7 @@ class SnapshotAdmin(admin.ModelAdmin):
     list_display = ('id', 'fashion_model', 'fashion_item_raw_name', 'org', 'fame', 'designer')
     list_select_related = True
     raw_id_fields = ('fashion_item', 'fashion_model', 'org', 'designer')
-    readonly_fields = ('item_worth',)
+    readonly_fields = ('item_worth', 'multiplier', 'characters')
     search_fields = ('id', 'fashion_model__player__username', 'org__name', 'fashion_item__db_key',
                      'designer__player__username')
 

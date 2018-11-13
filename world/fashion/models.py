@@ -407,6 +407,8 @@ class FashionSnapshot(FashionCommonMixins):
     fame = models.IntegerField(default=0, blank=True)
     outfit = models.ForeignKey('FashionOutfit', related_name='fashion_snapshots',
                                on_delete=models.SET_NULL, null=True)
+    characters = models.ManyToManyField('objects.ObjectDB', related_name='+')
+    multiplier = models.FloatField(default=1.0)
 
     def __str__(self):
         return str(self.fashion_item) if self.fashion_item else "[Snapshot #%d]" % self.id
@@ -442,12 +444,20 @@ class FashionSnapshot(FashionCommonMixins):
         """
         from world.stats_and_skills import do_dice_check
         char = self.fashion_model.player.char_ob
+        total_weight = 0
+        for obj in char.location.contents:
+            if obj.is_typeclass("typeclasses.characters.Character") and obj != char:
+                self.characters.add(obj)
+                total_weight += 11 - (obj.db.social_rank or 10)
+
+        self.multiplier = total_weight / 25.0
         roll = do_dice_check(caller=char, stat="composure", skill="performance", difficulty=30)
         roll = pow(max((roll + char.social_clout * 3), 1), 1.5)
         percentage = max(roll/100.0, 0.01)
         level_mod = self.fashion_item.recipe.level/6.0
         percentage *= max(level_mod, 0.01)
         percentage *= max((self.fashion_item.quality_level/40.0), 0.01)
+        percentage *= self.multiplier
         # they get either their percentage of the item's worth, their modified roll, or 4, whichever is highest
         self.fame = max(int(self.fashion_item.item_worth * percentage), max(int(roll), 4))
         self.save()
