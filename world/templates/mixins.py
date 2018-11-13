@@ -17,9 +17,10 @@ class TemplateMixins(object):
         return re.findall(self.template_id_regex_obj, string)
 
     def replace_template_values(self, string, templates):
+        escape = lambda e: "".join("\\" + c if c in "\\" or c == "\\" else c for c in e)
         work_string = string
         for template in templates:
-            work_string = re.sub(re.escape(template.markup()), template.desc, work_string)
+            work_string = re.sub(re.escape(template.markup()), escape(template.desc), work_string)
         return work_string
 
     def can_apply_templates(self, caller, desc):
