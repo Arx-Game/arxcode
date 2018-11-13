@@ -571,7 +571,7 @@ class AssetOwner(SharedMemoryModel):
         mod = self.prestige_mod
         bonus = (mod * base_amount)/100.0
         if random_percentage is not None:
-            bonus = (bonus * randint(1, random_percentage))/100.0
+            bonus = (bonus * randint(50, random_percentage))/100.0
         return int(bonus)
 
     def get_bonus_income(self, base_amount):
@@ -4871,7 +4871,7 @@ class Member(SharedMemoryModel):
         patron_amount = get_amount_after_clout(clout, minimum=randint(1, 10))
         if randint(0, 100) < 4:
             # we got a big crit, hooray. Add a base of 1-30 resources to bonus, then triple the bonus
-            patron_amount += randint(1, 30)
+            patron_amount += randint(1, 50)
             patron_amount *= 3
             msg += " Luck has gone %s's way, and they get a bonus!" % self
         msg += "You have gained %s %s resources." % (patron_amount, resource_type)

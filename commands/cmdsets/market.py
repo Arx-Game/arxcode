@@ -330,7 +330,7 @@ class HaggledDeal(object):
         noun = "Discount" if self.transaction_type == "buy" else "Markup Bonus"
         msg += "{wCurrent %s:{n %s\n" % (noun, self.discount)
         noun = "Value" if self.transaction_type == "sell" else "Cost"
-        msg += "{wSilver %s:{n %s" % (noun, self.silver_value)
+        msg += "{wSilver %s:{n %s (Base Cost Per Unit: %s)" % (noun, self.silver_value, self.base_cost)
         msg += "\n{wRoll Modifier:{n %s" % self.roll_bonus
         return msg
 
@@ -412,11 +412,18 @@ class HaggledDeal(object):
             discount = 100 - self.discount
         else:
             discount = self.discount
+        return (self.base_cost * discount/100.0) * self.amount
+
+    @property
+    def base_cost(self):
         if self.resource_type:
-            base_cost = 500.0
+            cost = 500.0
         else:
-            base_cost = self.material.value
-        return (base_cost * discount/100.0) * self.amount
+            if self.transaction_type == "buy":
+                cost = round(pow(self.material.value, 1.05))
+            else:
+                cost = self.material.value
+        return cost
 
     def sell_materials(self):
         """Attempt to sell the materials we made the deal for"""
@@ -620,13 +627,14 @@ class CmdHaggle(ArxCommand):
             # resources are worth 500 each
             value_per_object = 500
         else:
-            value_per_object = material.value
+            value_per_object = round(pow(material.value, 1.05))
         value_we_found = roll * 5000.0
         value_for_amount = value_we_found / value_per_object
         if value_for_amount < 1.0:
             penalty = int((1.0 - value_for_amount) * -100)
             amount_found = 1
-            self.msg("You had trouble finding a deal for such a valuable item. Haggling rolls will have a penalty of %s." % penalty)
+            self.msg("You had trouble finding a deal for such a valuable item. "
+                     "Haggling rolls will have a penalty of %s." % penalty)
             return amount_found, penalty
         # minimum of 1
         amount_found = max(int(ceil(value_we_found / value_per_object)), 1)
