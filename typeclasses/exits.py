@@ -361,10 +361,18 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
         self.password_failures[caller] = failures
 
 
-class ShardhavenInstanceExit(BaseObjectMixins, DefaultExit):
+class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
     """
     Class to hold obstacles and other data for an exit in a Shardhaven instance.
     """
+
+    @property
+    def is_exit(self):
+        return True
+
+    @property
+    def is_character(self):
+        return False
 
     @property
     def haven_exit(self):
@@ -419,6 +427,17 @@ class ShardhavenInstanceExit(BaseObjectMixins, DefaultExit):
 
     # noinspection PyMethodMayBeStatic
     def can_traverse(self, character):
+        if not character.location.ndb.combat_manager:
+            return True
+
+        cscript = character.location.ndb.combat_manager
+        if not cscript.ndb.combatants:
+            return True
+
+        if cscript.check_character_is_combatant(character):
+            character.msg("You're in combat, and cannot move rooms again unless you flee!")
+            return False
+
         return True
 
     def at_traverse(self, traversing_object, target_location, key_message=True, special_entrance=None, quiet=False,

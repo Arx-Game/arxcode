@@ -693,6 +693,9 @@ class CraftingMixins(object):
             string += "\nIt is a %s." % recipe.name
             # quality_level is an integer, we'll get a name from crafter file's dict
             string += self.get_quality_appearance()
+        elif self.is_typeclass('world.magic.materials.MagicMaterial'):
+            string += "\nIt is an alchemical material."
+            string += self.get_quality_appearance()
         if self.db.translation:
             string += "\nIt contains script in a foreign tongue."
         # signed_by is a crafter's character object

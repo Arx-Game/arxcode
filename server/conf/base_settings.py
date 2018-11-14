@@ -93,7 +93,8 @@ INSTALLED_APPS += ('world.dominion',
                    'world.weather',
                    'world.templates.apps.TemplateConfig',
                    'world.exploration',
-                   'web.admintools'
+                   'web.admintools',
+                   'world.magic',
                    )
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'

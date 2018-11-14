@@ -125,6 +125,19 @@ class ShardhavenObstacleAdmin(admin.ModelAdmin):
     inlines = (ShardhavenRollInline, ShardhavenObstacleClueInline)
 
 
+class MonsterDropInline(admin.TabularInline):
+    model = MonsterDrops
+    extra = 0
+    raw_id_fields = ('material',)
+
+
+class MonsterAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'difficulty')
+    inlines = (MonsterDropInline,)
+    filter_horizontal = ('habitats',)
+    readonly_fields = ('instances',)
+
+
 admin.site.register(Shardhaven, ShardhavenAdmin)
 admin.site.register(ShardhavenType, ShardhavenTypeAdmin)
 admin.site.register(ShardhavenMoodFragment, ShardhavenMoodFragmentAdmin)
@@ -133,3 +146,4 @@ admin.site.register(ShardhavenLayout, ShardhavenLayoutAdmin)
 admin.site.register(ShardhavenLayoutSquare, ShardhavenLayoutSquareAdmin)
 admin.site.register(ShardhavenLayoutExit, ShardhavenLayoutExitAdmin)
 admin.site.register(ShardhavenObstacle, ShardhavenObstacleAdmin)
+admin.site.register(Monster, MonsterAdmin)

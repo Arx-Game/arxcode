@@ -6,6 +6,118 @@ from django.db import models
 from . import builder
 from server.utils.arx_utils import inform_staff
 import random
+from typeclasses.npcs import npc_types
+
+
+class Monster(SharedMemoryModel):
+
+    MOOKS = 0
+    BOSS = 1
+
+    MONSTER_TYPES = (
+        (MOOKS, 'Mooks'),
+        (BOSS, 'Boss'),
+    )
+
+    MOOK_TYPECLASS = "world.exploration.npcs.MookMonsterNpc"
+    BOSS_TYPECLASS = "world.exploration.npcs.BossMonsterNpc"
+
+    NPC_TYPES = (
+        (npc_types.GUARD, "Guard"),
+        (npc_types.THUG, "Thug"),
+        (npc_types.SPY, "Spy"),
+        (npc_types.CHAMPION, "Champion"),
+        (npc_types.ASSISTANT, "Assistant"),
+        (npc_types.ANIMAL, "Animal"),
+        (npc_types.SMALL_ANIMAL, "Small Animal"),
+    )
+
+    name = models.CharField(max_length=40, blank=False, null=False)
+    plural_name = models.CharField(max_length=40, blank=True, null=True)
+    description = models.TextField(blank=False, null=False)
+    spawn_message = models.TextField(blank=True, null=True)
+    difficulty = models.PositiveSmallIntegerField(default=5, blank=False, null=False)
+    npc_type = models.PositiveSmallIntegerField(choices=MONSTER_TYPES, default=0)
+    npc_template = models.PositiveSmallIntegerField(choices=NPC_TYPES, default=0)
+    habitats = models.ManyToManyField('ShardhavenType', related_name='denizens')
+    minimum_quantity = models.PositiveSmallIntegerField(default=1,
+                                                        help_text='Minimum number of Mooks to spawn (mooks only)')
+    maximum_quantity = models.PositiveSmallIntegerField(default=10,
+                                                        help_text='Maximum number of Mooks to spawn (mooks only)')
+    boss_rating = models.PositiveSmallIntegerField(default=1, help_text='Boss rating (boss only)')
+    threat_rating = models.PositiveSmallIntegerField(default=1, help_text='The threat rating for this monster')
+    mirror = models.BooleanField(default=False,
+                                 help_text='Should this monster mirror the stats of a player in the party?')
+
+    weight_no_drop = models.PositiveSmallIntegerField(default=10,
+                                                      help_text='The weight value to use for No Drop in drop '
+                                                                'calculations.')
+
+    instances = models.ManyToManyField('objects.ObjectDB', related_name='monsters')
+
+    def create_instance(self, location):
+        result = None
+        for obj in self.instances.all():
+            if obj.location is None:
+                result = obj
+                continue
+
+        quantity = 1
+        mob_name = self.name
+        if self.npc_type == self.MOOKS:
+            quantity = random.randint(self.minimum_quantity, self.maximum_quantity)
+            if quantity > 1:
+                mob_name = self.plural_name or self.name
+
+        if not result:
+            if self.npc_type == self.MOOKS:
+                result = create.create_object(key=mob_name, typeclass=self.MOOK_TYPECLASS)
+            elif self.npc_type == self.BOSS:
+                result = create.create_object(key=mob_name, typeclass=self.BOSS_TYPECLASS)
+            self.instances.add(result)
+
+        result.setup_npc(self.npc_template, self.threat_rating, quantity, sing_name=self.name,
+                         plural_name=self.plural_name or self.name)
+        result.name = mob_name
+        result.db.monster_id = self.id
+
+        if self.spawn_message:
+            location.msg_contents(self.spawn_message)
+        result.location = location
+        return result
+
+    def handle_loot_drop(self, obj, location):
+        values = {
+            0: None
+        }
+        current_value = self.weight_no_drop
+        for loot in self.drops.all():
+            values[current_value] = loot.material
+            current_value += loot.weight
+
+        picker = random.randint(0, current_value)
+        last_value = 0
+        result = None
+        for key in sorted(values.keys()):
+            if key >= picker:
+                result = values[last_value]
+                continue
+            last_value = key
+
+        if not result:
+            result = values[values.keys()[-1]]
+
+        if result:
+            location.msg_contents("The {} dropped {}!".format(obj.key, result.name))
+            final_loot = result.create_instance()
+            final_loot.location = location
+
+
+class MonsterDrops(SharedMemoryModel):
+
+    monster = models.ForeignKey(Monster, related_name='drops')
+    material = models.ForeignKey('magic.AlchemicalMaterial', related_name='monsters')
+    weight = models.PositiveSmallIntegerField(default=10, blank=False, null=False)
 
 
 class ShardhavenType(SharedMemoryModel):
@@ -28,6 +140,7 @@ class Shardhaven(SharedMemoryModel):
     be used for storing the Shardhavens we create so we can easily refer back to them
     later.  Down the road, it will be used for the exploration system.
     """
+
     name = models.CharField(blank=False, null=False, max_length=78, db_index=True)
     description = models.TextField(max_length=4096)
     location = models.ForeignKey('dominion.MapLocation', related_name='shardhavens', blank=True, null=True)
@@ -35,6 +148,7 @@ class Shardhaven(SharedMemoryModel):
     required_clue_value = models.IntegerField(default=0)
     discovered_by = models.ManyToManyField('dominion.PlayerOrNpc', blank=True, related_name="discovered_shardhavens",
                                            through="ShardhavenDiscovery")
+    difficulty_rating = models.PositiveSmallIntegerField(default=4)
 
     def __str__(self):
         return self.name or "Unnamed Shardhaven (#%d)" % self.id
@@ -321,9 +435,9 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
         namestring += self.layout.haven.name + " - "
         namestring += self.tile.name + "|n"
 
-        room = create.create_object(typeclass='typeclasses.rooms.ArxRoom',
+        room = create.create_object(typeclass='world.exploration.rooms.ShardhavenRoom',
                                     key=namestring)
-        room.square = self
+        room.db.haven_id = self.layout.haven.id
 
         final_description = self.tile.description
 
