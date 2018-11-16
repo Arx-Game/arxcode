@@ -4,7 +4,7 @@ Commands for banking.
 
 from evennia.commands.cmdset import CmdSet
 from evennia.utils import evtable
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 from world.dominion import setup_utils
 from world.dominion.models import CraftingMaterials, AccountTransaction, AssetOwner
 

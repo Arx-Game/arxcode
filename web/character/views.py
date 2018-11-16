@@ -11,7 +11,7 @@ from cloudinary import api
 from cloudinary.forms import cl_init_js_callbacks
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.db.models import Q, F
+from django.db.models import Q
 from django import forms
 from django.http import Http404, HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, get_object_or_404
@@ -22,14 +22,14 @@ from evennia.utils.ansi import strip_ansi
 
 from collections import OrderedDict
 
-from commands.commands import roster
+from commands.base_commands import roster
 from server.utils.name_paginator import NamePaginator
 from server.utils.view_mixins import LimitPageMixin
 from typeclasses.characters import Character
-from world.dominion.models import Organization, CrisisAction, ActionSubmissionError
+from world.dominion.models import Organization, PlotAction, ActionSubmissionError
 from .forms import (PhotoForm, PhotoDirectForm, PhotoUnsignedDirectForm, PortraitSelectForm,
                     PhotoDeleteForm, PhotoEditForm, FlashbackPostForm, FlashbackCreateForm)
-from .models import Photo, Story, Episode, Chapter, Flashback, ClueDiscovery, DISCO_MULT
+from .models import Photo, Story, Episode, Chapter, Flashback, ClueDiscovery
 
 
 def get_character_from_ob(object_id):
@@ -82,6 +82,9 @@ def sheet(request, object_id):
         family_org_id = Organization.objects.get(name__iexact=character.db.family)
     except Organization.DoesNotExist:
         family_org_id = None
+    clues = list(character.clues.all())
+    secrets = [ob.clue for ob in character.messages.secrets]
+    additional_notes = [ob for ob in clues if ob not in secrets]
     return render(request, 'character/sheet.html', {'character': character,
                                                     'show_hidden': show_hidden,
                                                     'can_comment': can_comment,
@@ -89,7 +92,9 @@ def sheet(request, object_id):
                                                     'pwidth': pwidth,
                                                     'fealty_org_id': fealty_org_id,
                                                     'family_org_id': family_org_id,
-                                                    'page_title': character.key})
+                                                    'page_title': character.key,
+                                                    'secrets': secrets,
+                                                    'additional_notes': additional_notes})
 
 
 def journals(request, object_id):
@@ -422,8 +427,8 @@ class ChapterListView(ListView):
     @property
     def viewable_crises(self):
         """Gets queryset of crises visible to user"""
-        from world.dominion.models import Crisis
-        return Crisis.objects.viewable_by_player(self.request.user).filter(chapter__in=self.get_queryset())
+        from world.dominion.models import Plot
+        return Plot.objects.viewable_by_player(self.request.user).filter(chapter__in=self.get_queryset())
 
     def get_context_data(self, **kwargs):
         """Gets context for our template. Stories, current story, and viewable_crises"""
@@ -449,7 +454,7 @@ def episode(request, ep_id):
 
 class ActionListView(ListView):
     """View for listing the CrisisActions of a given character"""
-    model = CrisisAction
+    model = PlotAction
     template_name = "character/actions.html"
 
     @property
@@ -476,7 +481,7 @@ class ActionListView(ListView):
 
 class NewActionListView(ListView, LimitPageMixin):
     """View for listing the CrisisActions of a given character"""
-    model = CrisisAction
+    model = PlotAction
     template_name = "character/action_list.html"
     paginate_by = 20
 
@@ -490,10 +495,10 @@ class NewActionListView(ListView, LimitPageMixin):
         qs = self.character.valid_actions.order_by('-id')
         user = self.request.user
         if not user or not user.is_authenticated():
-            return qs.filter(public=True).filter(status=CrisisAction.PUBLISHED)
+            return qs.filter(public=True).filter(status=PlotAction.PUBLISHED)
         if user.is_staff or user.check_permstring("builders") or user.char_ob == self.character:
             return qs
-        return qs.filter(public=True).filter(status=CrisisAction.PUBLISHED)
+        return qs.filter(public=True).filter(status=PlotAction.PUBLISHED)
 
     def get_context_data(self, **kwargs):
         """Gets context for the template"""
@@ -510,8 +515,8 @@ def new_action_view(request, object_id, action_id):
 
     def action():
         try:
-            return CrisisAction.objects.get(id=action_id)
-        except CrisisAction.DoesNotExist, CrisisAction.MultipleObjectsReturned:
+            return PlotAction.objects.get(id=action_id)
+        except (PlotAction.DoesNotExist, PlotAction.MultipleObjectsReturned):
             raise Http404
 
     if not request.user or not request.user.is_authenticated():
@@ -525,6 +530,7 @@ def new_action_view(request, object_id, action_id):
 
     # Make sure the crisis action has this character as a
     # participant.
+    editable = False
     if crisis_action.dompc.player.char_ob.id != int(object_id):
         found = False
         for assist in crisis_action.assisting_actions.all():
@@ -581,15 +587,7 @@ class AssistForm(forms.Form):
 
 class ActionForm(AssistForm):
 
-    CATEGORY_CHOICES = (
-        (CrisisAction.UNKNOWN, 'Unknown'),
-        (CrisisAction.COMBAT, 'Combat'),
-        (CrisisAction.SUPPORT, 'Support'),
-        (CrisisAction.SABOTAGE, 'Sabotage'),
-        (CrisisAction.DIPLOMACY, 'Diplomacy'),
-        (CrisisAction.SCOUTING, 'Scouting'),
-        (CrisisAction.RESEARCH, 'Research')
-    )
+    CATEGORY_CHOICES = PlotAction.CATEGORY_CHOICES
 
     def __init__(self, caller, *args, **kwargs):
         super(ActionForm,self).__init__(caller, *args, **kwargs)
@@ -609,8 +607,8 @@ def edit_action(request, object_id, action_id):
 
     def action():
         try:
-            return CrisisAction.objects.get(id=action_id)
-        except CrisisAction.DoesNotExist, CrisisAction.MultipleObjectsReturned:
+            return PlotAction.objects.get(id=action_id)
+        except (PlotAction.DoesNotExist, PlotAction.MultipleObjectsReturned):
             raise Http404
 
     if request.user.char_ob != character():
@@ -630,7 +628,7 @@ def edit_action(request, object_id, action_id):
         if not found:
             raise Http404
 
-    if crisis_action.status == CrisisAction.DRAFT:
+    if crisis_action.status == PlotAction.DRAFT:
         if request.user.char_ob == character():
             editable = crisis_action.editable
         else:
@@ -833,7 +831,7 @@ class KnownCluesView(CharacterMixin, LimitPageMixin, ListView):
         if user.char_ob != self.character and not (user.is_staff or user.check_permstring("builders")):
             raise PermissionDenied
         entry = self.character.roster
-        qs = entry.finished_clues.order_by('id')
+        qs = entry.clue_discoveries.all().order_by('id')
         return self.search_filters(qs)
 
     def get_context_data(self, **kwargs):

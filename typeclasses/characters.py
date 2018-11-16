@@ -759,7 +759,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, Default
         return CombatHandler(self)
 
     def view_stats(self, viewer, combat=False):
-        from commands.commands.roster import display_stats, display_skills, display_abilities
+        from commands.base_commands.roster import display_stats, display_skills, display_abilities
         display_stats(viewer, self)
         display_skills(viewer, self)
         display_abilities(viewer, self)
@@ -1029,10 +1029,10 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, Default
 
     @property
     def valid_actions(self):
-        from world.dominion.models import CrisisAction
+        from world.dominion.models import PlotAction
         from django.db.models import Q
-        return CrisisAction.objects.filter(Q(dompc=self.dompc) | Q(assistants=self.dompc)).exclude(
-            status=CrisisAction.CANCELLED).distinct()
+        return PlotAction.objects.filter(Q(dompc=self.dompc) | Q(assistants=self.dompc)).exclude(
+            status=PlotAction.CANCELLED).distinct()
 
     @property
     def past_actions(self):
@@ -1078,3 +1078,8 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, Default
         """Returns our Dominion object"""
         return self.player_ob.Dominion
 
+    @property
+    def secrets(self):
+        from web.character.models import Clue
+        return self.roster.clue_discoveries.filter(clue__clue_type=Clue.CHARACTER_SECRET,
+                                                   clue__tangible_object=self).exclude(clue__desc="").distinct()

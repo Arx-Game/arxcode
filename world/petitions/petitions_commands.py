@@ -3,7 +3,7 @@ Commands for petitions app
 """
 from django.db.models import Q
 
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
 from world.petitions.forms import PetitionForm

@@ -15,7 +15,7 @@ creative process.
 from random import randint
 
 from evennia import CmdSet
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 from server.utils import prettytable
 from evennia.utils.create import create_object
 from world.dominion.models import (CraftingMaterialType, PlayerOrNpc, CraftingMaterials)

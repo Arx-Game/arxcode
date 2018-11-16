@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model
 
 from evennia.utils import ansi
 
-from commands.commands.bboards import get_boards
+from commands.base_commands.bboards import get_boards
 from .forms import (JournalMarkAllReadForm, JournalWriteForm, JournalMarkOneReadForm, JournalMarkFavorite,
                     JournalRemoveFavorite)
 from server.utils.view_mixins import LimitPageMixin

@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import models
 from evennia.comms.models import Msg
 from .managers import (JournalManager, WhiteJournalManager, BlackJournalManager, MessengerManager, WHITE_TAG, BLACK_TAG,
-                       VISION_TAG, RELATIONSHIP_TAG, MESSENGER_TAG, GOSSIP_TAG, RUMOR_TAG, POST_TAG, VisionManager,
+                       RELATIONSHIP_TAG, MESSENGER_TAG, GOSSIP_TAG, RUMOR_TAG, POST_TAG,
                        PostManager, RumorManager, PRESERVE_TAG, TAG_CATEGORY, REVEALED_BLACK_TAG)
 
 
@@ -63,8 +63,6 @@ def get_model_from_tags(tag_list):
         return Journal
     if MESSENGER_TAG in tag_list:
         return Messenger
-    if VISION_TAG in tag_list:
-        return Vision
     if POST_TAG in tag_list:
         return Post
     if RUMOR_TAG in tag_list or GOSSIP_TAG in tag_list:
@@ -265,15 +263,6 @@ class Messenger(MarkReadMixin, Msg):
             character: Character object to add to our list of receivers.
         """
         self.db_receivers_objects.add(character)
-
-
-class Vision(MarkReadMixin, Msg):
-    """
-    Proxy model for Msg that represents a vision received by a Character.
-    """
-    class Meta:
-        proxy = True
-    objects = VisionManager()
 
 
 class Rumor(MarkReadMixin, Msg):

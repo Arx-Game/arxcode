@@ -3,16 +3,18 @@ Admin models for Character app
 """
 from django.contrib import admin
 from django.forms import ModelForm
-from .models import (Roster, RosterEntry, Photo, DISCO_MULT, SearchTag, FlashbackPost, Flashback,
-                     Story, Chapter, Episode, StoryEmit, LoreTopic,
-                     Milestone, FirstContact,
+from .models import (Roster, RosterEntry, Photo, SearchTag, FlashbackPost, Flashback,
+                     Story, Chapter, Episode, StoryEmit,
+                     Milestone, FirstContact, CluePlotInvolvement, RevelationPlotInvolvement,
                      PlayerAccount, AccountHistory, InvestigationAssistant,
                      Mystery, Revelation, Clue, Investigation,
-                     MysteryDiscovery, RevelationDiscovery, ClueDiscovery,
+                     RevelationDiscovery, ClueDiscovery,
                      RevelationForMystery, ClueForRevelation, Theory, TheoryPermissions,
                      PlayerInfoEntry,
                      )
 from django.db.models import F, Subquery, OuterRef, IntegerField, ExpressionWrapper, Q, Sum
+from django.shortcuts import reverse
+from django.utils.html import escape
 
 
 class BaseCharAdmin(admin.ModelAdmin):
@@ -103,17 +105,10 @@ class RevForMystInline(admin.TabularInline):
     raw_id_fields = ('revelation', 'mystery',)
 
 
-class MystDiscoInline(admin.TabularInline):
-    """Inline of mysteries discovered"""
-    model = MysteryDiscovery
-    extra = 0
-    raw_id_fields = ('character', 'investigation', 'mystery')
-
-
 class MysteryAdmin(BaseCharAdmin):
     """Admin of mystery"""
     list_display = ('id', 'name')
-    inlines = [RevForMystInline, MystDiscoInline]
+    inlines = [RevForMystInline]
 
 
 class ClueForRevInline(admin.TabularInline):
@@ -128,6 +123,13 @@ class RevDiscoInline(admin.TabularInline):
     model = RevelationDiscovery
     extra = 0
     raw_id_fields = ('character', 'investigation', 'revealed_by', 'revelation',)
+
+
+class RevPlotInvolvementInline(admin.TabularInline):
+    """Inline for RevelationPlotInvolvement"""
+    model = RevelationPlotInvolvement
+    extra = 0
+    raw_id_fields = ('revelation', 'plot')
 
 
 class RevelationListFilter(admin.SimpleListFilter):
@@ -161,9 +163,11 @@ class RevelationListFilter(admin.SimpleListFilter):
 class RevelationAdmin(BaseCharAdmin):
     """Admin for revelations"""
     list_display = ('id', 'name', 'known_by', 'requires', 'used_for')
-    inlines = [ClueForRevInline, RevDiscoInline]
+    inlines = [ClueForRevInline, RevDiscoInline, RevPlotInvolvementInline]
     search_fields = ('id', 'name', 'characters__character__db_key', 'mysteries__name')
     list_filter = (RevelationListFilter,)
+    filter_horizontal = ('search_tags',)
+    raw_id_fields = ('author',)
 
     @staticmethod
     def known_by(obj):
@@ -183,64 +187,34 @@ class ClueDiscoInline(admin.TabularInline):
     raw_id_fields = ("clue", "character", "investigation", "revealed_by",)
 
 
+class CluePlotInvolvementInline(admin.TabularInline):
+    """Inline for Plot involvement for clues"""
+    model = CluePlotInvolvement
+    extra = 0
+    raw_id_fields = ('clue', 'plot')
+
+
 class ClueAdmin(BaseCharAdmin):
     """Admin for Clues"""
     list_display = ('id', 'name', 'rating', 'used_for')
     search_fields = ('id', 'name', '=revelations__name', '=search_tags__name')
-    inlines = (ClueForRevInline,)
+    inlines = (ClueForRevInline, CluePlotInvolvementInline)
     filter_horizontal = ('search_tags',)
-    raw_id_fields = ('event',)
+    raw_id_fields = ('author', 'tangible_object')
+    list_filter = ('clue_type',)
 
     @staticmethod
     def used_for(obj):
         """Names of revelations this clue is used for"""
         return ", ".join([str(ob) for ob in obj.revelations.all()])
 
-    readonly_fields = ('event_gms',)
-
-    @staticmethod
-    def event_gms(obj):
-        """Names of hosts from event that spawned this clue"""
-        return ", ".join(str(obj) for obj in obj.creators)
-
-
-class ClueDiscoveryListFilter(admin.SimpleListFilter):
-    """List filter for showing whether clues are discovered or not"""
-    title = 'Discovered'
-    parameter_name = 'discovered'
-
-    def lookups(self, request, model_admin):
-        """values for GET and their display"""
-        return (
-            ('unfound', 'Undiscovered'),
-            ('found', 'Discovered'),
-            )
-
-    def queryset(self, request, queryset):
-        """How we modify the queryset based on the lookups values"""
-        if self.value() == 'unfound':
-            return queryset.filter(roll__lt=F('clue__rating') * DISCO_MULT)
-        if self.value() == 'found':
-            return queryset.filter(roll__gte=F('clue__rating') * DISCO_MULT)
 
 
 class ClueDiscoveryAdmin(BaseCharAdmin):
     """Admin for ClueDiscoveries"""
-    list_display = ('id', 'clue', 'character', 'roll', 'discovered')
+    list_display = ('id', 'clue', 'character', 'discovery_method', 'revealed_by', 'investigation')
     search_fields = ('id', 'clue__name', 'character__character__db_key')
     raw_id_fields = ('clue', 'character', 'investigation', 'revealed_by')
-    list_filter = (ClueDiscoveryListFilter,)
-
-    @staticmethod
-    def discovered(obj):
-        """Whether the clue is discovered"""
-        return obj.roll >= obj.clue.rating * DISCO_MULT
-
-
-class MystForEntry(MystDiscoInline):
-    """Inline for mystery discoveries"""
-    fk_name = 'character'
-    raw_id_fields = ('character', 'mystery')
 
 
 class RevForEntry(RevDiscoInline):
@@ -258,7 +232,7 @@ class EntryAdmin(NoDeleteAdmin):
     readonly_fields = ('character', 'player',)
     list_filter = ('roster', 'frozen', 'inactive')
     form = EntryForm
-    inlines = [MystForEntry, RevForEntry, AccountHistoryInline]
+    inlines = [RevForEntry, AccountHistoryInline]
 
     @staticmethod
     def current_alts(obj):
@@ -298,16 +272,12 @@ class InvestigationListFilter(admin.SimpleListFilter):
         Returns:
             queryset that can be modified to either show those finishing or those who won't.
         """
-        qs = queryset.filter(clue_target__isnull=False).annotate(goal=F('clue_target__rating') * DISCO_MULT)
-        clues = ClueDiscovery.objects.filter(investigation__isnull=False)
-        qs = qs.annotate(clue_roll=Subquery(clues.filter(investigation=OuterRef('id')).values('roll')[:1],
-                                            output_field=IntegerField()))
-        qs = qs.annotate(total_progress=ExpressionWrapper(F('roll') + F('clue_roll'), output_field=IntegerField()))
+        qs = queryset.annotate(total_progress=ExpressionWrapper(F('roll') + F('progress'), output_field=IntegerField()))
         if self.value() == "finishing":
             # checking roll by itself in case there isn't a ClueDiscovery yet and would finish in one week
-            return qs.filter(Q(total_progress__gte=F('goal')) | Q(roll__gte=F('goal')))
+            return qs.filter(Q(total_progress__gte=F('completion_value')) | Q(roll__gte=F('completion_value')))
         if self.value() == "not_finishing":
-            return qs.filter(Q(total_progress__lt=F('goal')) & ~Q(roll__gte=F('goal')))
+            return qs.filter(Q(total_progress__lt=F('completion_value')) & ~Q(roll__gte=F('completion_value')))
 
 
 class InvestigationAdmin(BaseCharAdmin):
@@ -316,14 +286,8 @@ class InvestigationAdmin(BaseCharAdmin):
                     'ongoing', 'automate_result')
     list_filter = ('active', 'ongoing', 'automate_result', InvestigationListFilter)
     search_fields = ('character__character__db_key', 'topic', 'clue_target__name')
-    inlines = [MystDiscoInline, RevDiscoInline, ClueDiscoInline, InvestigationAssistantInline]
+    inlines = [RevDiscoInline, ClueDiscoInline, InvestigationAssistantInline]
     raw_id_fields = ('clue_target', 'character',)
-    readonly_fields = ('clue_progress',)
-
-    @staticmethod
-    def clue_progress(obj):
-        """Progress made toward discovering a clue"""
-        return "%s/%s" % (obj.progress, obj.completion_value)
 
 
 class TheoryPermissionInline(admin.StackedInline):
@@ -354,18 +318,64 @@ class TheoryAdmin(BaseCharAdmin):
 class StoryEmitAdmin(BaseCharAdmin):
     """Admin for Gemits"""
     list_display = ('id', 'chapter', 'episode', 'text', 'sender')
+    filter_horizontal = ('search_tags',)
 
 
 class SearchTagAdmin(BaseCharAdmin):
     """Admin for Search Tags. Has to exist for Clue's filter_horizontal to have an add box"""
-    list_display = ('id', 'name', 'topic')
-    search_fields = ('id', 'name', 'topic__name')
+    list_display = ('id', 'name',)
+    search_fields = ('id', 'name',)
+    readonly_fields = ('tagged_revelations', 'tagged_clues', 'tagged_plots', 'tagged_plot_updates',
+                       'tagged_actions', 'tagged_story_emits', 'tagged_objects', 'tagged_events')
+    raw_id_fields = ("game_objects",)
 
+    def tagged_revelations(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_revelation_change", args=[rev.id]),
+                                                    escape(rev.name))
+                           for rev in obj.revelations.all())
+    tagged_revelations.allow_tags = True
 
-class LoreTopicAdmin(BaseCharAdmin):
-    """Admin for Lore topics - the OOC knowledge base for GMs of game lore"""
-    list_display = ('id', 'name')
-    search_fields = ('id', 'name', 'desc')
+    def tagged_clues(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_clue_change", args=[clue.id]),
+                                                    escape(clue.name))
+                           for clue in obj.clues.all())
+    tagged_clues.allow_tags = True
+
+    def tagged_plots(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_plot_change", args=[plot.id]),
+                                                    escape(plot.name))
+                           for plot in obj.plots.all())
+    tagged_plots.allow_tags = True
+
+    def tagged_plot_updates(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_plotupdate_change", args=[update.id]),
+                                                    escape(str(update)))
+                           for update in obj.plot_updates.all())
+    tagged_plot_updates.allow_tags = True
+
+    def tagged_actions(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_plotaction_change", args=[action.id]),
+                                                    escape(str(action)))
+                           for action in obj.actions.all())
+    tagged_actions.allow_tags = True
+
+    def tagged_story_emits(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_storyemit_change", args=[emit.id]),
+                                                    escape(emit.id))
+                           for emit in obj.emits.all())
+    tagged_story_emits.allow_tags = True
+
+    def tagged_objects(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:objects_objectdb_change", args=[objdb.id]),
+                                                    escape(objdb.db_key))
+                           for objdb in obj.game_objects.all())
+    tagged_objects.allow_tags = True
+
+    def tagged_events(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_rpevent_change", args=[ev.id]),
+                                                    escape(ev.name))
+                           for ev in obj.events.all())
+    tagged_events.allow_tags = True
 
 
 class FirstContactAdmin(BaseCharAdmin):
@@ -422,6 +432,5 @@ admin.site.register(Clue, ClueAdmin)
 admin.site.register(ClueDiscovery, ClueDiscoveryAdmin)
 admin.site.register(Investigation, InvestigationAdmin)
 admin.site.register(Theory, TheoryAdmin)
-admin.site.register(LoreTopic, LoreTopicAdmin)
 admin.site.register(Flashback, FlashbackAdmin)
 admin.site.register(SearchTag, SearchTagAdmin)

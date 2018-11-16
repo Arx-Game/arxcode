@@ -69,11 +69,11 @@ from .reports import WeeklyReport
 from .battle import Battle
 from .agenthandler import AgentHandler
 from .managers import CrisisManager, OrganizationManager, LandManager
-from server.utils.arx_utils import get_week, inform_staff, passthrough_properties
+from server.utils.arx_utils import get_week, inform_staff, passthrough_properties, CachedProperty, CachedPropertiesMixin
 from server.utils.exceptions import ActionSubmissionError, PayError
 from typeclasses.npcs import npc_types
 from typeclasses.mixins import InformMixin
-from web.character.models import AbstractPlayerAllocations, Clue
+from web.character.models import AbstractPlayerAllocations
 from world.stats_and_skills import do_dice_check
 
 # Dominion constants
@@ -348,17 +348,14 @@ class PlayerOrNpc(SharedMemoryModel):
             report.lifestyle_msg = "You were unable to afford to pay for your lifestyle.\n"
         return False
 
-    @property
+    @CachedProperty
     def support_cooldowns(self):
         """Returns our support cooldowns, from cache if it's already been calculated"""
-        if not hasattr(self, 'cached_support_cooldowns'):
-            return self.calc_support_cooldowns()
-        return self.cached_support_cooldowns
+        return self.calc_support_cooldowns()
 
     def calc_support_cooldowns(self):
         """Calculates support used in last three weeks, builds a dictionary"""
-        self.cached_support_cooldowns = {}
-        cdowns = self.cached_support_cooldowns
+        cdowns = {}
         # noinspection PyBroadException
         try:
             week = get_week()
@@ -429,34 +426,34 @@ class PlayerOrNpc(SharedMemoryModel):
     def recent_actions(self):
         """Returns queryset of recent actions that weren't cancelled and aren't still in draft"""
         from datetime import timedelta
-        offset = timedelta(days=-CrisisAction.num_days)
+        offset = timedelta(days=-PlotAction.num_days)
         old = datetime.now() + offset
         return self.actions.filter(Q(date_submitted__gte=old) &
-                                   ~Q(status__in=(CrisisAction.CANCELLED, CrisisAction.DRAFT)) &
+                                   ~Q(status__in=(PlotAction.CANCELLED, PlotAction.DRAFT)) &
                                    Q(free_action=False))
 
     @property
     def recent_assists(self):
         """Returns queryset of all assists from the past 30 days"""
         from datetime import timedelta
-        offset = timedelta(days=-CrisisAction.num_days)
+        offset = timedelta(days=-PlotAction.num_days)
         old = datetime.now() + offset
-        actions = CrisisAction.objects.filter(Q(date_submitted__gte=old) &
-                                              ~Q(status__in=(CrisisAction.CANCELLED, CrisisAction.DRAFT)) &
-                                              Q(free_action=False))
-        return self.assisting_actions.filter(crisis_action__in=actions, free_action=False).distinct()
+        actions = PlotAction.objects.filter(Q(date_submitted__gte=old) &
+                                            ~Q(status__in=(PlotAction.CANCELLED, PlotAction.DRAFT)) &
+                                            Q(free_action=False))
+        return self.assisting_actions.filter(plot_action__in=actions, free_action=False).distinct()
 
     @property
     def past_actions(self):
         """Returns queryset of our old published actions"""
-        return self.actions.filter(status=CrisisAction.PUBLISHED)
+        return self.actions.filter(status=PlotAction.PUBLISHED)
 
     def clear_cached_values_in_appointments(self):
         """Clears cache in ruler/minister appointments"""
         for minister in self.appointments.all():
-            minister.clear_cache()
+            minister.clear_domain_cache()
         try:
-            self.ruler.clear_cache()
+            self.ruler.clear_domain_cache()
         except AttributeError:
             pass
 
@@ -487,8 +484,16 @@ class PlayerOrNpc(SharedMemoryModel):
         no_fealties += sum(ob[1] for ob in redundancies)
         return Fealty.objects.filter(orgs__in=self.current_orgs).distinct().count() + no_fealties
 
+    @property
+    def plots_we_can_gm(self):
+        return self.plots.filter(dompc_involvement__admin_status__gte=PCPlotInvolvement.GM)
 
-class AssetOwner(SharedMemoryModel):
+    @property
+    def active_plots(self):
+        return self.plots.filter(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE)
+
+
+class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     """
     This model describes the owner of an asset, such as money
     or a land resource. The owner can either be an in-game object
@@ -516,19 +521,14 @@ class AssetOwner(SharedMemoryModel):
     min_resources_for_inform = models.PositiveIntegerField(default=0)
     min_materials_for_inform = models.PositiveIntegerField(default=0)
 
-    @property
+    @CachedProperty
     def prestige(self):
         """Our prestige used for different mods. aggregate of fame, legend, and grandeur"""
-        if hasattr(self, '_cached_prestige'):
-            return self._cached_prestige
-        self._cached_prestige = self.fame + self.total_legend + self.grandeur + self.propriety
-        return self._cached_prestige
+        return self.fame + self.total_legend + self.grandeur + self.propriety
 
-    @property
+    @CachedProperty
     def propriety(self):
         """A modifier to our fame based on tags we have"""
-        if hasattr(self, '_cached_propriety'):
-            return self._cached_propriety
         percentage = max(sum(ob.percentage for ob in self.proprieties.all()), -100)
         base = self.fame + self.total_legend
         # if we have negative fame, then positive propriety mods lessens that, while neg mods makes it worse
@@ -542,16 +542,12 @@ class AssetOwner(SharedMemoryModel):
                                                       )
                                             .aggregate(Sum('val'))).values()[0] or 0
             value += favor
-        self._cached_propriety = value
-        return self._cached_propriety
+        return value
 
-    @property
+    @CachedProperty
     def honor(self):
         """A modifier to our legend based on our actions"""
-        if hasattr(self, '_cached_honor'):
-            return self._cached_honor
-        self._cached_honor = sum(ob.amount for ob in self.honorifics.all())
-        return self._cached_honor
+        return sum(ob.amount for ob in self.honorifics.all())
 
     @property
     def total_legend(self):
@@ -660,10 +656,9 @@ class AssetOwner(SharedMemoryModel):
             self.legend += value / 100
         self.save()
 
-    def _income(self):
+    @CachedProperty
+    def income(self):
         income = 0
-        if hasattr(self, '_cached_income'):
-            return self._cached_income
         if self.organization_owner:
             income += self.organization_owner.amount
         for amt in self.incomes.filter(do_weekly=True).exclude(category="vassal taxes"):
@@ -672,13 +667,11 @@ class AssetOwner(SharedMemoryModel):
             return income
         for domain in self.estate.holdings.all():
             income += domain.total_income
-        self._cached_income = income
         return income
 
-    def _costs(self):
+    @CachedProperty
+    def costs(self):
         costs = 0
-        if hasattr(self, '_cached_costs'):
-            return self._cached_costs
         for debt in self.debts.filter(do_weekly=True).exclude(category="vassal taxes"):
             costs += debt.weekly_amount
         for army in self.armies.filter(domain__isnull=True):
@@ -689,15 +682,12 @@ class AssetOwner(SharedMemoryModel):
             return costs
         for domain in self.estate.holdings.all():
             costs += domain.costs
-        self._cached_costs = costs
         return costs
 
     def _net_income(self):
         return self.income - self.costs
 
-    income = property(_income)
     net_income = property(_net_income)
-    costs = property(_costs)
 
     @property
     def inform_target(self):
@@ -771,24 +761,6 @@ class AssetOwner(SharedMemoryModel):
         msg += "{wAgents{n: %s\n" % ", ".join(str(agent) for agent in self.agents.all())
         return msg
 
-    def clear_cache(self):
-        """Clears cached values"""
-        if hasattr(self, '_cached_income'):
-            del self._cached_income
-        if hasattr(self, '_cached_costs'):
-            del self._cached_costs
-        if hasattr(self, '_cached_prestige'):
-            del self._cached_prestige
-        if hasattr(self, '_cached_propriety'):
-            del self._cached_propriety
-        if hasattr(self, '_cached_honor'):
-            del self._cached_honor
-
-    def save(self, *args, **kwargs):
-        """Saves changes and clears the cache"""
-        self.clear_cache()
-        super(AssetOwner, self).save(*args, **kwargs)
-
     def inform_owner(self, message, category=None, week=0, append=False):
         """Sends an inform to our owner."""
         target = self.inform_target
@@ -837,7 +809,7 @@ class Propriety(SharedMemoryModel):
         super(Propriety, self).save(*args, **kwargs)
         if self.pk:
             for owner in self.owners.all():
-                owner.clear_cache()
+                owner.clear_cached_properties()
 
 
 class Honorific(SharedMemoryModel):
@@ -853,12 +825,12 @@ class Honorific(SharedMemoryModel):
     def save(self, *args, **kwargs):
         """Clears cache in owner when saved"""
         super(Honorific, self).save(*args, **kwargs)
-        self.owner.clear_cache()
+        self.owner.clear_cached_properties()
 
     def delete(self, *args, **kwargs):
         """Clears cache in owner when deleted"""
         if self.owner:
-            self.owner.clear_cache()
+            self.owner.clear_cached_properties()
         super(Honorific, self).delete(*args, **kwargs)
 
 
@@ -1034,9 +1006,9 @@ class AccountTransaction(SharedMemoryModel):
         """Saves changes and clears any caches"""
         super(AccountTransaction, self).save(*args, **kwargs)
         if self.sender:
-            self.sender.clear_cache()
+            self.sender.clear_cached_properties()
         if self.receiver:
-            self.receiver.clear_cache()
+            self.receiver.clear_cached_properties()
 
 
 class Region(SharedMemoryModel):
@@ -1235,7 +1207,7 @@ class MapLocation(SharedMemoryModel):
         return label
 
 
-class Domain(SharedMemoryModel):
+class Domain(CachedPropertiesMixin, SharedMemoryModel):
     """
     A domain owned by a noble house that resides on a particular Land square on
     the map we'll generate. This model contains information specifically to
@@ -1303,9 +1275,9 @@ class Domain(SharedMemoryModel):
         return self.location.land
 
     # All income sources are floats for modifier calculations. We'll convert to int at the end
-    def _get_tax_income(self):
-        if hasattr(self, 'cached_tax_income'):
-            return self.cached_tax_income
+
+    @CachedProperty
+    def tax_income(self):
         tax = float(self.tax_rate)/100.0
         if tax > 1.00:
             tax = 1.00
@@ -1319,7 +1291,6 @@ class Domain(SharedMemoryModel):
                         tax += amt
                 except (AttributeError, TypeError, ValueError):
                     pass
-        self.cached_tax_income = tax
         return tax
 
     @staticmethod
@@ -1373,14 +1344,13 @@ class Domain(SharedMemoryModel):
         except AttributeError:
             return 0.0
 
-    def _get_total_income(self):
+    @CachedProperty
+    def total_income(self):
         """
         Returns our total income after all modifiers. All income sources are
         floats, which we'll convert to an int once we're all done.
         """
         from evennia.server.models import ServerConfig
-        if hasattr(self, 'cached_total_income'):
-            return self.cached_total_income
         amount = self.tax_income
         amount += self.mining_income
         amount += self.lumber_income
@@ -1398,7 +1368,6 @@ class Domain(SharedMemoryModel):
         if self.ruler and self.ruler.castellan:
             bonus = self.get_bonus('income') * amount
             amount += bonus
-        self.cached_total_income = int(amount)
         # we'll dump the remainder
         return int(amount)
 
@@ -1425,12 +1394,11 @@ class Domain(SharedMemoryModel):
             cost /= reduction
         return int(cost)
 
-    def _get_costs(self):
+    @CachedProperty
+    def costs(self):
         """
         Costs/upkeep for all of our production.
         """
-        if hasattr(self, 'cached_total_costs'):
-            return self.cached_total_costs
         costs = 0
         for army in self.armies.all():
             costs += army.costs
@@ -1439,7 +1407,6 @@ class Domain(SharedMemoryModel):
         costs += self.worker_cost(self.mill_serfs)
         costs += self.amount_plundered
         costs += self.liege_taxed_amt
-        self.cached_total_costs = costs
         return costs
 
     def _get_liege_taxed_amt(self):
@@ -1639,12 +1606,9 @@ class Domain(SharedMemoryModel):
 
     food_production = property(_get_food_production)
     food_consumption = property(_get_food_consumption)
-    costs = property(_get_costs)
-    tax_income = property(_get_tax_income)
     mining_income = property(_get_mining_income)
     lumber_income = property(_get_lumber_income)
     mill_income = property(_get_mill_income)
-    total_income = property(_get_total_income)
     max_pop = property(_get_max_pop)
     employed = property(_get_employed_serfs)
     total_serfs = property(_get_total_serfs)
@@ -1735,23 +1699,13 @@ class Domain(SharedMemoryModel):
             mssg += army.display()
         return mssg
 
-    def wipe_cached_data(self):
+    def clear_cached_properties(self):
         """Clears cached income/cost data"""
-        if hasattr(self, 'cached_total_costs'):
-            del self.cached_total_costs
-        if hasattr(self, 'cached_tax_income'):
-            del self.cached_tax_income
-        if hasattr(self, 'cached_total_income'):
-            del self.cached_total_income
+        super(Domain, self).clear_cached_properties()
         try:
-            self.ruler.house.clear_cache()
+            self.ruler.house.clear_cached_properties()
         except (AttributeError, ValueError, TypeError):
             pass
-
-    def save(self, *args, **kwargs):
-        """Saves changes and wipes cache"""
-        super(Domain, self).save(*args, **kwargs)
-        self.wipe_cached_data()
 
 
 class DomainProject(SharedMemoryModel):
@@ -1895,13 +1849,7 @@ class Minister(SharedMemoryModel):
     """
     A minister appointed to assist a ruler in a category.
     """
-    POP = 0
-    INCOME = 1
-    FARMING = 2
-    PRODUCTIVITY = 3
-    UPKEEP = 4
-    LOYALTY = 5
-    WARFARE = 6
+    POP, INCOME, FARMING, PRODUCTIVITY, UPKEEP, LOYALTY, WARFARE = range(7)
     MINISTER_TYPES = (
         (POP, 'Population'),
         (INCOME, 'Income'),
@@ -1919,9 +1867,9 @@ class Minister(SharedMemoryModel):
     def __str__(self):
         return "%s acting as %s minister for %s" % (self.player, self.get_category_display(), self.ruler)
 
-    def clear_cache(self):
+    def clear_domain_cache(self):
         """Clears cache for the ruler of this minister"""
-        return self.ruler.clear_cache()
+        return self.ruler.clear_domain_cache()
 
 
 class Ruler(SharedMemoryModel):
@@ -2011,22 +1959,31 @@ class Ruler(SharedMemoryModel):
             return 0
         return sum(ob.weekly_amount for ob in self.house.debts.filter(category="vassal taxes"))
 
-    def clear_cache(self):
+    def clear_domain_cache(self):
         """Clears cache for all domains under our rule"""
         for domain in self.holdings.all():
-            domain.wipe_cached_data()
+            domain.clear_cached_properties()
 
 
-class Crisis(SharedMemoryModel):
+class Plot(SharedMemoryModel):
     """
-    A crisis affecting organizations
+    A plot being run in the game. This can either be a crisis affecting organizations or the entire gameworld,
+    a gm plot for some subset of players, a player-run plot for players, or a subplot of any of the above. In
+    general, a crisis is a type of plot that allows offscreen actions to be submitted and is resolved at regular
+    intervals: This is more or less intended for large-scale events. GM Plots and Player Run Plots will tend to
+    be focused on smaller groups of players.
     """
+    CRISIS, GM_PLOT, PLAYER_RUN_PLOT, PITCH = range(4)
+    USAGE_CHOICES = ((CRISIS, "Crisis"), (GM_PLOT, "GM Plot"), (PLAYER_RUN_PLOT, "Player-Run Plot"),
+                     (PITCH, "Pitch"))
     name = models.CharField(blank=True, null=True, max_length=255, db_index=True)
+    usage = models.SmallIntegerField(choices=USAGE_CHOICES, default=CRISIS)
     headline = models.CharField("News-style bulletin", max_length=255, blank=True, null=True)
     desc = models.TextField(blank=True, null=True)
-    orgs = models.ManyToManyField('Organization', related_name='crises', blank=True)
-    parent_crisis = models.ForeignKey('self', related_name="child_crises", blank=True, null=True,
-                                      on_delete=models.SET_NULL)
+    orgs = models.ManyToManyField('Organization', related_name='plots', blank=True, through="OrgPlotInvolvement")
+    dompcs = models.ManyToManyField('PlayerOrNpc', blank=True, related_name='plots', through="PCPlotInvolvement",
+                                    through_fields=("plot", "dompc"))
+    parent_plot = models.ForeignKey('self', related_name="subplots", blank=True, null=True, on_delete=models.SET_NULL)
     escalation_points = models.SmallIntegerField(default=0, blank=0)
     results = models.TextField(blank=True, null=True)
     modifiers = models.TextField(blank=True, null=True)
@@ -2038,11 +1995,12 @@ class Crisis(SharedMemoryModel):
     end_date = models.DateTimeField(blank=True, null=True)
     chapter = models.ForeignKey('character.Chapter', related_name="crises", blank=True, null=True,
                                 on_delete=models.SET_NULL)
+    search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="plots")
     objects = CrisisManager()
 
     class Meta:
         """Define Django meta options"""
-        verbose_name_plural = "Crises"
+        verbose_name_plural = "Plots"
 
     def __str__(self):
         return self.name
@@ -2057,11 +2015,17 @@ class Crisis(SharedMemoryModel):
     @property
     def rating(self):
         """Returns how much rating is left in our crisis"""
-        return self.escalation_points - sum(ob.outcome_value for ob in self.actions.filter(
-            status=CrisisAction.PUBLISHED))
+        if self.escalation_points:
+            return self.escalation_points - sum(ob.outcome_value for ob in self.actions.filter(
+                status=PlotAction.PUBLISHED))
+
+    @property
+    def beats(self):
+        """Returns updates that have descs written, so they've already been completed"""
+        return self.updates.exclude(desc="")
 
     def display(self):
-        """Returns string display for the crisis"""
+        """Returns string display for the plot"""
         msg = "\n{wName:{n %s" % self.name
         if self.time_remaining:
             msg += "\n{yTime Remaining:{n %s" % str(self.time_remaining).split(".")[0]
@@ -2070,18 +2034,27 @@ class Crisis(SharedMemoryModel):
             msg += "\n{wOrganizations affected:{n %s" % ", ".join(str(ob) for ob in self.orgs.all())
         if self.required_clue:
             msg += "\n{wRequired Clue:{n %s" % self.required_clue
-        msg += "\n{wCurrent Rating:{n %s" % self.rating
+        rating = self.rating
+        if rating:
+            msg += "\n{wCurrent Rating:{n %s" % self.rating
         try:
-            last = self.updates.last()
-            msg += "\n{wLatest Update:{n\n%s" % last.desc
-        except AttributeError:
+            # updates with no desc set are placeholders for events that haven't taken place, so we don't include them
+            beats = list(self.beats)
+            last = beats[-1]
+            if self.usage == self.PLAYER_RUN_PLOT:
+                noun = "Beat"
+                msg += "\n{w%s IDs:{n %s" % (noun, ", ".join(str(ob.id) for ob in beats))
+            else:
+                noun = "Update"
+            msg += "\n{wLatest %s:{n\n%s" % (noun, last.desc)
+        except (AttributeError, IndexError):
             pass
         return msg
 
     def check_taken_action(self, dompc):
         """Whether player has submitted action for the current crisis update."""
-        return self.actions.filter(Q(dompc=dompc) & Q(update__isnull=True)
-                                   & ~Q(status__in=(CrisisAction.DRAFT, CrisisAction.CANCELLED))).exists()
+        return self.actions.filter(Q(dompc=dompc) & Q(beat__isnull=True)
+                                   & ~Q(status__in=(PlotAction.DRAFT, PlotAction.CANCELLED))).exists()
 
     def raise_submission_errors(self):
         """Raises errors if it's not valid to submit an action for this crisis"""
@@ -2118,12 +2091,12 @@ class Crisis(SharedMemoryModel):
         else:
             latest_episode = Chapter.objects.last().episodes.create(name=episode_name, synopsis=episode_synopsis)
         update = self.updates.create(date=datetime.now(), desc=gemit_text, gm_notes=gm_notes, episode=latest_episode)
-        qs = self.actions.filter(status__in=(CrisisAction.PUBLISHED, CrisisAction.PENDING_PUBLISH,
-                                             CrisisAction.CANCELLED), update__isnull=True)
+        qs = self.actions.filter(status__in=(PlotAction.PUBLISHED, PlotAction.PENDING_PUBLISH,
+                                             PlotAction.CANCELLED), beat__isnull=True)
         pending = []
         already_published = []
         for action in qs:
-            if action.status == CrisisAction.PENDING_PUBLISH:
+            if action.status == PlotAction.PENDING_PUBLISH:
                 action.send(update=update, caller=caller)
                 pending.append(str(action.id))
             else:
@@ -2139,19 +2112,19 @@ class Crisis(SharedMemoryModel):
         inform_staff("Crisis update posted by %s for %s:\n%s" % (caller, self, post), post=True, subject=subject)
 
     def check_can_view(self, user):
-        """Checks if user can view this crisis"""
+        """Checks if user can view this plot"""
         if self.public:
             return True
         if not user or not user.is_authenticated():
             return False
         if user.is_staff or user.check_permstring("builders"):
             return True
-        return self.required_clue in user.roster.discovered_clues
+        return self.required_clue in user.roster.clues.all()
 
     @property
     def finished_actions(self):
         """Returns queryset of all published actions"""
-        return self.actions.filter(status=CrisisAction.PUBLISHED)
+        return self.actions.filter(status=PlotAction.PUBLISHED)
 
     def get_viewable_actions(self, user):
         """Returns actions that the user can view - published actions they participated in, or all if they're staff."""
@@ -2162,21 +2135,116 @@ class Crisis(SharedMemoryModel):
         dompc = user.Dominion
         return self.finished_actions.filter(Q(dompc=dompc) | Q(assistants=dompc)).order_by('-date_submitted')
 
+    def add_dompc(self, dompc, status):
+        """Invites a dompc to join the plot."""
+        from server.utils.exceptions import CommandError
+        status_types = ("main", "secondary", "extra")
+        if status not in status_types:
+            raise CommandError("Status must be in: %s" % ", ".join(status_types))
+        try:
+            involvement = self.dompc_involvement.get(dompc_id=dompc.id)
+            if involvement.activity_status <= PCPlotInvolvement.INVITED:
+                raise CommandError("They are already invited.")
+        except PCPlotInvolvement.DoesNotExist:
+            involvement = PCPlotInvolvement(dompc=dompc, plot=self)
+        involvement.activity_status = PCPlotInvolvement.INVITED
+        involvement.cast_status = status_types.index(status) + 1
+        involvement.save()
+        dompc.inform("You have been invited to join plot %s." % self)
 
-class CrisisUpdate(SharedMemoryModel):
+    @property
+    def first_owner(self):
+        """Returns the first owner-level PlayerOrNpc, or None"""
+        owner_inv = self.dompc_involvement.filter(admin_status=PCPlotInvolvement.OWNER).first()
+        if owner_inv:
+            return owner_inv.dompc
+
+
+class OrgPlotInvolvement(SharedMemoryModel):
+    """An org's participation in a plot"""
+    plot = models.ForeignKey("Plot", related_name="org_involvement")
+    org = models.ForeignKey("Organization", related_name="plot_involvement")
+    auto_invite_members = models.BooleanField(default=False)
+    gm_notes = models.TextField(blank=True)
+
+
+class PCPlotInvolvement(SharedMemoryModel):
+    """A character's participation in a plot"""
+    REQUIRED_CAST, MAIN_CAST, SUPPORTING_CAST, EXTRA, TANGENTIAL = range(5)
+    ACTIVE, INACTIVE, INVITED, HAS_RP_HOOK, LEFT, NOT_ADDED = range(6)
+    SUBMITTER, PLAYER, RECRUITER, GM, OWNER = range(5)
+    CAST_STATUS_CHOICES = ((REQUIRED_CAST, "Required Cast"), (MAIN_CAST, "Main Cast"),
+                           (SUPPORTING_CAST, "Supporting Cast"),
+                           (EXTRA, "Extra"), (TANGENTIAL, "Tangential"))
+    ACTIVITY_STATUS_CHOICES = ((ACTIVE, "Active"), (INACTIVE, "Inactive"), (INVITED, "Invited"),
+                               (HAS_RP_HOOK, "Has RP Hook"), (LEFT, "Left"), (NOT_ADDED, "Not Added"))
+    ADMIN_STATUS_CHOICES = ((OWNER, "Owner"), (GM, "GM"), (RECRUITER, "Recruiter"), (PLAYER, "Player"),
+                            (SUBMITTER, "Submitting Player"))
+    plot = models.ForeignKey("Plot", related_name="dompc_involvement")
+    dompc = models.ForeignKey("PlayerOrNpc", related_name="plot_involvement")
+    cast_status = models.PositiveSmallIntegerField(choices=CAST_STATUS_CHOICES, default=MAIN_CAST)
+    activity_status = models.PositiveSmallIntegerField(choices=ACTIVITY_STATUS_CHOICES, default=ACTIVE)
+    admin_status = models.PositiveSmallIntegerField(choices=ADMIN_STATUS_CHOICES, default=PLAYER)
+    recruiter_story = models.TextField(blank=True)
+    recruited_by = models.ForeignKey("PlayerOrNpc", blank=True, null=True, related_name="plot_recruits",
+                                     on_delete=models.SET_NULL)
+    gm_notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return str(self.dompc)
+
+    def get_modified_status_display(self):
+        """Modifies status display with whether we're a GM"""
+        msg = self.get_cast_status_display()
+        if self.admin_status > self.PLAYER:
+            msg += " (%s)" % self.get_admin_status_display()
+        return msg
+
+    def display_plot_involvement(self):
+        """Display method for PCPlotInvolvement"""
+        msg = self.plot.display()
+        msg += "\nYour Involvement: %s" % self.get_modified_status_display()
+        return msg
+
+    def accept_invitation(self, description=""):
+        self.activity_status = self.ACTIVE
+        if description:
+            if self.gm_notes:
+                self.gm_notes += "\n"
+            self.gm_notes += description
+        self.save()
+
+    def leave_plot(self):
+        self.activity_status = self.LEFT
+        self.save()
+
+
+class PlotUpdate(SharedMemoryModel):
     """
-    Container for showing all the Crisis Actions during a period and their corresponding
+    Container for showing all the Plot Actions during a period and their corresponding
     result on the crisis
     """
-    crisis = models.ForeignKey("Crisis", related_name="updates", db_index=True)
+    plot = models.ForeignKey("Plot", related_name="updates", db_index=True)
     desc = models.TextField("Story of what happened this update", blank=True)
     gm_notes = models.TextField("Any ooc notes of consequences", blank=True)
     date = models.DateTimeField(blank=True, null=True)
-    episode = models.ForeignKey("character.Episode", related_name="crisis_updates", blank=True, null=True,
+    episode = models.ForeignKey("character.Episode", related_name="plot_updates", blank=True, null=True,
                                 on_delete=models.SET_NULL)
+    search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="plot_updates")
 
     def __str__(self):
-        return "Update %s for %s" % (self.id, self.crisis)
+        return "Update %s for %s" % (self.id, self.plot)
+
+    def display_beat(self):
+        """Return string display of this update/beat"""
+        msg = str(self)
+        if self.date:
+            msg += "\n{wDate{n %s" % self.date.strftime("%x %X")
+        for attr in ("actions", "events", "emits", "flashbacks"):
+            qs = getattr(self, attr).all()
+            if qs:
+                msg += "\n{w%s:{n %s" % (attr.capitalize(), ", ".join(str(ob) for ob in qs))
+        return msg
 
 
 class AbstractAction(AbstractPlayerAllocations):
@@ -2190,6 +2258,7 @@ class AbstractAction(AbstractPlayerAllocations):
     editable = models.BooleanField(default=True)
     resource_types = ('silver', 'military', 'economic', 'social', 'ap', 'action points', 'army')
     free_action = models.BooleanField(default=False)
+    difficulty = None
 
     class Meta:
         abstract = True
@@ -2331,30 +2400,30 @@ class AbstractAction(AbstractPlayerAllocations):
         pass
 
     @property
-    def crisis_attendance(self):
+    def plot_attendance(self):
         """Returns list of actions we are attending - physically present for"""
-        attended_actions = list(self.dompc.actions.filter(Q(update__isnull=True)
+        attended_actions = list(self.dompc.actions.filter(Q(beat__isnull=True)
                                                           & Q(attending=True)
-                                                          & Q(crisis__isnull=False)
-                                                          & ~Q(status=CrisisAction.CANCELLED)
+                                                          & Q(plot__isnull=False)
+                                                          & ~Q(status=PlotAction.CANCELLED)
                                                           & Q(date_submitted__isnull=False)))
-        attended_actions += list(self.dompc.assisting_actions.filter(Q(crisis_action__update__isnull=True)
+        attended_actions += list(self.dompc.assisting_actions.filter(Q(plot_action__beat__isnull=True)
                                                                      & Q(attending=True)
-                                                                     & Q(crisis_action__crisis__isnull=False)
-                                                                     & ~Q(crisis_action__status=CrisisAction.CANCELLED)
+                                                                     & Q(plot_action__plot__isnull=False)
+                                                                     & ~Q(plot_action__status=PlotAction.CANCELLED)
                                                                      & Q(date_submitted__isnull=False)))
         return attended_actions
 
-    def check_crisis_omnipresence(self):
+    def check_plot_omnipresence(self):
         """Raises an ActionSubmissionError if we are already attending for this crisis"""
         if self.attending:
-            already_attending = [ob for ob in self.crisis_attendance if ob.crisis == self.crisis]
+            already_attending = [ob for ob in self.plot_attendance if ob.crisis == self.crisis]
             if already_attending:
                 already_attending = already_attending[-1]
                 raise ActionSubmissionError("You are marked as physically present at %s. Use @action/toggleattend"
                                             " and also ensure this story reads as a passive role." % already_attending)
 
-    def check_crisis_overcrowd(self):
+    def check_plot_overcrowd(self):
         """Raises an ActionSubmissionError if too many people are attending"""
         attendees = self.attendees
         if len(attendees) > self.attending_limit and not self.prefer_offscreen:
@@ -2365,16 +2434,16 @@ class AbstractAction(AbstractPlayerAllocations):
                                         "Current attendees: %s" % (self.attending_limit, excess,
                                                                    ",".join(str(ob) for ob in attendees)))
 
-    def check_crisis_errors(self):
+    def check_plot_errors(self):
         """Raises ActionSubmissionErrors if anything should stop our submission"""
-        if self.crisis:
-            self.crisis.raise_submission_errors()
-            self.check_crisis_omnipresence()
-        self.check_crisis_overcrowd()
+        if self.plot:
+            self.plot.raise_submission_errors()
+            self.check_plot_omnipresence()
+        self.check_plot_overcrowd()
 
     def mark_attending(self):
         """Marks us as physically attending, raises ActionSubmissionErrors if it shouldn't be allowed."""
-        self.check_crisis_errors()
+        self.check_plot_errors()
         self.attending = True
         self.save()
 
@@ -2391,9 +2460,9 @@ class AbstractAction(AbstractPlayerAllocations):
         """
         if not self.actions:
             raise ActionSubmissionError("Join first with the /setaction switch.")
-        if self.crisis:
+        if self.plot:
             try:
-                self.crisis.raise_creation_errors(self.dompc)
+                self.plot.raise_creation_errors(self.dompc)
             except ActionSubmissionError as err:
                 raise ActionSubmissionError(err)
         r_type = r_type.lower()
@@ -2439,7 +2508,7 @@ class AbstractAction(AbstractPlayerAllocations):
             action = self
             action_assist = None
         else:
-            action = self.crisis_action
+            action = self.plot_action
             action_assist = self
         orders = army.send_orders(player=self.dompc.player, order_type=Orders.CRISIS, action=action,
                                   action_assist=action_assist)
@@ -2500,7 +2569,7 @@ class AbstractAction(AbstractPlayerAllocations):
         return self.questions.filter(answers__isnull=True).exclude(Q(is_intent=True) | Q(mark_answered=True))
 
 
-class CrisisAction(AbstractAction):
+class PlotAction(AbstractAction):
     """
     An action that a player is taking. May be in response to a Crisis.
     """
@@ -2510,20 +2579,22 @@ class CrisisAction(AbstractAction):
     HARD_DIFFICULTY = 60
     week = models.PositiveSmallIntegerField(default=0, blank=0, db_index=True)
     dompc = models.ForeignKey("PlayerOrNpc", db_index=True, blank=True, null=True, related_name="actions")
-    crisis = models.ForeignKey("Crisis", db_index=True, blank=True, null=True, related_name="actions")
-    update = models.ForeignKey("CrisisUpdate", db_index=True, blank=True, null=True, related_name="actions")
+    plot = models.ForeignKey("Plot", db_index=True, blank=True, null=True, related_name="actions")
+    beat = models.ForeignKey("PlotUpdate", db_index=True, blank=True, null=True, related_name="actions",
+                             on_delete=models.SET_NULL)
     public = models.BooleanField(default=False, blank=True)
     gm_notes = models.TextField("Any ooc notes for other GMs", blank=True)
     story = models.TextField("Story written by the GM for the player", blank=True)
     secret_story = models.TextField("Any secret story written for the player", blank=True)
     difficulty = models.SmallIntegerField(default=0, blank=0)
     outcome_value = models.SmallIntegerField(default=0, blank=0)
-    assistants = models.ManyToManyField("PlayerOrNpc", blank=True, through="CrisisActionAssistant",
+    assistants = models.ManyToManyField("PlayerOrNpc", blank=True, through="PlotActionAssistant",
                                         related_name="assisted_actions")
     prefer_offscreen = models.BooleanField(default=False, blank=True)
     gemit = models.ForeignKey("character.StoryEmit", blank=True, null=True, related_name="actions")
     gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="gmd_actions",
                            on_delete=models.SET_NULL)
+    search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="actions")
 
     UNKNOWN = 0
     COMBAT = 1
@@ -2565,15 +2636,15 @@ class CrisisAction(AbstractAction):
     attending_limit = 5
 
     def __str__(self):
-        if self.crisis:
-            crisis = " for %s" % self.crisis
+        if self.plot:
+            plot = " for %s" % self.plot
         else:
-            crisis = ""
-        return "%s by %s%s" % (self.NOUN, self.author, crisis)
+            plot = ""
+        return "%s by %s%s" % (self.NOUN, self.author, plot)
 
     @property
     def commafied_participants(self):
-        dompc_list = [str(self.dompc),]
+        dompc_list = [str(self.dompc)]
         for assist in self.assistants.all():
             dompc_list.append(str(assist))
         if len(dompc_list) == 1:
@@ -2586,11 +2657,11 @@ class CrisisAction(AbstractAction):
     @property
     def pretty_str(self):
         """Returns formatted display of this action"""
-        if self.crisis:
-            crisis = " for {m%s{n" % self.crisis
+        if self.plot:
+            plot = " for {m%s{n" % self.plot
         else:
-            crisis = ""
-        return "%s by {c%s{n%s" % (self.NOUN, self.author, crisis)
+            plot = ""
+        return "%s by {c%s{n%s" % (self.NOUN, self.author, plot)
 
     @property
     def sent(self):
@@ -2639,23 +2710,23 @@ class CrisisAction(AbstractAction):
 
     def send(self, update=None, caller=None):
         """Publishes this action"""
-        if self.crisis:
-            msg = "{wGM Response to action for crisis:{n %s" % self.crisis
+        if self.plot:
+            msg = "{wGM Response to action for crisis:{n %s" % self.plot
         else:
             msg = "{wGM Response to story action of %s" % self.author
         msg += "\n{wRolls:{n %s" % self.outcome_value
         msg += "\n\n{wStory Result:{n %s\n\n" % self.story
         self.week = get_week()
         if update:
-            self.update = update
-        if self.status != CrisisAction.PUBLISHED:
+            self.beat = update
+        if self.status != PlotAction.PUBLISHED:
             self.inform(msg)
             for assistant in self.assistants.all():
                 assistant.inform(msg, category="Actions")
             for orders in self.orders.all():
                 orders.complete = True
                 orders.save()
-            self.status = CrisisAction.PUBLISHED
+            self.status = PlotAction.PUBLISHED
         if not self.gm:
             self.gm = caller
         self.save()
@@ -2728,9 +2799,6 @@ class CrisisAction(AbstractAction):
         if self.sent or staff_viewer:
             if disp_ooc:
                 msg += "\n{wOutcome Value:{n %s%s{n" % (self.roll_color(self.outcome_value), self.outcome_value)
-                events = self.events.all()
-                if events:
-                    msg += "\n{wEvents involved: %s" % ", ".join(str(ob) for ob in events)
             msg += "\n{wStory Result:{n %s" % self.story
             if self.secret_story and view_main_secrets:
                 msg += "\n{wSecret Story{n %s" % self.secret_story
@@ -2743,7 +2811,7 @@ class CrisisAction(AbstractAction):
             if len(orders) > 0:
                 msg += "\n{wArmed Forces Appointed:{n %s" % ", ".join(str(ob.army) for ob in orders)
             needs_edits = ""
-            if self.status == CrisisAction.NEEDS_PLAYER:
+            if self.status == PlotAction.NEEDS_PLAYER:
                 needs_edits = " Awaiting edits to be submitted by: %s" % \
                               ", ".join(ob.author for ob in self.all_editable)
             msg += "\n{w[STATUS: %s]{n%s" % (self.get_status_display(), needs_edits)
@@ -2782,25 +2850,25 @@ class CrisisAction(AbstractAction):
         if not self.date_submitted:
             self.delete()
         else:
-            self.status = CrisisAction.CANCELLED
+            self.status = PlotAction.CANCELLED
             self.save()
 
     def check_incomplete_required_fields(self):
         """Checks which fields are incomplete"""
-        fields = super(CrisisAction, self).check_incomplete_required_fields()
+        fields = super(PlotAction, self).check_incomplete_required_fields()
         if not self.category:
             fields.append("category")
         return fields
 
     def raise_submission_errors(self):
         """Raises errors that prevent submission"""
-        super(CrisisAction, self).raise_submission_errors()
-        self.check_crisis_errors()
+        super(PlotAction, self).raise_submission_errors()
+        self.check_plot_errors()
         self.check_draft_errors()
 
     def check_draft_errors(self):
         """Checks any errors that occur only during initial creation"""
-        if self.status != CrisisAction.DRAFT:
+        if self.status != PlotAction.DRAFT:
             return
         self.check_action_against_maximum_allowed()
         self.check_warning_prompt_sent()
@@ -2813,7 +2881,7 @@ class CrisisAction(AbstractAction):
         num_actions = len(recent_actions)
         # we allow them to use unspent actions for assists, but not vice-versa
         num_assists = self.dompc.recent_assists.count()
-        num_assists -= CrisisActionAssistant.MAX_ASSISTS
+        num_assists -= PlotActionAssistant.MAX_ASSISTS
         if num_assists >= 0:
             num_actions += num_assists
         if num_actions >= self.max_requests:
@@ -2849,7 +2917,7 @@ class CrisisAction(AbstractAction):
         try:
             assist = self.assisting_actions.get(dompc=dompc)
             assist.raise_submission_errors()
-        except CrisisActionAssistant.DoesNotExist:
+        except PlotActionAssistant.DoesNotExist:
             return False
         except ActionSubmissionError:
             return True
@@ -2863,17 +2931,17 @@ class CrisisAction(AbstractAction):
 
     def on_submit_success(self):
         """Announces us after successful submission. refunds any assistants who weren't ready"""
-        if self.status == CrisisAction.DRAFT:
-            self.status = CrisisAction.NEEDS_GM
+        if self.status == PlotAction.DRAFT:
+            self.status = PlotAction.NEEDS_GM
             for assist in self.assisting_actions.filter(date_submitted__isnull=True):
                 assist.submit_or_refund()
             inform_staff("%s submitted action #%s. %s" % (self.author, self.id, self.get_summary_text()))
-        super(CrisisAction, self).on_submit_success()
+        super(PlotAction, self).on_submit_success()
 
     def post_edit(self):
         """Announces that we've finished editing our action and are ready for a GM"""
-        if self.status == CrisisAction.NEEDS_PLAYER and not self.all_editable:
-            self.status = CrisisAction.NEEDS_GM
+        if self.status == PlotAction.NEEDS_PLAYER and not self.all_editable:
+            self.status = PlotAction.NEEDS_GM
             self.save()
             inform_staff("%s has been resubmitted for GM review." % self)
             if self.gm:
@@ -2938,41 +3006,41 @@ class CrisisAction(AbstractAction):
         """Makes an action public for all players to see"""
         if self.public:
             raise ActionSubmissionError("That action has already been made public.")
-        if self.status != CrisisAction.PUBLISHED:
+        if self.status != PlotAction.PUBLISHED:
             raise ActionSubmissionError("The action must be finished before you can make details of it public.")
         self.public = True
         self.save()
         xp_value = 2
-        if self.crisis and not self.crisis.public:
+        if self.plot and not self.plot.public:
             xp_value = 1
         self.dompc.player.char_ob.adjust_xp(xp_value)
         self.dompc.msg("You have gained %s xp for making your action public." % xp_value)
         inform_staff("Action %s has been made public." % self.id)
 
 
-NAMES_OF_PROPERTIES_TO_PASS_THROUGH = ['crisis', 'action_and_assists', 'status', 'prefer_offscreen', 'attendees',
+NAMES_OF_PROPERTIES_TO_PASS_THROUGH = ['plot', 'action_and_assists', 'status', 'prefer_offscreen', 'attendees',
                                        'all_editable', 'outcome_value', 'difficulty', 'gm', 'attending_limit']
 
 
-@passthrough_properties('crisis_action', *NAMES_OF_PROPERTIES_TO_PASS_THROUGH)
-class CrisisActionAssistant(AbstractAction):
-    """An assist for a crisis action - a player helping them out and writing how."""
+@passthrough_properties('plot_action', *NAMES_OF_PROPERTIES_TO_PASS_THROUGH)
+class PlotActionAssistant(AbstractAction):
+    """An assist for a plot action - a player helping them out and writing how."""
     NOUN = "Assist"
     BASE_AP_COST = 10
     MAX_ASSISTS = 2
-    crisis_action = models.ForeignKey("CrisisAction", db_index=True, related_name="assisting_actions")
+    plot_action = models.ForeignKey("PlotAction", db_index=True, related_name="assisting_actions")
     dompc = models.ForeignKey("PlayerOrNpc", db_index=True, related_name="assisting_actions")
 
     class Meta:
-        unique_together = ('crisis_action', 'dompc')
+        unique_together = ('plot_action', 'dompc')
 
     def __str__(self):
-        return "%s assisting %s" % (self.author, self.crisis_action)
+        return "%s assisting %s" % (self.author, self.plot_action)
 
     @property
     def pretty_str(self):
         """Formatted string of the assist"""
-        return "{c%s{n assisting %s" % (self.author, self.crisis_action)
+        return "{c%s{n assisting %s" % (self.author, self.plot_action)
 
     def cancel(self):
         """Cancels and refunds this assist, then deletes it"""
@@ -2982,11 +3050,11 @@ class CrisisActionAssistant(AbstractAction):
 
     def view_total_resources_msg(self):
         """Passthrough method to return total resources msg"""
-        return self.crisis_action.view_total_resources_msg()
+        return self.plot_action.view_total_resources_msg()
 
     def calculate_outcome_value(self):
         """Passthrough method to calculate outcome value"""
-        return self.crisis_action.calculate_outcome_value()
+        return self.plot_action.calculate_outcome_value()
 
     def submit_or_refund(self):
         """Submits our assist if we're ready, or refunds us"""
@@ -2994,14 +3062,14 @@ class CrisisActionAssistant(AbstractAction):
             self.submit()
         except ActionSubmissionError:
             main_action_msg = "Cancelling incomplete assist: %s\n" % self.author
-            assist_action_msg = "Your assist for %s was incomplete and has been refunded." % self.crisis_action
-            self.crisis_action.inform(main_action_msg)
+            assist_action_msg = "Your assist for %s was incomplete and has been refunded." % self.plot_action
+            self.plot_action.inform(main_action_msg)
             self.inform(assist_action_msg)
             self.cancel()
 
     def post_edit(self):
         """Passthrough hook for after editing"""
-        self.crisis_action.post_edit()
+        self.plot_action.post_edit()
 
     @property
     def has_paid_initial_ap_cost(self):
@@ -3011,7 +3079,7 @@ class CrisisActionAssistant(AbstractAction):
     @property
     def main_action(self):
         """Returns the action we're assisting"""
-        return self.crisis_action
+        return self.plot_action
 
     def set_action(self, story):
         """
@@ -3032,8 +3100,8 @@ class CrisisActionAssistant(AbstractAction):
 
     def ask_question(self, text):
         """Asks GMs an OOC question"""
-        question = super(CrisisActionAssistant, self).ask_question(text)
-        question.action = self.crisis_action
+        question = super(PlotActionAssistant, self).ask_question(text)
+        question.action = self.plot_action
         question.save()
 
     def pay_initial_ap_cost(self):
@@ -3043,13 +3111,13 @@ class CrisisActionAssistant(AbstractAction):
 
     def view_action(self, caller=None, disp_pending=True, disp_old=False, disp_ooc=True):
         """Returns display of the action"""
-        return self.crisis_action.view_action(caller=caller, disp_pending=disp_pending, disp_old=disp_old,
-                                              disp_ooc=disp_ooc)
+        return self.plot_action.view_action(caller=caller, disp_pending=disp_pending, disp_old=disp_old,
+                                            disp_ooc=disp_ooc)
 
     def check_max_assists(self):
         """Raises an error if we've assisted too many actions"""
         # if we haven't spent all our actions, we'll let them use it on assists
-        if self.free_action or self.crisis_action.free_action:
+        if self.free_action or self.plot_action.free_action:
             return
         num_actions = self.dompc.recent_actions.count() - 2
         num_assists = self.dompc.recent_assists.count()
@@ -3060,17 +3128,17 @@ class CrisisActionAssistant(AbstractAction):
 
     def raise_submission_errors(self):
         """Raises errors that prevent submission"""
-        super(CrisisActionAssistant, self).raise_submission_errors()
+        super(PlotActionAssistant, self).raise_submission_errors()
         self.check_max_assists()
 
 
 class ActionOOCQuestion(SharedMemoryModel):
     """
-    OOC Question about a crisis. Can be associated with a given action
+    OOC Question about a plot. Can be associated with a given action
     or asked about independently.
     """
-    action = models.ForeignKey("CrisisAction", db_index=True, related_name="questions", null=True, blank=True)
-    action_assist = models.ForeignKey("CrisisActionAssistant", db_index=True, related_name="questions", null=True,
+    action = models.ForeignKey("PlotAction", db_index=True, related_name="questions", null=True, blank=True)
+    action_assist = models.ForeignKey("PlotActionAssistant", db_index=True, related_name="questions", null=True,
                                       blank=True)
     text = models.TextField(blank=True)
     is_intent = models.BooleanField(default=False)
@@ -3125,7 +3193,7 @@ class ActionOOCQuestion(SharedMemoryModel):
 
 class ActionOOCAnswer(SharedMemoryModel):
     """
-    OOC answer from a GM about a crisis.
+    OOC answer from a GM about a plot.
     """
     gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="answers_given")
     question = models.ForeignKey("ActionOOCQuestion", db_index=True, related_name="answers")
@@ -3171,7 +3239,7 @@ class Reputation(SharedMemoryModel):
         """Saves changes and wipes cache"""
         super(Reputation, self).save(*args, **kwargs)
         try:
-            self.player.assets.clear_cache()
+            self.player.assets.clear_cached_properties()
         except (AttributeError, ValueError, TypeError):
             pass
 
@@ -3557,7 +3625,7 @@ class Organization(InformMixin, SharedMemoryModel):
         """Saves changes and wipes cache"""
         super(Organization, self).save(*args, **kwargs)
         try:
-            self.assets.clear_cache()
+            self.assets.clear_cached_properties()
         except (AttributeError, ValueError, TypeError):
             pass
         # make sure that any cached AP modifiers based on Org fealties are invalidated
@@ -4381,7 +4449,7 @@ class Army(SharedMemoryModel):
         """Saves changes and clears cache"""
         super(Army, self).save(*args, **kwargs)
         try:
-            self.owner.clear_cache()
+            self.owner.clear_cached_properties()
         except (AttributeError, ValueError, TypeError):
             pass
 
@@ -4436,8 +4504,8 @@ class Orders(SharedMemoryModel):
     target_character = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="orders", blank=True,
                                          null=True, db_index=True)
     # if we're targeting an action or asist. omg skorpins.
-    action = models.ForeignKey("CrisisAction", related_name="orders", null=True, blank=True, db_index=True)
-    action_assist = models.ForeignKey("CrisisActionAssistant", related_name="orders", null=True, blank=True,
+    action = models.ForeignKey("PlotAction", related_name="orders", null=True, blank=True, db_index=True)
+    action_assist = models.ForeignKey("PlotActionAssistant", related_name="orders", null=True, blank=True,
                                       db_index=True)
     # if we're assisting another army's orders
     assisting = models.ForeignKey("self", related_name="assisting_orders", null=True, blank=True, db_index=True)
@@ -4625,7 +4693,7 @@ class MilitaryUnit(UnitTypeInfo):
         """Saves changes and clears cache"""
         super(MilitaryUnit, self).save(*args, **kwargs)
         try:
-            self.army.owner.clear_cache()
+            self.army.owner.clear_cached_properties()
         except (AttributeError, TypeError, ValueError):
             pass
 
@@ -4728,7 +4796,6 @@ class Member(SharedMemoryModel):
     As far as salary goes, anyone in the Member model can have a WeeklyTransaction
     set up with their Organization.
     """
-
     player = models.ForeignKey('PlayerOrNpc', related_name='memberships', blank=True, null=True, db_index=True)
     commanding_officer = models.ForeignKey('self', on_delete=models.SET_NULL, related_name='subordinates', blank=True,
                                            null=True)
@@ -4763,22 +4830,6 @@ class Member(SharedMemoryModel):
         if self.player and self.player.player and self.player.player.char_ob:
             return self.player.player.char_ob
     char = property(_get_char)
-
-    def set_salary(self, val):
-        """Sets a salary for the member"""
-        if not hasattr(self, 'salary'):
-            if not self.player.assets:
-                assets = AssetOwner(player=self.player)
-                assets.save()
-                self.player.assets = assets
-            salary = AccountTransaction(recever=self.player.assets, sender=self.organization.assets,
-                                        category="Salary", member=self, weekly_amount=val)
-            salary.save()
-            self.salary = salary
-        else:
-            self.salary.weekly_amount = val
-            self.salary.save()
-        self.save()
 
     def __str__(self):
         return str(self.player)
@@ -5218,19 +5269,15 @@ class AssignedTask(SharedMemoryModel):
         self.player.inform(msg, category="task", week=week,
                                          append=True)
 
-    @property
+    @CachedProperty
     def total(self):
         """Total support accumulated"""
-        if self.finished:
-            if hasattr(self, 'cached_total'):
-                return self.cached_total
         try:
             val = 0
             for sup in self.supporters.filter(fake=False):
                 val += sup.rating
         except (AttributeError, TypeError, ValueError):
             val = 0
-        self.cached_total = val
         return val
 
     def display(self):
@@ -5442,11 +5489,9 @@ class CraftingRecipe(SharedMemoryModel):
                     msg += ", ".join("%s: %s" % (str(ob), tup[0]) for ob in tup[2].all())
         return msg
 
-    @property
+    @CachedProperty
     def value(self):
         """Returns total cost of all materials used"""
-        if hasattr(self, 'cached_value'):
-            return self.cached_value
         val = self.additional_cost
         for mat in self.primary_materials.all():
             val += mat.value * self.primary_amount
@@ -5454,7 +5499,6 @@ class CraftingRecipe(SharedMemoryModel):
             val += mat.value * self.secondary_amount
         for mat in self.tertiary_materials.all():
             val += mat.value * self.tertiary_amount
-        self.cached_value = val
         return val
 
     def __unicode__(self):
@@ -5525,12 +5569,7 @@ class RPEvent(SharedMemoryModel):
     Events can have money tossed at them in order to generate prestige, which
     is indicated by the celebration_tier.
     """
-    NONE = 0
-    COMMON = 1
-    REFINED = 2
-    GRAND = 3
-    EXTRAVAGANT = 4
-    LEGENDARY = 5
+    NONE, COMMON, REFINED, GRAND, EXTRAVAGANT, LEGENDARY = range(6)
 
     LARGESSE_CHOICES = ((NONE, 'Small'), (COMMON, 'Average'), (REFINED, 'Refined'), (GRAND, 'Grand'),
                         (EXTRAVAGANT, 'Extravagant'), (LEGENDARY, 'Legendary'),)
@@ -5569,9 +5608,11 @@ class RPEvent(SharedMemoryModel):
     finished = models.BooleanField(default=False)
     results = models.TextField(blank=True, null=True)
     room_desc = models.TextField(blank=True, null=True)
-    actions = models.ManyToManyField("CrisisAction", blank=True, related_name="events")
+    # a beat with a blank desc will be used for connecting us to a Plot before the Event is finished
+    beat = models.ForeignKey("PlotUpdate", blank=True, null=True, related_name="events", on_delete=models.SET_NULL)
     plotroom = models.ForeignKey('PlotRoom', blank=True, null=True, related_name='events_held_here')
     risk = models.PositiveSmallIntegerField(choices=RISK_CHOICES, default=NORMAL_RISK, blank=True)
+    search_tags = models.ManyToManyField('character.SearchTag', blank=True, related_name="events")
 
     @property
     def prestige(self):
@@ -5671,6 +5712,8 @@ class RPEvent(SharedMemoryModel):
         """Returns string display for event"""
         msg = "{wName:{n %s\n" % self.name
         msg += "{wHosts:{n %s\n" % ", ".join(str(ob) for ob in self.hosts.all())
+        if self.beat:
+            msg += "{wPlot:{n %s\n" % self.beat.plot
         if self.gms.all():
             msg += "{wGMs:{n %s\n" % ", ".join(str(ob) for ob in self.gms.all())
         if not self.finished and not self.public_event:
@@ -5762,18 +5805,14 @@ class RPEvent(SharedMemoryModel):
         """Gets absolute URL for the RPEvent from their display view"""
         return reverse('dominion:display_event', kwargs={'pk': self.id})
 
-    @property
+    @CachedProperty
     def attended(self):
         """List of dompcs who attended our event, cached to avoid query with every message"""
-        if hasattr(self, '_cached_attendance'):
-            return self._cached_attendance
-        self._cached_attendance = list(self.dompcs.filter(event_participation__attended=True))
-        return self._cached_attendance
+        return list(self.dompcs.filter(event_participation__attended=True))
 
     def record_attendance(self, dompc):
         """Records that dompc attended the event"""
-        if hasattr(self, '_cached_attendance'):
-            del self._cached_attendance
+        del self.attended
         part, _ = self.pc_event_participation.get_or_create(dompc=dompc)
         part.attended = True
         part.save()
@@ -5873,9 +5912,7 @@ class RPEvent(SharedMemoryModel):
 
 class PCEventParticipation(SharedMemoryModel):
     """A PlayerOrNPC participating in an event"""
-    MAIN_HOST = 0
-    HOST = 1
-    GUEST = 2
+    MAIN_HOST, HOST, GUEST = range(3)
     STATUS_CHOICES = ((MAIN_HOST, "Main Host"), (HOST, "Host"), (GUEST, "Guest"))
     dompc = models.ForeignKey('PlayerOrNpc', related_name="event_participation")
     event = models.ForeignKey('RPEvent', related_name="pc_event_participation")

@@ -9,21 +9,22 @@ name was changed. There's some confusing overlap between that and our own Player
 loudly and remember that we'll usually refer to evennia's account typeclass as 'player' or 'user' or whatever for
 the django USER_AUTH_MODEL.
 """
-
-from django.db import models
-from django.conf import settings
-from cloudinary.models import CloudinaryField
-from evennia.objects.models import ObjectDB
-from evennia.locks.lockhandler import LockHandler
-from django.db.models import Q, F
-from .managers import ArxRosterManager, AccountHistoryManager
 from datetime import datetime, date
 import random
 import traceback
-from world.stats_and_skills import do_dice_check
-from evennia.typeclasses.models import SharedMemoryModel
 
-# multiplier for how much higher ClueDiscovery.roll must be over Clue.rating to be discovered
+from django.db import models
+from django.db.models import Q
+from django.conf import settings
+from cloudinary.models import CloudinaryField
+from evennia.locks.lockhandler import LockHandler
+from evennia.utils.idmapper.models import SharedMemoryModel
+
+from .managers import ArxRosterManager, AccountHistoryManager
+from server.utils.arx_utils import CachedProperty
+from world.stats_and_skills import do_dice_check
+
+# multiplier for how much higher progress must be over Clue.rating to be discovered
 DISCO_MULT = 10
 
 
@@ -166,19 +167,9 @@ class RosterEntry(SharedMemoryModel):
             pass
 
     @property
-    def finished_clues(self):
-        """Clue discoveries that are all done and ready. Otherwise, they're just progress and shouldn't be shown"""
-        return self.clues.filter(roll__gte=F('clue__rating') * DISCO_MULT)
-
-    @property
-    def discovered_clues(self):
-        """The actual clues themselves that are all done, not just their discoveries"""
-        return Clue.objects.filter(id__in=[ob.clue.id for ob in self.finished_clues])
-
-    @property
     def undiscovered_clues(self):
         """Clues that we -haven't- discovered. We might have partial progress or not"""
-        return Clue.objects.exclude(id__in=[ob.clue.id for ob in self.finished_clues])
+        return Clue.objects.exclude(id__in=self.clues.all())
 
     @property
     def alts(self):
@@ -187,16 +178,11 @@ class RosterEntry(SharedMemoryModel):
             return self.current_account.characters.exclude(id=self.id)
         return []
 
-    def discover_clue(self, clue, method="Prior Knowledge"):
+    def discover_clue(self, clue, method="Prior Knowledge", message=""):
         """Discovers and returns the clue, if not already."""
-        try:
-            disco = self.clues.get(clue=clue)
-        except ClueDiscovery.DoesNotExist:
-            disco = self.clues.create(clue=clue)
-        except ClueDiscovery.MultipleObjectsReturned:
-            disco = self.clues.filter(clue=clue)[0]
-        if not disco.finished:
-            disco.mark_discovered(method=method)
+        disco, created = self.clue_discoveries.get_or_create(clue=clue)
+        if created:
+            disco.mark_discovered(method=method, message=message or "")
         return disco
 
     @property
@@ -289,23 +275,19 @@ class RosterEntry(SharedMemoryModel):
         """How many action points we get back in a week."""
         return 150 - self.action_point_penalty
 
-    @property
+    @CachedProperty
     def action_point_penalty(self):
         """AP penalty from our number of fealties"""
-        if hasattr(self, 'cached_ap_penalty'):
-            return self.cached_ap_penalty
         try:
-            self.cached_ap_penalty = 10 * self.player.Dominion.num_fealties
+            return 10 * self.player.Dominion.num_fealties
         except AttributeError:
-            self.cached_ap_penalty = 0
-        return self.cached_ap_penalty
+            return 0
 
     @classmethod
     def clear_ap_cache_in_cached_instances(cls):
         """Invalidate cached_ap_penalty in all cached RosterEntries when Fealty chain changes. Won't happen often."""
         for instance in cls.get_all_cached_instances():
-            if hasattr(instance, 'cached_ap_penalty'):
-                del instance.cached_ap_penalty
+            delattr(instance, 'action_point_penalty')
 
 
 class Story(SharedMemoryModel):
@@ -352,7 +334,7 @@ class Chapter(SharedMemoryModel):
             return self.public_crises
         if user.is_staff or user.check_permstring("builders"):
             return self.crises.all()
-        return self.crises.filter(Q(public=True) | Q(required_clue__discoveries__in=user.roster.discovered_clues))
+        return self.crises.filter(Q(public=True) | Q(required_clue__in=user.roster.clues.all()))
 
 
 class Episode(SharedMemoryModel):
@@ -385,9 +367,10 @@ class Episode(SharedMemoryModel):
         if player.is_staff or player.check_permstring("builders"):
             return self.crisis_updates.all()
         return self.crisis_updates.filter(Q(crisis__public=True) | Q(
-            crisis__required_clue__discoveries__in=player.roster.finished_clues)).distinct()
+            crisis__required_clue__in=player.roster.clues.all())).distinct()
 
     def get_viewable_emits_for_player(self, player):
+        """Returns emits viewable for a given player"""
         if not player or not player.is_authenticated():
             return self.emits.filter(orgs__isnull=True).distinct()
         elif player.is_staff or player.check_permstring("builders"):
@@ -411,8 +394,15 @@ class StoryEmit(SharedMemoryModel):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True,
                                on_delete=models.SET_NULL, related_name='emits')
     orgs = models.ManyToManyField('dominion.Organization', blank=True, related_name='emits')
+    search_tags = models.ManyToManyField('SearchTag', blank=True, related_name="emits")
+    beat = models.ForeignKey("dominion.PlotUpdate", blank=True, null=True, related_name="emits",
+                             on_delete=models.SET_NULL)
+
+    def __str__(self):
+        return "StoryEmit #%d" % self.id
 
     def broadcast(self):
+        """Broadcast a storyemit either to orgs or to the game as a whole"""
         orgs = self.orgs.all()
         if not orgs:
             from server.utils.arx_utils import broadcast_msg_and_post
@@ -707,8 +697,6 @@ class Mystery(SharedMemoryModel):
                             blank=True)
     category = models.CharField(help_text="Type of mystery this is - ability-related, metaplot, etc", max_length=80,
                                 blank=True)
-    characters = models.ManyToManyField('RosterEntry', blank=True, through='MysteryDiscovery',
-                                        through_fields=('mystery', 'character'), db_index=True)
 
     class Meta:
         verbose_name_plural = "Mysteries"
@@ -722,6 +710,7 @@ class Revelation(SharedMemoryModel):
     name = models.CharField(max_length=255, blank=True, db_index=True)
     desc = models.TextField("Description", help_text="Description of the revelation given to the player",
                             blank=True)
+    gm_notes = models.TextField(help_text="OOC Notes about this topic", blank=True)
     mysteries = models.ManyToManyField("Mystery", through='RevelationForMystery')
 
     required_clue_value = models.PositiveSmallIntegerField(default=0, blank=0,
@@ -729,7 +718,12 @@ class Revelation(SharedMemoryModel):
 
     red_herring = models.BooleanField(default=False, help_text="Whether this revelation is totally fake")
     characters = models.ManyToManyField('RosterEntry', blank=True, through='RevelationDiscovery',
-                                        through_fields=('revelation', 'character'), db_index=True)
+                                        through_fields=('revelation', 'character'), db_index=True,
+                                        related_name="revelations")
+    author = models.ForeignKey("RosterEntry", blank=True, null=True, related_name="revelations_written")
+    plots = models.ManyToManyField("dominion.Plot", blank=True, through="RevelationPlotInvolvement",
+                                   related_name="revelations")
+    search_tags = models.ManyToManyField("SearchTag", blank=True, related_name="revelations")
 
     def __str__(self):
         return self.name
@@ -737,7 +731,7 @@ class Revelation(SharedMemoryModel):
     @property
     def total_clue_value(self):
         """Total value of the clues used for this revelation"""
-        return sum(ob.rating for ob in Clue.objects.filter(revelations=self))
+        return sum(ob.rating for ob in self.clues.all())
 
     @property
     def requires(self):
@@ -746,10 +740,8 @@ class Revelation(SharedMemoryModel):
 
     def player_can_discover(self, char):
         """Check whether they can discover the revelation"""
-        char_clues = set([ob.clue for ob in char.finished_clues])
-        used_clues = set([ob.clue for ob in self.clues_used.filter(required_for_revelation=True)])
-        # check if we have all the required clues for this revelation discovered
-        if not used_clues.issubset(char_clues):
+        # check if they're missing any required clues
+        if self.clues.filter(usage__required_for_revelation=True).exclude(id__in=char.clues.all()).exists():
             return False
         # check if we have enough numerical value of clues to pass
         if self.check_progress(char) >= self.required_clue_value:
@@ -761,29 +753,51 @@ class Revelation(SharedMemoryModel):
         Returns the total value of the clues used for this revelation by
         char.
         """
-        return sum(ob.clue.rating for ob in char.finished_clues.filter(clue__revelations=self))
+        return sum(ob.rating for ob in char.clues.filter(revelations=self))
+
+    def display(self):
+        """Text display for Revelation"""
+        msg = self.name + "\n"
+        msg += self.desc + "\n"
+        return msg
+
+
+class RevelationPlotInvolvement(SharedMemoryModel):
+    """How a revelation is related to a plot"""
+    revelation = models.ForeignKey("Revelation", related_name="plot_involvement")
+    plot = models.ForeignKey("dominion.Plot", related_name="revelation_involvement")
+    gm_notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('revelation', 'plot')
 
 
 class Clue(SharedMemoryModel):
     """A significant discovery by a player that points their character toward a Revelation, if it's not fake."""
+    GAME_LORE, VISION, CHARACTER_SECRET = 0, 1, 2
+    CLUE_TYPE_CHOICES = ((GAME_LORE, "Game Lore"), (VISION, "Vision"), (CHARACTER_SECRET, "Character Secret"))
     name = models.CharField(max_length=255, blank=True, db_index=True)
+    clue_type = models.PositiveSmallIntegerField(choices=CLUE_TYPE_CHOICES, default=GAME_LORE)
     rating = models.PositiveSmallIntegerField(default=0, blank=0, help_text="Value required to get this clue",
                                               db_index=True)
     desc = models.TextField("Description", help_text="Description of the clue given to the player",
                             blank=True)
     gm_notes = models.TextField("GM Notes", help_text="Notes visible only to staff/GMs about this clue",
                                 blank=True)
-    revelations = models.ManyToManyField("Revelation", through='ClueForRevelation', db_index=True)
+    revelations = models.ManyToManyField("Revelation", through='ClueForRevelation', blank=True, related_name="clues")
+    plots = models.ManyToManyField("dominion.Plot", through='CluePlotInvolvement', blank=True, related_name="clues")
+    tangible_object = models.ForeignKey('objects.ObjectDB', blank=True, null=True, related_name='clues',
+                                        help_text="An in-game object that this Clue is a secret or backstory for",
+                                        on_delete=models.SET_NULL)
     characters = models.ManyToManyField('RosterEntry', blank=True, through='ClueDiscovery', db_index=True,
-                                        through_fields=('clue', 'character'))
+                                        through_fields=('clue', 'character'), related_name='clues')
     red_herring = models.BooleanField(default=False, help_text="Whether this revelation is totally fake")
     allow_investigation = models.BooleanField(default=False, help_text="Can be gained through investigation rolls")
     allow_exploration = models.BooleanField(default=False, help_text="Can be gained through exploration rolls")
     allow_trauma = models.BooleanField(default=False, help_text="Can be gained through combat rolls")
     allow_sharing = models.BooleanField(default=True, help_text="Can be shared")
-    search_tags = models.ManyToManyField('SearchTag', blank=True, db_index=True)
-    # if we were created for an RP event, such as a PRP
-    event = models.ForeignKey("dominion.RPEvent", blank=True, null=True, related_name="clues")
+    search_tags = models.ManyToManyField('SearchTag', blank=True, db_index=True, related_name="clues")
+    author = models.ForeignKey("RosterEntry", blank=True, null=True, related_name="clues_written")
 
     def __str__(self):
         return self.name
@@ -793,62 +807,83 @@ class Clue(SharedMemoryModel):
         """List of keywords from our search tags. We use them for auto-matching clues with investigations."""
         return [ob.name for ob in self.search_tags.all()]
 
-    @property
-    def creators(self):
-        """
-        Returns GMs of the event this clue was made for
-        """
-        if not self.event:
-            return []
-        try:
-            return self.event.gms.all()
-        except (AttributeError, IndexError):
-            return []
+    def display(self):
+        """String display for clue"""
+        msg = "\n{c%s{n\n" % self.name
+        msg += "{wRating:{n %s\n" % self.rating
+        msg += self.desc + "\n"
+        return msg
 
     @property
-    def value_for_discovery(self):
-        """Value required for this clue to be discovered"""
-        return self.rating * DISCO_MULT
+    def recruiters(self):
+        """Recruiters for a plot that this clue acts as a hook/grants access to"""
+        from world.dominion.models import PCPlotInvolvement
+        access = (CluePlotInvolvement.HOOKED, CluePlotInvolvement.GRANTED)
+        plots = self.plots.filter(clue_involvement__access__in=access)
+        qs = PCPlotInvolvement.objects.filter(plot__in=plots, admin_status__gte=PCPlotInvolvement.RECRUITER)
+        return qs.exclude(recruiter_story="")
+
+
+class CluePlotInvolvement(SharedMemoryModel):
+    """How a clue is related to a plot"""
+    clue = models.ForeignKey("Clue", related_name="plot_involvement")
+    plot = models.ForeignKey("dominion.Plot", related_name="clue_involvement")
+    gm_notes = models.TextField(blank=True)
+    NEUTRAL, HOOKED, GRANTED = range(3)
+    ACCESS_CHOICES = ((NEUTRAL, "Neutral"), (HOOKED, "Hooked"), (GRANTED, "Granted"))
+    access = models.PositiveSmallIntegerField(choices=ACCESS_CHOICES, default=NEUTRAL)
+
+    class Meta:
+        unique_together = ('clue', 'plot')
 
 
 class SearchTag(SharedMemoryModel):
     """Tags for Clues that are used for automatching investigations to them."""
     name = models.CharField(max_length=255, unique=True)
-    topic = models.ForeignKey('LoreTopic', blank=True, null=True, db_index=True)
+    game_objects = models.ManyToManyField("objects.ObjectDB", blank=True, related_name="search_tags")
 
     def __str__(self):
         return self.name
 
+    def display_tagged_objects(self):
+        """Returns a string listing all tagged objects sorted by their class, or empty string."""
+        msg = ""
+        querysets = [self.game_objects.all().order_by('db_typeclass_path')]
+        for related_name in ("emits", "clues", "revelations", "plots", "plot_updates"):
+            querysets.append(getattr(self, related_name).all())
+        querysets = [ob for ob in querysets if len(ob) > 0]
 
-class LoreTopic(SharedMemoryModel):
-    """GM notes about different in-game topics. Basically a knowledge-base for lore."""
-    name = models.CharField(max_length=255, unique=True)
-    desc = models.TextField("GM Notes about this Lore Topic", blank=True)
+        def get_obj_str(obj):
+            return "%s (#%s)" % (str(obj), obj.id)
 
-    def __str__(self):
-        return self.name
+        def get_queryset_str(qset):
+            """
+            Gets a string representation of the queryset. We check the class name for each object in the
+            queryset because typeclasses will have different class names, and we want to simulate that being
+            a different type of match.
+            """
+            class_name = None
+            message = ""
+            sep = ""
+            for obj in qset:
+                if obj._meta.verbose_name_plural != class_name:
+                    class_name = obj._meta.verbose_name_plural
+                    message += "\n|w[%s]|n " % class_name.title()
+                    sep = ""
+                message += sep + get_obj_str(obj)
+                sep = "; "
+            return message
 
-
-class MysteryDiscovery(SharedMemoryModel):
-    """Through model used to record when a character discovers a mystery."""
-    character = models.ForeignKey('RosterEntry', related_name="mysteries", db_index=True)
-    mystery = models.ForeignKey('Mystery', related_name="discoveries", db_index=True)
-    investigation = models.ForeignKey('Investigation', blank=True, null=True, related_name="mysteries")
-    message = models.TextField(blank=True, help_text="Message for the player's records about how they discovered this.")
-    date = models.DateTimeField(blank=True, null=True)
-    milestone = models.OneToOneField('Milestone', related_name="mystery", blank=True, null=True)
-
-    class Meta:
-        unique_together = ('character', 'mystery')
-        verbose_name_plural = "Mystery Discoveries"
-
-    def __str__(self):
-        return "%s's discovery of %s" % (self.character, self.mystery)
+        if querysets:
+            msg = "|wTagged as '%s':|n" % self
+            for qs in querysets:
+                msg += get_queryset_str(qs)
+        return msg
 
 
 class RevelationDiscovery(SharedMemoryModel):
     """Through model used to record when a character discovers a revelation."""
-    character = models.ForeignKey('RosterEntry', related_name="revelations", db_index=True)
+    character = models.ForeignKey('RosterEntry', related_name="revelation_discoveries", db_index=True)
     revelation = models.ForeignKey('Revelation', related_name="discoveries", db_index=True)
     investigation = models.ForeignKey('Investigation', blank=True, null=True, related_name="revelations")
     message = models.TextField(blank=True, help_text="Message for the player's records about how they discovered this.")
@@ -861,32 +896,12 @@ class RevelationDiscovery(SharedMemoryModel):
         unique_together = ('character', 'revelation')
         verbose_name_plural = "Revelation Discoveries"
 
-    def check_mystery_discovery(self):
-        """
-        For the mystery, make sure that we have all the revelations required
-        inside the character before we award it to the character
-        """
-        # get our RevForMystery where the player does not yet have the mystery, and the rev is required
-        rev_usage = self.revelation.usage.filter(required_for_mystery=True).distinct()
-        # get the associated mysteries the player doesn't yet have
-        mysteries = Mystery.objects.filter(Q(revelations_used__in=rev_usage) &
-                                           ~Q(characters=self.character)).distinct()
-        discoveries = []
-        char_revs = set([ob.revelation for ob in self.character.revelations.all()])
-        for myst in mysteries:
-            required_revs = set([ob.revelation for ob in myst.revelations_used.filter(required_for_mystery=True)])
-            # character now has all revelations, we add the mystery
-            if required_revs.issubset(char_revs):
-                discoveries.append(myst)
-        return discoveries
-
     def __str__(self):
         return "%s's discovery of %s" % (self.character, self.revelation)
 
     def display(self):
         """Returns string display for the revelation."""
-        msg = self.revelation.name + "\n"
-        msg += self.revelation.desc + "\n"
+        msg = self.revelation.display()
         if self.message:
             msg += "\n" + self.message
         return msg
@@ -909,41 +924,28 @@ class RevelationForMystery(SharedMemoryModel):
 class ClueDiscovery(SharedMemoryModel):
     """Through model that represents knowing/progress towards discovering a clue."""
     clue = models.ForeignKey('Clue', related_name="discoveries", db_index=True)
-    character = models.ForeignKey('RosterEntry', related_name="clues", db_index=True)
-    investigation = models.ForeignKey('Investigation', blank=True, null=True, related_name="clues", db_index=True)
+    character = models.ForeignKey('RosterEntry', related_name="clue_discoveries", db_index=True)
+    investigation = models.ForeignKey('Investigation', blank=True, null=True, related_name="clue_discoveries",
+                                      db_index=True)
     message = models.TextField(blank=True, help_text="Message for the player's records about how they discovered this.")
     date = models.DateTimeField(blank=True, null=True)
     milestone = models.OneToOneField('Milestone', related_name="clue", blank=True, null=True)
     discovery_method = models.CharField(help_text="How this was discovered - exploration, trauma, etc",
                                         blank=True, max_length=255)
-    roll = models.PositiveSmallIntegerField(default=0, blank=0, db_index=True)
     revealed_by = models.ForeignKey('RosterEntry', related_name="clues_spoiled", blank=True, null=True, db_index=True)
 
     class Meta:
         verbose_name_plural = "Clue Discoveries"
+        unique_together = ('clue', 'character')
 
     @property
     def name(self):
         """Returns the name of the clue we're discovering"""
         return self.clue.name
 
-    @property
-    def required_roll_for_discovery(self):
-        """Value we need self.roll to be for this clue to be discovered."""
-        return self.clue.value_for_discovery
-
-    @property
-    def finished(self):
-        """Whether our clue has been discovered."""
-        return self.roll >= self.required_roll_for_discovery
-
-    def display(self, show_sharing=False):
+    def display(self, show_sharing=False, show_gm_notes=False):
         """Returns a string showing that we're not yet done, or the completed clue discovery."""
-        if not self.finished:
-            return self.message or "An investigation that hasn't yet yielded anything definite."
-        msg = "\n{c%s{n\n" % self.clue.name
-        msg += "{wRating:{n %s\n" % self.clue.rating
-        msg += self.clue.desc + "\n"
+        msg = self.clue.display()
         if self.message:
             if self.date:
                 msg += self.date.strftime("%x %X") + " "
@@ -952,6 +954,8 @@ class ClueDiscovery(SharedMemoryModel):
             shared = self.shared_with
             if shared:
                 msg += "{wShared with{n: %s" % ", ".join(str(ob) for ob in shared)
+        if show_gm_notes:
+            msg += "\n{wGM Notes:{n %s" % self.clue.gm_notes
         return msg
 
     def check_revelation_discovery(self):
@@ -973,15 +977,7 @@ class ClueDiscovery(SharedMemoryModel):
     def __str__(self):
         return "%s's discovery of %s" % (self.character, self.clue)
 
-    @property
-    def progress_percentage(self):
-        """Returns our percent towards completion as an integer."""
-        try:
-            return int((float(self.roll) / float(self.required_roll_for_discovery)) * 100)
-        except (AttributeError, TypeError, ValueError, ZeroDivisionError):
-            return 0
-
-    def mark_discovered(self, method="Prior Knowledge", message="", roll=None, revealed_by=None, investigation=None,
+    def mark_discovered(self, method="Prior Knowledge", message="", revealed_by=None, investigation=None,
                         inform_creator=None):
         """
         Discovers the clue for our character.
@@ -989,17 +985,12 @@ class ClueDiscovery(SharedMemoryModel):
         Args:
             method: String describing how the clue was discovered.
             message: Additional message saying how it was discovered, stored in self.message
-            roll: Stored in self.roll if we want to note high success. Otherwise self.roll becomes minimum required
             revealed_by: If the clue was shared by someone else, we store their RosterEntry
             investigation: If it was from an investigation, we mark that also.
             inform_creator: Object used for bulk creation of informs
         """
-        if roll and roll > self.required_roll_for_discovery:
-            self.roll = roll
-        else:
-            self.roll = self.required_roll_for_discovery
-        date = datetime.now()
-        self.date = date
+        date_now = datetime.now()
+        self.date = date_now
         self.discovery_method = method
         self.message = message
         self.revealed_by = revealed_by
@@ -1010,15 +1001,8 @@ class ClueDiscovery(SharedMemoryModel):
         for revelation in revelations:
             msg = "\nYou have discovered a revelation: %s\n%s" % (str(revelation), revelation.desc)
             message = "You had a revelation after learning a clue!"
-            rev = RevelationDiscovery.objects.create(character=self.character, discovery_method=method,
-                                                     message=message, investigation=investigation,
-                                                     revelation=revelation, date=date)
-            mysteries = rev.check_mystery_discovery()
-            for mystery in mysteries:
-                msg += "\nYou have also discovered a mystery: %s\n%s" % (str(mystery), mystery.desc)
-                message = "You uncovered a mystery after learning a clue!"
-                MysteryDiscovery.objects.create(character=self.character, message=message, investigation=investigation,
-                                                mystery=mystery, date=date)
+            RevelationDiscovery.objects.create(character=self.character, discovery_method=method, message=message,
+                                               investigation=investigation, revelation=revelation, date=date_now)
         if revelations:
             if inform_creator:
                 inform_creator.add_player_inform(self.character.player, msg, "Discovery")
@@ -1026,9 +1010,12 @@ class ClueDiscovery(SharedMemoryModel):
                 self.character.player.inform(msg, category="Discovery", append=False)
         # make sure any investigations targeting the now discovered clue get reset. queryset.update doesn't work with
         # SharedMemoryModel (cached objects will overwrite it), so we iterate through them instead
-        for investigation in self.character.investigations.filter(clue_target=self.clue):
-            investigation.clue_target = None
-            investigation.save()
+        qs = self.character.investigations.filter(clue_target=self.clue)
+        if investigation:
+            qs = qs.exclude(id=investigation.id)
+        for snoopery in qs:
+            snoopery.clue_target = None
+            snoopery.save()
 
     def share(self, entry, investigation=None, note=None, inform_creator=None):
         """
@@ -1038,20 +1025,12 @@ class ClueDiscovery(SharedMemoryModel):
         equal to ours. We'll check for them getting a revelation discovery.
         """
         try:
-            targ_clue = entry.clues.get(clue=self.clue)
-        except ClueDiscovery.DoesNotExist:
-            targ_clue = entry.clues.create(clue=self.clue)
-        except ClueDiscovery.MultipleObjectsReturned:
-            # error in that we shouldn't have more than one. Clear out duplicates
-            clues = entry.clues.filter(clue=self.clue).order_by('-roll')
-            targ_clue = clues[0]
-            for clue in clues:
-                if clue != targ_clue:
-                    clue.delete()
-        if targ_clue.finished:
+            entry.clue_discoveries.get(clue=self.clue)
             entry.player.send_or_queue_msg("%s tried to share the clue %s with you, but you already know that." % (
                 self.character, self.name))
             return False
+        except ClueDiscovery.DoesNotExist:
+            targ_clue = entry.clue_discoveries.create(clue=self.clue)
         note_msg = "."
         if note:
             note_msg = ", who noted: %s" % note
@@ -1072,6 +1051,12 @@ class ClueDiscovery(SharedMemoryModel):
         """Shortcut to show everyone our character shared this clue with."""
         spoiled = self.character.clues_spoiled.filter(clue=self.clue)
         return RosterEntry.objects.filter(clues__in=spoiled)
+
+    def save(self, *args, **kwargs):
+        super(ClueDiscovery, self).save(*args, **kwargs)
+        if self.clue and self.clue.tangible_object and hasattr(self.clue.tangible_object, "messages") \
+                and self.clue.clue_type == Clue.CHARACTER_SECRET:
+            self.clue.tangible_object.messages.build_secretslist()
 
 
 class ClueForRevelation(SharedMemoryModel):
@@ -1155,6 +1140,8 @@ class Investigation(AbstractPlayerAllocations):
                                help_text="The text to send the player, either set by GM or generated automatically " +
                                "by script if automate_result is set.")
     clue_target = models.ForeignKey('Clue', blank=True, null=True)
+    progress = models.IntegerField(default=0, help_text="Progress made towards a discovery.")
+    completion_value = models.IntegerField(default=300, help_text="Total progress needed to make a discovery.")
 
     def __str__(self):
         return "%s's investigation on %s" % (self.character, self.topic)
@@ -1182,6 +1169,7 @@ class Investigation(AbstractPlayerAllocations):
         msg += "{wCurrent Roll{n: %s\n" % self.roll
         msg += "{wTargeted Clue{n: %s\n" % self.targeted_clue
         msg += "{wProgress Value{n: %s\n" % self.progress
+        msg += "{wCompletion Value{n: %s\n" % self.completion_value
         msg += "{wComplete this week?{n: %s\n" % self.check_success()
         msg += "{wSilver Used{n: %s\n" % self.silver
         msg += "{wEconomic Used{n %s\n" % self.economic
@@ -1199,11 +1187,6 @@ class Investigation(AbstractPlayerAllocations):
     def active_assistants(self):
         """Assistants that are flagged as actively participating"""
         return self.assistants.filter(currently_helping=True)
-
-    @property
-    def finished_clues(self):
-        """Queryset of clues that this investigation has uncovered"""
-        return self.clues.filter(roll__gte=F('clue__rating') * DISCO_MULT)
 
     @staticmethod
     def do_obj_roll(obj, diff):
@@ -1284,13 +1267,6 @@ class Investigation(AbstractPlayerAllocations):
             pass
         return base - self.resource_mod
 
-    @property
-    def completion_value(self):
-        """The value required for us to be done, progress-wise."""
-        if not self.targeted_clue:
-            return 30
-        return self.targeted_clue.value_for_discovery
-
     def check_success(self, modifier=0, diff=None):
         """
         Checks success. Modifier can be passed by a GM based on their
@@ -1340,26 +1316,23 @@ class Investigation(AbstractPlayerAllocations):
                     self.results += "but you keep on finding mention of '%s' in your search." % kw
             else:
                 # add a valid clue and update results string
-                roll = self.get_roll()
                 try:
-                    clue = self.clues.get(clue=self.targeted_clue, character=self.character)
+                    disco = self.clue_discoveries.get(clue=self.targeted_clue, character=self.character)
                 except ClueDiscovery.DoesNotExist:
-                    clue = ClueDiscovery.objects.create(clue=self.targeted_clue, investigation=self,
-                                                        character=self.character)
-                final_roll = clue.roll + roll
-                clue.roll += roll
+                    disco = ClueDiscovery.objects.create(clue=self.targeted_clue, investigation=self,
+                                                         character=self.character)
                 if self.automate_result:
                     self.results = "Your investigation has discovered a clue!\n"
-                self.results += clue.display()
-                message = clue.message or "Your investigation has discovered this!"
-                clue.mark_discovered(method="investigation", message=message, roll=final_roll, investigation=self)
+                self.results += disco.display()
+                message = disco.message or "Your investigation has discovered this!"
+                disco.mark_discovered(method="investigation", message=message, investigation=self)
                 # we found a clue, so this investigation is done.
                 self.clue_target = None
                 self.ongoing = False
                 for ass in self.active_assistants:
                     # noinspection PyBroadException
                     try:
-                        ass.shared_discovery(clue, inform_creator)
+                        ass.shared_discovery(disco, inform_creator)
                     except Exception:
                         traceback.print_exc()
         else:
@@ -1389,9 +1362,16 @@ class Investigation(AbstractPlayerAllocations):
         """Tries to fetch a clue automatically if we don't have one. Then returns what we have, or None."""
         if self.clue_target:
             return self.clue_target
-        self.clue_target = self.find_target_clue()
-        self.save()
-        return self.clue_target
+        clue = self.find_target_clue()
+        self.setup_investigation_for_clue(clue)
+        return clue
+
+    def setup_investigation_for_clue(self, clue):
+        """Sets our completion value for the investigation based on the clue's rating"""
+        if clue:
+            self.clue_target = clue
+            self.completion_value = self.clue_target.rating * DISCO_MULT
+            self.save()
 
     @property
     def keywords(self):
@@ -1418,15 +1398,6 @@ class Investigation(AbstractPlayerAllocations):
         except Exception:
             return None
 
-    @property
-    def progress(self):
-        """Get our progress from our current clue."""
-        try:
-            clue = self.clues.get(clue=self.targeted_clue)
-            return clue.roll
-        except ClueDiscovery.DoesNotExist:
-            return 0
-
     def add_progress(self):
         """Adds progress to the investigation, saved in clue.roll"""
         if not self.targeted_clue:
@@ -1438,24 +1409,22 @@ class Investigation(AbstractPlayerAllocations):
             return
         if roll <= 0:
             return
-        try:
-            clue = self.clues.get(clue=self.targeted_clue)
-            clue.roll += roll
-            clue.save()
-        except ClueDiscovery.DoesNotExist:
-            ClueDiscovery.objects.create(clue=self.targeted_clue, investigation=self,
-                                         roll=roll,
-                                         character=self.character)
+        self.progress += roll
+        self.save()
         return roll
+
+    @property
+    def progress_percentage(self):
+        """Returns our percent towards completion as an integer."""
+        try:
+            return int((float(self.progress) / float(self.completion_value)) * 100)
+        except (AttributeError, TypeError, ValueError, ZeroDivisionError):
+            return 0
 
     @property
     def progress_str(self):
         """Returns a string saying how close they are to discovery."""
-        try:
-            clue = self.clues.get(clue=self.targeted_clue)
-            progress = clue.progress_percentage
-        except (ClueDiscovery.DoesNotExist, AttributeError):
-            progress = 0
+        progress = self.progress_percentage
         if progress <= 0:
             return "No real progress has been made to finding something new."
         if progress <= 25:
@@ -1610,6 +1579,8 @@ class Flashback(SharedMemoryModel):
     owner = models.ForeignKey('RosterEntry', related_name="created_flashbacks")
     allowed = models.ManyToManyField('RosterEntry', related_name="allowed_flashbacks", blank=True)
     db_date_created = models.DateTimeField(blank=True, null=True)
+    beat = models.ForeignKey("dominion.PlotUpdate", blank=True, null=True, related_name="flashbacks",
+                             on_delete=models.SET_NULL)
 
     def get_new_posts(self, entry):
         """Returns posts that entry hasn't read yet."""

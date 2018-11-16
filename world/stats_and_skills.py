@@ -119,7 +119,7 @@ def cost_at_rank(skill, current_rating, new_rating):
 
 
 def get_skill_cost_increase(caller):
-    from commands.commands import guest
+    from commands.base_commands import guest
     skills = caller.db.skills or {}
     srank = caller.db.social_rank or 0
     age = caller.db.age or 0

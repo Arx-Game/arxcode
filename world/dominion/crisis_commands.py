@@ -2,23 +2,21 @@ from django.db.models import Q
 
 from evennia.utils.evtable import EvTable
 
-from server.utils.arx_utils import ArxPlayerCommand
-from world.dominion.models import Crisis, CrisisAction, CrisisActionAssistant
+from commands.base import ArxPlayerCommand
+from world.dominion.models import Plot, PlotAction, PlotActionAssistant
 
 
 # noinspection PyUnresolvedReferences
 class CrisisCmdMixin(object):
     @property
     def viewable_crises(self):
-        qs = Crisis.objects.viewable_by_player(self.caller).order_by('end_date')
+        qs = Plot.objects.viewable_by_player(self.caller).order_by('end_date')
         return qs
-        
+
     def list_crises(self):
         qs = self.viewable_crises
-        if "old" in self.switches:
-            qs = qs.filter(resolved=True)
-        else:
-            qs = qs.filter(resolved=False)
+        resolved = "old" in self.switches
+        qs = qs.filter(usage=Plot.CRISIS, resolved=resolved)
         table = EvTable("{w#{n", "{wName{n", "{wDesc{n", "{wUpdates On{n", width=78, border="cells")
         for ob in qs:
             date = "--" if not ob.end_date else ob.end_date.strftime("%m/%d")
@@ -28,17 +26,17 @@ class CrisisCmdMixin(object):
         table.reformat_column(2, width=40)
         table.reformat_column(3, width=11)
         self.msg(table)
-        
+
     def get_crisis(self, args):
         try:
             if args.isdigit():
                 return self.viewable_crises.get(id=args)
             else:
                 return self.viewable_crises.get(name__iexact=args)
-        except (Crisis.DoesNotExist, ValueError):
+        except (Plot.DoesNotExist, ValueError):
             self.msg("Crisis not found by that # or name.")
             return
-        
+
     def view_crisis(self):
         crisis = self.get_crisis(self.lhs)
         if not crisis:
@@ -56,7 +54,7 @@ class CmdGMCrisis(CrisisCmdMixin, ArxPlayerCommand):
         @gmcrisis/old
         @gmcrisis <crisis #>
         @gmcrisis/create <name>/<headline>=<desc>
-        
+
         @gmcrisis/update <crisis name or #>[/episode name/episode synopsis]
                             =<gemit text>[/<ooc notes>]
         @gmcrisis/update/nogemit <as above>
@@ -68,7 +66,7 @@ class CmdGMCrisis(CrisisCmdMixin, ArxPlayerCommand):
     submit new actions for the next round of the crisis, if the crisis is not
     resolved. If a new episode name is specified, a new episode for the current
     chapter will be created with the given name, and any synopsis specified.
-    
+
     Remember that if a crisis is not public (has a clue to see it), gemits
     probably shouldn't be sent or should be the vague details that people have
     no idea the crisis exists might notice.
@@ -87,7 +85,7 @@ class CmdGMCrisis(CrisisCmdMixin, ArxPlayerCommand):
         if not self.switches:
             return self.view_crisis()
         self.msg("Invalid switch")
-        
+
     def create_crisis(self):
         lhs = self.lhs.split("/")
         if len(lhs) < 2:
@@ -95,9 +93,9 @@ class CmdGMCrisis(CrisisCmdMixin, ArxPlayerCommand):
             return
         name, headline = lhs[0], lhs[1]
         desc = self.rhs
-        Crisis.objects.create(name=name, headline=headline, desc=desc)
+        Plot.objects.create(name=name, headline=headline, desc=desc)
         self.msg("Crisis created. Make gemits or whatever for it.")
-            
+
     def create_update(self):
         lhslist = self.lhs.split("/")
         crisis = self.get_crisis(lhslist[0])
@@ -132,14 +130,14 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
         +crisis/old [<# or name>]
         +crisis/viewaction <action #>
 
-    Crisis actions are queued and simultaneously resolved by GMs periodically. 
-    To view crises that have since been resolved, use /old switch. Each crisis 
-    that isn't resolved can have a rating assigned that determines the current 
+    Crisis actions are queued and simultaneously resolved by GMs periodically.
+    To view crises that have since been resolved, use /old switch. Each crisis
+    that isn't resolved can have a rating assigned that determines the current
     strength of the crisis, and any action taken can adjust that rating by the
     action's outcome value. If you choose to secretly support the crisis, you
     can use the /traitor option for a crisis action, in which case your action's
-    outcome value will strengthen the crisis. Togglepublic can keep the action 
-    from being publically listed. The addition of resources, armies, and extra 
+    outcome value will strengthen the crisis. Togglepublic can keep the action
+    from being publically listed. The addition of resources, armies, and extra
     action points is taken into account when deciding outcomes. New actions cost
     50 action points, while assisting costs 10.
 
@@ -148,11 +146,11 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
     key = "+crisis"
     aliases = ["crisis"]
     locks = "cmd:all()"
-    help_category = "Dominion"
+    help_category = "Story"
 
     @property
     def current_actions(self):
-        return self.caller.Dominion.actions.exclude(status__in=(CrisisAction.PUBLISHED, CrisisAction.CANCELLED))
+        return self.caller.Dominion.actions.exclude(status__in=(PlotAction.PUBLISHED, PlotAction.CANCELLED))
 
     @property
     def assisted_actions(self):
@@ -164,7 +162,7 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
         table = EvTable("{w#{n", "{wCrisis{n")
         current_actions = [ob for ob in self.current_actions if ob.crisis] + [
             ass.crisis_action for ass in self.assisted_actions.exclude(
-                crisis_action__status__in=(CrisisAction.PUBLISHED, CrisisAction.CANCELLED)) if ass.crisis_action.crisis]
+                crisis_action__status__in=(PlotAction.PUBLISHED, PlotAction.CANCELLED)) if ass.crisis_action.crisis]
         for ob in current_actions:
             table.add_row(ob.id, ob.crisis)
         self.msg(table)
@@ -181,7 +179,7 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
         if not get_all and not get_assisted:
             qs = self.current_actions
         else:
-            qs = CrisisAction.objects.filter(Q(dompc=dompc) | Q(assistants=dompc)).distinct()
+            qs = PlotAction.objects.filter(Q(dompc=dompc) | Q(assistants=dompc)).distinct()
         try:
             action = qs.get(id=self.lhs)
             if not action.pk:
@@ -190,11 +188,11 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
             if return_assistant:
                 try:
                     return action.assisting_actions.get(dompc=dompc)
-                except CrisisActionAssistant.DoesNotExist:
+                except PlotActionAssistant.DoesNotExist:
                     self.msg("You are not assisting that crisis action.")
                     return
             return action
-        except (CrisisAction.DoesNotExist, ValueError):
+        except (PlotAction.DoesNotExist, ValueError):
             self.msg("No action found by that id. Remember to specify the number of the action, not the crisis. " +
                      "Use /assist if trying to change your assistance of an action.")
         return

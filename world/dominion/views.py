@@ -2,7 +2,7 @@
 Views related to the Dominion app
 """
 from django.views.generic import ListView, DetailView, CreateView
-from .models import RPEvent, AssignedTask, Crisis, Land, Domain, Organization
+from .models import RPEvent, AssignedTask, Plot, Land, Domain, Organization
 from .forms import RPEventCommentForm, RPEventCreateForm
 from .view_utils import EventHTMLCalendar
 from django.http import HttpResponseRedirect, HttpResponse
@@ -197,7 +197,7 @@ class CrisisDetailView(DetailView):
     """
     Displays view for a specific crisis
     """
-    model = Crisis
+    model = Plot
     template_name = 'dominion/crisis_view.html'
 
     def get_context_data(self, **kwargs):

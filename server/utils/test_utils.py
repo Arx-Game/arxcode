@@ -348,7 +348,7 @@ class TestTicketMixins(object):
         from web.helpdesk.models import Ticket, Queue
         super(TestTicketMixins, self).setUp()
         self.q_req = Queue.objects.create(slug="Request", title="Request for GM action")
-        self.q_bug = Queue.objects.create(slug="Bug", title="Bug reports/Technical issues")
+        self.q_bug = Queue.objects.create(slug="Bugs", title="Bug reports/Technical issues")
         self.q_typ = Queue.objects.create(slug="Typo", title="Typos")
         self.q_cod = Queue.objects.create(slug="Code", title="Coding Requests/Wishlist")
         self.q_prp = Queue.objects.create(slug="PRP", title="PRP Questions")

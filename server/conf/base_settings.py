@@ -41,7 +41,7 @@ IN_GAME_ERRORS = False
 IDLE_TIMEOUT = -1
 MAX_CHAR_LIMIT = 8000
 DEBUG = False
-CHANNEL_COMMAND_CLASS = "commands.commands.channels.ArxChannelCommand"
+CHANNEL_COMMAND_CLASS = "commands.base_commands.channels.ArxChannelCommand"
 BASE_ROOM_TYPECLASS = "typeclasses.rooms.ArxRoom"
 DEFAULT_HOME = "#13"
 MULTISESSION_MODE = 1
@@ -113,8 +113,8 @@ INVESTIGATION_DIFFICULTY_MOD = 5
 HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO = True
 
 # Queue.id for our Requests. Should normally be 1, but can be changed if you move queues around
-REQUEST_QUEUE_ID = 1
-BUG_QUEUE_ID = 2
+REQUEST_QUEUE_SLUG = "Request"
+BUG_QUEUE_SLUG = "Bugs"
 
 ######################################################################
 # Dominion settings

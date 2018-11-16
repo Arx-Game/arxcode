@@ -14,7 +14,7 @@ this is on them, they are dead.
 """
 
 from evennia import CmdSet
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 
 
 class DeathCmdSet(CmdSet):

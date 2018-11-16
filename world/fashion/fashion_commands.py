@@ -3,7 +3,7 @@ Commands for the fashion app.
 """
 from datetime import datetime, timedelta
 
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 from server.utils.prettytable import PrettyTable
 from world.dominion.models import Organization
 from world.fashion.exceptions import FashionError

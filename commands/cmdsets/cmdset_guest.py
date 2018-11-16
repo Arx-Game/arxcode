@@ -9,7 +9,7 @@ from evennia.commands.default import comms
 from evennia.commands.default import account
 import sys
 import traceback
-from commands.commands import help
+from commands.base_commands import help
 
 
 class GuestCmdSet(CmdSet):
@@ -26,7 +26,7 @@ class GuestCmdSet(CmdSet):
         # Player-specific commands
         try:
             self.add(account.CmdOOCLook())
-            from commands.commands import overrides
+            from commands.base_commands import overrides
             self.add(overrides.CmdWho())
             self.add(account.CmdQuit())
             self.add(account.CmdColorTest())
@@ -39,27 +39,27 @@ class GuestCmdSet(CmdSet):
             self.add(comms.CmdAllCom())
             self.add(comms.CmdChannels())
             self.add(comms.CmdCWho())
-            from commands.commands import general
+            from commands.base_commands import general
             self.add(general.CmdPage())
-            from commands.commands import roster
+            from commands.base_commands import roster
             self.add(roster.CmdRosterList())
             self.add(roster.CmdAdminRoster())
             self.add(roster.CmdSheet())
             self.add(roster.CmdRelationship())
-            from commands.commands import guest
+            from commands.base_commands import guest
             self.add(guest.CmdGuestLook())
             self.add(guest.CmdGuestCharCreate())
             self.add(guest.CmdGuestPrompt())
             self.add(guest.CmdGuestAddInput())
-            from world.dominion import commands as domcommands
+            from world.dominion import general_dominion_commands as domcommands
             self.add(domcommands.CmdFamily())
-            from commands.commands import bboards
+            from commands.base_commands import bboards
             self.add(bboards.CmdBBReadOrPost())
             self.add(bboards.CmdBBSub())
-            from commands.commands import staff_commands
+            from commands.base_commands import staff_commands
             self.add(staff_commands.CmdAskStaff())
             self.add(staff_commands.CmdListStaff())
-            from commands.commands import social
+            from commands.base_commands import social
             self.add(social.CmdWhere())
             self.add(social.CmdFinger())
             self.add(social.CmdCensus())

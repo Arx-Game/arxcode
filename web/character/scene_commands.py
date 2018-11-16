@@ -6,7 +6,7 @@ in mind, and then invite others to RP about it.
 """
 from django.db.models import Q
 
-from server.utils.arx_utils import ArxPlayerCommand
+from commands.base import ArxPlayerCommand
 from web.character.models import Flashback
 
 
@@ -37,7 +37,7 @@ class CmdFlashback(ArxPlayerCommand):
     key = "flashback"
     aliases = ["flashbacks"]
     locks = "cmd:all()"
-    help_category = "scenes"
+    help_category = "Story"
     player_switches = ("invite", "uninvite")
     change_switches = ("title", "summary")
     requires_owner = ("invite",) + change_switches

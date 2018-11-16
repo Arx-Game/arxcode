@@ -74,7 +74,7 @@ from evennia import utils
 from evennia.utils.utils import lazy_property
 from evennia.objects.models import ObjectDB
 
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 from typeclasses.scripts import gametime
 from typeclasses.mixins import NameMixins, ObjectMixins
 from world.msgs.messagehandler import MessageHandler

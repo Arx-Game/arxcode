@@ -1,7 +1,7 @@
 """
 Commands for the conditions app.
 """
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 from world.conditions.models import RollModifier
 
 

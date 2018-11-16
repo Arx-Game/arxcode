@@ -14,7 +14,7 @@
 		</tr>
 		{% for clue in object_list %}
 		<tr>
-            <td valign="top">{{ clue.id }}</td>
+            <td valign="top">{{ clue.clue.id }}</td>
 			<td valign="top"><b>{{ clue.clue.name }}</b></td>
             <td valign="top">{{ clue.clue.desc|mush_to_html }}
 			{% if clue.message %}

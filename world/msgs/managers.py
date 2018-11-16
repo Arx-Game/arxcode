@@ -9,7 +9,6 @@ from evennia.comms.managers import MsgManager
 WHITE_TAG = "white_journal"
 BLACK_TAG = "black_journal"
 REVEALED_BLACK_TAG = "revealed_black"
-VISION_TAG = "visions"
 MESSENGER_TAG = "messenger"
 RELATIONSHIP_TAG = "relationship"
 GOSSIP_TAG = "gossip"
@@ -271,10 +270,10 @@ class MsgProxyManager(MsgManager):
     def get(self, *args, **kwargs):
         return self.get_queryset().get(*args, **kwargs)
 
-    @property
     def non_recent_white_query(self):
         """returns a Q() for querying white journals older than 6 hours"""
         return self.white_query & ~q_recent()
+
 
 class JournalManager(MsgProxyManager):
     def get_queryset(self):
@@ -285,7 +284,8 @@ class JournalManager(MsgProxyManager):
         if user.is_staff:
             return qs
         # get all White Journals plus Black Journals they've written
-        return qs.filter(self.non_recent_white_query | Q(self.all_journals_query & q_sender_character(user.char_ob)) |
+        # noinspection PyUnresolvedReferences
+        return qs.filter(self.non_recent_white_query() | Q(self.all_journals_query & q_sender_character(user.char_ob)) |
                          self.revealed_query)
 
 
@@ -296,17 +296,12 @@ class BlackJournalManager(MsgProxyManager):
 
 class WhiteJournalManager(MsgProxyManager):
     def get_queryset(self):
-        return super(WhiteJournalManager, self).get_queryset().filter(self.non_recent_white_query)
+        return super(WhiteJournalManager, self).get_queryset().filter(self.non_recent_white_query())
 
 
 class MessengerManager(MsgProxyManager):
     def get_queryset(self):
         return super(MessengerManager, self).get_queryset().filter(q_msgtag(MESSENGER_TAG))
-
-
-class VisionManager(MsgProxyManager):
-    def get_queryset(self):
-        return super(VisionManager, self).get_queryset().filter(q_msgtag(VISION_TAG))
 
 
 class PostManager(MsgProxyManager):

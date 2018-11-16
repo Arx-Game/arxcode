@@ -18,17 +18,17 @@ except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading default.general commands: %s" % err)
 try:
-    from commands.commands import staff_commands
+    from commands.base_commands import staff_commands
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading staff_commands: %s" % err)
 try:
-    from commands.commands import roster
+    from commands.base_commands import roster
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading roster commands: %s" % err)
 try:
-    from commands.commands import general
+    from commands.base_commands import general
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading general commands: %s" % err)
@@ -38,17 +38,17 @@ except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading extended_room: %s" % err)
 try:
-    from commands.commands import social
+    from commands.base_commands import social
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading social commands: %s" % err)
 try:
-    from commands.commands import xp
+    from commands.base_commands import xp
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading xp commands: %s" % err)
 try:
-    from commands.commands import maps
+    from commands.base_commands import maps
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading maps commands: %s" % err)
@@ -63,7 +63,7 @@ except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading combat commands: %s" % err)
 try:
-    from world.dominion import commands as domcommands
+    from world.dominion import general_dominion_commands as domcommands
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading dominion commands: %s" % err)
@@ -73,7 +73,7 @@ except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading agent commands: %s" % err)
 try:
-    from commands.commands import crafting
+    from commands.base_commands import crafting
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading crafting commands: %s" % err)
@@ -88,7 +88,7 @@ except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in loading investigation commands: %s" % err)
 try:
-    from commands.commands import overrides
+    from commands.base_commands import overrides
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in override commands: %s" % err)
@@ -103,12 +103,12 @@ except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in gambling commands: %s" % err)
 try:
-    from commands.commands import rolling
+    from commands.base_commands import rolling
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in roll commands: %s" % err)
 try:
-    from commands.commands import story_actions
+    from commands.base_commands import story_actions
 except Exception as err:
     traceback.print_exc()
     print("<<ERROR>>: Error encountered in storyaction commands: %s" % err)
@@ -140,9 +140,13 @@ try:
 except Exception as err:
     print("<<ERROR>>: Error encountered in container commands: %s" % err)
 try:
-    from world.exploration import commands as exploration_commands
+    from world.exploration import exploration_commands
 except Exception as err:
     print("<<ERROR>>: Error encountered in exploration commands: %s" % err)
+try:
+    from world.dominion import plot_commands
+except Exception as err:
+    print("<<ERROR>>: Error encountered in plot commands: %s" % err)
 
 
 from evennia.commands.cmdset import CmdSet
@@ -216,6 +220,7 @@ class StateIndependentCmdSet(CmdSet):
         self.add(social.CmdLanguages())
         self.add(maps.CmdMap())
         self.add(story_actions.CmdAction())
+        self.add(plot_commands.CmdPlots())
 
 
 class MobileCmdSet(CmdSet):
@@ -334,6 +339,7 @@ class StaffCmdSet(CmdSet):
         self.add(staff_commands.CmdRelocateExit())
         self.add(staff_commands.CmdAdminKey())
         self.add(staff_commands.CmdAdminPropriety())
+        self.add(plot_commands.CmdGMPlots())
         self.add(extended_room.CmdExtendedDesc())
         self.add(xp.CmdAdjustSkill())
         self.add(xp.CmdAwardXP())

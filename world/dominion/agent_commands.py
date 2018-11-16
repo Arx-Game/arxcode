@@ -6,7 +6,7 @@ from evennia.objects.models import ObjectDB
 # noinspection PyProtectedMember
 from evennia.objects.objects import _AT_SEARCH_RESULT
 
-from server.utils.arx_utils import ArxCommand, ArxPlayerCommand
+from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils.arx_utils import validate_name, caller_change_field
 from typeclasses.npcs.npc_types import get_npc_type, generate_default_name_and_desc
 from .models import Agent, Organization, AssetOwner

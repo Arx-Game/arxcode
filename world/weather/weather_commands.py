@@ -1,6 +1,6 @@
 from evennia.server.models import ServerConfig
 from evennia import ScriptDB
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 from . import utils
 from .models import WeatherType
 from typeclasses.scripts import gametime

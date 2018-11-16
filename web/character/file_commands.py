@@ -1,5 +1,5 @@
 from .models import PlayerAccount, PlayerInfoEntry, PlayerSiteEntry, RosterEntry, AccountHistory
-from server.utils.arx_utils import ArxCommand
+from commands.base import ArxCommand
 from datetime import date
 
 
@@ -25,7 +25,7 @@ class CmdAdminFile(ArxCommand):
         try:
             account = PlayerAccount.objects.get(email__iexact=accountstring)
             return account
-        except PlayerAccount.DoesNotExist, PlayerAccount.MultipleObjectsReturned:
+        except (PlayerAccount.DoesNotExist, PlayerAccount.MultipleObjectsReturned):
             pass
 
         try:

@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from mock import Mock
 from evennia.commands.default.tests import CommandTest
-from . import commands, forms, fields
+from . import paxform_commands, forms, fields
 
 
 class TestForm(forms.Paxform):
@@ -27,7 +27,7 @@ class TestForm(forms.Paxform):
         caller.msg("Submitted successfully!")
 
 
-class CmdTestForm(commands.PaxformCommand):
+class CmdTestForm(paxform_commands.PaxformCommand):
 
     key = "@testform"
     locks = "cmd:all()"

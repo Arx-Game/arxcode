@@ -4,7 +4,8 @@ Readable/Writable objects
 
 from typeclasses.objects import Object
 from evennia import CmdSet
-from server.utils.arx_utils import ArxCommand
+
+from commands.base import ArxCommand
 from world.templates.mixins import TemplateMixins
 
 
@@ -22,9 +23,8 @@ class Readable(Object):
         self.db.num_instances = 1
         self.db.can_stack = True
         self.db.do_not_format_desc = True
-        self.db.destroyable = True
         self.at_init()
-        
+
     def at_after_move(self, source_location):
         if self.db.num_instances > 1 and not self.db.written:
             self.setup_multiname()
@@ -38,7 +38,7 @@ class Readable(Object):
             if self.db.written:
                 self.cmdset.add_default(SignCmdSet, permanent=True)
             else:
-                self.cmdset.add_default(WriteCmdSet, permanent=True)  
+                self.cmdset.add_default(WriteCmdSet, permanent=True)
         else:
             self.cmdset.delete_default()
 
@@ -60,6 +60,18 @@ class Readable(Object):
     def set_num(self, value):
         self.db.num_instances = value
         self.setup_multiname()
+
+    @property
+    def junkable(self):
+        """A check for this object's plot connections."""
+        return not self.is_plot_related
+
+    @property
+    def do_junkout(self, caller):
+        """Junks us as if we were a crafted item."""
+        caller.msg("You destroy %s." % self)
+        self.softdelete()
+        return
 
 
 class WriteCmdSet(CmdSet):
@@ -109,7 +121,7 @@ class CmdSign(ArxCommand):
 class CmdWrite(ArxCommand, TemplateMixins):
     """
     Write upon a scroll/book/letter.
-    
+
     Usage:
         write <description>
         write/title <title>
@@ -122,8 +134,8 @@ class CmdWrite(ArxCommand, TemplateMixins):
     write and set its name to the title you specify. For example,
     to rename 'a scroll' into 'Furen's Book of Wisdom', use
     'write/title Furen's Book of Wisdom'. To write in other languages,
-    use /translated_text to show what the material actually says. 
-    Check your changes with /proof, and then finalize changes with /finish. 
+    use /translated_text to show what the material actually says.
+    Check your changes with /proof, and then finalize changes with /finish.
     Once set, no further changes can be made.
     """
     key = "write"
@@ -139,7 +151,7 @@ class CmdWrite(ArxCommand, TemplateMixins):
         for lang in transtext:
             msg += "\n{wWritten in {c%s:{n\n%s\n" % (lang.capitalize(), transtext[lang])
         return msg
-        
+
     def func(self):
         """Look for object in inventory that matches args to wear"""
         caller = self.caller

@@ -47,7 +47,7 @@ class ShardhavenTypeFilter(admin.SimpleListFilter):
         return self.finish_queryset_by_region(queryset, haven_type)
 
     # noinspection PyMethodMayBeStatic
-    def finish_queryset_by_region(self, queryset, region):
+    def finish_queryset_by_region(self, queryset, haven_type):
         """Finishes modifying the queryset. Overridden in subclasses"""
         return queryset.filter(haven_type=haven_type)
 
@@ -56,7 +56,7 @@ class ShardhavenLayoutTypeFilter(ShardhavenTypeFilter):
     """List filter for plot rooms, letting us see what regions they're in"""
 
     # noinspection PyMethodMayBeStatic
-    def finish_queryset_by_region(self, queryset, region):
+    def finish_queryset_by_region(self, queryset, haven_type):
         """Finishes modifying the queryset. Overridden in subclasses"""
         return queryset.filter(layout__haven_type=haven_type)
 
@@ -123,6 +123,7 @@ class ShardhavenObstacleClueInline(admin.TabularInline):
 class ShardhavenObstacleAdmin(admin.ModelAdmin):
     list_display = ('id', 'description')
     inlines = (ShardhavenRollInline, ShardhavenObstacleClueInline)
+    filter_horizontal = ('haven_types',)
 
 
 class MonsterDropInline(admin.TabularInline):
@@ -135,7 +136,12 @@ class MonsterAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'difficulty')
     inlines = (MonsterDropInline,)
     filter_horizontal = ('habitats',)
-    readonly_fields = ('instances',)
+    exclude = ('instances',)
+
+
+class GeneratedLootFragmentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'fragment_type', 'text')
+    list_filter = ('fragment_type',)
 
 
 admin.site.register(Shardhaven, ShardhavenAdmin)
@@ -147,3 +153,4 @@ admin.site.register(ShardhavenLayoutSquare, ShardhavenLayoutSquareAdmin)
 admin.site.register(ShardhavenLayoutExit, ShardhavenLayoutExitAdmin)
 admin.site.register(ShardhavenObstacle, ShardhavenObstacleAdmin)
 admin.site.register(Monster, MonsterAdmin)
+admin.site.register(GeneratedLootFragment, GeneratedLootFragmentAdmin)

@@ -2,4 +2,7 @@ from typeclasses.bauble import Bauble
 
 
 class MagicMaterial(Bauble):
-    pass
+
+    @property
+    def type_description(self):
+        return "alchemical material"

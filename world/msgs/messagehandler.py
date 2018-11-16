@@ -9,9 +9,8 @@ header field will be a list of key:value pairs, separated by
 semicolons.
 """
 
-from server.utils.arx_utils import get_date, create_arx_message
 from .handler_mixins import messengerhandler, journalhandler, msg_utils
-from .managers import (VISION_TAG)
+from web.character.models import Clue
 
 
 class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHandler):
@@ -28,6 +27,7 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         self._rumors = None
         self._gossip = None
         self._visions = None
+        self._secrets = None
 
     @property
     def rumors(self):
@@ -48,17 +48,24 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
             self.build_visionslist()
         return self._visions
 
+    @property
+    def secrets(self):
+        """Secrets written for the character"""
+        if self._secrets is None:
+            self.build_secretslist()
+        return self._secrets
+
     # ---------------------------------------------------------
     # Setup/building methods
     # ---------------------------------------------------------
-    
+
     def build_rumorslist(self):
         """
         Returns a list of all rumor entries which we've heard (marked as a receiver for)
         """
         self._rumors = list(msg_utils.get_initial_queryset("Rumor").about_character(self.obj))
         return self._rumors
-    
+
     def build_gossiplist(self):
         """
         Returns a list of all gossip entries we've heard (marked as a receiver for)
@@ -70,37 +77,46 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
 
     def build_visionslist(self):
         """
-        Returns a list of all messengers this character has received. Does not include pending.
+        Returns a list of all visions this character has received. Does not include visions shared with them.
         """
-        self._visions = list(msg_utils.get_initial_queryset("Vision").about_character(self.obj))
+
+        # only visions that have been sent directly to us, not ones shared with us
+        self._visions = list(self.obj.roster.clue_discoveries.filter(clue__clue_type=Clue.VISION,
+                                                                     discovery_method="original receiver"))
         return self._visions
+
+    def build_secretslist(self):
+        """
+        Returns a list of all secrets the character has had written by GMs. Does not include ones
+        shared with them.
+        """
+        self._secrets = list(self.obj.secrets)
+        return self._secrets
 
     # --------------------------------------------------------------
     # API/access methods
     # --------------------------------------------------------------
 
-    def add_vision(self, msg, sender, vision_obj=None):
+    def add_vision(self, msg, sender, name, vision_obj=None):
         """adds a vision sent by a god or whatever"""
-        cls = msg_utils.lazy_import_from_str("Vision")
-        date = get_date()
-        header = "date:%s" % date
+        from web.character.models import Clue, ClueDiscovery
+        from datetime import datetime
         if not vision_obj:
-            vision_obj = create_arx_message(sender, msg, receivers=self.obj, header=header, cls=cls, tags=VISION_TAG)
-        else:
-            self.obj.receiver_object_set.add(vision_obj)
-        if vision_obj not in self.visions:
-            self.visions.append(vision_obj)
+            vision_obj = Clue(desc=msg, name=name, rating=25, author=sender.roster, clue_type=Clue.VISION)
+        ClueDiscovery.objects.create(clue=vision_obj, character=self.obj.roster, date=datetime.now(),
+                                     discovery_method="original receiver")
+        self._visions = None  # clear cache
         return vision_obj
 
     # ---------------------------------------------------------------------
     # Display methods
     # ---------------------------------------------------------------------
-        
+
     @property
     def num_flashbacks(self):
         """Flashbacks written by the player"""
         return self.obj.db.num_flashbacks or 0
-        
+
     @num_flashbacks.setter
     def num_flashbacks(self, val):
         self.obj.db.num_flashbacks = val
@@ -115,3 +131,81 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         self.num_journals = 0
         self.num_rel_updates = 0
         self.num_flashbacks = 0
+
+    def get_secret_display(self, secret_number, show_gm_notes=False):
+        """
+        Gets the display of a given secret
+        Args:
+            secret_number(int): ID of the clue (not clue discovery)
+            show_gm_notes(bool): Whether to show gm notes
+
+        Returns:
+            String display of the given clue, or an error message.
+        """
+        return self.get_clue_display("secrets", secret_number, show_gm_notes)
+
+    def get_vision_display(self, vision_number, show_gm_notes=False):
+        """
+        Gets the display of a given vision
+        Args:
+            vision_number(int): ID of the clue (not clue discovery)
+            show_gm_notes(bool): Whether to show gm notes
+
+        Returns:
+            String display of the given clue, or an error message.
+        """
+        return self.get_clue_display("visions", vision_number, show_gm_notes)
+
+    def get_clue_display(self, attr, clue_number, show_gm_notes=False):
+        """
+        Gets the display of a clue of the given attr type and clue_number
+        Args:
+            attr(str): secrets or visions, the attribute we're fetching
+            clue_number: A key for a dict of clue IDs. string or int
+            show_gm_notes(bool): Whether to show gm notes
+
+        Returns:
+            ClueDiscovery.display of the given clue_number.
+        """
+
+        try:
+            return self.get_clue_by_id(clue_number, attr).diplay()
+        except (KeyError, ValueError, TypeError):
+            msg = "You must provide a valid ID number.\n"
+            return msg + self.display_clue_table(attr)
+
+    def get_clue_by_id(self, clue_number, attr="secrets"):
+        """
+        Gets a clue discovery from one of our cached lists by the name of the attribute
+        Args:
+            clue_number: ID of the clue (not the clue discovery object)
+            attr: The name of the attribute (secrets, visions, etc)
+
+        Returns:
+            A clue discovery object corresponding to the clue ID.
+        Raises:
+            KeyError if clue_number isn't found, ValueError/TypeError if clue_number isn't a number
+        """
+        discos = {ob.clue.id: ob for ob in getattr(self, attr)}
+        return discos[int(clue_number)]
+
+    def get_secrets_list_display(self):
+        return self.display_clue_table("secrets")
+
+    def get_vision_list_display(self):
+        return self.display_clue_table("visions")
+
+    def display_clue_table(self, attr):
+        """
+        Returns a string of a PrettyTable of clues
+        Args:
+            attr(str): secrets or visions, the attribute we're fetching
+
+        Returns:
+            A string of a PrettyTable for those ClueDiscoveries
+        """
+        from server.utils.prettytable import PrettyTable
+        table = PrettyTable(["{w#", "{wName", "{wDate:"])
+        for ob in getattr(self, attr):
+            table.add_row([ob.clue.id, ob.name, ob.date.strftime("%x %X")])
+        return str(table)

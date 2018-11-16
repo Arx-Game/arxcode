@@ -9,7 +9,6 @@ import re
 from datetime import datetime
 
 from django.conf import settings
-from evennia.commands.default.muxcommand import MuxCommand, MuxAccountCommand
 
 
 def validate_name(name, formatting=True, not_player=True):
@@ -29,7 +28,7 @@ def validate_name(name, formatting=True, not_player=True):
     return re.findall('^[\w\']+$', name)
 
 
-def inform_staff(message, post=False, subject=None):
+def inform_staff(message, post=False, subject=None, quiet=settings.DEBUG):
     """
     Sends a message to the 'Mudinfo' channel for staff announcements.
 
@@ -37,6 +36,7 @@ def inform_staff(message, post=False, subject=None):
             message: text message to broadcast
             post: If True, we post message. If a truthy value other than True, that's the body of the post.
             subject: Post subject.
+            quiet: Whether to print errors that are encountered
     """
     from evennia.comms.models import ChannelDB
     try:
@@ -51,7 +51,8 @@ def inform_staff(message, post=False, subject=None):
                 message = post
             board.bb_post(poster_obj=None, msg=message, subject=subject, poster_name="Staff")
     except Exception as err:
-        print("ERROR when attempting utils.inform_staff() : %s" % err)
+        if not quiet:
+            print("ERROR when attempting utils.inform_staff() : %s" % err)
 
 
 def setup_log(logfile):
@@ -81,10 +82,16 @@ def get_date(game_time=None):
     return date
 
 
-def get_week():
+def get_week(use_default=settings.DEBUG, default=1):
     """Gets the current week for dominion."""
     from evennia.scripts.models import ScriptDB
-    weekly = ScriptDB.objects.get(db_key="Weekly Update")
+    try:
+        weekly = ScriptDB.objects.get(db_key="Weekly Update")
+    except ScriptDB.DoesNotExist:
+        if use_default:
+            return default
+        else:
+            raise
     return weekly.db.week
 
 
@@ -436,23 +443,6 @@ def cache_safe_update(queryset, **kwargs):
             setattr(obj, keyword, value)
 
 
-class ArxCommmandMixins(object):
-    """Mixin class for Arx commands"""
-    def check_switches(self, switch_set):
-        """Checks if the commands switches are inside switch_set"""
-        return set(self.switches) & set(switch_set)
-
-
-class ArxCommand(ArxCommmandMixins, MuxCommand):
-    """Base command for Characters for Arx"""
-    pass
-
-
-class ArxPlayerCommand(ArxCommmandMixins, MuxAccountCommand):
-    """Base command for Players/Accounts for Arx"""
-    pass
-
-
 def text_box(text):
     """Encloses characters in a cute little text box"""
     boxchars = '\n{w' + '*' * 70 + '{n\n'
@@ -478,6 +468,7 @@ def create_gemit_and_post(msg, caller, episode_name=None, synopsis=None, orgs_li
     gemit.broadcast()
     return gemit
 
+
 def broadcast_msg_and_post(msg, caller, episode_name=None):
     """Sends a message to all online sessions, then makes a post about it."""
     caller.msg("Announcing to all connected players ...")
@@ -496,6 +487,7 @@ def broadcast_msg_and_post(msg, caller, episode_name=None):
     if episode_name:
         subject = "Episode: %s" % episode_name
     bboard.bb_post(poster_obj=caller, msg=post_msg, subject=subject, poster_name="Story")
+
 
 def dict_from_choices_field(cls, field_name, include_uppercase=True):
     """Gets a dict from a Choices tuple in a model"""
@@ -578,6 +570,7 @@ def fix_broken_attributes(broken_object):
             print("Error for attr %s: %s" % (attr.key, err))
             continue
 
+
 def list_to_string(inlist, endsep="and", addquote=False):
     """
     This pretty-formats a list as string output, adding an optional
@@ -619,3 +612,52 @@ def list_to_string(inlist, endsep="and", addquote=False):
         if len(inlist) == 1:
             return str(inlist[0])
         return ", ".join(str(v) for v in inlist[:-1]) + "%s %s" % (endsep, inlist[-1])
+
+
+class CachedProperty(object):
+    """
+    Pretty similar to django's cached_property, but will be used for the CachedPropertiesMixin for models
+    wiping their cached properties upon saving
+    """
+
+    def __init__(self, func, name=None):
+        self.func = func
+        self.__doc__ = getattr(func, '__doc__')
+        self.name = name or func.__name__
+
+    def __get__(self, instance, cls=None):
+        if instance is None:
+            return self
+        if self.name not in instance.__dict__:
+            instance.__dict__[self.name] = self.func(instance)
+        return instance.__dict__[self.name]
+
+    def __delete__(self, instance):
+        instance.__dict__.pop(self.name, None)
+
+    def __set__(self, instance, value):
+        instance.__dict__[self.name] = value
+
+
+class CachedPropertiesMixin(object):
+    """Class that has a clear properties class method"""
+
+    def clear_cached_properties(self):
+        """Clear all cached properties from this object"""
+        cls = self.__class__
+        props = [ob for ob in cls.__dict__.values() if isinstance(ob, CachedProperty)]
+        for prop in props:
+            delattr(self, prop.name)
+
+    def save(self, *args, **kwargs):
+        super(CachedPropertiesMixin, self).save(*args, **kwargs)
+        self.clear_cached_properties()
+
+
+def a_or_an(word):
+
+    if word[:1].lower() in ['a', 'e', 'i', 'o', 'u']:
+        return "an"
+
+    return "a"
+

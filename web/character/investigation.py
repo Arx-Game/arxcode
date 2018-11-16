@@ -7,12 +7,15 @@ from datetime import datetime
 from django.db.models import Q
 
 from evennia.utils.evtable import EvTable
-from server.utils.arx_utils import ArxCommand, ArxPlayerCommand
-from server.utils.arx_utils import inform_staff, check_break
+from server.utils.arx_utils import inform_staff, check_break, list_to_string
+from commands.base import ArxCommand, ArxPlayerCommand
+from commands.mixins import FormCommandMixin
+from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from web.character.models import (Investigation, Clue, InvestigationAssistant, ClueDiscovery, Theory,
-                                  RevelationDiscovery, Revelation, SearchTag, get_random_clue, MysteryDiscovery)
-from world.dominion.models import Agent, RPEvent
+                                  RevelationDiscovery, Revelation, get_random_clue)
+from web.character.forms import ClueCreateForm, RevelationCreateForm
+from world.dominion.models import Agent, Plot
 from world.stats_and_skills import VALID_STATS, VALID_SKILLS
 
 
@@ -838,7 +841,7 @@ class CmdInvestigate(InvestigationFormCommand):
                 if ob.ongoing:
                     self.msg("Already ongoing. %s" % msg)
                     return
-                if ob.finished_clues.exists():
+                if ob.clue_discoveries.exists():
                     self.msg("This investigation has found something already. Start another.")
                     return
                 if not self.check_enough_time_left():
@@ -1148,11 +1151,10 @@ class CmdAdminInvestigations(ArxPlayerCommand):
                 except Clue.DoesNotExist:
                     caller.msg("No clue by that ID.")
                     return
-                if targ in ob.character.discovered_clues:
+                if targ in ob.character.clues.all():
                     self.msg("|rThey already have that clue. Aborting.")
                     return
-                ob.clue_target = targ
-                ob.save()
+                ob.setup_investigation_for_clue(targ)  # will also handle saving the investigation
                 caller.msg("%s set to %s." % (ob, targ))
                 return
             if "roll" in self.switches:
@@ -1175,7 +1177,9 @@ class CmdAdminInvestigations(ArxPlayerCommand):
                 return
             if "setprogress" in self.switches:
                 ob = self.qs.get(id=int(self.lhs))
-                self.set_roll(ob, int(self.rhs))
+                ob.progress = int(self.rhs)
+                ob.save()
+                self.msg("Their progress is now %s, required to complete is %s." % (ob.progress, ob.completion_value))
                 return
         except (TypeError, ValueError):
             caller.msg("Arguments must be numbers.")
@@ -1216,9 +1220,9 @@ class CmdListClues(ArxPlayerCommand):
         return doc
     
     @property
-    def finished_clues(self):
+    def clue_discoveries(self):
         try:
-            return self.caller.roster.finished_clues
+            return self.caller.roster.clue_discoveries.all()
         except AttributeError:
             return ClueDiscovery.objects.none()
 
@@ -1229,34 +1233,41 @@ class CmdListClues(ArxPlayerCommand):
             return self.share_clues()
         # get clue for display or sharing
         try:
-            clue = self.finished_clues.get(id=self.lhs)
+            discovery = self.clue_discoveries.get(clue_id=self.lhs)
         except (ClueDiscovery.DoesNotExist, ValueError, TypeError):
-            self.msg("No clue found by that ID.")
-            self.disp_clue_table()
-            return
+            discovery = None
+            if not self.switches and self.caller.check_permstring("builders"):
+                try:
+                    discovery = Clue.objects.get(id=self.lhs)
+                except Clue.DoesNotExist:
+                    pass
+            if not discovery:
+                self.msg("No clue found by that ID.")
+                self.disp_clue_table()
+                return
         if not self.switches:
-            self.msg(clue.display())
+            self.msg(discovery.display())
             return
         if "addnote" in self.switches:
-            return self.add_note(clue)
+            return self.add_note(discovery)
         self.msg("Invalid switch")
 
     def share_clues(self):
-        clues_to_share = []
+        discoveries_to_share = []
         clue_err_msg = ""
         for arg in self.lhslist:
             try:
-                clue = self.finished_clues.get(id=arg)
+                discovery = self.clue_discoveries.get(clue_id=arg)
             except (ClueDiscovery.DoesNotExist, ValueError, TypeError):
                 clue_err_msg += "No clue found by this ID: {w%s{n. " % arg
                 continue
-            if clue.clue.allow_sharing:
-                clues_to_share.append(clue)
+            if discovery.clue.allow_sharing:
+                discoveries_to_share.append(discovery)
             else:
-                clue_err_msg += "{w%s{n cannot be shared. " % clue.clue
+                clue_err_msg += "{w%s{n cannot be shared. " % discovery.clue
         if clue_err_msg:
             self.msg(clue_err_msg)
-        if not clues_to_share:
+        if not discoveries_to_share:
             return
         if not self.rhs:
             self.msg("Who are you sharing with?")
@@ -1269,7 +1280,7 @@ class CmdListClues(ArxPlayerCommand):
         else:
             rhslist = self.rhslist
         shared_names = []
-        cost = len(rhslist) * len(clues_to_share) * self.caller.clue_cost
+        cost = len(rhslist) * len(discoveries_to_share) * self.caller.clue_cost
         if cost > self.caller.roster.action_points:
             self.msg("Sharing the clue(s) with them would cost %s action points." % cost)
             return
@@ -1283,12 +1294,12 @@ class CmdListClues(ArxPlayerCommand):
                 self.msg("You can only share clues with someone in the same room. Please don't share clues without "
                          "some RP talking about them.")
                 continue
-            for clue in clues_to_share:
-                clue.share(pc.roster, note=note)
+            for discovery in discoveries_to_share:
+                discovery.share(pc.roster, note=note)
             shared_names.append(str(pc.roster))
         if shared_names and self.caller.pay_action_points(cost):
-            msg = "You have shared the clue(s) '%s' with %s." % (", ".join(str(ob.clue) for ob in clues_to_share),
-                  ", ".join(shared_names))
+            msg = "You have shared the clue(s) '%s' with %s." % (", ".join(str(ob.clue) for ob in discoveries_to_share),
+                                                                 ", ".join(shared_names))
             if note:
                 msg += "\nYour note: %s" % note
             self.msg(msg)
@@ -1296,27 +1307,27 @@ class CmdListClues(ArxPlayerCommand):
             self.msg("Shared nothing.")
 
     def disp_clue_table(self):
-        table = PrettyTable(["{wClue #{n", "{wSubject{n"])
-        clues = self.finished_clues.order_by('date')
+        table = PrettyTable(["{wClue #{n", "{wSubject{n", "{wType{n"])
+        discoveries = self.clue_discoveries.order_by('date')
         if "search" in self.switches:
             msg = "{wMatching Clues{n\n"
-            clues = clues.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
-                                 Q(clue__name__icontains=self.args))
+            discoveries = discoveries.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
+                                             Q(clue__name__icontains=self.args))
         else:
             msg = "{wDiscovered Clues{n\n"
-        for clue in clues:
-            table.add_row([clue.id, clue.name])
+        for discovery in discoveries:
+            table.add_row([discovery.clue.id, discovery.name, discovery.clue.get_clue_type_display()])
         msg += str(table)
         self.msg(msg, options={'box': True})
 
-    def add_note(self, clue):
+    def add_note(self, discovery):
         if not self.rhs:
             self.msg("Must contain a note to add.")
             return
         header = "\n[%s] %s wrote: " % (datetime.now().strftime("%x %X"), self.caller.key)
-        clue.message += header + self.rhs
-        clue.save()
-        self.msg(clue.display())
+        discovery.message += header + self.rhs
+        discovery.save()
+        self.msg(discovery.display())
 
 
 class CmdListRevelations(ArxPlayerCommand):
@@ -1344,7 +1355,7 @@ class CmdListRevelations(ArxPlayerCommand):
         revs = caller.roster.revelations.all()
         msg = "{wDiscovered Revelations{n\n"
         for rev in revs:
-            table.add_row([rev.id, rev.revelation.name])
+            table.add_row([rev.id, rev.name])
         msg += str(table)
         caller.msg(msg, options={'box': True})
 
@@ -1358,22 +1369,12 @@ class CmdListRevelations(ArxPlayerCommand):
 
         date = datetime.now()
         for revelation in discovered:
-            msg = "\nYou have discovered a revelation: %s\n%s" % (str(revelation), revelation.desc)
             message = "You had a revelation which had been missed!"
-            rev = RevelationDiscovery.objects.create(character=character, discovery_method="Checked for Missing",
-                                                     message=message, investigation=None,
-                                                     revelation=revelation, date=date)
+            RevelationDiscovery.objects.create(character=character, discovery_method="Checked for Missing",
+                                               message=message, investigation=None,
+                                               revelation=revelation, date=date)
 
             self.msg("You were missing a revelation: %s" % str(revelation))
-
-            mysteries = rev.check_mystery_discovery()
-            for mystery in mysteries:
-                msg += "\nYou have also discovered a mystery: %s\n%s" % (str(mystery), mystery.desc)
-                message = "You uncovered a mystery after learning a revelation!"
-                MysteryDiscovery.objects.create(character=character, message=message, investigation=None,
-                                                mystery=mystery, date=date)
-
-                self.msg("You were missing a mystery: %s" % str(mystery))
 
     def func(self):
         if "checkmissed" in self.switches:
@@ -1385,30 +1386,21 @@ class CmdListRevelations(ArxPlayerCommand):
             self.disp_rev_table()
             return
         try:
-            rev = self.caller.roster.revelations.get(id=self.args)
+            rev = self.caller.roster.revelation_discoveries.get(revelation_id=self.args)
         except (ValueError, TypeError, RevelationDiscovery.DoesNotExist):
-            self.msg("No revelation by that number.")
-            self.disp_rev_table()
-            return
+            rev = None
+            if self.caller.check_permstring("builders"):
+                try:
+                    rev = Revelation.objects.get(id=self.args)
+                except Revelation.DoesNotExist:
+                    pass
+            if not rev:
+                self.msg("No revelation by that number.")
+                self.disp_rev_table()
+                return
         self.msg(rev.display())
-        clues = self.caller.roster.finished_clues.filter(clue__revelations=rev.revelation)
-        self.msg("Related Clues: %s" % "; ".join(str(clue.clue) for clue in clues))
-
-
-class CmdListMysteries(ArxPlayerCommand):
-    """
-    @mysteries
-    
-    Usage:
-        @mysteries
-    """
-    key = "@mysteries"
-    locks = "cmd:all()"
-    help_category = "Investigation"
-
-    def func(self):
-        if not self.args:
-            return
+        clues = self.caller.roster.clues.filter(revelations=rev.revelation)
+        self.msg("Related Clues: %s" % "; ".join(str(clue) for clue in clues))
 
 
 class CmdTheories(ArxPlayerCommand):
@@ -1463,8 +1455,7 @@ class CmdTheories(ArxPlayerCommand):
         self.msg(theory.display())
         self.msg("{wRelated Theories{n: %s\n" %
                  ", ".join(str(ob.id) for ob in theory.related_theories.filter(id__in=theories)))
-        known_clues = [ob.clue.id for ob in self.caller.roster.finished_clues]
-        disp_clues = theory.related_clues.filter(id__in=known_clues)
+        disp_clues = theory.related_clues.filter(id__in=self.caller.roster.clues.all())
         self.msg("{wRelated Clues:{n %s" % ", ".join(ob.name for ob in disp_clues))
         if "readall" in self.switches:
             for clue in disp_clues:
@@ -1501,11 +1492,11 @@ class CmdTheories(ArxPlayerCommand):
                 targs.append(targ)
             if not targs:
                 return
-            clues = self.caller.roster.finished_clues.filter(clue__id__in=theory.related_clues.all())
+            clue_discoveries = self.caller.roster.clue_discoveries.filter(clue__id__in=theory.related_clues.all())
             per_targ_cost = self.caller.clue_cost
             for targ in targs:
                 if "shareall" in self.switches:
-                    cost = len(targs) * len(clues) * per_targ_cost
+                    cost = len(targs) * len(clue_discoveries) * per_targ_cost
                     if cost > self.caller.roster.action_points:
                         self.msg("That would cost %s action points." % cost)
                         return
@@ -1516,7 +1507,7 @@ class CmdTheories(ArxPlayerCommand):
                     except AttributeError:
                         self.msg("One of you does not have a character object.")
                         continue
-                    for clue in clues:
+                    for clue in clue_discoveries:
                         if not clue.clue.allow_sharing:
                             self.msg("%s cannot be shared. Skipping." % clue.clue)
                             continue
@@ -1598,31 +1589,75 @@ class CmdTheories(ArxPlayerCommand):
             return
         if "addclue" in self.switches or "rmclue" in self.switches:
             try:
-                clue = self.caller.roster.finished_clues.get(id=self.rhs)
-            except (ClueDiscovery.DoesNotExist, ValueError, TypeError, AttributeError):
+                clue = self.caller.roster.clues.get(id=self.rhs)
+            except (Clue.DoesNotExist, ValueError, TypeError, AttributeError):
                 self.msg("No clue by that ID.")
                 return
             if "addclue" in self.switches:
-                theory.related_clues.add(clue.clue)
+                theory.related_clues.add(clue)
                 self.msg("Added clue %s to theory." % clue.name)
             else:
-                theory.related_clues.remove(clue.clue)
+                theory.related_clues.remove(clue)
                 self.msg("Removed clue %s from theory." % clue.name)
             return
         self.msg("Invalid switch.")
 
 
-class CmdPRPClue(ArxPlayerCommand):
+class ListPlotsMixin(object):
+    """Mixin for commands that use plots"""
+
+    @property
+    def gm_plots(self):
+        """Plots our caller is gming"""
+        return self.caller.Dominion.plots_we_can_gm
+
+    @property
+    def gm_revelations(self):
+        """Revelations our caller has written"""
+        return self.caller.roster.revelations_written.all()
+
+    def list_gm_plots(self):
+        """Lists plots we're gming, and clues and revelations we've created"""
+        plots = self.gm_plots
+        clues = self.caller.roster.clues_written.all()
+        revelations = self.caller.roster.revelations_written.all()
+
+        def format_list(some_iter):
+            """Helper function for formatting"""
+            return ["%s (#%s)" % (ob, ob.id) for ob in some_iter]
+
+        msg = "{wPlots GMd:{n %s\n" % list_to_string(format_list(plots))
+        msg += "{wClues Written:{n %s\n" % list_to_string(format_list(clues))
+        msg += "{wRevelations Written:{n %s\n" % list_to_string(format_list(revelations))
+        return msg
+
+    def get_revelation(self):
+        """Gets a revelation by ID"""
+        try:
+            if self.args.isdigit():
+                revelation = self.gm_revelations.get(id=self.args)
+            else:
+                revelation = self.gm_revelations.get(name__iexact=self.args)
+            return revelation
+        except (Revelation.DoesNotExist, ValueError, TypeError):
+            raise CommandError("No Revelation by that name or number.\n" + self.list_gm_plots())
+
+
+class PRPLorecommand(ListPlotsMixin, FormCommandMixin, ArxPlayerCommand):
+    """Base class for commands that make lore for PRPs"""
+
+
+class CmdPRPClue(PRPLorecommand):
     """
     Creates a clue for a PRP you ran
 
     Usage:
         +prpclue
         +prpclue/create
-        +prpclue/event <event ID>
+        +prpclue/revelation <revelation ID or name>
         +prpclue/name <clue name>
         +prpclue/desc <description>
-        +prpclue/difficulty <investigation difficulty, 1-50>
+        +prpclue/rating <investigation difficulty, 1-50>
         +prpclue/tags <tag 1>,<tag 2>,etc
         +prpclue/fake
         +prpclue/noinvestigate
@@ -1630,7 +1665,7 @@ class CmdPRPClue(ArxPlayerCommand):
         +prpclue/finish
         +prpclue/abandon
         +prpclue/sendclue <clue ID>=<participant>
-        +prpclue/listclues <event ID>
+        +prpclue/listclues <revelation ID>
 
     Allows a GM to create custom clues for their PRP, and then send it to
     participants. Tags are the different keywords/phrases that allow it
@@ -1639,151 +1674,155 @@ class CmdPRPClue(ArxPlayerCommand):
     clue or sharing it, respectively.
 
     Once the clue is created, it can be sent to any participant with the
-    /sendclue switch.
+    /sendclue switch. Clues must have a revelation written that is tied
+    to the plot. See the prprevelation command for details.
     """
-    key = "+prpclue"
-    help_category = "Investigation"
+    key = "prpclue"
+    help_category = "PRP"
     locks = "cmd: all()"
-    aliases = ["prpclue", "@prpclue"]
-
-    @property
-    def gm_events(self):
-        """
-        All the events this caller has GM'd
-        Returns:
-            events (queryset): Queryset of RPEvents
-        """
-        return self.caller.Dominion.events_gmd.all()
-
-    def list_gm_events(self):
-        self.msg("Events you have GM'd:\n%s" % "\n".join("%s (#%s)" % (ob.name, ob.id) for ob in self.gm_events))
-
-    def display_form(self):
-        form = self.caller.db.clue_creation_form
-        if not form:
-            self.msg("You are not presently creating a clue for any of your events.")
-            return
-        event = None
-        if form[2]:
-            try:
-                event = self.gm_events.get(id=form[2])
-            except RPEvent.DoesNotExist:
-                pass
-        msg = "{wName{n: %s\n" % form[0]
-        msg += "{wDesc{n: %s\n" % form[1]
-        msg += "{wEvent:{n %s\n" % event
-        msg += "{wDifficulty{n: %s\n" % form[3]
-        msg += "{wTags:{n %s\n" % form[4]
-        msg += "{wReal:{n %s\n" % form[5]
-        msg += "{wCan Investigate:{n %s\n" % form[6]
-        msg += "{wCan Share:{n %s\n" % form[7]
-        self.msg(msg)
-        return
-
-    def get_event(self):
-        try:
-            event = self.gm_events.get(id=self.args)
-            return event
-        except (RPEvent.DoesNotExist, ValueError, TypeError):
-            self.msg("No Event by that number.")
-            self.list_gm_events()
+    form_class = ClueCreateForm
+    form_attribute = "clue_creation_form"
+    form_initial_kwargs = (('allow_sharing', True), ('allow_investigation', True), ('red_herring', False))
 
     def func(self):
-        if not self.args and not self.switches:
-            self.list_gm_events()
-            self.display_form()
-            return
-        if "abandon" in self.switches:
-            self.caller.attributes.remove("clue_creation_form")
-            self.msg("Abandoned.")
-            return
-        if "create" in self.switches:
-            form = ["", "", None, 25, "", True, True, True]
-            self.caller.db.clue_creation_form = form
-            self.display_form()
-            return
-        if "listclues" in self.switches:
-            event = self.get_event()
-            if not event:
+        try:
+            if not self.args and not self.switches:
+                self.msg(self.list_gm_plots())
+                self.display_form()
                 return
-            self.msg("Clues: %s" % ", ".join("%s (#%s)" % (clue, clue.id) for clue in event.clues.all()))
-            return
-        if "sendclue" in self.switches:
-            try:
-                clue = Clue.objects.filter(event__in=self.gm_events).distinct().get(id=self.lhs)
-            except (TypeError, ValueError, Clue.DoesNotExist):
-                self.msg("No clue found by that ID.")
+            if "abandon" in self.switches:
+                self.caller.attributes.remove(self.form_attribute)
+                self.msg("Abandoned.")
                 return
-            targ = self.caller.search(self.rhs)
-            if not targ:
+            if "create" in self.switches:
+                return self.create_form()
+            if "listclues" in self.switches:
+                revelation = self.get_revelation()
+                if not revelation:
+                    return
+                self.msg("Clues: %s" % ", ".join("%s (#%s)" % (clue, clue.id) for clue in revelation.clues.all()))
                 return
-            if targ.Dominion not in clue.event.participants.all():
-                self.msg("Target is not among the participants of that event.")
-                return
-            targ.roster.discover_clue(clue)
-            self.msg("You have sent them a clue.")
-            targ.inform("A new clue has been sent to you about event %s. Use @clues to view it." % clue.event,
-                        category="Clue Discovery")
-            return
-        form = self.caller.db.clue_creation_form
-        if not form:
-            self.msg("Use /create to start a new form.")
-            return
-        if "finish" in self.switches:
-            name = form[0]
-            desc = form[1]
-            if not (name and desc):
-                self.msg("Both name and desc must be set.")
-                return
-            try:
-                event = self.gm_events.get(id=form[2])
-            except (RPEvent.DoesNotExist, TypeError, ValueError):
-                self.msg("Event must be set.")
-                return
-            rating = form[3]
-            tag_names = form[4].split(",")
-            search_tags = []
-            for tag_name in tag_names:
+            if "sendclue" in self.switches:
                 try:
-                    search_tag = SearchTag.objects.get(name__iexact=tag_name)
-                except SearchTag.DoesNotExist:
-                    search_tag = SearchTag.objects.create(name=tag_name)
-                search_tags.append(search_tag)
-            red_herring = not form[5]
-            allow_investigation = form[6]
-            allow_sharing = form[7]
-            clue = event.clues.create(name=name, desc=desc, rating=rating, red_herring=red_herring,
-                                      allow_investigation=allow_investigation, allow_sharing=allow_sharing)
-            for search_tag in search_tags:
-                clue.search_tags.add(search_tag)
-            self.msg("Clue #%s created." % clue.id)
-            inform_staff("Clue '%s' created for event '%s'." % (clue, event))
-            self.caller.attributes.remove("clue_creation_form")
-            return
-        if "name" in self.switches:
-            if Clue.objects.filter(name__iexact=self.args).exists():
-                self.msg("There already is a clue by that name.")
+                    clue = Clue.objects.filter(revelations__plots__in=self.gm_plots).distinct().get(id=self.lhs)
+                except (TypeError, ValueError, Clue.DoesNotExist):
+                    self.msg("No clue found by that ID.")
+                    return
+                targ = self.caller.search(self.rhs)
+                if not targ:
+                    return
+                if targ.Dominion not in clue.event.participants.all():
+                    self.msg("Target is not among the participants of that event.")
+                    return
+                targ.roster.discover_clue(clue)
+                self.msg("You have sent them a clue.")
+                targ.inform("A new clue has been sent to you about event %s. Use @clues to view it." % clue.event,
+                            category="Clue Discovery")
                 return
-            form[0] = self.args
-        if "desc" in self.switches:
-            form[1] = self.args
-        if "event" in self.switches:
-            event = self.get_event()
-            if not event:
+            form = self.caller.attributes.get(self.form_attribute)
+            if not form:
+                self.msg("Use /create to start a new form.")
                 return
-            form[2] = event.id
-        if "difficulty" in self.switches:
-            try:
-                form[3] = int(self.args)
-            except ValueError:
-                self.msg("Must be a number.")
-        if "tags" in self.switches:
-            form[4] = self.args
-        if "fake" in self.switches:
-            form[5] = not form[5]
-        if "noinvestigate" in self.switches:
-            form[6] = not form[6]
-        if "noshare" in self.switches:
-            form[7] = not form[7]
-        self.caller.db.clue_creation_form = form
-        self.display_form()
+            if "finish" in self.switches:
+                return self.submit_form()
+            if "name" in self.switches:
+                form['name'] = self.args
+            if "desc" in self.switches:
+                form['desc'] = self.args
+            if "revelation" in self.switches:
+                revelation = self.get_revelation()
+                if not revelation:
+                    return
+                form['revelation'] = revelation.id
+            if "rating" in self.switches:
+                form['rating'] = self.args
+            if "tags" in self.switches:
+                form['tag_names'] = self.args
+            if "fake" in self.switches:
+                form['red_herring'] = not form.get('red_herring')
+            if "noinvestigate" in self.switches:
+                form['allow_investigation'] = not form.get('allow_investigation', True)
+            if "noshare" in self.switches:
+                form['allow_sharing'] = not form.get('allow_sharing', True)
+            self.display_form()
+        except CommandError as err:
+            self.msg(err)
+
+
+class CmdPRPRevelation(PRPLorecommand):
+    """
+    Creates a revelation for a PRP you are GMing for
+
+    Usage:
+        +prprevelation
+        +prprevelation/create <plot ID>[=<notes about relationship to plot>]
+        +prprevelation/name <name>
+        +prprevelation/desc <description>
+        +prprevelation/rating <total value of clues required for discovery>
+        +prprevelation/tags <tag 1>,<tag 2>,etc
+        +prprevelation/finish
+        +prprevelation/abandon
+
+    Allows a GM for a PRP to create lore for PRPs they're running. A Revelation
+    is a summation of significant game lore, while a Clue's a small part of it:
+    either a specific perspective of someone, providing more context/detail on
+    some aspect of it, etc. For example, if you ran a PRP on a haunted castle,
+    the revelation might be 'The Haunted Castle of Foobar'. The Revelation's
+    desc would be a synopsis of the narrative of the entire plot. Clues would
+    be about the history of House Foobar, the structure of the castle, events
+    that caused it to become haunted, etc.
+
+    Tags are keywords/phrases used specifically for searching/indexing topics
+    in the database. Please use them liberally on anything significant in the
+    revelation to help staff out. For example, you would add a tag for Foobar
+    in the above example, and if the House was destroyed by 'The Bloodcurse',
+    you would add that as a tag as well.
+    """
+    key = "prprevelation"
+    help_category = "PRP"
+    locks = "cmd: all()"
+    form_class = RevelationCreateForm
+    form_attribute = "revelation_creation_form"
+    form_initial_kwargs = (('red_herring', False),)
+
+    def func(self):
+        """Executes command"""
+        try:
+            if not self.args and not self.switches:
+                self.msg(self.list_gm_plots())
+                self.display_form()
+                return
+            if "abandon" in self.switches:
+                self.caller.attributes.remove(self.form_attribute)
+                self.msg("Abandoned.")
+                return
+            if "create" in self.switches:
+                return self.create_form()
+            form = self.caller.attributes.get(self.form_attribute)
+            if not form:
+                self.msg("Use /create to start a new form.")
+                return
+            if "finish" in self.switches:
+                return self.submit_form()
+            if "name" in self.switches:
+                form['name'] = self.args
+            if "desc" in self.switches:
+                form['desc'] = self.args
+            if "plot" in self.switches:
+                try:
+                    if self.args.isdigit():
+                        plot = self.gm_plots.get(id=self.args)
+                    else:
+                        plot = self.gm_plots.get(name__iexact=self.args)
+                except Plot.DoesNotExist:
+                    raise CommandError("No plot by that name or number.")
+                form['plot'] = plot.id
+            if "tags" in self.switches:
+                form['tag_names'] = self.args
+            if "fake" in self.switches:
+                form['red_herring'] = not form.get('red_herring')
+            if "rating" in self.switches:
+                form['required_clue_value'] = self.args
+            self.display_form()
+        except CommandError as err:
+            self.msg(err)

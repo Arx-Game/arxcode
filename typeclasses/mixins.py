@@ -636,6 +636,74 @@ class CraftingMixins(object):
         string += self.return_crafting_desc()
         return string
 
+    def junk(self, caller):
+        """Checks our ability to be junked out."""
+        from server.utils.exceptions import CommandError
+        if self.location != caller:
+            raise CommandError("You can only +junk objects you are holding.")
+        if self.contents:
+            raise CommandError("It contains objects that must first be removed.")
+        if not self.junkable:
+            raise CommandError("This object cannot be destroyed.")
+        self.do_junkout(caller)
+
+    def do_junkout(self, caller):
+        """Attempts to salvage materials from crafted item, then junks it."""
+        from world.dominion.models import (CraftingMaterials, CraftingMaterialType)
+
+        def get_refund_chance():
+            """Gets our chance of material refund based on a skill check"""
+            from world.stats_and_skills import do_dice_check
+            roll = do_dice_check(caller, stat="dexterity", skill="legerdemain", quiet=False)
+            return max(roll, 1)
+
+        def randomize_amount(amt):
+            """Helper function to determine amount kept when junking"""
+            from random import randint
+            num_kept = 0
+            for _ in range(amt):
+                if randint(0, 100) <= roll:
+                    num_kept += 1
+            return num_kept
+
+        pmats = caller.player.Dominion.assets.materials
+        mats = self.db.materials
+        adorns = self.db.adorns or {}
+        refunded = []
+        roll = get_refund_chance()
+        for mat in adorns:
+            cmat = CraftingMaterialType.objects.get(id=mat)
+            amount = adorns[mat]
+            amount = randomize_amount(amount)
+            if amount:
+                try:
+                    pmat = pmats.get(type=cmat)
+                except CraftingMaterials.DoesNotExist:
+                    pmat = pmats.create(type=cmat)
+                pmat.amount += amount
+                pmat.save()
+                refunded.append("%s %s" % (amount, cmat.name))
+        for mat in mats:
+            amount = mats[mat]
+            if mat in adorns:
+                amount -= adorns[mat]
+            amount = randomize_amount(amount)
+            if amount <= 0:
+                continue
+            cmat = CraftingMaterialType.objects.get(id=mat)
+            try:
+                pmat = pmats.get(type=cmat)
+            except CraftingMaterials.DoesNotExist:
+                pmat = pmats.create(type=cmat)
+            pmat.amount += amount
+            pmat.save()
+            refunded.append("%s %s" % (amount, cmat.name))
+        destroy_msg = "You destroy %s." % self
+        if refunded:
+            destroy_msg += " Salvaged materials: %s" % ", ".join(refunded)
+        caller.msg(destroy_msg)
+        self.softdelete()
+
     @property
     def recipe(self):
         """
@@ -688,14 +756,15 @@ class CraftingMixins(object):
             adorn_strs = ["%s %s" % (amt, mat.name) for mat, amt in adorns.items()]
             string += "\nAdornments: %s" % ", ".join(adorn_strs)
         # recipe is an integer matching the CraftingRecipe ID
-        recipe = self.recipe
-        if recipe:
-            string += "\nIt is a %s." % recipe.name
-            # quality_level is an integer, we'll get a name from crafter file's dict
+        if hasattr(self, 'type_description') and self.type_description:
+            from server.utils.arx_utils import a_or_an
+            td = self.type_description
+            part = a_or_an(td)
+            string += "\nIt is %s %s." % (part, td)
+        if self.db.quality_level:
             string += self.get_quality_appearance()
-        elif self.is_typeclass('world.magic.materials.MagicMaterial'):
-            string += "\nIt is an alchemical material."
-            string += self.get_quality_appearance()
+        if hasattr(self, 'origin_description') and self.origin_description:
+            string += self.origin_description
         if self.db.translation:
             string += "\nIt contains script in a foreign tongue."
         # signed_by is a crafter's character object
@@ -703,6 +772,19 @@ class CraftingMixins(object):
         if signed:
             string += "\n%s" % (signed.db.crafter_signature or "")
         return string
+
+    @property
+    def type_description(self):
+        if self.recipe:
+            return self.recipe.name
+
+        return None
+
+    @property
+    def origin_description(self):
+        if self.db.found_shardhaven:
+            return "\nIt was found in %s." % self.db.found_shardhaven
+        return None
 
     @property
     def quality_level(self):
@@ -715,7 +797,7 @@ class CraftingMixins(object):
         """
         if self.quality_level < 0:
             return ""
-        from commands.commands.crafting import QUALITY_LEVELS
+        from commands.base_commands.crafting import QUALITY_LEVELS
         qual = min(self.quality_level, 11)
         qual = QUALITY_LEVELS.get(qual, "average")
         return "\nIts level of craftsmanship is %s." % qual
@@ -735,6 +817,18 @@ class CraftingMixins(object):
         amt = adorns.get(material.id, 0)
         adorns[material.id] = amt + quantity
         self.db.adorns = adorns
+
+    @property
+    def is_plot_related(self):
+        if "plot" in self.tags.all() or self.search_tags.all().exists() or self.clues.all().exists():
+            return True
+
+    @property
+    def junkable(self):
+        """A check for this object's plot connections."""
+        if not self.recipe:
+            raise AttributeError
+        return not self.is_plot_related
 
 
 # regex removes the ascii inside an ascii tag
@@ -863,6 +957,26 @@ class MsgMixins(object):
     def msg_location_or_contents(self, text=None, **kwargs):
         """A quick way to ensure a room message, no matter what it's called on. Requires rooms have null location."""
         self.get_room().msg_contents(text=text, **kwargs)
+
+    def confirmation(self, attr, val, prompt_msg):
+        """
+        Prompts the player or character to confirm a choice.
+
+            Args:
+                attr: Name of the confirmation check.
+                val: Value of the NAttribute to use.
+                prompt_msg: Confirmation prompt message.
+
+            Returns:
+                True if we already have the NAttribute set, False if we have to set
+                it and prompt them for confirmation.
+        """
+        attr = "confirm_%s" % attr
+        if self.nattributes.get(attr) == val:
+            self.nattributes.remove(attr)
+            return True
+        self.nattributes.add(attr, val)
+        self.msg(prompt_msg)
 
 
 class LockMixins(object):

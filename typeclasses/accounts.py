@@ -150,7 +150,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         PlayerSiteEntry.add_site_for_player(self.char_ob, address)
 
         try:
-            from commands.commands.bboards import get_unread_posts
+            from commands.base_commands.bboards import get_unread_posts
             get_unread_posts(self)
         except Exception:
             pass
@@ -498,16 +498,16 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     @property
     def participated_actions(self):
         """Actions we participated in"""
-        from world.dominion.models import CrisisAction
+        from world.dominion.models import PlotAction
         from django.db.models import Q
         dompc = self.Dominion
-        return CrisisAction.objects.filter(Q(assistants=dompc) | Q(dompc=dompc)).distinct()
+        return PlotAction.objects.filter(Q(assistants=dompc) | Q(dompc=dompc)).distinct()
 
     @property
     def past_participated_actions(self):
         """Actions we participated in previously"""
-        from world.dominion.models import CrisisAction
-        return self.participated_actions.filter(status=CrisisAction.PUBLISHED).distinct()
+        from world.dominion.models import PlotAction
+        return self.participated_actions.filter(status=PlotAction.PUBLISHED).distinct()
 
     def show_online(self, caller, check_puppet=False):
         """

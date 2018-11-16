@@ -5,7 +5,7 @@ from server.utils.prettytable import PrettyTable
 from .models import Template, TemplateGrantee
 from typeclasses.characters import Character
 
-from paxforms.commands import PaxformCommand
+from paxforms.paxform_commands import PaxformCommand
 from paxforms.forms import Paxform
 from paxforms import fields
 

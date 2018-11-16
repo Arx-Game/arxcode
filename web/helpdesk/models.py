@@ -265,12 +265,7 @@ class Ticket(SharedMemoryModel):
     the dashboard to prompt users to take ownership of them.
     """
 
-    OPEN_STATUS = 1
-    REOPENED_STATUS = 2
-    RESOLVED_STATUS = 3
-    CLOSED_STATUS = 4
-    DUPLICATE_STATUS = 5
-
+    OPEN_STATUS, REOPENED_STATUS, RESOLVED_STATUS, CLOSED_STATUS, DUPLICATE_STATUS = range(1, 6)
     STATUS_CHOICES = (
         (OPEN_STATUS, _('Open')),
         (REOPENED_STATUS, _('Reopened')),
@@ -278,7 +273,6 @@ class Ticket(SharedMemoryModel):
         (CLOSED_STATUS, _('Closed')),
         (DUPLICATE_STATUS, _('Duplicate')),
     )
-
     PRIORITY_CHOICES = (
         (1, _('1. Critical')),
         (2, _('2. High')),
@@ -287,88 +281,28 @@ class Ticket(SharedMemoryModel):
         (5, _('5. Very Low')),
         (6, _('6. Super Low')),
     )
-
-    title = models.CharField(
-        _('Title'),
-        max_length=200,
-        )
-
-    queue = models.ForeignKey(
-        Queue,
-        verbose_name=_('Queue'),
-        )
-
-    db_date_created = models.DateTimeField(
-        _('Created'),
-        blank=True,
-        help_text=_('Date this ticket was first created'),
-        )
-
-    modified = models.DateTimeField(
-        _('Modified'),
-        blank=True,
-        help_text=_('Date this ticket was most recently changed.'),
-        )
-
-    submitter_email = models.EmailField(
-        _('Submitter E-Mail'),
-        blank=True,
-        null=True,
-        help_text=_('The submitter will receive an email for all public '
-            'follow-ups left for this task.'),
-        )
-
-    assigned_to = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name='assigned_to',
-        blank=True,
-        null=True,
-        verbose_name=_('Assigned to'),
-        )
-
-    submitting_player = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name='tickets',
-        blank=True,
-        null=True,
-        verbose_name=_('Player who opened this ticket'),
-        )
-
-    submitting_room = models.ForeignKey(
-        'objects.ObjectDB',
-        blank=True,
-        null=True,
-        verbose_name=_('Room where this was submitted'),
-        on_delete=models.SET_NULL,
-        )
-
-    status = models.IntegerField(
-        _('Status'),
-        choices=STATUS_CHOICES,
-        default=OPEN_STATUS,
-        )
-
-    on_hold = models.BooleanField(
-        _('On Hold'),
-        blank=True,
-        default=False,
-        help_text=_('If a ticket is on hold, it will not automatically be '
-            'escalated.'),
-        )
-
-    description = models.TextField(
-        _('Description'),
-        blank=True,
-        null=True,
-        help_text=_('The content of the customers query.'),
-        )
-
-    resolution = models.TextField(
-        _('Resolution'),
-        blank=True,
-        null=True,
-        help_text=_('The resolution provided to the customer by our staff.'),
-        )
+    title = models.CharField( _('Title'), max_length=200,)
+    queue = models.ForeignKey(Queue, verbose_name=_('Queue'),)
+    db_date_created = models.DateTimeField(_('Created'), blank=True, help_text=_('Date this ticket was first created'),)
+    modified = models.DateTimeField(_('Modified'), blank=True,
+                                    help_text=_('Date this ticket was most recently changed.'))
+    submitter_email = models.EmailField(_('Submitter E-Mail'), blank=True, null=True, help_text=_(
+        'The submitter will receive an email for all public follow-ups left for this task.'))
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='assigned_to', blank=True, null=True,
+                                    verbose_name=_('Assigned to'))
+    submitting_player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='tickets', blank=True, null=True,
+                                          verbose_name=_('Player who opened this ticket'))
+    submitting_room = models.ForeignKey('objects.ObjectDB', blank=True, null=True,
+                                        verbose_name=_('Room where this was submitted'), on_delete=models.SET_NULL)
+    plot = models.ForeignKey('dominion.Plot', blank=True, null=True, related_name="tickets")
+    beat = models.ForeignKey('dominion.PlotUpdate', blank=True, null=True, related_name="tickets")
+    status = models.IntegerField(_('Status'), choices=STATUS_CHOICES, default=OPEN_STATUS)
+    on_hold = models.BooleanField(_('On Hold'), blank=True, default=False, help_text=_(
+        'If a ticket is on hold, it will not automatically be escalated.'))
+    description = models.TextField(_('Description'), blank=True, null=True,
+                                   help_text=_('The content of the customers query.'))
+    resolution = models.TextField(_('Resolution'), blank=True, null=True, help_text=_(
+        'The resolution provided to the customer by our staff.'))
 
     priority = models.IntegerField(
         _('Priority'),
@@ -389,7 +323,7 @@ class Ticket(SharedMemoryModel):
         null=True,
         editable=False,
         help_text=_('The date this ticket was last escalated - updated '
-            'automatically by management/commands/escalate_tickets.py.'),
+                    'automatically by management/commands/escalate_tickets.py.'),
         )
 
     def _get_assigned_to(self):
@@ -546,6 +480,14 @@ class Ticket(SharedMemoryModel):
 
     def request_and_response_body(self):
         msg = "\n|wRequest:|n %s" % self.description
+        if self.plot:
+            msg += "\n"
+            if self.plot.usage == self.plot.PITCH:
+                msg += "\n|wPlot Pitch:|n\n"
+                msg += self.plot.display()
+                msg += "\n"
+            else:
+                msg += "|wPlot:|n %s" % self.plot
         for followup in self.followup_set.all():
             msg += "\n|wFollowup by |c%s|w:|n %s" % (followup.user, followup.comment)
         if self.assigned_to:

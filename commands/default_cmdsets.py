@@ -135,7 +135,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_overridden_commands(self):
         """Add arx overrides of Evennia commands"""
-        from .commands import help, overrides
+        from .base_commands import help, overrides
         self.add(help.CmdHelp())
         self.add(overrides.CmdWho())
         self.add(overrides.CmdArxSetAttribute())
@@ -152,7 +152,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_general_commands(self):
         """Add general/misc commands"""
-        from .commands import general
+        from .base_commands import general
         self.add(general.CmdPage())
         self.add(general.CmdMail())
         self.add(general.CmdGradient())
@@ -162,7 +162,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_bboard_commands(self):
         """Add commands for bulletin boards"""
-        from .commands import bboards
+        from .base_commands import bboards
         self.add(bboards.CmdBBReadOrPost())
         self.add(bboards.CmdBBSub())
         self.add(bboards.CmdBBUnsub())
@@ -173,19 +173,18 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_roster_commands(self):
         """Add commands around roster viewing or management"""
-        from .commands import roster
+        from .base_commands import roster
         self.add(roster.CmdRosterList())
         self.add(roster.CmdAdminRoster())
         self.add(roster.CmdSheet())
         self.add(roster.CmdRelationship())
-        self.add(roster.CmdAddSecret())
         self.add(roster.CmdDelComment())
         self.add(roster.CmdAdmRelationship())
 
     @check_errors
     def add_jobs_commands(self):
         """Add commands for interacting with helpdesk"""
-        from .commands import jobs
+        from .base_commands import jobs
         self.add(jobs.CmdJob())
         self.add(jobs.CmdRequest())
         self.add(jobs.CmdApp())
@@ -193,7 +192,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_dominion_commands(self):
         """Add commands related to Dominion, the offscreen estate-management game"""
-        from world.dominion import commands as domcommands
+        from world.dominion import general_dominion_commands as domcommands
         self.add(domcommands.CmdAdmDomain())
         self.add(domcommands.CmdAdmArmy())
         self.add(domcommands.CmdAdmCastle())
@@ -211,7 +210,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_social_commands(self):
         """Add commands for social RP"""
-        from .commands import social
+        from .base_commands import social
         self.add(social.CmdFinger())
         self.add(social.CmdWatch())
         self.add(social.CmdCalendar())
@@ -224,7 +223,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_staff_commands(self):
         """Add commands for staff players"""
-        from .commands import staff_commands
+        from .base_commands import staff_commands
         # more recently implemented staff commands
         self.add(staff_commands.CmdRestore())
         self.add(staff_commands.CmdSendVision())
@@ -257,6 +256,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         self.add(investigation.CmdTheories())
         self.add(investigation.CmdListRevelations())
         self.add(investigation.CmdPRPClue())
+        self.add(investigation.CmdPRPRevelation())
 
     @check_errors
     def add_scene_commands(self):
@@ -270,7 +270,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         from world.dominion import crisis_commands
         self.add(crisis_commands.CmdViewCrisis())
         self.add(crisis_commands.CmdGMCrisis())
-        from .commands import story_actions
+        from .base_commands import story_actions
         self.add(story_actions.CmdGMAction)
 
 
@@ -297,7 +297,7 @@ class UnloggedinCmdSet(cmdset_unloggedin.UnloggedinCmdSet):
             self.add(default_unloggedin.CmdUnconnectedLook())
             self.add(default_unloggedin.CmdUnconnectedEncoding())
             self.add(default_unloggedin.CmdUnconnectedScreenreader())
-            from .commands import unloggedin
+            from .base_commands import unloggedin
             self.add(unloggedin.CmdGuestConnect())
             self.add(unloggedin.CmdUnconnectedHelp())
         except Exception as err:

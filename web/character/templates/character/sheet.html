@@ -24,7 +24,7 @@
         <div class="row"><div class="text-center"><q><em>{{ character.db.quote }}</em></q></div></div>
     {% endif %}
 	<div class="row">
-	
+
     {% if character.portrait %}
 	<div class="col-md-7 text-center">
       {% if character.portrait.alt_text %}
@@ -37,7 +37,7 @@
     <div class="col-md-5 text-left">
     <p><b>Social Rank:</b> {{ character.db.social_rank }}<br><b>Concept:</b> {{ character.db.concept }}<br>
 	{% if character.db.real_concept and show_hidden %}<b>Real Concept:</b> {{ character.db.real_concept}}<br>{% endif %}
-    <b>Fealty:</b> 
+    <b>Fealty:</b>
 	{% if fealty_org_id %}
 	<a href="{% url 'help_topics:display_org' fealty_org_id.id %}">{{ character.db.fealty }}</a>
 	{% else %}{{ character.db.fealty}}
@@ -57,7 +57,8 @@
 	</div>
 	</div>
     {% if character.db.obituary %}
-    <p><b>Obituary:</b> {{ character.db.obituary|mush_to_html }}</p>{% endif %}
+    <p><b>Obituary:</b> {{ character.db.obituary|mush_to_html }}</p>
+    {% endif %}
     <p><b>Description:</b> {{ character.perm_desc|mush_to_html }}</p>
 
     <p><b>Personality:</b> {{ character.db.personality|mush_to_html }}</p>
@@ -77,102 +78,85 @@
       {% endfor %}
     {% endif %}
     {% if show_hidden %}
-    {% if character.db.secrets %}
-    <h2 class="text-center">Secrets</h2>
-    {% for secret in character.db.secrets %}
-    <p>{{ forloop.counter}} : {{ secret|mush_to_html }}</p>
-    {% endfor %}
-    {% endif %}
-    {% if character.db.gm_notes %}
+      {% if secrets %}
+      <h2 class="text-center">Secrets</h2>
+      {% for secret in secrets %}
+        <p>{{ forloop.counter}} : {{ secret.desc|mush_to_html }}</p>
         {% if request.user.is_staff %}
-            <h2 class="text-center">GM Notes</h2>
-            {{  character.db.gm_notes }}
+          <h2 class="text-center">GM Notes</h2>
+          {{  secret.gm_notes }}
         {% endif %}
-    {% endif %}
-    <style>
-    td { text-align:center }
-	th { text-align:center}
-    </style>
-    
-    <table class="table table-bordered">
-    <caption><h2 class="text-center">Stats</h2></caption>
-      <thead>
-        <tr>
-          <th width="20%" class="success">Physical</th>
-          <th width="10%" class="success">Value</th>
-          <th width="20%" class="success">Social</th>
-          <th width="10%" class="success">Value</th>
-          <th width="20%" class="success">Mental</th>
-          <th width="10%" class="success">Value</th>
-          <th width="20%" class="success">Special</th>
-          <th width="10%" class="success">Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="info">Strength</td>
-          <td class="info">{{ character.db.strength }}</td>
-          <td class="info">Charm</td>
-          <td class="info">{{ character.db.charm }}</td>
-          <td class="info">Intellect</td>
-          <td class="info">{{ character.db.intellect }}</td>
-          <td class="info">Mana</td>
-          <td class="info">{{ character.db.mana }}</td>
-        </tr>
-        <tr>
-          <td class="info">Dexterity</td>
-          <td class="info">{{ character.db.dexterity }}</td>
-          <td class="info">Command</td>
-          <td class="info">{{ character.db.command }}</td>
-          <td class="info">Perception</td>
-          <td class="info">{{ character.db.perception }}</td>
-          <td class="info">Luck</td>
-          <td class="info">{{ character.db.luck }}</td>
-        </tr>
-        <tr>
-          <td class="info">Stamina</td>
-          <td class="info">{{ character.db.stamina }}</td>
-          <td class="info">Composure</td>
-          <td class="info">{{ character.db.composure }}</td>
-          <td class="info">Wits</td>
-          <td class="info">{{ character.db.wits }}</td>
-          <td class="info">Willpower</td>
-          <td class="info">{{ character.db.willpower }}</td>
-        </tr>
-      </tbody>
-    </table>
+      {% endfor %}
+      {% endif %}
+      {% if additional_notes and request.user.is_staff %}
+        <h2 class="text-center">More GM Notes</h2>
+          {% for note in additional_notes %}
+            {{ note.gm_notes }}
+          {% endfor %}
+      {% endif %}
+      <style>
+      td { text-align:center }
+	    th { text-align:center}
+      </style>
 
-    <h2 class="text-center">Skills</h2>
-    <ul class="list-inline text-center">
-      {% for skill,value in character.db.skills.items %}
-        <li class="text-center"><b>{{ skill }}:</b> {{ value }}</li>
-      {% empty %}
-        <li>This character has no skills yet.</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-	<!-- Until these are replaced by new comment system
-    <h2>Comments</h2>
-    <ul>
-      {% for commenter,commentlist in character.db.comments.items %}
-        <li><b>{{ commenter|capfirst }}</b> wrote:</li>
-        {% for entry in commentlist %}
-          <blockquote>{{ entry.header }} : <q>{{ entry.message }}</q></blockquote>
+      <table class="table table-bordered">
+        <caption><h2 class="text-center">Stats</h2></caption>
+        <thead>
+          <tr>
+            <th width="20%" class="success">Physical</th>
+            <th width="10%" class="success">Value</th>
+            <th width="20%" class="success">Social</th>
+            <th width="10%" class="success">Value</th>
+            <th width="20%" class="success">Mental</th>
+            <th width="10%" class="success">Value</th>
+            <th width="20%" class="success">Special</th>
+            <th width="10%" class="success">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="info">Strength</td>
+            <td class="info">{{ character.db.strength }}</td>
+            <td class="info">Charm</td>
+            <td class="info">{{ character.db.charm }}</td>
+            <td class="info">Intellect</td>
+            <td class="info">{{ character.db.intellect }}</td>
+            <td class="info">Mana</td>
+            <td class="info">{{ character.db.mana }}</td>
+          </tr>
+          <tr>
+            <td class="info">Dexterity</td>
+            <td class="info">{{ character.db.dexterity }}</td>
+            <td class="info">Command</td>
+            <td class="info">{{ character.db.command }}</td>
+            <td class="info">Perception</td>
+            <td class="info">{{ character.db.perception }}</td>
+            <td class="info">Luck</td>
+            <td class="info">{{ character.db.luck }}</td>
+          </tr>
+          <tr>
+            <td class="info">Stamina</td>
+            <td class="info">{{ character.db.stamina }}</td>
+            <td class="info">Composure</td>
+            <td class="info">{{ character.db.composure }}</td>
+            <td class="info">Wits</td>
+            <td class="info">{{ character.db.wits }}</td>
+            <td class="info">Willpower</td>
+            <td class="info">{{ character.db.willpower }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 class="text-center">Skills</h2>
+      <ul class="list-inline text-center">
+        {% for skill,value in character.db.skills.items %}
+          <li class="text-center"><b>{{ skill }}:</b> {{ value }}</li>
         {% empty %}
-          No comments.<br>
+          <li>This character has no skills yet.</li>
         {% endfor %}
-      {% empty %}
-        No comments left for {{ character.key }} yet.
-      {% endfor %}
-    </ul>
-    {% if can_comment %}
-      <form action="{% url 'character:comment' character.id %}" method="post">
-      {% csrf_token %}
-      <textarea name="comment" rows="4" cols="50" placeholder="Type IC Comment Here"></textarea>
-      <br><input type="submit" value="Submit Comment">
-      </form>
+      </ul>
     {% endif %}
-	-->
+
     <div class="row">
         <div class="col-md-4 text-center">
             <h1 class="text-center"><a href="{% url 'character:gallery' character.id %}"><span class="label label-primary">Gallery</span></a></h1>
@@ -219,6 +203,6 @@
         </div>
 
     </div>
-    
+
  </div>
   {% endblock %}
