@@ -419,7 +419,7 @@ class CmdPlots(ArxCommand):
     def make_plot_pitch(self):
         """Creates a ticket about a plot idea"""
         try:
-            name, summary, desc, gm_notes = self.lhs.split("/")
+            name, summary, desc, gm_notes = self.lhs.split("/", 3)
         except ValueError:
             raise CommandError("You must provide a name, a one-line summary, desc, and notes for GMs separated by '/'.")
         parent_plot = None
