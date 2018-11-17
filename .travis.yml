@@ -8,6 +8,7 @@ install:
   - cd $TRAVIS_BUILD_DIR
   - mkdir server/logs
   - pip install -r requirements.txt
+  - find . -name \*.pyc -delete
 script:
   - evennia migrate --settings=travis_settings
   - evennia test --settings=travis_settings .
