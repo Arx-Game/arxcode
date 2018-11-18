@@ -9,6 +9,8 @@ from . import builder
 from server.utils.arx_utils import inform_staff
 import random
 from typeclasses.npcs import npc_types
+from server.utils.picker import WeightedPicker
+import datetime
 
 
 class Monster(SharedMemoryModel):
@@ -36,6 +38,7 @@ class Monster(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=False, null=False)
     plural_name = models.CharField(max_length=40, blank=True, null=True)
+    weight_spawn = models.PositiveSmallIntegerField(default=10)
     description = models.TextField(blank=False, null=False)
     spawn_message = models.TextField(blank=True, null=True)
     difficulty = models.PositiveSmallIntegerField(default=5, blank=False, null=False)
@@ -54,9 +57,9 @@ class Monster(SharedMemoryModel):
     weight_no_drop = models.PositiveSmallIntegerField(default=10,
                                                       help_text='The weight value to use for No Drop in drop '
                                                                 'calculations.')
-    weight_trinket = models.PositiveSmallIntegerField(default=1,
+    weight_trinket = models.PositiveSmallIntegerField(default=0,
                                                       help_text='The weight value to use for Trinkets')
-    weight_weapon = models.PositiveSmallIntegerField(default=1,
+    weight_weapon = models.PositiveSmallIntegerField(default=0,
                                                      help_text='The weight value to use for Weapons')
 
     instances = models.ManyToManyField('objects.ObjectDB', related_name='monsters')
@@ -82,10 +85,14 @@ class Monster(SharedMemoryModel):
                 result = create.create_object(key=mob_name, typeclass=self.BOSS_TYPECLASS)
             self.instances.add(result)
 
+        if self.npc_type == self.BOSS:
+            result.db.boss_rating = self.boss_rating
+
         result.setup_npc(self.npc_template, self.threat_rating, quantity, sing_name=self.name,
                          plural_name=self.plural_name or self.name)
         result.name = mob_name
         result.db.monster_id = self.id
+        result.db.desc = self.description
 
         if self.spawn_message:
             location.msg_contents(self.spawn_message)
@@ -96,39 +103,25 @@ class Monster(SharedMemoryModel):
         if location is None:
             return
 
-        values = {
-            0: None
-        }
-        current_value = self.weight_no_drop
-
         haven = None
         if hasattr(location, 'shardhaven'):
             haven = location.shardhaven
 
+        picker = WeightedPicker()
+
+        picker.add_option(None, self.weight_no_drop)
+
         if haven:
             if self.weight_trinket > 0:
-                values[current_value] = "trinket"
-                current_value += self.weight_trinket
+                picker.add_option("trinket", self.weight_trinket)
 
             if self.weight_weapon > 0:
-                values[current_value] = "weapon"
-                current_value += self.weight_weapon
+                picker.add_option("weapon", self.weight_trinket)
 
         for loot in self.drops.all():
-            values[current_value] = loot.material
-            current_value += loot.weight
+            picker.add_option(loot.material, loot.weight)
 
-        picker = random.randint(0, current_value)
-        last_value = 0
-        result = None
-        for key in sorted(values.keys()):
-            if key >= picker:
-                result = values[last_value]
-                continue
-            last_value = key
-
-        if not result:
-            result = values[values.keys()[-1]]
+        result = picker.pick()
 
         if result:
             final_loot = None
@@ -267,8 +260,28 @@ class Shardhaven(SharedMemoryModel):
     taint_level = models.PositiveSmallIntegerField(default=1, help_text='How much abyssal taint does this shardhaven '
                                                                         'have, on a scale of 1 to 10.')
 
+    weight_no_monster = models.PositiveSmallIntegerField(default=40, verbose_name="No Spawn Weight")
+    weight_no_monster_backtrack = models.PositiveSmallIntegerField(default=100,
+                                                                   verbose_name="No Spawn Weight on Backtrack")
+    weight_boss_monster = models.PositiveSmallIntegerField(default=5, verbose_name="Boss Spawn Weight")
+    weight_mook_monster = models.PositiveSmallIntegerField(default=5, verbose_name="Mook Spawn Weight")
+
+    weight_no_treasure = models.PositiveSmallIntegerField(default=50, verbose_name="No Treasure Weight")
+    weight_no_treasure_backtrack = models.PositiveSmallIntegerField(default=50, verbose_name="No Treasure Weight on Backtrack")
+    weight_trinket = models.PositiveSmallIntegerField(default=5, verbose_name="Trinket Weight")
+    weight_weapon = models.PositiveSmallIntegerField(default=1, verbose_name="Weapon Weight")
+
+    auto_combat = models.BooleanField(default=False, verbose_name="Manage Combat Automatically")
+
     def __str__(self):
         return self.name or "Unnamed Shardhaven (#%d)" % self.id
+
+    @property
+    def entrance(self):
+        if self.layout is None:
+            return None
+
+        return self.layout.entrance
 
 
 class ShardhavenDiscovery(SharedMemoryModel):
@@ -350,26 +363,33 @@ class ShardhavenObstacle(SharedMemoryModel):
         """
         pass
 
+    @property
+    def options_description(self):
+        result = ""
+        if self.rolls.count > 0:
+            result += "|/You have the following options:|/"
+            counter = 1
+            for roll in self.rolls.all():
+                result += "|/{}: [{}+{}] {}".format(counter, roll.stat, roll.skill, roll.description)
+                counter += 1
+            result += "|/|/Enter the direction followed by the number you choose, such as 'south 1'."
+        return result
+
     def handle_dice_check(self, calling_object, args):
 
         if self.rolls.count() == 0:
-            return True, False, True
+            return True, False, True, False
 
         if not args:
             calling_object.msg(self.description)
-            calling_object.msg("|/You have the following options:")
-            counter = 1
-            for roll in self.rolls.all():
-                calling_object.msg("{}: [{}+{}] {}".format(counter, roll.stat, roll.skill, roll.description))
-                counter += 1
-            calling_object.msg("|/Enter the direction followed by the number you choose, such as 'south 1'.")
-            return False, False, False
+            calling_object.msg(self.options_description)
+            return False, False, False, False
 
         try:
             choice = int(args)
         except ValueError:
             calling_object.msg("Please provide a number from 1 to {}".format(self.rolls.count()))
-            return False, False, False
+            return False, False, False, False
 
         roll = self.rolls.all()[choice - 1]
         result = do_dice_check(caller=calling_object, stat=roll.stat, skill=roll.skill, difficulty=roll.difficulty)
@@ -379,7 +399,8 @@ class ShardhavenObstacle(SharedMemoryModel):
 
             message = roll.success_msg.replace("{name}", calling_object.key)
             calling_object.location.msg_contents(message)
-            return True, roll.override, True
+            return True, roll.override, \
+                True, roll.pass_instantly or not (self.obstacle_type != ShardhavenObstacle.ANYONE and roll.override)
         else:
             if roll.personal_failure_msg:
                 calling_object.msg(roll.personal_failure_msg)
@@ -393,13 +414,17 @@ class ShardhavenObstacle(SharedMemoryModel):
                 if roll.damage_splash:
                     for testobj in calling_object.location.contents:
                         if testobj != calling_object and (testobj.has_player or
-                                                          (hasattr(testobj, 'is_character') and testobj.is_character)):
+                                                          (hasattr(testobj, 'is_character') and testobj.is_character))\
+                                and not testobj.check_permstring("builders"):
                             targets.append(testobj)
                     random.shuffle(targets)
                     if len(targets) > 1:
                         targets = targets[:random.randint(1,len(targets) - 1)]
                         if calling_object not in targets:
                             targets.append(calling_object)
+
+                for target in targets:
+                    calling_object.location.msg_contents("{} is injured!".format(target.name))
 
                 from typeclasses.scripts.combat.attacks import Attack
                 attack = Attack(targets=targets, affect_real_dmg=True, damage=roll.damage_amt,
@@ -410,34 +435,31 @@ class ShardhavenObstacle(SharedMemoryModel):
                 except combat_settings.CombatError as err:
                     inform_staff("{} broke combat failing an obstacle check in a Shardhaven: {}"
                                  .format(calling_object.name, str(err)))
-            return False, False, True
+            return False, False, True, False
 
     def handle_clue_check(self, calling_object, require_all):
 
         calling_object.msg(self.description + "|/")
 
+        clue_discoveries = calling_object.roster.clue_discoveries
+
         for clue in self.clues.all():
             if require_all:
-                if clue.clue not in calling_object.roster.discovered_clues:
+                if clue_discoveries.filter(clue=clue.clue).count() == 0:
                     calling_object.msg("You lack the knowledge to pass this obstacle.")
 
                     if self.rolls.count() > 0:
-                        calling_object.msg("|/However, you have other options:|/")
-                        counter = 1
-                        for roll in self.rolls.all():
-                            calling_object.msg("{}: [{}+{}] {}".format(counter, roll.stat, roll.skill, roll.description))
-                            counter += 1
-                        calling_object.msg("|/Enter the direction followed by the number you choose, such as 'south 1'.")
-                        return False, False, False
+                        calling_object.msg(self.options_description)
+                        return False, False, False, False
 
-                    return False, False, True
+                    return False, False, True, False
             else:
-                if clue.clue in calling_object.roster.discovered_clues:
+                if clue_discoveries.filter(clue=clue.clue).count() > 0:
                     calling_object.msg("Your knowledge of \"{}\" allows you to pass.".format(clue.clue.name))
                     if self.clue_success:
                         message = self.clue_success.replace("{name}", calling_object.key)
                         calling_object.location.msg_contents(message)
-                    return True, False, True
+                    return True, False, True, False
 
         if not require_all:
             calling_object.msg("You lack the knowledge to pass this obstacle.")
@@ -449,15 +471,15 @@ class ShardhavenObstacle(SharedMemoryModel):
                     calling_object.msg("{}: [{}+{}] {}".format(counter, roll.stat, roll.skill, roll.description))
                     counter += 1
                 calling_object.msg("|/Enter the direction followed by the number you choose, such as 'south 1'.")
-                return False, False, False
+                return False, False, False, False
 
-            return False, False, True
+            return False, False, True, False
 
         if self.clue_success:
             message = self.clue_success.replace("{name}", calling_object.key)
             calling_object.location.msg_contents(message)
 
-        return True, False, True
+        return True, False, True, False
 
     def handle_obstacle(self, calling_object, args=None):
         if self.obstacle_type == ShardhavenObstacle.PASS_CHECK:
@@ -499,6 +521,8 @@ class ShardhavenObstacleRoll(SharedMemoryModel):
     damage_splash = models.BooleanField(default=False, verbose_name="Should damage hit others in the party too?")
     damage_reason = models.CharField(blank=True, null=True, max_length=255,
                                      verbose_name="Short description of damage, for the damage system.")
+    pass_instantly = models.BooleanField(default=False,
+                                         verbose_name="Should a player immediately pass through the exit on success?")
 
 
 class ShardhavenObstacleClue(SharedMemoryModel):
@@ -521,6 +545,7 @@ class ShardhavenLayoutExit(SharedMemoryModel):
 
     obstacle = models.ForeignKey(ShardhavenObstacle, related_name='+', null=True, blank=True)
     passed_by = models.ManyToManyField('objects.ObjectDB', blank=True)
+    override = models.BooleanField(default=False)
 
     def __str__(self):
         string = str(self.layout) + " Exit: "
@@ -591,6 +616,9 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
     description = models.TextField(blank=True, null=True, help_text='A description to use for this square instead of '
                                                                     'the generated one.')
 
+    visitors = models.ManyToManyField('objects.ObjectDB', related_name='+')
+    last_visited = models.DateTimeField(blank=True, null=True)
+
     def __str__(self):
         return "{} ({},{})".format(self.layout, self.x_coord, self.y_coord)
 
@@ -599,6 +627,24 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
 
     def __unicode__(self):
         return unicode(str(self))
+
+    def visit(self, character):
+        if character not in self.visitors.all():
+            self.visitors.add(character)
+
+        self.last_visited = datetime.datetime.now()
+
+    def has_visited(self, character):
+        return character in self.visitors.all()
+
+    @property
+    def visited_recently(self):
+        if not self.last_visited:
+            return False
+
+        now = datetime.datetime.now()
+        delta = now - self.last_visited
+        return delta.total_seconds() < 86400
 
     def create_room(self):
         if self.room:
@@ -611,6 +657,7 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
         room = create.create_object(typeclass='world.exploration.rooms.ShardhavenRoom',
                                     key=namestring)
         room.db.haven_id = self.layout.haven.id
+        room.db.haven_square_id = self.id
 
         if self.description:
             final_description = self.description
@@ -628,10 +675,11 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
         room.db.raw_desc = final_description
         room.db.desc = final_description
 
-        from commands import CmdExplorationRoomCommands
+        from exploration_commands import CmdExplorationRoomCommands
         room.cmdset.add(CmdExplorationRoomCommands())
 
         self.room = room
+        self.save()
         return room
 
     def destroy_room(self):
@@ -662,6 +710,13 @@ class ShardhavenLayout(SharedMemoryModel):
     def __unicode__(self):
         return unicode(str(self))
 
+    @property
+    def entrance(self):
+        if not self.matrix:
+            self.cache_room_matrix()
+
+        return self.matrix[self.entrance_x][self.entrance_y]
+
     def cache_room_matrix(self):
         self.matrix = [[None for y in range(self.height)] for x in range(self.width)]
 
@@ -685,11 +740,32 @@ class ShardhavenLayout(SharedMemoryModel):
         for y in range(self.height):
             for x in range(self.width):
                 if x == self.entrance_x and y == self.entrance_y:
-                    string += "|w*|n"
+                    string += "|w$|n"
                 elif self.matrix[x][y] is None:
                     string += "|[B|B#|n"
                 else:
                     string += " "
+            string += "|n\n"
+
+        return string
+
+    def map_for(self, player):
+        self.cache_room_matrix()
+        string = ""
+        for y in range(self.height):
+            for x in range(self.width):
+                if x == self.entrance_x and y == self.entrance_y:
+                    string += "|w$|n"
+                elif self.matrix[x][y] is None:
+                    string += "|[B|B#|n"
+                elif self.matrix[x][y].has_visited(player):
+                    if self.matrix[x][y].room == player.location:
+                        string += "|w*|n"
+                    else:
+                        string += " "
+                else:
+                    string += "|[B|B#|n"
+
             string += "|n\n"
 
         return string
@@ -702,6 +778,19 @@ class ShardhavenLayout(SharedMemoryModel):
 
         self.cache_room_matrix()
         return self.matrix[self.entrance_x][self.entrance_y].room
+
+    def reset(self):
+        for room_exit in self.exits.all():
+            room_exit.passed_by.clear()
+            room_exit.override = False
+            room_exit.save()
+
+        for room in self.rooms.all():
+            room.visitors.clear()
+            room.last_visited = None
+            room.save()
+            if room.room and room.room.is_typeclass('world.exploration.rooms.ShardhavenRoom'):
+                room.room.reset()
 
     @classmethod
     def new_haven(cls, haven, width=9, height=9):
@@ -744,7 +833,7 @@ class ShardhavenLayout(SharedMemoryModel):
         layout.entrance_y = y
 
         obstacles = ShardhavenObstacle.objects.filter(haven_types__pk=layout.haven_type.id).all()
-        target_difficulty = 30 + (min(layout.haven.difficulty_rating, 4) * 4)
+        target_difficulty = 30 + max(layout.haven.difficulty_rating * 2, 5)
 
         for x in range(width):
             for y in range(height):

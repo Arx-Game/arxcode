@@ -96,6 +96,7 @@ class CombatantStateHandler(object):
         self.mitigation_modifier = 0
         self.damage_modifier = 0
         self.special_roll_modifier = 0
+        self.armor_pierce_modifier = 0
         
         # add defenders/guards
         self.defenders = []  # can be guarded by many

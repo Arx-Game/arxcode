@@ -333,6 +333,15 @@ class CombatHandler(object):
             val += self.char.db.skills.get("survival", 0)
         return val
 
+    @property
+    def armor_pierce_modifier(self):
+        """The value of how much armor we ignore"""
+        val = self.char.db.armor_pierce_modifier or 0
+        val += self.char.boss_rating * 15
+        if self.state:
+            val += self.state.armor_pierce_modifier
+        return val
+
     def toggle_cleave(self, caller=None):
         """Toggles whether we're cleaving or not. Cleave is AE attacking."""
         self.can_cleave = not self.can_cleave
@@ -385,6 +394,7 @@ class CombatHandler(object):
         from .attacks import Attack
         if self.combat:
             kwargs['risk'] = self.combat.ndb.risk
+        kwargs['armor_pierce_bonus'] = self.armor_pierce_modifier + kwargs.get('armor_pierce_bonus', 0)
         attack = Attack(*args, **kwargs)
         is_riposte = kwargs.get("is_riposte", False)
         try:

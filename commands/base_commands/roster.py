@@ -1154,7 +1154,7 @@ class CmdSheet(ArxPlayerCommand):
         if not action_num:
             table = prettytable.PrettyTable(["{wID", "{wSubmitting Player", "{wTopic{n", "{wCrisis{n"])
             for ob in actions:
-                table.add_row([str(ob.id), str(ob.author), str(ob.topic), str(ob.crisis)])
+                table.add_row([str(ob.id), str(ob.author), str(ob.topic), str(ob.plot)])
             # send table to player and return
             self.msg("%s" % table)
             return

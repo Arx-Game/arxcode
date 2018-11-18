@@ -160,18 +160,18 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
         super(CmdViewCrisis, self).list_crises()
         self.msg("{wYour pending actions:{n")
         table = EvTable("{w#{n", "{wCrisis{n")
-        current_actions = [ob for ob in self.current_actions if ob.crisis] + [
-            ass.crisis_action for ass in self.assisted_actions.exclude(
-                crisis_action__status__in=(PlotAction.PUBLISHED, PlotAction.CANCELLED)) if ass.crisis_action.crisis]
+        current_actions = [ob for ob in self.current_actions if ob.plot] + [
+            ass.plot_action for ass in self.assisted_actions.exclude(
+                plot_action__status__in=(PlotAction.PUBLISHED, PlotAction.CANCELLED)) if ass.plot_action.plot]
         for ob in current_actions:
-            table.add_row(ob.id, ob.crisis)
+            table.add_row(ob.id, ob.plot)
         self.msg(table)
-        past_actions = [ob for ob in self.caller.past_participated_actions if ob.crisis]
+        past_actions = [ob for ob in self.caller.past_participated_actions if ob.plot]
         if past_actions:
             table = EvTable("{w#{n", "{wCrisis{n")
             self.msg("{wYour past actions:{n")
             for ob in past_actions:
-                table.add_row(ob.id, ob.crisis)
+                table.add_row(ob.id, ob.plot)
             self.msg(table)
 
     def get_action(self, get_all=False, get_assisted=False, return_assistant=False):

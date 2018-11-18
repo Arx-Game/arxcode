@@ -1,11 +1,43 @@
 from commands.base import ArxCommand
 from . import builder
 from .loot import LootGenerator
-from models import Shardhaven, ShardhavenLayout, GeneratedLootFragment
+from models import Shardhaven, ShardhavenLayout, GeneratedLootFragment, Monster
 from evennia.commands.cmdset import CmdSet
 from evennia.utils import create
 from server.conf import settings
 import random
+
+
+class CmdTestMonsterBuild(ArxCommand):
+    """
+    This command will spawn in test monsters from the
+    shardhaven tables.
+
+    Usage:
+      @mh_testbuild/spawn <monster ID>
+    """
+
+    key = "@mh_testbuild"
+    locks = "cmd:perm(Admins)"
+
+    def func(self):
+        if "spawn" in self.switches:
+
+            try:
+                monster_id = int(self.lhs)
+                monster = Monster.objects.get(id=monster_id)
+            except ValueError:
+                self.msg("You need to provide an integer value!")
+                return
+            except Monster.DoesNotExist, Monster.MultipleObjectsReturned:
+                self.msg("That doesn't appear to be a valid monster!")
+                return
+
+            mob = monster.create_instance(self.caller.location)
+            self.msg("Spawned in " + mob.name)
+            return
+
+        self.msg("Pick a valid switch!")
 
 
 class CmdTestShardhavenBuild(ArxCommand):
@@ -18,6 +50,8 @@ class CmdTestShardhavenBuild(ArxCommand):
       @sh_testbuild/layout <shardhaven ID>
       @sh_testbuild/showlayout <shardhaven ID>
       @sh_testbuild/instanciate <shardhaven ID>
+      @sh_testbuild/entrance <shardhaven ID>
+      @sh_testbuild/reset <shardhaven ID>
       @sh_testbuild/destroy <shardhaven ID>
     """
 
@@ -111,7 +145,49 @@ class CmdTestShardhavenBuild(ArxCommand):
             except ArxRoom.DoesNotExist:
                 pass
 
-            self.msg("The entrance is at #" + str(room.id))
+            self.msg("Done. The entrance is at #" + str(room.id))
+            return
+
+        if "entrance" in self.switches:
+
+            try:
+                haven = Shardhaven.objects.get(id=int(self.args))
+            except ValueError:
+                self.msg("You need to provide an integer ID!")
+                return
+            except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
+                self.msg("That doesn't appear to be an ID matching a Shardhaven!")
+                return
+
+            layouts = ShardhavenLayout.objects.filter(haven=haven)
+            if layouts.count() == 0:
+                self.msg("That shardhaven doesn't appear to have a layout!")
+                return
+            layout = layouts[0]
+
+            self.msg("The entrance to {} is #{}.".format(haven.name, haven.entrance.room.id))
+            return
+
+        if "reset" in self.switches:
+
+            try:
+                haven = Shardhaven.objects.get(id=int(self.args))
+            except ValueError:
+                self.msg("You need to provide an integer ID!")
+                return
+            except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
+                self.msg("That doesn't appear to be an ID matching a Shardhaven!")
+                return
+
+            layouts = ShardhavenLayout.objects.filter(haven=haven)
+            if layouts.count() == 0:
+                self.msg("That shardhaven doesn't appear to have a layout!")
+                return
+            layout = layouts[0]
+
+            self.msg("Resetting layout for " + layout.haven.name + ".")
+            layout.reset()
+            self.msg("Done.")
             return
 
         if "destroy" in self.switches:
@@ -224,6 +300,7 @@ class CmdTestLoot(ArxCommand):
 class CmdExplorationCmdSet(CmdSet):
 
     def at_cmdset_creation(self):
+        self.add(CmdTestMonsterBuild())
         self.add(CmdTestShardhavenBuild())
         self.add(CmdTestLoot())
 
@@ -246,6 +323,28 @@ class CmdExplorationHome(ArxCommand):
         self.caller.msg("(You cannot use the 'home' command while in a shardhaven.)|/")
 
 
+class CmdExplorationMap(ArxCommand):
+
+    key = "map"
+    locks = "cmd:all()"
+
+    def func(self):
+        if not hasattr(self.caller.location, "shardhaven"):
+            self.msg("You aren't in a shardhaven!  How did this happen?")
+            return
+
+        haven = self.caller.location.shardhaven
+        if not haven:
+            self.msg("You aren't in a shardhaven!  How did this happen?")
+            return
+
+        header = "|/{}'s map of {}|/".format(self.caller.name, haven.name).upper()
+        self.msg(header)
+        map = haven.layout.map_for(self.caller)
+        self.msg(map)
+        self.msg("|/Key:|/  |w*|n - Your location|/  |w$|n - Entrance|/")
+
+
 class CmdExplorationRoomCommands(CmdSet):
 
     # We want to override the CharacterCmdSet's 'home' command.
@@ -253,3 +352,4 @@ class CmdExplorationRoomCommands(CmdSet):
 
     def at_cmdset_creation(self):
         self.add(CmdExplorationHome)
+        self.add(CmdExplorationMap)

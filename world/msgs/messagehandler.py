@@ -103,8 +103,10 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         from datetime import datetime
         if not vision_obj:
             vision_obj = Clue(desc=msg, name=name, rating=25, author=sender.roster, clue_type=Clue.VISION)
-        ClueDiscovery.objects.create(clue=vision_obj, character=self.obj.roster, date=datetime.now(),
-                                     discovery_method="original receiver")
+            vision_obj.save()
+        if vision_obj not in self.obj.roster.clues.all():
+            ClueDiscovery.objects.create(clue=vision_obj, character=self.obj.roster, date=datetime.now(),
+                                         discovery_method="original receiver")
         self._visions = None  # clear cache
         return vision_obj
 
@@ -207,5 +209,8 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         from server.utils.prettytable import PrettyTable
         table = PrettyTable(["{w#", "{wName", "{wDate:"])
         for ob in getattr(self, attr):
-            table.add_row([ob.clue.id, ob.name, ob.date.strftime("%x %X")])
+            name = ob.name
+            if len(name) > 35:
+                name = name[:32] + "..."
+            table.add_row([ob.clue.id, name, ob.date.strftime("%x")])
         return str(table)

@@ -375,6 +375,26 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
         return False
 
     @property
+    def reverse_exit(self):
+        entrances = [ob for ob in self.destination.exits if ob.destination == self.location]
+        if not entrances:
+            return "nowhere"
+        return entrances[0]
+
+    def msg(self, text=None, from_obj=None, options=None, **kwargs):
+        options = options or {}
+        if options.get('shout', False):
+            other_options = options.copy()
+            from_dir = options.get('from_dir', 'from nearby')
+            new_from_dir = "from the %s" % str(self.reverse_exit)
+            if hasattr(text, '__iter__'):
+                text = text[0]
+            text = text.replace(from_dir, new_from_dir)
+            del other_options['shout']
+            other_options['from_dir'] = new_from_dir
+            self.destination.msg_contents(text, exclude=None, from_obj=from_obj, options=other_options, **kwargs)
+
+    @property
     def haven_exit(self):
         if not self.db.haven_exit_id:
             return None
@@ -394,8 +414,13 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
         if self.haven_exit and self.haven_exit.obstacle:
             result += self.haven_exit.obstacle.description
 
+            if self.haven_exit.obstacle.clues.count() > 0:
+                result += "|/|/This obstacle can be passed if you have the correct knowledge."
+
             if self.passable(pobject):
-                result += "|/|/However, you have already addressed this obstacle, and may pass."
+                result += "|/|/However, someone has already addressed this obstacle, and you may pass."
+            else:
+                result += "|/" + self.haven_exit.obstacle.options_description
 
         else:
             result += "The way seems clear ahead."
@@ -406,7 +431,7 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
         if not self.haven_exit or not self.haven_exit.obstacle:
             return True
 
-        if self.db.override:
+        if self.haven_exit.override:
             return True
 
         obstacle = self.haven_exit.obstacle
@@ -452,25 +477,44 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
                     character.msg("You're in combat, and cannot move rooms again unless you flee!")
                     return False
 
-        attempts = self.db.attempts or {}
-        if character.id not in attempts:
-            return True
+        if character.ndb.followers and len(character.ndb.followers) > 0:
+            if not self.passable(character):
+                character.msg("You can't have people follow you through an obstacle that you haven't tried yet!")
+                return False
 
-        timestamp = attempts[character.id]
-        delta = time.time() - timestamp
-        if delta < 180:
-            from math import trunc
-            character.msg("You can't attempt to pass this obstacle again for {} seconds.".format(trunc(180 - delta)))
-            return False
+            can_pass = True
+            for follower in character.ndb.followers:
+                if not self.passable(follower):
+                    can_pass = False
+            if not can_pass:
+                character.msg("At least one of your followers hasn't passed this obstacle!")
+                return False
+
+        if not self.passable(character):
+            attempts = self.db.attempts or {}
+            if character.id not in attempts:
+                return True
+
+            timestamp = attempts[character.id]
+            delta = time.time() - timestamp
+            if delta < 180:
+                from math import trunc
+                character.msg("You can't attempt to pass this obstacle again for {} seconds.".format(trunc(180 - delta)))
+                return False
 
         return True
+
+    @property
+    def direction_name(self):
+        first = self.key.split(" ")[0]
+        return first.lower()
 
     def at_traverse(self, traversing_object, target_location, key_message=True, special_entrance=None, quiet=False,
                     allow_follow=True, arguments=None):
 
         if not self.passable(traversing_object):
             import time
-            result, override_obstacle, attempted = self.haven_exit.obstacle.handle_obstacle(traversing_object, args=arguments)
+            result, override_obstacle, attempted, instant = self.haven_exit.obstacle.handle_obstacle(traversing_object, args=arguments)
             if attempted:
                 attempts = self.db.attempts or {}
                 attempts[traversing_object.id] = time.time()
@@ -479,13 +523,58 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             if result:
                 self.haven_exit.passed_by.add(traversing_object)
                 if override_obstacle:
-                    self.db.override = True
+                    self.haven_exit.override = True
+                    self.haven_exit.save()
+                if not instant:
+                    return
             else:
                 return
 
-        return super(ShardhavenInstanceExit, self).at_traverse(traversing_object, target_location,
-                                                               key_message=key_message,
-                                                               special_entrance=special_entrance,
-                                                               quiet=quiet, allow_follow=allow_follow)
+        self.location.msg_contents("{} heads {}.".format(traversing_object.name, self.direction_name))
+
+        super(ShardhavenInstanceExit, self).at_traverse(traversing_object, target_location,
+                                                        key_message=key_message,
+                                                        special_entrance=special_entrance,
+                                                        quiet=quiet, allow_follow=allow_follow)
+
+        if traversing_object and traversing_object.ndb.followers and allow_follow:
+            invalid_followers = []
+            valid_followers = []
+            leader = None
+            for follower in traversing_object.ndb.followers:
+                # only move followers who are conscious
+                if not follower.conscious:
+                    invalid_followers.append(follower)
+                    continue
+                # only move followers who were in same square
+                if follower.location == self.location:
+                    fname = follower.ndb.following
+                    if follower.ndb.followers and fname in follower.ndb.followers:
+                        # this would be an infinite loop
+                        invalid_followers.append(follower)
+                        continue
+                    if fname == traversing_object:
+                        follower.msg("You follow %s." % fname.name)
+                    else:  # not marked as following us
+                        invalid_followers.append(follower)
+                        continue
+                    # followers won't see the message about the door being locked
+                    self.at_traverse(follower, self.destination, key_message=False, quiet=True)
+                    valid_followers.append(follower.name)
+                    leader = fname
+                else:
+                    invalid_followers.append(follower)
+            # make all characters who could not follow stop following us
+            for invalid in invalid_followers:
+                if invalid.ndb.following == traversing_object:
+                    invalid.stop_follow()
+                else:
+                    traversing_object.ndb.followers.remove(invalid)
+            if valid_followers:
+                verb = "arrive" if len(valid_followers) > 1 else "arrives"
+                fol_msg = "%s %s, following %s." % (", ".join(valid_followers), verb, leader.name)
+                leave_msg = fol_msg.replace("arrive", "leave")
+                self.destination.msg_contents(fol_msg)
+                self.location.msg_contents(leave_msg)
 
 

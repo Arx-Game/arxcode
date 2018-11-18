@@ -25,7 +25,7 @@ class Readable(Object):
         self.db.do_not_format_desc = True
         self.at_init()
 
-    def at_after_move(self, source_location):
+    def at_after_move(self, source_location, **kwargs):
         if self.db.num_instances > 1 and not self.db.written:
             self.setup_multiname()
         location = self.location
@@ -66,7 +66,6 @@ class Readable(Object):
         """A check for this object's plot connections."""
         return not self.is_plot_related
 
-    @property
     def do_junkout(self, caller):
         """Junks us as if we were a crafted item."""
         caller.msg("You destroy %s." % self)

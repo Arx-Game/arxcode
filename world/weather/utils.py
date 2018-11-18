@@ -8,6 +8,7 @@ from evennia.server.models import ServerConfig
 from evennia.server.sessionhandler import SESSION_HANDLER
 from evennia.utils import logger
 from random import randint
+from server.utils.picker import WeightedPicker
 
 
 def weather_emits(weathertype, season=None, time=None, intensity=5):
@@ -90,23 +91,12 @@ def pick_emit(weathertype, season=None, time=None, intensity=None):
     if emits.count() == 1:
         return emits[0].text
 
-    values = {}
-    current_value = 0
+    picker = WeightedPicker()
+
     for emit in emits:
-        values[current_value] = emit
-        current_value += emit.weight
+        picker.add_option(emit, emit.weight)
 
-    picker = randint(0, current_value)
-    last_value = 0
-    result = None
-    for key in sorted(values.keys()):
-        if key >= picker:
-            result = values[last_value]
-            continue
-        last_value = key
-
-    if not result:
-        result = values[sorted(values.keys())[-1]]
+    result = picker.pick()
 
     return result.text
 
@@ -216,23 +206,11 @@ def random_weather(season='fall'):
             total_weight += emit.weight
 
     # Create our picker list
-    values = {}
-    tally = 0
+    picker = WeightedPicker()
     for k, v in weathers.iteritems():
-        values[tally] = k
-        tally += v
+        picker.add_option(k, v)
 
-    picker = randint(0, tally)
-    result = None
-    last_value = 0
-    for key in sorted(values.keys()):
-        if key >= picker:
-            result = values[last_value]
-            continue
-        last_value = key
-
-    if not result:
-        result = values[sorted(values.keys())[-1]]
+    result = picker.pick()
 
     weather = WeatherType.objects.get(pk=result)
     return weather

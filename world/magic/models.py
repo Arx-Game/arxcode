@@ -2,6 +2,7 @@ from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.utils.create import create_object
 from django.db import models
 import random
+from server.utils.picker import WeightedPicker
 
 
 class Affinity(SharedMemoryModel):
@@ -44,7 +45,15 @@ class AlchemicalMaterial(SharedMemoryModel):
         result = create_object(key=self.name, typeclass="world.magic.materials.MagicMaterial")
         result.db.desc = self.description
         result.db.alchemical_material = self.id
-        result.db.quality_level = random.randint(8,11)
+
+        quality_picker = WeightedPicker()
+        quality_picker.add_option(6, 30)
+        quality_picker.add_option(7, 30)
+        quality_picker.add_option(8, 10)
+        quality_picker.add_option(9, 5)
+        quality_picker.add_option(10, 1)
+
+        result.db.quality_level = quality_picker.pick()
         return result
 
     def __repr__(self):

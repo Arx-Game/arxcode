@@ -2021,34 +2021,41 @@ class Plot(SharedMemoryModel):
 
     @property
     def beats(self):
-        """Returns updates that have descs written, so they've already been completed"""
+        """Returns updates that have descs written, meaning they aren't pending/future events."""
         return self.updates.exclude(desc="")
 
-    def display(self):
-        """Returns string display for the plot"""
-        msg = "\n{wName:{n %s" % self.name
+    def display_base(self):
+        """Common plot display information"""
+        msg = "\n|w[%s|w]{n" % self.name
+        if self.rating:
+            msg += " |w(%s Rating)|n" % self.rating
         if self.time_remaining:
-            msg += "\n{yTime Remaining:{n %s" % str(self.time_remaining).split(".")[0]
-        msg += "\n{wDescription:{n %s" % self.desc
+            msg += " {yTime Remaining:{n %s" % str(self.time_remaining).split(".")[0]
+        msg += "\n%s" % self.desc
+        return msg
+
+    def display(self):
+        """Returns string display for the plot and its latest update/beat"""
+        msg = self.display_base()
         if self.orgs.all():
             msg += "\n{wOrganizations affected:{n %s" % ", ".join(str(ob) for ob in self.orgs.all())
         if self.required_clue:
             msg += "\n{wRequired Clue:{n %s" % self.required_clue
-        rating = self.rating
-        if rating:
-            msg += "\n{wCurrent Rating:{n %s" % self.rating
-        try:
-            # updates with no desc set are placeholders for events that haven't taken place, so we don't include them
-            beats = list(self.beats)
+        cast_list = self.cast_list
+        msg += ("\n%s" % cast_list) if cast_list else ""
+        beats = list(self.beats)
+        if beats:
             last = beats[-1]
-            if self.usage == self.PLAYER_RUN_PLOT:
-                noun = "Beat"
-                msg += "\n{w%s IDs:{n %s" % (noun, ", ".join(str(ob.id) for ob in beats))
-            else:
-                noun = "Update"
-            msg += "\n{wLatest %s:{n\n%s" % (noun, last.desc)
-        except (AttributeError, IndexError):
-            pass
+            if self.usage in (self.PLAYER_RUN_PLOT, self.GM_PLOT):
+                msg += "\n{wBeat IDs:{n %s" % ", ".join(str(ob.id) for ob in beats)
+            msg += "\n%s" % last.display_beat()
+        return msg
+
+    def display_timeline(self):
+        """Base plot description plus all beats/updates displays"""
+        msg = self.display_base() + "\n"
+        beats = list(self.beats)
+        msg += "\n".join([ob.display_beat() for ob in beats])
         return msg
 
     def check_taken_action(self, dompc):
@@ -2135,12 +2142,14 @@ class Plot(SharedMemoryModel):
         dompc = user.Dominion
         return self.finished_actions.filter(Q(dompc=dompc) | Q(assistants=dompc)).order_by('-date_submitted')
 
-    def add_dompc(self, dompc, status):
+    def add_dompc(self, dompc, status=None, recruiter=None):
         """Invites a dompc to join the plot."""
         from server.utils.exceptions import CommandError
-        status_types = ("main", "secondary", "extra")
+        status_types = [ob[1].split()[0].lower() for ob in PCPlotInvolvement.CAST_STATUS_CHOICES]
+        del status_types[-1]
+        status = status if status else "main"
         if status not in status_types:
-            raise CommandError("Status must be in: %s" % ", ".join(status_types))
+            raise CommandError("Status must be one of these: %s" % ", ".join(status_types))
         try:
             involvement = self.dompc_involvement.get(dompc_id=dompc.id)
             if involvement.activity_status <= PCPlotInvolvement.INVITED:
@@ -2148,9 +2157,17 @@ class Plot(SharedMemoryModel):
         except PCPlotInvolvement.DoesNotExist:
             involvement = PCPlotInvolvement(dompc=dompc, plot=self)
         involvement.activity_status = PCPlotInvolvement.INVITED
-        involvement.cast_status = status_types.index(status) + 1
+        involvement.cast_status = status_types.index(status)
         involvement.save()
-        dompc.inform("You have been invited to join plot %s." % self)
+        inf_msg = "You have been invited to join plot '%s'" % self
+        inf_msg += (" by %s" % recruiter) if recruiter else ""
+        inf_msg += ". Use 'plots %s' for details, including other participants. " % self.id
+        inf_msg += "To accept this invitation, use the following command: "
+        inf_msg += "plots/accept %s[=<IC description of character's involvement>]." % self.id
+        if recruiter:
+            inf_msg += "\nIf you accept, a small XP reward can be given to %s (and yourself) with: " % recruiter
+            inf_msg += "'plots/rewardrecruiter %s=%s'. For more help see 'help plots'." % (self.id, recruiter)
+        dompc.inform(inf_msg, category="Plot Invite")
 
     @property
     def first_owner(self):
@@ -2158,6 +2175,24 @@ class Plot(SharedMemoryModel):
         owner_inv = self.dompc_involvement.filter(admin_status=PCPlotInvolvement.OWNER).first()
         if owner_inv:
             return owner_inv.dompc
+
+    @property
+    def cast_list(self):
+        """Returns string of the cast's status and admin levels."""
+        role = PCPlotInvolvement
+        cast = self.dompc_involvement.filter(activity_status__lte=role.INVITED).order_by('cast_status')
+        msg = ""
+        status_tier = None
+        for ob in cast:
+            if ob.get_cast_status_display() != status_tier:
+                status_tier = ob.get_cast_status_display()
+                msg += "|w%s:|n\n" % status_tier
+            invited = "|w(Invited) " if ob.activity_status == ob.INVITED else ""
+            msg += "%s|c%s|n" % (invited, ob.dompc)
+            if ob.admin_status > ob.PLAYER:
+                msg += " (%s)" % ob.get_admin_status_display()
+            msg += "\n"
+        return msg
 
 
 class OrgPlotInvolvement(SharedMemoryModel):
@@ -2201,10 +2236,7 @@ class PCPlotInvolvement(SharedMemoryModel):
         return msg
 
     def display_plot_involvement(self):
-        """Display method for PCPlotInvolvement"""
-        msg = self.plot.display()
-        msg += "\nYour Involvement: %s" % self.get_modified_status_display()
-        return msg
+        return self.plot.display()
 
     def accept_invitation(self, description=""):
         self.activity_status = self.ACTIVE
@@ -2232,14 +2264,19 @@ class PlotUpdate(SharedMemoryModel):
                                 on_delete=models.SET_NULL)
     search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="plot_updates")
 
+    @property
+    def noun(self):
+        return "Beat" if self.plot.usage == Plot.PLAYER_RUN_PLOT else "Update"
+
     def __str__(self):
-        return "Update %s for %s" % (self.id, self.plot)
+        return "%s #%s for %s" % (self.noun, self.id, self.plot)
 
     def display_beat(self):
         """Return string display of this update/beat"""
-        msg = str(self)
+        msg = "|w[%s|w]|n" % self
         if self.date:
-            msg += "\n{wDate{n %s" % self.date.strftime("%x %X")
+            msg += " {wDate{n %s" % self.date.strftime("%x %X")
+        msg += "\n%s" % self.desc if self.desc else "\nPending %s placeholder." % self.noun
         for attr in ("actions", "events", "emits", "flashbacks"):
             qs = getattr(self, attr).all()
             if qs:

@@ -15,14 +15,16 @@ class TestCrisisCommands(ArxCommandTest):
         self.crisis = Plot.objects.create(name="test crisis", escalation_points=100)
         self.action = self.crisis.actions.create(dompc=self.dompc2, actions="test action", outcome_value=50,
                                                  status=PlotAction.PENDING_PUBLISH)
-        
+
+    @patch('world.dominion.models.datetime')
     @patch("world.dominion.models.inform_staff")
     @patch("world.dominion.models.get_week")
-    def test_cmd_gm_crisis(self, mock_get_week, mock_inform_staff):
+    def test_cmd_gm_crisis(self, mock_get_week, mock_inform_staff, mock_now):
         self.cmd_class = crisis_commands.CmdGMCrisis
         self.caller = self.account
         mock_get_week.return_value = 1
-        self.call_cmd("/create test crisis2/ermagerd headline=test desc", 
+        mock_now.now.return_value = self.fake_datetime
+        self.call_cmd("/create test crisis2/ermagerd headline=test desc",
                       "Crisis created. Make gemits or whatever for it.")
         with patch('server.utils.arx_utils.broadcast_msg_and_post') as mock_msg_and_post:
             from web.character.models import Story, Chapter, Episode
@@ -35,15 +37,17 @@ class TestCrisisCommands(ArxCommandTest):
                                                  'gemit\nGM Notes: test note\nPending actions published: 1\nAlready '
                                                  'published actions for this update: ', post=True,
                                                  subject='Update for test crisis')
-            self.call_cmd("1", "Name: test crisis\nDescription: None\nCurrent Rating: 50\nLatest Update:\ntest gemit")
+            self.call_cmd("1", '[test crisis] (50 Rating)\nNone\n'
+                               '[Update #1 for test crisis] Date 08/27/78 12:08:00\ntest gemit\n'
+                               'Actions: Action by Testaccount2 for test crisis')
             self.call_cmd("/update 1/another test episode/test synopsis=test gemit 2",
                           "You have updated the crisis, creating a new episode called 'another test episode'.")
             mock_msg_and_post.assert_called_with("test gemit 2", self.caller, episode_name="another test episode")
-        
+
     def test_cmd_view_crisis(self):
         self.cmd_class = crisis_commands.CmdViewCrisis
         self.caller = self.account
-        self.call_cmd("1", "Name: test crisis\nDescription: None\nCurrent Rating: 100")
+        self.call_cmd("1", '[test crisis] (100 Rating)\nNone')
 
 
 class TestGeneralDominionCommands(ArxCommandTest):
@@ -57,7 +61,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
         member = org.members.create(player=self.dompc)
         self.cmd_class = general_dominion_commands.CmdWork
         self.caller = self.account
-        self.call(self.cmd_class(), args="", msg="Command does not exist. Please see 'help work'.", 
+        self.call(self.cmd_class(), args="", msg="Command does not exist. Please see 'help work'.",
                   caller=self.caller, cmdstring="task")
         self.call_cmd("", "Must give a name and type of resource.")
         self.call_cmd("asdf, 5", "No match for an org by the name: asdf.")
@@ -127,8 +131,8 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
                               'Name/ID        Involvement \n'
                               'testplot2 (#2) Main Cast')
         self.call_cmd("4", 'No plot found by that ID.')
-        self.call_cmd("1", 'Name: testplot1\nDescription: None\nYour Involvement: Supporting Cast (Owner)')
-        self.call_cmd("2", 'Name: testplot2\nDescription: None\nYour Involvement: Main Cast')
+        self.call_cmd("1", '[testplot1]\nNone\nSupporting Cast:\nTestaccount2 (Owner)')
+        self.call_cmd("2", '[testplot2]\nNone\nMain Cast:\nTestaccount2')
         self.call_cmd("1=1", "No beat found by that ID.")
         beat1 = self.plot1.updates.create(desc="test update")
         self.call_cmd("/createbeat 2=foo", "You lack the required permission for that plot.")
@@ -177,7 +181,8 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/invite 2=testaccount", "That plot has been resolved.")
         self.plot2.resolved = False
         self.call_cmd("/invite 2=testaccount", 'Must provide both a name and a status for invitation.')
-        self.call_cmd("/invite 2=testaccount,foo", 'Status must be in: main, secondary, extra')
+        self.call_cmd("/invite 2=testaccount,foo", 'Status must be one of these: required, main, supporting, '
+                                                   'extra')
         self.call_cmd("/invite 2=testaccount,extra", "You have invited Testaccount to join testplot2.")
         self.call_cmd("/invite 2=testaccount,extra", "They are already invited.")
         self.call_cmd("/rfr 2=argleblargle", "You lack the required permission for that plot.")
@@ -214,19 +219,30 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
                                                          'You have both gained xp.')
         self.assertEqual(self.char2.db.xp, recruiter_xp)
         self.assertEqual(self.char1.db.xp, plot_commands.CmdPlots.recruited_xp)
+        self.call_cmd("/addclue 2=asdf", 'You must include a clue ID and notes of how the clue is related to the plot.')
+        clue2 = Clue.objects.create(name="testclue")
+        clue2.discoveries.create(character=self.roster_entry)
+        self.call_cmd("/addclue 2=2/foo", "You have associated clue 'testclue' with plot 'testplot2'.")
+        self.call_cmd("/add/clue 2=2/so connected", 'That clue is already related to that plot.')
+        self.assertEqual(clue2.plot_involvement.get(plot=self.plot2).gm_notes, "foo")
+        rev = Revelation.objects.create(name="testrev")
+        rev.discoveries.create(character=self.roster_entry)
+        self.call_cmd("/addrevelation 2=1/foo", "You have associated revelation 'testrev' with plot 'testplot2'.")
+        self.call_cmd("/add/revelation 2=1/blargh", 'That revelation is already related to that plot.')
+        self.assertEqual(rev.plot_involvement.get(plot=self.plot2).gm_notes, "foo")
 
     @patch('django.utils.timezone.now')
     def test_cmd_gm_plots(self, mock_now):
         from plot_commands import create_plot_pitch
         mock_now.return_value = self.fake_datetime
         self.setup_cmd(plot_commands.CmdGMPlots, self.char1)
-        self.call_cmd("", '| #   | Plot (owner)           | {Summary                                    '
+        self.call_cmd("/all", '| #   | Plot (owner)           | {Summary                                    '
                           '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                           '| 1   | testplot1              | None')
         self.call_cmd("/old", '| #   | Resolved Plot (owner)  | {Summary                                    '
                               '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                               '| 2   | testplot2              | None')
-        self.call_cmd("1", 'Name: testplot1\nDescription: None')
+        self.call_cmd("1", '[testplot1]\nNone')
         self.call_cmd("/create foo", 'Must include a name, summary, and a description for the plot.')
         self.call_cmd("/create testplot3/test/test", "You have created a new gm plot: testplot3.")
         self.call_cmd("/create testplot4/test/test=testplot3",
@@ -256,9 +272,10 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/pitches", 'ID Submitter    Name      Parent    \n'
                                   '8  Testaccount2 testpitch testplot2')
         self.call_cmd("/pitches 8", '[Ticket #8] Pitch: testpitch (testplot2)\nQueue: PRP Questions - Priority 3\n'
-                                    'Player: TestAccount2\nLocation: Room (#1)\nSubmitted: 08/27/78 12:08:00 - '
-                                    'Last Update: 08/27/78 12:08:00\nRequest: notes\n\n'
-                                    'Plot Pitch:\n\nName: testpitch\nDescription: desc\n\nGM Resolution: None')
+                                    'Player: TestAccount2\nLocation: Room (#1)\n'
+                                    'Submitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00\nRequest: notes\n\n'
+                                    'Plot Pitch:\n\n[testpitch]\ndesc\n'
+                                    'Main Cast:\nTestaccount2\n\n\nGM Resolution: None')
         self.call_cmd("/pitches/followup 8=meh", "You have added a followup to Ticket 8.")
         self.call_cmd("/pitches/approve 8=k",
                       "You have approved the pitch. testpitch is now active with Testaccount2 as the owner.")

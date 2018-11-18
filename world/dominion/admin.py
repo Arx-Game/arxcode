@@ -334,7 +334,7 @@ class PCPlotInvolvementInline(admin.TabularInline):
     """Inline for PC involvement in plots"""
     model = PCPlotInvolvement
     extra = 0
-    raw_id_fields = ('dompc',)
+    raw_id_fields = ('dompc', 'recruited_by')
 
 
 class PlotAdmin(DomAdmin):
@@ -342,8 +342,8 @@ class PlotAdmin(DomAdmin):
     list_display = ('id', 'name', 'desc', 'end_date', 'parent_plot')
     filter_horizontal = ['orgs', 'search_tags']
     raw_id_fields = ('required_clue', 'parent_plot')
-    search_fields = ('id', 'name', 'desc')
-    list_filter = ('resolved',)
+    search_fields = ('name', 'desc', 'dompcs__player__username')
+    list_filter = ('resolved', 'usage')
     inlines = (PlotUpdateInline, PlotOrgInvolvementInline, PCPlotInvolvementInline)
 
 

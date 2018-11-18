@@ -20,19 +20,31 @@ class OrganizationManager(Manager):
 
 class CrisisManager(Manager):
     """Methods for accessing different Plot collections or viewing groups of Plots."""
+
     def viewable_by_player(self, player):
         if not player or not player.is_authenticated():
             return self.filter(public=True)
         if player.check_permstring("builders") or player.is_staff:
             qs = self.all()
         else:
-            qs = self.filter(Q(public=True) | Q(required_clue__in=player.roster.clues.all()))
+            from .models import PCPlotInvolvement
+            crises = Q(usage=self.model.CRISIS)
+            # crisis is viewable if it's public, or they have the required clue
+            crises &= Q(Q(public=True) | Q(required_clue__in=player.roster.clues.all()))
+            plots = Q(usage__in=[self.model.PLAYER_RUN_PLOT, self.model.GM_PLOT])
+            # plots are viewable only if they're a member
+            plots &= Q(dompc_involvement__activity_status__lte=PCPlotInvolvement.INVITED)
+            plots &= Q(dompc_involvement__dompc__player=player)
+            qs = self.filter(crises | plots).distinct()
         return qs
 
-    def view_plots_table(self, old=False):
+    def view_plots_table(self, old=False, only_open_tickets=False):
         """Returns an EvTable chock full of spicy Plots."""
         from evennia.utils.evtable import EvTable
         qs = self.filter(resolved=old).exclude(Q(usage=self.model.CRISIS) | Q(parent_plot__isnull=False)).distinct()
+        if only_open_tickets:
+            from web.helpdesk.models import Ticket
+            qs = qs.filter(tickets__status=Ticket.OPEN_STATUS)
         alt_header = "Resolved " if old else ""
         table = EvTable("{w#{n", "{w%sPlot (owner){n" % alt_header, "{Summary{n", width=78, border="cells")
         for plot in qs:

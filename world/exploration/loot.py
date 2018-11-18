@@ -2,6 +2,8 @@ from .models import GeneratedLootFragment, Shardhaven
 from typeclasses.bauble import Bauble
 from typeclasses.wearable.wieldable import Wieldable
 from evennia.utils import create
+from server.utils.arx_utils import a_or_an
+from server.utils.picker import WeightedPicker
 import random
 
 
@@ -33,7 +35,16 @@ class LootGenerator(object):
         name = GeneratedLootFragment.generate_trinket_name()
         trinket = create.create_object(typeclass="world.exploration.loot.Trinket", key=name)
         trinket.db.desc = "\nAn ancient trinket, one that feels slightly warm to the touch.\n"
-        trinket.db.quality_level = random.randint(4, 11)
+
+        quality_picker = WeightedPicker()
+        quality_picker.add_option(4, 25)
+        quality_picker.add_option(5, 45)
+        quality_picker.add_option(6, 30)
+        quality_picker.add_option(7, 10)
+        quality_picker.add_option(8, 3)
+        quality_picker.add_option(9, 1)
+
+        trinket.db.quality_level = quality_picker.pick()
         trinket.db.found_shardhaven = haven.name
         return trinket
 
@@ -78,15 +89,27 @@ class LootGenerator(object):
         if not wpn_type:
             wpn_type = random.choice(weapon_types)
 
+        picker = WeightedPicker()
+
         difficulty = haven.difficulty_rating
         if difficulty < 3:
-            material = random.choice(('steel', 'steel', 'steel', 'rubicund', 'rubicund', 'diamondplate'))
+            picker.add_option("steel", 30)
+            picker.add_option("rubicund", 50)
+            picker.add_option("diamondplate", 1)
         elif difficulty < 5:
-            material = random.choice(('steel', 'rubicund', 'rubicund', 'diamondplate'))
+            picker.add_option("steel", 10)
+            picker.add_option("rubicund", 40)
+            picker.add_option("diamondplate", 5)
         elif difficulty < 8:
-            material = random.choice(('rubicund', 'diamondplate', 'diamondplate', 'alaricite'))
+            picker.add_option("rubicund", 30)
+            picker.add_option("diamondplate", 20)
+            picker.add_option("alaricite", 5)
         else:
-            material = random.choice(('diamondplate', 'diamondplate', 'alaricite'))
+            picker.add_option("rubicund", 10)
+            picker.add_option("diamondplate", 30)
+            picker.add_option("alaricite", 5)
+
+        material = picker.pick()
 
         should_name = material in ['diamondplate', 'alaricite']
 
@@ -101,14 +124,16 @@ class LootGenerator(object):
         name = GeneratedLootFragment.generate_weapon_name(material, include_name=should_name, wpn_type=generator_wpn)
         weapon = create.create_object(typeclass="world.exploration.loot.AncientWeapon", key=name)
 
-        desc = "\nAn ancient {adjective} {material} weapon, with {decor} on the {element}.\n"
+        desc = "\n{particle} {adjective} ancient {material} weapon, with {decor} on the {element}.\n"
         if wpn_type == LootGenerator.WPN_BOW:
-            desc = "\nAn ancient {adjective} {material} bow, decorated with {decor}.\n"
+            desc = "\n{particle} {adjective} ancient {material} bow, decorated with {decor}.\n"
 
         adjective = GeneratedLootFragment.pick_random_fragment(GeneratedLootFragment.ADJECTIVE)
         decor = GeneratedLootFragment.pick_random_fragment(GeneratedLootFragment.WEAPON_DECORATION)
         element = GeneratedLootFragment.pick_random_fragment(GeneratedLootFragment.WEAPON_ELEMENT)
+        particle = a_or_an(adjective).capitalize()
 
+        desc = desc.replace("{particle}", particle)
         desc = desc.replace("{material}", material)
         desc = desc.replace("{adjective}", adjective)
         desc = desc.replace("{decor}", decor)
@@ -116,7 +141,15 @@ class LootGenerator(object):
 
         weapon.db.desc = desc
 
-        weapon.db.quality_level = random.randint(difficulty, 10)
+        quality_picker = WeightedPicker()
+        quality_picker.add_option(4, 25)
+        quality_picker.add_option(5, 45)
+        quality_picker.add_option(6, 30)
+        quality_picker.add_option(7, 10)
+        quality_picker.add_option(8, 3)
+        quality_picker.add_option(9, 1)
+
+        weapon.db.quality_level = quality_picker.pick()
         weapon.db.found_shardhaven = haven.name
         weapon.db.recipe = LootGenerator.get_weapon_recipe(material, wpn_type=wpn_type)
 

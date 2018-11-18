@@ -9,7 +9,7 @@ from .models import (Roster, RosterEntry, Photo, SearchTag, FlashbackPost, Flash
                      PlayerAccount, AccountHistory, InvestigationAssistant,
                      Mystery, Revelation, Clue, Investigation,
                      RevelationDiscovery, ClueDiscovery,
-                     RevelationForMystery, ClueForRevelation, Theory, TheoryPermissions,
+                     ClueForRevelation, Theory, TheoryPermissions,
                      PlayerInfoEntry,
                      )
 from django.db.models import F, Subquery, OuterRef, IntegerField, ExpressionWrapper, Q, Sum
@@ -98,17 +98,11 @@ class EpisodeAdmin(BaseCharAdmin):
     inlines = [EmitInline]
 
 
-class RevForMystInline(admin.TabularInline):
-    """Inline of revelations required for a mystery"""
-    model = RevelationForMystery
-    extra = 0
-    raw_id_fields = ('revelation', 'mystery',)
-
-
 class MysteryAdmin(BaseCharAdmin):
     """Admin of mystery"""
-    list_display = ('id', 'name')
-    inlines = [RevForMystInline]
+    list_display = ('id', 'name', 'category')
+    search_fields = ('name', 'category', 'revelations__name')
+    list_filter = ('category',)
 
 
 class ClueForRevInline(admin.TabularInline):
@@ -162,22 +156,17 @@ class RevelationListFilter(admin.SimpleListFilter):
 
 class RevelationAdmin(BaseCharAdmin):
     """Admin for revelations"""
-    list_display = ('id', 'name', 'known_by', 'requires', 'used_for')
+    list_display = ('id', 'name', 'known_by', 'requires')
     inlines = [ClueForRevInline, RevDiscoInline, RevPlotInvolvementInline]
     search_fields = ('id', 'name', 'characters__character__db_key', 'mysteries__name')
-    list_filter = (RevelationListFilter,)
-    filter_horizontal = ('search_tags',)
+    list_filter = (RevelationListFilter, 'mysteries')
+    filter_horizontal = ('search_tags', 'mysteries')
     raw_id_fields = ('author',)
 
     @staticmethod
     def known_by(obj):
         """Names of people who've discovered this revelation"""
         return ", ".join([str(ob.character) for ob in obj.discoveries.all()])
-
-    @staticmethod
-    def used_for(obj):
-        """Names of mysteries this revelation is used for"""
-        return ", ".join([str(ob) for ob in obj.mysteries.all()])
 
 
 class ClueDiscoInline(admin.TabularInline):
@@ -207,7 +196,6 @@ class ClueAdmin(BaseCharAdmin):
     def used_for(obj):
         """Names of revelations this clue is used for"""
         return ", ".join([str(ob) for ob in obj.revelations.all()])
-
 
 
 class ClueDiscoveryAdmin(BaseCharAdmin):

@@ -273,6 +273,10 @@ class Npc(Character):
         self.db.damage = 0
         self.db.health_status = "alive"
         self.db.sleep_status = "awake"
+
+        from commands.cmdsets import death
+        self.cmdset.delete(death.DeathCmdSet)
+
         # if we don't
         if not keepold:
             self.db.npc_type = ntype

@@ -286,7 +286,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
                 return string
             is_attending = action in attending
             id_str = "{w*%s{n" % action.id if is_attending else str(action.id)
-            table.add_row(id_str, str(action.crisis)[:20], date, str(action.dompc),
+            table.add_row(id_str, str(action.plot)[:20], date, str(action.dompc),
                           color_unsubmitted(action.get_status_display()))
         msg = "\nActions you're attending will be highlighted with {w*{n."
         self.msg(str(table) + msg)
@@ -517,7 +517,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     def set_crisis(self, action):
         """Sets the crisis for the action"""
         if not self.rhs:
-            action.crisis = None
+            action.plot = None
             action.save()
             self.msg("Your action no longer targets any crisis.")
             return
@@ -526,7 +526,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return
         if not self.can_set_crisis(crisis):
             return
-        action.crisis = crisis
+        action.plot = crisis
         action.save()
         self.msg("You have set the action to be for crisis: %s" % crisis)
         self.do_passive_warnings(action)
@@ -659,7 +659,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             else:
                 action_id = action.id
             date = action.date_submitted.strftime("%m/%d") if action.date_submitted else "----"
-            table.add_row(action_id, action.dompc, action.topic, date, action.crisis)
+            table.add_row(action_id, action.dompc, action.topic, date, action.plot)
         table.reformat_column(0, width=9)
         table.reformat_column(1, width=10)
         table.reformat_column(2, width=37)
@@ -701,7 +701,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             qs = qs.filter(gm=self.caller)
         elif not self.args and "everyone" not in self.switches:
             qs = qs.filter(gm__isnull=True)
-        if self.args and not "search" in self.switches:
+        if self.args and "search" not in self.switches:
             name = self.args
             qs = qs.filter(Q(plot__name__iexact=name) | Q(dompc__player__username__iexact=name) |
                            Q(category__iexact=name) | Q(assistants__player__username__iexact=name) |

@@ -121,7 +121,7 @@ class ClueForCharacterInline(admin.StackedInline):
 
 class ArxObjectDBAdmin(ObjectDBAdmin):
     search_fields = ['id', 'db_key', 'db_location__db_key']
-    inlines = (ClueForCharacterInline,)
+    inlines = tuple(ObjectDBAdmin.inlines) + (ClueForCharacterInline,)
 
     
 class ArxHelpDBAdmin(HelpEntryAdmin):

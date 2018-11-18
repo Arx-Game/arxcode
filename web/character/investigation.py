@@ -1207,9 +1207,9 @@ class CmdListClues(ArxPlayerCommand):
     contain the text specified. /addnote allows you to add more text to
     your discovery of the clue.
     """
-    key = "@clues"
+    key = "clues"
     locks = "cmd:all()"
-    aliases = ["+clues", "@clue", "+clue", "@zoinks", "@jinkies"]
+    aliases = ["clue", "@clue", "+clue", "@zoinks", "@jinkies"]
     help_category = "Investigation"
 
     def get_help(self, caller, cmdset):
