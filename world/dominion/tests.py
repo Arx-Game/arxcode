@@ -39,7 +39,7 @@ class TestCrisisCommands(ArxCommandTest):
                                                  subject='Update for test crisis')
             self.call_cmd("1", '[test crisis] (50 Rating)\nNone\n'
                                '[Update #1 for test crisis] Date 08/27/78 12:08:00\ntest gemit\n'
-                               'Actions: Action by Testaccount2 for test crisis')
+                               'Actions: Action by Testaccount2 for test crisis (#1)')
             self.call_cmd("/update 1/another test episode/test synopsis=test gemit 2",
                           "You have updated the crisis, creating a new episode called 'another test episode'.")
             mock_msg_and_post.assert_called_with("test gemit 2", self.caller, episode_name="another test episode")
@@ -159,7 +159,7 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/add/gemit 1=1", "You have added StoryEmit #1 to beat(ID: 1) of testplot1.")
         self.assertEqual(gemit.beat, beat1)
         self.caller = self.char2
-        action = self.dompc2.actions.create(plot=self.plot1)
+        action = self.dompc2.actions.create(plot=self.plot1, status=PlotAction.PUBLISHED)
         self.call_cmd("/add/action 1=2",
                       'You have added Action by Testaccount2 for testplot1 to beat(ID: 2) of testplot1.')
         self.assertEqual(action.beat, beat2)
@@ -236,17 +236,17 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         from plot_commands import create_plot_pitch
         mock_now.return_value = self.fake_datetime
         self.setup_cmd(plot_commands.CmdGMPlots, self.char1)
-        self.call_cmd("/all", '| #   | Plot (owner)           | {Summary                                    '
+        self.call_cmd("/all", '| #   | Plot (owner)           | Summary                                     '
                           '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                           '| 1   | testplot1              | None')
-        self.call_cmd("/old", '| #   | Resolved Plot (owner)  | {Summary                                    '
+        self.call_cmd("/old", '| #   | Resolved Plot (owner)  | Summary                                     '
                               '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                               '| 2   | testplot2              | None')
         self.call_cmd("1", '[testplot1]\nNone')
         self.call_cmd("/create foo", 'Must include a name, summary, and a description for the plot.')
-        self.call_cmd("/create testplot3/test/test", "You have created a new gm plot: testplot3.")
+        self.call_cmd("/create testplot3/test/test", 'You have created a new gm plot: testplot3 (#3).')
         self.call_cmd("/create testplot4/test/test=testplot3",
-                      "You have created a new subplot of testplot3: testplot4.")
+                      'You have created a new subplot of testplot3: testplot4 (#4).')
         self.call_cmd("/end 2", "You must include a resolution.")
         self.call_cmd("/end 2=asdf", "That plot has already been resolved.")
         self.call_cmd("/end testplot3=asdf", "You have ended testplot3.")

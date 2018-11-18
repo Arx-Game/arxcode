@@ -46,7 +46,7 @@ class CrisisManager(Manager):
             from web.helpdesk.models import Ticket
             qs = qs.filter(tickets__status=Ticket.OPEN_STATUS)
         alt_header = "Resolved " if old else ""
-        table = EvTable("{w#{n", "{w%sPlot (owner){n" % alt_header, "{Summary{n", width=78, border="cells")
+        table = EvTable("|w#|n", "|w%sPlot (owner)|n" % alt_header, "|wSummary|n", width=78, border="cells")
         for plot in qs:
             def get_plot_name_and_owner(plotmato):
                 owner = (" (%s)" % plotmato.first_owner) if plotmato.first_owner else ""

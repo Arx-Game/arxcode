@@ -902,7 +902,7 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                        "[Secret #1 of Slyyyy] (#1) Not really a secret that Slyyy is sexy tbh.\n"
                                        "[Glyphed Catsuit] (#4) Slyposing synergizes with glyphed catsuits.\n"
                                        "[Secret #1 of Galvanion] (#3) Bishis are excellent to slypose upon.")
-        self.call_cmd("/plot", '| #   | Plot (owner)           | {Summary                                    '
+        self.call_cmd("/plot", '| #   | Plot (owner)           | Summary                                     '
                                '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                                '| 1   | Slypose (Testaccount2) | Sly as a fox.')
         self.call_cmd("/quick Send Help", "Created placeholder for 'Send Help' (clue #5).")

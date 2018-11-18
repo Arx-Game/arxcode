@@ -254,7 +254,7 @@ class CmdPlots(ArxCommand):
             if self.called_by_staff:
                 qs = PlotAction.objects.all()
             else:
-                qs = self.caller.dompc.actions.all()
+                qs = self.caller.past_participated_actions
             try:
                 added_obj = qs.get(id=self.lhs)
             except PlotAction.DoesNotExist:
@@ -515,6 +515,7 @@ class CmdGMPlots(ArxCommand):
     @gmplots [<plot ID>]
     @gmplots/old
     @gmplots/all
+    @gmplots/timeline [<plot ID>]
     Admin:
     @gmplots/create <name>/<headline>/<description>[=<parent plot if subplot>]
     @gmplots/end <ID>[=<gm notes of resolution>]
@@ -543,6 +544,7 @@ class CmdGMPlots(ArxCommand):
     plot_switches = ("end", "addbeat", "adb", "participation", "perm", "connect")
     ticket_switches = ("rfr", "pitches")
     beat_objects = ("rpevent", "flashback", "action")
+    view_switches = ("old", "all", "timeline")
 
     @property
     def pitches(self):
@@ -557,7 +559,7 @@ class CmdGMPlots(ArxCommand):
     def func(self):
         """Executes gmplots command"""
         try:
-            if "old" in self.switches or not self.switches or "all" in self.switches:
+            if not self.switches or self.check_switches(self.view_switches):
                 return self.view_plots()
             elif "create" in self.switches:
                 return self.create_plot()
@@ -581,7 +583,10 @@ class CmdGMPlots(ArxCommand):
                 plot = Plot.objects.get(id=self.lhs)
             except Plot.DoesNotExist:
                 raise CommandError("No plot found by that ID.")
-            self.msg(plot.display())
+            if "timeline" in self.switches:
+                self.msg(plot.display_timeline())
+            else:
+                self.msg(plot.display())
 
     def create_plot(self):
         """Creates a new plot"""
@@ -595,9 +600,9 @@ class CmdGMPlots(ArxCommand):
         plot = Plot.objects.create(name=name, desc=desc, parent_plot=parent, usage=Plot.GM_PLOT,
                                    start_date=datetime.now(), headline=summary)
         if parent:
-            self.msg("You have created a new subplot of %s: %s." % (parent, plot))
+            self.msg("You have created a new subplot of %s: %s (#%s)." % (parent, plot, plot.id))
         else:
-            self.msg("You have created a new gm plot: %s." % plot)
+            self.msg("You have created a new gm plot: %s (#%s)." % (plot, plot.id))
 
     def get_plot(self, args=None):
         if args is None:

@@ -293,8 +293,8 @@ class CmdRequest(ArxPlayerCommand):
 
     To make an IC action, use @action instead.
     """
-    key = "+request"
-    aliases = ["@request", "+requests", "@requests", "+911", "+ineedanadult",
+    key = "request"
+    aliases = ["requests", "+911", "+ineedanadult",
                "bug", "typo", "+featurerequest", "+prprequest"]
     help_category = "Admin"
     locks = "cmd:all()"

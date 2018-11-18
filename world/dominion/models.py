@@ -2280,7 +2280,7 @@ class PlotUpdate(SharedMemoryModel):
         for attr in ("actions", "events", "emits", "flashbacks"):
             qs = getattr(self, attr).all()
             if qs:
-                msg += "\n{w%s:{n %s" % (attr.capitalize(), ", ".join(str(ob) for ob in qs))
+                msg += "\n{w%s:{n %s" % (attr.capitalize(), ", ".join("%s (#%s)" % (ob, ob.id) for ob in qs))
         return msg
 
 
@@ -2633,40 +2633,16 @@ class PlotAction(AbstractAction):
                            on_delete=models.SET_NULL)
     search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="actions")
 
-    UNKNOWN = 0
-    COMBAT = 1
-    SUPPORT = 2
-    SABOTAGE = 3
-    DIPLOMACY = 4
-    SCOUTING = 5
-    RESEARCH = 6
+    UNKNOWN, COMBAT, SUPPORT, SABOTAGE, DIPLOMACY, SCOUTING, RESEARCH = range(7)
 
-    CATEGORY_CHOICES = (
-        (UNKNOWN, 'Unknown'),
-        (COMBAT, 'Combat'),
-        (SUPPORT, 'Support'),
-        (SABOTAGE, 'Sabotage'),
-        (DIPLOMACY, 'Diplomacy'),
-        (SCOUTING, 'Scouting'),
-        (RESEARCH, 'Research')
-        )
+    CATEGORY_CHOICES = ((UNKNOWN, 'Unknown'), (COMBAT, 'Combat'), (SUPPORT, 'Support'), (SABOTAGE, 'Sabotage'),
+                        (DIPLOMACY, 'Diplomacy'), (SCOUTING, 'Scouting'), (RESEARCH, 'Research'))
     category = models.PositiveSmallIntegerField(choices=CATEGORY_CHOICES, default=UNKNOWN)
 
-    DRAFT = 0
-    NEEDS_PLAYER = 1
-    NEEDS_GM = 2
-    CANCELLED = 3
-    PENDING_PUBLISH = 4
-    PUBLISHED = 5
+    DRAFT, NEEDS_PLAYER, NEEDS_GM, CANCELLED, PENDING_PUBLISH, PUBLISHED = range(6)
 
-    STATUS_CHOICES = (
-        (DRAFT, 'Draft'),
-        (NEEDS_PLAYER, 'Needs Player Input'),
-        (NEEDS_GM, 'Needs GM Input'),
-        (CANCELLED, 'Cancelled'),
-        (PENDING_PUBLISH, 'Pending Resolution'),
-        (PUBLISHED, 'Resolved')
-        )
+    STATUS_CHOICES = ((DRAFT, 'Draft'), (NEEDS_PLAYER, 'Needs Player Input'), (NEEDS_GM, 'Needs GM Input'),
+                      (CANCELLED, 'Cancelled'), (PENDING_PUBLISH, 'Pending Resolution'),(PUBLISHED, 'Resolved'))
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=DRAFT)
     max_requests = 2
     num_days = 30

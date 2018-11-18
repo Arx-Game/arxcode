@@ -489,13 +489,6 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         return int(100.0/float(self.clues_shared_modifier_seed + 1)) + 1
 
     @property
-    def valid_actions(self):
-        from world.dominion.models import CrisisAction
-        from django.db.models import Q
-        dompc = self.Dominion
-        return CrisisAction.objects.filter(Q(dompc=dompc) | Q(assistants=dompc)).distinct()
-
-    @property
     def participated_actions(self):
         """Actions we participated in"""
         from world.dominion.models import PlotAction
