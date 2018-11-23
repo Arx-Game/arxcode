@@ -523,6 +523,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 if templates.exists():
                     string = self.replace_template_values(string, templates)
                 self.ndb.cached_template_desc = string
+
         if contents and show_contents:
             string += contents
         return string
@@ -763,6 +764,8 @@ class CraftingMixins(object):
             string += "\nIt is %s %s." % (part, td)
         if self.db.quality_level:
             string += self.get_quality_appearance()
+        if self.db.quantity:
+            string += "\nThere are %d units." % self.db.quantity
         if hasattr(self, 'origin_description') and self.origin_description:
             string += self.origin_description
         if self.db.translation:

@@ -29,7 +29,7 @@ class CmdAdminFile(ArxCommand):
             pass
 
         try:
-            character = RosterEntry.objects.get(player__db_key__iexact=accountstring)
+            character = RosterEntry.objects.get(character__db_key__iexact=accountstring)
             return character.current_account
         except RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned:
             pass
@@ -42,7 +42,7 @@ class CmdAdminFile(ArxCommand):
         try:
             character = RosterEntry.objects.get(character__db_key__iexact=accountstring)
             result = list(character.previous_accounts.distinct().all())
-            if character.current_account and not character.current_account in result:
+            if character.current_account and character.current_account not in result:
                 result.append(character.current_account)
             return result
         except RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned:
@@ -82,7 +82,13 @@ class CmdAdminFile(ArxCommand):
             self.msg("  Known Addresses: {}".format(addresses))
 
             history = AccountHistory.objects.filter(account=account).order_by('start_date')
-            alts = [history_entry.entry.character.key for history_entry in history]
+            alts = []
+            for entry in history:
+                result = entry.entry.character.key
+                if entry.entry.current_account != account \
+                        or entry.entry.roster.name not in ["Active", "Unavailable"]:
+                    result = "ex-" + result
+                alts.append(result)
             alts = set(alts)
             alts = ", ".join(alts)
 

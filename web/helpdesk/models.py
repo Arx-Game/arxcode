@@ -484,7 +484,7 @@ class Ticket(SharedMemoryModel):
             msg += "\n"
             if self.plot.usage == self.plot.PITCH:
                 msg += "\n|wPlot Pitch:|n\n"
-                msg += self.plot.display()
+                msg += self.plot.display(staff_display=True)
                 msg += "\n"
             else:
                 msg += "|wPlot:|n %s" % self.plot

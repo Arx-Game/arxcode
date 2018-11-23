@@ -139,7 +139,8 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom):
         ExtendedRoom.return_appearance(self, looker)
         # return updated desc plus other stuff
         return (ObjectMixins.return_appearance(self, looker, detailed, format_desc)
-                + self.command_string() + self.mood_string + self.event_string() + self.combat_string(looker))
+                + self.command_string() + self.mood_string + self.event_string() + self.extra_status_string(looker)
+                + self.combat_string(looker))
     
     def _current_event(self):
         if not self.db.current_event:
@@ -165,6 +166,9 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom):
                 return msg
         except AttributeError:
             pass
+        return ""
+
+    def extra_status_string(self, looker):
         return ""
     
     def event_string(self):

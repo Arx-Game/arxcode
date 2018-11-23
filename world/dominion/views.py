@@ -192,7 +192,6 @@ def event_calendar(request):
     return render(request, 'dominion/calendar.html', extra_context)
 
 
-
 class CrisisDetailView(DetailView):
     """
     Displays view for a specific crisis
@@ -207,7 +206,7 @@ class CrisisDetailView(DetailView):
             raise Http404
         context['page_title'] = str(self.get_object())
         context['viewable_actions'] = self.get_object().get_viewable_actions(self.request.user)
-        context['updates_with_actions'] = [ob.update for ob in context['viewable_actions']]
+        context['updates_with_actions'] = [ob.beat for ob in context['viewable_actions']]
         return context
 
 

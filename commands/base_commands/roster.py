@@ -950,6 +950,7 @@ class CmdSheet(ArxPlayerCommand):
         @sheet/privaterels <character name>=<other character>
         @sheet/secrets
         @sheet/visions
+        @sheet/plots <character>=<#>
         @sheet/actions <character>=<#>
         @sheet/background <character>
         @sheet/personality <character>
@@ -975,7 +976,7 @@ class CmdSheet(ArxPlayerCommand):
     aliases = ["+sheet", "sheet"]
     help_category = "General"
     locks = "cmd:all()"
-    private_switches = ("secrets", "secret", "visions", "vision", "actions")
+    private_switches = ("secrets", "secret", "visions", "vision", "actions", "plots")
     public_switches = ('social', 'background', 'info', 'personality', 'recognition')
 
     def func(self):
@@ -1031,6 +1032,8 @@ class CmdSheet(ArxPlayerCommand):
             if 'actions' in switches or 'storyrequests' in switches:
                 self.display_storyactions(charob)
                 return
+            if 'plots' in switches:
+                return self.display_plots(charob)
         if self.check_switches(self.public_switches):
             charob, show_hidden = self.get_character()
             if not charob:
@@ -1166,6 +1169,28 @@ class CmdSheet(ArxPlayerCommand):
             self.msg("No Story Action matches that ID #.")
         else:
             self.msg(action.view_action(caller=self.caller, disp_pending=False, disp_old=False, disp_ooc=False))
+
+    def display_plots(self, charob):
+        """Displays a list of plots or specific plot"""
+        plots = charob.dompc.active_plots
+        plot_num = self.get_num_from_args()
+        if not plot_num:
+            from evennia.utils.evtable import EvTable
+            table = EvTable("{wID", "{wName", "{wSummary", width=78, border="cells")
+            for ob in plots:
+                table.add_row(str(ob.id), ob.name, ob.headline)
+            table.reformat_column(0, width=6)
+            table.reformat_column(1, width=22)
+            table.reformat_column(2, width=50)
+            self.msg(str(table))
+        else:
+            from world.dominion.models import Plot
+            try:
+                plot = plots.get(id=plot_num)
+            except (Plot.DoesNotExist, TypeError, ValueError):
+                self.msg("No plot matches that ID #.")
+            else:
+                self.msg(plot.display())
 
     def display_visions(self, character):
         """

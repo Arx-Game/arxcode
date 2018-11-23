@@ -358,16 +358,18 @@ class Episode(SharedMemoryModel):
         Updates for a crisis that happened during this episode. Display them along with emits to create a
         history of what happened during the episode.
         """
-        return self.crisis_updates.filter(crisis__public=True)
+        from world.dominion.models import Plot
+        return self.plot_updates.filter(plot__usage=Plot.CRISIS).filter(plot__public=True)
 
     def get_viewable_crisis_updates_for_player(self, player):
         """Returns non-public crisis updates that the player can see."""
+        from world.dominion.models import Plot
         if not player or not player.is_authenticated():
             return self.public_crisis_updates
         if player.is_staff or player.check_permstring("builders"):
-            return self.crisis_updates.all()
-        return self.crisis_updates.filter(Q(crisis__public=True) | Q(
-            crisis__required_clue__in=player.roster.clues.all())).distinct()
+            return self.plot_updates.all()
+        return self.plot_updates.filter(plot__usage=Plot.CRISIS).filter(Q(plot__public=True) | Q(
+            plot__required_clue__in=player.roster.clues.all())).distinct()
 
     def get_viewable_emits_for_player(self, player):
         """Returns emits viewable for a given player"""
@@ -809,9 +811,11 @@ class Clue(SharedMemoryModel):
 
     def display(self):
         """String display for clue"""
-        msg = "\n{c%s{n\n" % self.name
-        msg += "{wRating:{n %s\n" % self.rating
-        msg += self.desc + "\n"
+        msg = "|w[|c%s|w]|n (%s Rating)" % (self.name, self.rating)
+        tags = self.search_tags.all()
+        if tags:
+            msg += " |wTags:|n %s" % ", ".join(("|235%s|n" % ob) for ob in tags)
+        msg += "\n%s\n" % self.desc
         return msg
 
     @property
@@ -1437,6 +1441,7 @@ class Theory(SharedMemoryModel):
     desc = models.TextField(blank=True, null=True)
     related_clues = models.ManyToManyField("Clue", related_name="theories", blank=True, db_index=True)
     related_theories = models.ManyToManyField("self", blank=True)
+    plots = models.ManyToManyField("dominion.Plot", related_name="theories", blank=True)
 
     class Meta:
         """Define Django meta options"""

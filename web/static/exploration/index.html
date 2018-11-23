@@ -1,0 +1,98 @@
+<html>
+	<head>
+		<title>Shardhaven Editor</title>
+		<script type="text/javascript" src="/static/exploration/explore.js"></script>
+		<link rel="stylesheet" href="/static/exploration/explore.css" type="text/css"/>
+	</head>
+	<body>
+		<div id="bodyContainer">
+			<div id="editContainer">
+				<div id="titleContainer">
+					<span id="shardhavenPickerLabel">
+						<b>Shardhaven to edit:&nbsp;&nbsp;</b>
+						<select id="shardhavenPicker">
+							<option value="0">---</option>
+						</select>
+					</span>
+				</div>
+				<div id="mapContainer">
+					<canvas id="shardhavenMap"></canvas>
+				</div>
+			</div>
+			<div id="roomDataContainer">
+
+				<h1>Room Editor</h1>
+
+				<div class="editSection"><b>Room Name</b><br/>
+					If left blank, it will draw from the tileset matching this shardhaven's type.<br/>
+				<input id="shardhavenName" name="shardhavenName" value=""/></div>
+
+				<div class="editSection"><b>Room Desc</b><br/>
+					If left blank, it will draw from the tileset matching this shardhaven's type<br/>
+					<textarea id="shardhavenDesc" name="shardhavenDesc" rows="6"></textarea></div>
+
+				<div class="editSection"><b>Obstacles</b><br/>
+					<div>
+						<div class="obstacleLabel">North:</div>
+						<select id="northObstacle">
+							<option value="0">----</option>
+						</select>
+					</div>
+
+					<div>
+						<div class="obstacleLabel">South:</div>
+						<select id="southObstacle">
+							<option value="0">----</option>
+						</select>
+					</div>
+
+					<div>
+						<div class="obstacleLabel">West:</div>
+						<select id="westObstacle">
+							<option value="0">----</option>
+						</select>
+					</div>
+
+					<div>
+						<div class="obstacleLabel">East:</div>
+						<select id="eastObstacle">
+							<option value="0">----</option>
+						</select>
+					</div>
+			</div>
+
+			<div class="editSection"><b>Treasure Puzzle</b>
+				<div>
+					<div class="obstacleLabel">Puzzle:</div>
+					<select id="puzzle">
+						<option value="0">----</option>
+					</select>
+				</div>
+				<div class="checkboxDiv">
+					<input type="checkbox" id="puzzleSolved"/>
+					Puzzle has been solved.
+				</div>
+			</div>
+
+			<div class="editSection"><b>Monster Encounter</b>
+				<div>
+					<div class="obstacleLabel">Monster:</div>
+					<select id="monster">
+						<option value="0">----</option>
+					</select>
+				</div>
+				<div class="checkboxDiv">
+					<input type="checkbox" id="monsterDefeated"/>
+					Monster has been defeated.
+				</div>
+			</div>
+
+			<div class="editSection">
+				<input type="checkbox" id="entranceToggle"/> This is the entrance.
+			</div>
+
+			<button id="shardhavenRoomSave" type="button">Save Changes</button>&nbsp;
+			<button id="shardhavenRoomDelete" type="button">Delete Room</button>
+		</div>
+	</body>
+</html>

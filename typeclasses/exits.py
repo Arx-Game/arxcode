@@ -415,12 +415,18 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             result += self.haven_exit.obstacle.description
 
             if self.haven_exit.obstacle.clues.count() > 0:
-                result += "|/|/This obstacle can be passed if you have the correct knowledge."
+                result += "|/|/This obstacle can be passed by those who have the correct knowledge."
+                if self.haven_exit.obstacle.can_pass_with_clue(pobject):
+                    result += " |w(Which you have!)|n"
 
-            if self.passable(pobject):
-                result += "|/|/However, someone has already addressed this obstacle, and you may pass."
+            if pobject.check_permstring("builders"):
+                result += "|/" + self.haven_exit.obstacle.options_description(self)
+                result += "|/|/(However, being staff, you can just pass through without a check.)"
             else:
-                result += "|/" + self.haven_exit.obstacle.options_description
+                if self.passable(pobject):
+                    result += "|/|/However, someone has already addressed this obstacle, and you may pass."
+                else:
+                    result += "|/" + self.haven_exit.obstacle.options_description(self)
 
         else:
             result += "The way seems clear ahead."
@@ -432,6 +438,9 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             return True
 
         if self.haven_exit.override:
+            return True
+
+        if traversing_object.check_permstring("builders"):
             return True
 
         obstacle = self.haven_exit.obstacle
@@ -514,7 +523,8 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
 
         if not self.passable(traversing_object):
             import time
-            result, override_obstacle, attempted, instant = self.haven_exit.obstacle.handle_obstacle(traversing_object, args=arguments)
+            result, override_obstacle, attempted, instant = \
+                self.haven_exit.obstacle.handle_obstacle(traversing_object, self, self.haven_exit, args=arguments)
             if attempted:
                 attempts = self.db.attempts or {}
                 attempts[traversing_object.id] = time.time()
@@ -576,5 +586,4 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
                 leave_msg = fol_msg.replace("arrive", "leave")
                 self.destination.msg_contents(fol_msg)
                 self.location.msg_contents(leave_msg)
-
 

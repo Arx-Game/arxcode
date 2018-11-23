@@ -35,14 +35,12 @@ class CrisisCmdMixin(object):
                 return self.viewable_crises.get(name__iexact=args)
         except (Plot.DoesNotExist, ValueError):
             self.msg("Crisis not found by that # or name.")
-            return
 
     def view_crisis(self):
         crisis = self.get_crisis(self.lhs)
         if not crisis:
             return self.list_crises()
-        self.msg(crisis.display())
-        return
+        self.msg(crisis.display(display_connected=self.called_by_staff, staff_display=self.called_by_staff))
 
 
 class CmdGMCrisis(CrisisCmdMixin, ArxPlayerCommand):
@@ -143,8 +141,7 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
 
     To create a new action, use the @action command.
     """
-    key = "+crisis"
-    aliases = ["crisis"]
+    key = "crisis"
     locks = "cmd:all()"
     help_category = "Story"
 

@@ -499,7 +499,7 @@ class CmdJournal(ArxCommand):
         fav_tag = "pid_%s_favorite" % self.caller.player_ob.id
         for entry in j_list:
             try:
-                event = character.messages.get_revelation(entry)
+                event = character.messages.get_event(entry)
                 name = ", ".join(ob.key for ob in entry.db_receivers_objects.all())
                 if event and not name:
                     name = event.name[:25]

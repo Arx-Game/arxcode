@@ -127,14 +127,20 @@ class ShardhavenObstacleAdmin(admin.ModelAdmin):
 
 
 class MonsterDropInline(admin.TabularInline):
-    model = MonsterDrops
+    model = MonsterAlchemicalDrop
+    extra = 0
+    raw_id_fields = ('material',)
+
+
+class MonsterCraftingDropInline(admin.TabularInline):
+    model = MonsterCraftingDrop
     extra = 0
     raw_id_fields = ('material',)
 
 
 class MonsterAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'difficulty')
-    inlines = (MonsterDropInline,)
+    inlines = (MonsterDropInline, MonsterCraftingDropInline, )
     filter_horizontal = ('habitats',)
     exclude = ('instances',)
 
@@ -142,6 +148,36 @@ class MonsterAdmin(admin.ModelAdmin):
 class GeneratedLootFragmentAdmin(admin.ModelAdmin):
     list_display = ('id', 'fragment_type', 'text')
     list_filter = ('fragment_type',)
+
+
+class PuzzleAlchemicalDropInline(admin.TabularInline):
+    model = ShardhavenPuzzleMaterial
+    extra = 0
+    raw_id_fields = ('material',)
+
+
+class PuzzleCraftingDropInline(admin.TabularInline):
+    model = ShardhavenPuzzleCraftingMaterial
+    extra = 0
+    raw_id_fields = ('material',)
+
+
+class PuzzleObjectDropInline(admin.TabularInline):
+    model = ShardhavenPuzzleObjectLoot
+    extra = 0
+    raw_id_fields = ('object',)
+
+
+class PuzzleAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'obstacle')
+    filter_horizontal = ('haven_types',)
+    raw_id_fields = ('obstacle',)
+    inlines = (PuzzleAlchemicalDropInline, PuzzleCraftingDropInline, PuzzleObjectDropInline)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "obstacle":
+            kwargs["queryset"] = ShardhavenObstacle.objects.filter(obstacle_class=ShardhavenObstacle.PUZZLE_OBSTACLE)
+        return super(PuzzleAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 admin.site.register(Shardhaven, ShardhavenAdmin)
@@ -152,3 +188,4 @@ admin.site.register(ShardhavenLayout, ShardhavenLayoutAdmin)
 admin.site.register(ShardhavenObstacle, ShardhavenObstacleAdmin)
 admin.site.register(Monster, MonsterAdmin)
 admin.site.register(GeneratedLootFragment, GeneratedLootFragmentAdmin)
+admin.site.register(ShardhavenPuzzle, PuzzleAdmin)

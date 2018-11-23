@@ -63,7 +63,8 @@ class AccountHistoryInline(admin.TabularInline):
 class AccountEntryInline(admin.TabularInline):
     """Inline for AccountHistory"""
     model = PlayerInfoEntry
-    raw_id_fields = ('account',)
+    raw_id_fields = ('account', 'author')
+    extra = 0
 
 
 class AccountAdmin(BaseCharAdmin):

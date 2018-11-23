@@ -28,12 +28,12 @@ class InvestigationTests(ArxCommandTest):
     @patch.object(investigation, "datetime")
     def test_cmd_clues(self, mock_datetime, mock_roster_datetime):
         from datetime import datetime
-        mock_datetime.now = Mock(return_value=datetime(2009, 1, 6, 15, 8, 24, 78915))
-        mock_roster_datetime.now = Mock(return_value=datetime(2009, 1, 6, 15, 8, 24, 78915))
+        mock_datetime.now = Mock(return_value=self.fake_datetime)
+        mock_roster_datetime.now = Mock(return_value=self.fake_datetime)
         now = mock_datetime.now()
         self.setup_cmd(investigation.CmdListClues, self.account)
-        self.call_cmd("1", "test clue\nRating: 10\ntest clue desc\nadditional text test")
-        self.call_cmd("/addnote 1=test note", "test clue\nRating: 10\ntest clue desc\nadditional text test"
+        self.call_cmd("1", "[test clue] (10 Rating)\ntest clue desc\nadditional text test")
+        self.call_cmd("/addnote 1=test note", "[test clue] (10 Rating)\ntest clue desc\nadditional text test"
                                               "\n[%s] TestAccount wrote: test note" % now.strftime("%x %X"))
         self.call_cmd("/share 1=", "Who are you sharing with?")
         self.call_cmd("/share 1=Testaccount2", "Sharing the clue(s) with them would cost 101 action points.")
@@ -48,7 +48,7 @@ class InvestigationTests(ArxCommandTest):
                       "You have shared the clue(s) 'test clue2' with Char2.\nYour note: Love Tehom")
         self.assertTrue(bool(self.roster_entry2.revelations.all()))
         self.caller = self.account2
-        self.call_cmd("2", "test clue2\nRating: 50\ntest clue2 desc\n%s This clue was shared with you by Char,"
+        self.call_cmd("2", "[test clue2] (50 Rating)\ntest clue2 desc\n%s This clue was shared with you by Char,"
                       " who noted: Love Tehom\n" % now.strftime("%x %X"))
 
     def test_cmd_helpinvestigate(self):
@@ -80,7 +80,7 @@ class SceneCommandTests(ArxCommandTest):
         self.call_cmd("/invite 1=Testaccount2", "You have invited Testaccount2 to participate in this flashback.")
         self.account2.inform.assert_called_with("You have been invited by Testaccount to participate in flashback #1:"
                                                 " 'testing'.", category="Flashbacks")
-        self.call_cmd("/post 1", "You must include a message.")                                            
+        self.call_cmd("/post 1", "You must include a message.")
         self.assertEqual(self.char1.messages.num_flashbacks, 0)
         self.call_cmd("/post 1=A new testpost", "You have posted a new message to testing: A new testpost")
         self.assertEqual(self.char1.messages.num_flashbacks, 1)
@@ -127,7 +127,7 @@ class PRPClueTests(ArxCommandTest):
     def setUp(self):
         from world.dominion.models import Plot, PCPlotInvolvement
         super(PRPClueTests, self).setUp()
-        self.plot = Plot.objects.create(name="TestPlot")
+        self.plot = Plot.objects.create(name="TestPlot", usage=Plot.PLAYER_RUN_PLOT)
         self.plot.dompc_involvement.create(dompc=self.dompc, admin_status=PCPlotInvolvement.GM)
 
     def test_cmd_prpclue(self):

@@ -37,12 +37,18 @@ class AlchemicalMaterial(SharedMemoryModel):
     )
 
     name = models.CharField(max_length=40, blank=False, null=False)
+    plural_name = models.CharField(max_length=40, blank=True, null=True)
     magic_type = models.PositiveSmallIntegerField(choices=MAGIC_TYPES, default=0, blank=False, null=False)
     affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='materials')
     description = models.TextField(blank=True, null=True)
 
-    def create_instance(self):
-        result = create_object(key=self.name, typeclass="world.magic.materials.MagicMaterial")
+    def create_instance(self, quantity):
+
+        name_string = self.name
+        if quantity > 2:
+            name_string = "{} {}".format(quantity, self.plural_name or self.name)
+
+        result = create_object(key=name_string, typeclass="world.magic.materials.MagicMaterial")
         result.db.desc = self.description
         result.db.alchemical_material = self.id
 
@@ -54,6 +60,7 @@ class AlchemicalMaterial(SharedMemoryModel):
         quality_picker.add_option(10, 1)
 
         result.db.quality_level = quality_picker.pick()
+        result.db.quantity = quantity
         return result
 
     def __repr__(self):

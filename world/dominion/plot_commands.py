@@ -11,7 +11,7 @@ from server.utils.helpdesk_api import create_ticket, add_followup, resolve_ticke
 from server.utils.prettytable import PrettyTable
 from server.utils.exceptions import CommandError
 from server.utils.arx_utils import dict_from_choices_field
-from web.character.models import StoryEmit, Flashback, Clue, Revelation
+from web.character.models import StoryEmit, Flashback, Clue, Revelation, Theory
 from web.helpdesk.models import Ticket
 from world.dominion.models import PCPlotInvolvement, PlotUpdate, RPEvent, PlotAction, Plot, Organization
 
@@ -60,26 +60,27 @@ class CmdPlots(ArxCommand):
         plots <plot ID>[=<beat ID>]
         plots/timeline <plot ID>
         plots/old
+    Plot Usage:
+        plots/pitch <name>/<summary>/<desc>/<GM Notes>[=<plot ID if subplot>]
+        plots/rfr <ID>[,<beat ID>]=<message to staff of what to review>
+        plots/add/clue <plot ID>=<clue ID>/<how it's related to the plot>
+        plots/add/revelation <plot ID>=<revelation ID>/<how it's related>
+        plots/add/theory <plot ID>=<theory ID>
     Beat Usage:
         plots/createbeat <plot ID>=<IC summary>/<ooc notes of consequences>
         plots/add/rpevent <rp event ID>=<beat ID>
         plots/add/action <action ID>=<beat ID>
         plots/add/gemit <gemit ID>=<beat ID>
         plots/add/flashback <flashback ID>=<beat ID>
-        plots/add/clue <plot ID>=<clue ID>/<how it's related to the plot>
-        plots/add/revelation <plot ID>=<revelation ID>/<how it's related>
     Cast Usage:
         plots/storyhook <plot ID>=<recruiter>/<Example plot hook for meeting>
         plots/perm <plot ID>=<participant>/<gm, recruiter, or player>
-        plots/invite <ID>=<character>,<cast status*>
-            *cast status choices: required, main, supporting, extra
+        plots/invite <ID>=<character>,<casting*>
+            *casting options: required, main, supporting, extra
         plots/accept <ID>[=<IC description of character's involvement>]
         plots/leave <ID>
         plots/findcontact <secret ID>
         plots/rewardrecruiter <plot ID>=<recruiter>
-    Staff Usage:
-        plots/rfr <ID>[,<beat ID>]=<message to staff of what to review>
-        plots/pitch <name>/<summary>/<desc>/<GM Notes>[=<plot ID if subplot>]
 
     Allows for managing and participating in plots in the game. Plots are
     updated with 'beats' - an event or action that advances the plot. For
@@ -88,6 +89,15 @@ class CmdPlots(ArxCommand):
     beat with the rpevent by using 'plots/add/rpevent'. Request staff review
     the beat with 'plots/rfr', which stands for 'request for review'. Staff
     will make appropriate game adjustments to represent world consequences.
+
+    The plots command can also be used to pitch ideas for new plots. The
+    plots/pitch command will open a ticket for GM approval of your plot.
+    If approved, the plot will be created automatically, with you as the
+    plot owner. You can select an existing plot to pitch a subplot for,
+    such as if you wanted to run a small subplot for a few players that
+    respond to a large GM plot. A pitch requires a name, a one-sentence
+    summary of the plot, a longer IC description, and OOC notes describing
+    what the plot aims to accomplish or what you'd like to see happen.
 
     Plots are hidden until someone is a participant. However, when a secret
     is marked as a hook for plots, the /findcontact command becomes
@@ -103,22 +113,13 @@ class CmdPlots(ArxCommand):
     is its administrator, while a GM has the ability to run events/create
     beats for it. A recruiter is a point of contact for plot newcomers.
 
-    When inviting, cast status is how essential a character is for the
+    When inviting, casting options are how essential a character is for the
     plot to proceed. 'Required' cast must be present for an event to occur;
     the plot is essentially about them. 'Main' cast is involved in most
     events. 'Supporting' cast might only be present sometimes, while any
     lower status indicates someone only appearing once or twice in a few
     events. GMs must be supporting cast or lower - they cannot be central
     characters in the story.
-
-    The plots command can also be used to pitch ideas for new plots. The
-    plots/pitch command will open a ticket for GM approval of your plot.
-    If approved, the plot will be created automatically, with you as the
-    plot owner. You can select an existing plot to pitch a subplot for,
-    such as if you wanted to run a small subplot for a few players that
-    respond to a large GM plot. A pitch requires a name, a one-sentence
-    summary of the plot, a longer IC description, and OOC notes describing
-    what the plot aims to accomplish or what you'd like to see happen.
     """
     key = "+plots"
     aliases = ["+plot"]
@@ -240,16 +241,18 @@ class CmdPlots(ArxCommand):
             return self.add_clue()
         if "revelation" in self.switches:
             return self.add_revelation()
-        beat = self.get_beat(self.rhs)
+        if "theory" in self.switches:
+            return self.add_theory()
+        beat = self.get_beat(self.rhs, cast_access=True)
         if "rpevent" in self.switches:
             if self.called_by_staff:
                 qs = RPEvent.objects.all()
             else:
-                qs = self.caller.dompc.events.filter(pc_event_participation__gm=True)
+                qs = self.caller.dompc.events.all()
             try:
                 added_obj = qs.get(id=self.lhs)
             except RPEvent.DoesNotExist:
-                raise CommandError("You are not a GM for an RPEvent with that ID.")
+                raise CommandError("You did not attend an RPEvent with that ID.")
         elif "action" in self.switches:
             if self.called_by_staff:
                 qs = PlotAction.objects.all()
@@ -259,6 +262,9 @@ class CmdPlots(ArxCommand):
                 added_obj = qs.get(id=self.lhs)
             except PlotAction.DoesNotExist:
                 raise CommandError("No action by that ID found for you.")
+            if added_obj.plot and added_obj.plot != beat.plot:
+                raise CommandError("That action is already part of another plot.")
+            added_obj.plot = beat.plot
         elif "gemit" in self.switches:
             if not self.called_by_staff:
                 raise CommandError("Only staff can add gemits to plot beats.")
@@ -267,7 +273,7 @@ class CmdPlots(ArxCommand):
             except StoryEmit.DoesNotExist:
                 raise CommandError("No gemit found by that ID.")
         elif "flashback" in self.switches:
-            if not self.called_by_staff:
+            if self.called_by_staff:
                 qs = Flashback.objects.all()
             else:
                 qs = self.caller.roster.created_flashbacks.all()
@@ -287,16 +293,18 @@ class CmdPlots(ArxCommand):
         added_obj.save()
         self.msg("You have added %s to beat(ID: %d) of %s." % (added_obj, beat.id, beat.plot))
 
-    def get_beat(self, beat_id):
+    def get_beat(self, beat_id, cast_access=False):
         """Gets a beat for a plot by its ID"""
         if self.called_by_staff:
             qs = PlotUpdate.objects.all()
+        elif cast_access:
+            qs = PlotUpdate.objects.filter(plot_id__in=self.caller.dompc.active_plots)
         else:
             qs = PlotUpdate.objects.filter(plot_id__in=self.caller.dompc.plots_we_can_gm)
         try:
             beat = qs.get(id=beat_id)
         except (PlotUpdate.DoesNotExist, ValueError):
-            raise CommandError("You are not a GM for the plot that has a beat of that ID.")
+            raise CommandError("You are not able to alter a beat of that ID.")
         return beat
 
     def do_admin_switches(self):
@@ -509,6 +517,16 @@ class CmdPlots(ArxCommand):
         rev_plot_inv.save()
         self.msg("You have associated revelation '%s' with plot '%s'." % (revelation, plot))
 
+    def add_theory(self):
+        """Adds a theory to an existing plot"""
+        plot = self.get_involvement_by_plot_id(PCPlotInvolvement.PLAYER).plot
+        try:
+            theory = self.caller.player_ob.known_theories.get(id=self.rhs)
+        except (Theory.DoesNotExist, TypeError, ValueError):
+            raise CommandError("No theory by that ID.")
+        plot.theories.add(theory)
+        self.msg("You have associated theory '%s' with plot '%s'." % (theory, plot))
+
 
 class CmdGMPlots(ArxCommand):
     """
@@ -526,17 +544,16 @@ class CmdGMPlots(ArxCommand):
     @gmplots/rfr [<ID>]
     @gmplots/rfr/close <ID>[=<ooc notes to players>]
     @gmplots/pitches [<pitch ID>]
-    @gmplots/pitches/followup <pitch ID>=<message to player>
-    @gmplots/pitches/approve <pitch ID>[=<ooc notes to player>]
-    @gmplots/pitches/decline <pitch ID>[=<ooc notes to player>]
-    @gmplots/participation <plot ID>=<player>,<participation level>
-    @gmplots/perm <plot ID>=<player>/<owner, gm, recruiter, player>
-
+            /pitches/followup <pitch ID>=<message to player>
+            /pitches/approve <pitch ID>[=<ooc notes to player>]
+            /pitches/decline <pitch ID>[=<ooc notes to player>]
+    @gmplots/perm <plot ID>=<player>,<owner, gm, recruiter, player>
+    @gmplots/participation <plot ID>=<player>,<casting choice*>
+        (*required cast, main cast, supporting cast, extra, tangential)
     Tagging:
     @gmplots/connect/char <plot ID>=<character>/<desc of relationship>
                     /clue <plot ID>=<clue ID>/<desc of relationship>
-    /connect also supports /revelation, /org
-
+            /connect also supports /revelation, /org
     """
     key = "@gmplots"
     help_category = "GMing"
@@ -579,14 +596,11 @@ class CmdGMPlots(ArxCommand):
             only_open = "all" not in self.switches and not old
             self.msg(str(Plot.objects.view_plots_table(old=old, only_open_tickets=only_open)))
         else:
-            try:
-                plot = Plot.objects.get(id=self.lhs)
-            except Plot.DoesNotExist:
-                raise CommandError("No plot found by that ID.")
+            plot = self.get_by_name_or_id(Plot, self.lhs)
             if "timeline" in self.switches:
                 self.msg(plot.display_timeline())
             else:
-                self.msg(plot.display())
+                self.msg(plot.display(True, True))
 
     def create_plot(self):
         """Creates a new plot"""
@@ -596,7 +610,7 @@ class CmdGMPlots(ArxCommand):
         except (TypeError, ValueError):
             raise CommandError("Must include a name, summary, and a description for the plot.")
         if self.rhs:
-            parent = self.get_plot(self.rhs)
+            parent = self.get_by_name_or_id(Plot, self.rhs)
         plot = Plot.objects.create(name=name, desc=desc, parent_plot=parent, usage=Plot.GM_PLOT,
                                    start_date=datetime.now(), headline=summary)
         if parent:
@@ -604,21 +618,9 @@ class CmdGMPlots(ArxCommand):
         else:
             self.msg("You have created a new gm plot: %s (#%s)." % (plot, plot.id))
 
-    def get_plot(self, args=None):
-        if args is None:
-            args = self.lhs
-        try:
-            if args.isdigit():
-                parent = Plot.objects.get(id=args)
-            else:
-                parent = Plot.objects.get(name__iexact=args)
-        except (TypeError, ValueError, Plot.DoesNotExist):
-            raise CommandError("Invalid plot ID or name: %s" % args)
-        return parent
-
     def do_plot_switches(self):
         """Commands for handling a given plot"""
-        plot = self.get_plot()
+        plot = self.get_by_name_or_id(Plot, self.lhs)
         if "end" in self.switches:
             return self.end_plot(plot)
         if "addbeat" in self.switches or "adb" in self.switches or self.check_switches(self.beat_objects):
@@ -655,6 +657,9 @@ class CmdGMPlots(ArxCommand):
                     obj = Flashback.objects.get(id=object_id)
                 else:  # action
                     obj = PlotAction.objects.get(id=object_id)
+                    if obj.plot and obj.plot != plot:
+                        raise CommandError("That action is already assigned to a different plot.")
+                    obj.plot = plot
                 if obj.beat:
                     raise CommandError("That object was already associated with beat #%s." % obj.beat.id)
             elif "other" in self.switches:
@@ -688,7 +693,7 @@ class CmdGMPlots(ArxCommand):
         """Sets a property for someone involved in a plot"""
         choices = dict_from_choices_field(PCPlotInvolvement, choices_attr)
         try:
-            name, choice = self.rhs.split("/")
+            name, choice = self.rhslist
         except (TypeError, ValueError):
             raise CommandError("You must give both a name and a value.")
         choice = choice.lower()

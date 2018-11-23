@@ -27,6 +27,12 @@ class WeightedPicker(object):
         pickerdict = {}
         current_value = 0
 
+        if len(self.choices) == 0:
+            return None
+
+        if len(self.choices) == 1:
+            return self.choices[0][0]
+
         for option in self.choices:
             pickerdict[current_value] = option[0]
             current_value += option[1]

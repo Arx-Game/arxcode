@@ -485,12 +485,13 @@ class PlayerOrNpc(SharedMemoryModel):
         return Fealty.objects.filter(orgs__in=self.current_orgs).distinct().count() + no_fealties
 
     @property
-    def plots_we_can_gm(self):
-        return self.plots.filter(dompc_involvement__admin_status__gte=PCPlotInvolvement.GM)
+    def active_plots(self):
+        return self.plots.filter(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE,
+                                 usage__in=(Plot.GM_PLOT, Plot.PLAYER_RUN_PLOT))
 
     @property
-    def active_plots(self):
-        return self.plots.filter(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE)
+    def plots_we_can_gm(self):
+        return self.active_plots.filter(dompc_involvement__admin_status__gte=PCPlotInvolvement.GM)
 
 
 class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
@@ -2026,7 +2027,7 @@ class Plot(SharedMemoryModel):
 
     def display_base(self):
         """Common plot display information"""
-        msg = "\n|w[%s|w]{n" % self.name
+        msg = "|w[%s|w]{n" % self
         if self.rating:
             msg += " |w(%s Rating)|n" % self.rating
         if self.time_remaining:
@@ -2034,21 +2035,33 @@ class Plot(SharedMemoryModel):
         msg += "\n%s" % self.desc
         return msg
 
-    def display(self):
+    def display(self, display_connected=True, staff_display=False):
         """Returns string display for the plot and its latest update/beat"""
         msg = self.display_base()
-        if self.orgs.all():
-            msg += "\n{wOrganizations affected:{n %s" % ", ".join(str(ob) for ob in self.orgs.all())
-        if self.required_clue:
-            msg += "\n{wRequired Clue:{n %s" % self.required_clue
-        cast_list = self.cast_list
-        msg += ("\n%s" % cast_list) if cast_list else ""
         beats = list(self.beats)
+        if display_connected:
+            orgs, clue, cast = self.orgs.all(), self.required_clue, self.cast_list
+            if clue:
+                msg += "\n{wRequired Clue:{n %s" % self.required_clue
+            if staff_display:
+                subplots, clues, revs = self.subplots.all(), self.clues.all(), self.revelations.all()
+                if self.parent_plot:
+                    msg += "\n{wMain Plot:{n %s (#%s)" % (self.parent_plot, self.parent_plot.id)
+                if subplots:
+                    msg += "\n{wSubplots:{n %s" % ", ".join(("%s (#%s)" % (ob, ob.id)) for ob in subplots)
+                if clues:
+                    msg += "\n{wClues:{n %s" % "; ".join(("%s (#%s)" % (ob, ob.id)) for ob in clues)
+                if revs:
+                    msg += "\n{wRevelations:{n %s" % "; ".join(("%s (#%s)" % (ob, ob.id)) for ob in revs)
+            if cast:
+                msg += "\n%s" % cast
+            if orgs:
+                msg += "\n{wInvolved Organizations:{n %s" % ", ".join(str(ob) for ob in orgs)
         if beats:
             last = beats[-1]
             if self.usage in (self.PLAYER_RUN_PLOT, self.GM_PLOT):
                 msg += "\n{wBeat IDs:{n %s" % ", ".join(str(ob.id) for ob in beats)
-            msg += "\n%s" % last.display_beat()
+            msg += "\n%s" % last.display_beat(display_connected=display_connected)
         return msg
 
     def display_timeline(self):
@@ -2179,18 +2192,18 @@ class Plot(SharedMemoryModel):
     @property
     def cast_list(self):
         """Returns string of the cast's status and admin levels."""
-        role = PCPlotInvolvement
-        cast = self.dompc_involvement.filter(activity_status__lte=role.INVITED).order_by('cast_status')
-        msg = ""
-        status_tier = None
-        for ob in cast:
-            if ob.get_cast_status_display() != status_tier:
-                status_tier = ob.get_cast_status_display()
-                msg += "|w%s:|n\n" % status_tier
-            invited = "|w(Invited) " if ob.activity_status == ob.INVITED else ""
-            msg += "%s|c%s|n" % (invited, ob.dompc)
-            if ob.admin_status > ob.PLAYER:
-                msg += " (%s)" % ob.get_admin_status_display()
+        cast = self.dompc_involvement.filter(activity_status__lte=PCPlotInvolvement.INVITED).order_by('cast_status')
+        msg = "Involved Characters:\n" if cast else ""
+        for role in cast:
+            invited = "*Invited* " if role.activity_status == role.INVITED else ""
+            msg += "%s|c%s|n" % (invited, role.dompc)
+            status = []
+            if role.cast_status <= 2:
+                status.append(role.get_cast_status_display())
+            if role.admin_status >= 2:
+                status.append(role.get_admin_status_display())
+            if any(status):
+                msg += " (%s)" % ", ".join([ob for ob in status])
             msg += "\n"
         return msg
 
@@ -2236,7 +2249,40 @@ class PCPlotInvolvement(SharedMemoryModel):
         return msg
 
     def display_plot_involvement(self):
-        return self.plot.display()
+        msg = self.plot.display()
+        clues = self.plot.clues.all()
+        revs = self.plot.revelations.all()
+        theories = self.plot.theories.all()
+        our_plots = self.dompc.active_plots.all()
+        subplots = set(self.plot.subplots.all()) & set(our_plots)
+
+        def format_name(obj, unknown):
+            name = "%s(#%s)" % (obj, obj.id)
+            if obj in unknown:
+                name += "({rX{n)"
+            return name
+
+        if self.plot.parent_plot and self.plot.parent_plot in our_plots:
+            # noinspection PyTypeChecker
+            msg += "\n{wParent Plot:{n %s" % format_name(self.plot.parent_plot, [])
+        if subplots:
+            msg += "\n{wSubplots:{n %s" % ", ".join(format_name(ob, []) for ob in subplots)
+        if clues:
+            msg += "\n{wRelated Clues:{n "
+            pc_clues = list(self.dompc.player.roster.clues.all())
+            unknown_clues = [ob for ob in clues if ob not in pc_clues]
+            msg += "; ".join(format_name(ob, unknown_clues) for ob in clues)
+        if revs:
+            msg += "\n{wRelated Revelations:{n "
+            pc_revs = list(self.dompc.player.roster.revelations.all())
+            unknown_revs = [ob for ob in revs if ob not in pc_revs]
+            msg += "; ".join(format_name(ob, unknown_revs) for ob in revs)
+        if theories:
+            msg += "\n{wRelated Theories:{n "
+            pc_theories = list(self.dompc.player.known_theories.all())
+            unknown_theories = [ob for ob in theories if ob not in pc_theories]
+            msg += "; ".join(format_name(ob, unknown_theories) for ob in theories)
+        return msg
 
     def accept_invitation(self, description=""):
         self.activity_status = self.ACTIVE
@@ -2271,16 +2317,17 @@ class PlotUpdate(SharedMemoryModel):
     def __str__(self):
         return "%s #%s for %s" % (self.noun, self.id, self.plot)
 
-    def display_beat(self):
+    def display_beat(self, display_connected=True):
         """Return string display of this update/beat"""
         msg = "|w[%s|w]|n" % self
         if self.date:
             msg += " {wDate{n %s" % self.date.strftime("%x %X")
         msg += "\n%s" % self.desc if self.desc else "\nPending %s placeholder." % self.noun
-        for attr in ("actions", "events", "emits", "flashbacks"):
-            qs = getattr(self, attr).all()
-            if qs:
-                msg += "\n{w%s:{n %s" % (attr.capitalize(), ", ".join("%s (#%s)" % (ob, ob.id) for ob in qs))
+        if display_connected:
+            for attr in ("actions", "events", "emits", "flashbacks"):
+                qs = getattr(self, attr).all()
+                if qs:
+                    msg += "\n{w%s:{n %s" % (attr.capitalize(), ", ".join("%s (#%s)" % (ob, ob.id) for ob in qs))
         return msg
 
 
@@ -2454,7 +2501,7 @@ class AbstractAction(AbstractPlayerAllocations):
     def check_plot_omnipresence(self):
         """Raises an ActionSubmissionError if we are already attending for this crisis"""
         if self.attending:
-            already_attending = [ob for ob in self.plot_attendance if ob.crisis == self.crisis]
+            already_attending = [ob for ob in self.plot_attendance if ob.plot == self.plot]
             if already_attending:
                 already_attending = already_attending[-1]
                 raise ActionSubmissionError("You are marked as physically present at %s. Use @action/toggleattend"
@@ -5547,6 +5594,18 @@ class CraftingMaterialType(SharedMemoryModel):
 
     def __unicode__(self):
         return self.name or "Unknown"
+
+    def create_instance(self, quantity):
+        name_string = self.name
+        if quantity > 1:
+            name_string = "{} {}".format(quantity, self.name)
+
+        result = create.create_object(key=name_string,
+                                      typeclass="world.dominion.dominion_typeclasses.CraftingMaterialObject")
+        result.db.desc = self.desc
+        result.db.material_type = self.id
+        result.db.quantity = quantity
+        return result
 
 
 class CraftingMaterials(SharedMemoryModel):

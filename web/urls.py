@@ -46,7 +46,8 @@ urlpatterns = [
     url(r'^support/', include('web.helpdesk.urls')),
 
     url(r'^admintools/', include('web.admintools.urls', namespace='admintools', app_name='admintools')),
-                       
+
+    url(r'^explore/', include('world.exploration.urls', namespace='exploration', app_name='exploration')),
 ]
 
 # This sets up the server if the user want to run the Django

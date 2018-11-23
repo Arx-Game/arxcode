@@ -2,6 +2,9 @@
 Admin for Dominion
 """
 from django.contrib import admin
+from django.shortcuts import reverse
+from django.utils.html import escape
+
 from .models import (PlayerOrNpc, Organization, Domain, Agent, AgentOb, Minister, MapLocation,
                      AssetOwner, Region, Land, Castle, WorkSetting, PraiseOrCondemn,
                      Ruler, Army, Orders, MilitaryUnit, Member, Task, OrgUnitModifiers,
@@ -12,7 +15,6 @@ from .models import (PlayerOrNpc, Organization, Domain, Agent, AgentOb, Minister
                      PlotRoom, Landmark,
                      Honorific, Propriety, PCEventParticipation, OrgEventParticipation, Fealty,
                      OrgPlotInvolvement, PCPlotInvolvement)
-
 
 from web.help_topics.templatetags.app_filters import mush_to_html
 from world.exploration.models import Shardhaven, ShardhavenType
@@ -225,7 +227,7 @@ class OrgEventParticipantInline(admin.TabularInline):
 class EventAdmin(DomAdmin):
     """Admin for RP Events/PRPs/GM Events"""
     list_display = ('id', 'name', 'date')
-    search_fields = ['name', 'dompcs__username', 'orgs__name']
+    search_fields = ['name', 'dompcs__player__username', 'orgs__name']
     ordering = ['date']
     raw_id_fields = ('location', 'beat', 'plotroom')
     filter_horizontal = ('search_tags',)
@@ -315,26 +317,58 @@ class TaskAdmin(DomAdmin):
         return super(TaskAdmin, self).formfield_for_manytomany(db_field, request, **kwargs)
 
 
-class PlotUpdateInline(admin.TabularInline):
+class PlotUpdateTagMixin(object):
+    readonly_fields = ('tagged_actions', 'tagged_story_emits', 'tagged_events', 'tagged_flashbacks')
+
+    def tagged_actions(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_plotaction_change", args=[action.id]),
+                                                    escape(str(action)))
+                           for action in obj.actions.all())
+    tagged_actions.allow_tags = True
+
+    def tagged_story_emits(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_storyemit_change", args=[emit.id]),
+                                                    escape(emit.id))
+                           for emit in obj.emits.all())
+    tagged_story_emits.allow_tags = True
+
+    def tagged_events(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_rpevent_change", args=[ev.id]),
+                                                    escape(ev.name))
+                           for ev in obj.events.all())
+    tagged_events.allow_tags = True
+
+    def tagged_flashbacks(self, obj):
+        return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_flashback_change", args=[fb.id]),
+                                                    escape(fb.title))
+                           for fb in obj.flashbacks.all())
+    tagged_flashbacks.allow_tags = True
+
+
+class PlotUpdateInline(PlotUpdateTagMixin, admin.StackedInline):
     """Inline showing plot updates"""
     model = PlotUpdate
     extra = 0
     raw_id_fields = ('episode',)
     filter_horizontal = ('search_tags',)
+    classes = ['collapse']
+    show_change_link = True
 
 
-class PlotOrgInvolvementInline(admin.TabularInline):
+class PlotOrgInvolvementInline(admin.StackedInline):
     """Inline for Orgs involved in plots"""
     model = OrgPlotInvolvement
     extra = 0
     raw_id_fields = ('org',)
+    classes = ['collapse']
 
 
-class PCPlotInvolvementInline(admin.TabularInline):
+class PCPlotInvolvementInline(admin.StackedInline):
     """Inline for PC involvement in plots"""
     model = PCPlotInvolvement
     extra = 0
     raw_id_fields = ('dompc', 'recruited_by')
+    classes = ['collapse']
 
 
 class PlotAdmin(DomAdmin):
@@ -347,7 +381,7 @@ class PlotAdmin(DomAdmin):
     inlines = (PlotUpdateInline, PlotOrgInvolvementInline, PCPlotInvolvementInline)
 
 
-class PlotUpdateAdmin(DomAdmin):
+class PlotUpdateAdmin(PlotUpdateTagMixin, DomAdmin):
     """Admin for Plot Updates"""
     list_display = ('id', 'plot', 'desc', 'date',)
     filter_horizontal = ('search_tags',)
@@ -411,7 +445,7 @@ class PlotActionAdmin(DomAdmin):
     fieldsets = [(None, {'fields': [('dompc', 'topic'), ('search_tags',)]}),
                  ('Status', {'fields': [('attending', 'traitor', 'prefer_offscreen'),
                                         ('status', 'public', 'editable', 'free_action'),
-                                        ('plot', 'update', 'gemit'), ('week', 'date_submitted')],
+                                        ('plot', 'beat', 'gemit'), ('week', 'date_submitted')],
                              'classes': ['collapse'], 'description': 'Current ooc status of the action'}),
                  ('Story', {'fields': [('topic', 'category'), 'actions', 'secret_actions', 'story', 'secret_story',
                                        'ooc_intent'],

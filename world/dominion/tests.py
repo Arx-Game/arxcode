@@ -5,8 +5,24 @@ from mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
 from . import crisis_commands, general_dominion_commands, plot_commands
-from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Investigation
-from world.dominion.models import Plot, PlotAction, PCPlotInvolvement, RPEvent, PlotUpdate, Organization
+from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions
+from world.dominion.models import Plot, PlotAction, PCPlotInvolvement, RPEvent, PlotUpdate, Organization, \
+    CraftingMaterialType, CraftingMaterials
+
+
+class TestCraftingCommands(ArxCommandTest):
+
+    def setUp(self):
+        super(TestCraftingCommands, self).setUp()
+        self.material = CraftingMaterialType.objects.create(name="testonium", desc="A test material.", value=5000)
+
+    def test_create_material_object(self):
+        testobject = self.material.create_instance(3)
+        self.assertEqual(testobject.db.quantity, 3)
+        self.assertEqual(testobject.db.material_type, self.material.id)
+        self.assertEqual(testobject.db.desc, self.material.desc)
+        self.assertEqual(testobject.name, "3 testonium")
+        self.assertEqual(testobject.type_description, "crafting material, testonium")
 
 
 class TestCrisisCommands(ArxCommandTest):
@@ -131,8 +147,8 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
                               'Name/ID        Involvement \n'
                               'testplot2 (#2) Main Cast')
         self.call_cmd("4", 'No plot found by that ID.')
-        self.call_cmd("1", '[testplot1]\nNone\nSupporting Cast:\nTestaccount2 (Owner)')
-        self.call_cmd("2", '[testplot2]\nNone\nMain Cast:\nTestaccount2')
+        self.call_cmd("1", '[testplot1]\nNone\nInvolved Characters:\nTestaccount2 (Supporting Cast, Owner)')
+        self.call_cmd("2", '[testplot2]\nNone\nInvolved Characters:\nTestaccount2 (Main Cast)')
         self.call_cmd("1=1", "No beat found by that ID.")
         beat1 = self.plot1.updates.create(desc="test update")
         self.call_cmd("/createbeat 2=foo", "You lack the required permission for that plot.")
@@ -142,10 +158,10 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         beat2 = PlotUpdate.objects.get(id=2)
         beat3 = self.plot2.updates.create()
         beat3.delete = Mock()
-        self.call_cmd("/add/rpevent 1=3", "You are not a GM for the plot that has a beat of that ID.")
         event = RPEvent.objects.create(name="test event", beat=beat3)
-        self.call_cmd("/add/rpevent 1=2", "You are not a GM for an RPEvent with that ID.")
+        self.call_cmd("/add/rpevent 1=2", 'You did not attend an RPEvent with that ID.')
         event.pc_event_participation.create(dompc=self.dompc2, gm=True)
+        self.call_cmd("/add/rpevent 1=99", "You are not able to alter a beat of that ID.")
         self.call_cmd("/add/rpevent 1=2", "You have added test event to beat(ID: 2) of testplot1.")
         beat3.delete.assert_called()
         self.assertEqual(event.beat, beat2)
@@ -188,7 +204,7 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/rfr 2=argleblargle", "You lack the required permission for that plot.")
         self.call_cmd("/rfr 1", "Open tickets for testplot1:\n\nID Title")
         self.call_cmd("/rfr 1=test ticket", "You have submitted a new ticket for testplot1.")
-        self.call_cmd("/rfr 1,10=test beat ticket", "You are not a GM for the plot that has a beat of that ID.")
+        self.call_cmd("/rfr 1,10=test beat ticket", "You are not able to alter a beat of that ID.")
         self.call_cmd("/rfr 1,2=test beat ticket", "You have submitted a new ticket for testplot1.")
         self.call_cmd("/storyhook 2=testaccount2", "You lack the required permission for that plot.")
         self.call_cmd("/storyhook 1=testaccount2", "You have removed Testaccount2's story hook.")
@@ -226,10 +242,23 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/add/clue 2=2/so connected", 'That clue is already related to that plot.')
         self.assertEqual(clue2.plot_involvement.get(plot=self.plot2).gm_notes, "foo")
         rev = Revelation.objects.create(name="testrev")
-        rev.discoveries.create(character=self.roster_entry)
+        rev_disco = rev.discoveries.create(character=self.roster_entry)
         self.call_cmd("/addrevelation 2=1/foo", "You have associated revelation 'testrev' with plot 'testplot2'.")
         self.call_cmd("/add/revelation 2=1/blargh", 'That revelation is already related to that plot.')
         self.assertEqual(rev.plot_involvement.get(plot=self.plot2).gm_notes, "foo")
+        theory = Theory.objects.create(topic="test_theory", creator=self.account)
+        theory_disco = TheoryPermissions.objects.create(player=self.account, theory=theory)
+        self.call_cmd("/add/theory 2=1", "You have associated theory 'Testaccount's theory on test_theory'"
+                                         " with plot 'testplot2'.")
+        self.call_cmd("2", "[testplot2]\nNone\nInvolved Characters:\nTestaccount2 (Main Cast, Recruiter)\n"
+                           "Testaccount\n\nRelated Clues: testclue(#2)\n"
+                           "Related Revelations: testrev(#1)\n"
+                           "Related Theories: Testaccount's theory on test_theory(#1)")
+        rev_disco.delete()
+        theory_disco.delete()
+        self.call_cmd("2", "[testplot2]\nNone\nInvolved Characters:\nTestaccount2 (Main Cast, Recruiter)\n"
+                           "Testaccount\n\nRelated Clues: testclue(#2)\nRelated Revelations: testrev(#1)(X)\n"
+                           "Related Theories: Testaccount's theory on test_theory(#1)(X)")
 
     @patch('django.utils.timezone.now')
     def test_cmd_gm_plots(self, mock_now):
@@ -237,8 +266,8 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         mock_now.return_value = self.fake_datetime
         self.setup_cmd(plot_commands.CmdGMPlots, self.char1)
         self.call_cmd("/all", '| #   | Plot (owner)           | Summary                                     '
-                          '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
-                          '| 1   | testplot1              | None')
+                              '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                              '| 1   | testplot1              | None')
         self.call_cmd("/old", '| #   | Resolved Plot (owner)  | Summary                                     '
                               '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                               '| 2   | testplot2              | None')
@@ -262,10 +291,10 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/addbeat/rpevent 2=1/story 2/gm notes 2",
                       'You have created a new beat for plot testplot2. The beat concerns test event(#1).')
         self.assertEqual(event.beat, self.plot2.updates.last())
-        self.call_cmd("/perm 4=testaccount2/gm", "You have set Testaccount2 as a GM in testplot4.")
-        self.call_cmd("/participation 4=testaccount/blargh",
+        self.call_cmd("/perm 4=testaccount2,gm", "You have set Testaccount2 as a GM in testplot4.")
+        self.call_cmd("/participation 4=testaccount,blargh",
                       'Choice must be one of: required cast, main cast, supporting cast, extra, tangential.')
-        self.call_cmd("/participation 4=testaccount2/required cast",
+        self.call_cmd("/participation 4=testaccount2,required cast",
                       "You have set Testaccount2 as a Required Cast in testplot4.")
         pitch = create_plot_pitch("desc", "notes", "testpitch", self.plot2, "headline", self.account2)
         self.assertEqual(pitch.plot.usage, Plot.PITCH)
@@ -274,8 +303,8 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/pitches 8", '[Ticket #8] Pitch: testpitch (testplot2)\nQueue: PRP Questions - Priority 3\n'
                                     'Player: TestAccount2\nLocation: Room (#1)\n'
                                     'Submitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00\nRequest: notes\n\n'
-                                    'Plot Pitch:\n\n[testpitch]\ndesc\n'
-                                    'Main Cast:\nTestaccount2\n\n\nGM Resolution: None')
+                                    'Plot Pitch:\n[testpitch]\ndesc\nMain Plot: testplot2 (#2)\n'
+                                    'Involved Characters:\nTestaccount2 (Main Cast)\n\n\nGM Resolution: None')
         self.call_cmd("/pitches/followup 8=meh", "You have added a followup to Ticket 8.")
         self.call_cmd("/pitches/approve 8=k",
                       "You have approved the pitch. testpitch is now active with Testaccount2 as the owner.")
@@ -290,9 +319,9 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         org = Organization.objects.create(name="testorg")
         self.call_cmd("/connect/org 5=testorg/staff", "You have connected testorg with testpitch.")
         self.assertEqual(org.plots.first().id, 5)
-        clue = Clue.objects.create(name="testclue")
+        Clue.objects.create(name="testclue")
         self.call_cmd("/connect/clue 5=testclue/stuff", "You have connected testclue with testpitch.")
-        rev = Revelation.objects.create(name="testrev")
+        Revelation.objects.create(name="testrev")
         self.call_cmd("/connect/revelation 5=testrev/stuff", "You have connected testrev with testpitch.")
         pitch3 = create_plot_pitch("desc", "notes", "testrfr", self.plot2, "headline", self.account2)
         pitch3.plot.usage = Plot.PLAYER_RUN_PLOT
