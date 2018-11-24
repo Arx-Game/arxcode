@@ -237,6 +237,10 @@ def create_room(request):
     if not layout:
         return JsonErrorResponse("No layout for that haven.", status=404, code=JSON_ERROR_BADPARAM)
 
+    if haven.entrance.room is not None:
+        return JsonErrorResponse("You cannot add or remove rooms while a haven is instanciated.", status=500,
+                                 code=JSON_ERROR_BADPARAM)
+
     x_string = request.POST.get('x')
     y_string = request.POST.get('y')
     if not x_string or not y_string:
@@ -281,6 +285,10 @@ def delete_room(request):
 
     if not layout:
         return JsonErrorResponse("No layout for that haven.", status=404, code=JSON_ERROR_BADPARAM)
+
+    if haven.entrance.room is not None:
+        return JsonErrorResponse("You cannot add or remove rooms while a haven is instanciated.", status=500,
+                                 code=JSON_ERROR_BADPARAM)
 
     x_string = request.POST.get('x')
     y_string = request.POST.get('y')

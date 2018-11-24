@@ -96,6 +96,28 @@ class Monster(SharedMemoryModel):
 
         if self.spawn_message:
             location.msg_contents(self.spawn_message)
+
+        if self.mirror:
+            characters = []
+            for testobj in location.contents:
+                if testobj.has_player or ((hasattr(testobj, 'is_character') and testobj.is_character)
+                                          and not (testobj.is_typeclass(Monster.MOOK_TYPECLASS)
+                                                   or testobj.is_typeclass(Monster.BOSS_TYPECLASS))) \
+                        and not testobj.check_permstring("builders"):
+                    characters.append(testobj)
+
+            if len(characters) > 0:
+                character = random.choice(characters)
+
+                for stat in ("strength", "stamina", "dexterity"):
+                    val = character.attributes.get(stat, 0)
+                    result.attributes.add(stat, val)
+                skills = character.db.skills
+                result.attributes.add("skills", dict(skills))
+                new_desc = self.description.replace("{name}", character.name)
+                result.db.desc = new_desc
+                location.msg_contents("The {} mirrors {}!".format(result.name, character.name))
+
         result.location = location
         return result
 
@@ -643,7 +665,7 @@ class ShardhavenPuzzle(SharedMemoryModel):
 
         dropped_objects = []
 
-        for loop in range(0, self.num_drops):
+        for loop in range(0, random.randint(1, self.num_drops)):
             picker = WeightedPicker()
             result = None
 
@@ -781,15 +803,19 @@ class ShardhavenLayoutExit(SharedMemoryModel):
         if not self.obstacle:
             return True
 
+        if self.override:
+            return True
+
+        if self.passed_by.count() == 0:
+            return False
+
         passed = False
 
-        if self.override:
-            passed = True
-        elif self.obstacle.pass_type != ShardhavenObstacle.EVERY_TIME:
+        if self.obstacle.pass_type != ShardhavenObstacle.EVERY_TIME:
             if character in self.passed_by.all():
                 passed = True
             else:
-                passed = self.obstacle.obstacle_type == ShardhavenObstacle.ANYONE
+                passed = self.obstacle.pass_type == ShardhavenObstacle.ANYONE
 
         if passed:
             return self.obstacle.peekable_open

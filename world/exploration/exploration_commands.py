@@ -167,7 +167,10 @@ class CmdTestShardhavenBuild(ArxCommand):
                 return
             layout = layouts[0]
 
-            self.msg("The entrance to {} is #{}.".format(haven.name, haven.entrance.room.id))
+            if haven.entrance.room:
+                self.msg("The entrance to {} is #{}.".format(haven.name, haven.entrance.room.id))
+            else:
+                self.msg("{} is not presently instanciated.".format(haven.name))
             return
 
         if "reset" in self.switches:
