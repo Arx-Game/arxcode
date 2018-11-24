@@ -121,7 +121,7 @@ class ShardhavenObstacleClueInline(admin.TabularInline):
 
 
 class ShardhavenObstacleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'description')
+    list_display = ('id', 'short_desc', 'description')
     inlines = (ShardhavenRollInline, ShardhavenObstacleClueInline)
     filter_horizontal = ('haven_types',)
 

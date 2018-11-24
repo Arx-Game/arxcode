@@ -379,9 +379,15 @@ class ShardhavenObstacle(SharedMemoryModel):
     haven_types = models.ManyToManyField(ShardhavenType, related_name='+', blank=True)
     obstacle_class = models.PositiveSmallIntegerField(default=0, choices=OBSTACLE_CLASSES)
     obstacle_type = models.PositiveSmallIntegerField(choices=OBSTACLE_TYPES)
+    short_desc = models.CharField(max_length=40, blank=True, null=True,
+                                  help_text="A short description of this obstacle, like 'labyrinth of mirrors'.")
     description = models.TextField(blank=False, null=False)
     pass_type = models.PositiveSmallIntegerField(choices=OBSTACLE_PASS_TYPES, default=INDIVIDUAL,
                                                  verbose_name="Requirements")
+    peekable_open = models.BooleanField(default=True,
+                                        help_text="Can people see through this exit when it's been passed?")
+    peekable_closed = models.BooleanField(default=False,
+                                          help_text="Can people see through this exit before it's been passed?")
     clue_success = models.TextField(blank=True, null=True)
 
     def msg(self, *args, **kwargs):
@@ -391,7 +397,7 @@ class ShardhavenObstacle(SharedMemoryModel):
         pass
 
     def __str__(self):
-        return self.description
+        return self.short_desc or self.description
 
     def __repr__(self):
         return str(self)
@@ -614,10 +620,18 @@ class ShardhavenPuzzle(SharedMemoryModel):
     name = models.CharField(max_length=40, blank=True, null=True)
     haven_types = models.ManyToManyField('ShardhavenType', related_name='puzzles')
     obstacle = models.ForeignKey(ShardhavenObstacle, blank=False, null=False, related_name='puzzles')
+    num_drops = models.PositiveSmallIntegerField(default=1, help_text="How many treasures should this puzzle drop?")
     weight_trinket = models.SmallIntegerField(default=0,
                                               help_text="A weight chance that this puzzle will drop a trinket.")
     weight_weapon = models.SmallIntegerField(default=0,
                                              help_text="A weight chance that this puzzle will drop a weapon.")
+
+    @property
+    def display_name(self):
+        if self.obstacle.short_desc:
+            return self.obstacle.short_desc
+
+        return self.name
 
     def handle_loot_drop(self, location):
         if location is None:
@@ -627,51 +641,60 @@ class ShardhavenPuzzle(SharedMemoryModel):
         if hasattr(location, 'shardhaven'):
             haven = location.shardhaven
 
-        picker = WeightedPicker()
+        dropped_objects = []
 
-        if haven:
-            if self.weight_trinket > 0:
-                picker.add_option("trinket", self.weight_trinket)
+        for loop in range(0, self.num_drops):
+            picker = WeightedPicker()
+            result = None
 
-            if self.weight_weapon > 0:
-                picker.add_option("weapon", self.weight_trinket)
+            if haven:
+                if self.weight_trinket > 0:
+                    picker.add_option("trinket", self.weight_trinket)
 
-        for loot in self.alchemical_materials.all():
-            picker.add_option(loot, loot.weight)
+                if self.weight_weapon > 0:
+                    picker.add_option("weapon", self.weight_trinket)
 
-        for crafting_loot in self.crafting_materials.all():
-            picker.add_option(crafting_loot, crafting_loot.weight)
+            for loot in self.alchemical_materials.all():
+                picker.add_option(loot, loot.weight)
 
-        for object_loot in self.object_drops.all():
-            picker.add_option(object_loot, object_loot.weight)
+            for crafting_loot in self.crafting_materials.all():
+                picker.add_option(crafting_loot, crafting_loot.weight)
 
-        result = picker.pick()
+            for object_loot in self.object_drops.all():
+                if object_loot not in dropped_objects:
+                    picker.add_option(object_loot, object_loot.weight)
+                    if object_loot.guaranteed:
+                        result = object_loot
 
-        if result:
-            final_loot = None
-            if isinstance(result, basestring):
-                from .loot import LootGenerator
-                if result == "weapon":
-                    final_loot = LootGenerator.create_weapon(haven)
-                elif result == "trinket":
-                    final_loot = LootGenerator.create_trinket(haven)
-            else:
-                quantity = random.randint(result.minimum_quantity, result.maximum_quantity)
+            if not result:
+                result = picker.pick()
 
-                if hasattr(result, "object"):
-                    if result.duplicate:
-                        from evennia.objects.models import ObjectDB
-                        final_loot = ObjectDB.objects.copy_object(result.object, new_key=result.object.key)
-                    else:
-                        final_loot = result.object
+            if result:
+                final_loot = None
+                if isinstance(result, basestring):
+                    from .loot import LootGenerator
+                    if result == "weapon":
+                        final_loot = LootGenerator.create_weapon(haven)
+                    elif result == "trinket":
+                        final_loot = LootGenerator.create_trinket(haven)
                 else:
-                    final_loot = result.material.create_instance(quantity)
-                    if haven:
-                        final_loot.db.found_shardhaven = haven.name
+                    quantity = random.randint(result.minimum_quantity, result.maximum_quantity)
 
-            if final_loot is not None:
-                location.msg_contents("The {} dropped {}!".format(self.name, final_loot.name))
-                final_loot.location = location
+                    if hasattr(result, "object"):
+                        dropped_objects.append(result)
+                        if result.duplicate:
+                            from evennia.objects.models import ObjectDB
+                            final_loot = ObjectDB.objects.copy_object(result.object, new_key=result.object.key)
+                        else:
+                            final_loot = result.object
+                    else:
+                        final_loot = result.material.create_instance(quantity)
+                        if haven:
+                            final_loot.db.found_shardhaven = haven.name
+
+                if final_loot is not None:
+                    location.msg_contents("The {} dropped {}!".format(self.display_name, final_loot.name))
+                    final_loot.location = location
 
 
 class ShardhavenPuzzleMaterial(SharedMemoryModel):
@@ -697,7 +720,8 @@ class ShardhavenPuzzleObjectLoot(SharedMemoryModel):
     puzzle = models.ForeignKey(ShardhavenPuzzle, blank=False, null=False, related_name='object_drops')
     weight = models.SmallIntegerField(default=10, help_text="A weight chance that this puzzle will drop this object.")
     object = models.ForeignKey('objects.ObjectDB', blank=False, null=False)
-    duplicate = models.BooleanField(default=False)
+    duplicate = models.BooleanField(default=False, help_text="Do we create a duplicate copy of this object to drop?")
+    guaranteed = models.BooleanField(default=False, help_text="Is this object a guaranteed drop?")
 
     @property
     def minimum_quantity(self):
@@ -745,6 +769,32 @@ class ShardhavenLayoutExit(SharedMemoryModel):
 
     def __unicode__(self):
         return unicode(str(self))
+
+    @property
+    def obstacle_name(self):
+        if not self.obstacle:
+            return None
+
+        return self.obstacle.short_desc or "obstacle"
+
+    def can_see_past(self, character):
+        if not self.obstacle:
+            return True
+
+        passed = False
+
+        if self.override:
+            passed = True
+        elif self.obstacle.pass_type != ShardhavenObstacle.EVERY_TIME:
+            if character in self.passed_by.all():
+                passed = True
+            else:
+                passed = self.obstacle.obstacle_type == ShardhavenObstacle.ANYONE
+
+        if passed:
+            return self.obstacle.peekable_open
+        else:
+            return self.obstacle.peekable_closed
 
     def modify_diff(self, amount=None, reason=None):
         if amount:

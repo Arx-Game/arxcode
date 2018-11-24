@@ -1179,9 +1179,9 @@ class CmdSheet(ArxPlayerCommand):
             table = EvTable("{wID", "{wName", "{wSummary", width=78, border="cells")
             for ob in plots:
                 table.add_row(str(ob.id), ob.name, ob.headline)
-            table.reformat_column(0, width=6)
+            table.reformat_column(0, width=8)
             table.reformat_column(1, width=22)
-            table.reformat_column(2, width=50)
+            table.reformat_column(2, width=48)
             self.msg(str(table))
         else:
             from world.dominion.models import Plot

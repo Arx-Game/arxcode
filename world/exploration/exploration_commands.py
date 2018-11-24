@@ -405,7 +405,7 @@ class CmdExplorationSneak(ArxCommand):
             self.caller.location.msg_contents("%s attempts to sneak %s, but makes noise as they do so!"
                                               % (self.caller.name, exit_obj.direction_name))
         elif roll > 1:
-            self.caller.location.msg_contents("%s moves stealthily through %s"
+            self.caller.location.msg_contents("%s moves stealthily through %s."
                                               % (self.caller.name, exit_obj.direction_name))
 
         self.caller.ndb.shardhaven_sneak_value = roll
@@ -505,7 +505,7 @@ class CmdExplorationPuzzle(ArxCommand):
         if not attempts:
             return True
 
-        if not self.caller.id in attempts:
+        if self.caller.id not in attempts:
             return True
 
         timestamp = attempts[self.caller.id]
@@ -515,6 +515,8 @@ class CmdExplorationPuzzle(ArxCommand):
             self.msg("You can't attempt to solve this puzzle for {} seconds.".format(trunc(180 - delta)))
             return False
 
+        return True
+
     def func(self):
 
         puzzle = self.puzzle_for_room()
@@ -523,6 +525,14 @@ class CmdExplorationPuzzle(ArxCommand):
             return
 
         if "solve" in self.switches:
+
+            if self.caller.location.ndb.combat_manager:
+                cscript = self.caller.location.ndb.combat_manager
+                if cscript.ndb.combatants:
+                    if cscript.check_character_is_combatant(self.caller):
+                        self.msg("You're in combat, and cannot attempt to solve this puzzle right now!")
+                        return False
+
             if not self.can_attempt():
                 return
 

@@ -1082,19 +1082,24 @@ class CmdGMNotes(ArxPlayerCommand):
         self.msg("Tag created for '%s'!" % self.args)
 
     def list_needy_characters(self):
-        """Lists characters yet to benefit from GM attention."""
+        """Lists characters yet to be involved with secrets, or plots."""
         chars = Character.objects.filter(roster__roster__name="Active")
-        neediest = chars.filter(clues__isnull=True).distinct()
-        chars = chars.difference(neediest)
-        needier = chars.exclude(Q(clues__plots__isnull=True) | Q(clues__plots__resolved=False)).distinct()
-        msg = ""
-        if neediest:
-            msg += "Characters without secrets: {}\n".format(list_to_string([ob.key for ob in neediest]))
-        if needier:
-            msg += "Characters with secrets not connected to active plots: {}".format(
-                list_to_string([ob.key for ob in needier]))
-        elif not any((neediest, needier)):
-            msg = "Thank you, hero! But our characters in need of secrets are in another castle."
+        neediest = chars.filter(Q(roster__player__Dominion__plots__isnull=True)).distinct()
+        chars = chars.exclude(id__in=neediest)
+        needier = chars.filter(clues__isnull=True).distinct()
+        chars = chars.exclude(id__in=needier)
+        needy = chars.exclude(roster__player__Dominion__plots__resolved=False).distinct()
+        if any((neediest, needier, needy)):
+            msg = "|wCharacters in need.|n These lists cascade, meaning a name will only appear in "
+            msg += "its highest category of need.\n"
+            if neediest:
+                msg += "|yNever in a plot:|n %s\n" % list_to_string([ob.key for ob in neediest])
+            if needier:
+                msg += "|yWithout secrets:|n %s\n" % list_to_string([ob.key for ob in needier])
+            if needy:
+                msg += "|yOnly in resolved plots:|n %s" % list_to_string([ob.key for ob in needy])
+        else:
+            msg = "|gThank you, hero! But our characters-in-need are in another castle.|n"
         self.msg(msg)
 
     def list_tagged_characters(self):

@@ -247,6 +247,76 @@ class RosterEntry(SharedMemoryModel):
         return "\n\n".join("{c%s{n wrote %s: %s" % (ob.writer, public_str(ob),
                                                     ob.summary) for ob in qs)
 
+    @property
+    def known_tags(self):
+        """Returns a queryset of our collection of tags."""
+        dompc = self.player.Dominion
+        clu_q = Q(clues__in=self.clues.all())
+        rev_q = Q(revelations__in=self.revelations.all())
+        plot_q = Q(plots__in=dompc.active_plots)
+        beat_q = Q(plot_updates__plot__in=dompc.active_plots)
+        act_q = Q(actions__in=self.player.participated_actions)
+        evnt_q = Q(events__dompcs=dompc) | Q(events__orgs__in=dompc.current_orgs)
+        flas_q = Q(plot_updates__flashbacks__owner=self) | Q(plot_updates__flashbacks__allowed=self)
+        obj_q = Q(game_objects__db_location=self.character)
+        qs = SearchTag.objects.filter(clu_q | rev_q | plot_q | beat_q | act_q | evnt_q | flas_q | obj_q)
+        return qs.distinct()
+
+    def display_tagged_objects(self, tag):
+        """
+        Returns a string listing tagged objects sorted by class, or empty string.
+            Args:
+                tag: SearchTag object
+        """
+        from world.dominion.models import PlotUpdate, RPEvent
+        dompc = self.player.Dominion
+        msg = ""
+        querysets = []
+
+        def get_queryset_str(qset):
+            """
+            Gets a string representation of the queryset. We check the class name for each object in the
+            queryset because typeclasses will have different class names, and we want to simulate that being
+            a different type of match.
+            """
+            class_name = None
+            message = ""
+            sep = ""
+            for obj in qset:
+                # noinspection PyProtectedMember
+                plural_name = obj._meta.verbose_name_plural
+                if plural_name != class_name:
+                    class_name = plural_name
+                    message += "\n|w[%s]|n " % class_name.title()
+                    sep = ""
+                message += sep + str(obj)
+                sep = "; "
+            return message
+
+        # append clues/revelations we know:
+        for related_name in ("clues", "revelations"):
+            querysets.append(getattr(self, related_name).filter(search_tags=tag))
+        # append our plots:
+        querysets.append(dompc.active_plots.filter(search_tags=tag))
+        all_beats = PlotUpdate.objects.filter(search_tags=tag)  # ALL tagged beats
+        # append our beats~
+        querysets.append(all_beats.filter(plot__in=dompc.active_plots))
+        # append beat-attached experiences we were part of, but don't have plot access to~
+        # actions:
+        querysets.append(self.player.participated_actions.filter(search_tags=tag))
+        # events:
+        querysets.append(RPEvent.objects.filter(Q(search_tags=tag) & (Q(dompcs=dompc) | Q(orgs__in=dompc.current_orgs))))
+        # flashbacks:
+        querysets.append(Flashback.objects.filter(Q(beat__in=all_beats) & (Q(owner=self) | Q(allowed=self))))
+        # append our tagged inventory items:
+        querysets.append(self.character.locations_set.filter(search_tags=tag).order_by('db_typeclass_path'))
+        querysets = [ob.distinct() for ob in querysets if len(ob) > 0]
+        if querysets:
+            msg = "|wTagged as '|235%s|w':|n" % tag
+            for qs in querysets:
+                msg += get_queryset_str(qs)
+        return msg
+
     def save(self, *args, **kwargs):
         """check if a database lock during profile_picture setting has put us in invalid state"""
         if self.profile_picture and not self.profile_picture.pk:
@@ -881,7 +951,7 @@ class SearchTag(SharedMemoryModel):
             return message
 
         if querysets:
-            msg = "|wTagged as '%s':|n" % self
+            msg = "|wTagged as '|235%s|w':|n" % self
             for qs in querysets:
                 msg += get_queryset_str(qs)
         return msg

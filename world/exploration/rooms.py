@@ -113,6 +113,10 @@ class ShardhavenRoom(ArxRoom):
                 # Chance of spawn in goes down after the first player.
                 weight_none = weight_none * 2
 
+            if len(monsters) > 1:
+                # Chance of spawn in goes down after the first monster.
+                weight_none = weight_none * 2
+
             if obj.ndb.shardhaven_sneak_value:
                 weight_none += (obj.ndb.shardhaven_sneak_value * 10)
                 if obj.ndb.shardhaven_sneak_value > 0:
@@ -213,7 +217,8 @@ class ShardhavenRoom(ArxRoom):
                     testobj.location = city_center
             elif testobj.is_typeclass('world.exploration.loot.Trinket') \
                     or testobj.is_typeclass('world.exploration.loot.AncientWeapon') \
-                    or testobj.is_typeclass('world.magic.materials.MagicMaterial'):
+                    or testobj.is_typeclass('world.magic.materials.MagicMaterial') \
+                    or testobj.is_typeclass('world.dominion.dominion_typeclasses.CraftingMaterialObject'):
                 testobj.softdelete()
             elif not testobj.is_typeclass('typeclasses.exits.ShardhavenInstanceExit') \
                     and not testobj.is_typeclass('typeclasses.exits.Exit'):

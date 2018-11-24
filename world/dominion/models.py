@@ -2032,6 +2032,9 @@ class Plot(SharedMemoryModel):
             msg += " |w(%s Rating)|n" % self.rating
         if self.time_remaining:
             msg += " {yTime Remaining:{n %s" % str(self.time_remaining).split(".")[0]
+        tags = self.search_tags.all()
+        if tags:
+            msg += " |wTags:|n %s" % ", ".join(("|235%s|n" % tag) for tag in tags)
         msg += "\n%s" % self.desc
         return msg
 
@@ -2194,9 +2197,10 @@ class Plot(SharedMemoryModel):
         """Returns string of the cast's status and admin levels."""
         cast = self.dompc_involvement.filter(activity_status__lte=PCPlotInvolvement.INVITED).order_by('cast_status')
         msg = "Involved Characters:\n" if cast else ""
+        sep = ""
         for role in cast:
             invited = "*Invited* " if role.activity_status == role.INVITED else ""
-            msg += "%s|c%s|n" % (invited, role.dompc)
+            msg += "%s%s|c%s|n" % (sep, invited, role.dompc)
             status = []
             if role.cast_status <= 2:
                 status.append(role.get_cast_status_display())
@@ -2204,7 +2208,7 @@ class Plot(SharedMemoryModel):
                 status.append(role.get_admin_status_display())
             if any(status):
                 msg += " (%s)" % ", ".join([ob for ob in status])
-            msg += "\n"
+            sep = "\n"
         return msg
 
 
@@ -2249,6 +2253,10 @@ class PCPlotInvolvement(SharedMemoryModel):
         return msg
 
     def display_plot_involvement(self):
+        """
+        Plot info along with attached lore objects that are marked
+        if the character does not know them.
+        """
         msg = self.plot.display()
         clues = self.plot.clues.all()
         revs = self.plot.revelations.all()
@@ -2322,6 +2330,9 @@ class PlotUpdate(SharedMemoryModel):
         msg = "|w[%s|w]|n" % self
         if self.date:
             msg += " {wDate{n %s" % self.date.strftime("%x %X")
+        tags = self.search_tags.all()
+        if tags:
+            msg += " |wTags:|n %s" % ", ".join(("|235%s|n" % tag) for tag in tags)
         msg += "\n%s" % self.desc if self.desc else "\nPending %s placeholder." % self.noun
         if display_connected:
             for attr in ("actions", "events", "emits", "flashbacks"):

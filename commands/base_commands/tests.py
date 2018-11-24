@@ -855,7 +855,7 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                            "Class types: clue, revelation, plot, action, gemit,"
                                            " rpevent, flashback, objectdb.")
         self.call_cmd("/tag/clue Galvanion is easy=vixen", "No Clue found using 'Galvanion is easy'.")
-        galvcloo1 = self.char1.clues.create(clue_type=2, name="Secret #1 of Galvanion")
+        galvcloo1 = self.char1.clues.create(clue_type=2, name="Secret #1 of Galvanion", tangible_object=self.char)
         self.call_cmd("/tag/clue Secret=vixen", "More than one Clue found with 'Secret'; be specific.")
         self.call_cmd("/tag/clue Secret #1 of Slyyyy=vixen", "Added the 'vixen' tag on clue: Secret #1 of Slyyyy.")
         self.call_cmd("/tag/clue Secret #2 of Slyyyy=vixen", "Added the 'vixen' tag on clue: Secret #2 of Slyyyy.")
@@ -914,8 +914,9 @@ class StaffCommandTestsPlus(ArxCommandTest):
                       "Created a secret for Char2 related to revelation #1 'Vixens Are Evil'.")
         slyplot1.resolved = True
         slyplot1.save()
-        self.call_cmd("/no_gming", "Characters without secrets: Char3\n"
-                                   "Characters with secrets not connected to active plots: Char and Char2")
+        self.call_cmd("/no_gming", "Characters in need. These lists cascade, meaning a name will only appear in "
+                                   "its highest category of need.\nNever in a plot: Char and Char3\n"
+                                   "Only in resolved plots: Char2")
         self.char2.dompc.inform = Mock()
         self.call_cmd("/hook 1,1", "Hook failed; one exists between secret 'Secret #1 of Slyyyy' (#1) and "
                                    "plot 'Slypose' (#1) already.")

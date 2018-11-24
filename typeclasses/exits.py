@@ -9,7 +9,8 @@ for allowing Characters to traverse the exit to its destination.
 from evennia import DefaultExit
 from typeclasses.mixins import ObjectMixins, NameMixins, LockMixins, BaseObjectMixins
 from evennia.commands import command, cmdset
-from world.exploration.models import ShardhavenLayoutExit, ShardhavenObstacle
+from world.exploration.models import ShardhavenLayoutExit, ShardhavenObstacle, Monster
+from server.utils.arx_utils import commafy, a_or_an
 
 
 class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
@@ -406,13 +407,55 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
 
         return haven_exit
 
+    def see_through_contents(self):
+
+        other_room = self.destination
+        haven_square = None
+        if hasattr(other_room, 'shardhaven_square'):
+            haven_square = other_room.shardhaven_square
+
+        characters = []
+        character_string = None
+
+        for testobj in other_room.contents:
+            if testobj.has_player or (hasattr(testobj, 'is_character') and testobj.is_character):
+                characters.append(testobj.name)
+
+        if len(characters):
+            character_string = commafy(characters)
+        elif haven_square and haven_square.monster:
+            if haven_square.monster.npc_type == Monster.MOOKS:
+                character_string = haven_square.monster.plural_name
+            else:
+                character_string = haven_square.monster.name
+
+        puzzle_string = None
+        if haven_square and haven_square.puzzle and not haven_square.puzzle_solved:
+            puzzle_string = haven_square.puzzle.display_name
+
+        result = "You see nothing of note in the next room."
+        if character_string:
+            result = "In the next room, you see " + character_string + "."
+            if puzzle_string:
+                puzzle_part = a_or_an(puzzle_string)
+                result += "  And {} {}.".format(puzzle_part, puzzle_string)
+        elif puzzle_string:
+            puzzle_part = a_or_an(puzzle_string)
+            result = "In the next room, you see {} {}.".format(puzzle_part, puzzle_string)
+
+        return result
+
     def return_appearance(self, pobject, detailed=False, format_desc=False,
                           show_contents=True):
 
         result = "|c" + self.key + "|n|/|/"
 
+        see_through = False
+
         if self.haven_exit and self.haven_exit.obstacle:
             result += self.haven_exit.obstacle.description
+
+            see_through = self.haven_exit.can_see_past(pobject)
 
             if self.haven_exit.obstacle.clues.count() > 0:
                 result += "|/|/This obstacle can be passed by those who have the correct knowledge."
@@ -424,12 +467,20 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
                 result += "|/|/(However, being staff, you can just pass through without a check.)"
             else:
                 if self.passable(pobject):
-                    result += "|/|/However, someone has already addressed this obstacle, and you may pass."
+                    result += "|/|/However, this obstacle has been addressed, and you may pass."
                 else:
                     result += "|/" + self.haven_exit.obstacle.options_description(self)
 
         else:
             result += "The way seems clear ahead."
+            see_through = True
+
+        if see_through:
+            other_room_contents = self.see_through_contents()
+            if other_room_contents:
+                result += "|/|/" + other_room_contents
+        else:
+            result += "|/|/The " + self.haven_exit.obstacle_name + " blocks your view of the next room!"
 
         return result + "|/"
 
