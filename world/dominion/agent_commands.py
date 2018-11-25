@@ -448,8 +448,9 @@ class CmdRetainers(ArxPlayerCommand):
         it appealing to dump xp on them rather than spend it personally.
         """
         if len(self.rhslist) < 2:
-            char = self.caller.db.char_ob
+            char = self.caller.char_ob
             xp_multiplier = 3
+            increase_training_cap = True
         else:
             try:
                 char = self.get_agent_from_args(self.rhslist[1])
@@ -457,6 +458,7 @@ class CmdRetainers(ArxPlayerCommand):
             except (Agent.DoesNotExist, ValueError):
                 self.msg("Could not find an agent by those args.")
                 return
+            increase_training_cap = False
         try:
             amt = int(self.rhslist[0])
             if amt < 1:
@@ -477,6 +479,9 @@ class CmdRetainers(ArxPlayerCommand):
         amt *= xp_multiplier
         agent.adjust_xp(amt)
         self.adjust_transfer_cap(agent, amt)
+        if increase_training_cap and agent.dbobj.uses_training_cap:
+            agent.xp_training_cap += amt
+            self.msg("The training cap of %s is now %s xp." % (agent, agent.xp_training_cap))
         self.msg("%s now has %s xp to spend." % (agent, agent.xp))
         return
 

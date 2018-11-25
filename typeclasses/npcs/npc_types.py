@@ -267,6 +267,7 @@ def check_passive_guard(atype):
         return True
     return False
 
+
 INNATE_ABILITIES = {
     ASSISTANT: ('investigation_assistant', 'discreet_messenger', 'custom_messenger'),
     SPY: ('investigation_assistant', 'custom_messenger', 'discreet_messenger'),
@@ -274,7 +275,7 @@ INNATE_ABILITIES = {
 }
 
 ABILITY_COSTS = {
-    'investigation_assistant': (50, 'social'), 'discreet_messenger': (25, 'social'),
+    'investigation_assistant': (150, 'social'), 'discreet_messenger': (25, 'social'),
     'custom_messenger': (25, 'social'),
 }
 

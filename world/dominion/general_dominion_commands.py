@@ -3899,29 +3899,3 @@ class CmdCleanupDomain(ArxPlayerCommand):
         self.delete_and_report("organizations", orgs)
 
         self.msg("Done!")
-
-
-# cmdset for all Dominion commands
-class DominionCmdSet(CmdSet):
-    key = "DominionDefault"
-    duplicates = False
-
-    def at_cmdset_creation(self):
-        """Init the cmdset"""
-        self.add(CmdAdmDomain())
-        self.add(CmdAdmArmy())
-        self.add(CmdAdmCastle())
-        self.add(CmdAdmAssets())
-        self.add(CmdAdmFamily())
-        self.add(CmdAdmOrganization())
-        # self.add(CmdTagBarracks())
-        # player commands
-        self.add(CmdDomain())
-        self.add(CmdFamily())
-        self.add(CmdOrganization())
-        from dominion.agent_commands import CmdAgents
-        self.add(CmdAgents())
-        from dominion.agent_commands import CmdGuards
-        self.add(CmdGuards())
-        self.add(CmdPlotRoom())
-        self.add(CmdCleanupDomain())

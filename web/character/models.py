@@ -1271,16 +1271,23 @@ class Investigation(AbstractPlayerAllocations):
         """
         diff = (diff if diff is not None else self.difficulty) + mod
         roll = self.do_obj_roll(self, diff)
+        assistant_roll_total = 0
         for ass in self.active_assistants:
-            a_roll = self.do_obj_roll(ass, diff - 20)
+            player_character_mod = 20 if ass.char.player_ob else 0
+            a_roll = self.do_obj_roll(ass, diff - player_character_mod)
             if a_roll < 0:
                 a_roll = 0
-            try:
-                ability_level = ass.char.db.abilities['investigation_assistant']
-            except (AttributeError, ValueError, KeyError, TypeError):
-                ability_level = 0
-            a_roll += random.randint(0, 5) * ability_level
-            roll += a_roll
+            if not player_character_mod:
+                try:
+                    ability_level = ass.char.db.abilities['investigation_assistant']
+                except (AttributeError, ValueError, KeyError, TypeError):
+                    ability_level = 0
+                cap = ability_level * 10
+                a_roll += random.randint(0, 5) * ability_level
+                if a_roll > cap:
+                    a_roll = cap
+            assistant_roll_total += a_roll
+        roll += max(assistant_roll_total, random.randint(0, 100))
         try:
             roll = int(roll * settings.INVESTIGATION_PROGRESS_RATE)
         except (AttributeError, TypeError, ValueError):

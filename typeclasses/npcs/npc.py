@@ -25,7 +25,7 @@ from .npc_types import (get_npc_stats, get_npc_desc, get_npc_skills,
                         get_npc_singular_name, get_npc_plural_name, get_npc_weapon,
                         get_armor_bonus, get_hp_bonus, primary_stats,
                         assistant_skills, spy_skills, get_npc_stat_cap, check_passive_guard,
-                        COMBAT_TYPES, get_innate_abilities, ABILITY_COSTS)
+                        COMBAT_TYPES, get_innate_abilities, ABILITY_COSTS, ANIMAL, SMALL_ANIMAL)
 from world.stats_and_skills import (do_dice_check, get_stat_cost, get_skill_cost,
                                     PHYSICAL_STATS, MENTAL_STATS, SOCIAL_STATS)
 import time
@@ -290,6 +290,7 @@ class Npc(Character):
     def set_npc_new_desc(self, desc=None):
         self.desc = desc or get_npc_desc(self.db.npc_type or 0)
 
+
 class MultiNpc(Npc):
     def multideath(self, num, death=False):
         living = self.db.num_living or 0       
@@ -317,6 +318,7 @@ class MultiNpc(Npc):
     def ae_dmg(self, val):
         self.ndb.ae_dmg = val
 
+    # noinspection PyAttributeOutsideInit
     def death_process(self, *args, **kwargs):
         """
         This object dying. Set its state to dead, send out
@@ -410,6 +412,7 @@ class MultiNpc(Npc):
         self.ndb.temp_losses = val
 
 
+# noinspection PyAttributeOutsideInit
 class AgentMixin(object):
 
     @property
@@ -529,7 +532,6 @@ class AgentMixin(object):
     def gain_agents(self, num):
         self.setup_name()
 
-    # noinspection PyAttributeOutsideInit
     def setup_name(self):
         self.name = self.agent.colored_name or self.agent.name
 
@@ -598,7 +600,6 @@ class AgentMixin(object):
                 docked.append(self)
             loc.db.docked_guards = docked
         loc.msg_contents("%s have been dismissed." % self.name)
-        # noinspection PyAttributeOutsideInit
         self.location = None
         if self.ndb.combat_manager:
             self.ndb.combat_manager.remove_combatant(self)
@@ -743,6 +744,18 @@ class AgentMixin(object):
         self.xp += value
 
     @property
+    def uses_training_cap(self):
+        return self.npc_type not in (ANIMAL, SMALL_ANIMAL)
+
+    @property
+    def xp_training_cap(self):
+        return self.db.xp_training_cap or 0
+
+    @xp_training_cap.setter
+    def xp_training_cap(self, value):
+        self.db.xp_training_cap = value
+
+    @property
     def xp_transfer_cap(self  # type: Retainer or Agent
                         ):
         return self.db.xp_transfer_cap or 0
@@ -802,6 +815,9 @@ class Retainer(AgentMixin, Npc):
         if not skill:
             trainer.msg("You must have %s skill to train them." % self.training_skill)
             return False
+        if self.uses_training_cap and self.xp_training_cap <= 0:
+            trainer.msg("They need more xp transferred to them before they can benefit from training.")
+            return False
         return super(Retainer, self).can_be_trained_by(trainer)
 
     def post_training(self, trainer, trainer_msg="", targ_msg="", ap_spent=0, **kwargs):
@@ -845,17 +861,24 @@ class Retainer(AgentMixin, Npc):
             trainer.msg("You have failed to teach them anything.")
             msg = "%s has attempted to train %s, but utterly failed to teach them anything." % (name, self)
         else:
+            if self.uses_training_cap:
+                if roll > self.xp_training_cap:
+                    roll = self.xp_training_cap
+                    trainer.msg("You were limited by %s's training cap, and could only give them %s xp." % (self, roll))
+                self.xp_training_cap -= roll
             self.agent.xp += roll
             self.agent.save()
             trainer.msg("You have trained %s, giving them %s xp." % (self, roll))
             msg = "%s has trained %s, giving them %s xp." % (name, self, roll)
             self.conditioning = 0
         self.inform_owner(msg)
-        print "Training log: %s" % msg
+        print("Training log: %s" % msg)
 
     def view_stats(self, viewer, combat=False):
         super(Retainer, self).view_stats(viewer, combat)
         msg = "\n{wCurrent Training Difficulty:{n %s" % self.training_difficulty
+        if self.uses_training_cap:
+            msg += "\n{wCurrent XP Training Cap:{n %s" % self.xp_training_cap
         viewer.msg(msg)
     
 

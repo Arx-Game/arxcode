@@ -3978,6 +3978,15 @@ class Agent(SharedMemoryModel):
     def xp_transfer_cap(self, value):
         self.dbobj.xp_transfer_cap = value
 
+    @property
+    def xp_training_cap(self):
+        """How much xp can the agent be trained"""
+        return self.dbobj.xp_training_cap
+
+    @xp_training_cap.setter
+    def xp_training_cap(self, value):
+        self.dbobj.xp_training_cap = value
+
     def set_name(self, name):
         """Sets the name of the agent"""
         from evennia.utils.ansi import strip_ansi
