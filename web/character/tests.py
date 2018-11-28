@@ -55,17 +55,74 @@ class InvestigationTests(ArxCommandTest):
         self.roster_entry2.investigations.create()
         self.setup_cmd(investigation.CmdAssistInvestigation, self.char1)
         self.char1.db.investigation_invitations = [1]
-        self.call_cmd("/new", 'Helping an investigation:|Investigation: |Story: |Stat: |Skill: '
-                              '|Assisting Character: Char')
+        self.call_cmd("/new", 'Helping an investigation: \nInvestigation: \nStory unfinished.\n'
+                              'Stat: ??? - Skill: ???|Assisting Character: Char')
         self.call_cmd("/target 2", 'No investigation by that ID.')
-        self.call_cmd("/target 1", 'Helping an investigation:|Investigation: 1|Story: |Stat: |Skill: '
-                                   '|Assisting Character: Char')
+        self.call_cmd("/target 1", 'Helping an investigation: \nInvestigation: 1\nStory unfinished.\n'
+                                   'Stat: ??? - Skill: ???|Assisting Character: Char')
         self.call_cmd("/finish", 'You must have a story defined.')
-        self.call_cmd("/story test", 'Helping an investigation:|Investigation: 1|Story: test|Stat: |Skill: '
-                                     '|Assisting Character: Char')
+        self.call_cmd("/story test", 'Helping an investigation: \nInvestigation: 1\ntest\n'
+                                     'Stat: ??? - Skill: ???|Assisting Character: Char')
         with patch.object(self.cmd_class, 'check_enough_time_left') as fake_method:
             fake_method.return_value = True
             self.call_cmd("/finish", "Char is now helping Char2's investigation on .")
+
+    def test_cmd_investigate(self):
+        tag1 = SearchTag.objects.create(name="foo")
+        tag2 = SearchTag.objects.create(name="bar")
+        tag3 = SearchTag.objects.create(name="zep")
+        self.setup_cmd(investigation.CmdInvestigate, self.char1)
+        with patch.object(self.cmd_class, 'check_enough_time_left') as fake_method:
+            fake_method.return_value = True
+            self.call_cmd("/new", 'Creating an investigation: \nStory unfinished.\nStat: ??? - Skill: ???')
+            self.call_cmd("/finish", 'You must have topic defined.')
+            self.call_cmd("/topic not matching tags", "No SearchTag found using 'not matching tags'.")
+            self.call_cmd("/topic foo/-bar/zep/-squeeb/merpl", "No SearchTag found using 'squeeb'.")
+            self.call_cmd("/topic foo/-bar/zep", 'Creating an investigation: foo; zep; -bar\nStory unfinished.\n'
+                                                 'Stat: ??? - Skill: ???')
+            self.call_cmd("/finish", 'You must have a story defined.')
+            self.call_cmd("/story asdf", 'Creating an investigation: foo; zep; -bar\nasdf\nStat: ??? - Skill: ???')
+            self.call_cmd("/finish", 'It costs 25 social resources to start a new investigation.')
+            self.assetowner.social = 25
+            self.call_cmd("/finish", 'An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. '
+                                     'It will require a great deal of energy (100 action points) to investigate. Your '
+                                     'tag requirements: foo; zep; -bar\nRepeat the command to confirm and continue.')
+            self.roster_entry.action_points = 0
+            prompt = self.char1.ndb.confirm_new_clue_write
+            self.call_cmd("/finish", "You're too busy for such an investigation. (low AP) Try different tags or abort.")
+            self.roster_entry.action_points = 300
+            self.char1.ndb.confirm_new_clue_write = prompt
+            self.call_cmd("/finish", 'You spend 25 social resources to start a new investigation.|'
+                                     'New investigation created. This has been set as your active investigation for the'
+                                     ' week, and you may add resources/silver to increase its chance of success.|'
+                                     'You may only have one active investigation per week, and cannot change it once '
+                                     'it has received GM attention. Only the active investigation can progress.')
+            invest = self.roster_entry.investigations.first()
+            clue = invest.clue_target
+            self.assertEqual(clue.name, "PLACEHOLDER for Investigation #1")
+            self.assertEqual(list(clue.search_tags.all()), [tag1, tag3])
+            self.assertTrue(clue.allow_investigation)
+            self.caller = self.char2
+            self.char2.ndb.investigation_form = ['', 'story', '', '', '', []]
+            self.clue.search_tags.add(tag1, tag2, tag3)
+            self.clue.allow_investigation = True
+            self.clue.save()
+            self.clue2.search_tags.add(tag1, tag2)
+            self.clue2.allow_investigation = True
+            self.clue2.save()
+            self.assetowner2.social = 25
+            self.call_cmd("/topic foo/bar/-zep", 'Creating an investigation: foo; bar; -zep\nstory\n'
+                                                 'Stat: ??? - Skill: ???')
+            self.call_cmd("/finish", 'You spend 25 social resources to start a new investigation.|'
+                                     'New investigation created. This has been set as your active investigation for the'
+                                     ' week, and you may add resources/silver to increase its chance of success.|'
+                                     'You may only have one active investigation per week, and cannot change it once it'
+                                     ' has received GM attention. Only the active investigation can progress.')
+            invest = self.roster_entry2.investigations.first()
+            self.assertEqual(invest.clue_target, self.clue2)
+            self.assertEqual(self.clue.get_completion_value(), 2)
+            self.assertEqual(self.clue2.get_completion_value(), 33)
+            self.assertEqual(invest.completion_value, 33)
 
 
 class SceneCommandTests(ArxCommandTest):

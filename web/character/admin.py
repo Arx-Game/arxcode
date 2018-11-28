@@ -101,9 +101,16 @@ class EpisodeAdmin(BaseCharAdmin):
 
 class MysteryAdmin(BaseCharAdmin):
     """Admin of mystery"""
-    list_display = ('id', 'name', 'category')
+    list_display = ('id', 'name', 'category', 'used_for')
     search_fields = ('name', 'category', 'revelations__name')
     list_filter = ('category',)
+    readonly_fields = ('used_for',)
+
+    def used_for(self, obj):
+        return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_revelation_change", args=[rev.id]),
+                                                  escape(rev.name))
+                         for rev in obj.revelations.all())
+    used_for.allow_tags = True
 
 
 class ClueForRevInline(admin.TabularInline):
@@ -111,13 +118,15 @@ class ClueForRevInline(admin.TabularInline):
     model = ClueForRevelation
     extra = 0
     raw_id_fields = ('clue', 'revelation',)
+    classes = ['collapse']
 
 
 class RevDiscoInline(admin.TabularInline):
     """Inline of revelation discoveries"""
     model = RevelationDiscovery
     extra = 0
-    raw_id_fields = ('character', 'investigation', 'revealed_by', 'revelation',)
+    raw_id_fields = ('character', 'investigation', 'revealed_by', 'revelation', 'milestone')
+    classes = ['collapse']
 
 
 class RevPlotInvolvementInline(admin.TabularInline):
@@ -125,6 +134,7 @@ class RevPlotInvolvementInline(admin.TabularInline):
     model = RevelationPlotInvolvement
     extra = 0
     raw_id_fields = ('revelation', 'plot')
+    classes = ['collapse']
 
 
 class RevelationListFilter(admin.SimpleListFilter):
@@ -174,7 +184,7 @@ class ClueDiscoInline(admin.TabularInline):
     """Inline of Clue Discoveries"""
     model = ClueDiscovery
     extra = 0
-    raw_id_fields = ("clue", "character", "investigation", "revealed_by",)
+    raw_id_fields = ("clue", "character", "investigation", "revealed_by", 'milestone')
 
 
 class CluePlotInvolvementInline(admin.TabularInline):
@@ -182,21 +192,30 @@ class CluePlotInvolvementInline(admin.TabularInline):
     model = CluePlotInvolvement
     extra = 0
     raw_id_fields = ('clue', 'plot')
+    classes = ['collapse']
 
 
 class ClueAdmin(BaseCharAdmin):
     """Admin for Clues"""
     list_display = ('id', 'name', 'rating', 'used_for')
-    search_fields = ('id', 'name', '=revelations__name', '=search_tags__name')
+    search_fields = ('id', 'name', '=search_tags__name')
     inlines = (ClueForRevInline, CluePlotInvolvementInline)
     filter_horizontal = ('search_tags',)
-    raw_id_fields = ('author', 'tangible_object')
-    list_filter = ('clue_type',)
+    raw_id_fields = ('author', 'tangible_object',)
+    list_filter = ('clue_type', 'allow_investigation')
+    readonly_fields = ('discovered_by',)
 
-    @staticmethod
-    def used_for(obj):
-        """Names of revelations this clue is used for"""
-        return ", ".join([str(ob) for ob in obj.revelations.all()])
+    def used_for(self, obj):
+        return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_revelation_change", args=[rev.id]),
+                                                  escape(rev.name))
+                         for rev in obj.revelations.all())
+    used_for.allow_tags = True
+
+    def discovered_by(self, obj):
+        return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_rosterentry_change", args=[ros.id]),
+                                                  escape(str(ros)))
+                         for ros in obj.characters.all())
+    discovered_by.allow_tags = True
 
 
 class ClueDiscoveryAdmin(BaseCharAdmin):
@@ -209,7 +228,7 @@ class ClueDiscoveryAdmin(BaseCharAdmin):
 class RevForEntry(RevDiscoInline):
     """Inline of revelation discoveries"""
     fk_name = 'character'
-    raw_id_fields = ('character', 'revelation', 'investigation', 'revealed_by')
+    raw_id_fields = ('character', 'revelation', 'investigation', 'revealed_by', 'milestone')
 
 
 class EntryAdmin(NoDeleteAdmin):
@@ -234,6 +253,7 @@ class InvestigationAssistantInline(admin.TabularInline):
     model = InvestigationAssistant
     extra = 0
     raw_id_fields = ("investigation", "char",)
+    classes = ['collapse']
 
 
 class InvestigationListFilter(admin.SimpleListFilter):

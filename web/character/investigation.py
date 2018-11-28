@@ -13,7 +13,7 @@ from commands.mixins import FormCommandMixin
 from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from web.character.models import (Investigation, Clue, InvestigationAssistant, ClueDiscovery, Theory,
-                                  RevelationDiscovery, Revelation, get_random_clue)
+                                  RevelationDiscovery, Revelation, get_random_clue, SearchTag)
 from web.character.forms import ClueCreateForm, RevelationCreateForm
 from world.dominion.models import Agent, Plot
 from world.stats_and_skills import VALID_STATS, VALID_SKILLS
@@ -24,8 +24,9 @@ class InvestigationFormCommand(ArxCommand):
     ABC for creating commands based on investigations that process a form.
     """
     form_verb = "Creating"
-    form_switches = ("topic", "target", "story", "stat", "skill", "cancel", "finish")
+    form_switches = ("topic", "target", "tag", "tags", "story", "stat", "skill", "cancel", "finish")
     ap_cost = 10
+    new_clue_cost = 100
 
     def check_ap_cost(self, cost=None):
         if not cost:
@@ -41,43 +42,70 @@ class InvestigationFormCommand(ArxCommand):
     @property
     def form_attr(self):
         return "investigation_form"
-    
+
     @property
     def investigation_form(self):
-        return getattr(self.caller.db, self.form_attr)
+        return getattr(self.caller.ndb, self.form_attr)
+
+    @investigation_form.setter
+    def investigation_form(self, val):
+        setattr(self.caller.ndb, self.form_attr, val)
+
+    @investigation_form.deleter
+    def investigation_form(self):
+        self.caller.nattributes.remove(self.form_attr)
 
     @property
     def related_manager(self):
         return self.caller.roster.investigations
-    
+
     def disp_investigation_form(self):
         form = self.investigation_form
         if not form:
             return
-        target, story, stat, skill = form[0], form[1], form[2], form[3]
-        self.msg("%s an investigation:" % self.form_verb)
-        self.msg("{w%s{n: %s" % (self.target_type.capitalize(), target))
-        self.msg("{wStory{n: %s" % story)
-        self.msg("{wStat{n: %s" % stat)
-        self.msg("{wSkill{n: %s" % skill)
+        story, stat, skill = form[1], form[2], form[3]
+        msg = "|w%s an investigation:|n %s" % (self.form_verb, self.topic_string(color=True))
+        msg += self.display_target_string()
+        msg += "\n%s" % (story or "Story unfinished.")
+        msg += "\n|wStat:|n %s - |wSkill:|n %s" % (stat or "???", skill or "???")
+        self.msg(msg)
+
+    def display_target_string(self):
+        return "\n|w%s:|n %s" % (self.target_type.capitalize(), self.investigation_form[0])
+
+    def topic_string(self, color=False):
+        """Joins tag-requirements and tag-omissions into a string"""
+        def colorize(val, col="|r"):
+            col = (col + "-") if col == "|r" else col
+            val = ("%s%s|n" % (col, val)) if color else str(val)
+            return val
+
+        tags_list = self.investigation_form[5]
+        if not tags_list:
+            return ""
+        topic = "; ".join(colorize(ob, col="|235") for ob in tags_list[0])
+        if tags_list[1]:
+            topic += "; "
+            topic += "; ".join(colorize(ob) for ob in tags_list[1])
+        return topic
 
     @property
     def target_type(self):
         return "topic"
-                 
+
     @property
     def finished_form(self):
         """Property that validates the form that has been created."""
         try:
             form = self.investigation_form
-            topic, actions, stat, skill = form[0], form[1], form[2], form[3]
+            topic, story, stat, skill = form[0], form[1], form[2], form[3]
             if not topic:
-                self.msg("You must have a %s defined." % self.target_type.lower())
+                self.msg("You must have %s defined." % self.target_type.lower())
                 return
-            if not actions:
+            if not story:
                 self.msg("You must have a story defined.")
                 return
-            return topic, actions, stat, skill
+            return topic, story, stat, skill
         except (TypeError, ValueError, IndexError, AttributeError):
             self.msg("Your investigation form is not yet filled out.")
             return False
@@ -93,9 +121,33 @@ class InvestigationFormCommand(ArxCommand):
         if amt < 0:
             self.msg("It costs %s social resources to start a new investigation." % self.start_cost)
             return False
+        if self.need_new_clue_written and not self.offer_placeholder_clue():
+            return False
         self.msg("You spend %s social resources to start a new investigation." % self.start_cost)
         dompc.assets.social = amt
         dompc.assets.save()
+        return True
+
+    def refuse_new_clue(self, reason):
+        msg = reason + " Try different tags or abort."
+        self.msg(msg)
+
+    def offer_placeholder_clue(self):
+        """
+        Allows investigator to request a newly written clue
+        """
+        ap = self.new_clue_cost
+        topic = self.topic_string(color=True)
+        attr = "new_clue_write"
+        prompt = "An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. "
+        prompt += "It will require a great deal of energy (|c%s|n action points) to investigate. " % ap
+        prompt += "Your tag requirements: %s\n" % topic
+        prompt += "|yRepeat the command to confirm and continue.|n"
+        if not self.caller.confirmation(attr, topic, prompt):
+            return False
+        if not self.caller.player.pay_action_points(ap):  # TODO: check command name
+            self.refuse_new_clue("You're too busy for such an investigation. (low AP)")
+            return False
         return True
 
     def mark_active(self, created_object):
@@ -131,35 +183,39 @@ class InvestigationFormCommand(ArxCommand):
             return
         if self.check_too_busy_to_finish():
             return
-        ob = self.create_obj_from_form(form)
-        self.mark_active(ob)       
-        self.caller.attributes.remove(self.form_attr)
+        inv_ob = self.create_obj_from_form(form)
+        if self.need_new_clue_written:
+            form = self.investigation_form
+            search_tags, omit_tags = form[5]
+            clue_name = "PLACEHOLDER for Investigation #%s" % inv_ob.id
+            gm_notes = "Added tags: %s\n" % list_to_string(search_tags)
+            gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
+            clue = Clue.objects.create(name=clue_name, gm_notes=gm_notes, allow_investigation=True, rating=30)
+            for tag in search_tags:
+                clue.search_tags.add(tag)
+            inv_ob.clue_target = clue
+            inv_ob.save()
+        self.mark_active(inv_ob)
+        del self.investigation_form
 
     def check_too_busy_to_finish(self):
         """Checks whether we're too busy to finish the form"""
-        pass
+        return
+
+    @property
+    def initial_form_values(self):
+        return ['', '', '', '', '', []]
 
     def create_form(self):
         """
         Initially populates the form we use. Other switches will populate
         the fields, which will be used in do_finish()
         """
-        investigation = ['', '', '', '', self.caller]
-        setattr(self.caller.db, self.form_attr, investigation)
+        self.investigation_form = self.initial_form_values
         self.disp_investigation_form()
 
     def get_target(self):
-        """
-        Sets the target of the object we'll create. For an investigation,
-        this will be the topic. For an assisting investigation, it'll be the ID of the investigation.
-        """
-        if self.target_type == "topic" and check_break():
-            clue = get_random_clue(self.args, self.caller.roster)
-            if not clue:
-                self.msg("Investigations that require writing a new clue are not allowed during the break.")
-                self.msg("Pick a different topic or abort.")
-                return
-        self.investigation_form[0] = self.args
+        """Sets the target of the object we'll create."""
         self.disp_investigation_form()
 
     def check_skill(self):
@@ -167,6 +223,10 @@ class InvestigationFormCommand(ArxCommand):
             self.msg("You have no skill by the name of %s." % self.args)
             return
         return True
+
+    @property
+    def need_new_clue_written(self):
+        return
 
     def func(self):
         """
@@ -178,11 +238,11 @@ class InvestigationFormCommand(ArxCommand):
         if "new" in self.switches:
             self.create_form()
             return True
-        if set(self.switches) & set(self.form_switches):
+        if self.check_switches(self.form_switches):
             if not investigation:
                 self.msg("You need to create a form first with /new.")
                 return True
-            if "target" in self.switches or "topic" in self.switches:
+            if self.check_switches(("target", "topic", "tag", "tags")):
                 self.get_target()
                 return True
             if "story" in self.switches:
@@ -203,7 +263,7 @@ class InvestigationFormCommand(ArxCommand):
                 self.disp_investigation_form()
                 return True
             if "cancel" in self.switches:
-                self.caller.attributes.remove(self.form_attr)
+                del self.investigation_form
                 self.msg("Investigation creation cancelled.")
                 return True
             if "finish" in self.switches:
@@ -225,7 +285,6 @@ class InvestigationFormCommand(ArxCommand):
 class CmdAssistInvestigation(InvestigationFormCommand):
     """
     @helpinvestigate
-
     Usage:
         @helpinvestigate
         @helpinvestigate/history
@@ -278,6 +337,10 @@ class CmdAssistInvestigation(InvestigationFormCommand):
     @property
     def form_attr(self):
         return "assist_investigation_form"
+
+    @property
+    def initial_form_values(self):
+        return ['', '', '', '', self.caller, []]
 
     @property
     def helper(self):
@@ -345,12 +408,16 @@ class CmdAssistInvestigation(InvestigationFormCommand):
         invites = self.caller.db.investigation_invitations or []
         if self.helper != self.caller:
             # if it's a retainer, we add IDs of investigations we're running or assisting as valid for them
-            invites.extend(list(Investigation.objects.filter(Q(character=self.caller.roster) | 
+            invites.extend(list(Investigation.objects.filter(Q(character=self.caller.roster) |
                                                              Q(assistants__char=self.caller)
                                                              ).exclude(ongoing=False).values_list('id', flat=True)))
         return invites
 
     def get_target(self):
+        """
+        Sets the target of the object we'll create. For an assisting
+        investigation, it'll be the ID of the investigation.
+        """
         if not self.args:
             self.disp_invites()
             return
@@ -373,7 +440,7 @@ class CmdAssistInvestigation(InvestigationFormCommand):
             self.msg("%s already helping that investigation. You can /resume helping it." % phrase)
             return
         self.investigation_form[0] = targ
-        self.disp_investigation_form()
+        super(CmdAssistInvestigation, self).get_target()
 
     def check_too_busy_to_finish(self):
         """Checks if helper is too busy"""
@@ -678,7 +745,6 @@ class CmdAssistInvestigation(InvestigationFormCommand):
 class CmdInvestigate(InvestigationFormCommand):
     """
     @investigate
-
     Usage:
         @investigate
         @investigate/history
@@ -687,7 +753,6 @@ class CmdInvestigate(InvestigationFormCommand):
         @investigate/silver <id #>=<additional silver to spend>
         @investigate/resource <id #>=<resource type>,<amount>
         @investigate/actionpoints <id #>=<additional points to spend>
-        @investigate/changetopic <id #>=<new topic>
         @investigate/changestory <id #>=<new story>
         @investigate/changestat <id #>=<new stat>
         @investigate/changeskill <id #>=<new skill>
@@ -695,39 +760,42 @@ class CmdInvestigate(InvestigationFormCommand):
         @investigate/resume <id #>
         @investigate/pause <id #>
         @investigate/requesthelp <id #>=<player>
+    Create Usage:
         @investigate/new
-        @investigate/topic <keyword to investigate>
+        @investigate/tags <tag to investigate>[/-<tag to omit>...]
         @investigate/story <text of how you do the investigation>
         @investigate/stat <stat to use for the check>
         @investigate/skill <additional skill to use besides investigation>
         @investigate/cancel
         @investigate/finish
 
-    Investigation allows your character to attempt to discover secrets and
-    unravel the various mysteries of the game. To start a new investigation,
-    use @investigate/new, and then fill out the different required fields
-    with /topic and /story before using /finish to end. /topic determines
-    a keyword that influences what you can discover in your search, while
-    /story is your description of how you are going about it, which GMs can
-    read and modify your results accordingly. /stat and /skill allow you to
-    specify which stat and skill seem appropriate to the story of your
-    investigation, though the 'investigation' skill is always additionally
-    used. Use /cancel to cancel the form.
+    Investigation allows characters to research secrets and unravel some
+    of the world's mysteries. To start, use @investigate/new and fill out
+    required fields with /tags and /story switches, then use /finish to
+    finalize your investigation for GMs to see. A tag is a word defining
+    the topic of research, while story tells how it will be accomplished.
+    The /stat and /skill switches let you set the appropriate roll used by
+    your story. The 'investigation' skill will always be taken into account.
+    Use /cancel to cancel the form.
 
-    You may have many ongoing investigations, but only one may advance per
-    week. You determine that by selecting the 'active' investigation. You
-    may spend silver and resources to attempt to make your investigation
-    more likely to find a result. Investigations may be abandoned with
-    the /abandon switch, which marks them as no longer ongoing. They may be
-    paused with the /pause switch, which marks them as inactive.
+    While you can have many ongoing investigations, one advances weekly.
+    Determine which by selecting the /active investigation. Spend silver and
+    resources to attempt to help your investigation progress. Use /pause
+    switch to mark an investigation inactive, or /abandon it altogether.
 
+    About topic/tags: Using multiple tags results in very specific research
+    on a clue involving ALL those topics. You may place '-' in front to
+    omit clues with that tag. ex: "@investigate/tags primum/tyrval/-adept"
+    Be aware that specificity may result in nothing found, but you might be
+    offered the chance to expend great effort (100 AP) into researching a
+    clue that no one has found before.
     """
     key = "@investigate"
     locks = "cmd:all()"
     help_category = "Investigation"
     aliases = ["+investigate", "investigate"]
     base_cost = 25
-    model_switches = ("view", "active", "silver", "resource", "changetopic", "pause", "actionpoints",
+    model_switches = ("view", "active", "silver", "resource", "pause", "actionpoints",
                       "changestory", "abandon", "resume", "requesthelp", "changestat", "changeskill")
 
     # noinspection PyAttributeOutsideInit
@@ -752,19 +820,17 @@ class CmdInvestigate(InvestigationFormCommand):
 
     def list_ongoing_investigations(self):
         qs = self.related_manager.filter(ongoing=True)
-        table = PrettyTable(["ID", "Topic", "Active?"])
+        table = PrettyTable(["ID", "Tag/Topic", "Active"])
         for ob in qs:
             table.add_row([ob.id, ob.topic, "{wX{n" if ob.active else ""])
-        self.msg("Ongoing investigations:")
-        self.msg(str(table))
+        self.msg("Ongoing investigations:\n%s" % table)
 
     def list_old_investigations(self):
         qs = self.related_manager.filter(ongoing=False)
-        table = PrettyTable(["ID", "Topic"])
+        table = PrettyTable(["ID", "Tag/Topic"])
         for ob in qs:
             table.add_row([ob.id, ob.topic])
-        self.msg("Old investigations")
-        self.msg(str(table))
+        self.msg("Old investigations:\n%s" % table)
 
     @property
     def start_cost(self):
@@ -777,6 +843,9 @@ class CmdInvestigate(InvestigationFormCommand):
             return cost
         except AttributeError:
             return self.base_cost
+
+    def display_target_string(self):
+        return ""
 
     def mark_active(self, created_object):
         if not (self.related_manager.filter(active=True) or
@@ -801,6 +870,7 @@ class CmdInvestigate(InvestigationFormCommand):
         staffmsg = "%s has started an investigation on %s." % (self.caller, created_object.topic)
         if created_object.targeted_clue:
             staffmsg += " They will roll to find clue %s." % created_object.targeted_clue
+            created_object.setup_investigation_for_clue(created_object.targeted_clue)
         else:
             staffmsg += " Their topic does not target a clue, and will automatically fail unless GM'd."
         inform_staff(staffmsg)
@@ -809,6 +879,46 @@ class CmdInvestigate(InvestigationFormCommand):
         if not self.check_enough_time_left():
             return
         super(CmdInvestigate, self).create_form()
+
+    def get_target(self):
+        """Sets the target of the object we'll create. For an investigation,
+        this will be the topic."""
+        no_tags_msg = "You must include a tag to investigate"
+        if not self.args:
+            return self.msg(no_tags_msg + ".")
+        try:
+            search_tags, omit_tags = self.get_tags_from_args()
+        except CommandError as err:
+            return self.msg(err)
+        if not search_tags:
+            return self.msg(no_tags_msg + ", not just tags you want to omit.")
+        clue = get_random_clue(self.caller.roster, search_tags, omit_tags)
+        if not clue:
+            if check_break():
+                return self.refuse_new_clue("Investigations that require new writing are not " +
+                                            "allowed during staff break.")
+            if len(search_tags) + len(omit_tags) > 6:
+                return self.refuse_new_clue("That investigation would be too specific.")
+        self.investigation_form[5] = [search_tags, omit_tags]
+        self.investigation_form[4] = clue
+        self.investigation_form[0] = self.args
+        super(CmdInvestigate, self).get_target()
+
+    def get_tags_from_args(self):
+        args = self.args.split("/")
+        search_tags = []
+        omit_tags = []
+        for tag_txt in args:
+            tag = self.get_by_name_or_id(SearchTag, tag_txt.lstrip("-"))
+            if tag_txt.startswith("-"):
+                omit_tags.append(tag)
+            else:
+                search_tags.append(tag)
+        return search_tags, omit_tags
+
+    @property
+    def need_new_clue_written(self):
+        return not bool(self.investigation_form[4])
 
     def func(self):
         finished = super(CmdInvestigate, self).func()
@@ -994,11 +1104,6 @@ class CmdInvestigate(InvestigationFormCommand):
                 ob.do_roll()
                 caller.msg("You have added %s resources to the investigation." % val)
                 return
-            if "changetopic" in self.switches:
-                ob.topic = self.rhs
-                ob.save()
-                caller.msg("New topic is now %s." % self.rhs)
-                return
             if "changestory" in self.switches:
                 ob.actions = self.rhs
                 ob.save()
@@ -1060,7 +1165,7 @@ class CmdInvestigate(InvestigationFormCommand):
 class CmdAdminInvestigations(ArxPlayerCommand):
     """
     @gminvestigations
-    
+
     Usage:
         @gminvest
         @gminvest/view <ID #>
@@ -1085,12 +1190,12 @@ class CmdAdminInvestigations(ArxPlayerCommand):
     aliases = ["@gminvestigations"]
     locks = "cmd:perm(wizards)"
     help_category = "Investigation"
-    
+
     @property
     def qs(self):
         return Investigation.objects.filter(active=True, ongoing=True,
                                             character__roster__name="Active")
-    
+
     def disp_active(self):
         qs = list(self.qs)
         if len(qs) <= 20:
@@ -1194,7 +1299,7 @@ class CmdAdminInvestigations(ArxPlayerCommand):
 class CmdListClues(ArxPlayerCommand):
     """
     @clues
-    
+
     Usage:
         @clues
         @clues <clue #>
@@ -1218,7 +1323,7 @@ class CmdListClues(ArxPlayerCommand):
         doc = self.__doc__
         doc += "\n\nYour cost of sharing clues is %s." % caller.clue_cost
         return doc
-    
+
     @property
     def clue_discoveries(self):
         try:
@@ -1312,7 +1417,8 @@ class CmdListClues(ArxPlayerCommand):
         if "search" in self.switches:
             msg = "{wMatching Clues{n\n"
             discoveries = discoveries.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
-                                             Q(clue__name__icontains=self.args))
+                                             Q(clue__name__icontains=self.args) |
+                                             Q(clue__search_tags__name__iexact=self.args)).distinct()
         else:
             msg = "{wDiscovered Clues{n\n"
         for discovery in discoveries:
@@ -1333,7 +1439,7 @@ class CmdListClues(ArxPlayerCommand):
 class CmdListRevelations(ArxPlayerCommand):
     """
     @revelations
-    
+
     Usage:
         @revelations
         @revelations <ID>

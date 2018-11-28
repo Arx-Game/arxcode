@@ -10,11 +10,12 @@ loudly and remember that we'll usually refer to evennia's account typeclass as '
 the django USER_AUTH_MODEL.
 """
 from datetime import datetime, date
+from functools import reduce
 import random
 import traceback
 
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, Count, Avg
 from django.conf import settings
 from cloudinary.models import CloudinaryField
 from evennia.locks.lockhandler import LockHandler
@@ -22,10 +23,8 @@ from evennia.utils.idmapper.models import SharedMemoryModel
 
 from .managers import ArxRosterManager, AccountHistoryManager
 from server.utils.arx_utils import CachedProperty
+from server.utils.picker import WeightedPicker
 from world.stats_and_skills import do_dice_check
-
-# multiplier for how much higher progress must be over Clue.rating to be discovered
-DISCO_MULT = 10
 
 
 class Photo(SharedMemoryModel):
@@ -305,7 +304,8 @@ class RosterEntry(SharedMemoryModel):
         # actions:
         querysets.append(self.player.participated_actions.filter(search_tags=tag))
         # events:
-        querysets.append(RPEvent.objects.filter(Q(search_tags=tag) & (Q(dompcs=dompc) | Q(orgs__in=dompc.current_orgs))))
+        querysets.append(RPEvent.objects.filter(Q(search_tags=tag) &
+                                                (Q(dompcs=dompc) | Q(orgs__in=dompc.current_orgs))))
         # flashbacks:
         querysets.append(Flashback.objects.filter(Q(beat__in=all_beats) & (Q(owner=self) | Q(allowed=self))))
         # append our tagged inventory items:
@@ -897,6 +897,19 @@ class Clue(SharedMemoryModel):
         qs = PCPlotInvolvement.objects.filter(plot__in=plots, admin_status__gte=PCPlotInvolvement.RECRUITER)
         return qs.exclude(recruiter_story="")
 
+    def determine_discovery_multiplier(self):
+        """Calculates a multiplier for investigations' completion_value based on number of discoveries"""
+        avg = Clue.objects.filter(allow_investigation=True).annotate(cnt=Count('discoveries')).aggregate(Avg('cnt'))
+        discos = self.discoveries.count() + 0.5
+        return avg.values()[0] / discos
+
+    def get_completion_value(self):
+        """Gets the default/suggested completion value for an investigation into this clue."""
+        value = int(self.rating * self.determine_discovery_multiplier())
+        if value < 1:
+            value = 1
+        return value
+
 
 class CluePlotInvolvement(SharedMemoryModel):
     """How a clue is related to a plot"""
@@ -1271,8 +1284,12 @@ class Investigation(AbstractPlayerAllocations):
         """
         diff = (diff if diff is not None else self.difficulty) + mod
         roll = self.do_obj_roll(self, diff)
+        if roll > 0:
+            # a successful roll adds 0-5% of the completion roll as a base
+            roll += int(self.completion_value/20.0) * random.randint(0, 5)
         assistant_roll_total = 0
-        for ass in self.active_assistants:
+        assistants = self.active_assistants
+        for ass in assistants:
             player_character_mod = 20 if ass.char.player_ob else 0
             a_roll = self.do_obj_roll(ass, diff - player_character_mod)
             if a_roll < 0:
@@ -1287,7 +1304,8 @@ class Investigation(AbstractPlayerAllocations):
                 if a_roll > cap:
                     a_roll = cap
             assistant_roll_total += a_roll
-        roll += max(assistant_roll_total, random.randint(0, 100))
+        roll += max(assistant_roll_total, random.randint(0, 100) + len(assistants))
+        roll = max(roll, random.randint(-50, 200))
         try:
             roll = int(roll * settings.INVESTIGATION_PROGRESS_RATE)
         except (AttributeError, TypeError, ValueError):
@@ -1377,12 +1395,7 @@ class Investigation(AbstractPlayerAllocations):
             # if we don't have a valid clue, then let's
             # tell them about what a valid clue -could- be.
             if not self.targeted_clue and self.automate_result:
-                kw = self.find_random_keywords()
-                if not kw:
-                    self.results = "There is nothing else for you to find."
-                else:
-                    self.results = "You couldn't find anything about '%s', " % self.topic
-                    self.results += "but you keep on finding mention of '%s' in your search." % kw
+                self.results = "There is nothing else for you to find."
             else:
                 # add a valid clue and update results string
                 try:
@@ -1439,33 +1452,31 @@ class Investigation(AbstractPlayerAllocations):
         """Sets our completion value for the investigation based on the clue's rating"""
         if clue:
             self.clue_target = clue
-            self.completion_value = self.clue_target.rating * DISCO_MULT
+            self.completion_value = clue.get_completion_value()
             self.save()
-
-    @property
-    def keywords(self):
-        """Get list of keywords from parsing the player-set topic"""
-        return get_keywords_from_topic(self.topic)
 
     def find_target_clue(self):
         """
         Finds a target clue based on our topic and our investigation history.
         We'll choose the lowest rating out of 3 random choices.
         """
-        return get_random_clue(self.topic, self.character)
-
-    def find_random_keywords(self):
-        """
-        Finds a random keyword in a clue we don't have yet.
-        """
-        candidates = Clue.objects.filter(~Q(characters=self.character)).order_by('rating')
-        # noinspection PyBroadException
+        from .investigation import CmdInvestigate
+        cmd = CmdInvestigate()
+        cmd.args = self.topic
+        cmd.caller = self.character.character
         try:
-            ob = random.choice(candidates)
-            kw = random.choice(ob.keywords)
-            return kw
-        except Exception:
-            return None
+            search, omit = cmd.get_tags_from_args()
+        except cmd.error_class:
+            names = self.topic.split()
+            search = SearchTag.objects.filter(reduce(lambda x, y: x | Q(name__icontains=y), names, Q()))
+            clues = Clue.objects.exclude(characters=self.character).filter(search_tags__in=search).annotate(cnt=Count('discoveries'))
+            if clues:
+                picker = WeightedPicker()
+                for clue in clues:
+                    picker.add_option(clue, clue.cnt)
+                return picker.pick()
+        else:
+            return get_random_clue(self.character, search_tags=search, omit_tags=omit)
 
     def add_progress(self):
         """Adds progress to the investigation, saved in clue.roll"""
@@ -1496,6 +1507,12 @@ class Investigation(AbstractPlayerAllocations):
         progress = self.progress_percentage
         if progress <= 0:
             return "No real progress has been made to finding something new."
+        if progress <= 5:
+            return "You have made a very tiny amount of progress."
+        if progress <= 10:
+            return "You have made a tiny amount of progress."
+        if progress <= 15:
+            return "You have made a little bit of progress."
         if progress <= 25:
             return "You've made some progress."
         if progress <= 50:
@@ -1612,31 +1629,22 @@ def get_keywords_from_topic(topic):
     return set(k_words)
 
 
-def get_random_clue(topic, character):
+def get_random_clue(roster, search_tags, omit_tags=None):
     """
     Finds a target clue based on our topic and our investigation history.
     We'll choose the lowest rating out of 3 random choices.
     """
-    exact = Clue.objects.filter(Q(allow_investigation=True) &
-                                Q(search_tags__name__iexact=topic) &
-                                ~Q(characters=character)).order_by('rating')
+    exact = Clue.objects.filter(Q(allow_investigation=True) & ~Q(characters=roster))
+    exact = reduce(lambda x, y: x.filter(search_tags=y), search_tags, exact)
+    if omit_tags:
+        exclude_query = reduce(lambda x, y: x | Q(search_tags=y), omit_tags, Q())
+        exact = exact.exclude(exclude_query)
     if exact:
-        return random.choice(exact)
-    k_words = get_keywords_from_topic(topic)
-    # build a case-insensitive query for each keyword of the investigation
-    query = Q()
-    for k_word in k_words:
-        if not k_word:
-            continue
-        query |= Q(search_tags__name__iexact=k_word)
-    # only certain clues - ones that can be investigated, exclude ones we've already started
-    candidates = Clue.objects.filter(allow_investigation=True, search_tags__isnull=False).exclude(characters=character)
-    # now match them by keyword
-    candidates = candidates.filter(query).distinct()
-    try:
-        return random.choice(candidates)
-    except (IndexError, TypeError):
-        return None
+        picker = WeightedPicker()
+        exact = exact.annotate(cnt=Count('discoveries'))
+        for clue in exact:
+            picker.add_option(clue, clue.cnt)
+        return picker.pick()
 
 
 class Flashback(SharedMemoryModel):
