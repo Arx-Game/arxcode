@@ -367,10 +367,14 @@ class CmdRequest(ArxPlayerCommand):
         elif cmdstr == "typo":
             priority = 5
             slug = "Typo"
-        elif cmdstr == "+featurerequest":
+        elif "featurerequest" in cmdstr:
+            if settings.ISSUES_URL:
+                url = "https://" + settings.ISSUES_URL
+                self.msg("Please open an issue at: %s" % url)
+                return
             priority = 4
             slug = "Code"
-        elif cmdstr == "+prprequest":
+        elif "prprequest" in cmdstr:
             slug = "PRP"
         else:
             slug = settings.REQUEST_QUEUE_SLUG

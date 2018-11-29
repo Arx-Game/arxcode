@@ -36,20 +36,26 @@ class InvestigationTests(ArxCommandTest):
         self.call_cmd("/addnote 1=test note", "[test clue] (10 Rating)\ntest clue desc\nadditional text test"
                                               "\n[%s] TestAccount wrote: test note" % now.strftime("%x %X"))
         self.call_cmd("/share 1=", "Who are you sharing with?")
-        self.call_cmd("/share 1=Testaccount2", "Sharing the clue(s) with them would cost 101 action points.")
+        self.call_cmd("/share 1=Testaccount2",
+                      "You must provide a note that gives context to the clues you're sharing.")
+        self.call_cmd("/share 1=Testaccount2/x",
+                      "Please write a longer note that gives context to the clues you're sharing.")
+        template = "/share {}=Testaccount2/{}"
+        self.call_cmd(template.format("1", "x"*80), "Sharing the clue(s) with them would cost 101 action points.")
         self.roster_entry.action_points = 202
-        self.call_cmd("/share 1=Testaccount2", "You use 101 action points and have 101 remaining this week.|"
-                                               "You have shared the clue(s) 'test clue' with Char2.")
+        self.call_cmd(template.format("1", "x"*80), "You use 101 action points and have 101 remaining this week.|"
+                                                    "You have shared the clue(s) 'test clue' with Char2.\n"
+                                                    "Your note: {}".format("x"*80))
         self.assertEqual(self.roster_entry.action_points, 101)
         self.call_cmd("/share 2=Testaccount2", "No clue found by this ID: 2. ")
         self.clue_disco2 = self.roster_entry.clue_discoveries.create(clue=self.clue2, message="additional text test2")
         self.assertFalse(bool(self.roster_entry2.revelations.all()))
-        self.call_cmd("/share 2=Testaccount2/Love Tehom", "You use 101 action points and have 0 remaining this week.|"
-                      "You have shared the clue(s) 'test clue2' with Char2.\nYour note: Love Tehom")
+        self.call_cmd(template.format("2", "Love Tehom"*8), "You use 101 action points and have 0 remaining this week.|"
+                      "You have shared the clue(s) 'test clue2' with Char2.\nYour note: {}".format("Love Tehom"*8))
         self.assertTrue(bool(self.roster_entry2.revelations.all()))
         self.caller = self.account2
-        self.call_cmd("2", "[test clue2] (50 Rating)\ntest clue2 desc\n%s This clue was shared with you by Char,"
-                      " who noted: Love Tehom\n" % now.strftime("%x %X"))
+        self.call_cmd("2", ("[test clue2] (50 Rating)\ntest clue2 desc\n{} This clue was shared with you by Char,"
+                            " who noted: {}\n").format(now.strftime("%x %X"), "Love Tehom"*8))
 
     def test_cmd_helpinvestigate(self):
         self.roster_entry2.investigations.create()

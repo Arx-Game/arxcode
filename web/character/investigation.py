@@ -1303,7 +1303,7 @@ class CmdListClues(ArxPlayerCommand):
     Usage:
         @clues
         @clues <clue #>
-        @clues/share <clue #>[,<clue2 #>...]=<target>[,<target2>...][/<note>]
+        @clues/share <clue #>[,<clue2 #>...]=<target>[,<target2>...]/<note>
         @clues/search <text>
         @clues/addnote <clue #>=[text to append]
 
@@ -1311,13 +1311,20 @@ class CmdListClues(ArxPlayerCommand):
     or shares them with others. /search returns the clues that
     contain the text specified. /addnote allows you to add more text to
     your discovery of the clue.
+
+    When sharing clues, please roleplay a bit about them first. Don't dump
+    information on people without any context. You must also write a note
+    which is appended to their clue that serves as a record about the scene:
+    please briefly describe the scene in which the clue was shared, or why
+    they were told, or any other contextual notes about it.
     """
     key = "clues"
     locks = "cmd:all()"
-    aliases = ["clue", "@clue", "+clue", "@zoinks", "@jinkies"]
+    aliases = ["clue", "@zoinks", "@jinkies"]
     help_category = "Investigation"
 
     def get_help(self, caller, cmdset):
+        """Custom helpfile that lists clue sharing costs"""
         if caller.player_ob:
             caller = caller.player_ob
         doc = self.__doc__
@@ -1326,38 +1333,44 @@ class CmdListClues(ArxPlayerCommand):
 
     @property
     def clue_discoveries(self):
+        """Clue discovery objects for our caller"""
         try:
             return self.caller.roster.clue_discoveries.all()
         except AttributeError:
             return ClueDiscovery.objects.none()
 
     def func(self):
-        if not self.args or "search" in self.switches:
-            return self.disp_clue_table()
-        if "share" in self.switches:
-            return self.share_clues()
-        # get clue for display or sharing
+        """Executes clues command"""
         try:
-            discovery = self.clue_discoveries.get(clue_id=self.lhs)
-        except (ClueDiscovery.DoesNotExist, ValueError, TypeError):
-            discovery = None
-            if not self.switches and self.caller.check_permstring("builders"):
-                try:
-                    discovery = Clue.objects.get(id=self.lhs)
-                except Clue.DoesNotExist:
-                    pass
-            if not discovery:
-                self.msg("No clue found by that ID.")
-                self.disp_clue_table()
+            if not self.args or "search" in self.switches:
+                return self.disp_clue_table()
+            if "share" in self.switches:
+                return self.share_clues()
+            # get clue for display or sharing
+            try:
+                discovery = self.clue_discoveries.get(clue_id=self.lhs)
+            except (ClueDiscovery.DoesNotExist, ValueError, TypeError):
+                discovery = None
+                if not self.switches and self.caller.check_permstring("builders"):
+                    try:
+                        discovery = Clue.objects.get(id=self.lhs)
+                    except Clue.DoesNotExist:
+                        pass
+                if not discovery:
+                    self.msg("No clue found by that ID.")
+                    self.disp_clue_table()
+                    return
+            if not self.switches:
+                self.msg(discovery.display())
                 return
-        if not self.switches:
-            self.msg(discovery.display())
-            return
-        if "addnote" in self.switches:
-            return self.add_note(discovery)
-        self.msg("Invalid switch")
+            if "addnote" in self.switches:
+                return self.add_note(discovery)
+            self.msg("Invalid switch")
+        except CommandError as err:
+            self.msg(err)
 
     def share_clues(self):
+        """Shares clues with others in room"""
         discoveries_to_share = []
         clue_err_msg = ""
         for arg in self.lhslist:
@@ -1375,20 +1388,19 @@ class CmdListClues(ArxPlayerCommand):
         if not discoveries_to_share:
             return
         if not self.rhs:
-            self.msg("Who are you sharing with?")
-            return
-        note = ""
-        if "/" in self.rhs:
-            split_result = self.rhs.split("/", 1)
+            raise CommandError("Who are you sharing with?")
+        split_result = self.rhs.split("/", 1)
+        try:
             rhslist, note = split_result[0], split_result[1]
-            rhslist = rhslist.split(",")
-        else:
-            rhslist = self.rhslist
+        except IndexError:
+            raise CommandError("You must provide a note that gives context to the clues you're sharing.")
+        if len(note) < 80:
+            raise CommandError("Please write a longer note that gives context to the clues you're sharing.")
+        rhslist = rhslist.split(",")
         shared_names = []
         cost = len(rhslist) * len(discoveries_to_share) * self.caller.clue_cost
         if cost > self.caller.roster.action_points:
-            self.msg("Sharing the clue(s) with them would cost %s action points." % cost)
-            return
+            raise CommandError("Sharing the clue(s) with them would cost %s action points." % cost)
         for arg in rhslist:
             pc = self.caller.search(arg)
             if not pc:
