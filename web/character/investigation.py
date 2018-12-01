@@ -899,6 +899,9 @@ class CmdInvestigate(InvestigationFormCommand):
                                             "allowed during staff break.")
             if len(search_tags) + len(omit_tags) > 6:
                 return self.refuse_new_clue("That investigation would be too specific.")
+            self.msg("The tag(s) specified does not match an existing clue, and will be much more difficult and "
+                     "more expensive to look into than normal. Try other tags for an easier investigation, or "
+                     "proceed to /finish for a much more difficult one.")
         self.investigation_form[5] = [search_tags, omit_tags]
         self.investigation_form[4] = clue
         self.investigation_form[0] = self.args

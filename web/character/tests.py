@@ -84,8 +84,11 @@ class InvestigationTests(ArxCommandTest):
             self.call_cmd("/finish", 'You must have topic defined.')
             self.call_cmd("/topic not matching tags", "No SearchTag found using 'not matching tags'.")
             self.call_cmd("/topic foo/-bar/zep/-squeeb/merpl", "No SearchTag found using 'squeeb'.")
-            self.call_cmd("/topic foo/-bar/zep", 'Creating an investigation: foo; zep; -bar\nStory unfinished.\n'
-                                                 'Stat: ??? - Skill: ???')
+            self.call_cmd("/topic foo/-bar/zep", 'The tag(s) specified does not match an existing clue, and will be '
+                                                 'much more difficult and more expensive to look into than normal. Try '
+                                                 'other tags for an easier investigation, or proceed to /finish for a '
+                                                 'much more difficult one.|Creating an investigation: foo; zep; -bar\n'
+                                                 'Story unfinished.\nStat: ??? - Skill: ???')
             self.call_cmd("/finish", 'You must have a story defined.')
             self.call_cmd("/story asdf", 'Creating an investigation: foo; zep; -bar\nasdf\nStat: ??? - Skill: ???')
             self.call_cmd("/finish", 'It costs 25 social resources to start a new investigation.')

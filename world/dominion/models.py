@@ -649,12 +649,10 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
     def adjust_prestige(self, value, force=False):
         """
-        Adjusts our prestige. We gain fame equal to the value, and then our legend is modified
-        if the value of the hit is greater than our current legend or the force flag is set.
+        Adjusts our prestige. We gain fame equal to the value. We no longer
+        adjust the legend, per Apos.
         """
         self.fame += value
-        if value > self.legend or force:
-            self.legend += value / 100
         self.save()
 
     @CachedProperty

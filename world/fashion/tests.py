@@ -100,7 +100,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         with patch('django.utils.timezone.now', Mock(return_value=fake_dt)):
             self.call_cmd("Top1=Orgtest", "[Fashion] When Testaccount models 'Top1' on behalf of Orgtest, it gains "
                                           "modest attention from admiring onlookers.|For modeling Top1 you earn "
-                                          "1000 fame. Your prestige is now 1015.")
+                                          "1000 fame. Your prestige is now 1005.")
         self.assertEqual(self.roster_entry.action_points, 100 - ap_cost)
         self.org.assets.inform_owner.assert_called_with("{315500{n fame awarded from Testaccount modeling Top1.",
                                                         append=True, category='fashion')
@@ -134,7 +134,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
             self.call_cmd("/outfit Friendly Shadows=Orgtest", "[Fashion] Testaccount2 models 'Friendly Shadows' on "
                                                               "behalf of Orgtest, gaining a decent number of admirers "
                                                               "and significant compliments.|For modeling Friendly "
-                                                              "Shadows you earn 7398 fame. Your prestige is now 9587.")
+                                                              "Shadows you earn 7398 fame. Your prestige is now 9497.")
         self.assertEqual(self.roster_entry2.action_points, 200 - (ap_cost * 6))
         self.assertTrue(outfit1.modeled)
         self.assertTrue(self.hairpins1.modeled_by)

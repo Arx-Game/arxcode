@@ -450,7 +450,7 @@ class FashionSnapshot(FashionCommonMixins):
                 self.characters.add(obj)
                 total_weight += 11 - (obj.db.social_rank or 10)
 
-        self.multiplier = total_weight / 25.0
+        self.multiplier = min(total_weight / 25.0, 7.)
         roll = do_dice_check(caller=char, stat="composure", skill="performance", difficulty=30)
         roll = pow(max((roll + char.social_clout * 3), 1), 1.5)
         percentage = max(roll/100.0, 0.01)
