@@ -84,11 +84,11 @@ class InvestigationTests(ArxCommandTest):
             self.call_cmd("/finish", 'You must have topic defined.')
             self.call_cmd("/topic not matching tags", "No SearchTag found using 'not matching tags'.")
             self.call_cmd("/topic foo/-bar/zep/-squeeb/merpl", "No SearchTag found using 'squeeb'.")
-            self.call_cmd("/topic foo/-bar/zep", 'The tag(s) specified does not match an existing clue, and will be '
-                                                 'much more difficult and more expensive to look into than normal. Try '
-                                                 'other tags for an easier investigation, or proceed to /finish for a '
-                                                 'much more difficult one.|Creating an investigation: foo; zep; -bar\n'
-                                                 'Story unfinished.\nStat: ??? - Skill: ???')
+            self.call_cmd("/topic foo/-bar/zep", 'The tag(s) or clue specified does not match an existing clue, and '
+                                                 'will be much more difficult and more expensive to look into than '
+                                                 'normal. Try other tags for an easier investigation, or proceed to '
+                                                 '/finish for a much more difficult one.|Creating an investigation: '
+                                                 'foo; zep; -bar\nStory unfinished.\nStat: ??? - Skill: ???')
             self.call_cmd("/finish", 'You must have a story defined.')
             self.call_cmd("/story asdf", 'Creating an investigation: foo; zep; -bar\nasdf\nStat: ??? - Skill: ???')
             self.call_cmd("/finish", 'It costs 25 social resources to start a new investigation.')
@@ -112,14 +112,14 @@ class InvestigationTests(ArxCommandTest):
             self.assertEqual(list(clue.search_tags.all()), [tag1, tag3])
             self.assertTrue(clue.allow_investigation)
             self.caller = self.char2
-            self.char2.ndb.investigation_form = ['', 'story', '', '', '', []]
+            self.char2.ndb.investigation_form = ['', 'story', '', '', '', [], None]
             self.clue.search_tags.add(tag1, tag2, tag3)
             self.clue.allow_investigation = True
             self.clue.save()
             self.clue2.search_tags.add(tag1, tag2)
             self.clue2.allow_investigation = True
             self.clue2.save()
-            self.assetowner2.social = 25
+            self.assetowner2.social = 50
             self.call_cmd("/topic foo/bar/-zep", 'Creating an investigation: foo; bar; -zep\nstory\n'
                                                  'Stat: ??? - Skill: ???')
             self.call_cmd("/finish", 'You spend 25 social resources to start a new investigation.|'
@@ -132,6 +132,21 @@ class InvestigationTests(ArxCommandTest):
             self.assertEqual(self.clue.get_completion_value(), 2)
             self.assertEqual(self.clue2.get_completion_value(), 33)
             self.assertEqual(invest.completion_value, 33)
+            self.char2.ndb.investigation_form = ['', 'story', '', '', '', [], None]
+            self.call_cmd("/topic clue: 3", "No Clue found using '3'.")
+            clue3 = Clue.objects.create(name="another test clue")
+            clue3.search_tags.add(tag3)
+            clue3.discoveries.create(character=self.roster_entry2)
+            self.call_cmd("/topic clue: another test clue", 'Creating an investigation: another test clue\nstory\nS'
+                                                            'tat: ??? - Skill: ???')
+            self.call_cmd("/finish", 'You spend 25 social resources to start a new investigation.|'
+                                     'New investigation created. You already are participating in an active '
+                                     'investigation for this week, but may still add resources/silver to increase its '
+                                     'chance of success for when you next mark this as active.|You may only have one '
+                                     'active investigation per week, and cannot change it once it has received GM '
+                                     'attention. Only the active investigation can progress.')
+            invest2 = self.roster_entry2.investigations.last()
+            self.assertEqual(invest2.clue_target, self.clue)
 
 
 class SceneCommandTests(ArxCommandTest):

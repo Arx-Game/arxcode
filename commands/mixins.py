@@ -49,27 +49,33 @@ class ArxCommmandMixin(object):
         """Whether caller has staff permissions"""
         return self.caller.check_permstring("builders")
 
-    def get_by_name_or_id(self, cls, args, field_name="name", check_contains_first=True):
+    def get_by_name_or_id(self, cls, args, field_name="name", check_contains_first=True, q_args=None,
+                          filter_kwargs=None):
         """Gets a given class by ID or a unique text field (default of 'name')"""
         err = "No %s found using '%s'." % (cls.__name__, args)
+        qs = cls.objects.all().distinct()
+        if q_args:
+            qs = qs.filter(q_args)
+        if filter_kwargs:
+            qs = qs.filter(**filter_kwargs)
         try:
             if args.isdigit():
-                return cls.objects.get(id=args)
+                return qs.get(id=args)
             else:
                 if check_contains_first:
                     try:
                         kwargs = {"%s__icontains" % field_name: args}
-                        return cls.objects.get(**kwargs)
+                        return qs.get(**kwargs)
                     except cls.MultipleObjectsReturned:
                         err = "More than one %s found with '%s'; be specific." % (cls.__name__, args)
                         try:
                             kwargs = {"%s__iexact" % field_name: args}
-                            return cls.objects.get(**kwargs)
+                            return qs.get(**kwargs)
                         except cls.MultipleObjectsReturned:
                             raise self.error_class(err)
                 else:
                     kwargs = {"%s__iexact" % field_name: args}
-                    return cls.objects.get(**kwargs)
+                    return qs.get(**kwargs)
         except (ValueError, TypeError, cls.DoesNotExist):
             raise self.error_class(err)
 

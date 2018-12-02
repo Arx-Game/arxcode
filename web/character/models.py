@@ -1490,7 +1490,7 @@ class Investigation(AbstractPlayerAllocations):
         cmd.args = self.topic
         cmd.caller = self.character.character
         try:
-            search, omit = cmd.get_tags_from_args()
+            search, omit, source_clue = cmd.get_tags_or_clue_from_args()
         except cmd.error_class:
             names = self.topic.split()
             search = SearchTag.objects.filter(reduce(lambda x, y: x | Q(name__icontains=y), names, Q()))
@@ -1502,7 +1502,7 @@ class Investigation(AbstractPlayerAllocations):
                     picker.add_option(clue, clue.cnt)
                 return picker.pick()
         else:
-            return get_random_clue(self.character, search_tags=search, omit_tags=omit)
+            return get_random_clue(self.character, search_tags=search, omit_tags=omit, source_clue=source_clue)
 
     def add_progress(self):
         """Adds progress to the investigation, saved in clue.roll"""
@@ -1624,16 +1624,20 @@ class TheoryPermissions(SharedMemoryModel):
     can_edit = models.BooleanField(default=False)
 
 
-def get_random_clue(roster, search_tags, omit_tags=None):
+def get_random_clue(roster, search_tags, omit_tags=None, source_clue=None):
     """
     Finds a target clue based on our topic and our investigation history.
     We'll choose the lowest rating out of 3 random choices.
     """
     exact = Clue.objects.filter(Q(allow_investigation=True) & ~Q(characters=roster))
-    exact = reduce(lambda x, y: x.filter(search_tags=y), search_tags, exact)
-    if omit_tags:
-        exclude_query = reduce(lambda x, y: x | Q(search_tags=y), omit_tags, Q())
-        exact = exact.exclude(exclude_query)
+    if source_clue:
+        exact = exact.filter(Q(search_tags__in=source_clue.search_tags.all()) |
+                             Q(revelations__in=source_clue.revelations.all()))
+    else:
+        exact = reduce(lambda x, y: x.filter(search_tags=y), search_tags, exact)
+        if omit_tags:
+            exclude_query = reduce(lambda x, y: x | Q(search_tags=y), omit_tags, Q())
+            exact = exact.exclude(exclude_query)
     if exact:
         picker = WeightedPicker()
         exact = exact.annotate(cnt=Count('discoveries'))
