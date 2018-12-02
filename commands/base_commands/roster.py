@@ -976,7 +976,7 @@ class CmdSheet(ArxPlayerCommand):
     aliases = ["+sheet", "sheet"]
     help_category = "General"
     locks = "cmd:all()"
-    private_switches = ("secrets", "secret", "visions", "vision", "actions", "plots")
+    private_switches = ("secrets", "secret", "visions", "vision", "actions", "plots", "goals")
     public_switches = ('social', 'background', 'info', 'personality', 'recognition')
 
     def func(self):
@@ -1034,6 +1034,8 @@ class CmdSheet(ArxPlayerCommand):
                 return
             if 'plots' in switches:
                 return self.display_plots(charob)
+            if 'goals' in switches:
+                return self.display_goals(charob)
         if self.check_switches(self.public_switches):
             charob, show_hidden = self.get_character()
             if not charob:
@@ -1191,6 +1193,29 @@ class CmdSheet(ArxPlayerCommand):
                 self.msg("No plot matches that ID #.")
             else:
                 self.msg(plot.display())
+
+    def display_goals(self, charob):
+        """Displays a list of goals or specific goal"""
+        goals = charob.roster.goals.all()
+        goal_num = self.get_num_from_args()
+        if not goal_num:
+            from evennia.utils.evtable import EvTable
+            table = EvTable("{wID", "{wSummary", "{wStatus", "{wPlot{n", width=78, border="cells")
+            for ob in goals:
+                table.add_row(str(ob.id), ob.summary, ob.get_status_display(), ob.plot)
+            table.reformat_column(0, width=8)
+            table.reformat_column(1, width=38)
+            table.reformat_column(2, width=12)
+            table.reformat_column(3, width=20)
+            self.msg(str(table))
+        else:
+            from web.character.models import Goal
+            try:
+                goal = goals.get(id=goal_num)
+            except (Goal.DoesNotExist, TypeError, ValueError):
+                self.msg("No goal matches that ID #.")
+            else:
+                self.msg(goal.display())
 
     def display_visions(self, character):
         """

@@ -10,7 +10,7 @@ from .models import (Roster, RosterEntry, Photo, SearchTag, FlashbackPost, Flash
                      Mystery, Revelation, Clue, Investigation,
                      RevelationDiscovery, ClueDiscovery,
                      ClueForRevelation, Theory, TheoryPermissions,
-                     PlayerInfoEntry,
+                     PlayerInfoEntry, Goal, GoalUpdate
                      )
 from django.db.models import F, Subquery, OuterRef, IntegerField, ExpressionWrapper, Q, Sum
 from django.shortcuts import reverse
@@ -424,6 +424,22 @@ class FlashbackAdmin(BaseCharAdmin):
     fieldsets = [(None, {'fields': [('owner', 'title'), 'summary']})]
 
 
+class GoalUpdateInline(admin.StackedInline):
+    """Inline for Goal Updates"""
+    model = GoalUpdate
+    extra = 0
+    raw_id_fields = ('beat',)
+
+
+class GoalAdmin(BaseCharAdmin):
+    """Admin for Goals"""
+    list_display = ('id', 'entry', 'summary', 'status', 'scope', 'plot')
+    search_fields = ('id', 'entry__player__username', 'summary', 'description', 'gm_notes')
+    raw_id_fields = ('entry', 'plot')
+    list_filter = ('scope', 'status')
+    inlines = (GoalUpdateInline,)
+
+
 # Register your models here.
 admin.site.register(Roster, BaseCharAdmin)
 admin.site.register(RosterEntry, EntryAdmin)
@@ -443,3 +459,4 @@ admin.site.register(Investigation, InvestigationAdmin)
 admin.site.register(Theory, TheoryAdmin)
 admin.site.register(Flashback, FlashbackAdmin)
 admin.site.register(SearchTag, SearchTagAdmin)
+admin.site.register(Goal, GoalAdmin)

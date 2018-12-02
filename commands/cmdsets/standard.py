@@ -147,6 +147,10 @@ try:
     from world.dominion import plot_commands
 except Exception as err:
     print("<<ERROR>>: Error encountered in plot commands: %s" % err)
+try:
+    from web.character import goal_commands
+except Exception as err:
+    print("<<ERROR>>: Error encountered in goal commands: %s" % err)
 
 
 from evennia.commands.cmdset import CmdSet
@@ -221,6 +225,7 @@ class StateIndependentCmdSet(CmdSet):
         self.add(maps.CmdMap())
         self.add(story_actions.CmdAction())
         self.add(plot_commands.CmdPlots())
+        self.add(goal_commands.CmdGoals())
 
 
 class MobileCmdSet(CmdSet):
@@ -340,6 +345,7 @@ class StaffCmdSet(CmdSet):
         self.add(staff_commands.CmdAdminKey())
         self.add(staff_commands.CmdAdminPropriety())
         self.add(plot_commands.CmdGMPlots())
+        self.add(goal_commands.CmdGMGoals())
         self.add(extended_room.CmdExtendedDesc())
         self.add(xp.CmdAdjustSkill())
         self.add(xp.CmdAwardXP())

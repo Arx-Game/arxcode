@@ -12,7 +12,7 @@ from web.helpdesk.models import Ticket, Queue, FollowUp
 
 
 def create_ticket(caller, message, priority=3, queue_slug=settings.REQUEST_QUEUE_SLUG,
-                  send_email=True, optional_title=None, plot=None, beat=None):
+                  send_email=True, optional_title=None, plot=None, beat=None, goal_update=None):
     """
     Creates a new ticket and returns it.
     """
@@ -30,9 +30,13 @@ def create_ticket(caller, message, priority=3, queue_slug=settings.REQUEST_QUEUE
     message = message.rstrip(" ;)").rstrip(" :p").rstrip(" :P").rstrip(" ;P").rstrip(" ;p")
     ticket = Ticket(title=optional_title, queue=queue, db_date_created=datetime.now(), submitter_email=email,
                     submitting_player=caller, submitting_room=room, description=message,
-                    priority=priority, plot=plot, beat=beat)
+                    priority=priority, plot=plot, beat=beat, goal_update=goal_update)
+    if optional_title[:-1] in message:
+        title = ""
+    else:
+        title = "{w[{n%s{w]{n " % optional_title
     ticket.save()
-    staff_msg = "{w[%s]{n Ticket #%s by {c%s{n: %s" % (str(queue), ticket.id, caller, message)
+    staff_msg = "{w[%s]{n Ticket #%s by {c%s{n: %s%s" % (str(queue), ticket.id, caller, title, message)
     inform_staff(staff_msg)
     # to do: mail player
     player_msg = "You have successfully created a new ticket.\n\n"

@@ -7,8 +7,8 @@ from django.test import Client
 from django.urls import reverse
 
 from server.utils.test_utils import ArxCommandTest, ArxTest
-from web.character import investigation, scene_commands
-from web.character.models import Clue, Revelation, SearchTag
+from web.character import investigation, scene_commands, goal_commands
+from web.character.models import Clue, Revelation, SearchTag, GoalUpdate, Goal
 
 
 class InvestigationTests(ArxCommandTest):
@@ -272,3 +272,64 @@ class PRPClueTests(ArxCommandTest):
         self.call_cmd("/plot testplot", 'Name: testrev\nDesc: testdesc\nPlot: TestPlot\n'
                                         'Required Clue Value: 25\nTags: None\nReal: True')
         self.call_cmd("/finish", 'testrev(#1) created.')
+
+
+class GoalTests(ArxCommandTest):
+    def setUp(self):
+        super(GoalTests, self).setUp()
+        from web.helpdesk.models import Queue
+        Queue.objects.create(slug="Goals")
+
+    def test_cmd_goals(self):
+        from world.dominion.models import Plot, PCPlotInvolvement
+        self.setup_cmd(goal_commands.CmdGoals, self.char)
+        self.call_cmd("", '| ID | Summary | Plot '
+                          '~~~~+~~~~~~~~~+~~~~~~+')
+        self.call_cmd("/create asdf", "You must provide a summary and a description of your goal.")
+        self.call_cmd("/create testing/this is a /desc/.", "You have created a new goal: ID #1.")
+        self.call_cmd("1", 'testing (#1)\nScope: Reasonable, Status: Active\nDescription: this is a /desc/.')
+        self.call_cmd("/summary 2=test", "You do not have a goal by that number.")
+        self.call_cmd("/summary 1=test", "Summary set to: test")
+        self.call_cmd("/status 1=asdf", 'Invalid Choice. Try one of the following: Succeeded, Failed, Abandoned, '
+                                        'Dormant, Active')
+        self.call_cmd("/status 1=dormant", "Status set to: dormant")
+        self.call_cmd("/scope 1=asdf", 'Invalid Choice. Try one of the following: Heartbreakingly Modest, Modest, '
+                                       'Reasonable, Ambitious, Venomously Ambitious, Megalomanic')
+        self.call_cmd("/scope 1=venomously Ambitious", "Scope set to: venomously Ambitious")
+        self.call_cmd("/ooc_notes 1=notes", "Ooc_notes set to: notes")
+        self.call_cmd("/plot 1=1", "No plot by that ID.")
+        plot = Plot.objects.create(name="test plot")
+        PCPlotInvolvement.objects.create(plot=plot, dompc=self.dompc)
+        self.call_cmd("/plot 1=1", "Plot set to: test plot")
+        self.call_cmd("1", 'test (#1)\nScope: Venomously Ambitious, Status: Dormant\nPlot: test plot\n'
+                           'Description: this is a /desc/.\nOOC Notes: notes')
+        self.call_cmd("/old", '| ID | Summary | Plot      '
+                              '~~~~+~~~~~~~~~+~~~~~~~~~~~+\n'
+                              '| 1  | test    | test plot')
+        self.call_cmd("/rfr 1", 'You must provide both a short story summary of what your character did or attempted to'
+                                ' do in order to make progress toward their goal, and an OOC message to staff, telling '
+                                'them of your intent for results you would like and anything else that seems relevant.')
+        self.call_cmd("/rfr 1,1=stuff/things", 'No beat by that ID.')
+        plot.updates.create(desc="test")
+        self.call_cmd("/rfr 1,1=stuff/things", 'You have sent in a request for review for goal 1. Ticket ID is 1.')
+        self.call_cmd("/rfr 1,1=more stuff/things", 'You submitted a request for review for goal 1 too recently.')
+
+    @patch('django.utils.timezone.now')
+    def test_cmd_gm_goals(self, mock_now):
+        from server.utils.helpdesk_api import create_ticket
+        self.setup_cmd(goal_commands.CmdGMGoals, self.caller)
+        mock_now.return_value = self.fake_datetime
+        goal = Goal.objects.create(entry=self.roster_entry2, summary="test goal")
+        update = goal.updates.create(player_summary="test summary")
+        ticket = create_ticket(self.account2, message="hepl i do thing", queue_slug="Goals", goal_update=update)
+        self.call_cmd("", '| ID | Player       | Goal      '
+                          '~~~~+~~~~~~~~~~~~~~+~~~~~~~~~~~+\n'
+                          '| 1  | Testaccount2 | test goal')
+        self.call_cmd("2", 'No ticket found by that ID.')
+        self.call_cmd("1", "[Ticket #1] hepl i do thing\nQueue:  - Priority 3\nPlayer: TestAccount2\n"
+                           "Location: Room (#1)\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00\n"
+                           "Request: hepl i do thing\nUpdate for goal: Char2's Goal (#1): test goal (#1)\n"
+                           "Player Summary: test summary\nGM Resolution: None")
+        self.call_cmd("/close 1=ok stuff happen", "You have closed the ticket and set the result to: ok stuff happen")
+        self.assertEqual(ticket.resolution, "Result: ok stuff happen")
+        self.assertEqual(update.result, "ok stuff happen")

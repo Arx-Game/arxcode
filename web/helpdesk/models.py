@@ -296,6 +296,7 @@ class Ticket(SharedMemoryModel):
                                         verbose_name=_('Room where this was submitted'), on_delete=models.SET_NULL)
     plot = models.ForeignKey('dominion.Plot', blank=True, null=True, related_name="tickets")
     beat = models.ForeignKey('dominion.PlotUpdate', blank=True, null=True, related_name="tickets")
+    goal_update = models.ForeignKey('character.GoalUpdate', blank=True, null=True, related_name="tickets")
     status = models.IntegerField(_('Status'), choices=STATUS_CHOICES, default=OPEN_STATUS)
     on_hold = models.BooleanField(_('On Hold'), blank=True, default=False, help_text=_(
         'If a ticket is on hold, it will not automatically be escalated.'))
@@ -483,11 +484,17 @@ class Ticket(SharedMemoryModel):
         if self.plot:
             msg += "\n"
             if self.plot.usage == self.plot.PITCH:
-                msg += "\n|wPlot Pitch:|n\n"
+                msg += "\n|wPlot Pitch: (#%s)|n\n" % self.plot.id
                 msg += self.plot.display(staff_display=True)
                 msg += "\n"
             else:
-                msg += "|wPlot:|n %s" % self.plot
+                msg += "|wPlot:|n %s (#%s)" % (self.plot, self.plot.id)
+                if self.beat:
+                    msg += " |wBeat ID:|n #%s" % self.beat.id
+        if self.goal_update:
+            goal = self.goal_update.goal
+            msg += "\nUpdate for goal: %s (#%s)" % (goal, goal.id)
+            msg += "\nPlayer Summary: %s" % self.goal_update.player_summary
         for followup in self.followup_set.all():
             msg += "\n|wFollowup by |c%s|w:|n %s" % (followup.user, followup.comment)
         if self.assigned_to:

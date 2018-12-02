@@ -246,7 +246,7 @@ class StoryActionTests(ArxCommandTest):
                                           topic="test summary", stat_used="stat", skill_used="skill")
         draft.questions.create(is_intent=True, text="intent")
         self.call_cmd("/invite 4=TestAccount2", "You have invited Testaccount2 to join your action.")
-        self.call_cmd("/submit 4", "You are permitted 2 action requests every 30 days. Recent actions: 1, 2, 3")
+        self.call_cmd("/submit 4", "You are permitted 2 action requests every 60 days. Recent actions: 1, 2, 3")
         self.caller = self.account2
         # unused actions can be used as assists. Try with one slot free to be used as an assist
         self.dompc2.actions.create(actions="dompc completed storyaction", status=PlotAction.PUBLISHED,
@@ -255,6 +255,12 @@ class StoryActionTests(ArxCommandTest):
         self.dompc2.actions.create(actions="another dompc completed storyaction", status=PlotAction.PUBLISHED,
                                    date_submitted=datetime.now())
         # now both slots used up
+        action_4 = self.dompc.actions.create(actions="asdf", status=PlotAction.PUBLISHED,
+                                             date_submitted=datetime.now())
+        action_5 = self.dompc.actions.create(actions="asdf", status=PlotAction.PUBLISHED,
+                                             date_submitted=datetime.now())
+        action_4.assisting_actions.create(dompc=self.dompc2)
+        action_5.assisting_actions.create(dompc=self.dompc2)
         self.call_cmd("/setaction 4=test assist", "You are assisting too many actions.")
         # test making an action free
         action_2.free_action = True
@@ -270,6 +276,8 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/setaction 4=test assist", 'Action by Testaccount now has your assistance: test assist')
         action.status = PlotAction.CANCELLED
         action.save()
+        action_4.delete()
+        action_5.delete()
         # now back to player 1 to see if they can submit after the other actions are gone
         self.caller = self.account
         self.call_cmd("/submit 4", "Before submitting this action, make certain that you have invited all players you "
@@ -283,7 +291,7 @@ class StoryActionTests(ArxCommandTest):
         action_4 = self.dompc.actions.last()
         action_4.status = PlotAction.CANCELLED
         action_4.save()
-        self.call_cmd("/newaction test crisis=testing", "You have drafted a new action (#7) to respond to Test Crisis: "
+        self.call_cmd("/newaction test crisis=testing", "You have drafted a new action (#9) to respond to Test Crisis: "
                                                         "testing|Please note that you cannot invite players to an "
                                                         "action once it is submitted.")
 

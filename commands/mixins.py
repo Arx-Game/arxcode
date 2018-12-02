@@ -73,6 +73,15 @@ class ArxCommmandMixin(object):
         except (ValueError, TypeError, cls.DoesNotExist):
             raise self.error_class(err)
 
+    def get_value_for_choice_field_string(self, choice_tuple, args):
+        """Gets the value key for a choice tuple from the string display, or raises an error"""
+        original_strings = [ob[1] for ob in choice_tuple]
+        choice_dict = {ob[1].lower(): ob[0] for ob in choice_tuple}
+        try:
+            return choice_dict[args.lower()]
+        except KeyError:
+            raise self.error_class("Invalid Choice. Try one of the following: %s" % ", ".join(original_strings))
+
 
 class FormCommandMixin(object):
     """Mixin to have command act as a form"""

@@ -1719,3 +1719,59 @@ class FlashbackPost(SharedMemoryModel):
 
     def __str__(self):
         return "Post by %s" % self.poster
+
+
+class Goal(SharedMemoryModel):
+    """A goal for a character."""
+    HEARTBREAKINGLY_MODEST, MODEST, REASONABLE, AMBITIOUS, VENOMOUSLY_AMBITIOUS, MEGALOMANIC = range(0, 6)
+    SCOPE_CHOICES = ((HEARTBREAKINGLY_MODEST, "Heartbreakingly Modest"), (MODEST, "Modest"), (REASONABLE, "Reasonable"),
+                     (AMBITIOUS, "Ambitious"), (VENOMOUSLY_AMBITIOUS, "Venomously Ambitious"),
+                     (MEGALOMANIC, "Megalomanic"))
+    SUCCEEDED, FAILED, ABANDONED, DORMANT, ACTIVE = range(0, 5)
+    STATUS_CHOICES = ((SUCCEEDED, "Succeeded"), (FAILED, "Failed"),
+                      (ABANDONED, "Abandoned"), (DORMANT, "Dormant"), (ACTIVE, "Active"))
+    entry = models.ForeignKey('RosterEntry', related_name="goals")
+    scope = models.PositiveSmallIntegerField(choices=SCOPE_CHOICES, default=REASONABLE)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=ACTIVE)
+    summary = models.CharField("Summary of the goal", max_length=80)
+    description = models.TextField("Detailed description of the goal")
+    ooc_notes = models.TextField("Any OOC notes by the player about the goal", blank=True)
+    gm_notes = models.TextField("Notes by staff, not visible to the player", blank=True)
+    plot = models.ForeignKey('dominion.Plot', null=True, blank=True, related_name="goals", on_delete=models.SET_NULL)
+
+    def display(self):
+        """Returns string display of the goal"""
+        msg = "{c%s{n (#%s)\n" % (self.summary, self.id)
+        msg += "{wScope{n: %s, {wStatus{n: %s\n" % (self.get_scope_display(), self.get_status_display())
+        if self.plot:
+            msg += "{wPlot{n: %s\n" % self.plot
+        msg += "{wDescription:{n %s\n" % self.description
+        if self.ooc_notes:
+            msg += "{wOOC Notes:{n %s\n" % self.ooc_notes
+        updates = self.updates.all()
+        if updates:
+            msg += "{wUpdates:{n\n"
+            msg += "\n".join(ob.display() for ob in updates)
+        return msg
+
+    def __str__(self):
+        return "%s's Goal (#%s): %s" % (self.entry, self.id, self.summary)
+
+
+class GoalUpdate(SharedMemoryModel):
+    """Updates for goals"""
+    goal = models.ForeignKey("Goal", related_name="updates")
+    beat = models.ForeignKey("dominion.PlotUpdate", related_name="goal_updates", blank=True, null=True,
+                             on_delete=models.SET_NULL)
+    player_summary = models.TextField(blank=True)
+    result = models.TextField("IC description of the outcome for the player", blank=True)
+    gm_notes = models.TextField("OOC notes for staff about consequences", blank=True)
+    db_date_created = models.DateTimeField(auto_now_add=True)
+
+    def display(self):
+        msg = ""
+        if self.beat:
+            msg += "{wBeat #%s of Plot:{n %s\n" % (self.beat.id, self.beat.plot)
+        msg = "{wStory Summary:{n %s\n" % self.player_summary
+        msg += "{wResult{n: %s" % self.result
+        return msg
