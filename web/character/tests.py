@@ -304,18 +304,18 @@ class GoalTests(ArxCommandTest):
         self.call_cmd("/create testing/this is a /desc/.", "You have created a new goal: ID #1.")
         self.call_cmd("1", 'testing (#1)\nScope: Reasonable, Status: Active\nDescription: this is a /desc/.')
         self.call_cmd("/summary 2=test", "You do not have a goal by that number.")
-        self.call_cmd("/summary 1=test", "Summary set to: test")
+        self.call_cmd("/summary 1=test", 'Old value was: testing\nSummary set to: test')
         self.call_cmd("/status 1=asdf", 'Invalid Choice. Try one of the following: Succeeded, Failed, Abandoned, '
                                         'Dormant, Active')
-        self.call_cmd("/status 1=dormant", "Status set to: dormant")
+        self.call_cmd("/status 1=dormant", 'Old value was: Active\nStatus set to: dormant')
         self.call_cmd("/scope 1=asdf", 'Invalid Choice. Try one of the following: Heartbreakingly Modest, Modest, '
                                        'Reasonable, Ambitious, Venomously Ambitious, Megalomanic')
-        self.call_cmd("/scope 1=venomously Ambitious", "Scope set to: venomously Ambitious")
-        self.call_cmd("/ooc_notes 1=notes", "Ooc_notes set to: notes")
+        self.call_cmd("/scope 1=venomously Ambitious", 'Old value was: Reasonable\nScope set to: venomously Ambitious')
+        self.call_cmd("/ooc_notes 1=notes", 'Old value was: \nOoc_notes set to: notes')
         self.call_cmd("/plot 1=1", "No plot by that ID.")
         plot = Plot.objects.create(name="test plot")
         PCPlotInvolvement.objects.create(plot=plot, dompc=self.dompc)
-        self.call_cmd("/plot 1=1", "Plot set to: test plot")
+        self.call_cmd("/plot 1=1", 'Old value was: None\nPlot set to: test plot')
         self.call_cmd("1", 'test (#1)\nScope: Venomously Ambitious, Status: Dormant\nPlot: test plot\n'
                            'Description: this is a /desc/.\nOOC Notes: notes')
         self.call_cmd("/old", '| ID | Summary | Plot      '

@@ -24,6 +24,7 @@ class CmdGoals(ArxCommand):
              /scope <goal id>=<scope>
              /plot  <goal id>=<plot ID, if any>
              /status <goal id>=<status>
+             /ooc_notes <goal id>=<notes>
         goals/rfr <goal id>[,<beat id>]=<IC summary>/<request to staff>
 
         Valid scopes: 'Heartbreakingly Modest', 'Modest', 'Reasonable',
@@ -100,10 +101,13 @@ class CmdGoals(ArxCommand):
         args = self.rhs
         target_name = self.rhs
         field = list(set(self.switches) & set(self.field_switches))[0]
+        old = getattr(goal, field)
         if field == "status":
             args = self.get_value_for_choice_field_string(Goal.STATUS_CHOICES, args)
+            old = goal.get_status_display()
         elif field == "scope":
             args = self.get_value_for_choice_field_string(Goal.SCOPE_CHOICES, args)
+            old = goal.get_scope_display()
         elif field == "plot":
             try:
                 args = self.caller.dompc.plots.get(id=args)
@@ -112,7 +116,9 @@ class CmdGoals(ArxCommand):
                 raise CommandError("No plot by that ID.")
         setattr(goal, field, args)
         goal.save()
-        self.msg("%s set to: %s" % (field.capitalize(), target_name))
+        msg = "Old value was: %s\n" % old
+        msg += "%s set to: %s" % (field.capitalize(), target_name)
+        self.msg(msg)
 
     def request_review(self, goal):
         """Submits a ticket asking for a review of progress toward their goal"""
