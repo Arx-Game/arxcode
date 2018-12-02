@@ -8,21 +8,20 @@ from ast import literal_eval
 from django.conf import settings
 from django.db.models import Q, F
 
-from evennia import CmdSet
 from evennia.objects.models import ObjectDB
 from evennia.accounts.models import AccountDB
 from evennia.utils.evtable import EvTable
 
-from server.utils.arx_utils import get_week, caller_change_field, inform_staff
+from server.utils.arx_utils import caller_change_field, inform_staff
 from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from . import setup_utils
 from web.character.models import Clue
 from world.dominion.models import (Region, Domain, Land, PlayerOrNpc, Army, ClueForOrg, Reputation,
-                                   Castle, AssetOwner, Task, MilitaryUnit,
-                                   Ruler, Organization, Member, SphereOfInfluence, SupportUsed, AssignedTask,
-                                   TaskSupporter, InfluenceCategory, Minister, PlotRoom)
+                                   Castle, AssetOwner, MilitaryUnit,
+                                   Ruler, Organization, Member, SphereOfInfluence,
+                                   InfluenceCategory, Minister, PlotRoom)
 from .unit_types import type_from_str
 from world.stats_and_skills import do_dice_check
 
@@ -775,164 +774,145 @@ class CmdAdmOrganization(ArxPlayerCommand):
         self.msg("Set %s's rating in %s to be %s." % (org, cat, value))
 
     def func(self):
-        caller = self.caller
-        if not self.args:
-            if 'all' in self.switches:
-                orgs = ", ".join(repr(org) for org in Organization.objects.all())
-            else:
-                orgs = ", ".join(repr(org) for org in Organization.objects.all()
-                                 if org.members.filter(player__player__isnull=False))
-            caller.msg("{wOrganizations:{n %s" % orgs)
-            return
         try:
-            org = self.get_org_from_args(self.lhs)
-        except Organization.DoesNotExist:
-            # if we had create switch and found no Org, create it
+            caller = self.caller
+            if not self.args:
+                if 'all' in self.switches:
+                    orgs = ", ".join(repr(org) for org in Organization.objects.all())
+                else:
+                    orgs = ", ".join(repr(org) for org in Organization.objects.all()
+                                     if org.members.filter(player__player__isnull=False))
+                caller.msg("{wOrganizations:{n %s" % orgs)
+                return
             if 'create' in self.switches:
                 if self.lhs.isdigit():
-                    caller.msg("Organization name must be a name, not a number.")
-                    return
+                    raise CommandError("Organization name must be a name, not a number.")
                 from .setup_utils import org_lockstring
                 org = Organization.objects.create(name=self.lhs, lock_storage=org_lockstring)
                 # create Org's asset owner also
                 AssetOwner.objects.create(organization_owner=org)
                 caller.msg("Created organization %s." % org)
                 return
-            caller.msg("No organization found for %s." % self.lhs)
-            return
-        if not self.switches:
-            caller.msg(org.display(show_all=True))
-            return
-        # already found an existing org
-        if 'create' in self.switches:
-            caller.msg("Organization %s already exists." % org)
-            return
-        if 'setup' in self.switches:
-            org.setup()
-            self.msg("Created board and channel for %s." % org)
-            return
-        if 'members' in self.switches:
-            caller.msg(org.display_members(show_all=True))
-            return
-        if 'boot' in self.switches:
-            try:
-                member = org.members.get(player__player__username__iexact=self.rhs)
-                caller.msg("%s removed from %s." % (str(member), str(org)))
-                member.fake_delete()
+            org = self.get_by_name_or_id(Organization, self.lhs)
+            if not self.switches:
+                caller.msg(org.display(show_all=True))
                 return
-            except Member.DoesNotExist:
-                caller.msg("Could not remove member #%s." % self.rhs)
+            # already found an existing org
+            if 'create' in self.switches:
+                caller.msg("Organization %s already exists." % org)
                 return
-        if 'desc' in self.switches:
-            caller_change_field(caller, org, "desc", self.rhs)
-            return
-        if 'name' in self.switches:
-            caller_change_field(caller, org, "name", self.rhs)
-            return
-        if 'add' in self.switches:
-            try:
-                if len(self.rhslist) > 1:
-                    player = caller.search(self.rhslist[0])
-                    rank = int(self.rhslist[1])
-                else:
-                    player = caller.search(self.rhs)
-                    rank = 10
-                dompc = player.Dominion
-                matches = org.members.filter(player__player_id=player.id)
-                if matches:
-                    match = matches[0]
-                    if match.deguilded:
-                        match.deguilded = False
-                        match.rank = rank
-                        caller.msg("Readded %s to the org." % match)
-                        match.save()
-                        match.setup()
-                        return
-                    caller.msg("%s is already a member." % match)
+            if 'setup' in self.switches:
+                org.setup()
+                self.msg("Created board and channel for %s." % org)
+                return
+            if 'members' in self.switches:
+                caller.msg(org.display_members(show_all=True))
+                return
+            if 'boot' in self.switches:
+                try:
+                    member = org.members.get(player__player__username__iexact=self.rhs)
+                    caller.msg("%s removed from %s." % (str(member), str(org)))
+                    member.fake_delete()
                     return
-                secret = org.secret
-                member = dompc.memberships.create(organization=org, rank=rank, secret=secret)
-                caller.msg("%s added to %s at rank %s." % (dompc, org, rank))
-                member.setup()
+                except Member.DoesNotExist:
+                    caller.msg("Could not remove member #%s." % self.rhs)
+                    return
+            if 'desc' in self.switches:
+                caller_change_field(caller, org, "desc", self.rhs)
                 return
-            except (AttributeError, ValueError, TypeError):
-                caller.msg("Could not add %s. May need to run @admin_assets/setup on them." % self.rhs)
+            if 'name' in self.switches:
+                caller_change_field(caller, org, "name", self.rhs)
                 return
-        if 'title' in self.switches or 'femaletitle' in self.switches:
-            male = 'femaletitle' not in self.switches
-            try:
-                rank, name = int(self.rhslist[0]), self.rhslist[1]
-            except (ValueError, TypeError, IndexError):
-                caller.msg("Invalid usage.")
+            if 'add' in self.switches:
+                try:
+                    if len(self.rhslist) > 1:
+                        player = caller.search(self.rhslist[0])
+                        rank = int(self.rhslist[1])
+                    else:
+                        player = caller.search(self.rhs)
+                        rank = 10
+                    dompc = player.Dominion
+                    matches = org.members.filter(player__player_id=player.id)
+                    if matches:
+                        match = matches[0]
+                        if match.deguilded:
+                            match.deguilded = False
+                            match.rank = rank
+                            caller.msg("Readded %s to the org." % match)
+                            match.save()
+                            match.setup()
+                            return
+                        caller.msg("%s is already a member." % match)
+                        return
+                    secret = org.secret
+                    member = dompc.memberships.create(organization=org, rank=rank, secret=secret)
+                    caller.msg("%s added to %s at rank %s." % (dompc, org, rank))
+                    member.setup()
+                    return
+                except (AttributeError, ValueError, TypeError):
+                    caller.msg("Could not add %s. May need to run @admin_assets/setup on them." % self.rhs)
+                    return
+            if 'title' in self.switches or 'femaletitle' in self.switches:
+                male = 'femaletitle' not in self.switches
+                try:
+                    rank, name = int(self.rhslist[0]), self.rhslist[1]
+                except (ValueError, TypeError, IndexError):
+                    caller.msg("Invalid usage.")
+                    return
+                if male:
+                    setattr(org, 'rank_%s_male' % rank, name)
+                    org.save()
+                else:
+                    setattr(org, 'rank_%s_female' % rank, name)
+                    org.save()
+                caller.msg("Rank %s title changed to %s." % (rank, name))
                 return
-            if male:
-                setattr(org, 'rank_%s_male' % rank, name)
-                org.save()
-            else:
-                setattr(org, 'rank_%s_female' % rank, name)
-                org.save()
-            caller.msg("Rank %s title changed to %s." % (rank, name))
-            return
-        if 'setrank' in self.switches:
-            try:
-                member = Member.objects.get(organization_id=org.id,
-                                            player__player__username__iexact=self.rhslist[0])
-                caller_change_field(caller, member, "rank", int(self.rhslist[1]))
-            except Member.DoesNotExist:
-                caller.msg("No member found by name of %s." % self.rhslist[0])
-                return
-            except (ValueError, TypeError, AttributeError, KeyError):
-                caller.msg("Usage: @admorg/set_rank <org> = <player>, <1-10>")
-                return
-        if 'setinfluence' in self.switches:
-            self.set_influence(org)
-            return
-        if 'cptasks' in self.switches:
-            try:
-                org2 = self.get_org_from_args(self.rhs)
-            except Organization.DoesNotExist:
-                self.msg("Org not found.")
-                return
-            current_tasks = org.tasks.all()
-            tasks = org2.tasks.all().exclude(id__in=current_tasks)
-            OrgTaskModel = Organization.tasks.through
-            bulk_list = []
-            for task in tasks:
-                bulk_list.append(OrgTaskModel(organization=org, task=task))
-            OrgTaskModel.objects.bulk_create(bulk_list)
-            self.msg("Tasks copied from %s to %s." % (org2, org))
-            return
-        if 'addclue' in self.switches:
-            try:
-                clue = Clue.objects.get(id=self.rhs)
-            except Clue.DoesNotExist:
-                self.msg("Could not find a clue by that number.")
-                return
-            if clue in org.clues.all():
-                self.msg("%s already knows about %s." % (org, clue))
-                return
-            if not clue.allow_sharing:
-                self.msg("%s cannot be shared." % clue)
-                return
-            ClueForOrg.objects.create(clue=clue, org=org, revealed_by=caller.roster)
-            category = "%s: Clue Added" % org
-            share_str = str(clue)
-            targ_type = "clue"
-            briefing_type = "/briefing"
-            text = "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s." % (caller.db.char_ob,
-                                                                                           targ_type, share_str, org,
-                                                                                           briefing_type)
-            org.inform(text, category)
-            self.msg("Added clue {w%s{n to {c%s{n" % (clue, org))
-            return
-
-
-    def get_org_from_args(self, args):
-        if args.isdigit():
-            org = Organization.objects.get(id=int(args))
-        else:
-            org = Organization.objects.get(name__iexact=args)
-        return org
+            if 'setrank' in self.switches:
+                try:
+                    member = Member.objects.get(organization_id=org.id,
+                                                player__player__username__iexact=self.rhslist[0])
+                    caller_change_field(caller, member, "rank", int(self.rhslist[1]))
+                except Member.DoesNotExist:
+                    caller.msg("No member found by name of %s." % self.rhslist[0])
+                except (ValueError, TypeError, AttributeError, KeyError):
+                    caller.msg("Usage: @admorg/set_rank <org> = <player>, <1-10>")
+            if 'setinfluence' in self.switches:
+                self.set_influence(org)
+            if 'cptasks' in self.switches:
+                org2 = self.get_by_name_or_id(Organization, self.rhs)
+                current_tasks = org.tasks.all()
+                tasks = org2.tasks.all().exclude(id__in=current_tasks)
+                OrgTaskModel = Organization.tasks.through
+                bulk_list = []
+                for task in tasks:
+                    bulk_list.append(OrgTaskModel(organization=org, task=task))
+                OrgTaskModel.objects.bulk_create(bulk_list)
+                self.msg("Tasks copied from %s to %s." % (org2, org))
+            if 'addclue' in self.switches:
+                try:
+                    clue = Clue.objects.get(id=self.rhs)
+                except Clue.DoesNotExist:
+                    self.msg("Could not find a clue by that number.")
+                    return
+                if clue in org.clues.all():
+                    self.msg("%s already knows about %s." % (org, clue))
+                    return
+                if not clue.allow_sharing:
+                    self.msg("%s cannot be shared." % clue)
+                    return
+                ClueForOrg.objects.create(clue=clue, org=org, revealed_by=caller.roster)
+                category = "%s: Clue Added" % org
+                share_str = str(clue)
+                targ_type = "clue"
+                briefing_type = "/briefing"
+                text = "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s." % (caller.db.char_ob,
+                                                                                               targ_type, share_str,
+                                                                                               org,
+                                                                                               briefing_type)
+                org.inform(text, category)
+                self.msg("Added clue {w%s{n to {c%s{n" % (clue, org))
+        except CommandError as err:
+            self.msg(err)
 
 
 class CmdAdmFamily(ArxPlayerCommand):
@@ -1975,8 +1955,8 @@ class CmdOrganization(ArxPlayerCommand):
                     return
                 discovery = entry.discover_clue(clue=clue, method="Briefing")
                 share_type = "clue"
-                cmd_string = "@clue %d" % discovery.id
-                share_str = clue
+                cmd_string = "@clue %d" % clue.id
+                share_str = "\n" + discovery.display()
             else:
                 if not check_clues_or_theories("theories"):
                     return
@@ -1991,7 +1971,8 @@ class CmdOrganization(ArxPlayerCommand):
                 share_type = "theory"
                 cmd_string = "@theories %d" % theory.id
                 share_str = theory
-            text = "You've been briefed and learned a %s. Use {w%s{n to view them: %s" % (share_type, cmd_string, share_str)
+            text = "You've been briefed and learned a %s. Use {w%s{n to view them: %s" % (share_type, cmd_string,
+                                                                                          share_str)
             tarmember.player.player.msg("%s has briefed you on %s's secrets." % (caller.db.char_ob, org))
             tarmember.player.player.inform(text, category="%s briefing" % org)
             self.msg("You have briefed %s on your organization's secrets." % tarmember)
@@ -2129,7 +2110,7 @@ class CmdOrganization(ArxPlayerCommand):
                 rhs = self.rhs
                 if len(self.rhslist) > 1:
                     rhs = self.rhslist[0]
-                new_desc = rhs
+                new_desc = rhs or ""
                 org = myorgs[0]
             else:
                 if len(self.rhslist) < 2:
@@ -2138,7 +2119,7 @@ class CmdOrganization(ArxPlayerCommand):
                     return
                 try:
                     org, member = self.get_org_and_member(caller, myorgs, self.rhslist[1])
-                    new_desc = self.rhslist[0]
+                    new_desc = self.rhslist[0] or ""
                 except Organization.DoesNotExist:
                     caller.msg("You are not a member of any organization named %s." % self.rhslist[1])
                     return
@@ -2152,11 +2133,9 @@ class CmdOrganization(ArxPlayerCommand):
             if not tarmember:
                 caller.msg("They are not a member of the organization.")
                 return
-            if len(new_desc) < 1:
-                new_desc = 'True' # Why is this our default/'empty' description?
             tarmember.desc = new_desc
             tarmember.save()
-            if new_desc != "True":
+            if new_desc:
                 caller.msg("%s has had their org desc set to '%s'" % (player, new_desc))
             else:
                 caller.msg("%s has had their org desc cleared." % player)
@@ -2576,938 +2555,6 @@ class CmdPatronage(ArxPlayerCommand):
 
 
 # Character/IC commands------------------------------
-# command to generate money/resources for ourself/org
-class CmdTask(ArxCommand):
-    """
-    +task
-
-    Usage:
-        +task
-        +task <organization name>
-        +task <task ID>
-        +task/active
-        +task/history [<ID #>]
-        +task/setfinishedrumors <ID #>=<text>
-        +task/work <organization>,<resource type>
-        +task/choose <task ID>=organization
-        +task/story <task ID>,organization=<text>
-        +task/rumors <task ID>,organization=<text>
-        +task/altecho <task ID>,organization=<text>
-        +task/abandon <task ID>=organization    
-        +task/supportme <task id>[,organization]=<player1>,<player2>,...
-
-    For a more complete walkthrough of how tasks work and how to use
-    them, please read 'help task guide'.
-    
-    Tasks are an abstraction of performing work or gaining advantages
-    for your organizations through roleplay. Tasks will describe various
-    activities, and you'll seek out other characters to attempt to gain
-    these objectives through roleplay.
-
-    To choose a task that you'll attempt to get other players to support
-    after RPing with them, use task/choose.
-
-    To accomplish this, you ask other players to confirm that you achieved
-    what you set out to do with the /supportme switch, sending them either
-    a message based on the task, or an alternate message of your own
-    creation through the /altecho switch. /supportme without specifying
-    players will list who you have previously asked.
-
-    Please make notes with the /story switch that record how you
-    accomplished your task. The /rumors switch is used to tell the IC
-    rumors that other players will hear when your task is completed. You
-    don't need to mention your name, only what other players might notice
-    happening in town. If you'd prefer to wait until after you see what
-    your supporters write, you can use /setfinishedrumors later.
-
-    You can perform 7 tasks per week. You cannot gain the support of
-    someone in the same organization as the task you are attempting to
-    complete if that is their primary organization.    
-    
-    For example, Grand Duchess Esera is attempting to complete a task for
-    Velenosa. She cannot ask for the support of Duke Niccolo, because he
-    is a member of only Velenosa. However, she can ask for the assistance
-    of Duke Hadrian Malvici, a vassal of Velenosa, because while he is a
-    member of Velenosa, his primary organization is house Malvici.
-
-    The /work switch allows you to consume one of your tasks per week in
-    order to do some small service for your chosen organization, generating
-    a nominal amount of money and resources. The 'resource type' should
-    be either 'economic', 'military', or 'social'.
-    """
-    key = "+task"
-    locks = "cmd:all()"
-    help_category = "Dominion"
-    aliases = ["@task", "task", "+tasks", "@tasks", "tasks"]
-
-    def display_tasks(self, tasks, dompc):
-        """
-        Returns a table of tasks
-        """
-        table = PrettyTable(["{wActive{n", "{wTask#{n", "{wCategory{n",
-                             "{wOrganization{n", "{wTask Name{n", "{wRating{n"])
-        already_displayed = []
-        for task in tasks:
-            for org in task.org.filter(members__player=dompc, members__deguilded=False):
-                if task.assigned_tasks.filter(Q(member__organization=org)
-                                              & Q(member__player=dompc)
-                                              & Q(finished=False)):
-                    active = "{wX{n"
-                else:
-                    if "active" in self.switches:
-                        continue
-                    active = ""
-                combo = (task, org)
-                if combo in already_displayed:
-                    continue
-                already_displayed.append(combo)
-                table.add_row([active, task.id, task.category, org.name,
-                              task.name, task.difficulty])
-        return str(table)
-
-    @staticmethod
-    def display_finished(tasks, dompc):
-        """
-        Returns a table of finished assignments
-        """
-        table = PrettyTable(["{wID #{n", "{wCategory{n",
-                             "{wOrganization{n", "{wTask Name{n", "{wSupport{n"])
-        for task in tasks:
-            for ass in task.assigned_tasks.filter(Q(member__player=dompc)
-                                                  & Q(finished=True)).distinct():
-                table.add_row([ass.id, ass.task.category, ass.member.organization.name,
-                              ass.task.name, ass.total])
-        return str(table)
-
-    @staticmethod
-    def match_char_spheres_for_task(assignment, character):
-        """
-        Returns the spheres that the character can use for a
-        given task
-        """
-        orgs = character.player_ob.Dominion.current_orgs
-        return InfluenceCategory.objects.filter(orgs__in=orgs, tasks=assignment.task).distinct()
-    
-    def func(self):
-        caller = self.caller
-        try:
-            dompc = self.caller.player.Dominion
-        except AttributeError:
-            dompc = setup_utils.setup_dom_for_char(self.caller)
-        mytasks = Task.objects.filter(assigned_tasks__member__player=dompc).distinct()
-        available = Task.objects.filter(org__members__player=dompc,
-                                        org__members__deguilded=False,
-                                        active=True).distinct()
-        tasks_remaining = 7
-        for member in dompc.memberships.filter(deguilded=False):
-            tasks_remaining -= (member.work_this_week + member.tasks.filter(finished=False).count())
-        if (not self.switches or "active" in self.switches) and not self.args:
-            # list all our active and available tasks
-            caller.msg("{wAvailable/Active Tasks:{n")
-            tasks = mytasks.filter(assigned_tasks__finished=False)
-            # NB: combining tasks this way, rather than in queryset form, is 1000 times faster
-            # possibly due to lack of index or something, but tasks | available is chock-full of
-            # LEFT OUTER JOINs, and literally 1000 times slower than evaluating independently.
-            tasks = list(tasks)
-            available = list(available)
-            tasks = list(set(tasks) | set(available))
-            caller.msg(self.display_tasks(tasks, dompc))
-            caller.msg("You can perform %s more tasks." % tasks_remaining)            
-            return
-        if not self.switches or "active" in self.switches:
-            # display info on task
-            # NB: Same query as above, but it executed around 70 times faster. Why is the execution
-            # so much worse above than here? No idea. But still, evaluating the queries independently
-            # rather than combining them was still faster, just not as mind-bogglingly so.
-            tasks = [ob.id for ob in (set(mytasks) | set(available))]
-            try:
-                task = Task.objects.get(id=int(self.args), id__in=tasks)         
-            except ValueError:
-                try:
-                    org = Organization.objects.get(Q(name__iexact=self.args) &
-                                                   Q(members__player=dompc) &
-                                                   Q(members__deguilded=False))
-                    caller.msg(self.display_tasks(org.tasks.filter(active=True), dompc))
-                    return
-                except Organization.DoesNotExist:
-                    pass
-                caller.msg("Task ID must be a number.")
-                return
-            except Task.DoesNotExist:
-                caller.msg("No task by that number.")
-                return
-            caller.msg(self.display_tasks([task], dompc))
-            caller.msg("{wDescription:{n\n%s" % task.desc)
-            caller.msg("{wValid spheres of influence{n: %s" % task.reqs)
-            assignments = task.assigned_tasks.filter(member__player=dompc, finished=False)
-            asked_supporters = caller.db.asked_supporters or {}
-            for assign in assignments:
-                echo = assign.current_alt_echo
-                caller.msg("{wCurrent echo:{n %s" % echo)
-                caller.msg("{wCurrent rumors (both yours and supporters):{n %s" % assign.story)
-                caller.msg("{wCurrent story:{n %s" % assign.notes)
-                asklist = asked_supporters.get(assign.id, [])
-                caller.msg("{wPlayers asked for support:{n %s" % ", ".join(ob.key for ob in asklist))
-            return
-        if "history" in self.switches or "setfinishedrumors" in self.switches:
-            # display our completed tasks
-            if "history" in self.switches:
-                tasks = mytasks.filter(assigned_tasks__finished=True)
-            else:
-                tasks = mytasks
-            if not self.args:
-                caller.msg(self.display_finished(tasks, dompc))
-                return
-            try:
-                task = tasks.get(assigned_tasks__id=self.args)
-                if "history" in self.switches:
-                    ass = task.assigned_tasks.get(Q(id=self.args) &
-                                                  Q(member__player=dompc) &
-                                                  Q(finished=True))
-                else:
-                    ass = task.assigned_tasks.get(Q(id=self.args) &
-                                                  Q(member__player=dompc))
-                if "history" in self.switches:
-                    caller.msg(ass.display())
-                else:  # set finished rumors
-                    if ass.observer_text and ass.finished:
-                        caller.msg("Once the task is finished, only a GM can change an existing rumor.")
-                        return
-                    caller_change_field(caller, ass, "observer_text", self.rhs, "Rumors")
-            except (Task.DoesNotExist, AssignedTask.DoesNotExist, ValueError):
-                caller.msg("No task found by that ID number.")
-            return
-        if "work" in self.switches:
-            # do simple work for the Organization
-            try:
-                worktype = self.lhslist[1].lower()
-                member = dompc.memberships.get(organization__name__iexact=self.lhslist[0],
-                                               deguilded=False)
-            except Member.DoesNotExist:
-                caller.msg("You aren't in an organization by that name.")
-                return
-            except (TypeError, IndexError):
-                caller.msg("Usage example: +task/work Grayson,social")
-                return
-            if tasks_remaining <= 0:
-                caller.msg("You can only work or do tasks 7 times in a week.")
-                return
-            try:
-                member.work(worktype)
-            except ValueError as err:
-                caller.msg(err)
-                return
-            caller.msg("You have performed work for %s." % member.organization.name)
-            caller.msg("You and your organization have earned 1 %s resource." % worktype)
-            return
-        if "accept" in self.switches or "choose" in self.switches:
-            # accept a task
-            try:
-                task = Task.objects.get(id=int(self.lhs), id__in=available)
-                org = task.org.get(name__iexact=self.rhs)
-                member = dompc.memberships.get(organization=org, deguilded=False)
-            except Task.DoesNotExist:
-                caller.msg("No task available by that number.")
-                return
-            except ValueError:
-                caller.msg("You must supply a task number.")
-                return
-            except Organization.DoesNotExist:
-                caller.msg("No org by that name.")
-                return
-            except Member.DoesNotExist:
-                caller.msg("You are not a member of that organization.")
-                return
-            # check to make sure we don't already have an AssignedTask of this kind
-            if member.tasks.filter(task=task, finished=False):
-                caller.msg("You already have that task active.")
-                return
-            if tasks_remaining <= 0:
-                caller.msg("You don't have any tasks remaining.")
-                return
-            task.assigned_tasks.create(week=get_week(), member=member)
-            caller.msg("You have chosen the task: %s" % task.name)
-            caller.msg(task.desc)
-            return
-        if "abandon" in self.switches:
-            # delete an active AssignedTask
-            try:
-                org = Organization.objects.get(name__iexact=self.rhs)
-                member = dompc.memberships.get(organization=org, deguilded=False)
-                assignment = mytasks.get(id=int(self.lhs)).assigned_tasks.get(
-                    member=member, finished=False)
-            except Task.DoesNotExist:
-                caller.msg("No task by that number.")
-                return
-            except ValueError:
-                caller.msg("Task must by a number.")
-                return         
-            except AssignedTask.DoesNotExist:
-                caller.msg("You do not have that task active.")
-                return
-            except (Organization.DoesNotExist, Member.DoesNotExist):
-                caller.msg("No organization by that name.")
-                return
-            assignment.delete()
-            caller.msg("Task abandoned.")
-            # refund support?
-            return
-        if ("update" in self.switches or "story" in self.switches
-                or "altecho" in self.switches or "announcement" in self.switches
-                or "supportme" in self.switches or "rumors" in self.switches):
-            # prompt the characters here to support me
-            try:
-                task = Task.objects.filter(assigned_tasks__finished=False, id__in=mytasks).distinct().get(
-                    id=int(self.lhslist[0]))
-                assignment = task.assigned_tasks.filter(member__player=dompc, finished=False)
-                if not assignment:
-                    caller.msg("That task isn't active for you.")
-                    return
-                if len(assignment) == 1:
-                    assignment = assignment[0]
-                else:
-                    try:
-                        assignment = assignment.get(member__organization__name=self.lhslist[1])
-                    except (IndexError, AssignedTask.DoesNotExist):
-                        caller.msg("More than one task by that number active. You must specify the organization.")
-                        return
-            except Task.DoesNotExist:
-                caller.msg("Could not find an active task by that number for that organization.")
-                self.msg("You may need to choose/accept it first.")
-                return
-            except ValueError:
-                caller.msg("Task must be a number.")
-                return
-            if "update" in self.switches or "supportme" in self.switches:
-                asked_supporters = caller.db.asked_supporters or {}
-                asklist = asked_supporters.get(assignment.id, [])
-                if not self.rhslist:
-                    self.msg("Players you've asked for this task already: %s" % ", ".join(str(ob) for ob in asklist))
-                    return
-                playerlist = [caller.player.search(val) for val in self.rhslist]
-                playerlist = [ob for ob in playerlist if ob]
-                if not playerlist:
-                    return
-                org = assignment.member.organization
-                # if not assignment.notes or not assignment.notes.strip():
-                #     caller.msg("You have written no notes for how you completed this task.")
-                #     caller.msg("Please add them with task/story before asking for support.")
-                #     return
-                # if not assignment.observer_text:
-                #     caller.msg("You haven't written a {w+task/rumors{n for what everyone else will see "+
-                #                "when you finish this task. You can add it later with 'setfinishedrumors' "+
-                #                " to make it fit what your supporters enter. Please write some description " +
-                #                "that details "+
-                #                "what people might notice happening in the city when your task is "+
-                #                "finished - the details are up to you, as long as they can gain some "+
-                #                "general indication of what the npcs you influenced have been up to.")
-                success = []
-                warnmsg = "As a reminder, it is considered in bad form and is against the rules to "
-                warnmsg += "ask someone OOCly for support, such as trying to convince them to help "
-                warnmsg += "in pages. No OOC pressure, please."
-                for pc in playerlist:
-                    reminder = False
-                    char = pc.db.char_ob
-                    if not char:
-                        continue
-                    try:
-                        dompc = pc.Dominion
-                    except AttributeError:
-                        continue
-                    try:
-                        if char.roster.current_account == caller.roster.current_account:
-                            caller.msg("Don't ask for support from your own characters.")
-                            continue
-                    except AttributeError:
-                        continue
-                    # check if they can support caller
-                    week = get_week()
-                    current = assignment.supporters.filter(allocation__week=week, player=dompc)
-                    if current:
-                        caller.msg("{c%s {ris already supporting you in this task.{n" % char.name)
-                        continue
-                    requests = char.db.requested_support or {}
-                    if caller.id in requests:
-                        caller.msg("{c%s {ralready has a pending support request from you.{n" % char.name)
-                        if requests[caller.id] != assignment.id:
-                            caller.msg("Replacing their previous request.")
-                        else:
-                            caller.msg("Sending them a reminder.")
-                            reminder = True
-
-                    highest = char.player_ob.Dominion.memberships.filter(Q(secret=False) &
-                                                                         Q(deguilded=False)).order_by('rank')
-                    if highest:
-                        highest = highest[0]
-                    else:
-                        highest = None
-                    if highest in org.members.filter(Q(player=char.player_ob.Dominion) & Q(deguilded=False)):
-                        caller.msg("You cannot gain support from a member whose highest " +
-                                   "rank is in the same organization as the task.")
-                        continue
-                    if char not in asklist:
-                        # The action point cost of requesting support for a task
-                        if not caller.player_ob.pay_action_points(2):
-                            caller.msg("You don't have enough action points to ask for support from %s." % char.name)
-                            continue
-                        asklist.append(char)
-                    # make sure assignment is current
-                    assignment.refresh_from_db()
-                    matches = self.match_char_spheres_for_task(assignment, char)
-                    requests[caller.id] = assignment.id
-                    char.db.requested_support = requests
-                    mailmsg = "%s has asked you to support them in their task:" % caller.key
-                    mailmsg += "\n" + assignment.current_alt_echo
-                    if reminder:
-                        mailmsg += "\nYou already have a pending request for that task, and they are "
-                        mailmsg += "sending a reminder."
-                    else:
-                        mailmsg += "\nWhat this means is that they're asking for your character to use "
-                        mailmsg += "influence that they have with different npc groups in order to help "
-                        mailmsg += "them achieve the goals they indicate. This is represented by using "
-                        mailmsg += "the '+support' command, filling out a form that indicates which npcs "
-                        mailmsg += "you influenced on their behalf, how you did it, and what happened."
-                        mailmsg += "\n\nYou can ask npcs to support them from any of the following "
-                        mailmsg += "areas you have influence in: %s" % ", ".join(str(ob) for ob in matches)
-                        mailmsg += "\n\nThe support command has the usage of {wsupport %s{n, then " % caller
-                        mailmsg += "adding fields that indicate how the npcs you influenced are helping them "
-                        mailmsg += "out. '{w+support/notes{n' Lets you state OOCly to GMs what occurs, while "
-                        mailmsg += "'{wsupport/rumors{n' lets you write a short blurb that is displayed as a "
-                        mailmsg += "rumor that other characters might hear around the city, noting what's "
-                        mailmsg += "going on. To show how much support you're throwing their way, you use "
-                        mailmsg += "{wsupport/value <organization>,<category>=<amount>{n. For example, if "
-                        mailmsg += "you wanted to have sailors loyal to House Thrax pitch in to help, you "
-                        mailmsg += "would do {wsupport/value thrax,sailors=2{n to use 2 points from your "
-                        mailmsg += "support pool, representing the work your character is doing behind the "
-                        mailmsg += "scenes, talking to npcs on %s's behalf.\n" % caller
-                        mailmsg += "Pledging a value of 0 will give them 1 free point, while additional points "
-                        mailmsg += "are subtracted from your available pool. You can "
-                        mailmsg += "also choose to fake your support with the /fake switch. Your current pool "
-                        remaining = char.player_ob.Dominion.remaining_points
-                        mailmsg += "at the time of this message is %s points remaining." % remaining
-                        mailmsg += "\nIf you decide to give them support, you finalize your choices with "
-                        mailmsg += "'{wsupport/finish{n' once you have finished the form."
-                        mailmsg += "\n\n" + warnmsg
-                    pc.inform(mailmsg, category="Support Request from %s" % caller, append=False)
-                    success.append(char)
-                if not success:
-                    return
-                caller.msg("You ask for the support of %s." % ", ".join(char.key for char in success))
-                caller.msg(warnmsg)
-                # update asklist
-                asked_supporters[assignment.id] = asklist
-                caller.db.asked_supporters = asked_supporters
-                return
-            if "story" in self.switches:
-                if not self.rhs:
-                    caller.msg("You must supply a message.")
-                    return
-                assignment.notes = self.rhs
-                assignment.save()
-                caller.msg("Story for this assignment now is:\n%s" % assignment.notes)
-                return
-            if "altecho" in self.switches:
-                if self.rhs:
-                    assignment.alt_echo = "%s;%s" % (self.rhs, assignment.alt_echo)
-                    assignment.save()
-                if assignment.current_alt_echo:
-                    msg = assignment.current_alt_echo
-                else:
-                    msg = task.room_echo
-                caller.msg("The message sent to the room when you ask for support " +
-                           "is now: %s" % msg)
-                return
-            if "announcement" in self.switches or "rumors" in self.switches:
-                if not self.rhs:
-                    caller.msg("You must supply a message.")
-                    return
-                assignment.observer_text = self.rhs
-                assignment.save()
-                caller.msg("The text other characters will read about when you finish your task is now:\n%s" % self.rhs)
-                return
-        caller.msg("Unrecognized switch.")
-        return
-
-
-class CmdSupport(ArxCommand):
-    """
-    +support
-
-    Usage:
-        +support
-        +support/remaining
-        +support <character>
-        +support/decline <character>
-        +support/fake
-        +support/value <organization>,<sphere of influence>=<amount>
-        +support/notes <notes>
-        +support/rumors <text>
-        +support/finish
-        +support/abandon
-        +support/change <id>,<category>[,org]=<new amount>
-        +support/view <id>
-
-    Pledges your support to a character who has executed a task. Pledging a
-    value of 0 will give a free point to the player you are supporting if
-    you aren't supporting them in other tasks this week. If you wish to only
-    pretend to support them, you may use the /fake flag.
-
-    Support is an abstraction that represents your participation or approval
-    of someone's RP efforts. For example, their character may be attempting
-    to influence public opinion in some way through a task, and your support
-    indicates that your character goes along with it in some way. Economic
-    tasks may represent maneuvering of financial resources that you agree to,
-    and military tasks may represent the pledging of military support, or
-    that you agreed that their actions won them reknown in some way.
-
-    To pledge support, first +support a character, then fill the required
-    fields, then use /finish. Value is 0 if not specified. For your org,
-    you must specify a name and a field of the organization's influence
-    which matches a requirement of the task. Notes are your own notes about
-    what you did in the task, which may be viewed later. An announcement
-    is later added to the historical record of the task's effects if it
-    is completed, describing what observers can see as a result of the task.
-    For example, you might describe how npcs you influenced worked to help
-    complete what was asked for. Use /rumors to set this.
-
-    Example of how to pledge support to a request:
-    
-    +support esera
-    +support/value redrain,nobles=3
-    +support/value redrain,merchants=2
-    +support/notes I spoke to my vassals, encouraging them to strengthen
-      our alliance with Velenosa.
-    +support/rumors Demand for imports of Velenosan silk has increased
-      among House Redrain. Their merchants can't seem to get enough of it.
-    +support/finish
-    """
-    key = "+support"
-    locks = "cmd:all()"
-    help_category = "Dominion"
-    aliases = ["support"]
-
-    def get_assign_from_char(self, char):
-        requests = self.caller.db.requested_support or {}
-        if char.id not in requests:
-            self.msg("%s has not asked you for support in a task recently enough." % char)
-            return
-        try:
-            assignment = AssignedTask.objects.get(id=requests[char.id], finished=False)
-        except AssignedTask.DoesNotExist:
-            self.msg("No task found. It was abandoned or finished already.")
-            del requests[char.id]
-            return
-        return assignment
-
-    def disp_supportform(self):
-        caller = self.caller
-        form = caller.db.supportform
-        if form:
-            try:
-                caller.msg("Building support for a task for %s." % form[0])
-                assign = self.get_assign_from_char(form[0])
-                if not assign:
-                    return
-                self.msg("{wCurrent echo for task:{n %s" % assign.current_alt_echo)
-                caller.msg("Fake: %s" % form[1])
-                for s_id in form[2]:
-                    sphere = SphereOfInfluence.objects.get(id=s_id)
-                    msg = "Organization: %s, Category: %s, Amount: %s" % (sphere.org, sphere.category, form[2][s_id])
-                    caller.msg(msg)
-                caller.msg("Total support: %s" % self.supportform_total())
-                caller.msg("Notes:\n%s" % form[3])
-                caller.msg("Rumors:\n%s" % form[4])       
-                caller.msg("Once all fields are finished, use support/finish to commit.")
-            except (TypeError, KeyError, IndexError):
-                caller.msg("{rEncountered a supportform with invalid structure. Resetting the attribute." +
-                           " Please start over.{n")
-                print("%s had an invalid supportform. Wiping the attribute." % caller)
-                caller.attributes.remove("supportform")
-                return
-
-    def supportform_total(self):
-        caller = self.caller
-        form = caller.db.supportform
-        if not form or not form[2]:
-            return 0
-        return sum(form[2].values())
-
-    def get_support_table(self):
-        caller = self.caller
-        dompc = self.caller.player_ob.Dominion
-        # week = get_week()
-        supports = dompc.supported_tasks.filter(Q(task__finished=False)
-                                                # &  Q(allocation__week=week)
-                                                ).distinct()
-        if supports:
-            caller.msg("Open tasks supported:")
-            table = PrettyTable(["{wID{n",  # "{wTask Name{n",
-                                 "PC", "{wAmt{n"])
-            for sup in supports:
-                table.add_row([sup.id,  # sup.task.task.name,
-                               str(sup.task.member), sup.rating])
-            caller.msg(str(table))
-    
-    def func(self):
-        week = get_week()
-        caller = self.caller
-        requests = caller.db.requested_support or {}
-        dompc = self.caller.player_ob.Dominion
-        dompc.refresh_from_db()
-        cooldowns = dompc.support_cooldowns
-        remaining = dompc.remaining_points
-        max_points = caller.max_support
-        form = caller.db.supportform
-        if not self.args and not self.switches or "remaining" in self.switches:
-            # display requests and cooldowns
-            chars = [ObjectDB.objects.get(id=r_id) for r_id in requests.keys()]
-            chars = [ob for ob in chars if ob]
-            msg = "Pending requests:\n"
-            has_requests = False
-            for char in chars:
-                if not char:
-                    continue
-                try:
-                    atask = AssignedTask.objects.get(id=requests[char.id], finished=False)
-                except AssignedTask.DoesNotExist:
-                    # caller.msg("Error: Could not find a task for request from %s." % char)
-                    # caller.msg("Removing them from this list. Please run +support again.")
-                    del requests[char.id]
-                    caller.db.requested_support = requests
-                    continue
-                has_requests = True
-                msg += "{c%s{n (valid categories: %s)\n" % (char, atask.task.reqs)
-
-            if has_requests:
-                caller.msg(msg)
-
-            table = PrettyTable(["{wName{n", "{wMax Points Allowed{n"])
-            has_existing = False
-            for c_id in cooldowns:
-                try:
-                    char = ObjectDB.objects.get(id=c_id)
-                except ObjectDB.DoesNotExist:
-                    continue
-                table.add_row([char.key, cooldowns[c_id]])
-                has_existing = True
-
-            if has_existing:
-                caller.msg(str(table))
-
-            self.get_support_table()          
-            caller.msg("{wSupport points remaining:{n %s" % remaining)
-            for memb in dompc.memberships.filter(deguilded=False):
-                def rem_pts(allocation):
-                    rat = allocation.rating
-                    return "%s(%s)" % (rat - memb.points_used(allocation.category.name), rat)
-                poolshare = memb.pool_share
-                used = memb.total_points_used
-                if "remaining" in self.switches and (poolshare - used) <= 0:
-                    continue
-                msg = "{wPool share for %s:{n %s(%s)" % (memb.organization, poolshare - used, poolshare)
-                if "remaining" in self.switches:
-                    catmsg = []
-                    for ob in memb.organization.spheres.all():
-                        pts = rem_pts(ob)
-                        if pts <= 0:
-                            continue
-                        catmsg.append("%s: %s" % (ob.category, pts))
-                    msg += ", {wCategory ratings:{n %s" % ", ".join(catmsg)
-                else:
-                    msg += ", {wCategory ratings:{n %s" % ", ".join("%s: %s" % (ob.category, rem_pts(ob))
-                                                                    for ob in memb.organization.spheres.all())
-                caller.msg(msg)
-            self.disp_supportform()
-            return
-        if "decline" in self.switches:
-            char = caller.player.search(self.args)
-            if not char:
-                return
-            char = char.db.char_ob
-            try:
-                del requests[char.id]
-            except KeyError:
-                caller.msg("No request found for that player.")
-            caller.msg("You have declined the support request by %s." % char)
-            return
-        if "view" in self.switches:
-            try:
-                r_id = int(self.args)
-                supporter = dompc.supported_tasks.get(id=r_id)
-            except (TypeError, ValueError, TaskSupporter.DoesNotExist):
-                caller.msg("No support given by that ID.")
-                self.get_support_table()
-                return
-            caller.msg("{wID{n: %s" % supporter.id)
-            caller.msg("{wCharacter{n: %s" % supporter.task.member)
-            alloclist = supporter.allocation.all()
-            for alloc in alloclist:
-                caller.msg("{wOrganization{n: %s, Sphere: %s, Amount: %s" % (alloc.sphere.org, alloc.sphere.category,
-                                                                             alloc.rating))
-            return
-        if "change" in self.switches:
-            org, sphere, supporter, targmember, val, member, category = None, None, None, None, None, None, None
-            try:
-                # I've been having sync errors so going to do a bunch of manual refresh_from_db calls
-                # and hope this actually resolves it this time.
-                r_id = self.lhslist[0]
-                category = self.lhslist[1]
-                supporter = dompc.supported_tasks.filter(task__finished=False).get(id=r_id)
-                supporter.refresh_from_db()
-                if len(self.lhslist) > 2:
-                    org = dompc.current_orgs.get(name__iexact=self.lhslist[2])
-                else:
-                    org = dompc.current_orgs[0]
-                org.refresh_from_db()
-                sphere = org.spheres.get(category__name__iexact=category)
-                sphere.refresh_from_db()
-                val = int(self.rhs)
-                targmember = supporter.task.member
-                member = org.members.get(player=dompc)
-                if val < 0:
-                    raise ValueError
-                supused = SupportUsed.objects.get(week=week, sphere=sphere, supporter=supporter)
-            except IndexError:
-                caller.msg("Must specify both the ID and the category name.")
-                self.get_support_table()
-                return
-            except (TypeError, ValueError):
-                caller.msg("Value cannot be negative.")
-                return
-            except Organization.DoesNotExist:
-                caller.msg("No organization by that name.")
-                caller.msg("Your organizations are: %s" % ", ".join(str(ob) for ob in dompc.current_orgs))
-                return
-            except SphereOfInfluence.DoesNotExist:
-                caller.msg("No category by that name for that organization.")
-                caller.msg("Valid spheres for %s: %s" % (org, ", ".join(str(ob.category) for ob in org.spheres.all())))
-                return
-            except TaskSupporter.DoesNotExist:
-                caller.msg("Could not find a task you're supporting by that number.")
-                self.get_support_table()
-                return
-            except SupportUsed.DoesNotExist:
-                # create the supused for them
-                supused = SupportUsed(week=week, sphere=sphere, rating=0, supporter=supporter)
-            # target character we're supporting
-            char = targmember.player.player.db.char_ob
-            char.refresh_from_db()
-            diff = val - supused.rating
-            if diff > remaining:
-                caller.msg("You want to spend %s but only have %s available." % (diff, remaining))
-                return
-            diff = val - supused.rating
-            member.refresh_from_db()  # try to catch possible sync errors here
-            poolshare = member.pool_share
-            total_used = member.total_points_used
-            if (total_used + diff) > poolshare:
-                msg = "You haved used %s and are adding %s and " % (total_used, diff)
-                msg += "can only use a total of %s points in that organization." % poolshare
-                caller.msg(msg)
-                return
-            if (member.points_used(category) + diff) > sphere.rating:
-                caller.msg("You can only spend up to %s points in that category." % sphere.rating)
-                return
-            points_remaining_for_char = dompc.support_cooldowns.get(char.id, max_points)
-            points_remaining_for_char -= diff
-            if points_remaining_for_char < 0:
-                self.msg("Your cooldowns prevent you from spending that many points.")
-                return
-            supused.rating = val
-            supused.save()
-            # update our support cooldowns for target character
-            dompc.support_cooldowns[char.id] = points_remaining_for_char
-            if points_remaining_for_char >= max_points:
-                del dompc.support_cooldowns[char.id]
-            caller.msg("New rating is now %s and you have %s points remaining." % (val, dompc.remaining_points))
-            # remove any pending request that matched this
-            try:
-                if requests[char.id] == self.lhslist[0]:
-                    del requests[char.id]
-            except KeyError:
-                pass
-            return
-        if not requests:
-            caller.msg("No one has requested you to support them on a task recently enough.")
-            caller.attributes.remove('supportform')
-            return
-        if not self.switches:
-            char = self.caller.player.search(self.lhs)
-            if not char:
-                return
-            char = char.db.char_ob
-            assignment = self.get_assign_from_char(char)
-            if not assignment:
-                return
-            if assignment.supporters.filter(player=caller.player.Dominion):
-                caller.msg("You have already pledged your support to this task.")
-                self.msg("Use the /change switch to support them again if you have in previous weeks, " +
-                         "or to change existing support if you already have this week.")
-                return
-            # if not self.caller.player.pay_action_points(5):
-            #     caller.msg("You don't have enough action points to support %s." % char.name)
-            #     return
-            caller.msg("{wExisting rumor for task:{n\n%s" % assignment.observer_text)
-            form = [char, False, {}, "", ""]
-            caller.db.supportform = form
-            self.disp_supportform()
-            return
-        if "abandon" in self.switches:
-            caller.attributes.remove('supportform')
-            caller.msg("Abandoned.")
-            return
-        # check if form has been defined
-        if not form:
-            caller.msg("Please define who you're supporting first with {wsupport <character>{n.")
-            return
-        if "fake" in self.switches:
-            form[1] = not form[1]
-            self.disp_supportform()
-            return
-        if "value" in self.switches:
-            org = None
-            try:
-                if not self.rhs:
-                    """
-                    If they only gave points, then we take their first org,
-                    and take the sphere with the highest points in it for them.
-                    """
-                    points = int(self.args)
-                    org = dompc.current_orgs[0]
-                    caller.msg("Using %s as the organization." % org)
-                    sphere = org.spheres.all().order_by('-rating')[0]
-                    category = sphere.category.name
-                    caller.msg("Using %s as the category." % category)
-                else:
-                    # if only give sphere rather than org,sphere, use org[0]
-                    points = int(self.rhs or 0)
-                    if len(self.lhslist) == 2:
-                        org = dompc.current_orgs.get(name__iexact=self.lhslist[0])
-                        category = self.lhslist[1]
-                    else:
-                        org = dompc.current_orgs[0]
-                        caller.msg("Using %s as the organization." % org)
-                        category = self.lhs
-                    sphere = org.spheres.get(category__name__iexact=category)
-                member = dompc.memberships.get(organization=org)
-                if points < 0:
-                    raise ValueError
-            except (ValueError, TypeError):
-                caller.msg("You must provide a positive number.")
-                return
-            except IndexError:
-                caller.msg("You must have an organization and influence type defined first.")
-                return
-            except Organization.DoesNotExist:
-                caller.msg("No organization by that name.")
-                caller.msg("Your organizations are: %s" % ", ".join(str(ob) for ob in dompc.current_orgs))
-                return
-            except SphereOfInfluence.DoesNotExist:
-                caller.msg("No sphere of influence for the organization found by that name.")
-                caller.msg("Valid spheres for %s: %s" % (org, ", ".join(str(ob.category) for ob in org.spheres.all())))
-                return
-            char = form[0]
-            sdict = form[2]
-            # check if we already have points set for the sphere we're modifying
-            diff = points - sdict.get(sphere.id, 0)
-            # add the new points to the total
-            total_points = sum(sdict.values()) + diff
-            if total_points > remaining:
-                caller.msg("You are trying to spend %s, bringing your total to %s, and only have %s." % (points,
-                                                                                                         total_points,
-                                                                                                         remaining))
-                return
-            if char.id in cooldowns:
-                max_points = cooldowns[char.id]
-            if total_points > max_points:
-                caller.msg("Because of your cooldowns, you may only spend %s points." % max_points)
-                return
-            if points > sphere.rating:
-                caller.msg("Your organization only can spend %s points for %s." % (sphere.rating, sphere.category))
-                return
-            member.refresh_from_db()  # extra call in case of stale data
-            poolshare = member.pool_share
-            points_in_org = points
-            for sid in sdict:
-                try:
-                    org.spheres.get(id=sid)
-                    if sphere.id != sid:  # if it's another sphere, we add it to the total
-                        points_in_org += sdict[sid]
-                except SphereOfInfluence.DoesNotExist:
-                    continue
-            total_used = member.total_points_used
-            if (total_used + points_in_org) > poolshare:
-                msg = "You have already used %s and are trying to spend %s " % (total_used, points_in_org)
-                msg += "and can only use a total of %s points in that organization." % poolshare
-                caller.msg(msg)
-                return
-            if (member.points_used(category) + points) > sphere.rating:
-                caller.msg("You can only spend up to %s points in that category." % sphere.rating)
-                return
-            sdict[sphere.id] = points
-            form[2] = sdict
-            caller.db.supportform = form
-            self.disp_supportform()
-            return
-        if "notes" in self.switches:
-            form[3] = self.args
-            caller.db.supportform = form
-            self.disp_supportform()
-            return
-        if "announcement" in self.switches or "rumors" in self.switches:
-            form[4] = self.args
-            caller.db.supportform = form
-            self.disp_supportform()
-            return
-        if "finish" in self.switches:
-            used = self.supportform_total()
-            if used > remaining:
-                self.msg("You would use %s points and you only have %s remaining. Please change them." % (used,
-                                                                                                          remaining))
-                return
-            points = 0
-            char = form[0]
-            fake = form[1]
-            try:
-                assignment = AssignedTask.objects.get(id=requests[char.id])
-            except (AssignedTask.DoesNotExist, KeyError):
-                caller.msg("No assignment found that you're trying to support. Please abandon.")
-                return
-            sdict = form[2]
-            notes = form[3] or ""
-            announcement = form[4] or ""
-            # if not fake and not announcement:
-            #     caller.msg("You need to write some sort of short description of what takes place " +
-            #                "as a result of supporting this task. Think of what you're asking npcs " +
-            #                "to do, and try to describe what other characters may infer just by hearing " +
-            #                "about happenings in the city.")
-            #     return
-            if not fake and not sdict:
-                caller.msg("You must define categories your support is coming from with /value if you are " +
-                           "not faking your support with /fake (which will cause them to receive no points " +
-                           "whatsoever). Choose an organization and a sphere of influence for that organization " +
-                           "with /value, even if that value is 0. Even a value of 0 will cause them to receive 1 " +
-                           "free point, and an additional 5 if you have never supported them before.")
-                return
-            supporter = assignment.supporters.create(fake=fake, player=caller.player.Dominion, notes=notes,
-                                                     observer_text=announcement)
-            for sid in sdict:
-                rating = sdict[sid]
-                sphere = SphereOfInfluence.objects.get(id=sid)
-                SupportUsed.objects.create(week=week, supporter=supporter, sphere=sphere, rating=rating)
-                points += rating
-            charpoints = cooldowns.get(char.id, caller.max_support)
-            charpoints -= points
-            cooldowns[char.id] = charpoints
-            if not form[1]:
-                caller.msg("You have pledged your support to %s in their task." % char.name)
-            else:
-                caller.msg("You pretend to support %s in their task." % char.name)
-            caller.attributes.remove("supportform")
-            del requests[char.id]
-            return
-        caller.msg("Invalid usage.")
-        return
 
 
 class CmdWork(ArxPlayerCommand):
@@ -3717,7 +2764,7 @@ class CmdPlotRoom(ArxCommand):
                 room_id = int(self.args)
             except ValueError:
                 rooms = PlotRoom.objects.filter(Q(name__icontains=self.args) &
-                                               (Q(creator=owner) | Q(public=True)))
+                                                (Q(creator=owner) | Q(public=True)))
                 if not rooms:
                     self.msg("Could not find a room matching " + self.args)
                     return

@@ -11,7 +11,7 @@ class SnapshotAdmin(admin.ModelAdmin):
     """Snapshot admin class"""
     list_display = ('id', 'fashion_model', 'fashion_item_raw_name', 'org', 'fame', 'designer')
     list_select_related = True
-    raw_id_fields = ('fashion_item', 'fashion_model', 'org', 'designer')
+    raw_id_fields = ('fashion_item', 'fashion_model', 'org', 'designer', 'outfit')
     readonly_fields = ('item_worth', 'multiplier', 'characters')
     search_fields = ('id', 'fashion_model__player__username', 'org__name', 'fashion_item__db_key',
                      'designer__player__username')
@@ -24,6 +24,7 @@ class SnapshotAdmin(admin.ModelAdmin):
     @staticmethod
     def item_worth(obj):
         """Gets the value of the item used in the calculation"""
-        return obj.item_worth
+        return obj.fashion_item.item_worth
+
 
 admin.site.register(FashionSnapshot, SnapshotAdmin)
