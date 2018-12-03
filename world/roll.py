@@ -95,7 +95,7 @@ class Roll(object):
         if self.average_lists or self.average_skill_list:
             skillval //= len(self.skills)
         # keep dice is either based on some combination of stats or skills, or supplied by caller
-        keep_dice = DEFAULT_KEEP + self.bonus_keep
+        keep_dice = DEFAULT_KEEP
         if self.stat_keep:
             keep_dice += statval
         if self.skill_keep:
@@ -104,6 +104,7 @@ class Roll(object):
             keep_dice += skillval
         if self.keep_override:
             keep_dice = self.keep_override
+        keep_dice += self.bonus_keep
         # the number of 'dice' we roll is equal to stat + skill
         num_dice = int(statval) + int(skillval) + self.bonus_dice
         rolls = [randint(1, 10) for _ in range(num_dice)]
