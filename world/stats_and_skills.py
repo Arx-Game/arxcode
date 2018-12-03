@@ -34,10 +34,7 @@ VALID_SKILLS = COMBAT_SKILLS + SOCIAL_SKILLS + GENERAL_SKILLS + CRAFTING_SKILLS
 
 CRAFTING_ABILITIES = ('tailor', 'weaponsmith', 'armorsmith', 'leatherworker', 'apothecary',
                       'carpenter', 'jeweler')
-FIGHTING_ABILITIES = ('duelist', 'berserker', 'ninja', 'blademaster', 'adept')
-MAGICAL_ABILITIES = ('abyssal', 'dreamer', 'bloodmage', 'primal', 'celestial')
-CUNNING_ABILITIES = ('assassin', 'spy', 'thief', 'mummer')
-VALID_ABILITIES = CRAFTING_ABILITIES + FIGHTING_ABILITIES + MAGICAL_ABILITIES + CUNNING_ABILITIES
+VALID_ABILITIES = CRAFTING_ABILITIES
 DOM_SKILLS = ("population", "income", "farming", "productivity",
               "upkeep", "loyalty", "warfare")
 _parent_abilities_ = {'sewing': ['tailor'], 'smithing': ['weaponsmith', 'armorsmith', 'jeweler'],
@@ -56,6 +53,7 @@ NON_COMBAT_SKILL_COST_MULT = 10
 COMBAT_SKILL_COST_MULT = 20
 # being taught will give you a 20% discount
 TEACHER_DISCOUNT = 0.8
+LEGENDARY_COST = 1000
 
 
 def get_partial_match(args, s_type):
@@ -103,9 +101,15 @@ def cost_at_rank(skill, current_rating, new_rating):
         while current_rating < new_rating:
             current_rating += 1
             if skill in COMBAT_SKILLS or skill in VALID_ABILITIES:
-                cost += current_rating * COMBAT_SKILL_COST_MULT
+                mult = COMBAT_SKILL_COST_MULT
             else:
-                cost += current_rating * NON_COMBAT_SKILL_COST_MULT
+                mult = NON_COMBAT_SKILL_COST_MULT
+            if current_rating >= 6 and skill in VALID_SKILLS:
+                base = LEGENDARY_COST
+                mult /= 10
+            else:
+                base = current_rating
+            cost += base * mult
         return cost
     if new_rating < current_rating:
         while current_rating > new_rating:
@@ -142,10 +146,7 @@ def get_skill_cost(caller, skill, adjust_value=None, check_teacher=True, unmodif
         adjust_value = 1
     new_rating = current_rating + adjust_value
     # cost for a legendary skill
-    if new_rating == 6:
-        cost = 1000
-    else:
-        cost = cost_at_rank(skill, current_rating, new_rating)
+    cost = cost_at_rank(skill, current_rating, new_rating)
     if cost < 0:
         return cost
     if unmodified:
@@ -187,15 +188,6 @@ def get_ability_cost(caller, ability, adjust_value=None, check_teacher=True, unm
     # abilities are more expensive the more we have in the same category
     if ability in CRAFTING_ABILITIES:
         for c_ability in CRAFTING_ABILITIES:
-            cost += caller.db.abilities.get(c_ability, 0)
-    if ability in FIGHTING_ABILITIES:
-        for f_ability in FIGHTING_ABILITIES:
-            cost += caller.db.abilities.get(f_ability, 0)
-    if ability in MAGICAL_ABILITIES:
-        for m_ability in MAGICAL_ABILITIES:
-            cost += caller.db.abilities.get(m_ability, 0)
-    if ability in CUNNING_ABILITIES:
-        for c_ability in CUNNING_ABILITIES:
             cost += caller.db.abilities.get(c_ability, 0)
     # check what discount would be    
     if check_teacher:
