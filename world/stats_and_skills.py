@@ -53,7 +53,7 @@ NON_COMBAT_SKILL_COST_MULT = 10
 COMBAT_SKILL_COST_MULT = 20
 # being taught will give you a 20% discount
 TEACHER_DISCOUNT = 0.8
-LEGENDARY_COST = 1000
+LEGENDARY_COST = 500
 
 
 def get_partial_match(args, s_type):
@@ -122,7 +122,7 @@ def cost_at_rank(skill, current_rating, new_rating):
     return cost
 
 
-def get_skill_cost_increase(caller):
+def get_skill_cost_increase(caller, additional_cost=0):
     from commands.base_commands import guest
     skills = caller.db.skills or {}
     srank = caller.db.social_rank or 0
@@ -134,6 +134,7 @@ def get_skill_cost_increase(caller):
     total -= guest.SKILL_POINTS * 10
     total -= guest.XP_BONUS_BY_SRANK.get(srank, 0)
     total -= guest.award_bonus_by_age(age)
+    total += additional_cost
     if total < 0:
         return 0.0
     return total/500.0
@@ -146,16 +147,17 @@ def get_skill_cost(caller, skill, adjust_value=None, check_teacher=True, unmodif
         adjust_value = 1
     new_rating = current_rating + adjust_value
     # cost for a legendary skill
-    cost = cost_at_rank(skill, current_rating, new_rating)
-    if cost < 0:
-        return cost
+    base_cost = cost_at_rank(skill, current_rating, new_rating)
+    if base_cost < 0:
+        return base_cost
     if unmodified:
-        return cost
-    # check what discount would be    
+        return base_cost
+    # check what discount would be
+    cost = base_cost
     if check_teacher:
         if check_training(caller, skill, stype="skill"):
-            cost = discounted_cost(caller, cost)
-    cost += int(cost * get_skill_cost_increase(caller))
+            cost = discounted_cost(caller, base_cost)
+    cost += int(cost * get_skill_cost_increase(caller, additional_cost=base_cost))
     return cost
 
 
