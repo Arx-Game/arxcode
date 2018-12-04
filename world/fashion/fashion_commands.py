@@ -274,12 +274,16 @@ class CmdFashionModel(ArxCommand):
 
     def check_recency(self, org=None):
         """Raises an error if we've modelled too recently"""
-        week_ago = datetime.now() - timedelta(days=7)
+        from evennia.scripts.models import ScriptDB
+        try:
+            last_cron = ScriptDB.objects.get(db_key="Weekly Update").db.run_date - timedelta(days=7)
+        except (ScriptDB.DoesNotExist, ValueError, TypeError):
+            last_cron = datetime.now() - timedelta(days=7)
         qs = self.caller.dompc.fashion_snapshots
-        if qs.filter(db_date_created__gte=week_ago).count() >= 3:
+        if qs.filter(db_date_created__gte=last_cron).count() >= 3:
             raise FashionError("You may only model up to three items a week before the public tires of you.")
         if org:
-            two_weeks_ago = datetime.now() - timedelta(days=14)
+            two_weeks_ago = last_cron - timedelta(days=7)
             if qs.filter(db_date_created__gte=two_weeks_ago, org=org):
                 raise FashionError("You have displayed fashion too recently for %s to bring them more acclaim." % org)
 
