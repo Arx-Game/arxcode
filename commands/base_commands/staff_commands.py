@@ -1768,8 +1768,7 @@ class CmdSetServerConfig(ArxPlayerCommand):
     shorthand_to_real_keys = {"motd": "MESSAGE_OF_THE_DAY",
                               "income": "GLOBAL_INCOME_MOD",
                               "ap transfers disabled": "DISABLE_AP_TRANSFER",
-                              "cg bonus skill points" : "CHARGEN_BONUS_SKILL_POINTS"
-    }
+                              "cg bonus skill points": "CHARGEN_BONUS_SKILL_POINTS"}
     valid_keys = shorthand_to_real_keys.keys()
 
     def get_help(self, caller, cmdset):
@@ -1780,12 +1779,15 @@ class CmdSetServerConfig(ArxPlayerCommand):
 
     def func(self):
         """Executes cmd"""
-        if not self.args:
-            return self.list_config_values()
-        if "del" in self.switches or "delete" in self.switches:
-            ServerConfig.objects.conf(key=self.shorthand_to_real_keys[self.lhs], delete=True)
-            return self.list_config_values()
-        self.set_server_config_value()
+        try:
+            if not self.args:
+                return self.list_config_values()
+            if "del" in self.switches or "delete" in self.switches:
+                ServerConfig.objects.conf(key=self.shorthand_to_real_keys[self.lhs], delete=True)
+                return self.list_config_values()
+            self.set_server_config_value()
+        except CommandError as err:
+            self.msg(err)
 
     def validate_income_value(self, value, quiet=False):
         """Validates the global income modifier value"""
@@ -1804,32 +1806,33 @@ class CmdSetServerConfig(ArxPlayerCommand):
         for key in self.valid_keys:
             val = ServerConfig.objects.conf(key=self.shorthand_to_real_keys[key])
             if key == "income":
-                val = self.validate_income_value(self.rhs, quiet=True)
+                val = self.validate_income_value(val, quiet=True)
             table.add_row(key, val)
         self.msg(str(table))
 
     def set_server_config_value(self):
         """Sets our configuration values. validates them if necessary"""
         key = self.lhs.lower()
-        real_key = self.shorthand_to_real_keys[key]
-        if key not in self.valid_keys:
-            return self.msg("Not a valid key: %s" % ", ".join(self.valid_keys))
-        elif not self.rhs:
-            ServerConfig.objects.conf(key=real_key, delete=True)
-        else:
-            val = self.rhs
-            if key == "income":
-                val = self.validate_income_value(self.rhs)
-            elif key == "motd":
-                broadcast("|yServer Message of the Day:|n %s" % val)
-            elif key == "ap transfers disabled":
-                val = bool(self.rhs)
-            elif key == "cg bonus skill points":
-                if not val.isdigit():
-                    return self.msg("Chargen bonus skill points must be a number.")
-                val = int(val)
-            ServerConfig.objects.conf(key=real_key, value=val)
-        self.list_config_values()
+        try:
+            real_key = self.shorthand_to_real_keys[key]
+            if not self.rhs:
+                ServerConfig.objects.conf(key=real_key, delete=True)
+            else:
+                val = self.rhs
+                if key == "income":
+                    val = self.validate_income_value(self.rhs)
+                elif key == "motd":
+                    broadcast("|yServer Message of the Day:|n %s" % val)
+                elif key == "ap transfers disabled":
+                    val = bool(self.rhs)
+                elif key == "cg bonus skill points":
+                    if not val.isdigit():
+                        return self.msg("Chargen bonus skill points must be a number.")
+                    val = int(val)
+                ServerConfig.objects.conf(key=real_key, value=val)
+            self.list_config_values()
+        except KeyError:
+            raise CommandError("Not a valid key: %s" % ", ".join(self.valid_keys))
 
 
 class CmdAdminPropriety(ArxPlayerCommand):

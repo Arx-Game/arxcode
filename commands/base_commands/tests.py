@@ -844,6 +844,24 @@ class StaffCommandTests(ArxCommandTest):
         self.call_cmd("/remove test=testaccount2,testorg2", "Removed from test: Testaccount2, Testorg2")
         self.call_cmd("test", "Entities with test tag: Testaccount, testorg")
 
+    def test_cmd_config(self):
+        self.setup_cmd(staff_commands.CmdSetServerConfig, self.account)
+        self.call_cmd("asdf", 'Not a valid key: cg bonus skill points, ap transfers disabled, motd, income')
+        self.call_cmd("income=5", '| key                                    | value                             '
+                                  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                                  '| cg bonus skill points                  | None                              '
+                                  '| ap transfers disabled                  | None                              '
+                                  '| motd                                   | None                              '
+                                  '| income                                 | 5.0')
+        self.call_cmd("cg bonus skill points=20",
+                      '| key                                    | value                             '
+                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                      '| cg bonus skill points                  | 20                                '
+                      '| ap transfers disabled                  | None                              '
+                      '| motd                                   | None                              '
+                      '| income                                 | 5.0')
+
+
 
 class StaffCommandTestsPlus(ArxCommandTest):
     num_additional_characters = 1
