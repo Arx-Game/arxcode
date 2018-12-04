@@ -119,7 +119,7 @@ class InvestigationTests(ArxCommandTest):
             self.clue2.search_tags.add(tag1, tag2)
             self.clue2.allow_investigation = True
             self.clue2.save()
-            self.assetowner2.social = 50
+            self.assetowner2.social = 75
             self.call_cmd("/topic foo/bar/-zep", 'Creating an investigation: foo; bar; -zep\nstory\n'
                                                  'Stat: ??? - Skill: ???')
             self.call_cmd("/finish", 'You spend 25 social resources to start a new investigation.|'
@@ -147,6 +147,19 @@ class InvestigationTests(ArxCommandTest):
                                      'attention. Only the active investigation can progress.')
             invest2 = self.roster_entry2.investigations.last()
             self.assertEqual(invest2.clue_target, self.clue)
+            self.char2.ndb.investigation_form = ['clue: 3', 'story', '', '', '', [None, None], clue3]
+            self.call_cmd("/finish", 'An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. '
+                                     'It will require a great deal of energy (100 action points) to investigate. Your '
+                                     'tag requirements: another test clue\nRepeat the command to confirm and continue.')
+            self.roster_entry2.action_points = 200
+            self.call_cmd("/finish", 'You spend 25 social resources to start a new investigation.|New investigation '
+                                     'created. You already are participating in an active investigation for this week, '
+                                     'but may still add resources/silver to increase its chance of success for when '
+                                     'you next mark this as active.|You may only have one active investigation per '
+                                     'week, and cannot change it once it has received GM attention. Only the active '
+                                     'investigation can progress.')
+            invest3 = self.roster_entry2.investigations.last()
+            self.assertEqual(invest3.clue_target.name, 'PLACEHOLDER for Investigation #4')
 
 
 class SceneCommandTests(ArxCommandTest):

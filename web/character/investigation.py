@@ -188,13 +188,13 @@ class InvestigationFormCommand(ArxCommand):
         inv_ob = self.create_obj_from_form(form)
         if self.need_new_clue_written:
             form = self.investigation_form
-            search_tags, omit_tags = form[5]
             source_clue = form[6]
             clue_name = "PLACEHOLDER for Investigation #%s" % inv_ob.id
             if source_clue:
                 gm_notes = "Trying to find things related to Clue #%s: %s" % (source_clue.id, source_clue)
-                search_tags = list(source_clue.tags.all())
+                search_tags = list(source_clue.search_tags.all())
             else:
+                search_tags, omit_tags = form[5]
                 gm_notes = "Added tags: %s\n" % list_to_string(search_tags)
                 gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
             clue = Clue.objects.create(name=clue_name, gm_notes=gm_notes, allow_investigation=True, rating=30)
@@ -1257,7 +1257,8 @@ class CmdAdminInvestigations(ArxPlayerCommand):
             player = self.caller.search(self.lhs)
             if not player:
                 return
-            clue_query = Q(desc__icontains=self.rhs) | Q(name__icontains=self.rhs) | Q(search_tags__name__icontains=self.rhs)
+            clue_query = (Q(desc__icontains=self.rhs) | Q(name__icontains=self.rhs) |
+                          Q(search_tags__name__icontains=self.rhs))
             rev_query = Q(revelations__desc__icontains=self.rhs) | Q(revelations__search_tags__name__icontains=self.rhs)
             rev_query |= Q(revelations__name__icontains=self.rhs)
             undisco = (player.roster.undiscovered_clues.filter(allow_investigation=True)
