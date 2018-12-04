@@ -19,7 +19,6 @@ from evennia.accounts.models import AccountDB
 class CmdUseXP(ArxCommand):
     """
     xp
-
     Usage:
         xp
         xp/spend  <stat or skill name>
@@ -35,7 +34,6 @@ class CmdUseXP(ArxCommand):
 
     Dominion influence is bought with 'resources' rather than xp. The
     'learn' command is the same as 'xp/spend'.
-
     """
     key = "xp"
     aliases = ["+xp", "experience", "learn"]
@@ -193,7 +191,7 @@ class CmdUseXP(ArxCommand):
             stype = "ability"
             cost = stats_and_skills.get_ability_cost(caller, args)
         else:
-            caller.msg("%s wasn't identified as either a stat, ability, or a skill." % args)
+            caller.msg("'%s' wasn't identified as a stat, ability, or skill." % self.args)
             return
         if "cost" in self.switches:
             caller.msg("Cost for %s: %s" % (self.args, cost))
@@ -215,8 +213,8 @@ class CmdUseXP(ArxCommand):
             if stype == "stat":
                 caller.adjust_xp(-cost)
                 stats_and_skills.adjust_stat(caller, args)
-                caller.msg("You have increased your %s for a cost of %s xp." % (args, cost))
-                caller.msg("XP remaining: %s" % caller.db.xp)
+                caller.msg("You have increased your %s for a cost of %s xp. " % (args, cost) +
+                           "XP remaining: %s" % caller.db.xp)
                 return
             if stype == "skill":
                 caller.adjust_xp(-cost)
@@ -226,7 +224,8 @@ class CmdUseXP(ArxCommand):
                 spent_list.append(cost)
                 skill_history[args] = spent_list
                 caller.db.skill_history = skill_history
-                caller.msg("You have increased your %s for a cost of %s xp." % (args, cost))
+                caller.msg("You have increased your %s for a cost of %s xp. " % (args, cost) +
+                           "XP remaining: %s" % caller.db.xp)
                 if current + 1 == 6:  # legendary rating
                     inform_staff("%s has bought a rank 6 of %s." % (caller, args))
                 return
@@ -445,8 +444,8 @@ class CmdTrain(ArxCommand):
             return
         targ.post_training(caller, trainer_msg=caller_msg, targ_msg=targ_msg, ap_spent=additional_cost)
         return
-         
-        
+
+
 class CmdAwardXP(ArxPlayerCommand):
     """
     @awardxp
@@ -617,7 +616,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
             caller.msg("%s's %s set to %s." % (char, skill, rhs))
         if not caller.check_permstring("immortals"):
             inform_staff("%s set %s's %s skill to %s." % (caller, char, skill, rhs))
-        
+
 
 class CmdVoteXP(ArxPlayerCommand):
     """
@@ -638,7 +637,7 @@ class CmdVoteXP(ArxPlayerCommand):
     aliases = ["+vote", "@vote", "unvote"]
     locks = "cmd:all()"
     help_category = "Progression"
-    
+
     @property
     def caller_alts(self):
         return AccountDB.objects.filter(roster__current_account__isnull=False,
@@ -680,7 +679,7 @@ class CmdVoteXP(ArxPlayerCommand):
             raise ValueError("ERROR: No PlayerAccount set for this player!")
         if not self.args:
             votes = caller.db.votes or []
-            voted_for = list_to_string(votes) or "no one"        
+            voted_for = list_to_string(votes) or "no one"
             remaining = self.max_votes - self.count_votes()
             caller.msg("You have voted for %s, and have %s votes remaining." % (voted_for, remaining))
             return
@@ -694,10 +693,10 @@ class CmdVoteXP(ArxPlayerCommand):
         votes = caller.db.votes or []
         if targ.roster.roster.name != "Active" and targ not in votes:
             caller.msg("You can only vote for an active character.")
-            return     
+            return
         if not targ.db.char_ob:
             caller.msg("%s doesn't have a character object assigned to them." % targ)
-            return  
+            return
         if targ in votes:
             if self.cmdstring == "unvote":
                 caller.msg("Removing your vote for %s." % targ)
@@ -713,7 +712,7 @@ class CmdVoteXP(ArxPlayerCommand):
         num_votes = self.count_votes()
         if num_votes >= self.max_votes:
             caller.msg("You have voted %s times, which is the maximum." % num_votes)
-            return  
+            return
         votes.append(targ)
         caller.db.votes = votes
         caller.msg("Vote recorded for %s." % targ)

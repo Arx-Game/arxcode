@@ -44,7 +44,7 @@ _max_age_ = 65
 # We have 12 stats. no more than two at 5. tuple is in the following order:
 # (strength,dexterity,stamina,charm,command,composure,intellect,perception,wits,mana,luck,willpower)
 _voc_start_stats_ = {"noble":          (3, 3, 3,  4, 5, 4,  3, 3, 2,  2, 2, 2),
-                     "courtier":      (2, 2, 2,  5, 4, 5,  3, 3, 4,  2, 2, 2),
+                     "courtier":       (2, 2, 2,  5, 4, 5,  3, 3, 4,  2, 2, 2),
                      "charlatan":      (2, 2, 2,  4, 3, 5,  3, 4, 4,  3, 3, 1),
                      "soldier":        (5, 4, 5,  2, 3, 4,  2, 2, 3,  2, 2, 2),
                      "knight":         (4, 4, 4,  3, 4, 4,  2, 2, 3,  2, 2, 2),
@@ -103,7 +103,7 @@ _voc_start_skills_ = {"noble": {"diplomacy": 3, "leadership": 3, "etiquette": 2,
 
 def setup_voc(char, args):
     """Sets skills/stats for vocation template"""
-    char.attributes.add("skill_points", 0)
+    char.attributes.add("skill_points", get_bonus_skill_points())
     char.attributes.add("stat_points", 0)
     skills = _voc_start_skills_[args]
     stat_tup = _voc_start_stats_[args]
@@ -116,6 +116,15 @@ def setup_voc(char, args):
     # if their vocation is a crafter, give them a starting rank of 2
     if args in CRAFTING_ABILITIES:
         char.db.abilities = {args: 3}
+
+
+def get_total_skill_points():
+    return SKILL_POINTS + get_bonus_skill_points()
+
+
+def get_bonus_skill_points():
+    from evennia.server.models import ServerConfig
+    return ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", default=0)
 
 
 STAT_POINTS = 12
@@ -316,7 +325,7 @@ def stage_title(stage):
     msg = "{wStep %s: %s" % (stage, stage_txt[stage - 1])
     msg += "\n%s" % (stage_cmd[stage - 1])
     return msg
-       
+
 
 class CmdGuestPrompt(ArxPlayerCommand):
     """
@@ -374,7 +383,7 @@ class CmdGuestLook(ArxPlayerCommand):
             return
         if stage == 1:
             caller.msg(stage_title(stage))
-            if not caller.ndb.seen_stage1_intro:               
+            if not caller.ndb.seen_stage1_intro:
                 caller.msg(STAGE1)
                 caller.ndb.seen_stage1_intro = True
             else:
@@ -387,7 +396,7 @@ class CmdGuestLook(ArxPlayerCommand):
                 caller.msg(STAGE2)
                 caller.ndb.seen_stage2_intro = True
             vocs = [item.capitalize() for item in _vocations_]
-            vocs = ", ".join(vocs)            
+            vocs = ", ".join(vocs)
             caller.msg("Sample vocations: {w%s{n" % vocs)
             caller.msg("Please {w@add/vocation{n one of the above vocations, for example:\n" +
                        "{w@add/vocation soldier{n\n" +
@@ -397,11 +406,11 @@ class CmdGuestLook(ArxPlayerCommand):
             return
         if stage == 3:
             caller.msg(stage_title(stage))
-            if not caller.ndb.seen_stage3_intro:               
+            if not caller.ndb.seen_stage3_intro:
                 caller.msg(STAGE3)
                 caller.ndb.seen_stage3_intro = True
             unfinished = char.db.unfinished_values
-            if not unfinished:               
+            if not unfinished:
                 def_txt = ", ".join(list(_stage3_fields_))
                 caller.msg("Your @sheet has completed: {w%s{n" % def_txt)
                 def_txt = ", ".join(list(_stage3_optional_))
@@ -432,7 +441,7 @@ class CmdGuestLook(ArxPlayerCommand):
                 char.db.skills = {}
             if char.db.abilities is None:
                 char.db.abilities = {}
-            if not caller.ndb.seen_stage4_intro:             
+            if not caller.ndb.seen_stage4_intro:
                 caller.msg(STAGE4)
                 caller.ndb.seen_stage4_intro = True
                 caller.msg("To see the progress of your character, type '{w@sheet{n'.")
@@ -547,7 +556,7 @@ class CmdGuestCharCreate(ArxPlayerCommand):
             # create the character
             try:
                 from evennia.objects.models import ObjectDB
-    
+
                 default_home = ObjectDB.objects.get_id(settings.DEFAULT_HOME)
                 typeclass = settings.BASE_CHARACTER_TYPECLASS
                 permissions = settings.PERMISSION_ACCOUNT_DEFAULT
@@ -659,7 +668,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             caller.db.tutorial_stage += 1
             char.player_ob.db.tutorial_stage = caller.db.tutorial_stage
         caller.msg("{cName{n set to {w%s{n." % char.key)
-        char.save()       
+        char.save()
         char.player_ob.db.char_ob = char
         char.player_ob.save()
         caller.execute_cmd("look")
@@ -673,13 +682,12 @@ class CmdGuestAddInput(ArxPlayerCommand):
                        "of the vocations provided, or create one of your own with '{w@add/newvocation <vocation>{n.")
             return
         args = args.lower().strip()
-        
+
         def remove_all_skills():
             """helper function to wipe skills in case we have a previous vocation set"""
-            char.attributes.remove("skills")
-            char.attributes.remove("abilities")
             char.attributes.add("skills", {})
             char.attributes.add("abilities", {})
+
         if 'newvocation' in switches:
             if args in _vocations_:
                 caller.msg("Selected one of the default vocations. Please use 'vocation' rather than 'newvocation.")
@@ -689,7 +697,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             remove_all_skills()
             for stat in VALID_STATS:
                 char.attributes.add(stat, 2)
-            char.attributes.add("skill_points", SKILL_POINTS)
+            char.attributes.add("skill_points", get_total_skill_points())
             char.attributes.add("stat_points", STAT_POINTS)
         elif 'vocation' in switches:
             if args not in _vocations_:
@@ -698,7 +706,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
                 return
             char.db.vocation = args
             # setup voc will wipe any previous skills, replace em
-            setup_voc(char, args)                
+            setup_voc(char, args)
         caller.msg("\n{cVocation{n set to {w%s{n." % args)
         if caller.db.tutorial_stage == 2:
             caller.db.tutorial_stage += 1
@@ -900,7 +908,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             character.msg("\n{c%s{n has been set to {w%s{n. You now have {w%s{n points remaining for {w%s{n." % (
                 arguments.capitalize(), new_val, avail_pts, category + "s"))
             return True
-        
+
         if "stat" in switches:
             if lhs not in VALID_STATS:
                 matches = get_partial_match(lhs, "stat")
@@ -1071,5 +1079,5 @@ class CmdGuestAddInput(ArxPlayerCommand):
             return
         elif stage == 4 or 'stat' in switches or 'skill' in switches:
             self.do_stage_4(caller, args, switches, self.lhs, self.rhs)
-            return       
+            return
         caller.msg("Unexpected state error.")

@@ -127,17 +127,26 @@ def get_skill_cost_increase(caller, additional_cost=0):
     skills = caller.db.skills or {}
     srank = caller.db.social_rank or 0
     age = caller.db.age or 0
-    total = 0
+    total = 0.0
     for skill in skills:
         # get total cost of each skill
         total += cost_at_rank(skill, 0, skills[skill])
-    total -= guest.SKILL_POINTS * 10
-    total -= guest.XP_BONUS_BY_SRANK.get(srank, 0)
-    total -= guest.award_bonus_by_age(age)
-    total += additional_cost
-    if total < 0:
-        return 0.0
-    return total/500.0
+    skill_xp = guest.get_total_skill_points() * 10
+    bonus_by_srank = guest.XP_BONUS_BY_SRANK.get(srank, 0)
+    bonus_by_age = guest.award_bonus_by_age(age)
+    discounts = skill_xp + bonus_by_srank + bonus_by_age
+    if total + additional_cost < discounts:  # we're free
+        return -1.0
+    elif total >= discounts:  # we have an xp tax
+        total -= discounts
+        total += additional_cost
+        return total/500.0
+    else:  # we have some newbie skill points left over. Give us a discount
+        initial = (discounts - total)/additional_cost * -1
+        # we need to determine the tax from the remaining points over, after discount
+        cost = additional_cost + (additional_cost * initial)
+        tax = cost/500.0
+        return initial + tax
 
 
 def get_skill_cost(caller, skill, adjust_value=None, check_teacher=True, unmodified=False):
@@ -152,12 +161,16 @@ def get_skill_cost(caller, skill, adjust_value=None, check_teacher=True, unmodif
         return base_cost
     if unmodified:
         return base_cost
+    # check for freebies
+    tax = get_skill_cost_increase(caller, additional_cost=base_cost)
+    if tax <= -1.0:
+        return 0
     # check what discount would be
     cost = base_cost
     if check_teacher:
         if check_training(caller, skill, stype="skill"):
             cost = discounted_cost(caller, base_cost)
-    cost += int(cost * get_skill_cost_increase(caller, additional_cost=base_cost))
+    cost += int(cost * tax)
     return cost
 
 
@@ -191,7 +204,7 @@ def get_ability_cost(caller, ability, adjust_value=None, check_teacher=True, unm
     if ability in CRAFTING_ABILITIES:
         for c_ability in CRAFTING_ABILITIES:
             cost += caller.db.abilities.get(c_ability, 0)
-    # check what discount would be    
+    # check what discount would be
     if check_teacher:
         if check_training(caller, ability, stype="ability"):
             cost = discounted_cost(caller, cost)
@@ -206,7 +219,7 @@ def discounted_cost(caller, cost):
     if 0 > discount > 1:
         raise ValueError("Error: Training Discount outside valid ranges")
     return int(round(cost * discount))
-    
+
 
 def check_training(caller, field, stype):
     trainer = caller.db.trainer

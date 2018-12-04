@@ -1,5 +1,5 @@
 """
-Tests for different general commands. Tests for other command sets or for different apps can be found elsewhere.
+Tests for different general commands.
 """
 
 from mock import Mock, patch, PropertyMock
@@ -17,7 +17,7 @@ from commands.base_commands.crafting import CmdCraft
 from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -1048,3 +1048,28 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
         self.call_cmd("", "Closed tickets: 3\nOpen tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
                           "Use +request <#> to view an individual ticket. "
                           "Use +request/followup <#>=<comment> to add a comment.")
+
+
+class XPCommandTests(ArxCommandTest):
+
+    def test_cmd_use_xp(self):
+        from evennia.server.models import ServerConfig
+        from .guest import setup_voc
+        from world import stats_and_skills
+        self.setup_cmd(xp.CmdUseXP, self.char2)
+        setup_voc(self.char2, "courtier")
+        self.char2.db.xp = 0
+        self.call_cmd("/spend Teasing", "'Teasing' wasn't identified as a stat, ability, or skill.")
+        self.call_cmd("/spend Seduction", "Unable to raise seduction. The cost is 42, and you have 0 xp.")
+        stats_and_skills.adjust_skill(self.char2, "seduction")
+        ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 8)
+        self.char2.adjust_xp(10)
+        self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 10 xp. XP remaining: 0")
+        ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 32)
+        self.char2.adjust_xp(560)
+        self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 538 xp. XP remaining: 22")
+        self.assertEqual(self.char2.db.skills.get("seduction"), 6)
+        self.char2.db.trainer = self.char1
+        self.char1.db.skills = {"teaching": 5, "dodge": 2}
+        self.call_cmd("/spend dodge", 'You have increased your dodge for a cost of 17 xp. XP remaining: 5')
+        # TODO: other switches

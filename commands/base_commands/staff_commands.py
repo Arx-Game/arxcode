@@ -1765,8 +1765,11 @@ class CmdSetServerConfig(ArxPlayerCommand):
     key = "setconfig"
     help_category = "Admin"
     locks = "cmd: perm(wizards)"
-    shorthand_to_real_keys = {"motd": "MESSAGE_OF_THE_DAY", "income": "GLOBAL_INCOME_MOD",
-                              "ap transfers disabled": "DISABLE_AP_TRANSFER"}
+    shorthand_to_real_keys = {"motd": "MESSAGE_OF_THE_DAY",
+                              "income": "GLOBAL_INCOME_MOD",
+                              "ap transfers disabled": "DISABLE_AP_TRANSFER",
+                              "cg bonus skill points" : "CHARGEN_BONUS_SKILL_POINTS"
+    }
     valid_keys = shorthand_to_real_keys.keys()
 
     def get_help(self, caller, cmdset):
@@ -1810,18 +1813,21 @@ class CmdSetServerConfig(ArxPlayerCommand):
         key = self.lhs.lower()
         real_key = self.shorthand_to_real_keys[key]
         if key not in self.valid_keys:
-            self.msg("Not a valid key: %s" % ", ".join(self.valid_keys))
-            return
-        if not self.rhs:
+            return self.msg("Not a valid key: %s" % ", ".join(self.valid_keys))
+        elif not self.rhs:
             ServerConfig.objects.conf(key=real_key, delete=True)
         else:
             val = self.rhs
             if key == "income":
                 val = self.validate_income_value(self.rhs)
-            if key == "motd":
+            elif key == "motd":
                 broadcast("|yServer Message of the Day:|n %s" % val)
-            if key == "ap transfers disabled":
+            elif key == "ap transfers disabled":
                 val = bool(self.rhs)
+            elif key == "cg bonus skill points":
+                if not val.isdigit():
+                    return self.msg("Chargen bonus skill points must be a number.")
+                val = int(val)
             ServerConfig.objects.conf(key=real_key, value=val)
         self.list_config_values()
 
