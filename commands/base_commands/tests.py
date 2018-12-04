@@ -1066,10 +1066,14 @@ class XPCommandTests(ArxCommandTest):
         self.char2.adjust_xp(10)
         self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 10 xp. XP remaining: 0")
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 32)
-        self.char2.adjust_xp(560)
-        self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 538 xp. XP remaining: 22")
+        self.char2.adjust_xp(1062)
+        self.call_cmd("/spend Seduction", 'You cannot buy a legendary skill while you still have catchup xp remaining.')
+        ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 5)
+        self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 1039 xp. XP remaining: 23")
         self.assertEqual(self.char2.db.skills.get("seduction"), 6)
+        self.assertEqual(stats_and_skills.get_skill_cost(self.char2, "dodge"), 42)
+        self.assertEqual(stats_and_skills.get_skill_cost_increase(self.char2), 1.078)
         self.char2.db.trainer = self.char1
         self.char1.db.skills = {"teaching": 5, "dodge": 2}
-        self.call_cmd("/spend dodge", 'You have increased your dodge for a cost of 17 xp. XP remaining: 5')
+        self.call_cmd("/spend dodge", 'You have increased your dodge for a cost of 23 xp. XP remaining: 0')
         # TODO: other switches

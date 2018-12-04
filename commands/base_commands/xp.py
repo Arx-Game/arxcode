@@ -128,6 +128,9 @@ class CmdUseXP(ArxCommand):
             if current >= 6:
                 caller.msg("%s is already at its maximum." % args)
                 return
+            if current >= 5 and stats_and_skills.get_skill_cost_increase(caller) <= -1.0:
+                caller.msg("You cannot buy a legendary skill while you still have catchup xp remaining.")
+                return
             cost = stats_and_skills.get_skill_cost(caller, args)
             stype = "skill"
         elif args in stats_and_skills.DOM_SKILLS:
