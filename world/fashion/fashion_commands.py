@@ -283,8 +283,7 @@ class CmdFashionModel(ArxCommand):
         if qs.filter(db_date_created__gte=last_cron).count() >= 3:
             raise FashionError("You may only model up to three items a week before the public tires of you.")
         if org:
-            two_weeks_ago = last_cron - timedelta(days=7)
-            if qs.filter(db_date_created__gte=two_weeks_ago, org=org):
+            if qs.filter(db_date_created__gte=last_cron, org=org):
                 raise FashionError("You have displayed fashion too recently for %s to bring them more acclaim." % org)
 
     def check_audience(self):
