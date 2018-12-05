@@ -324,6 +324,25 @@ class Shardhaven(SharedMemoryModel):
         return self.layout.entrance
 
 
+class ShardhavenAlignmentChance(SharedMemoryModel):
+
+    haven = models.ForeignKey(Shardhaven, related_name='alignment_chances')
+    alignment = models.ForeignKey('magic.Alignment', related_name='+')
+    weight = models.PositiveSmallIntegerField(default=10)
+
+    class Meta:
+        unique_together = ('haven', 'alignment')
+
+
+class ShardhavenAffinityChance(SharedMemoryModel):
+    haven = models.ForeignKey(Shardhaven, related_name='affinity_chances')
+    affinity = models.ForeignKey('magic.Affinity', related_name='+')
+    weight = models.PositiveSmallIntegerField(default=10)
+
+    class Meta:
+        unique_together = ('haven', 'affinity')
+
+
 class ShardhavenDiscovery(SharedMemoryModel):
     """
     This model maps a player's discovery of a shardhaven

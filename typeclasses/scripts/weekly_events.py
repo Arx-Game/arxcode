@@ -62,11 +62,11 @@ class BulkInformCreator(object):
         self.informs.append(inform)
         return inform
 
-    def create_and_send_informs(self):
+    def create_and_send_informs(self, sender="the Weekly Update script"):
         """Creates all our informs and notifies players/orgs about them"""
         Inform.objects.bulk_create(self.informs)
         for receiver in self.receivers_to_notify:
-            receiver.msg("{yYou have new informs from the Weekly Update script.{n")
+            receiver.msg("{yYou have new informs from %s.{n" % sender)
 
 
 class WeeklyEvents(RunDateMixin, Script):

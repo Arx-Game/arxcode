@@ -2688,6 +2688,7 @@ class PlotAction(AbstractAction):
     gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="gmd_actions",
                            on_delete=models.SET_NULL)
     search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="actions")
+    working = models.OneToOneField("magic.Working", blank=True, null=True, related_name="action")
 
     UNKNOWN, COMBAT, SUPPORT, SABOTAGE, DIPLOMACY, SCOUTING, RESEARCH = range(7)
 
@@ -2858,6 +2859,9 @@ class PlotAction(AbstractAction):
                 if ob.ooc_intent:
                     msg += "\n%s" % ob.ooc_intent.display()
             msg += "\n"
+        if self.working:
+            msg += "\n{wWorking:{n %d [%s]: %s" % (self.working.id, self.working.participant_string,
+                                                   self.working.intent)
         if (disp_pending or disp_old) and disp_ooc:
             q_and_a_str = self.get_questions_and_answers_display(answered=disp_old, staff=staff_viewer, caller=caller)
             if q_and_a_str:

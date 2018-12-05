@@ -108,6 +108,11 @@ INVESTIGATION_PROGRESS_RATE = 0.5
 INVESTIGATION_DIFFICULTY_MOD = 5
 
 ######################################################################
+# Magic setup
+######################################################################
+MAGIC_CONDITION_MODULES = ("world.magic.conditionals",)
+
+######################################################################
 # Helpdesk settings
 ######################################################################
 HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO = True

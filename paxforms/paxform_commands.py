@@ -30,6 +30,7 @@ class PaxformCommand(ArxCommand):
         result += "\n\n"
         result += "    Usage:\n"
         result += "      {}/create\n".format(cls.key)
+        result += "      {}/check\n".format(cls.key)
         for f in form.fields:
             result += "      {}/{} {}\n".format(cls.key, f.key, f.get_display_params())
         result += "      {}/cancel\n".format(cls.key)
@@ -40,7 +41,7 @@ class PaxformCommand(ArxCommand):
     def at_pre_cmd(self):
         form = self.form
         values = self.caller.attributes.get(form.key, default=None)
-        self._extras = form.deserialize(values)
+        self._extras = form.deserialize(values, caller=self.caller)
 
     def set_extra_field(self, key, value):
         if not key:
@@ -77,9 +78,12 @@ class PaxformCommand(ArxCommand):
         if "create" in self.switches:
             self.msg("Creating form...")
             self.caller.attributes.add(form.key, {})
+            result = ""
             for f in form.fields:
                 if f.get() is not None or f.required:
-                    self.msg("|w{}:|n {}".format(f.full_name, str(f.get_display())))
+                    result += "\n|w{}:|n {}".format(f.full_name, str(f.get_display()))
+            if len(result):
+                self.msg(result)
             return
 
         if values is None:
@@ -94,15 +98,21 @@ class PaxformCommand(ArxCommand):
             self.caller.attributes.remove(form.key)
             return
 
-        if "submit" in self.switches:
+        if "submit" in self.switches or "check" in self.switches:
             for f in form.fields:
                 valid, reason = f.validate()
                 if not valid:
                     self.msg(reason)
                     return
 
-            form.submit(self.caller, values)
-            self.caller.attributes.remove(form.key)
+            validate_msg = form.validate(self.caller, values)
+            if validate_msg:
+                self.msg(validate_msg)
+                return
+
+            if "submit" in self.switches:
+                form.submit(self.caller, values)
+                self.caller.attributes.remove(form.key)
             return
 
         if len(self.switches) > 0:
@@ -112,14 +122,14 @@ class PaxformCommand(ArxCommand):
                 return
 
             if not self.args:
-                f.set(None)
+                f.set(None, caller=self.caller)
                 self.msg("{} cleared.".format(f.full_name))
             else:
-                valid, reason = f.set(self.args)
+                valid, reason = f.set(self.args, caller=self.caller)
                 if not valid:
                     self.msg(reason)
                     return
-                self.msg("{} set to: {}".format(f.full_name, self.args.strip(" ")))
+                self.msg("{} set to: {}".format(f.full_name, f.get_display()))
 
             new_values = form.serialize()
             if self._extras:
@@ -127,8 +137,13 @@ class PaxformCommand(ArxCommand):
             self.caller.attributes.add(form.key, new_values)
 
         else:
+            string = ""
             for f in form.fields:
                 if f.get() is not None or f.required:
-                    self.msg("|w{}:|n {}".format(f.full_name, str(f.get_display())))
-            self.display_extra_fields()
+                    string += "\n|w{}:|n {}".format(f.full_name, str(f.get_display()))
+            if string == "":
+                self.msg("Your form appears to be empty!")
+            else:
+                self.msg(string)
+                self.display_extra_fields()
             return
