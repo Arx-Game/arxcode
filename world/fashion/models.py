@@ -111,6 +111,7 @@ class FashionOutfit(FashionCommonMixins):
     A collection of wearable and wieldable items that all fit on a character
     at the same time.
     """
+    FAME_CAP = 5000000
     name = models.CharField(max_length=80, db_index=True)
     owner = models.ForeignKey('dominion.PlayerOrNpc', related_name='fashion_outfits', on_delete=models.CASCADE)
     fashion_items = models.ManyToManyField('objects.ObjectDB', through='ModusOrnamenta', blank=True)
@@ -227,7 +228,7 @@ class FashionOutfit(FashionCommonMixins):
         outfit_fame = 0
         for item in valid_items:
             outfit_fame += item.model_for_fashion(self.owner.player, org, outfit=self)
-        return outfit_fame
+        return min(outfit_fame, self.FAME_CAP)
 
     @property
     def table_display(self):
@@ -393,6 +394,7 @@ class FashionSnapshot(FashionCommonMixins):
     The recorded moment when a piece of gear becomes a weapon
     of the fashionpocalypse.
     """
+    FAME_CAP = 1500000
     ORG_FAME_DIVISOR = 2
     DESIGNER_FAME_DIVISOR = 4
     db_date_created = models.DateTimeField(auto_now_add=True)
@@ -459,7 +461,7 @@ class FashionSnapshot(FashionCommonMixins):
         percentage *= max((self.fashion_item.quality_level/40.0), 0.01)
         percentage *= self.multiplier
         # they get either their percentage of the item's worth, their modified roll, or 4, whichever is highest
-        self.fame = max(int(self.fashion_item.item_worth * percentage), max(int(roll), 4))
+        self.fame = min(max(int(self.fashion_item.item_worth * percentage), max(int(roll), 4)), self.FAME_CAP)
         self.save()
 
     def apply_fame(self, reverse=False):
