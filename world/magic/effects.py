@@ -50,7 +50,7 @@ class CodedEffect(object):
         if isinstance(target_obj, int):
             try:
                 target_obj = ObjectDB.objects.get(id=target_obj)
-            except Object.DoesNotExist, Object.MultipleObjectsReturned:
+            except (ObjectDB.DoesNotExist, ObjectDB.MultipleObjectsReturned):
                 target_obj = None
 
         self.target_obj = target_obj
@@ -205,7 +205,7 @@ class ClueCollectionEffect(CodedEffect):
         try:
             collection_id = int(self.parameters)
             collection = ClueCollection.objects.get(id=collection_id)
-        except ValueError, ClueCollection.DoesNotExist:
+        except (ValueError, ClueCollection.DoesNotExist):
             pass
 
         if not collection:
@@ -225,7 +225,7 @@ class ClueCollectionEffect(CodedEffect):
         try:
             clue_id = int(self.target_string)
             target_clue = Clue.objects.get(id=clue_id)
-        except ValueError, Clue.DoesNotExist:
+        except (ValueError, Clue.DoesNotExist):
             return None
 
         self.cached_clue = target_clue
@@ -279,8 +279,8 @@ class BucketEffect(CodedEffect):
         try:
             bucket_id = int(left_param)
             bucket = MagicBucket.objects.get(id=bucket_id)
-        except ValueError, MagicBucket.DoesNotExist:
-            pass
+        except (ValueError, MagicBucket.DoesNotExist):
+            bucket = None
 
         if not bucket:
             try:

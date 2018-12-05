@@ -129,14 +129,6 @@ class CmdMagic(ArxCommand):
     key = "magic"
     locks = "cmd:practitioner() or perm(Admin)"
 
-    def practitioner_for_string(self, practitioner_name):
-
-        character = self.caller.search(practitioner_name, exact=True, global_search=True, typeclass='typeclasses.characters.Character')
-        if not character:
-            return None
-
-        return character.practitioner
-
     def magic_state(self, practitioner):
         string = ""
         string += "---------------------------------------------------------------------------\n"
@@ -1075,7 +1067,7 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
             for name in player_list:
                 try:
                     obj = self.character_search(name, allow_npc=True)
-                except CommandError, ce:
+                except CommandError as ce:
                     self.msg(ce)
                     return
                 targets.append(obj)
@@ -1139,10 +1131,11 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
                 return
 
             tool = None
+            obj = None
             if len(self.rhs):
                 try:
                     obj = self.search(self.rhs)
-                except CommandError, ce:
+                except CommandError as ce:
                     self.msg(ce)
                     return
 
@@ -1173,7 +1166,7 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
             familiar = None
             if len(self.rhs):
                 familiars = FamiliarAttunement.objects.filter(practitioner=practitioner,
-                                                             familiar__name__istartswith=self.rhs)
+                                                              familiar__name__istartswith=self.rhs)
                 if familiars.count() > 1:
                     self.msg("I don't know which one you mean!")
                     return
@@ -1262,7 +1255,7 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
 
             try:
                 obj = self.search(self.rhs)
-            except CommandError, ce:
+            except CommandError as ce:
                 self.msg(ce)
                 return
 
@@ -1472,4 +1465,3 @@ class MagicCmdSet(CmdSet):
         self.add(CmdAdminMagic())
         self.add(CmdWorking())
         self.add(CmdCast())
-

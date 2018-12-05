@@ -374,7 +374,7 @@ class Practitioner(SharedMemoryModel):
         try:
             practitioner = Practitioner.objects.get(character=obj)
             return practitioner
-        except Practitioner.DoesNotExist, Practitioner.MultipleObjectsReturned:
+        except (Practitioner.DoesNotExist, Practitioner.MultipleObjectsReturned):
             return None
 
     @staticmethod
@@ -382,7 +382,7 @@ class Practitioner(SharedMemoryModel):
         try:
             practitioner = Practitioner.objects.get(id=id_num)
             return practitioner
-        except Practitioner.DoesNotExist, Practitioner.MultipleObjectsReturned:
+        except (Practitioner.DoesNotExist, Practitioner.MultipleObjectsReturned):
             return None
 
     @property
@@ -396,7 +396,7 @@ class Practitioner(SharedMemoryModel):
 
         result = None
         max_value = 0
-        for affinity, value in affinities.iteritems():
+        for affinity, value in affinities.items():
             if value > max_value:
                 result = affinity
                 max_value = value
@@ -424,7 +424,7 @@ class Practitioner(SharedMemoryModel):
     def resonance_record_for_node(self, node):
         try:
             resonance_node = SkillNodeResonance.objects.get(practitioner=self, node=node)
-        except SkillNodeResonance.DoesNotExist, SkillNodeResonance.MultipleObjectsReturned:
+        except (SkillNodeResonance.DoesNotExist, SkillNodeResonance.MultipleObjectsReturned):
             return None
 
         return resonance_node
@@ -462,7 +462,7 @@ class Practitioner(SharedMemoryModel):
     def add_resonance_to_node(self, node, amount):
         try:
             resonance_node = SkillNodeResonance.objects.get(practitioner=self, node=node)
-        except SkillNodeResonance.DoesNotExist, SkillNodeResonance.MultipleObjectsReturned:
+        except (SkillNodeResonance.DoesNotExist, SkillNodeResonance.MultipleObjectsReturned):
             return
 
         before = resonance_node.resonance
@@ -672,7 +672,7 @@ class Practitioner(SharedMemoryModel):
         try:
             favor = PractitionerFavor.objects.get(practitioner=self, alignment=align)
             return favor.value
-        except PractitionerFavor.DoesNotExist, PractitionerFavor.MultipleObjectsReturned:
+        except (PractitionerFavor.DoesNotExist, PractitionerFavor.MultipleObjectsReturned):
             pass
 
         return 0
@@ -869,7 +869,7 @@ class Condition(SharedMemoryModel):
     @property
     def effects_list(self):
         names = []
-        for effect in self.effects:
+        for effect in self.effects.all():
             names.append(effect.name)
         return commafy(names)
 
@@ -1431,13 +1431,13 @@ class Working(SharedMemoryModel):
         if obj.db.affinity_id:
             try:
                 affinity = Affinity.objects.get(id=obj.db.affinity_id)
-            except Affinity.DoesNotExist, Affinity.MultipleObjectsReturned:
+            except (Affinity.DoesNotExist, Affinity.MultipleObjectsReturned):
                 return None
             return affinity
         elif obj.db.alchemical_material:
             try:
                 material = AlchemicalMaterial.objects.get(id=obj.db.alchemical_material)
-            except AlchemicalMaterial.DoesNotExist, AlchemicalMaterial.MultipleObjectsReturned:
+            except (AlchemicalMaterial.DoesNotExist, AlchemicalMaterial.MultipleObjectsReturned):
                 return None
             return material.affinity
 

@@ -346,17 +346,12 @@ class HaggledDeal(object):
         if not self.caller.player_ob.pay_action_points(5):
             return
         self.noble_discovery_check()
-        difficulty = randint(1, 50) - self.roll_bonus
+        difficulty = randint(-15, 65) - self.roll_bonus
         clout = self.caller.social_clout
         if clout > 0:
             difficulty -= randint(0, clout)
-        try:
-            prest_factor = int(self.caller.player_ob.Dominion.assets.prestige_mod)
-            if prest_factor > 0:
-                difficulty -= randint(0, prest_factor)
-        except (AttributeError, ValueError, TypeError):
-            pass
-        roll = do_dice_check(self.caller, stat="charm", skill="haggling", difficulty=difficulty)
+        roll = do_dice_check(self.caller, stat="charm", skill_list=["haggling", "haggling", "haggling", "streetwise"],
+                             difficulty=difficulty)
         if roll <= self.discount_roll:
             self.caller.msg("You failed to find a better deal.\n%s" % self.display())
         else:
