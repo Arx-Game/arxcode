@@ -55,7 +55,7 @@ class Npc(Character):
         # if we're ordered to attack, don't vote to end
         if self.combat.state:
             self.combat.state.wants_to_end = False
-    
+
     def stop(self):
         """
         Stop attacking/exit combat.
@@ -102,7 +102,7 @@ class Npc(Character):
         self.db.automate_combat = True
         self.db.damage = 0
         self.at_init()
-    
+
     def resurrect(self, *args, **kwargs):
         """
         Cue 'Bring Me Back to Life' by Evanessence.
@@ -158,7 +158,7 @@ class Npc(Character):
         if awake and awake != "awake":
             msg += " They are %s." % awake
         return msg
-    
+
     def recovery_test(self, diff_mod=0, free=False):
         """
         A mechanism for healing characters. Whenever they get a recovery
@@ -183,7 +183,7 @@ class Npc(Character):
         if not free:
             self.db.last_recovery_test = time.time()
         return roll
-    
+
     def sensing_check(self, difficulty=15, invis=False, allow_wake=False):
         """
         See if the character detects something that is hiding or invisible.
@@ -283,22 +283,22 @@ class Npc(Character):
             self.set_npc_new_name(sing_name, plural_name)
             self.set_npc_new_desc(desc)
         self.setup_stats(ntype, threat)
-        
+
     def set_npc_new_name(self, sing_name=None, plural_name=None):
         self.name = sing_name or plural_name or "#%s" % self.id
-        
+
     def set_npc_new_desc(self, desc=None):
         self.desc = desc or get_npc_desc(self.db.npc_type or 0)
 
 
 class MultiNpc(Npc):
     def multideath(self, num, death=False):
-        living = self.db.num_living or 0       
+        living = self.db.num_living or 0
         if num > living:
             num = living
         self.db.num_living = living - num
         if death:
-            dead = self.db.num_dead or 0            
+            dead = self.db.num_dead or 0
             self.db.num_dead = dead + num
         else:
             incap = self.db.num_incap or 0
@@ -309,11 +309,11 @@ class MultiNpc(Npc):
 
     def get_plural_name(self):
         return self.db.plural_name or get_npc_plural_name(self._get_npc_type())
-        
+
     @property
     def ae_dmg(self):
         return self.ndb.ae_dmg or 0
-        
+
     @ae_dmg.setter
     def ae_dmg(self, val):
         self.ndb.ae_dmg = val
@@ -378,13 +378,13 @@ class MultiNpc(Npc):
         self.db.damage = 0
         self.db.health_status = "alive"
         self.db.sleep_status = "awake"
-        # if we don't 
+        # if we don't
         if not keepold:
             self.db.npc_type = ntype
             self.db.singular_name = sing_name
             self.db.plural_name = plural_name
             self.desc = desc or get_npc_desc(ntype)
-        self.setup_stats(ntype, threat)     
+        self.setup_stats(ntype, threat)
         self.setup_name()
 
     # noinspection PyAttributeOutsideInit
@@ -454,7 +454,7 @@ class AgentMixin(object):
         atype = agent_class.type
         self.setup_npc(ntype=atype, threat=quality, num=agent.quantity, desc=desc)
         self.db.passive_guard = check_passive_guard(atype)
-        
+
     def setup_locks(self  # type: Retainer or Agent
                     ):
         # base lock - the 'command' lock string
@@ -553,14 +553,14 @@ class AgentMixin(object):
         return self.agent.quality or 0
     npc_type = property(_get_npc_type)
     quality = property(_get_quality)
-    
+
     def stop_follow(self,  # type: Retainer or Agent
                     dismiss=True, unassigning=False):
         super(AgentMixin, self).stop_follow()
         # if we're not being unassigned, we dock them. otherwise, they're gone
         if dismiss:
             self.dismiss(dock=not unassigning)
-    
+
     def summon(self,  # type: Retainer or Agent
                summoner=None):
         """
@@ -591,7 +591,7 @@ class AgentMixin(object):
             docked = self.db.docked
             if docked and docked.db.docked_guards and self in docked.db.docked_guards:
                 docked.db.docked_guards.remove(self)
-            return       
+            return
         self.db.prelogout_location = loc
         if dock:
             self.db.docked = loc
@@ -635,7 +635,7 @@ class AgentMixin(object):
         else:  # special stats
             restype = "military"
         return xpcost, rescost, restype
-    
+
     def get_skill_cost(self, attr):
         """
         Get the cost of a skill based on our current rating and the
@@ -644,7 +644,7 @@ class AgentMixin(object):
         restype = "military"
         atype = self.agent.type
         primary_skills = get_npc_skills(atype)
-        base = get_skill_cost(self, attr)
+        base = get_skill_cost(self, attr, unmodified=True)
         if attr not in primary_skills:
             base *= 2
         xpcost = base
@@ -671,7 +671,7 @@ class AgentMixin(object):
         if cap > typecap:
             cap = typecap
         return cap
-    
+
     def get_skill_maximum(self, attr):
         """
         Get the current max for a skill based on the type
@@ -694,7 +694,7 @@ class AgentMixin(object):
     def train_agent(self, trainer, conditioning):
         trainer.msg("This type of agent cannot be trained.")
         return False
-    
+
     @property
     def training_skill(self):
         if "animal" in self.agent.type_str:
@@ -709,11 +709,11 @@ class AgentMixin(object):
         else:
             default = "human"
         return self.db.species or default
-    
+
     @property
     def owner(self):
         return self.agent.owner
-    
+
     def inform_owner(self, text):
         """Passes along an inform to our owner."""
         self.owner.inform_owner(text, category="Agents")
@@ -880,7 +880,7 @@ class Retainer(AgentMixin, Npc):
         if self.uses_training_cap:
             msg += "\n{wCurrent XP Training Cap:{n %s" % self.xp_training_cap
         viewer.msg(msg)
-    
+
 
 # noinspection PyAttributeOutsideInit
 class Agent(AgentMixin, MultiNpc):
@@ -921,11 +921,11 @@ class Agent(AgentMixin, MultiNpc):
             num = self.db.num_living
         self.multideath(num, death)
         self.agentob.lose_agents(num)
-        self.setup_name()       
+        self.setup_name()
         if self.db.num_living <= 0:
             self.unassign()
         return num
-    
+
     def gain_agents(self, num):
         self.db.num_living += num
         self.setup_name()

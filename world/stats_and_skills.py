@@ -34,10 +34,7 @@ VALID_SKILLS = COMBAT_SKILLS + SOCIAL_SKILLS + GENERAL_SKILLS + CRAFTING_SKILLS
 
 CRAFTING_ABILITIES = ('tailor', 'weaponsmith', 'armorsmith', 'leatherworker', 'apothecary',
                       'carpenter', 'jeweler')
-FIGHTING_ABILITIES = ('duelist', 'berserker', 'ninja', 'blademaster', 'adept')
-MAGICAL_ABILITIES = ('abyssal', 'dreamer', 'bloodmage', 'primal', 'celestial')
-CUNNING_ABILITIES = ('assassin', 'spy', 'thief', 'mummer')
-VALID_ABILITIES = CRAFTING_ABILITIES + FIGHTING_ABILITIES + MAGICAL_ABILITIES + CUNNING_ABILITIES
+VALID_ABILITIES = CRAFTING_ABILITIES
 DOM_SKILLS = ("population", "income", "farming", "productivity",
               "upkeep", "loyalty", "warfare")
 _parent_abilities_ = {'sewing': ['tailor'], 'smithing': ['weaponsmith', 'armorsmith', 'jeweler'],
@@ -56,6 +53,7 @@ NON_COMBAT_SKILL_COST_MULT = 10
 COMBAT_SKILL_COST_MULT = 20
 # being taught will give you a 20% discount
 TEACHER_DISCOUNT = 0.8
+LEGENDARY_COST = 500
 
 
 def get_partial_match(args, s_type):
@@ -103,9 +101,15 @@ def cost_at_rank(skill, current_rating, new_rating):
         while current_rating < new_rating:
             current_rating += 1
             if skill in COMBAT_SKILLS or skill in VALID_ABILITIES:
-                cost += current_rating * COMBAT_SKILL_COST_MULT
+                mult = COMBAT_SKILL_COST_MULT
             else:
-                cost += current_rating * NON_COMBAT_SKILL_COST_MULT
+                mult = NON_COMBAT_SKILL_COST_MULT
+            if current_rating >= 6 and skill in VALID_SKILLS:
+                base = LEGENDARY_COST
+                mult /= 10
+            else:
+                base = current_rating
+            cost += base * mult
         return cost
     if new_rating < current_rating:
         while current_rating > new_rating:
@@ -118,21 +122,31 @@ def cost_at_rank(skill, current_rating, new_rating):
     return cost
 
 
-def get_skill_cost_increase(caller):
+def get_skill_cost_increase(caller, additional_cost=0):
     from commands.base_commands import guest
     skills = caller.db.skills or {}
     srank = caller.db.social_rank or 0
     age = caller.db.age or 0
-    total = 0
+    total = 0.0
     for skill in skills:
         # get total cost of each skill
         total += cost_at_rank(skill, 0, skills[skill])
-    total -= guest.SKILL_POINTS * 10
-    total -= guest.XP_BONUS_BY_SRANK.get(srank, 0)
-    total -= guest.award_bonus_by_age(age)
-    if total < 0:
-        return 0.0
-    return total/500.0
+    skill_xp = guest.get_total_skill_points() * 10
+    bonus_by_srank = guest.XP_BONUS_BY_SRANK.get(srank, 0)
+    bonus_by_age = guest.award_bonus_by_age(age)
+    discounts = skill_xp + bonus_by_srank + bonus_by_age
+    if total + additional_cost < discounts:  # we're free
+        return -1.0
+    elif total >= discounts:  # we have an xp tax
+        total -= discounts
+        total += additional_cost
+        return total/500.0
+    else:  # we have some newbie skill points left over. Give us a discount
+        initial = (discounts - total)/additional_cost * -1
+        # we need to determine the tax from the remaining points over, after discount
+        cost = additional_cost + (additional_cost * initial)
+        tax = cost/500.0
+        return initial + tax
 
 
 def get_skill_cost(caller, skill, adjust_value=None, check_teacher=True, unmodified=False):
@@ -142,19 +156,21 @@ def get_skill_cost(caller, skill, adjust_value=None, check_teacher=True, unmodif
         adjust_value = 1
     new_rating = current_rating + adjust_value
     # cost for a legendary skill
-    if new_rating == 6:
-        cost = 1000
-    else:
-        cost = cost_at_rank(skill, current_rating, new_rating)
-    if cost < 0:
-        return cost
+    base_cost = cost_at_rank(skill, current_rating, new_rating)
+    if base_cost < 0:
+        return base_cost
     if unmodified:
-        return cost
-    # check what discount would be    
+        return base_cost
+    # check for freebies
+    tax = get_skill_cost_increase(caller, additional_cost=base_cost)
+    if tax <= -1.0:
+        return 0
+    # check what discount would be
+    cost = base_cost
     if check_teacher:
         if check_training(caller, skill, stype="skill"):
-            cost = discounted_cost(caller, cost)
-    cost += int(cost * get_skill_cost_increase(caller))
+            cost = discounted_cost(caller, base_cost)
+    cost += int(cost * tax)
     return cost
 
 
@@ -188,16 +204,7 @@ def get_ability_cost(caller, ability, adjust_value=None, check_teacher=True, unm
     if ability in CRAFTING_ABILITIES:
         for c_ability in CRAFTING_ABILITIES:
             cost += caller.db.abilities.get(c_ability, 0)
-    if ability in FIGHTING_ABILITIES:
-        for f_ability in FIGHTING_ABILITIES:
-            cost += caller.db.abilities.get(f_ability, 0)
-    if ability in MAGICAL_ABILITIES:
-        for m_ability in MAGICAL_ABILITIES:
-            cost += caller.db.abilities.get(m_ability, 0)
-    if ability in CUNNING_ABILITIES:
-        for c_ability in CUNNING_ABILITIES:
-            cost += caller.db.abilities.get(c_ability, 0)
-    # check what discount would be    
+    # check what discount would be
     if check_teacher:
         if check_training(caller, ability, stype="ability"):
             cost = discounted_cost(caller, cost)
@@ -212,7 +219,7 @@ def discounted_cost(caller, cost):
     if 0 > discount > 1:
         raise ValueError("Error: Training Discount outside valid ranges")
     return int(round(cost * discount))
-    
+
 
 def check_training(caller, field, stype):
     trainer = caller.db.trainer

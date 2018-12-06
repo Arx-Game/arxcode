@@ -20,6 +20,7 @@ lock functions from evennia.locks.lockfuncs.
 
 """
 from world.dominion.models import Organization, Member
+from world.magic.models import Practitioner
 
 # def myfalse(accessing_obj, accessed_obj, *args, **kwargs):
 #    """
@@ -253,3 +254,14 @@ def decorator(accessing_obj, accessed_obj, *args, **kwargs):
 
 
 decorators = decorator
+
+
+def practitioner(accessing_obj, accessed_obj, *args, **kwargs):
+    """
+    Checks if the accessing_obj has a magical Practitioner record.
+    """
+    practitioner = Practitioner.practitioner_for_character(accessing_obj)
+    if not practitioner:
+        return False
+
+    return practitioner.eyes_open

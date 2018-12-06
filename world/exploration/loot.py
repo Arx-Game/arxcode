@@ -13,6 +13,13 @@ class Trinket(Bauble):
     def type_description(self):
         return "trinket"
 
+    @property
+    def potential(self):
+        return 20 + (self.db.quality_level * 10)
+
+    def quality_level_from_primum(self, primum):
+        return max(int((primum - 20) / 10), 0)
+
 
 class AncientWeapon(Wieldable):
 
@@ -22,6 +29,12 @@ class AncientWeapon(Wieldable):
             return "ancient %s" % self.recipe.name
         return "ancient weapon"
 
+    def do_junkout(self, caller):
+        """Junks us as if we were a crafted item."""
+        caller.msg("You destroy %s." % self)
+        self.softdelete()
+        return
+
 
 class LootGenerator(object):
 
@@ -29,6 +42,30 @@ class LootGenerator(object):
     WPN_MEDIUM = 1
     WPN_HUGE = 2
     WPN_BOW = 3
+
+    @classmethod
+    def set_alignment_and_affinity(cls, haven, obj):
+        from world.magic.models import Alignment, Affinity
+
+        align_picker = WeightedPicker()
+        for alignment in haven.alignment_chances.all():
+            align_picker.add(alignment.alignment, alignment.weight)
+
+        affinity_picker = WeightedPicker()
+        for affinity in haven.affinity_chances.all():
+            affinity_picker.add(affinity.affinity, affinity.weight)
+
+        alignment = align_picker.pick()
+        affinity = affinity_picker.pick()
+
+        if not alignment:
+            alignment = Alignment.PRIMAL
+
+        if not affinity:
+            affinity = Affinity.objects.order_by('?').first()
+
+        obj.db.alignment = alignment.id
+        obj.db.affinity = affinity.id
 
     @classmethod
     def create_trinket(cls, haven):
@@ -46,6 +83,9 @@ class LootGenerator(object):
 
         trinket.db.quality_level = quality_picker.pick()
         trinket.db.found_shardhaven = haven.name
+
+        cls.set_alignment_and_affinity(haven, trinket)
+
         return trinket
 
     @classmethod
@@ -152,6 +192,8 @@ class LootGenerator(object):
         weapon.db.quality_level = quality_picker.pick()
         weapon.db.found_shardhaven = haven.name
         weapon.db.recipe = LootGenerator.get_weapon_recipe(material, wpn_type=wpn_type)
+
+        cls.set_alignment_and_affinity(haven, weapon)
 
         return weapon
 

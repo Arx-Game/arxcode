@@ -159,7 +159,8 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
                           'You may only model up to three items a week before the public tires of you.')
             mock_datetime.now = Mock(return_value=fake_dt + timedelta(days=8))
             self.call_cmd("/outfit Friendliest=Orgtest",
-                          'You have displayed fashion too recently for Orgtest to bring them more acclaim.')
+                          'Pieces of this outfit cannot be modeled:\n- Lickyknife1 has already been used to model '
+                          'fashion.\nNo valid items remain! Try modeling a different outfit.')
         # test leaderboards:
         self.call_cmd("", "Fashion Model Fame Items Avg Item Fame \n"
                           "TestAccount2  7398 6     1233          "

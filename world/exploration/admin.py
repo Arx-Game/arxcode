@@ -61,11 +61,21 @@ class ShardhavenLayoutTypeFilter(ShardhavenTypeFilter):
         return queryset.filter(layout__haven_type=haven_type)
 
 
+class ShardhavenAlignmentInline(admin.TabularInline):
+    model = ShardhavenAlignmentChance
+    extra = 0
+
+
+class ShardhavenAffinityInline(admin.TabularInline):
+    model = ShardhavenAffinityChance
+    extra = 0
+
+
 class ShardhavenAdmin(admin.ModelAdmin):
     """Admin for shardhavens, Arx's very own abyssal-corrupted dungeons. Happy adventuring!"""
     list_display = ('id', 'name', 'location', 'haven_type')
     search_fields = ('name', 'description')
-    inlines = (ShardhavenClueInline, )
+    inlines = (ShardhavenClueInline, ShardhavenAlignmentInline, ShardhavenAffinityInline)
     list_filter = (ShardhavenTypeFilter, RegionFilter,)
 
 

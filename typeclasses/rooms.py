@@ -77,6 +77,7 @@ from evennia.objects.models import ObjectDB
 from commands.base import ArxCommand
 from typeclasses.scripts import gametime
 from typeclasses.mixins import NameMixins, ObjectMixins
+from world.magic.mixins import MagicMixins
 from world.msgs.messagehandler import MessageHandler
 
 from world.weather import utils as weather_utils
@@ -95,7 +96,7 @@ SHOPCMD = "cmdsets.home.ShopCmdSet"
 # implements the Extended Room
 
 # noinspection PyUnresolvedReferences
-class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom):
+class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
     """
     This room implements a more advanced look functionality depending on
     time. It also allows for "details", together with a slightly modified

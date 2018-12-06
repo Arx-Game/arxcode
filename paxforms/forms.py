@@ -24,8 +24,8 @@ class Paxform(object):
             if isinstance(v, Paxfield):
                 result.append(v)
 
-        # Reverse our field order
-        return result[::-1]
+        result.sort(key=lambda f: f._priority, reverse=True)
+        return result
 
     @property
     def keys(self):
@@ -40,7 +40,7 @@ class Paxform(object):
 
         return None
 
-    def set(self, key=None, value=None):
+    def set(self, key=None, value=None, caller=None):
         if not key:
             return False
 
@@ -48,7 +48,7 @@ class Paxform(object):
         if not f:
             return False
 
-        return f.set(value)
+        return f.set(value, caller=caller)
 
     def serialize(self):
         serialized = {}
@@ -58,9 +58,9 @@ class Paxform(object):
 
         return serialized
 
-    def deserialize(self, serialized):
+    def deserialize(self, serialized, caller=None):
         for f in self.fields:
-            f.set(None)
+            f.set(None, caller=caller)
 
         extras = {}
         if serialized:
@@ -68,27 +68,30 @@ class Paxform(object):
             for k, v in serialized.iteritems():
                 f = self.field_for_key(k)
                 if f is not None:
-                    f.set(v)
+                    f.set(v, caller=caller)
                     del extras[k]
 
         return extras
+
+    def validate(self, caller, values):
+        return None
 
     def submit(self, caller, values):
         pass
 
     @property
-    def web_form(self):
+    def web_form(self, caller=None):
         web_fields = {}
         for f in self.fields:
-            web_fields[f.key] = f.webform_field
+            web_fields[f.key] = f.webform_field(caller=caller)
 
         new_class = type("PaxWebform_" + self.key, (django.forms.Form,), web_fields)
         return new_class
 
-    def from_web_form(self, webform):
+    def from_web_form(self, webform, caller=None):
         for f in self.fields:
             value = webform.cleaned_data[f.key]
-            valid, message = f.set(value)
+            valid, message = f.set(value, caller=caller)
             if not valid:
                 return False, message
         return True, None

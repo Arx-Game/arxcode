@@ -668,7 +668,7 @@ class CraftingMixins(object):
             return num_kept
 
         pmats = caller.player.Dominion.assets.materials
-        mats = self.db.materials
+        mats = self.db.materials or {}
         adorns = self.db.adorns or {}
         refunded = []
         roll = get_refund_chance()
@@ -910,7 +910,10 @@ class MsgMixins(object):
                 self.ndb.pose_history = []
             else:
                 try:
-                    self.ndb.pose_history.append((from_obj, text))
+                    origin = from_obj
+                    if not from_obj and options.get('is_magic', False):
+                        origin = "Magic System"
+                    self.ndb.pose_history.append((origin, text))
                 except AttributeError:
                     pass
         if options.get('box', False):
@@ -918,6 +921,13 @@ class MsgMixins(object):
         if options.get('roll', False):
             if self.attributes.has("dice_string"):
                 text = "{w<" + self.db.dice_string + "> {n" + text
+        if options.get('is_magic', False):
+            if text[0] == "\n":
+                text = text[1:]
+            text = "{w<" + self.magic_word + "> |n" + text
+            if options.get('is_pose'):
+                if self.db.posebreak:
+                    text = "\n" + text
         try:
             if self.char_ob:
                 msg_sep = self.tags.get("newline_on_messages")

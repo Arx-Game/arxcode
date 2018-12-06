@@ -151,7 +151,10 @@ try:
     from web.character import goal_commands
 except Exception as err:
     print("<<ERROR>>: Error encountered in goal commands: %s" % err)
-
+try:
+    from world.magic import magic_commands
+except Exception as err:
+    print("<<ERROR>>: Error encountered in magic commands: %s" % err)
 
 from evennia.commands.cmdset import CmdSet
 
@@ -226,6 +229,9 @@ class StateIndependentCmdSet(CmdSet):
         self.add(story_actions.CmdAction())
         self.add(plot_commands.CmdPlots())
         self.add(goal_commands.CmdGoals())
+
+        # Magic!
+        self.add(magic_commands.MagicCmdSet())
 
 
 class MobileCmdSet(CmdSet):

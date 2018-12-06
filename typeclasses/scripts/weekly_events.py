@@ -62,11 +62,11 @@ class BulkInformCreator(object):
         self.informs.append(inform)
         return inform
 
-    def create_and_send_informs(self):
+    def create_and_send_informs(self, sender="the Weekly Update script"):
         """Creates all our informs and notifies players/orgs about them"""
         Inform.objects.bulk_create(self.informs)
         for receiver in self.receivers_to_notify:
-            receiver.msg("{yYou have new informs from the Weekly Update script.{n")
+            receiver.msg("{yYou have new informs from %s.{n" % sender)
 
 
 class WeeklyEvents(RunDateMixin, Script):
@@ -87,6 +87,11 @@ class WeeklyEvents(RunDateMixin, Script):
         self.persistent = True
         self.start_delay = True
         self.attributes.add("run_date", datetime.now() + timedelta(days=7))
+
+    def at_start(self, **kwargs):
+        super(WeeklyEvents, self).at_start(**kwargs)
+        from world.magic.advancement import init_magic_advancement
+        init_magic_advancement()
 
     @property
     def inform_creator(self):

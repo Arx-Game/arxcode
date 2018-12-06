@@ -79,7 +79,9 @@ class InvestigationFormCommand(ArxCommand):
             col = (col + "-") if col == "|r" else col
             val = ("%s%s|n" % (col, val)) if color else str(val)
             return val
-
+        source_clue = self.investigation_form[6]
+        if source_clue:
+            return str(source_clue)
         tags_list = self.investigation_form[5]
         if not tags_list:
             return ""
@@ -186,10 +188,15 @@ class InvestigationFormCommand(ArxCommand):
         inv_ob = self.create_obj_from_form(form)
         if self.need_new_clue_written:
             form = self.investigation_form
-            search_tags, omit_tags = form[5]
+            source_clue = form[6]
             clue_name = "PLACEHOLDER for Investigation #%s" % inv_ob.id
-            gm_notes = "Added tags: %s\n" % list_to_string(search_tags)
-            gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
+            if source_clue:
+                gm_notes = "Trying to find things related to Clue #%s: %s" % (source_clue.id, source_clue)
+                search_tags = list(source_clue.search_tags.all())
+            else:
+                search_tags, omit_tags = form[5]
+                gm_notes = "Added tags: %s\n" % list_to_string(search_tags)
+                gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
             clue = Clue.objects.create(name=clue_name, gm_notes=gm_notes, allow_investigation=True, rating=30)
             for tag in search_tags:
                 clue.search_tags.add(tag)
@@ -204,8 +211,9 @@ class InvestigationFormCommand(ArxCommand):
 
     @property
     def initial_form_values(self):
-        return ['', '', '', '', '', []]
+        return ['', '', '', '', '', [], None]
 
+    # noinspection PyAttributeOutsideInit
     def create_form(self):
         """
         Initially populates the form we use. Other switches will populate
@@ -340,7 +348,7 @@ class CmdAssistInvestigation(InvestigationFormCommand):
 
     @property
     def initial_form_values(self):
-        return ['', '', '', '', self.caller, []]
+        return ['', '', '', '', self.caller, [], None]
 
     @property
     def helper(self):
@@ -786,6 +794,9 @@ class CmdInvestigate(InvestigationFormCommand):
     About topic/tags: Using multiple tags results in very specific research
     on a clue involving ALL those topics. You may place '-' in front to
     omit clues with that tag. ex: "@investigate/tags primum/tyrval/-adept"
+    Alternately, you may specify an existing clue to try to find out things
+    related to it, by setting the topic with 'Clue: <id or name>'. So if you
+    want to find more things related to clue 50, it would be 'Clue: 50'.
     Be aware that specificity may result in nothing found, but you might be
     offered the chance to expend great effort (100 AP) into researching a
     clue that no one has found before.
@@ -883,41 +894,49 @@ class CmdInvestigate(InvestigationFormCommand):
     def get_target(self):
         """Sets the target of the object we'll create. For an investigation,
         this will be the topic."""
-        no_tags_msg = "You must include a tag to investigate"
+        no_tags_msg = "You must include a tag or clue to investigate"
         if not self.args:
             return self.msg(no_tags_msg + ".")
         try:
-            search_tags, omit_tags = self.get_tags_from_args()
+            search_tags, omit_tags, source_clue = self.get_tags_or_clue_from_args()
         except CommandError as err:
             return self.msg(err)
-        if not search_tags:
+        if not search_tags and not source_clue:
             return self.msg(no_tags_msg + ", not just tags you want to omit.")
-        clue = get_random_clue(self.caller.roster, search_tags, omit_tags)
+        clue = get_random_clue(self.caller.roster, search_tags, omit_tags, source_clue)
         if not clue:
             if check_break():
                 return self.refuse_new_clue("Investigations that require new writing are not " +
                                             "allowed during staff break.")
             if len(search_tags) + len(omit_tags) > 6:
                 return self.refuse_new_clue("That investigation would be too specific.")
-            self.msg("The tag(s) specified does not match an existing clue, and will be much more difficult and "
-                     "more expensive to look into than normal. Try other tags for an easier investigation, or "
+            self.msg("The tag(s) or clue specified does not match an existing clue, and will be much more difficult and"
+                     " more expensive to look into than normal. Try other tags for an easier investigation, or "
                      "proceed to /finish for a much more difficult one.")
         self.investigation_form[5] = [search_tags, omit_tags]
         self.investigation_form[4] = clue
         self.investigation_form[0] = self.args
+        self.investigation_form[6] = source_clue
         super(CmdInvestigate, self).get_target()
 
-    def get_tags_from_args(self):
+    def get_tags_or_clue_from_args(self):
         args = self.args.split("/")
         search_tags = []
         omit_tags = []
+        source_clue = None
+        if args[0].lower().startswith("clue:"):
+            args = args[0].lower()
+            name = args.lstrip("clue:").strip()
+            q_args = Q(characters=self.caller.roster)
+            source_clue = self.get_by_name_or_id(Clue, name, q_args=q_args)
+            return search_tags, omit_tags, source_clue
         for tag_txt in args:
             tag = self.get_by_name_or_id(SearchTag, tag_txt.lstrip("-"))
             if tag_txt.startswith("-"):
                 omit_tags.append(tag)
             else:
                 search_tags.append(tag)
-        return search_tags, omit_tags
+        return search_tags, omit_tags, source_clue
 
     @property
     def need_new_clue_written(self):
@@ -1238,8 +1257,12 @@ class CmdAdminInvestigations(ArxPlayerCommand):
             player = self.caller.search(self.lhs)
             if not player:
                 return
-            undisco = player.roster.undiscovered_clues.filter(Q(desc__icontains=self.rhs) | Q(name__icontains=self.rhs)
-                                                              | Q(search_tags__name__icontains=self.rhs)).distinct()
+            clue_query = (Q(desc__icontains=self.rhs) | Q(name__icontains=self.rhs) |
+                          Q(search_tags__name__icontains=self.rhs))
+            rev_query = Q(revelations__desc__icontains=self.rhs) | Q(revelations__search_tags__name__icontains=self.rhs)
+            rev_query |= Q(revelations__name__icontains=self.rhs)
+            undisco = (player.roster.undiscovered_clues.filter(allow_investigation=True)
+                                                       .filter(clue_query | rev_query).distinct())
             self.msg("Clues that match: %s" % ", ".join("(ID:%s, %s)" % (ob.id, ob) for ob in undisco))
             return
         try:

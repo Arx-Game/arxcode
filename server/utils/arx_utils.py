@@ -663,10 +663,12 @@ def a_or_an(word):
 
 
 def commafy(string_list):
-    if len(string_list) == 1:
+    if len(string_list) == 0:
+        return "None"
+    elif len(string_list) == 1:
         return string_list[0]
     elif len(string_list) == 2:
         return string_list[0] + " and " + string_list[1]
     else:
-        return ", ".join(sring_list[:-2] + [" and ".join(string_list[-2:])])
+        return ", ".join(string_list[:-2] + [" and ".join(string_list[-2:])])
 

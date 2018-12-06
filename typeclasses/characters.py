@@ -15,9 +15,10 @@ from world.msgs.languagehandler import LanguageHandler
 from evennia.utils.utils import lazy_property, variable_from_module
 import time
 from world.stats_and_skills import do_dice_check
+from world.magic.mixins import MagicMixins
 
 
-class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, DefaultCharacter):
+class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMixins, DefaultCharacter):
     """
     The Character defaults to reimplementing some of base Object's hook methods with the
     following functionality:
@@ -1083,3 +1084,13 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, Default
         from web.character.models import Clue
         return self.roster.clue_discoveries.filter(clue__clue_type=Clue.CHARACTER_SECRET,
                                                    clue__tangible_object=self).exclude(clue__desc="").distinct()
+
+    def at_magic_exposure(self, alignment=None, affinity=None, strength=10):
+        if not self.practitioner:
+            return
+
+        if not alignment:
+            from world.magic.models import Alignment
+            alignment = Alignment.PRIMAL
+
+        self.practitioner.at_magic_exposure(alignment=alignment, affinity=affinity, strength=strength)

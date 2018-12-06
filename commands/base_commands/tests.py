@@ -1,5 +1,5 @@
 """
-Tests for different general commands. Tests for other command sets or for different apps can be found elsewhere.
+Tests for different general commands.
 """
 
 from mock import Mock, patch, PropertyMock
@@ -17,7 +17,7 @@ from commands.base_commands.crafting import CmdCraft
 from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -844,6 +844,24 @@ class StaffCommandTests(ArxCommandTest):
         self.call_cmd("/remove test=testaccount2,testorg2", "Removed from test: Testaccount2, Testorg2")
         self.call_cmd("test", "Entities with test tag: Testaccount, testorg")
 
+    def test_cmd_config(self):
+        self.setup_cmd(staff_commands.CmdSetServerConfig, self.account)
+        self.call_cmd("asdf", 'Not a valid key: cg bonus skill points, ap transfers disabled, motd, income')
+        self.call_cmd("income=5", '| key                                    | value                             '
+                                  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                                  '| cg bonus skill points                  | None                              '
+                                  '| ap transfers disabled                  | None                              '
+                                  '| motd                                   | None                              '
+                                  '| income                                 | 5.0')
+        self.call_cmd("cg bonus skill points=20",
+                      '| key                                    | value                             '
+                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                      '| cg bonus skill points                  | 20                                '
+                      '| ap transfers disabled                  | None                              '
+                      '| motd                                   | None                              '
+                      '| income                                 | 5.0')
+
+
 
 class StaffCommandTestsPlus(ArxCommandTest):
     num_additional_characters = 1
@@ -900,16 +918,17 @@ class StaffCommandTestsPlus(ArxCommandTest):
         slyplot1.revelation_involvement.create(revelation=bishirev1, gm_notes="Poor bishis do not stand a chance.")
         slyplot1.clue_involvement.create(clue=slycloo1, access=2,
                                          gm_notes="Not really a secret that Slyyy is sexy tbh.")
+        slyplot1.clue_involvement.create(clue=slycloo2, access=2,
+                                         gm_notes="All Sly's secrets are related to Slyposing.")
         slyplot1.clue_involvement.create(clue=glyphcloo1, access=1,
                                          gm_notes="Slyposing synergizes with glyphed catsuits.")
-        slyplot1.clue_involvement.create(clue=galvcloo1, access=0, gm_notes="Bishis are excellent to slypose upon.")
         self.call_cmd("/plot Slypose", "REVELATIONS tied to Slypose:\n"
                                        "[Vixens Are Evil] Naturally this applies to Slyyyy.\n"
                                        "[Bishis Are Hot] Poor bishis do not stand a chance.\n"
                                        "CLUES tied to Slypose: (Grants access, Provides hook, Neutral)\n"
                                        "[Secret #1 of Slyyyy] (#1) Not really a secret that Slyyy is sexy tbh.\n"
-                                       "[Glyphed Catsuit] (#4) Slyposing synergizes with glyphed catsuits.\n"
-                                       "[Secret #1 of Galvanion] (#3) Bishis are excellent to slypose upon.")
+                                       "[Secret #2 of Slyyyy] (#2) All Sly's secrets are related to Slyposing.\n"
+                                       "[Glyphed Catsuit] (#4) Slyposing synergizes with glyphed catsuits.\n")
         self.call_cmd("/plot", '| #   | Plot (owner)           | Summary                                     '
                                '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                                '| 1   | Slypose (Testaccount2) | Sly as a fox.')
@@ -926,15 +945,22 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                    "its highest category of need.\nNever in a plot: Char and Char3\n"
                                    "Only in resolved plots: Char2")
         self.char2.dompc.inform = Mock()
+        self.char1.dompc.inform = Mock()
         self.call_cmd("/hook 1,1", "Hook failed; one exists between secret 'Secret #1 of Slyyyy' (#1) and "
                                    "plot 'Slypose' (#1) already.")
-        self.call_cmd("/hook 2,1=All Sly's secrets are related to Slyposing.",
-                      "Created a plot hook for secret 'Secret #2 of Slyyyy' (#2) and plot 'Slypose' (#1). "
-                      "GM Notes: All Sly's secrets are related to Slyposing.")
-        self.char2.dompc.inform.assert_called_with(message="Your secret 'Secret #2 of Slyyyy' (#2) and plot "
-                                                   "'Slypose' (#1) are now connected! Use plots/findcontact to "
-                                                   "decide how you will approach a contact and get involved.",
-                                                   category="Plot Hook", append=True)
+        self.call_cmd("/hook 3,1=Bishis are excellent to slypose upon.",
+                      "Created a plot hook for secret 'Secret #1 of Galvanion' (#3) and plot 'Slypose' (#1). "
+                      "GM Notes: Bishis are excellent to slypose upon.")
+        self.char2.dompc.inform.assert_called_with('Char has had a hook created for the plot Slypose. They can use '
+                                                   'plots/findcontact to see the recruiter_story written for any '
+                                                   'character marked on your plot as a recruiter or above, which are '
+                                                   'intended to as in-character justifications on how they could have '
+                                                   'heard your character is involved to arrange a scene. Feel free to '
+                                                   'reach out to them first if you like.', append=True, category='Plot')
+        self.char1.dompc.inform.assert_called_with(append=True, category='Plot Hook',
+                                                   message="Your secret 'Secret #1 of Galvanion' (#3) and plot "
+                                                           "'Slypose' (#1) are now connected! Use plots/findcontact to "
+                                                           "decide how you will approach a contact and get involved.")
         self.call_cmd("vixen", "Tagged as 'vixen':\n[Clues] Secret #1 of Slyyyy (#1); Glyphed Catsuit (#4)\n"
                                "[Plots] Slypose (#1)")
         self.call_cmd("/delete bishi", "Tagged as 'bishi':\n"
@@ -1048,3 +1074,32 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
         self.call_cmd("", "Closed tickets: 3\nOpen tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
                           "Use +request <#> to view an individual ticket. "
                           "Use +request/followup <#>=<comment> to add a comment.")
+
+
+class XPCommandTests(ArxCommandTest):
+
+    def test_cmd_use_xp(self):
+        from evennia.server.models import ServerConfig
+        from .guest import setup_voc
+        from world import stats_and_skills
+        self.setup_cmd(xp.CmdUseXP, self.char2)
+        setup_voc(self.char2, "courtier")
+        self.char2.db.xp = 0
+        self.call_cmd("/spend Teasing", "'Teasing' wasn't identified as a stat, ability, or skill.")
+        self.call_cmd("/spend Seduction", "Unable to raise seduction. The cost is 42, and you have 0 xp.")
+        stats_and_skills.adjust_skill(self.char2, "seduction")
+        ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 8)
+        self.char2.adjust_xp(10)
+        self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 10 xp. XP remaining: 0")
+        ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 32)
+        self.char2.adjust_xp(1062)
+        self.call_cmd("/spend Seduction", 'You cannot buy a legendary skill while you still have catchup xp remaining.')
+        ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 5)
+        self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 1039 xp. XP remaining: 23")
+        self.assertEqual(self.char2.db.skills.get("seduction"), 6)
+        self.assertEqual(stats_and_skills.get_skill_cost(self.char2, "dodge"), 42)
+        self.assertEqual(stats_and_skills.get_skill_cost_increase(self.char2), 1.078)
+        self.char2.db.trainer = self.char1
+        self.char1.db.skills = {"teaching": 5, "dodge": 2}
+        self.call_cmd("/spend dodge", 'You have increased your dodge for a cost of 23 xp. XP remaining: 0')
+        # TODO: other switches
