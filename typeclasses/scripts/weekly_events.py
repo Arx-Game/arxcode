@@ -88,6 +88,11 @@ class WeeklyEvents(RunDateMixin, Script):
         self.start_delay = True
         self.attributes.add("run_date", datetime.now() + timedelta(days=7))
 
+    def at_start(self, **kwargs):
+        super(WeeklyEvents, self).at_start(**kwargs)
+        from world.magic.advancement import init_magic_advancement
+        init_magic_advancement()
+
     @property
     def inform_creator(self):
         """Returns a bulk inform creator we'll use for gathering informs from the weekly update"""

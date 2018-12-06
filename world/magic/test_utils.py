@@ -39,6 +39,8 @@ class ArxMagicTest(ArxTest):
     def setUp(self):
         super(ArxMagicTest, self).setUp()
         self.alignment = Alignment.objects.create(name="Test", adjective="spectacular", alter_caster=False)
+        # travis keeps a copy of the Primal alignment created from migrations. Why? Because fuck you, that's why
+        self.primal, _ = Alignment.objects.get_or_create(name="Primal")
         self.affinity = Affinity.objects.create(name="Light")
         self.recipe = CraftingRecipe.objects.create(name="alaricite tester", desc="A test recipe.")
         self.test_object = create.create_object(typeclass="typeclasses.objects.Object", key="Test Object",
