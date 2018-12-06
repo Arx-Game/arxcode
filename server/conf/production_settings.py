@@ -2,9 +2,12 @@
 Settings we use for production. Some of these could eventually be moved into a settings.ini file
 """
 from .base_settings import *
-TELNET_INTERFACES = ['45.33.87.194']
-WEBSOCKET_CLIENT_INTERFACE = '45.33.87.194'
-ALLOWED_HOSTS = ['.arxmush.org', '.arxgame.org']
+
+from decouple import config, Csv
+
+TELNET_INTERFACES = config('TELNET_INTERFACES', default='45.33.87.194', cast=Csv())
+WEBSOCKET_CLIENT_INTERFACE = config('WEBSOCKET_CLIENT_INTERFACE', default='45.33.87.194')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='.arxmush.org, .arxgame.org', cast=Csv())
 WEBSERVER_PORTS = [(8000, 5001)]
 WEBSOCKET_CLIENT_PORT = 8001
 SSH_PORTS = [8022]
