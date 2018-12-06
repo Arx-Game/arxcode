@@ -2209,6 +2209,12 @@ class Plot(SharedMemoryModel):
             sep = "\n"
         return msg
 
+    def inform(self, text, category="Plot", append=True):
+        """Sends an inform to all active participants"""
+        active = self.dompcs.filter(plot_involvement__activity_status=PCPlotInvolvement.ACTIVE)
+        for dompc in active:
+            dompc.inform(text, category=category, append=append)
+
 
 class OrgPlotInvolvement(SharedMemoryModel):
     """An org's participation in a plot"""

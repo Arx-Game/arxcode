@@ -918,16 +918,17 @@ class StaffCommandTestsPlus(ArxCommandTest):
         slyplot1.revelation_involvement.create(revelation=bishirev1, gm_notes="Poor bishis do not stand a chance.")
         slyplot1.clue_involvement.create(clue=slycloo1, access=2,
                                          gm_notes="Not really a secret that Slyyy is sexy tbh.")
+        slyplot1.clue_involvement.create(clue=slycloo2, access=2,
+                                         gm_notes="All Sly's secrets are related to Slyposing.")
         slyplot1.clue_involvement.create(clue=glyphcloo1, access=1,
                                          gm_notes="Slyposing synergizes with glyphed catsuits.")
-        slyplot1.clue_involvement.create(clue=galvcloo1, access=0, gm_notes="Bishis are excellent to slypose upon.")
         self.call_cmd("/plot Slypose", "REVELATIONS tied to Slypose:\n"
                                        "[Vixens Are Evil] Naturally this applies to Slyyyy.\n"
                                        "[Bishis Are Hot] Poor bishis do not stand a chance.\n"
                                        "CLUES tied to Slypose: (Grants access, Provides hook, Neutral)\n"
                                        "[Secret #1 of Slyyyy] (#1) Not really a secret that Slyyy is sexy tbh.\n"
-                                       "[Glyphed Catsuit] (#4) Slyposing synergizes with glyphed catsuits.\n"
-                                       "[Secret #1 of Galvanion] (#3) Bishis are excellent to slypose upon.")
+                                       "[Secret #2 of Slyyyy] (#2) All Sly's secrets are related to Slyposing.\n"
+                                       "[Glyphed Catsuit] (#4) Slyposing synergizes with glyphed catsuits.\n")
         self.call_cmd("/plot", '| #   | Plot (owner)           | Summary                                     '
                                '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                                '| 1   | Slypose (Testaccount2) | Sly as a fox.')
@@ -944,15 +945,22 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                    "its highest category of need.\nNever in a plot: Char and Char3\n"
                                    "Only in resolved plots: Char2")
         self.char2.dompc.inform = Mock()
+        self.char1.dompc.inform = Mock()
         self.call_cmd("/hook 1,1", "Hook failed; one exists between secret 'Secret #1 of Slyyyy' (#1) and "
                                    "plot 'Slypose' (#1) already.")
-        self.call_cmd("/hook 2,1=All Sly's secrets are related to Slyposing.",
-                      "Created a plot hook for secret 'Secret #2 of Slyyyy' (#2) and plot 'Slypose' (#1). "
-                      "GM Notes: All Sly's secrets are related to Slyposing.")
-        self.char2.dompc.inform.assert_called_with(message="Your secret 'Secret #2 of Slyyyy' (#2) and plot "
-                                                   "'Slypose' (#1) are now connected! Use plots/findcontact to "
-                                                   "decide how you will approach a contact and get involved.",
-                                                   category="Plot Hook", append=True)
+        self.call_cmd("/hook 3,1=Bishis are excellent to slypose upon.",
+                      "Created a plot hook for secret 'Secret #1 of Galvanion' (#3) and plot 'Slypose' (#1). "
+                      "GM Notes: Bishis are excellent to slypose upon.")
+        self.char2.dompc.inform.assert_called_with('Char has had a hook created for the plot Slypose. They can use '
+                                                   'plots/findcontact to see the recruiter_story written for any '
+                                                   'character marked on your plot as a recruiter or above, which are '
+                                                   'intended to as in-character justifications on how they could have '
+                                                   'heard your character is involved to arrange a scene. Feel free to '
+                                                   'reach out to them first if you like.', append=True, category='Plot')
+        self.char1.dompc.inform.assert_called_with(append=True, category='Plot Hook',
+                                                   message="Your secret 'Secret #1 of Galvanion' (#3) and plot "
+                                                           "'Slypose' (#1) are now connected! Use plots/findcontact to "
+                                                           "decide how you will approach a contact and get involved.")
         self.call_cmd("vixen", "Tagged as 'vixen':\n[Clues] Secret #1 of Slyyyy (#1); Glyphed Catsuit (#4)\n"
                                "[Plots] Slypose (#1)")
         self.call_cmd("/delete bishi", "Tagged as 'bishi':\n"

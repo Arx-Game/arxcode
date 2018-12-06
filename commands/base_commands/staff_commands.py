@@ -1270,6 +1270,9 @@ class CmdGMNotes(ArxPlayerCommand):
         content_str = "secret '%s' (#%s) and plot '%s' (#%s)" % (secret, secret.id, plot, plot.id)
         if plot.clue_involvement.filter(clue=secret).exists():
             raise CommandError("Hook failed; one exists between %s already." % content_str)
+        dompc = secret.tangible_object.dompc
+        if dompc in plot.dompcs.all():
+            raise CommandError("They already are involved in the plot.")
         plot.clue_involvement.create(clue=secret, gm_notes=gm_notes, access=CluePlotInvolvement.HOOKED)
         inf_msg = "Your %s are now connected! Use plots/findcontact to decide how you will " % content_str
         inf_msg += "approach a contact and get involved."
@@ -1278,6 +1281,12 @@ class CmdGMNotes(ArxPlayerCommand):
         if gm_notes:
             msg += " GM Notes: %s" % gm_notes
         self.msg(msg)
+        msg_for_plot = "%s has had a hook created for the plot %s. " % (secret.tangible_object, plot)
+        msg_for_plot += "They can use plots/findcontact to see the recruiter_story written for any "
+        msg_for_plot += "character marked on your plot as a recruiter or above, which are intended to "
+        msg_for_plot += "as in-character justifications on how they could have heard your character is "
+        msg_for_plot += "involved to arrange a scene. Feel free to reach out to them first if you like."
+        plot.inform(msg_for_plot)
 
 
 class CmdJournalAdminForDummies(ArxPlayerCommand):
