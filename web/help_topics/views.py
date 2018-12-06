@@ -151,9 +151,20 @@ def list_commands(request):
         cmdname = cmd.key.lower()
         cmdname = cmdname.lstrip("+").lstrip("@")
         return cmdname
-    player_cmds = sorted([ob for ob in AccountCmdSet() if ob.access(user, 'cmd')], key=sort_name)
-    char_cmds = sorted([ob for ob in CharacterCmdSet() if ob.access(user, 'cmd')], key=sort_name)
-    situational_cmds = sorted([ob for ob in SituationalCmdSet() if ob.access(user, 'cmd')], key=sort_name)
+
+    def check_cmd_access(cmdset):
+        cmd_list = []
+        for cmd in cmdset:
+            try:
+                if cmd.access(user, 'cmd'):
+                    cmd_list.append(cmd)
+            except (AttributeError, ValueError, TypeError):
+                continue
+        return sorted(cmd_list, key=sort_name)
+
+    player_cmds = check_cmd_access(AccountCmdSet())
+    char_cmds = check_cmd_access(CharacterCmdSet())
+    situational_cmds = check_cmd_access(SituationalCmdSet())
     return render(request, 'help_topics/list_commands.html', {'player_cmds': player_cmds,
                                                               'character_cmds': char_cmds,
                                                               'situational_cmds': situational_cmds,

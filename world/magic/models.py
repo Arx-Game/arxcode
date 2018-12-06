@@ -374,7 +374,7 @@ class Practitioner(SharedMemoryModel):
         try:
             practitioner = Practitioner.objects.get(character=obj)
             return practitioner
-        except (Practitioner.DoesNotExist, Practitioner.MultipleObjectsReturned):
+        except (Practitioner.DoesNotExist, Practitioner.MultipleObjectsReturned, TypeError):
             return None
 
     @staticmethod

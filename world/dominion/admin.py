@@ -2,6 +2,7 @@
 Admin for Dominion
 """
 from django.contrib import admin
+from django.db.models import Q
 from django.shortcuts import reverse
 from django.utils.html import escape
 
@@ -371,13 +372,32 @@ class PCPlotInvolvementInline(admin.StackedInline):
     classes = ['collapse']
 
 
+class PlotRecruiterListFilter(OrgListFilter):
+    """List filter for showing Plots that are recruiting"""
+    title = 'Currently Recruiting'
+    parameter_name = 'recruiting'
+
+    def lookups(self, request, model_admin):
+        """Defines lookup display for list filter"""
+        return (
+            ('recruiting', 'Has Recruiters'),
+        )
+
+    def queryset(self, request, queryset):
+        """modifies orglistfilter query for domains"""
+        if self.value() == 'recruiting':
+            return queryset.filter(Q(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE)
+                                   & Q(dompc_involvement__admin_status__gte=PCPlotInvolvement.RECRUITER)
+                                   & ~Q(dompc_involvement__recruiter_story="")).distinct()
+
+
 class PlotAdmin(DomAdmin):
     """Admin for Crises, macro-level events affecting the game/metaplot"""
     list_display = ('id', 'name', 'desc', 'end_date', 'parent_plot')
     filter_horizontal = ['orgs', 'search_tags']
     raw_id_fields = ('required_clue', 'parent_plot')
     search_fields = ('name', 'desc', 'dompcs__player__username')
-    list_filter = ('resolved', 'usage')
+    list_filter = ('resolved', 'usage', PlotRecruiterListFilter)
     inlines = (PlotUpdateInline, PlotOrgInvolvementInline, PCPlotInvolvementInline)
 
 
