@@ -654,7 +654,7 @@ def edit_action(request, object_id, action_id):
             raise Http404
 
         real_action.topic = form.cleaned_data['tldr']
-        real_action.actions = form.cleaned_data['action_text']
+
         real_action.secret_actions = form.cleaned_data['secret_action']
         real_action.stat_used = form.cleaned_data['stat_choice']
         real_action.skill_used = form.cleaned_data['skill_choice']
@@ -664,17 +664,23 @@ def edit_action(request, object_id, action_id):
 
         if real_action.main_action == real_action:
             real_action.category = form.cleaned_data['category']
-        real_action.save()
-
-        if "save" in request.POST:
-            return new_action_view(request, object_id, action_id)
-
-        # We're trying to submit the form!
-        try:
-            real_action.submit()
-            return new_action_view(request, object_id, action_id)
-        except ActionSubmissionError as err:
-            form_errors = strip_ansi(str(err))
+            real_action.actions = form.cleaned_data['action_text']
+            real_action.save()
+        else:
+            try:
+                # charge for setting an assist's action
+                real_action.set_action(form.cleaned_data['action_text'])
+            except ActionSubmissionError as err:
+                form_errors = strip_ansi(str(err))
+        if not form_errors:
+            if "save" in request.POST:
+                return new_action_view(request, object_id, action_id)
+            # We're trying to submit the form!
+            try:
+                real_action.submit()
+                return new_action_view(request, object_id, action_id)
+            except ActionSubmissionError as err:
+                form_errors = strip_ansi(str(err))
 
     ooc_intent_raw = real_action.ooc_intent
     if not ooc_intent_raw:
