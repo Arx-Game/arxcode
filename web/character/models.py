@@ -1431,6 +1431,25 @@ class Investigation(AbstractPlayerAllocations):
                 if self.automate_result:
                     self.results = "Your investigation has discovered a clue!\n"
                 self.results += disco.display()
+                if self.topic and self.topic.lower().startswith("clue:"):
+                    try:
+                        name = self.topic.lower().lstrip("clue:").strip()
+                        if name.isdigit():
+                            source_clue = Clue.objects.get(id=name)
+                        else:
+                            source_clue = Clue.objects.get(name__iexact=name)
+                        tags = [ob.id for ob in source_clue.search_tags.all()]
+                        shared_tags = self.clue_target.search_tags.filter(id__in=tags)
+                        if not shared_tags:
+                            msg = "\nIt's not immediately clear how this relates to %s " % source_clue
+                            msg += ", but you found this while trying to learn more about it."
+                        else:
+                            from server.utils.arx_utils import list_to_string
+                            msg = "\nWhile looking into %s, you found some references " % source_clue
+                            msg += "to '%s' that resulted in your discovery." % list_to_string(list(shared_tags))
+                        self.results += msg
+                    except (Clue.DoesNotExist, Clue.MultipleObjectsReturned):
+                        pass
                 message = disco.message or "Your investigation has discovered this!"
                 disco.mark_discovered(method="investigation", message=message, investigation=self)
                 # we found a clue, so this investigation is done.
@@ -1631,8 +1650,16 @@ def get_random_clue(roster, search_tags, omit_tags=None, source_clue=None):
     """
     exact = Clue.objects.filter(Q(allow_investigation=True) & ~Q(characters=roster))
     if source_clue:
-        exact = exact.filter(Q(search_tags__in=source_clue.search_tags.all()) |
-                             Q(revelations__in=source_clue.revelations.all()))
+        by_revelation = exact.filter(revelations__in=source_clue.revelations.all()).annotate(cnt=Count('discoveries'))
+        tags = source_clue.search_tags.all()
+        if by_revelation:
+            tag_ids = [ob.id for ob in tags]
+            picker = WeightedPicker()
+            for clue in by_revelation:
+                tag_matches = clue.search_tags.filter(id__in=tag_ids).count()
+                picker.add_option(clue, clue.cnt + tag_matches)
+            return picker.pick()
+        exact = exact.filter(search_tags__in=source_clue.search_tags.all())
     else:
         exact = reduce(lambda x, y: x.filter(search_tags=y), search_tags, exact)
         if omit_tags:
