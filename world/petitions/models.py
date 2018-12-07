@@ -19,10 +19,12 @@ class BrokeredSale(SharedMemoryModel):
     SOCIAL = 2
     MILITARY = 3
     CRAFTING_MATERIALS = 4
+    SALE = 0
+    PURCHASE = 1
     OFFERING_TYPES = ((ACTION_POINTS, "Action Points"), (ECONOMIC, "Economic Resources"), (SOCIAL, "Social Resources"),
                       (MILITARY, "Military Resources"), (CRAFTING_MATERIALS, "Crafting Materials"))
     RESOURCE_TYPES = ((ECONOMIC, "economic"), (SOCIAL, "social"), (MILITARY, "military"))
-    BROKER_TYPES ((PURCHASE,"Purchase"),(SALE,"Sale"))
+    BROKER_TYPES =((PURCHASE,"Purchase"),(SALE,"Sale"))
     owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="brokered_sales")
     sale_type = models.PositiveSmallIntegerField(default=ACTION_POINTS, choices=OFFERING_TYPES)
     amount = models.PositiveIntegerField(default=0)
@@ -79,7 +81,7 @@ class BrokeredSale(SharedMemoryModel):
         if amount > self.amount:
             raise PayError("You want to buy %s, but there is only %s for sale." % (amount, self.amount))
         cost = self.price * amount
-        character = buyer.player.char_ob)
+        character = buyer.player.char_ob
         self.amount -= amount
         self.save()
         self.record_sale(buyer, amount)
@@ -117,21 +119,21 @@ class BrokeredSale(SharedMemoryModel):
 
     def cancel(self):
         """Refund our owner and delete ourselves"""
-        if self.broker_type=self.PURCHASE:
-            self.owner_character.pay_money(self.amount*self.price)
+        if self.broker_type==self.PURCHASE:
+            self.owner_character.pay_money(-self.amount*self.price)
         else:
             self.send_goods(self.owner, self.amount)
         self.delete()
 
     def change_price(self, new_price):
         """Changes the price to new_price. If we have an existing sale by that price, merge with it."""
-        if self.broker_type=self.PURCHASE:
+        if self.broker_type==self.PURCHASE:
             buyer=self.owner_character
             original_cost=new_price*self.amount
             new_cost=self.price*self.amount
             to_pay=original_cost-new_cost
             if (to_pay) > buyer.currency:
-                raise PayError("You cannot afford to pay %s when you only have %s silver." % (to_pay, character.currency))
+                raise PayError("You cannot afford to pay %s when you only have %s silver." % (to_pay, buyer.currency))
             self.owner_character.pay_money(to_pay)
         try:
             other_sale = self.owner.brokered_sales.get(sale_type=self.sale_type, price=new_price,

@@ -326,7 +326,7 @@ class CmdBroker(ArxCommand):
     def broker_display(self):
         """Displays items for sale on the broker"""
 
-        qs = BrokeredSale.objects.filter(amount__gte=1)
+        qs = BrokeredSale.objects.filter(amount__gte=1,broker_type = BrokeredSale.SALE)
         if "search" in self.switches and self.args:
 
             sale_type = self.get_sale_type()
@@ -343,9 +343,31 @@ class CmdBroker(ArxCommand):
                              Q(owner__player__username__iexact=self.args))
             qs = qs.filter(query)
 
-        table = PrettyTable(["ID", "Seller", "Type", "Price", "Amount","Type"])
+        table = PrettyTable(["ID", "Seller", "Type", "Price", "Amount"])
         for deal in qs:
-            table.add_row([deal.id, str(deal.owner), str(deal.material_name), deal.price, deal.amount,deal.broker_type])
+            table.add_row([deal.id, str(deal.owner), str(deal.material_name), deal.price, deal.amount])
+        self.msg(str(table))
+        """Displays items wanted on the broker"""
+        qs = BrokeredSale.objects.filter(amount__gte=1,broker_type = BrokeredSale.PURCHASE)
+        if "search" in self.switches and self.args:
+
+            sale_type = self.get_sale_type()
+            if sale_type in (BrokeredSale.ACTION_POINTS, BrokeredSale.ECONOMIC,
+                             BrokeredSale.SOCIAL, BrokeredSale.MILITARY):
+                query = Q(sale_type=sale_type)
+            else:
+                if set(self.args.lower().split()) & {"materials", "mats", "crafting"}:
+                    query = Q(sale_type=BrokeredSale.CRAFTING_MATERIALS)
+                elif "resource" in self.args.lower():
+                    query = Q(sale_type__in=(BrokeredSale.ECONOMIC, BrokeredSale.SOCIAL, BrokeredSale.MILITARY))
+                else:
+                    query = (Q(crafting_material_type__name__icontains=self.args) |
+                             Q(owner__player__username__iexact=self.args))
+            qs = qs.filter(query)
+
+        table = PrettyTable(["ID", "Buyer", "Type", "Price", "Amount"])
+        for deal in qs:
+            table.add_row([deal.id, str(deal.owner), str(deal.material_name), deal.price, deal.amount])
         self.msg(str(table))
 
     def display_sale_detail(self):
@@ -355,7 +377,7 @@ class CmdBroker(ArxCommand):
 
     def make_purchase(self):
         """Buys some amount from a sale"""
-        "sale = self.find_brokered_sale_by_id(self.lhs)
+        sale_type = self.get_sale_type()
         if len(self.rhslist) != 2:
             raise self.BrokerError("You must ask for both an amount and a price.")
         amount = self.get_amount(self.rhslist[0])
@@ -364,7 +386,6 @@ class CmdBroker(ArxCommand):
         cost = price*amount
         if cost > character.currency:
             raise PayError("You cannot afford to pay %s when you only have %s silver." % (cost, character.currency))
-        sale_type = self.get_sale_type()
         material_type = None
         resource_types = dict(BrokeredSale.RESOURCE_TYPES)
         if sale_type == BrokeredSale.ACTION_POINTS:
@@ -384,28 +405,38 @@ class CmdBroker(ArxCommand):
                 raise self.BrokerError("You can't put contraband on the broker! Seriously, how are you still alive?")
         character.pay_money(cost)
         dompc = self.caller.player_ob.Dominion
-        sell_orders = BrokeredSale.objects.filter(broker_type = BrokeredSale.PURCHASE, price_lte=price)
+        sell_orders = BrokeredSale.objects.filter(broker_type = BrokeredSale.SALE, price__lte=price,sale_type=sale_type,crafting_material_type=material_type).order_by('price')
+        purchase, created = dompc.brokered_sales.get_or_create(price=price, sale_type=sale_type,
+                                       crafting_material_type=material_type, broker_type = BrokeredSale.PURCHASE)
+        if not created:
+            original=amount
+            amount+=purchase.amount
         for order in sell_orders:
+            
             if amount > 0:
                 seller=order.owner
-                if seller!=dompc and sale.owner.player.roster.current_account != self.caller.roster.current_account:
+                if seller!=dompc and order.owner.player.roster.current_account != self.caller.roster.current_account:
                     if amount > order.amount:
                         buyamount = order.amount
                     else:
                         buyamount=amount
                     order.make_purchase(dompc,buyamount)
+                    self.msg("You have bought %s %s from %s for %s silver." % (buyamount, order.material_name, seller, order.price*buyamount))
                     amount-=buyamount
+                    if order.price<price:
+                        character.pay_money(-(price-order.price)*buyamount)
 
-        purchase, created = dompc.brokered_sales.get_or_create(price=price, sale_type=sale_type,
-                                                           crafting_material_type=material_type, broker_type = BrokeredSale.PURCHASE)
-        purchase.amount += amount
-        if amount < 0:
-            character.pay_money(-(amount*price))
+
+        purchase.amount = amount
         purchase.save()
+        if amount == 0:
+            purchase.delete()
+            created=None
         if created:
-            self.msg("You have placed an order for %s %s for %s silver." % (amount, sale.material_name, price))
+            self.msg("You have placed an order for %s %s for %s silver each and %s total." % (amount, purchase.material_name, price, purchase.amount*price))
         else:
-            self.msg("Added %s to the existing order of %s for %s silver." % (amount, sale.material_name, price)) 
+            if amount > 0:
+                self.msg("Added %s to the existing order of %s for %s silver each and %s total." % (original, purchase.material_name, price, purchase.amount*price)) 
 
     def get_amount(self, args, noun="amount"):
         """Gets a positive number to use for a transaction, or raises a BrokerError"""
@@ -419,11 +450,11 @@ class CmdBroker(ArxCommand):
 
     def make_sale_offer(self):
         """Create a new sale"""
+        sale_type = self.get_sale_type()
         if len(self.rhslist) != 2:
             raise self.BrokerError("You must ask for both an amount and a price.")
         amount = self.get_amount(self.rhslist[0])
         price = self.get_amount(self.rhslist[1], "price")
-        sale_type = self.get_sale_type()
         material_type = None
         resource_types = dict(BrokeredSale.RESOURCE_TYPES)
         if sale_type == BrokeredSale.ACTION_POINTS:
@@ -451,26 +482,37 @@ class CmdBroker(ArxCommand):
             if not self.caller.player_ob.pay_materials(material_type, amount):
                 raise self.BrokerError("You don't have enough %s to put on sale." % material_type)
         dompc = self.caller.player_ob.Dominion
-        buy_orders = BrokeredSale.objects.filter(broker_type = BrokeredSale.PURCHASE, price_gte=price)
+
+        
+        sale, created = dompc.brokered_sales.get_or_create(price=price, sale_type=sale_type,
+                                                           crafting_material_type=material_type, broker_type = BrokeredSale.SALE)
+        if not created:
+            original=amount
+            amount+=sale.amount
+            
+        buy_orders = BrokeredSale.objects.filter(broker_type = BrokeredSale.PURCHASE, price__gte=price,sale_type=sale_type,crafting_material_type=material_type).order_by('-price')
         for order in buy_orders:
             if amount > 0:
                 buyer=order.owner
-                if buyer!=dompc and sale.owner.player.roster.current_account != self.caller.roster.current_account:
+                if buyer!=dompc and order.owner.player.roster.current_account != self.caller.roster.current_account:
                     if amount > order.amount:
                         buyamount = order.amount
                     else:
                         buyamount=amount
                     order.make_purchase(buyer,buyamount)
                     amount-=buyamount
-        
-        sale, created = dompc.brokered_sales.get_or_create(price=price, sale_type=sale_type,
-                                                           crafting_material_type=material_type, broker_type = BrokeredSale.SALE)
-        sale.amount += amount
+                    self.msg("You have sold %s %s to %s for %s silver." % (buyamount, order.material_name, buyer, order.price*buyamount))
+
+        sale.amount = amount
         sale.save()
+        if amount == 0:
+            sale.delete()
+            created=None
         if created:
-            self.msg("Created a new sale of %s %s for %s silver." % (amount, sale.material_name, price))
+            self.msg("Created a new sale of %s %s for %s silver each and %s total." % (amount, sale.material_name, price, sale.amount*price))
         else:
-            self.msg("Added %s to the existing sale of %s for %s silver." % (amount, sale.material_name, price))
+            if amount > 0:
+                self.msg("Added %s to the existing sale of %s for %s silver each and %s total." % (original, sale.material_name, price, sale.amount*price))
 
     def find_brokered_sale_by_id(self, args):
         """Tries to find a brokered sale with ID that matches args or raises BrokerError"""
@@ -486,7 +528,7 @@ class CmdBroker(ArxCommand):
             raise self.BrokerError("You can only cancel your own sales.")
         sale.cancel()
         broker_type = sale.broker_type
-        self.msg("You have cancelled the %s." % broker_type)
+        self.msg("You have cancelled the %s." % (dict(BrokeredSale.BROKER_TYPES)[broker_type].lower()))
 
     def change_sale_price(self):
         """Changes the price of a sale"""
