@@ -1567,6 +1567,9 @@ class CmdHeal(ArxCommand):
             noun = "bonus" if modifier > 0 else "penalty"
             self.msg("You have allowed %s to use +heal, with a %s to their roll of %s." % (targ, noun, abs(modifier)))
             return
+        if not caller.conscious:
+            self.msg("You must be awake to heal.")
+            return
         if not targ.dmg:
             caller.msg("%s does not require any medical attention." % targ)
             return

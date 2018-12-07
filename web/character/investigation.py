@@ -1424,30 +1424,27 @@ class CmdListClues(ArxPlayerCommand):
             raise CommandError("Please write a longer note that gives context to the clues you're sharing.")
         rhslist = rhslist.split(",")
         shared_names = []
-        cost = len(rhslist) * len(discoveries_to_share) * self.caller.clue_cost
-        if cost > self.caller.roster.action_points:
-            raise CommandError("Sharing the clue(s) with them would cost %s action points." % cost)
+        targets = []
         for arg in rhslist:
             pc = self.caller.search(arg)
             if not pc:
-                continue
-            tarchar = pc.char_ob
-            calchar = self.caller.char_ob
-            if not tarchar.location or tarchar.location != calchar.location:
-                self.msg("You can only share clues with someone in the same room. Please don't share clues without "
-                         "some RP talking about them.")
-                continue
+                return
+            if not pc.char_ob.location or self.caller.char_ob.location != pc.char_ob.location:
+                raise CommandError("You can only share clues with someone in the same room. Please don't share "
+                                   "clues without some RP talking about them.")
+            targets.append(pc)
+        cost = len(targets) * len(discoveries_to_share) * self.caller.clue_cost
+        if not self.caller.pay_action_points(cost):
+            raise CommandError("Sharing the clue(s) with them would cost %s action points." % cost)
+        for targ in targets:
             for discovery in discoveries_to_share:
-                discovery.share(pc.roster, note=note)
-            shared_names.append(str(pc.roster))
-        if shared_names and self.caller.pay_action_points(cost):
-            msg = "You have shared the clue(s) '%s' with %s." % (", ".join(str(ob.clue) for ob in discoveries_to_share),
-                                                                 ", ".join(shared_names))
-            if note:
-                msg += "\nYour note: %s" % note
-            self.msg(msg)
-        else:
-            self.msg("Shared nothing.")
+                discovery.share(targ.roster, note=note)
+            shared_names.append(str(targ.roster))
+        msg = "You have shared the clue(s) '%s' with %s." % (", ".join(str(ob.clue) for ob in discoveries_to_share),
+                                                             ", ".join(shared_names))
+        if note:
+            msg += "\nYour note: %s" % note
+        self.msg(msg)
 
     def disp_clue_table(self):
         table = PrettyTable(["{wClue #{n", "{wSubject{n", "{wType{n"])

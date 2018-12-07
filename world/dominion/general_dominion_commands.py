@@ -1642,7 +1642,7 @@ class CmdArmy(ArxPlayerCommand):
                 return
             if "transfer" in self.switches:
                 army = self.find_army(self.rhs)
-                if not army.can_change(caller):
+                if not army or not army.can_change(caller):
                     return
                 if not army.general:
                     self.msg("You may not transfer units to an army with no general.")

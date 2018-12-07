@@ -229,6 +229,7 @@ class StateIndependentCmdSet(CmdSet):
         self.add(story_actions.CmdAction())
         self.add(plot_commands.CmdPlots())
         self.add(goal_commands.CmdGoals())
+        self.add(combat.CmdHeal())
 
         # Magic!
         self.add(magic_commands.MagicCmdSet())
@@ -261,7 +262,6 @@ class MobileCmdSet(CmdSet):
         self.add(combat.CmdProtect())
         self.add(combat.CmdAutoattack())
         self.add(combat.CmdCombatStats())
-        self.add(combat.CmdHeal())
         self.add(combat.CmdHarm())
         self.add(combat.CmdFightStatus())
         self.add(agent_commands.CmdGuards())

@@ -5012,7 +5012,7 @@ class Member(SharedMemoryModel):
             # we got a big crit, hooray. Add a base of 1-30 resources to bonus, then triple the bonus
             patron_amount += randint(1, 50)
             patron_amount *= 3
-            msg += " Luck has gone %s's way, and they get a bonus!" % self
+            msg += " Luck has gone %s's way, and they get a bonus! " % self
         msg += "You have gained %s %s resources." % (patron_amount, resource_type)
         adjust_resources(self.player.assets, patron_amount)
         org_amount = patron_amount//5
