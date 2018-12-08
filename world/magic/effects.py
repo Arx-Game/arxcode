@@ -7,6 +7,7 @@ import sys
 
 
 class CodedEffect(object):
+    requires_combat = False
 
     @classmethod
     def load(cls, serialized_dict=None):

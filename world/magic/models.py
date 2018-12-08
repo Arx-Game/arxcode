@@ -1420,6 +1420,9 @@ class Working(SharedMemoryModel):
                 return "Something has gone horribly wrong and the system is misconfigured. " \
                        "Talk to staff and tell them what you tried to do!"
 
+            if effect_handler.requires_combat and not self.lead.character.combat.state:
+                return "This effect can only be used when you are in combat."
+
         return None
 
     # noinspection PyMethodMayBeStatic
