@@ -403,7 +403,7 @@ class CmdBroker(ArxCommand):
         character.pay_money(cost)
         dompc = self.caller.player_ob.Dominion
         sell_orders = BrokeredSale.objects.filter(broker_type=BrokeredSale.SALE, price__lte=price, sale_type=sale_type,
-                                                  crafting_material_type=material_type).order_by('price')
+                                                  amount__gt=0, crafting_material_type=material_type).order_by('price')
         purchase, created = dompc.brokered_sales.get_or_create(price=price, sale_type=sale_type,
                                                                crafting_material_type=material_type,
                                                                broker_type=BrokeredSale.PURCHASE)
@@ -413,7 +413,6 @@ class CmdBroker(ArxCommand):
         else:
             original = 0
         for order in sell_orders:
-            
             if amount > 0:
                 seller = order.owner
                 if seller != dompc and order.owner.player.roster.current_account != self.caller.roster.current_account:
@@ -509,7 +508,8 @@ class CmdBroker(ArxCommand):
         dompc = self.caller.dompc
         buy_orders = BrokeredSale.objects.filter(broker_type=BrokeredSale.PURCHASE, price__gte=sale.price,
                                                  sale_type=sale.sale_type,
-                                                 crafting_material_type=sale.crafting_material_type
+                                                 crafting_material_type=sale.crafting_material_type,
+                                                 amount__gt=0
                                                  ).exclude(owner=dompc).order_by('-price')
         amount = sale.amount
         for order in buy_orders:
