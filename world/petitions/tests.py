@@ -13,7 +13,8 @@ class TestPetitionCommands(ArxCommandTest):
         from web.character.models import PlayerAccount
         from evennia.server.models import ServerConfig
         mat = CraftingMaterialType.objects.create(name="testium", value=5000)
-        sale = BrokeredSale.objects.create(owner=self.dompc2, sale_type=BrokeredSale.ACTION_POINTS, amount=50, price=5,broker_type = BrokeredSale.SALE)
+        sale = BrokeredSale.objects.create(owner=self.dompc2, sale_type=BrokeredSale.ACTION_POINTS, amount=50, price=5,
+                                           broker_type=BrokeredSale.SALE)
         self.setup_cmd(petitions_commands.CmdBroker, self.char1)
         self.call_cmd("", 'ID Seller       Type          Price Amount \n'
                           '1  Testaccount2 Action Points 5     50     |\nID Buyer Type Price Amount')
@@ -23,7 +24,8 @@ class TestPetitionCommands(ArxCommandTest):
         self.call_cmd("/buy ap=-1,5", "You must provide a positive number as the amount.")
         self.char1.currency += 20000
         self.assertEqual(self.char2.currency, 0)
-        self.call_cmd("/buy ap=1,100", "You have placed an order for 1 Action Points for 100 silver each and 100 total.")
+        self.call_cmd("/buy ap=1,100",
+                      "You have placed an order for 1 Action Points for 100 silver each and 100 total.")
         self.call_cmd("/reprice 2=500000000", "You cannot afford to pay 499999900 when you only have 19900.0 silver.")
         self.assertEqual(self.char1.currency, 19900)
         self.call_cmd("/reprice 2=5000", "You have changed the price to 5000.")
@@ -37,13 +39,16 @@ class TestPetitionCommands(ArxCommandTest):
         self.char1.currency += 20000
         self.assertEqual(self.char1.currency, 20000) 
         self.call_cmd("/buy ap=5,100", "You have bought 5 Action Points from Testaccount2 for 25 silver.")
-        self.call_cmd("", 'ID Seller       Type          Price Amount \n1  Testaccount2 Action Points 5     45     |\nID Buyer Type Price Amount')
+        self.call_cmd("", 'ID Seller       Type          Price Amount \n1  Testaccount2 Action Points 5     45     |'
+                          '\nID Buyer Type Price Amount')
         self.call_cmd("/buy ap=15,25", 'You have bought 15 Action Points from Testaccount2 for 75 silver.')
         self.assertEqual(self.char1.currency, 19900)
         self.assertEqual(self.char2.currency, 100)
         self.assertEqual(self.roster_entry.action_points, 120)
         self.assertEqual(sale.amount, 30)
-        self.call_cmd("/buy ap=125,10", "You have bought 30 Action Points from Testaccount2 for 150 silver.|You have placed an order for 95 Action Points for 10 silver each and 950 total.")
+        self.call_cmd("/buy ap=125,10",
+                      "You have bought 30 Action Points from Testaccount2 for 150 silver.|"
+                      "You have placed an order for 95 Action Points for 10 silver each and 950 total.")
         self.assertEqual(self.roster_entry.action_points, 150)
         self.assertEqual(sale.amount, 0)
         self.call_cmd("/cancel 5", "You have cancelled the purchase.")
@@ -53,6 +58,8 @@ class TestPetitionCommands(ArxCommandTest):
                                             price=5, crafting_material_type=mat)
         self.call_cmd("/buy Economic=5,100", "You have bought 5 Economic Resources from Testaccount2 for 25 silver.")
         self.call_cmd("/buy Testium=10,100", "You have bought 10 testium from Testaccount2 for 50 silver.")
+        self.assertEqual(sale2.amount, 45)
+        self.assertEqual(sale3.amount, 40)
         self.assertEqual(self.char1.currency, 19925)
         self.assertEqual(self.char2.currency, 325)
         self.assertEqual(self.assetowner.economic, 5)
@@ -66,12 +73,15 @@ class TestPetitionCommands(ArxCommandTest):
         self.call_cmd("/sell ap=12,100", 'Action Point sales are temporarily disabled.')
         ServerConfig.objects.conf(key="DISABLE_AP_TRANSFER", delete=True)
         self.call_cmd("/sell ap=12,100", "Created a new sale of 4 Action Points for 100 silver each and 400 total.")
-        self.call_cmd("/sell ap=6,100", "Added 2 to the existing sale of Action Points for 100 silver each and 600 total.")
+        self.call_cmd("/sell ap=6,100",
+                      "Added 2 to the existing sale of Action Points for 100 silver each and 600 total.")
         self.call_cmd("/sell ap=600,500", "You do not have enough action points to put on sale.")
         self.call_cmd("/sell military=1, 1000", "You do not have enough military resources to put on sale.")
-        self.call_cmd("/sell economic=1,1000", "Created a new sale of 1 Economic Resources for 1000 silver each and 1000 total.")
+        self.call_cmd("/sell economic=1,1000",
+                      "Created a new sale of 1 Economic Resources for 1000 silver each and 1000 total.")
         self.assertEqual(self.assetowner.economic, 4)
-        self.call_cmd("/sell economic=2,500", "Created a new sale of 2 Economic Resources for 500 silver each and 1000 total.")
+        self.call_cmd("/sell economic=2,500",
+                      "Created a new sale of 2 Economic Resources for 500 silver each and 1000 total.")
         self.assertEqual(self.assetowner.economic, 2)
         self.call_cmd("/sell asdf=2,500", "Could not find a material by the name 'asdf'.")
         self.call_cmd("/sell testium=1,500", "Created a new sale of 1 testium for 500 silver each and 500 total.")
@@ -81,22 +91,67 @@ class TestPetitionCommands(ArxCommandTest):
                                              "Seriously, how are you still alive?")
         self.call_cmd("/cancel 1", "You can only cancel your own sales.")
         self.assertEqual(self.assetowner.economic, 2)
-        self.call_cmd("", 'ID Seller       Type               Price Amount \n6  Testaccount2 Economic Resources 5     45     7  Testaccount2 testium            5     40     10 Testaccount  Action Points      100   6      11 Testaccount  Economic Resources 1000  1      12 Testaccount  Economic Resources 500   2      13 Testaccount  testium            500   1      |\nID Buyer Type Price Amount')
+        self.call_cmd("", 'ID Seller       Type               Price Amount \n'
+                          '6  Testaccount2 Economic Resources 5     45     '
+                          '7  Testaccount2 testium            5     40     '
+                          '10 Testaccount  Action Points      100   6      '
+                          '11 Testaccount  Economic Resources 1000  1      '
+                          '12 Testaccount  Economic Resources 500   2      '
+                          '13 Testaccount  testium            500   1      |\n'
+                          'ID Buyer Type Price Amount')
         self.call_cmd("/cancel 11", "You have cancelled the sale.")
         self.assertEqual(self.assetowner.economic, 3)
-        self.call_cmd("/search ap", 'ID Seller      Type          Price Amount \n10 Testaccount Action Points 100   6      |\nID Buyer Type Price Amount')
-        self.call_cmd("/search testaccount2", 'ID Seller       Type               Price Amount \n6  Testaccount2 Economic Resources 5     45     7  Testaccount2 testium            5     40     |\nID Buyer Type Price Amount')
-        self.call_cmd("/search resources", 'ID Seller       Type               Price Amount \n6  Testaccount2 Economic Resources 5     45     12 Testaccount  Economic Resources 500   2      |\nID Buyer Type Price Amount')
-        self.call_cmd("/search materials", 'ID Seller       Type    Price Amount \n7  Testaccount2 testium 5     40     13 Testaccount  testium 500   1      |\nID Buyer Type Price Amount')
+        self.call_cmd("/search ap", 'ID Seller      Type          Price Amount \n'
+                                    '10 Testaccount Action Points 100   6      |\n'
+                                    'ID Buyer Type Price Amount')
+        self.call_cmd("/search testaccount2", 'ID Seller       Type               Price Amount \n'
+                                              '6  Testaccount2 Economic Resources 5     45     '
+                                              '7  Testaccount2 testium            5     40     |\n'
+                                              'ID Buyer Type Price Amount')
+        self.call_cmd("/search resources", 'ID Seller       Type               Price Amount \n'
+                                           '6  Testaccount2 Economic Resources 5     45     '
+                                           '12 Testaccount  Economic Resources 500   2      |\n'
+                                           'ID Buyer Type Price Amount')
+        self.call_cmd("/search materials", 'ID Seller       Type    Price Amount \n'
+                                           '7  Testaccount2 testium 5     40     '
+                                           '13 Testaccount  testium 500   1      |\n'
+                                           'ID Buyer Type Price Amount')
         sale14 = BrokeredSale.objects.create(owner=self.dompc, sale_type=BrokeredSale.CRAFTING_MATERIALS,
-                                            crafting_material_type=mat, amount=2, price=50)
+                                             crafting_material_type=mat, amount=2, price=50)
         self.call_cmd("/reprice 6=200", "You can only change the price of your own sales.")
         self.call_cmd("/reprice 14=-50", "You must provide a positive number as the price.")
         self.call_cmd("/reprice 14=50", "The new price must be different from the current price.")
-        self.call_cmd("/reprice 14=500", "You have changed the price to 500.")
+        self.call_cmd("/reprice 14=500", 'You have changed the price to 500, merging with an existing sale.')
         self.assertEqual(sale14.pk, None)
         sale7 = BrokeredSale.objects.get(id=7)
         self.assertEqual(sale7.amount, 40)
+        sale15 = BrokeredSale.objects.create(owner=self.dompc2, sale_type=BrokeredSale.SOCIAL, amount=50, price=300,
+                                             broker_type=BrokeredSale.PURCHASE)
+        self.assetowner.social = 60
+        self.call_cmd("/sell social=5,250", 'You have sold 5 Social Resources to Testaccount2 for 1500 silver.')
+        self.call_cmd("/sell social=55,350",
+                      'Created a new sale of 55 Social Resources for 350 silver each and 19250 total.')
+        self.call_cmd("", 'ID Seller       Type               Price Amount \n'
+                          '6  Testaccount2 Economic Resources 5     45     '
+                          '7  Testaccount2 testium            5     40     '
+                          '10 Testaccount  Action Points      100   6      '
+                          '12 Testaccount  Economic Resources 500   2      '
+                          '13 Testaccount  testium            500   3      '
+                          '17 Testaccount  Social Resources   350   55     |\n'
+                          'ID Buyer        Type             Price Amount \n'
+                          '15 Testaccount2 Social Resources 300   45')
+        self.call_cmd("/reprice 17=300", 'You have sold 45 Social Resources to Testaccount2 for 13500 silver.|'
+                                         'You have changed the price to 300.')
+        self.assertEqual(sale15.amount, 0)
+        self.assertEqual(self.assetowner2.social, 50)
+        self.assertEqual(self.char1.currency, 34925)
+        self.call_cmd("/buy military=10,500",
+                      'You have placed an order for 10 Military Resources for 500 silver each and 5000 total.')
+        self.assertEqual(self.char1.currency, 29925)
+        self.call_cmd("/reprice 18=200", 'You have changed the price to 200.')
+        self.assertEqual(self.char1.currency, 32925)
+        self.call_cmd("/reprice 18=300", 'You have changed the price to 300.')
+        self.assertEqual(self.char1.currency, 31925)
 
     def test_cmd_petition(self):
         from world.petitions.models import Petition, PetitionParticipation

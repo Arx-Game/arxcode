@@ -38,13 +38,18 @@ class CrisisManager(Manager):
             qs = self.filter(crises | plots).distinct()
         return qs
 
-    def view_plots_table(self, old=False, only_open_tickets=False):
+    def view_plots_table(self, old=False, only_open_tickets=False, only_recruiting=False):
         """Returns an EvTable chock full of spicy Plots."""
         from evennia.utils.evtable import EvTable
         qs = self.filter(resolved=old).exclude(Q(usage=self.model.CRISIS) | Q(parent_plot__isnull=False)).distinct()
         if only_open_tickets:
             from web.helpdesk.models import Ticket
             qs = qs.filter(tickets__status=Ticket.OPEN_STATUS)
+        if only_recruiting:
+            from .models import PCPlotInvolvement
+            qs = qs.filter(Q(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE)
+                           & Q(dompc_involvement__admin_status__gte=PCPlotInvolvement.RECRUITER)
+                           & ~Q(dompc_involvement__recruiter_story="")).distinct()
         alt_header = "Resolved " if old else ""
         table = EvTable("|w#|n", "|w%sPlot (owner)|n" % alt_header, "|wSummary|n", width=78, border="cells")
         for plot in qs:

@@ -781,6 +781,21 @@ class SocialTestsPlus(ArxCommandTest):
                       '| Char                               | test test test')
         self.call_cmd("/validate Char", "Validating their scene. Both of you will receive xp for it later.")
         self.assertEqual(self.char2.player_ob.db.validated_list, [self.char1])
+        self.char2.player_ob.db.random_scenelist = [self.char3]
+        self.call_cmd("/claim char3=testy test", 'You have sent char3 a request to validate your scene: testy test')
+        self.caller = self.char3
+        self.call_cmd("/viewrequests", '| Name                                | Summary                              '
+                                       '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                                       '| asdf                                | testy test')
+        self.call_cmd("/validate char2",
+                      'No character by that name has sent you a request.|\n'
+                      '| Name                                | Summary                              '
+                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                      '| asdf                                | testy test')
+        self.call_cmd("/validate asdf", 'Validating their scene. Both of you will receive xp for it later.')
+        self.call_cmd("", '@Randomscene Information: \nRandomly generated RP partners for this week: Char2\n'
+                          'Reminder: Please only /claim those you have interacted with significantly in a scene.\n'
+                          'Those you have validated scenes for this week: asdf')
 
 
 class StaffCommandTests(ArxCommandTest):

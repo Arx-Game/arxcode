@@ -1048,7 +1048,7 @@ class CmdMessenger(ArxCommand):
                 if num < 1:
                     raise ValueError
                 msg = old[num - 1]
-                caller.msg("\n{wMessage to:{n %s" % ", ".join(str(ob) for ob in msg.receivers))
+                caller.msg("\n{wMessage to:{n %s" % ", ".join(ob.key for ob in msg.receivers))
                 self.disp_messenger(msg)
                 return
             except TypeError:
@@ -2538,6 +2538,13 @@ class CmdRandomScene(ArxCommand):
         return self.caller.player_ob.db.requested_validation or []
 
     @property
+    def masked_validated_list(self):
+        """Yet another fucking special case made necessary by fucking masks"""
+        if self.caller.player_ob.db.masked_validated_list is None:
+            self.caller.player_ob.db.masked_validated_list = {}
+        return self.caller.player_ob.db.masked_validated_list
+
+    @property
     def newbies(self):
         """A list of new players we want to encourage people to RP with
 
@@ -2647,7 +2654,8 @@ class CmdRandomScene(ArxCommand):
             msg += list_to_string([ob.key for ob in claimlist])
         if validated:
             msg += "\n{wThose you have validated scenes for this week:{n "
-            msg += list_to_string([ob.key for ob in validated])
+            masked = dict(self.masked_validated_list)
+            msg += list_to_string([ob.key if ob not in masked else masked[ob] for ob in validated])
         if not any((scenelist, newbies, gms, claimlist, validated)):
             msg = "No characters qualify for @randomscene information to be displayed."
         self.msg(msg)
@@ -2715,7 +2723,8 @@ class CmdRandomScene(ArxCommand):
     def validate_scene(self):
         """Grants a request to validate a randomscene."""
         scene_requests = self.caller.db.scene_requests or {}
-        targ = scene_requests.pop(self.args.lower(), (None, ""))[0]
+        name = self.args.lower()
+        targ = scene_requests.pop(name, (None, ""))[0]
         self.caller.db.scene_requests = scene_requests
         if not targ:
             self.msg("No character by that name has sent you a request.")
@@ -2732,6 +2741,8 @@ class CmdRandomScene(ArxCommand):
         self.msg("Validating their scene. Both of you will receive xp for it later.")
         validated.append(targ)
         self.caller.player_ob.db.validated_list = validated
+        if targ.key.lower() != name:
+            self.masked_validated_list[targ] = name
 
     def view_requests(self):
         """Views current requests for validation."""

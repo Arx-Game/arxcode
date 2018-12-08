@@ -260,8 +260,8 @@ def practitioner(accessing_obj, accessed_obj, *args, **kwargs):
     """
     Checks if the accessing_obj has a magical Practitioner record.
     """
-    practitioner = Practitioner.practitioner_for_character(accessing_obj)
-    if not practitioner:
+    mage = Practitioner.practitioner_for_character(accessing_obj)
+    if not mage:
         return False
 
-    return practitioner.eyes_open
+    return mage.eyes_open

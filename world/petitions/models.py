@@ -24,7 +24,7 @@ class BrokeredSale(SharedMemoryModel):
     OFFERING_TYPES = ((ACTION_POINTS, "Action Points"), (ECONOMIC, "Economic Resources"), (SOCIAL, "Social Resources"),
                       (MILITARY, "Military Resources"), (CRAFTING_MATERIALS, "Crafting Materials"))
     RESOURCE_TYPES = ((ECONOMIC, "economic"), (SOCIAL, "social"), (MILITARY, "military"))
-    BROKER_TYPES =((PURCHASE,"Purchase"),(SALE,"Sale"))
+    BROKER_TYPES = ((PURCHASE, "Purchase"), (SALE, "Sale"))
     owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="brokered_sales")
     sale_type = models.PositiveSmallIntegerField(default=ACTION_POINTS, choices=OFFERING_TYPES)
     amount = models.PositiveIntegerField(default=0)
@@ -34,7 +34,6 @@ class BrokeredSale(SharedMemoryModel):
     crafting_material_type = models.ForeignKey("dominion.CraftingMaterialType", null=True, blank=True,
                                                on_delete=models.CASCADE)
     broker_type = models.PositiveSmallIntegerField(default=SALE, choices=BROKER_TYPES)
-
 
     @property
     def material_name(self):
@@ -81,12 +80,15 @@ class BrokeredSale(SharedMemoryModel):
         if amount > self.amount:
             raise PayError("You want to buy %s, but there is only %s for sale." % (amount, self.amount))
         cost = self.price * amount
-        character = buyer.player.char_ob
         self.amount -= amount
         self.save()
         self.record_sale(buyer, amount)
-        self.send_goods(buyer, amount)
-        self.pay_owner(buyer, amount, cost)
+        if self.broker_type == self.SALE:
+            self.send_goods(buyer, amount)
+            self.pay_owner(buyer, amount, cost)
+        else:
+            self.send_goods(self.owner, amount)
+            self.pay_seller(buyer, amount, cost)
         return cost
 
     def send_goods(self, buyer, amount):
@@ -117,9 +119,14 @@ class BrokeredSale(SharedMemoryModel):
         self.owner.player.inform("%s has bought %s %s for %s silver." % (buyer, quantity, self.material_name, cost),
                                  category="Broker Sale", append=True)
 
+    def pay_seller(self, seller, quantity, cost):
+        seller.player.char_ob.pay_money(-cost)
+        self.owner.player.inform("%s has sold %s %s for %s silver." % (seller, quantity, self.material_name, cost),
+                                 category="Broker Sale", append=True)
+
     def cancel(self):
         """Refund our owner and delete ourselves"""
-        if self.broker_type==self.PURCHASE:
+        if self.broker_type == self.PURCHASE:
             self.owner_character.pay_money(-self.amount*self.price)
         else:
             self.send_goods(self.owner, self.amount)
@@ -127,17 +134,18 @@ class BrokeredSale(SharedMemoryModel):
 
     def change_price(self, new_price):
         """Changes the price to new_price. If we have an existing sale by that price, merge with it."""
-        if self.broker_type==self.PURCHASE:
-            buyer=self.owner_character
-            original_cost=new_price*self.amount
-            new_cost=self.price*self.amount
-            to_pay=original_cost-new_cost
-            if (to_pay) > buyer.currency:
+        if self.broker_type == self.PURCHASE:
+            buyer = self.owner_character
+            original_cost = new_price*self.amount
+            new_cost = self.price*self.amount
+            to_pay = original_cost-new_cost
+            if to_pay > buyer.currency:
                 raise PayError("You cannot afford to pay %s when you only have %s silver." % (to_pay, buyer.currency))
             self.owner_character.pay_money(to_pay)
         try:
             other_sale = self.owner.brokered_sales.get(sale_type=self.sale_type, price=new_price,
-                                                       crafting_material_type=self.crafting_material_type,broker_type=self.broker_type)
+                                                       crafting_material_type=self.crafting_material_type,
+                                                       broker_type=self.broker_type)
             other_sale.amount += self.amount
             other_sale.save()
             self.delete()

@@ -1174,19 +1174,25 @@ class CmdSheet(ArxPlayerCommand):
 
     def display_plots(self, charob):
         """Displays a list of plots or specific plot"""
+        from world.dominion.models import PCPlotInvolvement, Plot
         plots = charob.dompc.active_plots
+        recruiter = PCPlotInvolvement.objects.exclude(recruiter_story="").filter(admin_status__gte=PCPlotInvolvement.RECRUITER)
+        recruiting = (plots.filter(dompc_involvement__in=recruiter).distinct())
         plot_num = self.get_num_from_args()
         if not plot_num:
             from evennia.utils.evtable import EvTable
             table = EvTable("{wID", "{wName", "{wSummary", width=78, border="cells")
             for ob in plots:
-                table.add_row(str(ob.id), ob.name, ob.headline)
+                color = "|c" if ob in recruiting else ""
+                plot_id = "%s%s" % (color, ob.id)
+                name = "%s%s" % (color, ob.name)
+                headline = "%s%s" % (color, ob.headline)
+                table.add_row(plot_id, name, headline)
             table.reformat_column(0, width=8)
             table.reformat_column(1, width=22)
             table.reformat_column(2, width=48)
             self.msg(str(table))
         else:
-            from world.dominion.models import Plot
             try:
                 plot = plots.get(id=plot_num)
             except (Plot.DoesNotExist, TypeError, ValueError):
@@ -1286,8 +1292,8 @@ class CmdRelationship(ArxPlayerCommand):
     To create a new relationship or update an existing one, use
     @relationship/change.
     """
-    key = "@relationship"
-    aliases = ["+relationship", "@relationships", "+relationships"]
+    key = "relationship"
+    aliases = ["relationships"]
     help_category = "Social"
     locks = "cmd:all()"
     typelist = ['parent', 'sibling', 'friend', 'enemy', 'frenemy', 'family', 'client', 'patron', 'protege',
@@ -1452,7 +1458,7 @@ class CmdRelationship(ArxPlayerCommand):
             if not rels:
                 caller.msg("No relationships in tree to change - use /short to add instead.")
                 return
-            oldtype, newtype = lhslist[0].lower(), lhslist[1].lower()
+            oldtype, newtype = lhslist[0].lower(), lhslist[1]
             if newtype not in self.typelist:
                 caller.msg("Relationship must be one of the following: %s" % ", ".join(self.typelist))
                 return

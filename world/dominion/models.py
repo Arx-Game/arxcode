@@ -2678,7 +2678,8 @@ class PlotAction(AbstractAction):
     HARD_DIFFICULTY = 60
     week = models.PositiveSmallIntegerField(default=0, blank=0, db_index=True)
     dompc = models.ForeignKey("PlayerOrNpc", db_index=True, blank=True, null=True, related_name="actions")
-    plot = models.ForeignKey("Plot", db_index=True, blank=True, null=True, related_name="actions")
+    plot = models.ForeignKey("Plot", db_index=True, blank=True, null=True, related_name="actions",
+                             on_delete=models.SET_NULL)
     beat = models.ForeignKey("PlotUpdate", db_index=True, blank=True, null=True, related_name="actions",
                              on_delete=models.SET_NULL)
     public = models.BooleanField(default=False, blank=True)
@@ -5012,7 +5013,7 @@ class Member(SharedMemoryModel):
             # we got a big crit, hooray. Add a base of 1-30 resources to bonus, then triple the bonus
             patron_amount += randint(1, 50)
             patron_amount *= 3
-            msg += " Luck has gone %s's way, and they get a bonus!" % self
+            msg += " Luck has gone %s's way, and they get a bonus! " % self
         msg += "You have gained %s %s resources." % (patron_amount, resource_type)
         adjust_resources(self.player.assets, patron_amount)
         org_amount = patron_amount//5
