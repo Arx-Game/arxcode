@@ -2678,7 +2678,8 @@ class PlotAction(AbstractAction):
     HARD_DIFFICULTY = 60
     week = models.PositiveSmallIntegerField(default=0, blank=0, db_index=True)
     dompc = models.ForeignKey("PlayerOrNpc", db_index=True, blank=True, null=True, related_name="actions")
-    plot = models.ForeignKey("Plot", db_index=True, blank=True, null=True, related_name="actions")
+    plot = models.ForeignKey("Plot", db_index=True, blank=True, null=True, related_name="actions",
+                             on_delete=models.SET_NULL)
     beat = models.ForeignKey("PlotUpdate", db_index=True, blank=True, null=True, related_name="actions",
                              on_delete=models.SET_NULL)
     public = models.BooleanField(default=False, blank=True)
