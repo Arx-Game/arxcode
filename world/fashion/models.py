@@ -318,7 +318,7 @@ class FashionOutfit(FashionCommonMixins):
         for item in self.fashion_items.all():
             if not item.modeled_by:
                 worth += item.item_worth
-        return str(worth or "cannot model")
+        return str("{:,}".format(worth) or "cannot model")
 
     @property
     def buzz(self):
@@ -484,10 +484,10 @@ class FashionSnapshot(FashionCommonMixins):
         category = "fashion"
         msg = "fame awarded from %s modeling %s." % (self.fashion_model, self.fashion_item)
         if self.org_fame > 0:
-            org_msg = "{315%d{n %s" % (self.org_fame, msg)
+            org_msg = "{{315{:,}{{n {}".format(self.org_fame, msg)
             self.org.assets.inform_owner(org_msg, category=category, append=True)
         if self.designer_fame > 0:
-            designer_msg = "{315%d{n %s" % (self.designer_fame, msg)
+            designer_msg = "{{315{:,}{{n {}".format(self.designer_fame, msg)
             self.designer.assets.inform_owner(designer_msg, category=category, append=True)
 
     def reverse_snapshot(self):

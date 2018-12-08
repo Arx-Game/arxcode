@@ -219,8 +219,8 @@ class CmdFashionModel(ArxCommand):
             if not ignore_model:
                 obj.msg(emit)
 
-        success = "For modeling %s{n you earn {c%d{n fame. " % (thing, fame)
-        success += "Your prestige is now %d." % player.assets.prestige
+        success = "For modeling {}{{n you earn {{c{:,}{{n fame. ".format(thing, fame)
+        success += "Your prestige is now {:,}.".format(player.assets.prestige)
         self.msg(success)
 
     def view_leaderboards(self):
@@ -264,6 +264,7 @@ class CmdFashionModel(ArxCommand):
         if not qs:
             raise FashionError("Nothing was found.")
         table = PrettyTable(pretty_headers)
+        table.align="r"
         for q in qs:
             # for lowercase names, we'll capitalize them
             if q[0] == q[0].lower():

@@ -3562,8 +3562,8 @@ class Organization(InformMixin, SharedMemoryModel):
             members = "{wMembers of %s:\n%s" % (self.name, members)
         msg += members
         if display_money:
-            msg += "\n{wMoney{n: %s" % money
-            msg += " {wPrestige{n: %s" % prestige
+            msg += "\n{{wMoney{{n: {:>10,}".format(money)
+            msg += " {{wPrestige{{n: {:>10,}".format(prestige)
             prestige_mod = self.assets.prestige_mod
             resource_mod = int(prestige_mod)
 
