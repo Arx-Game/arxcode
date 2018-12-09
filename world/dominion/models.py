@@ -856,7 +856,7 @@ class PraiseOrCondemn(SharedMemoryModel):
         """Adjusts the prestige of the target after they're praised."""
         self.target.adjust_prestige(self.value)
         msg = "%s has %s you. " % (self.praiser, self.verb)
-        msg += "Your prestige has been adjusted by {;,}.".format(self.value)
+        msg += "Your prestige has been adjusted by {:,}.".format(self.value)
         self.target.inform(msg, category=self.verb.capitalize())
 
 
