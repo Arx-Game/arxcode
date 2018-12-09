@@ -481,6 +481,18 @@ class RosterTests(ArxCommandTest):
         self.assertEqual(self.member.rank, 3)
         self.assertEqual(self.dompc2.patron, None)
 
+        
+    def test_cmd_propriety(self):
+        self.setup_cmd(roster.CmdPropriety, self.account)
+        self.call_cmd(" nonsense", "There's no propriety known as nonsense")
+        self.call_cmd("", "Title                Propriety")
+        self.caller.execute_cmd("admin_propriety/create Tester=50")
+        self.call_cmd("", "Title                Propriety\n"
+                          "Tester                      50")
+        self.caller.execute_cmd("admin_propriety/add Tester=testaccount")
+        self.call_cmd("tester", "These are known to be testers\nChar")
+        self.caller.execute_cmd("admin_propriety/remove Tester=testaccount")
+
 
 # noinspection PyUnresolvedReferences
 class SocialTests(ArxCommandTest):
