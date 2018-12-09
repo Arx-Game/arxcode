@@ -2167,6 +2167,7 @@ class CmdSocialScore(ArxCommand):
 
     Usage:
         +score[/all]
+        +score <character>
         +score/orgs[/all]
         +score/org[/all] <organization>
         +score/personal[/all]
@@ -2191,7 +2192,28 @@ class CmdSocialScore(ArxCommand):
         """Execute command."""
         caller = self.caller
         if not self.switches or self.check_switches(self.prestige_switches):
-            return self.get_queryset_for_prestige_table()
+            if not self.lhs:
+                return self.get_queryset_for_prestige_table()
+            else:
+                targ = caller.search(self.lhs)
+                if not targ:
+                    caller.msg("%s not found." % self.lhs)
+                    return
+                else:
+                    try:
+                        longname = targ.longname
+                    except AttributeError:
+                        longname = self.lhs
+                    if not longname:
+                        longname = self.lhs
+                    msg ="{}".format(longname)
+                    msg += "\n{{wPrestige:{{n      {:>10,}".format(targ.player.Dominion.assets.prestige)
+                    msg += "\n{{w||__ Legend:{{n    {:>10,}".format(targ.player.Dominion.assets.total_legend)
+                    msg += "\n{{w||__ Fame:{{n      {:>10,}".format(targ.player.Dominion.assets.fame)
+                    msg += "\n{{w||__ Grandeur:{{n  {:>10,}".format(targ.player.Dominion.assets.grandeur)
+                    msg += "\n{{w||__ Propriety:{{n {:>10,}".format(targ.player.Dominion.assets.propriety)
+                    caller.msg(msg)
+                    return
         if "renown" in self.switches:
             renowned = Renown.objects.filter(player__player__isnull=False,
                                              player__player__roster__roster__name="Active").exclude(

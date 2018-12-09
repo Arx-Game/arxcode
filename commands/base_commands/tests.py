@@ -419,6 +419,7 @@ class OverridesTests(ArxCommandTest):
                       "|__ Fame:               0  Military:     0\n"
                       "|__ Grandeur:           0  Social:       0\n"
                       "|__ Propriety:          0\nMaterials:")
+
     
 
 
@@ -514,6 +515,14 @@ class SocialTests(ArxCommandTest):
                           'and players who are on your watch list have a * by their name.\nRoom: Char')
         self.room1.tags.add("private")
         self.call_cmd("", "No visible characters found.")
+    def test_cmd_score(self):
+        self.setup_cmd(social.CmdSocialScore, self.char1)
+        self.call_cmd(" char", "char\n"
+                      "Prestige:               0\n"
+                      "|__ Legend:             0\n"
+                      "|__ Fame:               0\n"
+                      "|__ Grandeur:           0\n"
+                      "|__ Propriety:          0")
 
     def test_cmd_watch(self):
         self.setup_cmd(social.CmdWatch, self.account)
