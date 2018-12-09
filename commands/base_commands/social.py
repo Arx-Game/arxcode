@@ -2040,9 +2040,9 @@ class CmdPraise(ArxPlayerCommand):
         praises = praises_or_condemns.filter(value__gte=0)
         condemns = praises_or_condemns.filter(value__lt=0)
         msg = "Praises:\n"
-        table = EvTable("Name", "Praises", "Value", "Message", width=78)
+        table = EvTable("Name", "Praises", "Value", "Message", width=78, align="r")
         for praise in praises:
-            table.add_row(praise.target, praise.number_used, praise.value, praise.message)
+            table.add_row(praise.target, praise.number_used, "{:,}".format(praise.value), praise.message)
         msg += str(table)
         msg += "\nCondemns:\n"
         table = EvTable("Name", "Condemns", "Value", "Message", width=78)

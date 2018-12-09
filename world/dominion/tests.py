@@ -5,6 +5,7 @@ from mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
 from . import crisis_commands, general_dominion_commands, plot_commands
+from commands.base_commands import roster
 
 from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions, SearchTag
 from world.dominion.models import Plot, PlotAction, PCPlotInvolvement, RPEvent, PlotUpdate, Organization, \
@@ -75,6 +76,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
         from world.dominion.models import Organization, AssetOwner
         org = Organization.objects.create(name="Orgtest")
         org_owner = AssetOwner.objects.create(organization_owner=org)
+        
         member = org.members.create(player=self.dompc)
         self.cmd_class = general_dominion_commands.CmdWork
         self.caller = self.account
@@ -121,12 +123,12 @@ class TestGeneralDominionCommands(ArxCommandTest):
                       'You use 5 action points and have 50 remaining this week.|'
                       'Your social clout combined with that of your protege reduces difficulty by 22.\n'
                       'Char rolling intellect and economics. \n'
-                      'You and Orgtest both gain 4000 prestige.\n'
+                      'You and Orgtest both gain 4,000 prestige.\n'
                       'You have increased the economic influence of Orgtest by 25.\n'
                       'Current modifier is 0, progress to next is 1/100.')
         self.call_cmd("/score orgtest2", "No match for an org by the name: orgtest2.")
-        self.call_cmd("/score orgtest", 'Member      Total Work Total Invested Combined \n'
-                                        'Testaccount 3          25             28')
+        self.call_cmd("/score orgtest", "Member Total Work Total Invested Combined \n"
+                                   "Testaccount          3             25       28")
 
 
 class TestPlotCommands(TestTicketMixins, ArxCommandTest):

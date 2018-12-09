@@ -266,10 +266,13 @@ class CmdFashionModel(ArxCommand):
         table = PrettyTable(pretty_headers)
         table.align="r"
         for q in qs:
+            q = list(q)
+            q[1]="{:,}".format(q[1])
+            q[3]="{:,}".format(q[3])
             # for lowercase names, we'll capitalize them
             if q[0] == q[0].lower():
-                q = list(q)
                 q[0] = q[0].capitalize()
+
             table.add_row(q)
         self.msg(str(table))
 

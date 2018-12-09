@@ -162,19 +162,19 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
                           'Pieces of this outfit cannot be modeled:\n- Lickyknife1 has already been used to model '
                           'fashion.\nNo valid items remain! Try modeling a different outfit.')
         # test leaderboards:
-        self.call_cmd("", "Fashion Model Fame Items Avg Item Fame \n"
-                          " TestAccount2 7398     6          1233   "
-                            "TestAccount 1000     1          1000")
-        self.call_cmd("/designer", "Designer Fame Items Avg Item Fame \n"
-                                     "TestAccount2 2099     7           299")
-        self.call_cmd("/designer Testaccount2", "Testaccount2 Model Fame Items Avg Item Fame \n"
-                                                "      TestAccount2 1849     6           308"
-                                               "        TestAccount  250     1           250")
-        self.call_cmd("/orgs", "Organization Fame Items Avg Item Fame \n"
-                               "     Orgtest 4199     7           599")
-        self.call_cmd("/org Orgtest", "Orgtest Model Fame Items Avg Item Fame \n"
-                                      " TestAccount2 3699     6           616"
-                                     "   TestAccount  500     1           500")
+        self.call_cmd("", "Fashion Model  Fame Items Avg Item Fame \n"
+                          " TestAccount2 7,398     6         1,233"
+                         "   TestAccount 1,000     1         1,000")
+        self.call_cmd("/designer", "Designer  Fame Items Avg Item Fame \n"
+                               "TestAccount2 2,099     7           299")
+        self.call_cmd("/designer Testaccount2", "Testaccount2 Model  Fame Items Avg Item Fame \n"
+                                                "      TestAccount2 1,849     6           308"
+                                               "        TestAccount   250     1           250")
+        self.call_cmd("/orgs", "Organization  Fame Items Avg Item Fame \n"
+                               "     Orgtest 4,199     7           599")
+        self.call_cmd("/org Orgtest", "Orgtest Model  Fame Items Avg Item Fame \n"
+                                      " TestAccount2 3,699     6           616"
+                                     "   TestAccount   500     1           500")
 
     def test_refund_cmd(self):
         from world.fashion.models import FashionSnapshot

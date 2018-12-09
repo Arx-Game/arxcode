@@ -1425,7 +1425,7 @@ class CmdInform(ArxPlayerCommand):
                  ("min_resources_for_inform", "resources", "banking"))
         for attr, res, purp in attrs:
             val = getattr(asset_owner, attr)
-            table.add_row(purp, res, val)
+            table.add_row(purp, res, "{:,}".format(val))
         self.caller.msg(table)
 
     def func(self):

@@ -412,7 +412,7 @@ class OverridesTests(ArxCommandTest):
         self.call_cmd("","You currently have 0 xp and 100 ap.\n"
                       "Maximum AP: 300  Weekly AP Gain: 150\n"
                       "You are carrying (Volume: 0/100):\n"
-                      "Money: coins worth a total of 125446.00 silver pieces\n"
+                      "Money: coins worth a total of 125,446.00 silver pieces\n"
                       "Bank Account:           0 silver coins\n"
                       "Prestige:               0  Resources         Social Clout: 0\n"
                       "|__ Legend:             0  Economic: 5,446\n"
@@ -692,7 +692,7 @@ class SocialTests(ArxCommandTest):
         prop_mock.return_value = 50
         self.call_cmd("/org test org,40=hi2u", 'You use 1 action points and have 98 remaining this week.|'
                                                'You praise the actions of Test org. You have 0 praises remaining.')
-        org.inform.assert_called_with('Testaccount has praised you. Your prestige has been adjusted by 10200.',
+        org.inform.assert_called_with('Testaccount has praised you. Your prestige has been adjusted by 10,200.',
                                       append=False, category='Praised', week=1)
         self.assertEqual(org_assets.fame, 10200)
         # cleanup property mock
