@@ -169,7 +169,11 @@ class RPEventCreateForm(forms.ModelForm):
         msg += "{wDate:{n %s\n" % self.data.get('date')
         location = self.data.get('location')
         if location:
-            location = ArxRoom.objects.get(id=location)
+            try:
+                location = ArxRoom.objects.get(id=location)
+            except ArxRoom.DoesNotExist:
+                location = None
+                self.data['location'] = None
         msg += "{wLocation:{n %s\n" % location
         plotroom = self.data.get('plotroom')
         if plotroom:

@@ -647,7 +647,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         sign = -1 if base < 0 else 1
         return min(abs(int(base)), abs(self.fame + self.legend) * 2) * sign
 
-    def adjust_prestige(self, value, force=False):
+    def adjust_prestige(self, value):
         """
         Adjusts our prestige. We gain fame equal to the value. We no longer
         adjust the legend, per Apos.
@@ -2706,7 +2706,7 @@ class PlotAction(AbstractAction):
     DRAFT, NEEDS_PLAYER, NEEDS_GM, CANCELLED, PENDING_PUBLISH, PUBLISHED = range(6)
 
     STATUS_CHOICES = ((DRAFT, 'Draft'), (NEEDS_PLAYER, 'Needs Player Input'), (NEEDS_GM, 'Needs GM Input'),
-                      (CANCELLED, 'Cancelled'), (PENDING_PUBLISH, 'Pending Resolution'),(PUBLISHED, 'Resolved'))
+                      (CANCELLED, 'Cancelled'), (PENDING_PUBLISH, 'Pending Resolution'), (PUBLISHED, 'Resolved'))
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=DRAFT)
     max_requests = 2
     num_days = 60
