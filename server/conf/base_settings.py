@@ -104,7 +104,7 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
 # Game Time setup
 ######################################################################
 TIME_FACTOR = 2.0
-INVESTIGATION_PROGRESS_RATE = 0.5
+INVESTIGATION_PROGRESS_RATE = config("INVESTIGATION_PROGRESS_RATE", cast=float, default=1.0)
 INVESTIGATION_DIFFICULTY_MOD = 5
 
 ######################################################################
