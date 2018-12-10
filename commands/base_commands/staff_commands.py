@@ -1916,3 +1916,42 @@ class CmdAdminPropriety(ArxPlayerCommand):
         else:
             tag.owners.remove(*owners)
             self.msg("Removed from %s: %s" % (tag, ", ".join(str(ob) for ob in owners)))
+
+
+class CmdAdjustFame(ArxPlayerCommand):
+    """
+    Adjusts the fame or legend of players
+
+    Usage:
+        adjustfame <character1>[,<char2>,...]=<amount>
+        adjustlegend <char1>[,<char2>,...]=<amount>
+    """
+    key = "adjustfame"
+    aliases = ["adjustlegend"]
+    locks = "cmd: perm(wizards)"
+    help_category = "Admin"
+
+    def func(self):
+        """Executes fame command"""
+        try:
+            attr = "fame" if self.cmdstring == "adjustfame" else "legend"
+            targets = []
+            for name in self.lhslist:
+                targ = self.caller.search(name)
+                if not targ:
+                    raise CommandError("Check spelling.")
+                targets.append(targ.Dominion.assets)
+            try:
+                amount = int(self.rhs)
+            except (TypeError, ValueError):
+                raise CommandError("Must be a number.")
+            for targ in targets:
+                current = getattr(targ, attr)
+                setattr(targ, attr, current + amount)
+                targ.save()
+            names = ", ".join(str(ob) for ob in targets)
+            msg = "Adjusted %s for %s by %s" % (attr, names, amount)
+            self.msg(msg)
+            inform_staff("%s %s" % (self.caller, msg))
+        except CommandError as err:
+            self.msg(err)
