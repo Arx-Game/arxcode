@@ -907,8 +907,8 @@ class Condition(SharedMemoryModel):
             if effect_class:
                 handler = effect_class(lead=practitioner, participants=[practitioner], target_string="me",
                                        target_obj=practitioner.character, parameters=effect.coded_params,
-                                       conditions=effect.conditions, strength=strength,
-                                       successes=successes, quiet=False)
+                                       conditions=effect.conditions, strength=strength, alignment=self.alignment,
+                                       successes=successes, quiet=False, affinity=effect.affinity or self.affinity)
                 handler.calculate()
                 handler.perform()
             else:
@@ -1365,6 +1365,10 @@ class Working(SharedMemoryModel):
 
     @property
     def strength(self):
+        """
+        This is an overall strength of a working, used for triggering responses, such as being
+        detected by sensitives and the like.
+        """
         if len(self.effects) == 0:
             return self.gm_strength
 
@@ -1374,9 +1378,13 @@ class Working(SharedMemoryModel):
 
         average_strength = total_effect_strength / len(self.effects)
 
-        return min(10, int(average_strength * min(1.0, self.cost / 10)))
+        return max(10, int(average_strength * max(1.0, self.base_cost / 10.0)))
 
     def effect_handler(self, effect, quiet=False, target_string=None):
+        """
+        Gets an instance of the effect handler class for a given effect. The effect handler class will
+        be what actually causes the game effects of a given working when we finalize().
+        """
         effect_class = effect.effect_handler_class
         if not effect_class:
             return None
@@ -1391,8 +1399,8 @@ class Working(SharedMemoryModel):
 
         return effect_class(lead=self.lead, participants=self.participants, target_string=target_string,
                             target_obj=target_obj, parameters=effect.coded_params,
-                            conditions=effect.conditions, strength=self.strength,
-                            successes=self.total_successes, quiet=quiet)
+                            conditions=effect.conditions, strength=effect.strength, alignment=self.alignment,
+                            successes=self.total_successes, quiet=quiet, affinity=effect.affinity or self.affinity)
 
     def validation_error(self, target_string=None, gm_override=False):
         if not gm_override and len(self.effects) == 0:
@@ -1419,6 +1427,9 @@ class Working(SharedMemoryModel):
             if not effect_handler.valid_parameters():
                 return "Something has gone horribly wrong and the system is misconfigured. " \
                        "Talk to staff and tell them what you tried to do!"
+
+            if effect_handler.requires_combat and not self.lead.character.combat.state:
+                return "This effect can only be used when you are in combat."
 
         return None
 
@@ -1469,16 +1480,26 @@ class Working(SharedMemoryModel):
         return 1
 
     @property
-    def cost(self):
+    def base_cost(self):
+        """Base cost is used for determining the strength of an effect before discounts"""
         if self.gm_cost:
             return self.gm_cost
 
         if self.spell is not None:
-            base_cost = self.spell.base_cost
+            return self.spell.base_cost
         elif self.weave_effect is not None:
-            base_cost = self.weave_effect.base_cost
+            return self.weave_effect.base_cost
         else:
-            return None
+            return 0
+
+    @property
+    def cost(self):
+        """
+        Total cost in primum of the working. Increasing Resonance makes it cheaper, doing difficult things makes it
+        more expensive.
+        """
+        if self.gm_cost:
+            return self.gm_cost
 
         total_resonance = 0
         for participant in self.participants:
@@ -1490,7 +1511,7 @@ class Working(SharedMemoryModel):
         for familiar in self.familiars:
             total_resonance += (familiar.attunement_level ** (1 / 25.))
 
-        final_cost = base_cost / (1 + total_resonance)
+        final_cost = self.base_cost / (1 + total_resonance)
 
         if self.quiet_level == Working.QUIET_MUNDANE:
             final_cost *= 1.5
@@ -1701,6 +1722,12 @@ class Working(SharedMemoryModel):
         return self.participant_records.filter(accepted=False).count() > 0
 
     def perform(self, unsafe=False, gm_override=False):
+        """
+        The initial casting of the working. All the effects are calculated, but are not put into practice
+        yet. That happens during the 'finalize' step. If the casting is not valid (bad target, didn't
+        provide confirmation of wanting to do something that could be dangerous/potentially lethal, etc)
+        then we return False and abort.
+        """
         if self.performed:
             return False
 
@@ -1832,9 +1859,9 @@ class Working(SharedMemoryModel):
             table.add_row("Templated as: ", str(self.template_name))
 
         if self.alignment:
-            table.add_row("Alignment: ", self.alignment.name)
+            table.add_row("Alignment: ", str(self.alignment.name))
         if self.affinity:
-            table.add_row("Affinity: ", self.affinity.name)
+            table.add_row("Affinity: ", str(self.affinity.name))
 
         if self.quiet_level != Working.QUIET_NONE:
             if self.quiet_level == Working.QUIET_MUNDANE:
@@ -1844,15 +1871,15 @@ class Working(SharedMemoryModel):
 
         if self.spell:
             table.add_row("Type: ", "Casting")
-            table.add_row("Spell: ", self.spell.name)
+            table.add_row("Spell: ", str(self.spell.name))
         elif self.weave_effect:
             table.add_row("Type: ", "Weaving")
-            table.add_row("Effect: ", self.weave_effect.name)
+            table.add_row("Effect: ", str(self.weave_effect.name))
         else:
             table.add_row("Type: ", "GM'd Weaving or Ritual")
-            table.add_row("GM Difficulty:", self.gm_difficulty)
-            table.add_row("GM Cost:", self.gm_cost)
-            table.add_row("GM Strength:", self.gm_strength)
+            table.add_row("GM Difficulty:", str(self.gm_difficulty))
+            table.add_row("GM Cost:", str(self.gm_cost))
+            table.add_row("GM Strength:", str(self.gm_strength))
 
         if not self.template:
             table.add_row("Calculated:", "yes" if self.calculated else "no")

@@ -1298,9 +1298,6 @@ class Investigation(AbstractPlayerAllocations):
         """
         diff = (diff if diff is not None else self.difficulty) + mod
         roll = self.do_obj_roll(self, diff)
-        if roll > 0:
-            # a successful roll adds 0-5% of the completion roll as a base
-            roll += int(self.completion_value/20.0) * random.randint(0, 5)
         assistant_roll_total = 0
         assistants = self.active_assistants
         for ass in assistants:
@@ -1320,6 +1317,9 @@ class Investigation(AbstractPlayerAllocations):
             assistant_roll_total += a_roll
         roll += max(assistant_roll_total, random.randint(0, 100) + len(assistants))
         roll = max(roll, random.randint(-50, 200))
+        if roll > 0:
+            # a successful roll adds 12% of our completion value, so around 2 months as a limit
+            roll += int(self.completion_value * 0.12)
         try:
             roll = int(roll * settings.INVESTIGATION_PROGRESS_RATE)
         except (AttributeError, TypeError, ValueError):

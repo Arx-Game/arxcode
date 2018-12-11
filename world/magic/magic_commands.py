@@ -1196,7 +1196,10 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
             if working.lead != practitioner:
                 self.msg("Only the lead practitioner can do the /perform switch!")
                 return
-
+            # if we're in combat, we route to there
+            if self.caller.combat.state:
+                self.caller.combat.state.set_queued_action("casting", working=working, unsafe="unsafe" in self.switches)
+                return
             if working.perform(unsafe="unsafe" in self.switches):
                 working.finalize()
             return
@@ -1449,6 +1452,11 @@ class CmdCast(ArxCommand, WorkingDisplayMixin):
             return
 
         real_cast = working.performable_copy(target=self.rhs)
+        # if we're in combat, we route to there
+        if self.caller.combat.state:
+            self.caller.combat.state.set_queued_action("casting", working=real_cast, unsafe="unsafe" in self.switches,
+                                                       delete_on_fail=True)
+            return
 
         if real_cast.perform(unsafe="unsafe" in self.switches):
             real_cast.finalize()

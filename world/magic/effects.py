@@ -1,12 +1,13 @@
 from .conditional_parser import ConditionalHandler
 from web.character.models import Clue
 from evennia.objects.models import ObjectDB
-from .models import ClueCollection, MagicBucket, Effect, Practitioner
+from .models import ClueCollection, MagicBucket, Effect, Practitioner, Alignment, Affinity
 import json
 import sys
 
 
 class CodedEffect(object):
+    requires_combat = False
 
     @classmethod
     def load(cls, serialized_dict=None):
@@ -31,7 +32,7 @@ class CodedEffect(object):
 
     def __init__(self, lead=None, participants=None, target_string=None, target_obj=None,
                  parameters=None, conditions=None, strength=10, quiet=False, successes=0,
-                 performed=False, finalized=False):
+                 performed=False, finalized=False, alignment=None, affinity=None):
 
         if isinstance(lead, int):
             self.lead = Practitioner.by_id(lead)
@@ -53,6 +54,18 @@ class CodedEffect(object):
             except (ObjectDB.DoesNotExist, ObjectDB.MultipleObjectsReturned):
                 target_obj = None
 
+        if isinstance(affinity, int):
+            try:
+                affinity = Affinity.objects.get(id=affinity)
+            except (Affinity.DoesNotExist, Affinity.MultipleObjectsReturned):
+                affinity = None
+
+        if isinstance(alignment, int):
+            try:
+                alignment = Alignment.objects.get(id=alignment)
+            except (Alignment.DoesNotExist, Alignment.MultipleObjectsReturned):
+                alignment = None
+
         self.target_obj = target_obj
         self.target_string = target_string
         self.parameters = parameters
@@ -62,6 +75,8 @@ class CodedEffect(object):
         self.successes = successes
         self.performed = performed
         self.finalized = finalized
+        self.affinity = affinity
+        self.alignment = alignment
 
     def __str__(self):
         return self.serialize()
@@ -126,14 +141,17 @@ class CodedEffect(object):
         if self.target_obj:
             result['target_obj'] = self.target_obj.id
 
-        if self.target_string:
-            result['target_string'] = self.target_string
-
         if self.parameters:
             result['parameters'] = self.parameters
 
         if self.conditions:
             result['conditions'] = str(self.conditions)
+
+        if self.affinity:
+            result['affinity'] = self.affinity.id
+
+        if self.alignment:
+            result['alignment'] = self.alignment.id
 
         result['strength'] = self.strength
         result['quiet'] = self.quiet
@@ -348,6 +366,61 @@ class BucketEffect(CodedEffect):
         return super(BucketEffect, self).serialize(result)
 
 
+class DamageEffect(CodedEffect):
+    requires_combat = True
+
+    def __init__(self, *args, **kwargs):
+        super(DamageEffect, self).__init__(*args, **kwargs)
+        self.damage = 0
+        self.real_damage = True
+        self.can_kill = True
+        self.use_mitigation = True
+        self.targets = [self.target_obj]
+        self.message = ""
+        self.attack_tags = []
+
+    def valid_target(self):
+        """
+        Target must be in combat for this to be valid. We already check for caster to be in combat with
+        requires_combat being set to True.
+        """
+        try:
+            return bool(self.target_obj.combat.state)
+        except AttributeError:
+            return False
+
+    @property
+    def combat(self):
+        return self.lead.character.combat.combat
+
+    def perform(self):
+        """Rolls the damage we'll do"""
+        from random import randint
+        super(DamageEffect, self).perform()
+        if self.parameters:
+            params = self.parameters.split(",")
+            if "noarmor" in params:
+                self.use_mitigation = False
+            if "mercy" in params:
+                self.can_kill = False
+            if "fake_damage" in params:
+                self.real_damage = False
+            if "aoe" in params:
+                self.targets = list(set(self.lead.character.combat.state.targets + self.targets))
+        self.real_damage = self.real_damage and self.combat.ndb.affect_real_damage
+        self.can_kill = self.can_kill and self.real_damage
+        # big range. So very minor spell of strength 10 does between 2-44 damage.
+        self.damage = randint(self.strength/4, (self.strength + 1) * 4)
+        self.attack_tags = [str(ob) for ob in (self.alignment, self.affinity) if ob] + ["magic"]
+
+    def finalize(self):
+        from typeclasses.scripts.combat.attacks import Attack
+        super(DamageEffect, self).finalize()
+        attack = Attack(targets=self.targets, affect_real_dmg=self.real_damage, damage=self.damage,
+                        use_mitigation=self.use_mitigation, attack_tags=self.attack_tags,
+                        can_kill=self.can_kill, story=self.message, inflictor=self.lead.character)
+        attack.execute()
+
 # TODO: All the other handlers, gods help me.
 
 
@@ -355,3 +428,4 @@ def register_effects():
     Effect.register_effect_handler(Effect.CODED_SIGHT, SightEffect)
     Effect.register_effect_handler(Effect.CODED_ADD_CLUE, ClueCollectionEffect)
     Effect.register_effect_handler(Effect.CODED_ADD_TOTAL, BucketEffect)
+    Effect.register_effect_handler(Effect.CODED_DAMAGE, DamageEffect)

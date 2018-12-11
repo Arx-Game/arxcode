@@ -913,6 +913,18 @@ class StaffCommandTests(ArxCommandTest):
                       '| motd                                   | None                              '
                       '| income                                 | 5.0')
 
+    def test_cmd_adjustfame(self):
+        self.setup_cmd(staff_commands.CmdAdjustFame, self.account)
+        self.call_cmd("bob=3", "Could not find 'bob'.|Check spelling.")
+        self.call_cmd("testaccount,testaccount2=3000", 'Adjusted fame for Testaccount, Testaccount2 by 3000')
+        self.call_cmd("testaccount,testaccount2=200", 'Adjusted legend for Testaccount, Testaccount2 by 200',
+                      cmdstring="adjustlegend")
+        self.call_cmd("testaccount2=1000", "Adjusted legend for Testaccount2 by 1000", cmdstring="adjustlegend")
+        self.call_cmd("testaccount2=1000", "Adjusted fame for Testaccount2 by 1000")
+        self.assertEqual(self.assetowner.fame, 3000)
+        self.assertEqual(self.assetowner2.fame, 4000)
+        self.assertEqual(self.assetowner.legend, 200)
+        self.assertEqual(self.assetowner2.legend, 1200)
 
 
 class StaffCommandTestsPlus(ArxCommandTest):

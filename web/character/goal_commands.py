@@ -98,7 +98,7 @@ class CmdGoals(ArxCommand):
 
     def update_goal_field(self, goal):
         """Updates a field for a goal"""
-        args = self.rhs
+        args = self.rhs or ""
         target_name = self.rhs
         field = list(set(self.switches) & set(self.field_switches))[0]
         old = getattr(goal, field)

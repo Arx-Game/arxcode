@@ -473,9 +473,9 @@ class FashionSnapshot(FashionCommonMixins):
         model_fame = self.fame * mult
         org_fame = self.org_fame * mult
         designer_fame = self.designer_fame * mult
-        self.fashion_model.assets.adjust_prestige(model_fame, force=reverse)
-        self.org.assets.adjust_prestige(org_fame, force=reverse)
-        self.designer.assets.adjust_prestige(designer_fame, force=reverse)
+        self.fashion_model.assets.adjust_prestige(model_fame)
+        self.org.assets.adjust_prestige(org_fame)
+        self.designer.assets.adjust_prestige(designer_fame)
 
     def inform_fashion_clients(self):
         """

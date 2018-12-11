@@ -262,7 +262,7 @@ class EventManager(Script):
                 pass
             # award prestige
             try:
-                host.assets.adjust_prestige(event.prestige/len(qualified_hosts))
+                host.assets.adjust_prestige(event.prestige / len(qualified_hosts))
             except (AttributeError, ValueError, TypeError):
                 continue
 

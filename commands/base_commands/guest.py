@@ -860,7 +860,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
                 cost = value
             else:
                 # xp values are 10 times higher than skill points, so we must convert.
-                cost = get_skill_cost(char, arguments, adjust_value=value, check_teacher=False)
+                cost = get_skill_cost(char, arguments, adjust_value=value, check_teacher=False, unmodified=True)
                 cost /= 10
             if cost > avail_pts:
                 character.msg("You do not have enough available %s points. Remove points from a %s first." % (category,

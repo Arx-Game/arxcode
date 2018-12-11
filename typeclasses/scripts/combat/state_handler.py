@@ -20,7 +20,8 @@ class CombatAction(object):
     ATTACK_QTYPES = ["attack", "kill", "flank"]
     
     def __init__(self, character, qtype="pass", targ=None, msg="", attack_penalty=0, 
-                 dmg_penalty=0, status="queued", desc="", action=None):
+                 dmg_penalty=0, status="queued", desc="", action=None, working=None, unsafe=False,
+                 delete_on_fail=False):
         self.character = character
         self.state = character.combat.state
         self.status = status
@@ -35,6 +36,9 @@ class CombatAction(object):
         self.description = desc
         self.special_action = action
         self.finished_attack = None
+        self.working = working
+        self.unsafe = unsafe
+        self.delete_working_on_failure = delete_on_fail
 
     def __str__(self):
         text = "attack" if self.qtype in self.ATTACK_QTYPES else self.qtype
@@ -467,7 +471,7 @@ class CombatantStateHandler(object):
             self.character.msg(q.msg)
             self.do_pass(delay=delay)
             return True
-        can_kill = q.qtype == "kill"
+        can_kill = q.qtype in ("kill", "casting")
         # if we have multiple npcs in us, we want to spread out
         # our attacks. validate_targets will only show conscious targets
         self.validate_targets(can_kill)
@@ -494,6 +498,12 @@ class CombatantStateHandler(object):
             q.finished_attack = attack
             self.recent_actions.append(q)
             return True
+        if q.qtype == "casting":
+            if q.working.perform(unsafe=q.unsafe):
+                q.working.finalize()
+                return True
+            elif q.delete_working_on_failure:
+                q.working.delete()
 
     def roll_initiative(self):
         """Rolls and stores initiative for the character."""
