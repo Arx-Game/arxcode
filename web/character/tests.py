@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from server.utils.test_utils import ArxCommandTest, ArxTest
 from web.character import investigation, scene_commands, goal_commands
-from web.character.models import Clue, Revelation, SearchTag, GoalUpdate, Goal
+from web.character.models import Clue, Revelation, SearchTag, Goal
 
 
 class InvestigationTests(ArxCommandTest):
@@ -297,9 +297,12 @@ class PRPClueTests(ArxCommandTest):
         self.call_cmd("/rating 25", 'Name: testrev\nDesc: testdesc\nPlot: None\nRequired Clue Value: 25\n'
                                     'Tags: None\nReal: True')
         self.call_cmd("/plot asdf", 'No plot by that name or number.')
-        self.call_cmd("/plot testplot", 'Name: testrev\nDesc: testdesc\nPlot: TestPlot\n'
-                                        'Required Clue Value: 25\nTags: None\nReal: True')
+        self.call_cmd("/plot testplot=some notes on stuff", 'Name: testrev\nDesc: testdesc\nPlot: TestPlot\n'
+                                                            'Required Clue Value: 25\nTags: None\nReal: True')
         self.call_cmd("/finish", 'testrev(#1) created.')
+        rev = Revelation.objects.first()
+        involvement = rev.plot_involvement.get(plot=self.plot)
+        self.assertEqual(involvement.gm_notes, "some notes on stuff")
 
 
 class GoalTests(ArxCommandTest):

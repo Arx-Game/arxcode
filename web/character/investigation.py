@@ -1896,11 +1896,12 @@ class CmdPRPRevelation(PRPLorecommand):
 
     Usage:
         +prprevelation
-        +prprevelation/create <plot ID>[=<notes about relationship to plot>]
+        +prprevelation/create
         +prprevelation/name <name>
         +prprevelation/desc <description>
         +prprevelation/rating <total value of clues required for discovery>
         +prprevelation/tags <tag 1>,<tag 2>,etc
+        +prprevelation/plot <plot ID>[=<notes about relationship to plot>]
         +prprevelation/finish
         +prprevelation/abandon
 
@@ -1951,13 +1952,14 @@ class CmdPRPRevelation(PRPLorecommand):
                 form['desc'] = self.args
             if "plot" in self.switches:
                 try:
-                    if self.args.isdigit():
-                        plot = self.gm_plots.get(id=self.args)
+                    if self.lhs.isdigit():
+                        plot = self.gm_plots.get(id=self.lhs)
                     else:
-                        plot = self.gm_plots.get(name__iexact=self.args)
+                        plot = self.gm_plots.get(name__iexact=self.lhs)
                 except Plot.DoesNotExist:
                     raise CommandError("No plot by that name or number.")
                 form['plot'] = plot.id
+                form['plot_gm_notes'] = self.rhs
             if "tags" in self.switches:
                 form['tag_names'] = self.args
             if "fake" in self.switches:

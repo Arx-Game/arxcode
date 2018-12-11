@@ -214,6 +214,7 @@ class ClueCreateForm(PRPFormBase):
 class RevelationCreateForm(PRPFormBase):
     """Form for creating a revelation for a PRP"""
     plot = forms.ModelChoiceField(required=True, queryset=Plot.objects.none())
+    plot_gm_notes = forms.CharField(required=False)
 
     class Meta:
         model = Revelation
@@ -246,7 +247,8 @@ class RevelationCreateForm(PRPFormBase):
         revelation.author = self.author
         revelation.save()
         plot = self.cleaned_data.get('plot')
-        revelation.plot_involvement.create(plot=plot)
+        gm_notes = self.cleaned_data.get('plot_gm_notes', "")
+        revelation.plot_involvement.create(plot=plot, gm_notes=gm_notes)
         revelation.discoveries.create(character=self.author, discovery_method="author")
         inform_staff("Revelation '%s' created for plot '%s'." % (revelation, plot))
         return revelation

@@ -2,7 +2,7 @@ from commands.base import ArxCommand
 from evennia.commands.cmdset import CmdSet
 from evennia.utils import evtable
 from .models import SkillNode, SkillNodeResonance, Working, WorkingParticipant, Practitioner, \
-    Attunement, FamiliarAttunement, PractitionerSpell, PractitionerEffect
+    Attunement, FamiliarAttunement, PractitionerSpell, PractitionerEffect, Effect
 from server.utils.arx_utils import commafy, inform_staff
 from server.utils.exceptions import CommandError
 from evennia.utils.ansi import strip_ansi
@@ -100,6 +100,7 @@ class CmdMagic(ArxCommand):
       magic/gesture [description]
       magic/verb [verb]
       magic/language [language]
+      magic/animaritual <spell>=<customized message>
       magic/checkemit
 
     This command allows you to interact with the magic system for everything
@@ -124,7 +125,9 @@ class CmdMagic(ArxCommand):
     do so, and a short description of how you move when you do.  The /checkemit
     switch will return what your current emit string is -- what the room will
     see every time you perform magic if you don't choose to pay the cost to
-    perform it quietly.
+    perform it quietly. /animaritual allows you to set a custom message for an
+    anima ritual that your character knows, which tend to be unique to each
+    individual caster.
     """
     key = "magic"
     locks = "cmd:practitioner() or perm(Admin)"
@@ -240,6 +243,22 @@ class CmdMagic(ArxCommand):
 
             practitioner.verb = self.args
             self.msg("Your new casting verb is: " + practitioner.verb.lower())
+            return
+
+        if "animaritual" in self.switches:
+            success_msg = self.rhs or ""
+            if len(success_msg) < 10:
+                self.msg("Please write a longer description of what happens when your character does their anima "
+                         "ritual. Strange things happening in the room based on their affinity, anything others "
+                         "might notice about your character momentarily looking different, and so on.")
+                return
+            try:
+                ritual = (practitioner.spell_discoveries.filter(effects__coded_effect=Effect.CODED_ANIMA_RITUAL)
+                                                        .distinct().get(spell_id=self.lhs))
+                ritual.success_msg = success_msg
+                ritual.save()
+            except (PractitionerSpell.DoesNotExist, ValueError):
+                self.msg("No anima ritual by that ID.")
             return
 
         if "nodes" in self.switches:

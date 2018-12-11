@@ -421,6 +421,32 @@ class DamageEffect(CodedEffect):
                         can_kill=self.can_kill, story=self.message, inflictor=self.lead.character)
         attack.execute()
 
+
+class AnimaRitualEffect(CodedEffect):
+    def __init__(self, *args, **kwargs):
+        super(AnimaRitualEffect, self).__init__(*args, **kwargs)
+        self.final_value = 0
+
+    def valid_target(self):
+        """Require our target to have been claimed by us for a randomscene"""
+        from commands.base_commands.social import CmdRandomScene
+        cmd = CmdRandomScene()
+        cmd.caller = self.lead.character
+        return self.target_obj in cmd.claimlist
+
+    def perform(self):
+        super(AnimaRitualEffect, self).perform()
+        num_rituals = self.lead.anima_rituals_this_week + 1
+        self.final_value = self.strength/num_rituals
+
+    def finalize(self):
+        super(AnimaRitualEffect, self).finalize()
+        self.lead.anima += self.final_value
+        self.lead.save()
+
+    def results_string(self):
+        return "{} gains {} anima.".format(self.lead.character, self.final_value)
+
 # TODO: All the other handlers, gods help me.
 
 
@@ -429,3 +455,4 @@ def register_effects():
     Effect.register_effect_handler(Effect.CODED_ADD_CLUE, ClueCollectionEffect)
     Effect.register_effect_handler(Effect.CODED_ADD_TOTAL, BucketEffect)
     Effect.register_effect_handler(Effect.CODED_DAMAGE, DamageEffect)
+    Effect.register_effect_handler(Effect.CODED_ANIMA_RITUAL, AnimaRitualEffect)
