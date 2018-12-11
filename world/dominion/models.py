@@ -3513,13 +3513,18 @@ class Organization(InformMixin, SharedMemoryModel):
             elif len(chars) > 0:
                 char = chars[0]
                 name = char_name(char)
-                char = char.player.player.db.char_ob
-                gender = char.db.gender or "Male"
-                if gender.lower() == "male":
-                    title = male_title
-                else:
-                    title = female_title
-                msg += "{w%s{n (Rank %s): %s\n" % (title, rank, name)
+                try:
+                    char = char.player.player.db.char_ob
+                    gender = char.db.gender or "Male"
+                    if gender.lower() == "male":
+                        title = male_title
+                    else:
+                        title = female_title
+                    msg += "{w%s{n (Rank %s): %s\n" % (title, rank, name)
+                except AttributeError:
+                        msg+= "{w%s{n (Rank %s): %s\n" % (male_title, rank, name)
+                
+
         return msg
 
     def display_public(self, show_all=False):
@@ -3587,8 +3592,16 @@ class Organization(InformMixin, SharedMemoryModel):
         msg += self.display_work_settings()
         clues = self.clues.all()
         if display_clues:
+            if viewing_member:
+                entry=viewing_member.player.player.roster
+                discovered_clues = entry.clues.all()
             if clues:
-                msg += "\n{wClues Known:{n %s\n" % "; ".join(str(ob) for ob in clues)
+                msg += "\n{wClues Known:"
+                for clue in clues:
+                    if clue in discovered_clues:
+                        msg+="{n %s;" % clue
+                    else:
+                        msg+="{w %s{n;" % clue
             theories = self.theories.all()
             if theories:
                 msg += "\n{wTheories Known:{n %s\n" % "; ".join("%s (#%s)" % (ob, ob.id) for ob in theories)

@@ -160,6 +160,13 @@ class InvestigationTests(ArxCommandTest):
                                      'investigation can progress.')
             invest3 = self.roster_entry2.investigations.last()
             self.assertEqual(invest3.clue_target.name, 'PLACEHOLDER for Investigation #4')
+            self.call_cmd("/requesthelp bob, charlie","Must give ID of investigation.")
+            self.call_cmd("/requesthelp 1=bob, charlie","Investigation not found.")
+            self.call_cmd("/requesthelp 4=bob, charlie","You may only invite others to active investigations.")
+            self.call_cmd("/active 4","Char2's investigation on clue: 3 set to active.")
+            self.assertEqual(self.roster_entry2.action_points, 50)
+            self.call_cmd("/requesthelp 4=bob, charlie","No active player found named bob|No active player found named charlie")
+            self.call_cmd("/requesthelp 4=Char2","You cannot invite yourself.")
 
 
 class SceneCommandTests(ArxCommandTest):

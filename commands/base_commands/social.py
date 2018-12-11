@@ -850,7 +850,7 @@ class CmdMessenger(ArxCommand):
     key = "messenger"
     locks = "cmd:all()"
     aliases = ["+messenger", "messengers", "+messengers", "receive messenger", "receive messengers",
-               "receive messages", "message"]
+               "receive messages", "message","recieve messenger","recieve messages"]
     help_category = "Social"
     delivery_switches = ("deliver", "money", "materials", "silver")
 
@@ -984,7 +984,7 @@ class CmdMessenger(ArxCommand):
             self.set_or_remove_retainer_ability(attr_name, attr_desc)
             return
         # get the first new messenger we have waiting
-        if "receive" in self.switches:
+        if "receive" or "recieve"in self.switches:
             if self.check_cannot_use_messengers(self.caller):
                 return
             caller.messages.receive_pending_messenger()

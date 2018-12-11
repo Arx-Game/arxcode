@@ -767,7 +767,7 @@ class CmdInvestigate(InvestigationFormCommand):
         @investigate/abandon <id #>
         @investigate/resume <id #>
         @investigate/pause <id #>
-        @investigate/requesthelp <id #>=<player>
+        @investigate/requesthelp <id #>=<player>[,<player2>,...]
     Create Usage:
         @investigate/new
         @investigate/tags <tag to investigate>[/-<tag to omit>...]
@@ -1150,35 +1150,38 @@ class CmdInvestigate(InvestigationFormCommand):
                 return
             if "requesthelp" in self.switches:
                 from typeclasses.characters import Character
-                try:
-                    char = Character.objects.get(db_key__iexact=self.rhs, roster__roster__name="Active")
-                except Character.DoesNotExist:
-                    self.msg("No active player found by that name.")
-                    return
-                if char == caller:
-                    self.msg("You cannot invite yourself.")
-                    return
-                if char.assisted_investigations.filter(investigation=ob):
-                    self.msg("They are already able to assist the investigation.")
-                    return
-                current = char.db.investigation_invitations or []
-                if ob.id in current:
-                    self.msg("They already have an invitation to assist this investigation.")
-                    return
+
                 if not (ob.active and ob.ongoing):
                     self.msg("You may only invite others to active investigations.")
                     return
-                self.msg("Asking %s to assist with %s." % (char.key, ob))
-                current.append(ob.id)
-                char.db.investigation_invitations = current
-                name = caller.key
-                inform_msg = "%s has requested your help in their investigation, ID %s.\n" % (name, ob.id)
-                inform_msg += "To assist them, use the {w@helpinvestigate{n command, creating a "
-                inform_msg += "form with {w@helpinvestigate/new{n, setting the target with "
-                inform_msg += "{w@helpinvestigate/target %s{n, and filling in the other fields." % ob.id
-                inform_msg += "\nThe current actions of their investigation are: %s" % ob.actions
-                char.player_ob.inform(inform_msg, category="Investigation Request From %s" % name,
-                                      append=False)
+                for target in self.rhslist:
+                    try:
+                        char = Character.objects.get(db_key__iexact=target, roster__roster__name="Active")
+                    except Character.DoesNotExist:
+                        self.msg("No active player found named %s" % target)
+                        continue
+                    if char == caller:
+                        self.msg("You cannot invite yourself.")
+                        continue
+                    if char.assisted_investigations.filter(investigation=ob):
+                        self.msg("%s are already able to assist the investigation." % target)
+                        continue
+                    current = char.db.investigation_invitations or []
+                    if ob.id in current:
+                        self.msg("%s already has an invitation to assist this investigation." % target)
+                        continue
+
+                    self.msg("Asking %s to assist with %s." % (char.key, ob))
+                    current.append(ob.id)
+                    char.db.investigation_invitations = current
+                    name = caller.key
+                    inform_msg = "%s has requested your help in their investigation, ID %s.\n" % (name, ob.id)
+                    inform_msg += "To assist them, use the {w@helpinvestigate{n command, creating a "
+                    inform_msg += "form with {w@helpinvestigate/new{n, setting the target with "
+                    inform_msg += "{w@helpinvestigate/target %s{n, and filling in the other fields." % ob.id
+                    inform_msg += "\nThe current actions of their investigation are: %s" % ob.actions
+                    char.player_ob.inform(inform_msg, category="Investigation Request From %s" % name,
+                                          append=False)
                 return
         caller.msg("Invalid switch.")
         return

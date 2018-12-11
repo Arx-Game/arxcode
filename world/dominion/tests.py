@@ -9,7 +9,7 @@ from commands.base_commands import roster
 
 from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions, SearchTag
 from world.dominion.models import Plot, PlotAction, PCPlotInvolvement, RPEvent, PlotUpdate, Organization, \
-    CraftingMaterialType, CraftingMaterials
+    CraftingMaterialType, CraftingMaterials, ClueForOrg
 
 
 class TestCraftingCommands(ArxCommandTest):
@@ -129,7 +129,34 @@ class TestGeneralDominionCommands(ArxCommandTest):
         self.call_cmd("/score orgtest2", "No match for an org by the name: orgtest2.")
         self.call_cmd("/score orgtest", "Member Total Work Total Invested Combined \n"
                                    "Testaccount          3             25       28")
-
+        
+    def test_cmd_organization(self):
+        from world.dominion.models import Organization, AssetOwner
+        org = Organization.objects.create(name="Orgtest")
+        org_owner = AssetOwner.objects.create(organization_owner=org)
+        
+        member = org.members.create(player=self.dompc)
+        self.cmd_class = general_dominion_commands.CmdOrganization
+        self.caller = self.account
+        self.call_cmd("Orgtest","Name: Orgtest\n"
+                      "Desc: None\n\nLeaders of Orgtest:\n"
+                      "\nWebpage: http://play.arxgame.org/topics/org/1/\nMembers of Orgtest:\nSerf (Rank 10): Testaccount\n"
+                      "\nMoney:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%\nResources: Economic: 0, Military: 0, Social: 0\n"
+                      "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\nWork Settings: None found.\n\n"
+                      "Member stats for Testaccount\n\nRank: 10\nSupport Pool Share: 0/0\nTotal Work: 0\nTasks Completed: 0, Total Rating: 0")
+        clue = Clue.objects.create(name="Org test clue 1")
+        clue2 = Clue.objects.create(name="Org test clue 2")
+        clue2.discoveries.create(character=self.roster_entry)
+        ClueForOrg.objects.create(clue=clue, org=org, revealed_by=self.roster_entry)
+        ClueForOrg.objects.create(clue=clue2, org=org, revealed_by=self.roster_entry)
+        self.call_cmd("Orgtest","Name: Orgtest\nDesc: None\n\nLeaders of Orgtest:\n\n"
+                      "Webpage: http://play.arxgame.org/topics/org/1/\nMembers of Orgtest:\nSerf (Rank 10): Testaccount\n\n"
+                      "Money:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%\nResources: Economic: 0, Military: 0, Social: 0\n"
+                      "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\nWork Settings: None found.\n"
+                      "\nClues Known: Org test clue 1; Org test clue 2;\n"
+                      "Member stats for Testaccount\n\nRank: 10\nSupport Pool Share: 0/0\nTotal Work: 0\nTasks Completed: 0, Total Rating: 0")
+        
+        
 
 class TestPlotCommands(TestTicketMixins, ArxCommandTest):
     def setUp(self):
