@@ -88,6 +88,7 @@ class CmdMagic(ArxCommand):
       magic/spells
       magic/effects
       magic/conditions
+      magic/stories <working ID>
 
       magic/teachnode <target>=<node>
       magic/teachspell <target>=<spell>
@@ -349,6 +350,20 @@ class CmdMagic(ArxCommand):
                 self.msg("You don't seem to have any conditions!")
             return
 
+        if "stories" in self.switches:
+            rituals = practitioner.anima_rituals
+
+            if self.rhs:
+                try:
+                    ritual = rituals.get(id=self.rhs)
+                except (Working.DoesNotExist, ValueError):
+                    self.msg("No working by that ID.")
+                    return
+                self.msg("Story: %s" % "\n".join(ob.story for ob in ritual.effect_handlers if hasattr(ob, "story")))
+                return
+            self.msg("IDs of anima rituals: %s" % ", ".join(ob.id for ob in rituals))
+            return
+
         if "teachnode" in self.switches:
 
             if not self.lhs or not self.rhs:
@@ -537,6 +552,7 @@ class CmdAdminMagic(ArxCommand):
       @adminmagic/adjust <player>/<node>=<amount>
       @adminmagic/addresonance <player>=<amount>
       @adminmagic/addpotential <player>=<amount>
+      @adminmagic/stories <player>
 
       @adminmagic/viewobject <obj>
 
@@ -768,6 +784,16 @@ class CmdAdminMagic(ArxCommand):
             self.msg("Resonance added.")
             inform_staff("|y{}|n just added {} resonance to |y{}|n, for a total of {}."
                          .format(self.caller.name, amount, practitioner, practitioner.unspent_resonance))
+            return
+
+        if "stories" in self.switches:
+            practitioner = self.practitioner_for_string(self.lhs)
+            if not practitioner:
+                self.msg("Couldn't find a practitioner by that name.  "
+                         "The player may not yet be a practitioner.")
+                return
+            self.msg("IDs of anima rituals for %s: %s" % (practitioner,
+                                                          ", ".join(ob.id for ob in practitioner.anima_rituals)))
             return
 
         if "working" in self.switches:

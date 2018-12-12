@@ -55,12 +55,13 @@ class SkillNodeAdmin(admin.ModelAdmin):
     list_filter = ('affinity', 'affinity_default',)
     exclude = ('spells', 'effects')
     raw_id_fields = ('parent_node',)
+    filter_horizontal = ('discovered_by_revelations',)
 
 
 class SpellAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'node', 'alignment', 'affinity')
     list_filter = ('alignment', 'affinity')
-    raw_id_fields = ('node',)
+    raw_id_fields = ('node', 'discovered_by_clues')
     inlines = (SpellEffectInline, )
 
 

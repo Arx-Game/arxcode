@@ -705,17 +705,21 @@ class Practitioner(SharedMemoryModel):
             condition.condition.apply_to_practitioner(self, strength=strength)
 
     @property
+    def anima_rituals(self):
+        from django.db.models import Q
+        return self.workings.filter(Q(spell__effects__coded_effect=Effect.CODED_ANIMA_RITUAL) |
+                                     Q(weave_effect__coded_effect=Effect.CODED_ANIMA_RITUAL)).distinct().count()
+
+    @property
     def anima_rituals_this_week(self):
         from .advancement import MagicAdvancementScript
-        from django.db.models import Q
+
         script = MagicAdvancementScript.objects.first()
         try:
             last_week = script.db.run_date - timedelta(days=7)
         except AttributeError:
             last_week = datetime.now() - timedelta(days=7)
-        return (self.workings.filter(finalized_at__gte=last_week)
-                             .filter(Q(spell__effects__coded_effect=Effect.CODED_ANIMA_RITUAL) |
-                                     Q(weave_effect__coded_effect=Effect.CODED_ANIMA_RITUAL))).distinct().count()
+        return self.anima_rituals.filter(finalized_at__gte=last_week)
 
 
 class PractitionerEffect(SharedMemoryModel):
@@ -765,6 +769,9 @@ class SkillNode(SharedMemoryModel):
     eyes_open = models.BooleanField(default=False, help_text='If set, then having this node open means '
                                                              'someone\'s eyes are opened.')
     auto_discover = models.BooleanField(default=False)
+    discovered_by_revelations = models.ManyToManyField("character.Revelation", blank=True, related_name="nodes",
+                                                       help_text="If we discover these revelations, the node is "
+                                                                 "automatically discovered.")
     required_resonance = models.PositiveSmallIntegerField(default=10)
     affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='nodes')
     affinity_default = models.BooleanField(default=False,
@@ -958,6 +965,9 @@ class Spell(SharedMemoryModel):
     alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+')
     affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+')
     auto_discover = models.BooleanField(default=False)
+    discovered_by_clues = models.ManyToManyField("character.Clue", blank=True, related_name="spells",
+                                                 help_text="If we discover any of these clues, the spell is "
+                                                           "automatically learned.")
     required_resonance = models.PositiveSmallIntegerField(default=1)
     required_favor = models.PositiveIntegerField(default=0, help_text='A base amount of favor required with Abyssal or ' \
                                                                       'Elysian to cast this spell.')
@@ -1448,6 +1458,10 @@ class Working(SharedMemoryModel):
             if not effect_handler:
                 return "The effect that this working targets has not been implemented yet!  " \
                        "Please whine to staff to get on it."
+
+            other_errors = effect_handler.check_for_other_errors()
+            if other_errors:
+                return other_errors
 
             if not effect_handler.valid_target():
                 return "Your target '{}' is not valid for the magical effect you've chosen.".format(self.target_string)
