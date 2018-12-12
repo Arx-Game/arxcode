@@ -487,11 +487,11 @@ class PlayerOrNpc(SharedMemoryModel):
     @property
     def active_plots(self):
         return self.plots.filter(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE,
-                                 usage__in=(Plot.GM_PLOT, Plot.PLAYER_RUN_PLOT))
+                                 usage__in=(Plot.GM_PLOT, Plot.PLAYER_RUN_PLOT)).distinct()
 
     @property
     def plots_we_can_gm(self):
-        return self.active_plots.filter(dompc_involvement__admin_status__gte=PCPlotInvolvement.GM)
+        return self.active_plots.filter(dompc_involvement__admin_status__gte=PCPlotInvolvement.GM).distinct()
 
 
 class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
