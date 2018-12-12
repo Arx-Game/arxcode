@@ -948,7 +948,7 @@ class CmdPropriety(ArxPlayerCommand):
     If a propriety mod would be appropriate to a character, it can be +requested with a justification, if it is reflective of current or past RP and is not in dispute whether it happened, such as a white journal or public statement that represents a societal stance that's listed. Characters wishing to overturn propriety mods can pursue @actions such as social campaigns to try to reverse public opinion.
     """
     key = "@Proprieties"
-    aliases = ["proprietors"]
+    aliases = []
     help_category = "General"
     locks = "cmd:all()"
     def func(self):
