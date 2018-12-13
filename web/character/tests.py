@@ -27,6 +27,7 @@ class InvestigationTests(ArxCommandTest):
     @patch("web.character.models.datetime")
     @patch.object(investigation, "datetime")
     def test_cmd_clues(self, mock_datetime, mock_roster_datetime):
+        from world.magic.models import Spell, SkillNode, Practitioner
         from datetime import datetime
         mock_datetime.now = Mock(return_value=self.fake_datetime)
         mock_roster_datetime.now = Mock(return_value=self.fake_datetime)
@@ -50,8 +51,15 @@ class InvestigationTests(ArxCommandTest):
         self.call_cmd("/share 2=Testaccount2", "No clue found by this ID: 2. ")
         self.clue_disco2 = self.roster_entry.clue_discoveries.create(clue=self.clue2, message="additional text test2")
         self.assertFalse(bool(self.roster_entry2.revelations.all()))
+        self.node = SkillNode.objects.create(name="test node")
+        self.spell = Spell.objects.create(name="test spell", node=self.node)
+        self.spell.discovered_by_clues.add(self.clue2)
+        self.node.discovered_by_revelations.add(self.revelation)
         self.call_cmd(template.format("2", "Love Tehom"*8), "You use 101 action points and have 0 remaining this week.|"
                       "You have shared the clue(s) 'test clue2' with Char2.\nYour note: {}".format("Love Tehom"*8))
+        pract = self.char2.practitioner
+        self.assertEqual(pract.spells.first(), self.spell)
+        self.assertEqual(pract.nodes.first(), self.node)
         self.assertTrue(bool(self.roster_entry2.revelations.all()))
         self.caller = self.account2
         self.call_cmd("2", ("[test clue2] (50 Rating)\ntest clue2 desc\n{} This clue was shared with you by Char,"
