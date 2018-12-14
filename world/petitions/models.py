@@ -10,7 +10,75 @@ from evennia.utils.idmapper.models import SharedMemoryModel
 
 from server.utils.exceptions import PayError
 from .exceptions import PetitionError
+web.character.models import (Clue, SearchTag)
 
+class Interest(SharedMemoryModel):
+    name = models.CharField(max_length=30)
+    wantedadds = models.ManyToManyField(WantedAd)
+
+
+class WantedAd(SharedMemoryModel):
+    """This is an advertisement for wanting an RP partner"""
+    MARRIAGE = 0
+    SPONSOR = 1
+    PROTEGE = 2
+    PLOT = 3
+    TIME = 4
+    MATCH_TYPES = ((MARRIAGE, "Marriage"),(SPONSOR,"Sponsor"),(PROTEGE,"Protege"),(PLOT,"Plot"),(TIME,"Time"))
+    playtime_start = models.PositiveIntegerField(default=0)
+    playtime_end = models.PositiveIntegerField(default=0)
+    prefer_weekend = models.BooleanField(default=False)
+    interests = models.ManyToManyField(Interest)
+    clues = models.ManyToManyField(Clue)
+    searchtags = models.ManyToManyField(SearchTag)
+    blurb = models.TextField()
+    marriage = models.BooleanField(default=False)
+    sponsor = models.BooleanField(default=False)
+    protege = models.BooleanField(default=False)
+    plot = models.BooleanField(default=False)
+    active = models.BooleanField(default=False)
+    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="wanted_ad")
+
+    def match(self, dompc):
+        matches =[]
+        try:
+            seeker_add = dompc.wanted_ad
+        except AttributeError:
+            return matches
+        if dompc==self.owner
+            return matches
+        if self.playtime_start > self.playtime_end:
+            self.playtime_end+=24
+        if seeker_add.playtime_start > seeker_add.playtime_end:
+            seekeradd.playtime_end+=24
+
+        if seeker_add.playtime_end > self.playtime_end:
+            overlap=self.playtime_end
+        else
+            overlap=seeker_add.playtime_end
+        if seeker_add.playtime_start > self.playtime_start:
+            overlap-=self.playtime_start
+        else:
+            overlap-=seeker_add.playtime_start
+        if overlap <2:
+            matches.append(self.TIME)
+        if self.sponsor and seeker_add.protege:
+            rankcheck, diff=CmdPatronage.check_social_rank_difference(self.owner,dompc)
+            if rankcheck:
+                matches.append(self.PROTEGE)
+        if self.protege and seeker_add.sponsor:
+            rankcheck, diff=CmdPatronage.check_social_rank_difference(dompc,self.owner)
+            if rankcheck:
+                matches.append(self.SPONSOR)
+        if self.marriage and marriage:
+            matches.append(self.MARRIAGE)
+        if self.plot and seeker_add.plot:
+            intersect_clues = self.clues.all().intersection(seeker_add.clues.all())
+            intersect_tags = self.searchtags.all().intersection(seeker_add.searchtags.all())
+            if intersect_clues or intersect_tags:
+                matches.append(self.PLOT)
+        return matches
+                
 
 class BrokeredSale(SharedMemoryModel):
     """A sale sitting on the broker, waiting for someone to buy it"""

@@ -11,6 +11,104 @@ from world.petitions.exceptions import PetitionError
 from world.petitions.models import BrokeredSale, Petition
 
 
+
+class CmdMatchmaker(ArxCommand):
+    """
+    Creates or searches wanted ads
+    """
+    key ="matchmaker"
+    help_category = "social"
+    aliases =["mm"]
+
+    def func(self):
+        ad = self.caller.player.char_ob.wanted_ad.get_or_create()
+        if not self.switches:
+            return self.display_matches()
+        if "all" in self.switches:
+            return self.display_all_matches()
+        if "playtimes" in self.switches:
+            if len(self.lhslist) != 2:
+                self.msg("You need to supply both the start and end")
+                return
+            else:
+                ad.playtime_start=lhslist[0]
+                ad.playtime_end=lhslist[1]
+                ad.save()
+                self.msg("You're now listed as playing %s-%s" % (self.caller.player.char_ob.wanted_ad.playtime_start,self.caller.player.char_ob.wanted_ad.playtime_end))
+                return
+        if "blurb" in self.switches:
+            ad.blurb = self.lhs
+            self.msg("Your blurb is now: %s" % ad.blurb)
+            return 
+        if "seeking" in self.switches:
+            if lhslist:
+                ad.marriage=False
+                ad.plot=False
+                ad.soonsor=False
+                ad.protege=False
+                message="You're now looking for: "
+                for entry in lhslist:
+                    if entry.lower=="marriage":
+                        ad.marriage=True
+                        message+="marriage, "
+                    if entry.lower=="plot":
+                        ad.plot=True
+                        message+="plot, "
+                    if entry.lower=="sponsor":
+                        ad.sponsor=True
+                        message+="sponsor, "
+                    if entry.lower=="protege":
+                        ad.protege=True
+                        message+="protege, "
+                self.msg(message)
+                return
+            else
+                self.msg("You need to supply a comma separated list of what you're looking for")
+                return
+        if "clues" in self.switches:
+            return self.clues()
+        if "tags" in self.switches:
+            return self.tags()
+        if "activate" in self.switches:
+            ad=self.caller.player.char_ob.wanted_ad
+            ad.active^=True
+            if ad.active:
+                string=""
+            else:
+                string="not "
+            self.msg("You're now %slooking for a match" % string)
+            return
+        def display_matches(self):
+            my_ad = self.caller.player.char_ob.wanted_ad.get_or_create()
+            ads = WantedAd.objects.filter(active=True)
+            matches_list = []
+            matched_list = []
+            for ad in ads
+                matches = ad.match(self.caller.player.char_ob)
+                if matches:
+                    matches_list.append(matches)
+                    matched_list.append(ad)
+            table = PrettyTable(["Name", "Gender", "Age", "Matches","Playtime", "Blurb"])
+            for matches, ad in matches_list, matched_list
+                table.add_row(ad.owner.name,ad.owner.gender,ad.owner.age,matches,"%s-%s"%(playtime_start,playtime_end),ad.blurb)
+
+        def display_all_matches(self):
+            my_ad = self.caller.player.char_ob.wanted_ad.get_or_create()
+            ads = WantedAd.objects.filter(active=True)
+            table = PrettyTable(["Name", "Gender", "Age", "Matches","Playtime", "Blurb"])
+            for ad in ads
+                matches = ad.match(self.caller.player.char_ob)
+                table.add_row(ad.owner.name,ad.owner.gender,ad.owner.age,matches,"%s-%s"%(playtime_start,playtime_end),ad.blurb)
+
+                
+        def clues(self):
+            self.msg("Placeholder")
+            return
+        def tags(self):
+            self.msg("Placeholder")
+            return
+            
+
 class CmdPetition(ArxCommand):
     """
     Creates a petition to an org or the market as a whole
