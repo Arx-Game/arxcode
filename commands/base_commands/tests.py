@@ -17,7 +17,7 @@ from commands.base_commands.crafting import CmdCraft
 from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -1130,3 +1130,19 @@ class XPCommandTests(ArxCommandTest):
         self.char1.db.skills = {"teaching": 5, "dodge": 2}
         self.call_cmd("/spend dodge", 'You have increased your dodge for a cost of 23 xp. XP remaining: 0')
         # TODO: other switches
+
+
+class HelpCommandTests(ArxCommandTest):
+    def test_cmd_help(self):
+        from evennia.help.models import HelpEntry
+        from evennia.utils.utils import dedent
+        from commands.default_cmdsets import CharacterCmdSet
+        from world.dominion.plot_commands import CmdPlots
+        entry = HelpEntry.objects.create(db_key="test entry")
+        entry.tags.add("plots")
+        self.setup_cmd(help.CmdHelp, self.char1)
+        expected_return = "Help topic for +plots (aliases: +plot)\n"
+        expected_return += dedent(CmdPlots.__doc__.rstrip())
+        expected_return += "\n\nRelated help entries: test entry\n\n"
+        expected_return += "Suggested: +plots, +plot, @gmplots, support, @globalscript"
+        self.call_cmd("plots", expected_return, cmdset=CharacterCmdSet())

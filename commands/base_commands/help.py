@@ -22,7 +22,7 @@ __all__ = ("CmdHelp", "CmdSetHelp")
 SEP = "{C" + "-" * 78 + "{n"
 
 
-def format_help_entry(title, help_text, aliases=None, suggested=None, unavailable=False):
+def format_help_entry(title, help_text, aliases=None, suggested=None, unavailable=False, related_tags=None):
     """
     This visually formats the help entry.
     """
@@ -35,6 +35,11 @@ def format_help_entry(title, help_text, aliases=None, suggested=None, unavailabl
         string += "\n{rThis command is not presently available to you.{n"
     if help_text:
         string += "\n%s" % dedent(help_text.rstrip())
+    if related_tags:
+        entries = (HelpEntry.objects.exclude(db_key=title)
+                                    .filter(db_tags__db_key__in=related_tags)
+                                    .distinct().values_list('db_key', flat=True))
+        string += "\n\n{CRelated help entries: {w%s" % ", ".join(entries)
     if suggested:
         string += "\n\n{CSuggested:{n "
         string += "{w%s{n" % fill(", ".join(suggested))
@@ -125,7 +130,7 @@ class CmdHelp(Command):
 
         if not player.character:
             try:
-                char_cmds = [cmd for cmd in player.db.char_ob.cmdset.all()[0] if cmd.auto_help and cmd.access(caller)]
+                char_cmds = [cmd for cmd in player.char_ob.cmdset.all()[0] if cmd.auto_help and cmd.access(caller)]
                 all_cmds += char_cmds
             except Exception:
                 pass
@@ -178,7 +183,7 @@ class CmdHelp(Command):
                 unavailable = True
             doc_text = match[0].get_help(caller, cmdset)
             self.msg(format_help_entry(match[0].key, doc_text, aliases=match[0].aliases, suggested=suggestions,
-                                       unavailable=unavailable))
+                                       unavailable=unavailable, related_tags=match[0].help_entry_tags))
             found_match = True
 
         # try an exact database help entry match

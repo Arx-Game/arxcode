@@ -122,6 +122,7 @@ class CmdPlots(ArxCommand):
     help_category = "Story"
     admin_switches = ("storyhook", "rfr", "invite", "perm", "tag")
     recruited_xp = 1
+    help_entry_tags = ["plots", "goals"]
 
     @property
     def invitations(self):

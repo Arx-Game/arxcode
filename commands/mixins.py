@@ -8,6 +8,7 @@ from django.db.models import Q
 class ArxCommmandMixin(object):
     """Mixin class for Arx commands"""
     error_class = CommandError
+    help_entry_tags = []
 
     def check_switches(self, switch_set):
         """Checks if the commands switches are inside switch_set"""
