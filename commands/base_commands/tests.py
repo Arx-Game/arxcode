@@ -565,11 +565,11 @@ class SocialTests(ArxCommandTest):
                                             'Description: None\nDate: None\nLocation: None\nLargesse: Small')
         self.call_cmd("/largesse", 'Level       Cost   Prestige \n'
                                    'Small       0      0        '
-                                   'Average     100    1000     '
-                                   'Refined     1000   5000     '
-                                   'Grand       10000  20000    '
-                                   'Extravagant 100000 100000   '
-                                   'Legendary   500000 400000')
+                                   'Average     100    10000    '
+                                   'Refined     1000   50000    '
+                                   'Grand       10000  200000   '
+                                   'Extravagant 100000 1000000  '
+                                   'Legendary   500000 4000000')
         self.call_cmd("/desc test description", 'Desc of event set to:\ntest description')
         self.call_cmd('/submit', 'Please correct the following errors:\n'
                                  'Date: This field is required.\n'

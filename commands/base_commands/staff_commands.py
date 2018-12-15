@@ -19,7 +19,7 @@ from server.utils.prettytable import PrettyTable
 from server.utils.exceptions import CommandError
 from commands.base import ArxCommand, ArxPlayerCommand
 from web.character.models import Clue, SearchTag, Revelation, StoryEmit, Flashback, CluePlotInvolvement
-from world.dominion.models import Organization, RPEvent, Propriety, AssetOwner, Plot, PlotAction
+from world.dominion.models import Organization, RPEvent, Propriety, AssetOwner, Plot, PlotAction, PrestigeCategory
 from typeclasses.characters import Character
 
 PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
@@ -1932,8 +1932,8 @@ class CmdAdjustFame(ArxPlayerCommand):
     Adjusts the fame or legend of players
 
     Usage:
-        adjustfame <character1>[,<char2>,...]=<amount>
-        adjustlegend <char1>[,<char2>,...]=<amount>
+        adjustfame <character1>[,<char2>,...]=<amount>[/category[/reason]]
+        adjustlegend <char1>[,<char2>,...]=<amount>[/category[/reason]]
     """
     key = "adjustfame"
     aliases = ["adjustlegend"]
@@ -1950,13 +1950,30 @@ class CmdAdjustFame(ArxPlayerCommand):
                 if not targ:
                     raise CommandError("Check spelling.")
                 targets.append(targ.Dominion.assets)
+
+            rhs_items = self.rhs.split("/")
             try:
-                amount = int(self.rhs)
+                amount = int(rhs_items[0])
             except (TypeError, ValueError):
                 raise CommandError("Must be a number.")
+
+            adjust_category = None
+            if len(rhs_items) >= 2:
+                if len(rhs_items[1]) > 0:
+                    try:
+                        adjust_category = PrestigeCategory.objects.get(name__iexact=rhs_items[1])
+                    except (PrestigeCategory.DoesNotExist, PrestigeCategory.MultipleObjectsReturned):
+                        raise CommandError("That is not a valid prestige category.")
+
+            reason = None
+            if len(rhs_items) == 3:
+                reason = rhs_items[2]
+
             for targ in targets:
-                current = getattr(targ, attr)
-                setattr(targ, attr, current + amount)
+                if attr == "fame":
+                    targ.adjust_prestige(amount, category=adjust_category, reason=reason)
+                else:
+                    targ.adjust_legend(amount, category=adjust_category, reason=reason)
                 targ.save()
             names = ", ".join(str(ob) for ob in targets)
             msg = "Adjusted %s for %s by %s" % (attr, names, amount)

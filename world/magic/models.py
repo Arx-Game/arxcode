@@ -6,19 +6,10 @@ from evennia.utils import logger
 from evennia.utils.ansi import strip_ansi
 from evennia.utils.evtable import EvTable
 from world.roll import Roll
-from server.utils.arx_utils import commafy, inform_staff
+from server.utils.arx_utils import commafy, inform_staff, classproperty
 from datetime import datetime, timedelta
 import math
 import json
-
-
-class classproperty(object):
-
-    def __init__(self, getter):
-        self.getter= getter
-
-    def __get__(self, instance, owner):
-        return self.getter(owner)
 
 
 class Alignment(SharedMemoryModel):

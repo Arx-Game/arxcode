@@ -672,3 +672,11 @@ def commafy(string_list):
     else:
         return ", ".join(string_list[:-2] + [" and ".join(string_list[-2:])])
 
+
+class classproperty(object):
+
+    def __init__(self, getter):
+        self.getter= getter
+
+    def __get__(self, instance, owner):
+        return self.getter(owner)

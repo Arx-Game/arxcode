@@ -27,7 +27,7 @@ from world.stats_and_skills import (get_partial_match, get_skill_cost,
                                     VALID_STATS, )
 
 # limit symbol import for API
-__all__ = ("CmdGuestLook", "CmdGuestCharCreate", "CmdGuestPrompt", "CmdGuestAddInput")
+__all__ = ("CmdGuestLook", "CmdGuestCharCreate", "CmdGuestPrompt", "CmdGuestAddInput", "census_of_fealty")
 CMD_NOINPUT = syscmdkeys.CMD_NOINPUT
 CMD_NOMATCH = syscmdkeys.CMD_NOMATCH
 _vocations_ = ("noble", "courtier", "charlatan", "soldier", "knight", "priest", "merchant",

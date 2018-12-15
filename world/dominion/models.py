@@ -69,7 +69,8 @@ from .reports import WeeklyReport
 from .battle import Battle
 from .agenthandler import AgentHandler
 from .managers import CrisisManager, OrganizationManager, LandManager
-from server.utils.arx_utils import get_week, inform_staff, passthrough_properties, CachedProperty, CachedPropertiesMixin
+from server.utils.arx_utils import get_week, inform_staff, passthrough_properties, CachedProperty, \
+    CachedPropertiesMixin, classproperty, a_or_an
 from server.utils.exceptions import ActionSubmissionError, PayError
 from typeclasses.npcs import npc_types
 from typeclasses.mixins import InformMixin
@@ -102,6 +103,7 @@ LIFESTYLES = {
     6: (5000, 10000),
     }
 PRESTIGE_DECAY_AMOUNT = 0.35
+MAX_PRESTIGE_HISTORY = 10
 
 PAGEROOT = "http://play.arxgame.org"
 
@@ -494,6 +496,97 @@ class PlayerOrNpc(SharedMemoryModel):
         return self.active_plots.filter(dompc_involvement__admin_status__gte=PCPlotInvolvement.GM).distinct()
 
 
+class PrestigeCategory(SharedMemoryModel):
+
+    name = models.CharField(max_length=30, blank=False, null=False)
+    male_noun = models.CharField(max_length=30, blank=False, null=False)
+    female_noun = models.CharField(max_length=30, blank=False, null=False)
+
+    CACHED_TYPES = {}
+
+    @classmethod
+    def category_for_name(cls, name):
+        if name in cls.CACHED_TYPES:
+            return cls.CACHED_TYPES[name]
+
+        try:
+            result = cls.objects.get(name=name)
+            cls.CACHED_TYPES[name] = result
+        except (PrestigeCategory.DoesNotExist, PrestigeCategory.MultipleObjectsReturned):
+            return None
+
+    @classproperty
+    def FASHION(cls):
+        return cls.category_for_name('Fashion')
+
+    @classproperty
+    def EVENT(cls):
+        return cls.category_for_name('Event')
+
+    @classproperty
+    def CHAMPION(cls):
+        return cls.category_for_name('Champion')
+
+    @classproperty
+    def ATHLETICS(cls):
+        return cls.category_for_name('Athletics')
+
+    @classproperty
+    def MILITARY(cls):
+        return cls.category_for_name('Military')
+
+    @classproperty
+    def DESIGN(cls):
+        return cls.category_for_name('Design')
+
+    @classproperty
+    def INVESTMENT(cls):
+        return cls.category_for_name('Investment')
+
+
+class PrestigeAdjustment(SharedMemoryModel):
+
+    FAME = 0
+    LEGEND = 1
+
+    PRESTIGE_TYPES = (
+        (FAME, "Fame"),
+        (LEGEND, "Legend")
+    )
+
+    asset_owner = models.ForeignKey('AssetOwner', related_name="prestige_adjustments")
+    category = models.ForeignKey(PrestigeCategory, related_name='+')
+    adjustment_type = models.PositiveSmallIntegerField(default=FAME, choices=PRESTIGE_TYPES)
+    adjusted_on = models.DateTimeField(auto_now_add=True, blank=False, null=False)
+    adjusted_by = models.PositiveIntegerField(default=0, blank=False, null=False)
+    reason = models.TextField(blank=True, null=True)
+
+    @property
+    def effective_value(self):
+        if adjustment_type == PrestigeAdjustment.LEGEND:
+            return self.adjusted_by
+
+        now = datetime.now()
+        weeks = (now - self.adjusted_on).days // 7
+        decay_multiplier = PRESTIGE_DECAY_AMOUNT ** weeks
+        return int(round(self.adjusted_by * decay_multiplier))
+
+
+class PrestigeTier(SharedMemoryModel):
+
+    rank_name = models.CharField(max_length=30, blank=False, null=False)
+    minimum_prestige = models.PositiveIntegerField(blank=False, null=False)
+
+    @classmethod
+    def rank_for_prestige(cls, value):
+        results = cls.objects.order_by('-minimum_prestige')
+        for result in results.all():
+            if value >= result.minimum_prestige:
+                return result.rank_name
+
+        return None
+
+
 class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     """
     This model describes the owner of an asset, such as money
@@ -526,6 +619,44 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     def prestige(self):
         """Our prestige used for different mods. aggregate of fame, legend, and grandeur"""
         return self.fame + self.total_legend + self.grandeur + self.propriety
+
+    def descriptor_for_value_adjustment(self, value, best_adjust):
+        qualifier = PrestigeTier.rank_for_prestige(value)
+        result = None
+        reason = None
+        if best_adjust:
+            reason = best_adjust.reason
+            char = self.player.player.db.char_ob
+            gender = char.db.gender or "Male"
+            if gender.lower() == "male":
+                result = best_adjust.category.male_noun
+            else:
+                result = best_adjust.category.female_noun
+
+        if not result:
+            result = "citizen"
+
+        if qualifier:
+            result = "%s %s" % (qualifier, result)
+
+        if reason:
+            result = "%s, known for %s" % (result, reason)
+
+        result = "%s, %s %s" % (self.player.player.name, a_or_an(result), result)
+
+        return result
+
+    def prestige_descriptor(self, adjust_type=None):
+        if not self.player:
+            return self.organization_owner.name
+
+        value = self.prestige
+        if adjust_type == PrestigeAdjustment.FAME:
+            value = self.fame
+        elif adjust_type == PrestigeAdjustment.LEGEND:
+            value = self.total_legend
+
+        return self.descriptor_for_value_adjustment(value, self.most_notable_adjustment(adjust_type=adjust_type))
 
     @CachedProperty
     def propriety(self):
@@ -647,13 +778,66 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         sign = -1 if base < 0 else 1
         return min(abs(int(base)), abs(self.fame + self.legend) * 2) * sign
 
-    def adjust_prestige(self, value):
+    # noinspection PyMethodMayBeStatic
+    def store_prestige_record(self, value, adjustment_type=PrestigeAdjustment.FAME, category=None, reason=None):
+        if not category:
+            return
+
+        old_adjustments = PrestigeAdjustment.objects.filter(asset_owner=self,
+                                                            adjustment_type=adjustment_type)
+        new_adjustment = PrestigeAdjustment.objects.create(
+            asset_owner=self,
+            category=category,
+            adjustment_type=adjustment_type,
+            adjusted_by=value,
+            reason=reason
+        )
+
+        if old_adjustments.count() >= MAX_PRESTIGE_HISTORY:
+            # Remove our least-notable adjustments to get us back under the limit
+            extras = old_adjustments.count() - MAX_PRESTIGE_HISTORY
+            for i in range(0, extras + 1):
+                least = new_adjustment
+                for adjustment in old_adjustments.all():
+                    if adjustment.effective_value < least.effective_value:
+                        least = adjustment
+
+                least.delete()
+
+    def most_notable_adjustment(self, adjust_type=None):
+        greatest = None
+        adjustments = PrestigeAdjustment.objects.filter(asset_owner=self)
+        if adjust_type:
+            adjustments = adjustments.filter(adjustment_type=adjust_type)
+
+        for adjustment in adjustments.all():
+            if not greatest or adjustment.effective_value > greatest.effective_value:
+                greatest = adjustment
+
+        return greatest
+
+    def adjust_prestige(self, value, category=None, reason=None):
         """
         Adjusts our prestige. We gain fame equal to the value. We no longer
         adjust the legend, per Apos.
         """
         self.fame += value
         self.save()
+
+        if category:
+            self.store_prestige_record(value, adjustment_type=PrestigeAdjustment.FAME, category=category,
+                                       reason=reason)
+
+    def adjust_legend(self, value, category=None, reason=None):
+        """
+        Adjusts our legend. We gain legend equal to the value.
+        """
+        self.legend += value
+        self.save()
+
+        if category:
+            self.store_prestige_record(value, adjustment_type=PrestigeAdjustment.LEGEND, category=category,
+                                       reason=reason)
 
     @CachedProperty
     def income(self):
@@ -894,7 +1078,7 @@ class CharitableDonation(SharedMemoryModel):
         roll /= 100.0
         roll *= value/2.0
         prest = int(roll)
-        self.giver.adjust_prestige(prest)
+        self.giver.adjust_prestige(prest, category=PrestigeCategory.CHARITY)
         player = self.giver.player
         if caller != character:
             msg = "%s donated %s silver to %s on your behalf.\n" % (caller, value, self.receiver)
@@ -5062,7 +5246,7 @@ class Member(SharedMemoryModel):
             setattr(self.organization, "%s_influence" % resource_type, current + org_amount)
             self.organization.save()
         msg += "\nYou and %s both gain %d prestige." % (self.organization, prestige)
-        self.player.assets.adjust_prestige(prestige)
+        self.player.assets.adjust_prestige(prestige, PrestigeCategory.INVESTMENT)
         self.organization.assets.adjust_prestige(prestige)
         msg += "\nYou have increased the %s influence of %s by %d." % (resource_type, self.organization, org_amount)
         mod = getattr(self.organization, "%s_modifier" % resource_type)
@@ -5675,8 +5859,8 @@ class RPEvent(SharedMemoryModel):
     LARGESSE_CHOICES = ((NONE, 'Small'), (COMMON, 'Average'), (REFINED, 'Refined'), (GRAND, 'Grand'),
                         (EXTRAVAGANT, 'Extravagant'), (LEGENDARY, 'Legendary'),)
     # costs and prestige awards
-    LARGESSE_VALUES = ((NONE, (0, 0)), (COMMON, (100, 1000)), (REFINED, (1000, 5000)), (GRAND, (10000, 20000)),
-                       (EXTRAVAGANT, (100000, 100000)), (LEGENDARY, (500000, 400000)))
+    LARGESSE_VALUES = ((NONE, (0, 0)), (COMMON, (100, 10000)), (REFINED, (1000, 50000)), (GRAND, (10000, 200000)),
+                       (EXTRAVAGANT, (100000, 1000000)), (LEGENDARY, (500000, 4000000)))
 
     NO_RISK = 0
     MINIMAL_RISK = 1

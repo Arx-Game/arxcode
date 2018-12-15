@@ -20,7 +20,8 @@ from typeclasses.bulletin_board.bboard import BBoard
 
 
 # limit symbol import for API
-__all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships")
+__all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships",
+           "format_header")
 
 
 def get_roster_manager():

@@ -710,7 +710,7 @@ class CmdAdmAssets(ArxPlayerCommand):
                 return
             if len(rhslist) == 2:
                 message = rhslist[1]
-            affected = owner.adjust_prestige(value)
+            affected = owner.adjust_prestige(value, reason=message)
             caller.msg("You have adjusted %s's prestige by %s." % (owner, value))
             for obj in affected:
                 obj.msg("%s adjusted %s's prestige by %s for the following reason: %s" % (caller, owner,
