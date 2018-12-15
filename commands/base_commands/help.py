@@ -182,8 +182,12 @@ class CmdHelp(Command):
             if not [ob for ob in self.cmdset if ob == match[0]]:
                 unavailable = True
             doc_text = match[0].get_help(caller, cmdset)
+            try:
+                tags = match[0].help_entry_tags
+            except AttributeError:
+                tags = None
             self.msg(format_help_entry(match[0].key, doc_text, aliases=match[0].aliases, suggested=suggestions,
-                                       unavailable=unavailable, related_tags=match[0].help_entry_tags))
+                                       unavailable=unavailable, related_tags=tags))
             found_match = True
 
         # try an exact database help entry match
