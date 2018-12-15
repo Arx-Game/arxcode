@@ -496,8 +496,9 @@ class PlayerOrNpc(SharedMemoryModel):
         return self.active_plots.filter(dompc_involvement__admin_status__gte=PCPlotInvolvement.GM).distinct()
 
 
+# noinspection PyMethodParameters,PyPep8Naming
 class PrestigeCategory(SharedMemoryModel):
-
+    """Categories of different kinds of prestige adjustments, whether it's from events, fashion, combat, etc."""
     name = models.CharField(max_length=30, blank=False, null=False)
     male_noun = models.CharField(max_length=30, blank=False, null=False)
     female_noun = models.CharField(max_length=30, blank=False, null=False)
@@ -543,9 +544,12 @@ class PrestigeCategory(SharedMemoryModel):
     def INVESTMENT(cls):
         return cls.category_for_name('Investment')
 
+    def __str__(self):
+        return self.name
+
 
 class PrestigeAdjustment(SharedMemoryModel):
-
+    """A record of adjusting an AssetOwner's prestige"""
     FAME = 0
     LEGEND = 1
 
@@ -563,7 +567,7 @@ class PrestigeAdjustment(SharedMemoryModel):
 
     @property
     def effective_value(self):
-        if adjustment_type == PrestigeAdjustment.LEGEND:
+        if self.adjustment_type == PrestigeAdjustment.LEGEND:
             return self.adjusted_by
 
         now = datetime.now()
@@ -573,7 +577,7 @@ class PrestigeAdjustment(SharedMemoryModel):
 
 
 class PrestigeTier(SharedMemoryModel):
-
+    """Used for displaying people's descriptions of why they're prestigious"""
     rank_name = models.CharField(max_length=30, blank=False, null=False)
     minimum_prestige = models.PositiveIntegerField(blank=False, null=False)
 
@@ -585,6 +589,9 @@ class PrestigeTier(SharedMemoryModel):
                 return result.rank_name
 
         return None
+
+    def __str__(self):
+        return self.rank_name
 
 
 class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
