@@ -301,7 +301,7 @@ class CmdSetupGear(ArxPlayerCommand):
         targ = caller.search(self.lhs)
         if not targ:
             return
-        char = targ.db.char_ob
+        char = targ.char_ob
         if not char:
             caller.msg("No char.")
             return

@@ -191,7 +191,7 @@ class CmdResurrect(ArxCommand):
             obj = caller.player.search(args)
             # found a player, get the character
             if obj:
-                obj = obj.db.char_ob
+                obj = obj.char_ob
         if not obj or not hasattr(obj, 'resurrect'):
             caller.msg("No character found by that name.")
             return
@@ -228,7 +228,7 @@ class CmdKill(ArxCommand):
             obj = caller.player.search(args)
             # found a player, get the character
             if obj:
-                obj = obj.db.char_ob
+                obj = obj.char_ob
         if not obj:
             caller.msg("No character found by that name.")
             return
@@ -263,7 +263,7 @@ class CmdForce(ArxCommand):
             player = self.caller.player.search(self.lhs)
             if not player:
                 return
-            char = player.db.char_ob
+            char = player.char_ob
         else:
             char = caller.search(self.lhs)
         if not char:
@@ -318,7 +318,7 @@ class CmdRestore(ArxPlayerCommand):
             if "deleted" not in str(targ.tags).split(","):
                 caller.msg("%s does not appear to be deleted." % targ)
                 return
-            char = caller.db.char_ob
+            char = caller.char_ob
             inform_staff("%s restored item: %s" % (caller, targ))
             caller.msg("Restored %s." % targ)
             if char:
@@ -424,7 +424,7 @@ class CmdSendVision(ArxPlayerCommand):
             return
         vision_object = None
         for targ in targlist:
-            char = targ.db.char_ob
+            char = targ.char_ob
             if not char:
                 caller.msg("No valid character for %s." % targ)
                 continue
@@ -583,7 +583,7 @@ class CmdAdjustReputation(ArxPlayerCommand):
                 player.gain_reputation(org, affection, respect)
                 inform_staff("%s has adjusted %s's reputation with %s: %s/%s" % (
                     self.caller, player, org, affection, respect))
-            character_list.append(player.player.db.char_ob)
+            character_list.append(player.player.char_ob)
         # post changes
         from typeclasses.bulletin_board.bboard import BBoard
         board = BBoard.objects.get(db_key__iexact="vox populi")
@@ -847,11 +847,11 @@ class CmdSetLanguages(ArxPlayerCommand):
         if not player:
             return
         if "add" in self.switches:
-            player.db.char_ob.languages.add_language(self.rhs)
+            player.char_ob.languages.add_language(self.rhs)
             self.msg("Added %s to %s." % (self.rhs, player))
             return
         if "remove" in self.switches:
-            player.db.char_ob.languages.remove_language(self.rhs)
+            player.char_ob.languages.remove_language(self.rhs)
             self.msg("Removed %s from %s." % (self.rhs, player))
             return
 
@@ -1349,7 +1349,7 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
         player = self.caller.search(self.lhs)
         if not player:
             return
-        charob = player.db.char_ob
+        charob = player.char_ob
         if not self.switches:
             from commands.base_commands.roster import display_relationships
             display_relationships(self.caller, charob, show_hidden=True)
@@ -1361,7 +1361,7 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
             target = self.caller.search(target)
             if not target:
                 return
-            target = target.db.char_ob
+            target = target.char_ob
             charob.messages.convert_short_rel_to_long_rel(target, rel_type, "black" not in self.switches)
             self.msg("{rDone.{n")
             return
@@ -1477,8 +1477,8 @@ class CmdTransferKeys(ArxPlayerCommand):
         targ = self.caller.search(self.rhs)
         if not source or not targ:
             return
-        source = source.db.char_ob
-        targ = targ.db.char_ob
+        source = source.char_ob
+        targ = targ.char_ob
         s_chest_keys = source.db.chestkeylist or []
         s_chest_keys = list(s_chest_keys)
         t_chest_keys = targ.db.chestkeylist or []
@@ -1616,7 +1616,7 @@ class CmdAdminTitles(ArxPlayerCommand):
         targ = self.caller.search(self.lhs)
         if not targ:
             return
-        targ = targ.db.char_ob
+        targ = targ.char_ob
         titles = targ.db.titles or []
         if not self.rhs:
             self.display_titles(targ)
@@ -1668,7 +1668,7 @@ class CmdAdminWrit(ArxPlayerCommand):
         if not targ:
             self.display_writbound()
             return
-        targ = targ.db.char_ob
+        targ = targ.char_ob
         writs = targ.db.writs or {}
         if not self.rhs:
             from evennia.utils.evtable import EvTable

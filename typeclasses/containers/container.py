@@ -41,7 +41,7 @@ class CmdChestKey(ArxCommand):
         player = caller.player.search(self.args)
         if not player:
             return
-        char = player.db.char_ob
+        char = player.char_ob
         if not char:
             return
         if not self.switches:

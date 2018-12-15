@@ -364,7 +364,7 @@ class PlayerOrNpc(SharedMemoryModel):
             traceback.print_exc()
             return cdowns
         try:
-            max_support = self.player.db.char_ob.max_support
+            max_support = self.player.char_ob.max_support
         except AttributeError:
             import traceback
             traceback.print_exc()
@@ -377,7 +377,7 @@ class PlayerOrNpc(SharedMemoryModel):
             qset = qset.filter(week=week + week_offset)
             for used in qset:
                 member = used.supporter.task.member
-                pc = member.player.player.db.char_ob
+                pc = member.player.player.char_ob
                 points = cdowns.get(pc.id, max_support)
                 points -= used.rating
                 cdowns[pc.id] = points
@@ -400,7 +400,7 @@ class PlayerOrNpc(SharedMemoryModel):
         """
         week = get_week()
         try:
-            max_support = self.player.db.char_ob.max_support
+            max_support = self.player.char_ob.max_support
             points_spent = sum(SupportUsed.objects.filter(Q(week=week) & Q(supporter__player=self) &
                                                           Q(supporter__fake=False)).values_list('rating', flat=True))
 
@@ -3513,7 +3513,7 @@ class Organization(InformMixin, SharedMemoryModel):
             elif len(chars) > 0:
                 char = chars[0]
                 name = char_name(char)
-                char = char.player.player.db.char_ob
+                char = char.player.player.char_ob
                 gender = char.db.gender or "Male"
                 if gender.lower() == "male":
                     title = male_title
@@ -3911,7 +3911,7 @@ class Agent(SharedMemoryModel):
         to guard the given character. Returns the first match, returns None
         if not found.
         """
-        return self.npcs.find_agentob_by_character(player.db.char_ob)
+        return self.npcs.find_agentob_by_character(player.char_ob)
 
     @property
     def dbobj(self):
@@ -5209,7 +5209,7 @@ class Member(SharedMemoryModel):
     def rank_title(self):
         """Returns title for this member"""
         try:
-            male = self.player.player.db.char_ob.db.gender.lower().startswith('m')
+            male = self.player.player.char_ob.db.gender.lower().startswith('m')
         except (AttributeError, ValueError, TypeError):
             male = False
         if male:
@@ -5311,7 +5311,7 @@ class AssignedTask(SharedMemoryModel):
 
     def cleanup_request_list(self):
         """Cleans the Attribute that lists who we requested support from"""
-        char = self.player.db.char_ob
+        char = self.player.char_ob
         try:
             del char.db.asked_supporters[self.id]
         except (AttributeError, KeyError, TypeError, ValueError):

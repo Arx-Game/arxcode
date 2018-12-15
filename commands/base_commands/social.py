@@ -193,7 +193,7 @@ class CmdWhere(ArxPlayerCommand):
         applicable_chars = []
         if self.check_switches(self.randomscene_switches):
             cmd = CmdRandomScene()
-            cmd.caller = caller.db.char_ob
+            cmd.caller = caller.char_ob
             applicable_chars = list(cmd.scenelist) + [ob for ob in cmd.newbies if ob not in cmd.claimlist]
         elif self.check_switches(self.firstimp_switches):
             applicable_chars = [ob.entry.character
@@ -352,7 +352,7 @@ class CmdFinger(ArxPlayerCommand):
         player = caller.search(self.args)
         if not player:
             return
-        char = player.db.char_ob
+        char = player.char_ob
         if not char:
             caller.msg("No character found.")
             return
@@ -607,7 +607,7 @@ class CmdJournal(ArxCommand):
                         # search as a player to make it global
                         char = caller.player.search(self.lhs)
                         # get character object from player we found
-                        char = char.db.char_ob
+                        char = char.char_ob
                         if not char:
                             raise AttributeError
                         # display their latest white journal entry of the character
@@ -689,7 +689,7 @@ class CmdJournal(ArxCommand):
                 char = caller.player.search(self.lhs)
                 if not char:
                     return
-                char = char.db.char_ob
+                char = char.char_ob
                 if not char:
                     caller.msg("No character found.")
                     return
@@ -709,7 +709,7 @@ class CmdJournal(ArxCommand):
                 num = int(self.lhs)
             else:
                 try:
-                    char = caller.player.search(self.lhs).db.char_ob
+                    char = caller.player.search(self.lhs).char_ob
                 except AttributeError:
                     caller.msg("Character not found.")
                     return
@@ -1549,7 +1549,7 @@ class CmdCalendar(ArxPlayerCommand):
         """Change event in progress"""
         event = self.get_event_from_args(self.lhs, check_host=True)
         if "movehere" in self.switches:
-            loc = self.caller.db.char_ob.location
+            loc = self.caller.char_ob.location
             self.event_manager.move_event(event, loc)
             self.msg("Event moved to your room.")
         elif "endevent" in self.switches:
@@ -1571,7 +1571,7 @@ class CmdCalendar(ArxPlayerCommand):
         elif "starteventearly" in self.switches:
             event = self.get_event_from_args(self.lhs, check_host=True)
             if self.rhs and self.rhs.lower() == "here":
-                loc = self.caller.db.char_ob.location
+                loc = self.caller.char_ob.location
                 if not loc:
                     self.msg("You do not currently have a location.")
                     return
@@ -2906,7 +2906,7 @@ class CmdLanguages(ArxCommand):
         player = self.caller.player.search(self.lhs)
         if not player:
             return
-        targ = player.db.char_ob
+        targ = player.char_ob
         if not targ:
             self.msg("Not found.")
             return
@@ -3289,7 +3289,7 @@ class CmdFirstImpression(ArxCommand):
             return
         # check if the target has written a first impression of us. If not, we'll need to be in the same room
         received = self.imps_of_me.filter(from_account__entry__player=targ)
-        if not received and targ.db.char_ob.location != self.caller.location:
+        if not received and targ.char_ob.location != self.caller.location:
             self.msg("Must be in the same room.")
             return
         if not self.rhs or len(self.rhs) < 10:
@@ -3318,7 +3318,7 @@ class CmdFirstImpression(ArxCommand):
             xp = 2 if writer_share else 1
             self.caller.adjust_xp(xp)
             self.msg("You have gained %s xp." % xp)
-            targ.db.char_ob.adjust_xp(4)
+            targ.char_ob.adjust_xp(4)
 
 
 class CmdGetInLine(ArxCommand):

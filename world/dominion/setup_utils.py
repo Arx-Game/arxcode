@@ -177,7 +177,7 @@ def set_domain_resources(domain, resources):
 def convert_domain(domain, srank=None, male=None):
     region = domain.land.region
     if not male or not srank:
-        char = domain.ruler.castellan.player.db.char_ob
+        char = domain.ruler.castellan.player.char_ob
         if not male:
             male = char.db.gender.lower() == "male"
         if not srank:
@@ -412,7 +412,7 @@ def setup_vassals(family, ruler, region, character, srank, num=2):
 
 def setup_vassals_for_player(player, num=2):
     dompc = player.Dominion
-    char = player.db.char_ob
+    char = player.char_ob
     family = char.db.family
     ruler = dompc.ruler
     srank = char.db.social_rank
@@ -525,7 +525,7 @@ def replace_vassal(domain, player, num_vassals=2):
     Replaces the npc ruler of a domain that is someone's vassal, and then
     creates vassals of their own.
     """
-    char = player.db.char_ob
+    char = player.char_ob
     if not char:
         raise ValueError("Character not found.")
     family = char.db.family
@@ -608,7 +608,7 @@ def update_navies_and_armies(adjust_armies=False, adjust_navies=True, replace=Fa
         owner = domain.ruler.house
         name = ""  # Do not override existing name
         try:
-            srank = domain.ruler.castellan.player.db.char_ob.db.social_rank
+            srank = domain.ruler.castellan.player.char_ob.db.social_rank
             if not srank or srank < 1 or srank > 6:
                 raise ValueError
         except AttributeError:

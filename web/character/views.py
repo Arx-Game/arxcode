@@ -41,7 +41,7 @@ def comment(request, object_id):
     """
     Makes an in-game comment on a character sheet.
     """
-    send_charob = request.user.db.char_ob
+    send_charob = request.user.char_ob
     rec_charob = get_character_from_ob(object_id)
     comment_txt = request.POST['comment']
     roster.create_comment(send_charob, rec_charob, comment_txt)
@@ -268,7 +268,7 @@ def gallery(request, object_id):
     character = get_character_from_ob(object_id)
     user = request.user
     can_upload = False
-    if user.is_authenticated() and (user.db.char_ob == character or user.is_staff):
+    if user.is_authenticated() and (user.char_ob == character or user.is_staff):
         can_upload = True
     photos = Photo.objects.filter(owner__id=object_id)
     portrait_form = PortraitSelectForm(object_id)
@@ -348,7 +348,7 @@ def upload(request, object_id):
     """View for uploading new photo resource to cloudinary and creating model"""
     user = request.user
     character = get_character_from_ob(object_id)
-    if not user.is_authenticated() or (user.db.char_ob != character and not user.is_staff):
+    if not user.is_authenticated() or (user.char_ob != character and not user.is_staff):
         raise Http404("You are not permitted to upload to this gallery.")
     unsigned = request.GET.get("unsigned") == "true"
 

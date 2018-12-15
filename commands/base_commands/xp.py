@@ -65,7 +65,7 @@ class CmdUseXP(ArxCommand):
         targ = self.caller.player.search(self.lhs)
         if not targ:
             return
-        alt = targ.db.char_ob
+        alt = targ.char_ob
         account = self.caller.roster.current_account
         if alt.roster.current_account != account:
             self.msg("%s is not an alt of yours." % alt)
@@ -292,8 +292,8 @@ class CmdTrain(ArxCommand):
     help_category = "Progression"
 
     def get_help(self, caller, cmdset):
-        if caller.db.char_ob:
-            caller = caller.db.char_ob
+        if caller.char_ob:
+            caller = caller.char_ob
         trained = ", ".join(ob.key for ob in self.currently_training(caller))
         if trained:
             trained = "You have trained %s this week. " % trained
@@ -473,7 +473,7 @@ class CmdAwardXP(ArxPlayerCommand):
         if not targ:
             caller.msg("No player found by that name.")
             return
-        char = targ.db.char_ob
+        char = targ.char_ob
         if not char:
             caller.msg("No active character found for that player.")
             return
@@ -516,7 +516,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
         char = None
         if "reset" in self.switches or "refund" in self.switches:
             try:
-                char = caller.search(self.lhs).db.char_ob
+                char = caller.search(self.lhs).char_ob
             except (AttributeError, ValueError, TypeError):
                 caller.msg("No player by that name.")
                 return
@@ -593,7 +593,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
         if not targ:
             caller.msg("No player found by that name.")
             return
-        char = targ.db.char_ob
+        char = targ.char_ob
         if not char:
             caller.msg("No active character for %s." % targ)
             return
@@ -697,7 +697,7 @@ class CmdVoteXP(ArxPlayerCommand):
         if targ.roster.roster.name != "Active" and targ not in votes:
             caller.msg("You can only vote for an active character.")
             return
-        if not targ.db.char_ob:
+        if not targ.char_ob:
             caller.msg("%s doesn't have a character object assigned to them." % targ)
             return
         if targ in votes:
