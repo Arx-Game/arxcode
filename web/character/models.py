@@ -879,13 +879,17 @@ class Clue(SharedMemoryModel):
         """List of keywords from our search tags. We use them for auto-matching clues with investigations."""
         return [ob.name for ob in self.search_tags.all()]
 
-    def display(self):
+    def display(self, show_gm_notes=False, disco_msg=""):
         """String display for clue"""
         msg = "|w[|c%s|w]|n (%s Rating)" % (self.name, self.rating)
         tags = self.search_tags.all()
         if tags:
             msg += " |wTags:|n %s" % ", ".join(("|235%s|n" % ob) for ob in tags)
         msg += "\n%s\n" % self.desc
+        if disco_msg:
+            msg += disco_msg
+        if show_gm_notes and self.gm_notes:
+            msg += "\n{wGM Notes:{n %s\n" % self.gm_notes
         return msg
 
     @property
@@ -1047,7 +1051,7 @@ class ClueDiscovery(SharedMemoryModel):
 
     def display(self, show_sharing=False, show_gm_notes=False):
         """Returns a string showing that we're not yet done, or the completed clue discovery."""
-        msg = self.clue.display()
+        msg = ""
         if self.message:
             if self.date:
                 msg += self.date.strftime("%x %X") + " "
@@ -1055,10 +1059,8 @@ class ClueDiscovery(SharedMemoryModel):
         if show_sharing:
             shared = self.shared_with
             if shared:
-                msg += "{wShared with{n: %s" % ", ".join(str(ob) for ob in shared)
-        if show_gm_notes:
-            msg += "\n{wGM Notes:{n %s" % self.clue.gm_notes
-        return msg
+                msg += "\n{wShared with{n: %s" % ", ".join(str(ob) for ob in shared)
+        return self.clue.display(show_gm_notes=show_gm_notes, disco_msg=msg)
 
     def check_revelation_discovery(self):
         """

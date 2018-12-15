@@ -1386,7 +1386,7 @@ class CmdListClues(ArxPlayerCommand):
                     self.disp_clue_table()
                     return
             if not self.switches:
-                self.msg(discovery.display())
+                self.msg(discovery.display(show_gm_notes=self.called_by_staff))
                 return
             if "addnote" in self.switches:
                 return self.add_note(discovery)

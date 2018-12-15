@@ -957,6 +957,7 @@ class CmdGMNotes(ArxPlayerCommand):
         @gmnotes/plot[/old] [<plot name or #ID>]
         @gmnotes/rev [<revelation name or #ID>]
         @gmnotes/char <tag name>
+        @gmnotes/viewnotes <character>
     Secrets & Clues:
         @gmnotes/secret <char>,<revelation name or #>=<IC message>[/<GMnote>]
         @gmnotes/quick <simple topic>[=<gmnote for placeholder clue>]
@@ -1018,6 +1019,8 @@ class CmdGMNotes(ArxPlayerCommand):
                 self.write_clue_quick()
             elif self.check_switches(("addsec", "addsecret", "secret")):
                 self.write_clue_secret()
+            elif "viewnotes" in self.switches:
+                self.view_character_gmnotes()
         except CommandError as err:
             self.msg(err)
 
@@ -1287,6 +1290,12 @@ class CmdGMNotes(ArxPlayerCommand):
         msg_for_plot += "as in-character justifications on how they could have heard your character is "
         msg_for_plot += "involved to arrange a scene. Feel free to reach out to them first if you like."
         plot.inform(msg_for_plot)
+
+    def view_character_gmnotes(self):
+        pc = self.character_search(self.lhs)
+        msg = "{wGM Notes for {c%s:{n\n\n" % pc.key
+        msg += "\n".join(ob.gm_notes for ob in pc.clues.all())
+        self.msg(msg)
 
 
 class CmdJournalAdminForDummies(ArxPlayerCommand):

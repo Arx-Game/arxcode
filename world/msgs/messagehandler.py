@@ -171,7 +171,7 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         """
 
         try:
-            return self.get_clue_by_id(clue_number, attr).display()
+            return self.get_clue_by_id(clue_number, attr).display(show_gm_notes=show_gm_notes)
         except (KeyError, ValueError, TypeError):
             msg = "You must provide a valid ID number.\n"
             return msg + self.display_clue_table(attr)

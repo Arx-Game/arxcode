@@ -994,6 +994,7 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                        "[Clues] Secret #1 of Galvanion (#3)\n"
                                        "Repeat command to delete the 'bishi' tag anyway.")
         self.call_cmd("/delete bishi", "Deleting the 'bishi' tag. Poof.")
+        self.call_cmd("/viewnotes char2", 'GM Notes for Char2:\n\nSly is incredibly hot and smirkity.\n\nDo not trust.')
 
 
 class JobCommandTests(TestTicketMixins, ArxCommandTest):
