@@ -673,6 +673,7 @@ def commafy(string_list):
         return ", ".join(string_list[:-2] + [" and ".join(string_list[-2:])])
 
 
+# noinspection PyPep8Naming
 class classproperty(object):
     """Descriptor for making a property that always goes off the class, not the instance."""
     def __init__(self, getter):
