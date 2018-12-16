@@ -9,6 +9,7 @@ import cloudinary.forms
 import cloudinary.uploader
 from cloudinary import api
 from cloudinary.forms import cl_init_js_callbacks
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db.models import Q
@@ -600,6 +601,7 @@ class ActionForm(AssistForm):
         self.fields = new_fields
 
 
+@login_required
 def edit_action(request, object_id, action_id):
     def character():
         """The main character of the actions"""

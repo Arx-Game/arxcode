@@ -322,22 +322,10 @@ def posts_for_request_all_search(board, searchstring):
 
 def posts_for_request_all_search_global(user, searchstring):
     """Get all posts from all boards for this user, containing the searchstring"""
-    # raw_boards = get_boards(user)
-    # result = None
-    # for board in raw_boards:
-    #     current_posts = list(board.get_all_posts(old=False).filter(db_message__icontains=searchstring))
-    #     old_posts = list(board.get_all_posts(old=True).filter(db_message__icontains=searchstring))
-    #     if result is None:
-    #         result = current_posts
-    #     else:
-    #         result = result + current_posts
-    #     result = result + old_posts
-    #
-    # result.sort(key=lambda x: x.db_date_created, reverse=True)
-    # return result
-
-    posts = list(Post.objects.filter(db_message__icontains=searchstring).order_by('-db_date_created'))
-    return filter(lambda x: x.bulletin_board.access(user, 'read'), posts)
+    boards = get_boards(user)
+    posts = list(Post.objects.filter(db_receivers_objects__in=boards)
+                             .filter(db_message__icontains=searchstring).distinct().order_by('-db_date_created'))
+    return posts
 
 
 def post_list(request, board_id):

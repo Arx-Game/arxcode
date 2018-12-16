@@ -544,6 +544,10 @@ class PrestigeCategory(SharedMemoryModel):
     def INVESTMENT(cls):
         return cls.category_for_name('Investment')
 
+    @classproperty
+    def CHARITY(cls):
+        return cls.category_for_name('Charity')
+
     def __str__(self):
         return self.name
 
