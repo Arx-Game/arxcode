@@ -2166,9 +2166,10 @@ class CmdSocialNotable(ArxCommand):
     Who's currently being talked about around Arx?
 
     Usage:
-      notable
+      notable [name]
       notable/buzz
       notable/legend
+      notable/infamous
       notable/orgs
 
     This command will return who's currently being talked about around Arx,
@@ -2176,7 +2177,9 @@ class CmdSocialNotable(ArxCommand):
 
     The first form will show it based on prestige (a combination of multiple
     factors, such as your fame, legend, grandeur, and propriety).  This list
-    represents who's particularly recognizable at this moment in time.
+    represents who's particularly recognizable at this moment in time.  If you
+    provide a character name, it will give you a quick note about that
+    particular character.
 
     The second form will show it just based on fame, which is transient and
     fades over time.  Fame might come from being seen at a particularly
@@ -2190,20 +2193,31 @@ class CmdSocialNotable(ArxCommand):
     notable acts which will be remembered by history.  The legend list is
     thus people who are still reknowned for various things they've done.
 
-    The fourth form will show the organizations in the city that people
+    The fourth form will show the people who are infamous, whose prestige
+    has dropped into the negative numbers.
+
+    The fifth form will show the organizations in the city that people
     are talking about, though will not say precisely why the organization
     is currently notable.
     """
     key = "notable"
     locks = "cmd:all()"
 
-    def show_rankings(self, title, asset_owners, adjust_type):
+    def show_rankings(self, title, asset_owners, adjust_type, show_percent=False):
         counter = 1
         table = EvTable()
         table.add_column(width=8)
         table.add_column()
+
+        median = AssetOwner.MEDIAN_PRESTIGE * 1.
+
         for owner in asset_owners:
-            table.add_row(str(counter), owner.prestige_descriptor(adjust_type))
+            if show_percent:
+                percentage = round((owner.prestige / median) * 100)
+                percentage -= percentage % 10
+                table.add_row(str(counter), owner.prestige_descriptor(adjust_type), str(percentage) + "%")
+            else:
+                table.add_row(str(counter), owner.prestige_descriptor(adjust_type))
             counter += 1
         if title:
             self.msg("\n|w" + title + "|n")
@@ -2211,6 +2225,25 @@ class CmdSocialNotable(ArxCommand):
 
     def func(self):
         adjust_type = None
+
+        if self.args:
+            try:
+                target = self.character_search(self.args)
+                asset = AssetOwner.objects.get(player=target.dompc)
+
+                percentage = round((asset.prestige / (AssetOwner.MEDIAN_PRESTIGE * 1.)) * 100)
+                percentage -= percentage % 10
+                descriptor = asset.prestige_descriptor()
+
+                self.msg("%s, is roughly %d%% as notable as the average citizen." % (descriptor, percentage))
+
+            except CommandError as ce:
+                self.msg(ce)
+            except (AssetOwner.DoesNotExist, AssetOwner.MultipleObjectsReturned):
+                self.msg("No such character!")
+            except ValueError:
+                self.msg("That character doesn't seem to be on the list!")
+            return
 
         if "orgs" in self.switches:
             title = "Organizations Currently in the Public Eye"
@@ -2229,12 +2262,19 @@ class CmdSocialNotable(ArxCommand):
                 title = "People of Legendary Renown"
                 adjust_type = PrestigeAdjustment.LEGEND
                 assets = sorted(assets, key=lambda x: x.total_legend, reverse=True)
+            elif "infamous" in self.switches:
+                title = "Those Who Society Shuns"
+                assets = [asset for asset in assets if asset.prestige < 0]
+                assets = sorted(assets, key=lambda x: x.prestige, reverse=False)
+                if len(assets) == 0:
+                    self.msg("There don't seem to be any people with negative prestige right now!")
+                    return
             else:
                 title = "Who's Being Talked About Right Now"
                 assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
 
         assets = assets[:20]
-        self.show_rankings(title, assets, adjust_type)
+        self.show_rankings(title, assets, adjust_type, show_percent=self.caller.check_permstring("builders"))
 
 
 class CmdThink(ArxCommand):

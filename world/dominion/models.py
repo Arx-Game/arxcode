@@ -586,10 +586,16 @@ class PrestigeTier(SharedMemoryModel):
     minimum_prestige = models.PositiveIntegerField(blank=False, null=False)
 
     @classmethod
-    def rank_for_prestige(cls, value):
+    def rank_for_prestige(cls, value, max_value):
+        if value < -1000000:
+            return "infamous"
+        elif value < -100000:
+            return "shameful"
+
         results = cls.objects.order_by('-minimum_prestige')
+        percentage = round((value / (max_value * 1.)) * 100)
         for result in results.all():
-            if value >= result.minimum_prestige:
+            if percentage >= result.minimum_prestige:
                 return result.rank_name
 
         return None
@@ -598,6 +604,7 @@ class PrestigeTier(SharedMemoryModel):
         return self.rank_name
 
 
+# noinspection PyMethodParameters,PyPep8Naming
 class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     """
     This model describes the owner of an asset, such as money
@@ -626,13 +633,119 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     min_resources_for_inform = models.PositiveIntegerField(default=0)
     min_materials_for_inform = models.PositiveIntegerField(default=0)
 
+    _AVERAGE_PRESTIGE = {'last_check': None, 'last_value': 0}
+    _AVERAGE_FAME = {'last_check': None, 'last_value': 0}
+    _AVERAGE_LEGEND = {'last_check': None, 'last_value': 0}
+    _MEDIAN_PRESTIGE = {'last_check': None, 'last_value': 0}
+    _MEDIAN_FAME = {'last_check': None, 'last_value': 0}
+    _MEDIAN_LEGEND = {'last_check': None, 'last_value': 0}
+
+    @classproperty
+    def AVERAGE_PRESTIGE(cls):
+        last_check = cls._AVERAGE_PRESTIGE['last_check']
+        now = datetime.now()
+        if not last_check or (now - last_check).days >= 1:
+            cls._AVERAGE_PRESTIGE['last_check'] = now
+            assets = list(
+                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+            assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
+            total = 0
+            for asset in assets:
+                total += asset.prestige
+            total = total / len(assets)
+            cls._AVERAGE_PRESTIGE['last_value'] = total
+
+        return cls._AVERAGE_PRESTIGE['last_value']
+
+    @classproperty
+    def MEDIAN_PRESTIGE(cls):
+        last_check = cls._MEDIAN_PRESTIGE['last_check']
+        now = datetime.now()
+        if not last_check or (now - last_check).days >= 1:
+            cls._MEDIAN_PRESTIGE['last_check'] = now
+            assets = list(
+                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+            assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
+
+            median = assets[len(assets) / 2].prestige
+
+            cls._MEDIAN_PRESTIGE['last_value'] = median
+
+        return cls._MEDIAN_PRESTIGE['last_value']
+
+    @classproperty
+    def AVERAGE_FAME(cls):
+        last_check = cls._AVERAGE_FAME['last_check']
+        now = datetime.now()
+        if not last_check or (now - last_check).days >= 1:
+            cls._AVERAGE_FAME['last_check'] = now
+            assets = list(
+                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available"))
+                    .order_by('-fame'))
+            total = 0
+            for asset in assets:
+                total += asset.fame
+            total = total / len(assets)
+            cls._AVERAGE_FAME['last_value'] = total
+
+        return cls._AVERAGE_FAME['last_value']
+
+    @classproperty
+    def MEDIAN_FAME(cls):
+        last_check = cls._MEDIAN_FAME['last_check']
+        now = datetime.now()
+        if not last_check or (now - last_check).days >= 1:
+            cls._MEDIAN_FAME['last_check'] = now
+            assets = list(
+                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+            assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
+
+            median = assets[len(assets) / 2].fame
+
+            cls._MEDIAN_FAME['last_value'] = median
+
+        return cls._MEDIAN_FAME['last_value']
+
+    @classproperty
+    def AVERAGE_LEGEND(cls):
+        last_check = cls._AVERAGE_LEGEND['last_check']
+        now = datetime.now()
+        if not last_check or (now - last_check).days >= 1:
+            cls._AVERAGE_LEGEND['last_check'] = now
+            assets = list(
+                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+            assets = sorted(assets, key=lambda x: x.total_legend, reverse=True)
+            total = 0
+            for asset in assets:
+                total += asset.total_legend
+            total = total / len(assets)
+            cls._AVERAGE_LEGEND['last_value'] = total
+
+        return cls._AVERAGE_LEGEND['last_value']
+
+    @classproperty
+    def MEDIAN_LEGEND(cls):
+        last_check = cls._MEDIAN_LEGEND['last_check']
+        now = datetime.now()
+        if not last_check or (now - last_check).days >= 1:
+            cls._MEDIAN_LEGEND['last_check'] = now
+            assets = list(
+                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+            assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
+
+            median = assets[len(assets) / 2].total_legend
+
+            cls._MEDIAN_LEGEND['last_value'] = median
+
+        return cls._MEDIAN_LEGEND['last_value']
+
     @CachedProperty
     def prestige(self):
         """Our prestige used for different mods. aggregate of fame, legend, and grandeur"""
         return self.fame + self.total_legend + self.grandeur + self.propriety
 
-    def descriptor_for_value_adjustment(self, value, best_adjust):
-        qualifier = PrestigeTier.rank_for_prestige(value)
+    def descriptor_for_value_adjustment(self, value, max_value, best_adjust):
+        qualifier = PrestigeTier.rank_for_prestige(value, max_value)
         result = None
         reason = None
         if best_adjust:
@@ -662,12 +775,10 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             return self.organization_owner.name
 
         value = self.prestige
-        if adjust_type == PrestigeAdjustment.FAME:
-            value = self.fame
-        elif adjust_type == PrestigeAdjustment.LEGEND:
-            value = self.total_legend
+        max_value = AssetOwner.MEDIAN_PRESTIGE
 
-        return self.descriptor_for_value_adjustment(value, self.most_notable_adjustment(adjust_type=adjust_type))
+        return self.descriptor_for_value_adjustment(value, max_value,
+                                                    self.most_notable_adjustment(adjust_type=adjust_type))
 
     @CachedProperty
     def propriety(self):
