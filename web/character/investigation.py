@@ -1851,8 +1851,8 @@ class CmdPRPClue(PRPLorecommand):
                 targ = self.caller.search(self.rhs)
                 if not targ:
                     return
-                if targ.Dominion not in clue.event.participants.all():
-                    self.msg("Target is not among the participants of that event.")
+                if not self.gm_plots.filter(dompcs=targ.Dominion).exists():
+                    self.msg("Target is not among the participants of the plots you GM.")
                     return
                 targ.roster.discover_clue(clue)
                 self.msg("You have sent them a clue.")
