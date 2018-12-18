@@ -672,3 +672,25 @@ def commafy(string_list):
     else:
         return ", ".join(string_list[:-2] + [" and ".join(string_list[-2:])])
 
+
+# noinspection PyPep8Naming
+class classproperty(object):
+    """Descriptor for making a property that always goes off the class, not the instance."""
+    def __init__(self, getter):
+        """
+        Args:
+            getter (function): the method that will become a class property
+        """
+        self.getter = getter
+
+    def __get__(self, instance, owner):
+        """
+
+        Args:
+            instance: instance of class or None, ignored
+            owner: The class object itself
+
+        Returns:
+            Returns the result of calling self.getter with the class passed in, instead of 'self'
+        """
+        return self.getter(owner)

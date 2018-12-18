@@ -155,7 +155,7 @@ class CmdAgents(ArxPlayerCommand):
                     return
                 try:
                     # assigning it to their character
-                    targ = targ.db.char_ob
+                    targ = targ.char_ob
                     if not targ:
                         caller.msg("They have no character to assign to.")
                         return
@@ -285,7 +285,7 @@ class CmdAgents(ArxPlayerCommand):
                         if agent.unique:
                             agent.dbobj.unassign()
                             try:
-                                char = agent.owner.player.player.db.char_ob
+                                char = agent.owner.player.player.char_ob
                                 agent.assign(char, 1)
                             except AttributeError:
                                 pass
@@ -428,7 +428,7 @@ class CmdRetainers(ArxPlayerCommand):
         agent = caller.Dominion.assets.agents.create(type=npc_type, quality=0, name=aname,
                                                      quantity=1, unique=True, desc=desc)
         caller.msg("You have created a new %s named %s." % (atype, aname))
-        agent.assign(caller.db.char_ob, 1)
+        agent.assign(caller.char_ob, 1)
         caller.msg("Assigning %s to you." % aname)
         self.msg("You now have a new agent. You can return to your home to summon them with the +guard command.")
         # sets its name and saves it

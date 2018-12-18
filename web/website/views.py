@@ -5,8 +5,11 @@ the other applications. Views are django's way of processing e.g. html
 templates on the fly.
 
 """
+import traceback
+
 from django.shortcuts import render
 from django.conf import settings
+from django.views.defaults import server_error
 
 from evennia.objects.models import ObjectDB
 from evennia.accounts.models import AccountDB
@@ -82,3 +85,9 @@ def webclient(request):
     session.save()
     from evennia.web.webclient.views import webclient
     return webclient(request)
+
+
+def arx_500_view(request):
+    """500 error with printing out the traceback"""
+    traceback.print_exc()
+    return server_error(request)

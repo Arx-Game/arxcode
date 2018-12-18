@@ -17,7 +17,7 @@ from commands.base_commands.crafting import CmdCraft
 from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -515,14 +515,7 @@ class SocialTests(ArxCommandTest):
                           'and players who are on your watch list have a * by their name.\nRoom: Char')
         self.room1.tags.add("private")
         self.call_cmd("", "No visible characters found.")
-    def test_cmd_score(self):
-        self.setup_cmd(social.CmdSocialScore, self.char1)
-        self.call_cmd(" char", "char\n"
-                      "Prestige:               0\n"
-                      "|__ Legend:             0\n"
-                      "|__ Fame:               0\n"
-                      "|__ Grandeur:           0\n"
-                      "|__ Propriety:          0")
+
 
     def test_cmd_watch(self):
         self.setup_cmd(social.CmdWatch, self.account)
@@ -602,11 +595,11 @@ class SocialTests(ArxCommandTest):
                                             'Description: None\nDate: None\nLocation: None\nLargesse: Small')
         self.call_cmd("/largesse", 'Level       Cost   Prestige \n'
                                    'Small       0      0        '
-                                   'Average     100    1000     '
-                                   'Refined     1000   5000     '
-                                   'Grand       10000  20000    '
-                                   'Extravagant 100000 100000   '
-                                   'Legendary   500000 400000')
+                                   'Average     100    10000    '
+                                   'Refined     1000   50000    '
+                                   'Grand       10000  200000   '
+                                   'Extravagant 100000 1000000  '
+                                   'Legendary   500000 4000000')
         self.call_cmd("/desc test description", 'Desc of event set to:\ntest description')
         self.call_cmd('/submit', 'Please correct the following errors:\n'
                                  'Date: This field is required.\n'
@@ -1031,6 +1024,7 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                        "[Clues] Secret #1 of Galvanion (#3)\n"
                                        "Repeat command to delete the 'bishi' tag anyway.")
         self.call_cmd("/delete bishi", "Deleting the 'bishi' tag. Poof.")
+        self.call_cmd("/viewnotes char2", 'GM Notes for Char2:\n\nSly is incredibly hot and smirkity.\n\nDo not trust.')
 
 
 class JobCommandTests(TestTicketMixins, ArxCommandTest):
@@ -1167,3 +1161,19 @@ class XPCommandTests(ArxCommandTest):
         self.char1.db.skills = {"teaching": 5, "dodge": 2}
         self.call_cmd("/spend dodge", 'You have increased your dodge for a cost of 23 xp. XP remaining: 0')
         # TODO: other switches
+
+
+class HelpCommandTests(ArxCommandTest):
+    def test_cmd_help(self):
+        from evennia.help.models import HelpEntry
+        from evennia.utils.utils import dedent
+        from commands.default_cmdsets import CharacterCmdSet
+        from world.dominion.plot_commands import CmdPlots
+        entry = HelpEntry.objects.create(db_key="test entry")
+        entry.tags.add("plots")
+        self.setup_cmd(help.CmdHelp, self.char1)
+        expected_return = "Help topic for +plots (aliases: +plot)\n"
+        expected_return += dedent(CmdPlots.__doc__.rstrip())
+        expected_return += "\n\nRelated help entries: test entry\n\n"
+        expected_return += "Suggested: +plots, +plot, @gmplots, support, @globalscript"
+        self.call_cmd("plots", expected_return, cmdset=CharacterCmdSet())

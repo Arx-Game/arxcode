@@ -145,4 +145,4 @@ class ArxChannelCommand(command.Command):
         if player in channel.mutelist or caller in channel.mutelist:
             self.msg("You have that channel muted.")
             return
-        channel.msg(msg, senders=caller.db.char_ob or caller, keep_log=True, online=True)
+        channel.msg(msg, senders=caller.char_ob or caller, keep_log=True, online=True)

@@ -129,6 +129,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     key = "@action"
     locks = "cmd:all()"
     help_category = "Story"
+    help_entry_tags = ["actions"]
     aliases = ["@actions", "+storyrequest"]
     action_categories = dict_from_choices_field(PlotAction, "CATEGORY_CHOICES")
     requires_draft_switches = ("invite", "setcrisis", "readycheck")

@@ -233,7 +233,7 @@ def event_comment(request, pk):
     """
     Makes an in-game comment on an event
     """
-    char = request.user.db.char_ob
+    char = request.user.char_ob
     if not char:
         raise Http404
     event = get_object_or_404(RPEvent, id=pk)

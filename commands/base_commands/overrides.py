@@ -134,7 +134,7 @@ class CmdInventory(ArxCommand):
             player = self.caller.player.search(self.args)
             if not player:
                 return
-            char = player.db.char_ob
+            char = player.char_ob
             if not char:
                 self.caller.msg("No character found.")
                 return
@@ -777,7 +777,7 @@ class CmdWho(ArxPlayerCommand):
         """
         base = player.name.capitalize()
         if lname and not sparse:
-            char = player.db.char_ob
+            char = player.char_ob
             if char:
                 base = char.db.longname or base
         if player.db.afk:
@@ -871,7 +871,7 @@ class CmdWho(ArxPlayerCommand):
                 plr_pobject = plr_pobject or pc
                 base = str(session.get_account())
                 pname = self.format_pname(session.get_account())
-                char = pc.db.char_ob
+                char = pc.char_ob
                 if "watch" in self.switches and char not in watch_list:
                     already_counted.append(pc)
                     continue
@@ -929,7 +929,7 @@ class CmdWho(ArxPlayerCommand):
                 if not pc.db.hide_from_watch:
                     base = str(pc)
                     pname = self.format_pname(pc, lname=True, sparse=sparse)
-                    char = pc.db.char_ob
+                    char = pc.char_ob
                     if "watch" in self.switches and char not in watch_list:
                         already_counted.append(pc)
                         continue
@@ -1551,7 +1551,7 @@ class CmdArxExamine(CmdExamine):
                 try:
                     obj = caller.search_account(obj_name.lstrip('*'))
                     if "char" in self.switches and obj:
-                        obj = obj.db.char_ob
+                        obj = obj.char_ob
                 except AttributeError:
                     # this means we are calling examine from a player object
                     obj = caller.search(obj_name.lstrip('*'))

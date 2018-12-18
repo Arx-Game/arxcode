@@ -23,6 +23,7 @@ class InvestigationFormCommand(ArxCommand):
     """
     ABC for creating commands based on investigations that process a form.
     """
+    help_entry_tags = ["investigations"]
     form_verb = "Creating"
     form_switches = ("topic", "target", "tag", "tags", "story", "stat", "skill", "cancel", "finish")
     ap_cost = 10
@@ -812,8 +813,7 @@ class CmdInvestigate(InvestigationFormCommand):
     # noinspection PyAttributeOutsideInit
     def get_help(self, caller, cmdset):
         doc = self.__doc__
-        if caller.db.char_ob:
-            caller = caller.db.char_ob
+        caller = caller.char_ob
         self.caller = caller
         doc += "\n\nThe cost to make an investigation active is %s action points and %s resources." % (
             self.ap_cost, self.start_cost)
@@ -1354,8 +1354,7 @@ class CmdListClues(ArxPlayerCommand):
 
     def get_help(self, caller, cmdset):
         """Custom helpfile that lists clue sharing costs"""
-        if caller.player_ob:
-            caller = caller.player_ob
+        caller = caller.player_ob
         doc = self.__doc__
         doc += "\n\nYour cost of sharing clues is %s." % caller.clue_cost
         return doc
@@ -1390,7 +1389,7 @@ class CmdListClues(ArxPlayerCommand):
                     self.disp_clue_table()
                     return
             if not self.switches:
-                self.msg(discovery.display())
+                self.msg(discovery.display(show_gm_notes=self.called_by_staff))
                 return
             if "addnote" in self.switches:
                 return self.add_note(discovery)
@@ -1645,7 +1644,7 @@ class CmdTheories(ArxPlayerCommand):
                         self.msg("That would cost %s action points." % cost)
                         return
                     try:
-                        if targ.db.char_ob.location != self.caller.db.char_ob.location:
+                        if targ.char_ob.location != self.caller.char_ob.location:
                             self.msg("You must be in the same room.")
                             continue
                     except AttributeError:
@@ -1855,8 +1854,8 @@ class CmdPRPClue(PRPLorecommand):
                 targ = self.caller.search(self.rhs)
                 if not targ:
                     return
-                if targ.Dominion not in clue.event.participants.all():
-                    self.msg("Target is not among the participants of that event.")
+                if not self.gm_plots.filter(dompcs=targ.Dominion).exists():
+                    self.msg("Target is not among the participants of the plots you GM.")
                     return
                 targ.roster.discover_clue(clue)
                 self.msg("You have sent them a clue.")
@@ -1899,11 +1898,12 @@ class CmdPRPRevelation(PRPLorecommand):
 
     Usage:
         +prprevelation
-        +prprevelation/create <plot ID>[=<notes about relationship to plot>]
+        +prprevelation/create
         +prprevelation/name <name>
         +prprevelation/desc <description>
         +prprevelation/rating <total value of clues required for discovery>
         +prprevelation/tags <tag 1>,<tag 2>,etc
+        +prprevelation/plot <plot ID>[=<notes about relationship to plot>]
         +prprevelation/finish
         +prprevelation/abandon
 
@@ -1954,13 +1954,14 @@ class CmdPRPRevelation(PRPLorecommand):
                 form['desc'] = self.args
             if "plot" in self.switches:
                 try:
-                    if self.args.isdigit():
-                        plot = self.gm_plots.get(id=self.args)
+                    if self.lhs.isdigit():
+                        plot = self.gm_plots.get(id=self.lhs)
                     else:
-                        plot = self.gm_plots.get(name__iexact=self.args)
+                        plot = self.gm_plots.get(name__iexact=self.lhs)
                 except Plot.DoesNotExist:
                     raise CommandError("No plot by that name or number.")
                 form['plot'] = plot.id
+                form['plot_gm_notes'] = self.rhs
             if "tags" in self.switches:
                 form['tag_names'] = self.args
             if "fake" in self.switches:

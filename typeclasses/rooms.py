@@ -285,7 +285,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         try:
             # add our room owner as a homeowner if they're a player
             aowner = AssetOwner.objects.get(id=self.db.room_owner)
-            char = aowner.player.player.db.char_ob
+            char = aowner.player.player.char_ob
             if char not in owners:
                 self.add_homeowner(char, False)
         except (AttributeError, AssetOwner.DoesNotExist, ValueError, TypeError):
@@ -687,8 +687,8 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
                         caller = caller.player
                     obj = caller.search(self.lhs)
                     # if we did a search as a player, get the character object
-                    if obj and obj.db.char_ob:
-                        obj = obj.db.char_ob
+                    if obj and obj.char_ob:
+                        obj = obj.char_ob
                     if not obj:
                         return
                 else:

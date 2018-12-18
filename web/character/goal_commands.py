@@ -48,6 +48,7 @@ class CmdGoals(ArxCommand):
     key = "goals"
     aliases = ["goal"]
     field_switches = ("summary", "description", "scope", "status", "ooc_notes", "plot")
+    help_entry_tags = ["goals", "plots"]
 
     @property
     def goals(self):

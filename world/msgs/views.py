@@ -322,22 +322,10 @@ def posts_for_request_all_search(board, searchstring):
 
 def posts_for_request_all_search_global(user, searchstring):
     """Get all posts from all boards for this user, containing the searchstring"""
-    # raw_boards = get_boards(user)
-    # result = None
-    # for board in raw_boards:
-    #     current_posts = list(board.get_all_posts(old=False).filter(db_message__icontains=searchstring))
-    #     old_posts = list(board.get_all_posts(old=True).filter(db_message__icontains=searchstring))
-    #     if result is None:
-    #         result = current_posts
-    #     else:
-    #         result = result + current_posts
-    #     result = result + old_posts
-    #
-    # result.sort(key=lambda x: x.db_date_created, reverse=True)
-    # return result
-
-    posts = list(Post.objects.filter(db_message__icontains=searchstring).order_by('-db_date_created'))
-    return filter(lambda x: x.bulletin_board.access(user, 'read'), posts)
+    boards = get_boards(user)
+    posts = list(Post.objects.filter(db_receivers_objects__in=boards)
+                             .filter(db_message__icontains=searchstring).distinct().order_by('-db_date_created'))
+    return posts
 
 
 def post_list(request, board_id):
@@ -500,12 +488,12 @@ def post_view_unread(request):
         }
 
     raw_boards = get_boards(request.user)
-    unread_posts = Post.objects.all_unread_by(request.user).filter(db_receivers_objects__in=raw_boards
-                                                                   ).order_by('db_receivers_objects')
 
     if request.user.is_authenticated():
         alts = []
         alt_unread_posts = []
+        unread_posts = Post.objects.all_unread_by(request.user).filter(db_receivers_objects__in=raw_boards
+                                                                       ).order_by('db_receivers_objects')
         if request.user.db.bbaltread:
             try:
                 alts = [ob.player for ob in request.user.roster.alts]
@@ -532,6 +520,8 @@ def post_view_unread(request):
                 board.zero_unread_cache(account)
 
         ReadPostModel.objects.bulk_create(bulk_list)
+    else:
+        mapped_posts = [post_map(post) for post in Post.objects.filter(db_receivers_objects__in=raw_boards)]
 
     return render(request, 'msgs/post_view_unread.html', {'page_title': 'All Unread Posts',
                                                           'posts': mapped_posts})

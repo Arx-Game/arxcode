@@ -238,7 +238,7 @@ class WeeklyEvents(RunDateMixin, Script):
             # taking damage
             # conditions/social imperative
             # aspirations/progress toward goals
-            char = player.db.char_ob
+            char = player.char_ob
             # for lazy refresh_from_db calls for queries right after the script runs, but unnecessary after a @reload
             char.ndb.stale_ap = True
             # wipe cached attributes
