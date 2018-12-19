@@ -60,8 +60,8 @@
           {% if user.is_authenticated %}
             <a href="/accounts/logout/">Log Out &laquo;</a>
             <span class="doNotDisplay">|</span>
-            {% if user.db.char_ob %}
-              <a href="/character/sheet/{{ user.db.char_ob.id }}"> Logged in as {{ user.username }} &laquo;</a>
+            {% if user.char_ob %}
+              <a href="/character/sheet/{{ user.char_ob.id }}"> Logged in as {{ user.username }} &laquo;</a>
             {% else %}
               Logged in as {{user.username}} &laquo;
             {% endif %}

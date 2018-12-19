@@ -70,7 +70,7 @@ from .battle import Battle
 from .agenthandler import AgentHandler
 from .managers import CrisisManager, OrganizationManager, LandManager
 from server.utils.arx_utils import get_week, inform_staff, passthrough_properties, CachedProperty, \
-    CachedPropertiesMixin, classproperty, a_or_an
+    CachedPropertiesMixin, classproperty, a_or_an, inform_guides, commafy
 from server.utils.exceptions import ActionSubmissionError, PayError
 from typeclasses.npcs import npc_types
 from typeclasses.mixins import InformMixin
@@ -502,6 +502,7 @@ class PrestigeCategory(SharedMemoryModel):
     name = models.CharField(max_length=30, blank=False, null=False)
     male_noun = models.CharField(max_length=30, blank=False, null=False)
     female_noun = models.CharField(max_length=30, blank=False, null=False)
+    description = models.CharField(max_length=80, blank=True, null=True)
 
     CACHED_TYPES = {}
 
@@ -568,6 +569,7 @@ class PrestigeAdjustment(SharedMemoryModel):
     adjusted_on = models.DateTimeField(auto_now_add=True, blank=False, null=False)
     adjusted_by = models.PositiveIntegerField(default=0, blank=False, null=False)
     reason = models.TextField(blank=True, null=True)
+    long_reason = models.TextField(blank=True, null=True)
 
     @property
     def effective_value(self):
@@ -602,6 +604,139 @@ class PrestigeTier(SharedMemoryModel):
 
     def __str__(self):
         return self.rank_name
+
+
+class PrestigeNomination(SharedMemoryModel):
+    """Used for storing a player nomination for a prestige adjustment."""
+
+    TYPE_FAME = 0
+    TYPE_LEGEND = 1
+
+    TYPES = (
+        (TYPE_FAME, 'Fame'),
+        (TYPE_LEGEND, 'Legend')
+    )
+
+    SIZE_SMALL = 0
+    SIZE_MEDIUM = 1
+    SIZE_LARGE = 2
+    SIZE_HUGE = 3
+
+    SIZES = (
+        (SIZE_SMALL, 'Small'),
+        (SIZE_MEDIUM, 'Medium'),
+        (SIZE_LARGE, 'Large'),
+        (SIZE_HUGE, 'Huge'),
+    )
+
+    AMOUNTS = {
+        TYPE_FAME: {
+            SIZE_SMALL: 100000,
+            SIZE_MEDIUM: 250000,
+            SIZE_LARGE: 500000,
+            SIZE_HUGE: 1000000
+        },
+        TYPE_LEGEND: {
+            SIZE_SMALL: 5000,
+            SIZE_MEDIUM: 10000,
+            SIZE_LARGE: 25000,
+            SIZE_HUGE: 50000
+        }
+    }
+
+    pending = models.BooleanField(default=True)
+    approved = models.BooleanField(default=False)
+
+    nominator = models.ForeignKey('PlayerOrNpc', blank=False, null=False, related_name='+')
+    nominees = models.ManyToManyField('AssetOwner', related_name='+')
+    category = models.ForeignKey('PrestigeCategory', blank=False, null=False, related_name='+')
+    adjust_type = models.PositiveSmallIntegerField(default=TYPE_FAME, choices=TYPES)
+    adjust_size = models.PositiveSmallIntegerField(default=SIZE_SMALL, choices=SIZES)
+    reason = models.CharField(max_length=40, blank=True, null=True)
+    long_reason = models.TextField(blank=False, null=False)
+
+    approved_by = models.ManyToManyField('PlayerOrNpc', related_name='+')
+    denied_by = models.ManyToManyField('PlayerOrNpc', related_name='+')
+
+    APPROVALS_REQUIRED = 3
+    DENIALS_REQUIRED = 3
+
+    def approve(self, caller):
+        dom_obj = caller.player_ob.Dominion
+
+        if dom_obj in self.approved_by.all():
+            return
+
+        if dom_obj in self.denied_by.all():
+            self.denied_by.remove(dom_obj)
+
+        self.approved_by.add(caller.player_ob.Dominion)
+        self.save()
+        if self.approved_by.count() >= self.__class__.APPROVALS_REQUIRED:
+            self.apply()
+
+    def deny(self, caller):
+        dom_obj = caller.player_ob.Dominion
+
+        if dom_obj in self.denied_by.all():
+            return
+
+        if dom_obj in self.approved_by.all():
+            self.approved_by.remove(dom_obj)
+
+        self.denied_by.add(caller.player_ob.Dominion)
+        self.save()
+        if self.denied_by.count() >= self.__class__.DENIALS_REQUIRED:
+            inform_guides("|wPRESTIGE:|n Nomination %d has been denied." % self.id)
+            self.pending = False
+            self.approved = False
+            self.save()
+
+    def apply(self):
+        if not self.pending:
+            return
+
+        adjust_amount = PrestigeNomination.AMOUNTS[self.adjust_type][self.adjust_size]
+        targets = []
+        for target in self.nominees.all():
+            targets.append("|y" + str(target.owner) + "|n")
+            if self.adjust_type == PrestigeNomination.TYPE_FAME:
+                target.adjust_prestige(adjust_amount, category=self.category, reason=self.reason,
+                                       long_reason=self.long_reason)
+            elif self.adjust_type == PrestigeNomination.TYPE_LEGEND:
+                target.adjust_legend(adjust_amount, category=self.category, reason=self.reason,
+                                     long_reason=self.long_reason)
+
+        comma_targets = commafy(targets)
+        verb = "was"
+        if len(targets) > 1:
+            verb = "were"
+        type_noun = "fame"
+        if self.adjust_type == PrestigeNomination.TYPE_LEGEND:
+            type_noun = "legend"
+
+        size_name = "small"
+        for size_tup in PrestigeNomination.SIZES:
+            if size_tup[0] == self.adjust_size:
+                size_name = size_tup[1].lower()
+
+        inform_guides("|wPRESTIGE:|n Nomination %d has been approved." % self.id)
+        summary = "%s %s just given %d %s %s: %s" % (comma_targets, verb, adjust_amount,
+                                                     str(self.category), type_noun, self.long_reason)
+
+        inform_staff(summary)
+
+        from typeclasses.bulletin_board.bboard import BBoard
+        board = BBoard.objects.get(db_key__iexact="vox populi")
+        subject = "Reputation changes"
+        post_msg = "%s %s just given %s %s %s adjustment:\n\n%s" % (comma_targets, verb, a_or_an(size_name), size_name,
+                                                                    type_noun, self.long_reason)
+        post = board.bb_post(poster_obj=None, poster_name="Prestige Nomination", msg=post_msg, subject=subject)
+        post.tags.add("reputation_change")
+
+        self.pending = False
+        self.approved = True
+        self.save()
 
 
 # noinspection PyMethodParameters,PyPep8Naming
@@ -744,13 +879,16 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         """Our prestige used for different mods. aggregate of fame, legend, and grandeur"""
         return self.fame + self.total_legend + self.grandeur + self.propriety
 
-    def descriptor_for_value_adjustment(self, value, max_value, best_adjust):
+    def descriptor_for_value_adjustment(self, value, max_value, best_adjust, include_reason=True,
+                                        wants_long_reason=False):
         qualifier = PrestigeTier.rank_for_prestige(value, max_value)
         result = None
         reason = None
+        long_reason = None
         if best_adjust:
-            reason = best_adjust.reason
-            char = self.player.player.db.char_ob
+            if include_reason or wants_long_reason and not best_adjust.long_reason:
+                reason = best_adjust.reason
+            char = self.player.player.char_ob
             gender = char.db.gender or "Male"
             if gender.lower() == "male":
                 result = best_adjust.category.male_noun
@@ -770,7 +908,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         return result
 
-    def prestige_descriptor(self, adjust_type=None):
+    def prestige_descriptor(self, adjust_type=None, include_reason=True, wants_long_reason=False):
         if not self.player:
             return self.organization_owner.name
 
@@ -778,7 +916,9 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         max_value = AssetOwner.MEDIAN_PRESTIGE
 
         return self.descriptor_for_value_adjustment(value, max_value,
-                                                    self.most_notable_adjustment(adjust_type=adjust_type))
+                                                    self.most_notable_adjustment(adjust_type=adjust_type),
+                                                    wants_long_reason=wants_long_reason,
+                                                    include_reason=include_reason)
 
     @CachedProperty
     def propriety(self):
@@ -901,7 +1041,8 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         return min(abs(int(base)), abs(self.fame + self.legend) * 2) * sign
 
     # noinspection PyMethodMayBeStatic
-    def store_prestige_record(self, value, adjustment_type=PrestigeAdjustment.FAME, category=None, reason=None):
+    def store_prestige_record(self, value, adjustment_type=PrestigeAdjustment.FAME, category=None,
+                              reason=None, long_reason=None):
         if not category:
             return
 
@@ -912,7 +1053,8 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             category=category,
             adjustment_type=adjustment_type,
             adjusted_by=value,
-            reason=reason
+            reason=reason,
+            long_reason=long_reason
         )
 
         if old_adjustments.count() >= MAX_PRESTIGE_HISTORY:
@@ -938,7 +1080,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         return greatest
 
-    def adjust_prestige(self, value, category=None, reason=None):
+    def adjust_prestige(self, value, category=None, reason=None, long_reason=None):
         """
         Adjusts our prestige. We gain fame equal to the value. We no longer
         adjust the legend, per Apos.
@@ -948,9 +1090,9 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         if category:
             self.store_prestige_record(value, adjustment_type=PrestigeAdjustment.FAME, category=category,
-                                       reason=reason)
+                                       reason=reason, long_reason=long_reason)
 
-    def adjust_legend(self, value, category=None, reason=None):
+    def adjust_legend(self, value, category=None, reason=None, long_reason=None):
         """
         Adjusts our legend. We gain legend equal to the value.
         """
@@ -959,7 +1101,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         if category:
             self.store_prestige_record(value, adjustment_type=PrestigeAdjustment.LEGEND, category=category,
-                                       reason=reason)
+                                       reason=reason, long_reason=long_reason)
 
     @CachedProperty
     def income(self):

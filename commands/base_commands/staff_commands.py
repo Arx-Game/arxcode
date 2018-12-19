@@ -1932,8 +1932,8 @@ class CmdAdjustFame(ArxPlayerCommand):
     Adjusts the fame or legend of players
 
     Usage:
-        adjustfame <character1>[,<char2>,...]=<amount>[/category[/reason]]
-        adjustlegend <char1>[,<char2>,...]=<amount>[/category[/reason]]
+        adjustfame <character1>[,<char2>,...]=<amount>[/category[/reason[/longreason]]]
+        adjustlegend <char1>[,<char2>,...]=<amount>[/category[/reason[/longreason]]]
     """
     key = "adjustfame"
     aliases = ["adjustlegend"]
@@ -1966,14 +1966,20 @@ class CmdAdjustFame(ArxPlayerCommand):
                         raise CommandError("That is not a valid prestige category.")
 
             reason = None
-            if len(rhs_items) == 3:
+            if len(rhs_items) >= 3:
                 reason = rhs_items[2]
+                if len(reason) == 0:
+                    reason = None
+
+            long_reason = None
+            if len(rhs_items) >= 4:
+                long_reason = "/".join(rhs_items[3:])
 
             for targ in targets:
                 if attr == "fame":
-                    targ.adjust_prestige(amount, category=adjust_category, reason=reason)
+                    targ.adjust_prestige(amount, category=adjust_category, reason=reason, long_reason=long_reason)
                 else:
-                    targ.adjust_legend(amount, category=adjust_category, reason=reason)
+                    targ.adjust_legend(amount, category=adjust_category, reason=reason, long_reason=long_reason)
                 targ.save()
             names = ", ".join(str(ob) for ob in targets)
             msg = "Adjusted %s for %s by %s" % (attr, names, amount)

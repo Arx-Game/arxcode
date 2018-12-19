@@ -21,17 +21,21 @@ from evennia.scripts.models import ScriptDB
 from commands.base_commands.roster import format_header
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
-from server.utils.arx_utils import inform_staff, time_from_now
+from server.utils.arx_utils import inform_staff, time_from_now, inform_guides, commafy, a_or_an
 from typeclasses.characters import Character
 from typeclasses.rooms import ArxRoom
 from web.character.models import AccountHistory, FirstContact
 from world.dominion.forms import RPEventCreateForm
 from world.dominion.models import (RPEvent, Agent, CraftingMaterialType, CraftingMaterials,
                                    AssetOwner, Reputation, Member, PlotRoom,
-                                   Organization, InfluenceCategory, PlotAction, PrestigeAdjustment)
+                                   Organization, InfluenceCategory, PlotAction, PrestigeAdjustment,
+                                   PrestigeCategory, PrestigeNomination)
 from world.msgs.models import Journal, Messenger
 from world.msgs.managers import reload_model_as_proxy
 from world.stats_and_skills import do_dice_check
+
+from paxforms import forms, fields
+from paxforms.paxform_commands import PaxformCommand
 
 
 def char_name(character_object, verbose_where=False, watch_list=None):
@@ -2233,9 +2237,15 @@ class CmdSocialNotable(ArxCommand):
 
                 percentage = round((asset.prestige / (AssetOwner.MEDIAN_PRESTIGE * 1.)) * 100)
                 percentage -= percentage % 10
-                descriptor = asset.prestige_descriptor()
+                descriptor = asset.prestige_descriptor(None, include_reason=False, wants_long_reason=True)
+                best_adjust = asset.most_notable_adjustment(adjust_type=None)
 
-                self.msg("%s, is roughly %d%% as notable as the average citizen." % (descriptor, percentage))
+                result = "%s, is roughly %d%% as notable as the average citizen." % (descriptor, percentage)
+
+                if best_adjust.long_reason:
+                    result = "%s %s" % (result, best_adjust.long_reason)
+
+                self.msg(result)
 
             except CommandError as ce:
                 self.msg(ce)
@@ -2275,6 +2285,279 @@ class CmdSocialNotable(ArxCommand):
 
         assets = assets[:20]
         self.show_rankings(title, assets, adjust_type, show_percent=self.caller.check_permstring("builders"))
+
+
+class PrestigeCategoryField(fields.Paxfield):
+    """
+    This field contains a single prestige category
+    """
+
+    def __init__(self, required=False, **kwargs):
+        super(PrestigeCategoryField, self).__init__(**kwargs)
+        self._required = required
+        self._value = None
+
+    # noinspection PyMethodMayBeStatic
+    def _get_category(self, args):
+        try:
+            return PrestigeCategory.objects.get(name__iexact=args)
+        except PrestigeCategory.DoesNotExist:
+            return None
+
+    def set(self, value, caller=None):
+
+        if value is None:
+            self._value = None
+            return True, None
+
+        category_obj = self._get_category(value)
+        if not category_obj:
+            return False, "No such prestige category '%s'" % value
+
+        self._value = value
+        return self.validate(caller=caller)
+
+    def get(self):
+        if self._value:
+            return self._value
+        else:
+            return self.default
+
+    def get_display_params(self):
+        return "<category>"
+
+    def validate(self, caller=None):
+        if self.required and not self.get():
+            return False, "Required field {} was not provided.  {}".format(self.full_name, self.help_text or "")
+
+        return True, None
+
+    def webform_field(self, caller=None):
+        options = {'label': self.full_name}
+        if self.required is not None:
+            options['required'] = self.required
+        return django.forms.CharField(**options)
+
+
+class FormNomination(forms.Paxform):
+
+    form_key = "social_nomination"
+    form_purpose = "Describes a social nomination for one or more players."
+    form_description = '''
+    This command allows you to fill out a nomination for a prestige adjustment
+    for one or more players, of a given type.
+    '''
+
+    nominees = fields.CharacterListField(required=True, full_name="Nominees",
+                                         help_text="You must provide one or more characters for this nomination.")
+    category = PrestigeCategoryField(required=True, full_name="Category",
+                                     help_text="You must provide a valid prestige adjustment category.  "
+                                               "Do 'nominate/types' to see the valid types." )
+    type = fields.ChoiceField(required=True, full_name="Adjustment Type",
+                              choices=PrestigeNomination.TYPES, help_text="You must define whether this nomination is "
+                                                                          "for fame or legend.")
+    size = fields.ChoiceField(required=True, full_name="Adjustment Size",
+                              choices=PrestigeNomination.SIZES, help_text="You must provide a valid nomination size.")
+    summary = fields.TextField(required=False, max_length=40, full_name="Short Summary",
+                               help_text="This summary should be very short, and suitable for inclusion on the "
+                                         "'notable' list.")
+    reason = fields.TextField(required=True, max_length=2048, full_name="Reason",
+                              help_text="The reason should be a description of what these nominees did that is so "
+                                        "notable.")
+
+    def _get_character(self, args):
+        from typeclasses.characters import Character
+        try:
+            return Character.objects.get(db_key__iexact=args)
+        except Character.DoesNotExist:
+            return self._get_character_by_id(args)
+
+    def _get_character_by_id(self, args):
+        from typeclasses.characters import Character
+        try:
+            key = int(args)
+            return Character.objects.get(pk=key)
+        except (Character.DoesNotExist, ValueError):
+            return None
+
+    def submit(self, caller, values):
+        character_list = [self._get_character(value) for value in values['nominees']]
+        asset_owners = [char_obj.player_ob.Dominion.assets for char_obj in character_list]
+        short_reason = None
+        if 'summary' in values:
+            short_reason = values['summary']
+
+        try:
+            category = PrestigeCategory.objects.get(name__iexact=values['category'])
+        except Category.DoesNotExist:
+            caller.msg("Something has gone horribly wrong; your category seems to no longer be valid.")
+            return
+
+        nomination = PrestigeNomination.objects.create(nominator=caller.player_ob.Dominion,
+                                                       category=category, reason=short_reason,
+                                                       long_reason=values['reason'], adjust_type=values['type'],
+                                                       adjust_size=values['size'])
+        for asset_owner in asset_owners:
+            nomination.nominees.add(asset_owner)
+        caller.msg("Nomination submitted.")
+
+        character_names = ["|y" + char_obj.key + "|n" for char_obj in character_list]
+        verb = "was"
+        if len(character_names) > 1:
+            verb = "were"
+
+        adjust_type = "fame"
+        if values['type'] == PrestigeNomination.TYPE_LEGEND:
+            adjust_type = "legend"
+
+        size_name = "small"
+        for size_tup in PrestigeNomination.SIZES:
+            if size_tup[0] == values['size']:
+                size_name = size_tup[1].lower()
+
+        inform_guides("|wPRESTIGE:|n %s %s nominated for %s %s %s adjustment.  Do 'review_nomination %d' for details."
+                      % (commafy(character_names), verb, a_or_an(size_name), size_name, adjust_type, nomination.id))
+
+
+class CmdSocialNominate(PaxformCommand):
+    """
+Describes a social nomination for one or more players.
+
+Usage:
+  nominate/create
+  nominate/check
+  nominate/category <category>
+  nominate/nominees <character1>[,character2...]
+  nominate/reason [value]
+  nominate/size [Small||Medium||Large||Huge]
+  nominate/summary [value]
+  nominate/cancel
+  nominate/submit
+  nominate/types
+
+This command allows you to fill out a nomination for a prestige adjustment
+for one or more players, of a given type.  /create, /cancel, and /submit
+will manage the submission of this form, while /check will make sure your
+form has valid values.
+
+The /category, /nominees, /reason, /size, and /summary values will fill
+out the various fields of the form.
+
+Lastly, nominate/types will list the valid categories you can use in
+filling out a nomination.
+    """
+
+    key = "nominate"
+    locks = "cmd:all()"
+    form_class = FormNomination
+
+    def func(self):
+        if "types" in self.switches:
+            table = EvTable("|wName|n", "|wDescription|n")
+            for prestige_type in PrestigeCategory.objects.all():
+                table.add_row(prestige_type.name, prestige_type.description)
+            self.msg(str(table))
+            return
+
+        super(CmdSocialNominate, self).func()
+
+
+class CmdSocialReview(ArxCommand):
+    """
+    Reviews pending social nominations.
+
+    Usage:
+      review_nomination [id]
+      review_nomination/approve <id>
+      review_nomination/deny <id>
+    """
+    key = "review_nomination"
+    locks = "cmd:perm(helper)"
+
+    # noinspection PyMethodMayBeStatic
+    def pending_nomination(self, arg):
+        try:
+            int_arg = int(arg)
+            nomination = PrestigeNomination.objects.get(id=int_arg)
+            return nomination
+        except (ValueError, PrestigeNomination.DoesNotExist):
+            return None
+
+    def func(self):
+        if not self.args:
+            pending = PrestigeNomination.objects.filter(pending=True)
+
+            if pending.count() == 0:
+                self.msg("No pending nominations.")
+                return
+
+            table = EvTable("|wID|n", "|wType|n", "|wSize|n", "|wCharacters|n")
+            for nom in pending.all():
+                adjust_type = "Fame"
+                if nom.adjust_type == PrestigeNomination.TYPE_LEGEND:
+                    adjust_type = "Legend"
+
+                size_name = "Small"
+                for size_tup in PrestigeNomination.SIZES:
+                    if size_tup[0] == nom.adjust_size:
+                        size_name = size_tup[1]
+
+                names = [str(nominee) for nominee in nom.nominees.all()]
+                table.add_row(nom.id, adjust_type, size_name, commafy(names))
+            self.msg(table)
+            return
+
+        nom = self.pending_nomination(self.args)
+        if not nom:
+            self.msg("No pending nomination with that ID.")
+            return
+
+        if "approve" in self.switches:
+            if self.caller.check_permstring("builders"):
+                self.msg("Since you're staff, approving immediately.")
+                nom.apply()
+                return
+            nom.approve(self.caller)
+            self.msg("Your approval has been recorded.")
+            return
+
+        if "deny" in self.switches:
+            if self.caller.check_permstring("builders"):
+                self.msg("Since you're staff, denying immediately.")
+                inform_guides("|wPRESTIGE:|n %s has manually denied nomination %d" % (self.caller.name, nom.id))
+                nom.pending = False
+                nom.approved = False
+                nom.save()
+                return
+            nom.deny(self.caller)
+            self.msg("Your denial has been recorded.")
+            return
+
+        adjust_type = "Fame"
+        if nom.adjust_type == PrestigeNomination.TYPE_LEGEND:
+            adjust_type = "Legend"
+
+        size_name = "Small"
+        for size_tup in PrestigeNomination.SIZES:
+            if size_tup[0] == nom.adjust_size:
+                size_name = size_tup[1]
+
+        names = [str(nominee) for nominee in nom.nominees.all()]
+        approved_by = [str(approver) for approver in nom.approved_by.all()]
+        denied_by = [str(denier) for denier in nom.denied_by.all()]
+
+        result =  "\n|wID:|n %d\n" % nom.id
+        result += "|wNominees:|n %s\n" % commafy(names)
+        result += "|wNominated by:|n %s\n" % str(nom.nominator)
+        result += "|wApproved by:|n %s\n" % commafy(approved_by)
+        result += "|wDenied by: %s\n" % commafy(denied_by)
+        result += "|wType:|n %s %s\n" % (size_name, adjust_type)
+        if nom.reason:
+            result += "|wSummary:|n %s\n" % nom.reason
+        result += "|wReason:|n\n%s\n" % nom.long_reason
+        self.msg(result)
+
+        return
 
 
 class CmdThink(ArxCommand):

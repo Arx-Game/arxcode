@@ -42,7 +42,7 @@
   <div class="well">{{ comment.db_message|mush_to_html }}</div>
   {% endfor %}
   {% endwith %}
-  {% if user.db.char_ob %}
+  {% if user.char_ob %}
   <br>
   <button class="btn btn-info" data-toggle="collapse" data-target="#writecomment">Write Journal Entry</button>
   <div id="writecomment" class="collapse">

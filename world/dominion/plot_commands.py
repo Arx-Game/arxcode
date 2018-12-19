@@ -447,7 +447,7 @@ class CmdPlots(ArxCommand):
             return self.msg(self.list_invitations())
         try:
             invite = self.invitations.get(plot_id=self.lhs)
-        except PCPlotInvolvement.DoesNotExist:
+        except (PCPlotInvolvement.DoesNotExist, ValueError):
             raise CommandError("No invitation by that ID.\n%s" % self.list_invitations())
         invite.accept_invitation(self.rhs)
         self.msg("You have joined %s (Plot ID: %s)" % (invite.plot, invite.plot.id))

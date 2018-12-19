@@ -5,7 +5,7 @@
     {% include "msgs/_journal_search.html" %}
     <ul class="nav nav-pills">
         <li class="active"><a data-toggle="pill" href="#unreadjournals">Unread Journals</a></li>
-        {% if user.is_authenticated and user.db.char_ob %}
+        {% if user.is_authenticated and user.char_ob %}
         <li><a href="{% url 'msgs:list_read_journals' %}">Read Journals</a></li>
         <li> <a data-toggle="pill" href="#writejournal">Write Journal Entry</a></li>
         {% endif %}
@@ -15,7 +15,7 @@
 
         {% for obj in object_list %}
             {% include "msgs/_journal_display.html" %}
-            {% if user.is_authenticated and user.db.char_ob %}
+            {% if user.is_authenticated and user.char_ob %}
                 <div class="row">
                 <div class="col-sm-3">
                 <form action="." method="post">
@@ -45,7 +45,7 @@
 
         {% endfor %}
         {% include "msgs/_search_paginator.html" %}
-        {% if user.is_authenticated and user.db.char_ob %}
+        {% if user.is_authenticated and user.char_ob %}
         <form action="." method="post">
         {% csrf_token %}
         {% for obj in object_list %}

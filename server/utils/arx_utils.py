@@ -55,6 +55,33 @@ def inform_staff(message, post=False, subject=None, quiet=settings.DEBUG):
             print("ERROR when attempting utils.inform_staff() : %s" % err)
 
 
+def inform_guides(message, post=False, subject=None, quiet=settings.DEBUG):
+    """
+    Sends a message to the 'Guides' channel for guide announcements.
+
+        Args:
+            message: text message to broadcast
+            post: If True, we post message. If a truthy value other than True, that's the body of the post.
+            subject: Post subject.
+            quiet: Whether to print errors that are encountered
+    """
+    from evennia.comms.models import ChannelDB
+    try:
+        guide_chan = ChannelDB.objects.get(db_key__iexact="Guides")
+        now = time_now().strftime("%H:%M")
+        guide_chan.tempmsg("{r[%s]:{n %s" % (now, message))
+        if post:
+            from typeclasses.bulletin_board.bboard import BBoard
+            board = BBoard.objects.get(db_key__iexact="Jobs")
+            subject = subject or "Staff Activity"
+            if post is not True:
+                message = post
+            board.bb_post(poster_obj=None, msg=message, subject=subject, poster_name="Staff")
+    except Exception as err:
+        if not quiet:
+            print("ERROR when attempting utils.inform_guides() : %s" % err)
+
+
 def setup_log(logfile):
     """Sets up a log file"""
     import logging

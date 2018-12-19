@@ -271,7 +271,7 @@ class CmdRumor(CmdGossip):
         #     player = caller.player.search(self.lhs)
         #     if not player:
         #         return
-        #     if not player.db.char_ob:
+        #     if not player.char_ob:
         #         caller.msg("They have no character.")
         #         return
         #     rumor = create_message(caller, self.rhs, receivers=(loc, caller, player))
