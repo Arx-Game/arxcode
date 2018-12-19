@@ -426,7 +426,6 @@ class CmdBroker(ArxCommand):
                     amount -= buyamount
                     if order.price < price:
                         character.pay_money(-(price-order.price)*buyamount)
-
         purchase.amount = amount
         purchase.save()
         if amount == 0:
