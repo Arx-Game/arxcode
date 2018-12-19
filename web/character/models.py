@@ -879,13 +879,17 @@ class Clue(SharedMemoryModel):
         """List of keywords from our search tags. We use them for auto-matching clues with investigations."""
         return [ob.name for ob in self.search_tags.all()]
 
-    def display(self):
+    def display(self, show_gm_notes=False, disco_msg=""):
         """String display for clue"""
         msg = "|w[|c%s|w]|n (%s Rating)" % (self.name, self.rating)
         tags = self.search_tags.all()
         if tags:
             msg += " |wTags:|n %s" % ", ".join(("|235%s|n" % ob) for ob in tags)
         msg += "\n%s\n" % self.desc
+        if disco_msg:
+            msg += disco_msg
+        if show_gm_notes and self.gm_notes:
+            msg += "\n{wGM Notes:{n %s\n" % self.gm_notes
         return msg
 
     @property
@@ -1009,6 +1013,19 @@ class RevelationDiscovery(SharedMemoryModel):
             msg += "\n" + self.message
         return msg
 
+    def check_node_discovery(self):
+        from world.magic.models import Practitioner, SkillNodeResonance
+        msg = ""
+        nodes = self.revelation.nodes.all()
+        if nodes:
+            practitioner, _ = Practitioner.objects.get_or_create(character=self.character.character)
+            known_nodes = practitioner.nodes.all()
+            nodes = [ob for ob in nodes if ob not in known_nodes]
+            for node in nodes:
+                practitioner.open_node(node, reason=SkillNodeResonance.LEARN_DISCOVERED)
+                msg += "\nYou have unlocked a node from learning this revelation: %s" % node
+        return msg
+
 
 class ClueDiscovery(SharedMemoryModel):
     """Through model that represents knowing/progress towards discovering a clue."""
@@ -1034,7 +1051,7 @@ class ClueDiscovery(SharedMemoryModel):
 
     def display(self, show_sharing=False, show_gm_notes=False):
         """Returns a string showing that we're not yet done, or the completed clue discovery."""
-        msg = self.clue.display()
+        msg = ""
         if self.message:
             if self.date:
                 msg += self.date.strftime("%x %X") + " "
@@ -1042,10 +1059,8 @@ class ClueDiscovery(SharedMemoryModel):
         if show_sharing:
             shared = self.shared_with
             if shared:
-                msg += "{wShared with{n: %s" % ", ".join(str(ob) for ob in shared)
-        if show_gm_notes:
-            msg += "\n{wGM Notes:{n %s" % self.clue.gm_notes
-        return msg
+                msg += "\n{wShared with{n: %s" % ", ".join(str(ob) for ob in shared)
+        return self.clue.display(show_gm_notes=show_gm_notes, disco_msg=msg)
 
     def check_revelation_discovery(self):
         """
@@ -1078,6 +1093,7 @@ class ClueDiscovery(SharedMemoryModel):
             investigation: If it was from an investigation, we mark that also.
             inform_creator: Object used for bulk creation of informs
         """
+        from world.magic.models import Practitioner, PractitionerSpell
         date_now = datetime.now()
         self.date = date_now
         self.discovery_method = method
@@ -1088,11 +1104,21 @@ class ClueDiscovery(SharedMemoryModel):
         revelations = self.check_revelation_discovery()
         msg = ""
         for revelation in revelations:
-            msg = "\nYou have discovered a revelation: %s\n%s" % (str(revelation), revelation.desc)
+            msg += "\nYou have discovered a revelation: %s\n%s" % (str(revelation), revelation.desc)
             message = "You had a revelation after learning a clue!"
-            RevelationDiscovery.objects.create(character=self.character, discovery_method=method, message=message,
-                                               investigation=investigation, revelation=revelation, date=date_now)
-        if revelations:
+            disco = RevelationDiscovery.objects.create(character=self.character, discovery_method=method,
+                                                       message=message, investigation=investigation,
+                                                       revelation=revelation, date=date_now)
+            msg += disco.check_node_discovery()
+        spells = self.clue.spells.all()
+        if spells:
+            practitioner, _ = Practitioner.objects.get_or_create(character=self.character.character)
+            known_spells = practitioner.spells.all()
+            spells = [ob for ob in spells if not known_spells]
+            for spell in spells:
+                practitioner.learn_spell(spell, reason=PractitionerSpell.LEARN_DISCOVERED)
+                msg += "\nYou have learned a spell from discovering the clue: %s" % spell
+        if msg:
             if inform_creator:
                 inform_creator.add_player_inform(self.character.player, msg, "Discovery")
             else:

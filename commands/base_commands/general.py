@@ -134,7 +134,7 @@ class CmdGameSettings(ArxPlayerCommand):
     def func(self):
         """Executes setting command"""
         caller = self.caller
-        char = caller.db.char_ob
+        char = caller.char_ob
         if not char:
             caller.msg("Settings have no effect without a character object.")
             return

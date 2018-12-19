@@ -519,7 +519,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     @property
     def player_ob(self):
         """Maybe this should return self? Will need to think about that. Inherited from mixins"""
-        return None
+        return self
 
     @property
     def char_ob(self):

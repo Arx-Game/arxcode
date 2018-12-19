@@ -131,19 +131,23 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.roster_entry2.action_points = 200
         outfit1.owner.player.ndb.outfit_model_prompt = str(outfit1)
         with patch('django.utils.timezone.now', Mock(return_value=fake_dt)):
-            self.call_cmd("/outfit Friendly Shadows=Orgtest", "[Fashion] Testaccount2 models 'Friendly Shadows' on "
-                                                              "behalf of Orgtest, gaining a decent number of admirers "
-                                                              "and significant compliments.|For modeling Friendly "
-                                                              "Shadows you earn 7,398 fame. Your prestige is now 9,497.")
+            self.call_cmd("/outfit Friendly Shadows=Orgtest", "[Fashion] With talented modeling, Testaccount2 displays "
+                                                              "'Friendly Shadows' around Arx, garnering flattering "
+                                                              "conversation and murmurs throughout the city about the "
+                                                              "fine choices made by Orgtest for sponsoring someone "
+                                                              "with such exceptional taste.|For modeling Friendly "
+                                                              "Shadows you earn 72,016 fame. Your prestige is now "
+                                                              "90,269.")
+
         self.assertEqual(self.roster_entry2.action_points, 200 - (ap_cost * 6))
         self.assertTrue(outfit1.modeled)
         self.assertTrue(self.hairpins1.modeled_by)
         self.assertEqual(self.hairpins1.fashion_snapshots.first().outfit, outfit1)
         # this tests if hairpins carries the "buzz message" from the entire outfit:
         self.assertEqual(self.hairpins1.modeled_by, "Modeled by {315Testaccount2{n for {125Orgtest{n, generating "
-                                                    "{453decent{n buzz on 1978/08/27.")
+                                                    "{542exceptional{n buzz on 1978/08/27!")
         self.assertEqual(outfit1.model_info, "Modeled by {315Testaccount2{n for {125Orgtest{n, generating "
-                                             "{453decent{n buzz on 1978/08/27.")
+                                             "{542exceptional{n buzz on 1978/08/27!")
         self.call_cmd("/outfit Friendly Shadows=Orgtest", "Friendly Shadows has already been modeled.")
         for item in to_be_worn:
             item.remove(self.char2)
@@ -162,19 +166,21 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
                           'Pieces of this outfit cannot be modeled:\n- Lickyknife1 has already been used to model '
                           'fashion.\nNo valid items remain! Try modeling a different outfit.')
         # test leaderboards:
-        self.call_cmd("", "Fashion Model  Fame Items Avg Item Fame \n"
-                          " TestAccount2 7,398     6         1,233"
-                         "   TestAccount 1,000     1         1,000")
-        self.call_cmd("/designer", "Designer  Fame Items Avg Item Fame \n"
-                               "TestAccount2 2,099     7           299")
-        self.call_cmd("/designer Testaccount2", "Testaccount2 Model  Fame Items Avg Item Fame \n"
-                                                "      TestAccount2 1,849     6           308"
-                                               "        TestAccount   250     1           250")
-        self.call_cmd("/orgs", "Organization  Fame Items Avg Item Fame \n"
-                               "     Orgtest 4,199     7           599")
-        self.call_cmd("/org Orgtest", "Orgtest Model  Fame Items Avg Item Fame \n"
-                                      " TestAccount2 3,699     6           616"
-                                     "   TestAccount   500     1           500")
+
+        self.call_cmd("", "Fashion Model   Fame Items Avg Item Fame \n"
+                          " TestAccount2 72,016     6        12,002"
+                         "   TestAccount  1,000     1         1,000")
+        self.call_cmd("/designer", "Designer   Fame Items Avg Item Fame \n"
+                               "TestAccount2 18,253     7         2,607")
+        self.call_cmd("/designer Testaccount2", "Testaccount2 Model   Fame Items Avg Item Fame \n"
+                                                "      TestAccount2 18,003     6         3,000"
+                                               "        TestAccount    250     1           250")
+        self.call_cmd("/orgs", "Organization   Fame Items Avg Item Fame \n"
+                               "     Orgtest 36,508     7         5,215")
+        self.call_cmd("/org Orgtest", "Orgtest Model   Fame Items Avg Item Fame \n"
+                                      " TestAccount2 36,008     6         6,001"
+                                     "   TestAccount    500     1           500")
+
 
     def test_refund_cmd(self):
         from world.fashion.models import FashionSnapshot

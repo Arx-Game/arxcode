@@ -12,6 +12,7 @@ jumping around to them.
 
 """
 import copy
+import traceback
 
 from django.conf import settings
 from evennia import syscmdkeys
@@ -27,7 +28,7 @@ from world.stats_and_skills import (get_partial_match, get_skill_cost,
                                     VALID_STATS, )
 
 # limit symbol import for API
-__all__ = ("CmdGuestLook", "CmdGuestCharCreate", "CmdGuestPrompt", "CmdGuestAddInput")
+__all__ = ("CmdGuestLook", "CmdGuestCharCreate", "CmdGuestPrompt", "CmdGuestAddInput", "census_of_fealty")
 CMD_NOINPUT = syscmdkeys.CMD_NOINPUT
 CMD_NOMATCH = syscmdkeys.CMD_NOMATCH
 _vocations_ = ("noble", "courtier", "charlatan", "soldier", "knight", "priest", "merchant",
@@ -579,7 +580,6 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                 # noinspection PyProtectedMember
                 new_player.db._playable_characters.append(new_character)
                 new_player.db._last_puppet = new_character
-                new_player.db.char_ob = new_character
                 # this is redundant, but shows up a few times in code, so just setting both
                 new_player.email = email
                 new_player.save()
@@ -595,12 +595,12 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                     incom.entries.create(character=new_character, player=new_player)
                 except Exception as err:
                     print("Error in adding character to roster for guest: %s" % err)
-                    import traceback
                     traceback.print_exc()
             except Exception as err:
                 print("Error in creating a character/player combination for guest: %s" % err)
                 player.msg("Something went wrong during the character/player startup process." +
                            " Please tell an admin to look into it.")
+                traceback.print_exc()
                 return
             player.db.char = new_character
             player.db.tutorial_stage = 1
@@ -669,8 +669,6 @@ class CmdGuestAddInput(ArxPlayerCommand):
             char.player_ob.db.tutorial_stage = caller.db.tutorial_stage
         caller.msg("{cName{n set to {w%s{n." % char.key)
         char.save()
-        char.player_ob.db.char_ob = char
-        char.player_ob.save()
         caller.execute_cmd("look")
 
     @staticmethod

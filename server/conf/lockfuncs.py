@@ -175,8 +175,8 @@ def skill(accessing_obj, accessed_obj, *args, **kwargs):
         skill_list = CRAFTING_SKILLS
     else:
         skill_list = name.split(",")
-    if accessing_obj.db.char_ob:
-        accessing_obj = accessing_obj.db.char_ob
+    if accessing_obj.char_ob:
+        accessing_obj = accessing_obj.char_ob
     for skill_name in skill_list:
         skill_name = skill_name.lower().strip()
         try:
@@ -232,7 +232,7 @@ def cattr(accessing_obj, accessed_obj, *args, **kwargs):
     try:
         if accessing_obj.player_ob:
             return attr(accessing_obj, accessed_obj, *args, **kwargs)
-        char_ob = accessing_obj.db.char_ob
+        char_ob = accessing_obj.char_ob
         return attr(char_ob, accessed_obj, *args, **kwargs)
     except Exception:
         return False

@@ -1094,3 +1094,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             alignment = Alignment.PRIMAL
 
         self.practitioner.at_magic_exposure(alignment=alignment, affinity=affinity, strength=strength)
+
+    @property
+    def char_ob(self):
+        return self

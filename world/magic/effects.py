@@ -2,10 +2,12 @@ from .conditional_parser import ConditionalHandler
 from web.character.models import Clue
 from evennia.objects.models import ObjectDB
 from .models import ClueCollection, MagicBucket, Effect, Practitioner, Alignment, Affinity
+from server.utils.arx_utils import inform_staff
 import json
 import sys
 
 
+# noinspection PyMethodMayBeStatic
 class CodedEffect(object):
     requires_combat = False
 
@@ -81,13 +83,15 @@ class CodedEffect(object):
     def __str__(self):
         return self.serialize()
 
-    # noinspection PyMethodMayBeStatic
     def valid_target(self):
         return True
 
-    # noinspection PyMethodMayBeStatic
     def valid_parameters(self):
         return True
+
+    def check_for_other_errors(self):
+        """Returns None, or a string of any other error messages that prevent us from casting"""
+        return None
 
     def valid_conditions(self):
         require = self.conditions.check(self.lead, self.target_obj, "require", default=True)
@@ -421,6 +425,38 @@ class DamageEffect(CodedEffect):
                         can_kill=self.can_kill, story=self.message, inflictor=self.lead.character)
         attack.execute()
 
+
+class AnimaRitualEffect(CodedEffect):
+    MIN_LENGTH = 250
+
+    def __init__(self, *args, **kwargs):
+        super(AnimaRitualEffect, self).__init__(*args, **kwargs)
+        self.final_value = 0
+
+    @property
+    def story(self):
+        """The story of how they're gaining understanding/changing as a person"""
+        return self.target_string
+
+    def check_for_other_errors(self):
+        if len(self.story) < self.MIN_LENGTH:
+            return ("That's too short for a story of your ritual. " 
+                    "Please enter a story at least %s characters long." % self.MIN_LENGTH)
+
+    def perform(self):
+        super(AnimaRitualEffect, self).perform()
+        num_rituals = self.lead.anima_rituals_this_week + 1
+        self.final_value = self.strength/num_rituals
+        inform_staff("Anima Ritual story by %s: %s" % (self.lead.character.key, self.story))
+
+    def finalize(self):
+        super(AnimaRitualEffect, self).finalize()
+        self.lead.anima += self.final_value
+        self.lead.save()
+
+    def results_string(self):
+        return "{} gains {} anima.".format(self.lead.character, self.final_value)
+
 # TODO: All the other handlers, gods help me.
 
 
@@ -429,3 +465,4 @@ def register_effects():
     Effect.register_effect_handler(Effect.CODED_ADD_CLUE, ClueCollectionEffect)
     Effect.register_effect_handler(Effect.CODED_ADD_TOTAL, BucketEffect)
     Effect.register_effect_handler(Effect.CODED_DAMAGE, DamageEffect)
+    Effect.register_effect_handler(Effect.CODED_ANIMA_RITUAL, AnimaRitualEffect)

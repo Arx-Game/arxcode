@@ -21,7 +21,8 @@ from world.dominion.models import Organization, Propriety, AssetOwner
 from django.template.defaultfilters import pluralize
 
 # limit symbol import for API
-__all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships")
+__all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships",
+           "format_header")
 
 
 def get_roster_manager():

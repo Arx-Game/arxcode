@@ -27,8 +27,8 @@ from typeclasses.rooms import ArxRoom
 from web.character.models import AccountHistory, FirstContact
 from world.dominion.forms import RPEventCreateForm
 from world.dominion.models import (RPEvent, Agent, CraftingMaterialType, CraftingMaterials,
-                                   AssetOwner, Renown, Reputation, Member, PlotRoom,
-                                   Organization, InfluenceCategory, PlotAction)
+                                   AssetOwner, Reputation, Member, PlotRoom,
+                                   Organization, InfluenceCategory, PlotAction, PrestigeAdjustment)
 from world.msgs.models import Journal, Messenger
 from world.msgs.managers import reload_model_as_proxy
 from world.stats_and_skills import do_dice_check
@@ -193,7 +193,7 @@ class CmdWhere(ArxPlayerCommand):
         applicable_chars = []
         if self.check_switches(self.randomscene_switches):
             cmd = CmdRandomScene()
-            cmd.caller = caller.db.char_ob
+            cmd.caller = caller.char_ob
             applicable_chars = list(cmd.scenelist) + [ob for ob in cmd.newbies if ob not in cmd.claimlist]
         elif self.check_switches(self.firstimp_switches):
             applicable_chars = [ob.entry.character
@@ -352,7 +352,7 @@ class CmdFinger(ArxPlayerCommand):
         player = caller.search(self.args)
         if not player:
             return
-        char = player.db.char_ob
+        char = player.char_ob
         if not char:
             caller.msg("No character found.")
             return
@@ -607,7 +607,7 @@ class CmdJournal(ArxCommand):
                         # search as a player to make it global
                         char = caller.player.search(self.lhs)
                         # get character object from player we found
-                        char = char.db.char_ob
+                        char = char.char_ob
                         if not char:
                             raise AttributeError
                         # display their latest white journal entry of the character
@@ -689,7 +689,7 @@ class CmdJournal(ArxCommand):
                 char = caller.player.search(self.lhs)
                 if not char:
                     return
-                char = char.db.char_ob
+                char = char.char_ob
                 if not char:
                     caller.msg("No character found.")
                     return
@@ -709,7 +709,7 @@ class CmdJournal(ArxCommand):
                 num = int(self.lhs)
             else:
                 try:
-                    char = caller.player.search(self.lhs).db.char_ob
+                    char = caller.player.search(self.lhs).char_ob
                 except AttributeError:
                     caller.msg("Character not found.")
                     return
@@ -1549,7 +1549,7 @@ class CmdCalendar(ArxPlayerCommand):
         """Change event in progress"""
         event = self.get_event_from_args(self.lhs, check_host=True)
         if "movehere" in self.switches:
-            loc = self.caller.db.char_ob.location
+            loc = self.caller.char_ob.location
             self.event_manager.move_event(event, loc)
             self.msg("Event moved to your room.")
         elif "endevent" in self.switches:
@@ -1571,7 +1571,7 @@ class CmdCalendar(ArxPlayerCommand):
         elif "starteventearly" in self.switches:
             event = self.get_event_from_args(self.lhs, check_host=True)
             if self.rhs and self.rhs.lower() == "here":
-                loc = self.caller.db.char_ob.location
+                loc = self.caller.char_ob.location
                 if not loc:
                     self.msg("You do not currently have a location.")
                     return
@@ -2161,167 +2161,123 @@ class CmdRoomMood(ArxCommand):
         self.caller.location.msg_contents("{w(OOC)The scene set/room mood is now set to:{n %s" % mood[2])
 
 
-class CmdSocialScore(ArxCommand):
+class CmdSocialNotable(ArxCommand):
     """
-    The who's-who of Arx
+    Who's currently being talked about around Arx?
 
     Usage:
-        +score[/all]
-        +score <character>
-        +score/orgs[/all]
-        +score/org[/all] <organization>
-        +score/personal[/all]
-        +score/legend[/all]
-        +score/renown [<category>]
-        +score/reputation[/bad] [<organization>][=<start #>,<stop #>]
-        +score/commoners[/all]
-        +score/nobles[/all]
+      notable [name]
+      notable/buzz
+      notable/legend
+      notable/infamous
+      notable/orgs
 
-    Checks the organizations and players who have the highest prestige.
-    Renown measures the influence a character has built with different npc
-    groups, while reputation is how a character is thought of by the npcs
-    within an organization. The 'bad' switch shows only those with respect or
-    affection below zero.
+    This command will return who's currently being talked about around Arx,
+    and if possible, why.
+
+    The first form will show it based on prestige (a combination of multiple
+    factors, such as your fame, legend, grandeur, and propriety).  This list
+    represents who's particularly recognizable at this moment in time.  If you
+    provide a character name, it will give you a quick note about that
+    particular character.
+
+    The second form will show it just based on fame, which is transient and
+    fades over time.  Fame might come from being seen at a particularly
+    fashionable event, or winning a tournament, or something else that briefly
+    puts you in the spotlight.  The buzz list is thus who's currently in the
+    spotlight for something recent.
+
+    The third form will show it just based on legend, which is harder to earn
+    but does not fade like fame.  Legend might come from doing something
+    incredibly heroic, or rediscovering an ancient weapon of note, or other
+    notable acts which will be remembered by history.  The legend list is
+    thus people who are still reknowned for various things they've done.
+
+    The fourth form will show the people who are infamous, whose prestige
+    has dropped into the negative numbers.
+
+    The fifth form will show the organizations in the city that people
+    are talking about, though will not say precisely why the organization
+    is currently notable.
+
     """
-    key = "+score"
+    key = "notable"
     locks = "cmd:all()"
-    help_category = "Information"
-    prestige_switches = ("orgs", "personal", "legend", "nobles", "commoners", "org", "all")
+
+
+    def show_rankings(self, title, asset_owners, adjust_type, show_percent=False):
+        counter = 1
+        table = EvTable()
+        table.add_column(width=8)
+        table.add_column()
+
+
+        median = AssetOwner.MEDIAN_PRESTIGE * 1.
+
+        for owner in asset_owners:
+            if show_percent:
+                percentage = round((owner.prestige / median) * 100)
+                percentage -= percentage % 10
+                table.add_row(str(counter), owner.prestige_descriptor(adjust_type), str(percentage) + "%")
+            else:
+                table.add_row(str(counter), owner.prestige_descriptor(adjust_type))
+            counter += 1
+        if title:
+            self.msg("\n|w" + title + "|n")
+        self.msg(str(table) + "\n")
 
     def func(self):
-        """Execute command."""
-        caller = self.caller
-        if not self.switches or self.check_switches(self.prestige_switches):
-            if not self.lhs:
-                return self.get_queryset_for_prestige_table()
-            else:
-                targ = caller.search(self.lhs)
-                if not targ:
-                    caller.msg("%s not found." % self.lhs)
-                    return
-                else:
-                    try:
-                        longname = targ.longname
-                    except AttributeError:
-                        longname = self.lhs
-                    if not longname:
-                        longname = self.lhs
-                    msg ="{}".format(longname)
-                    msg += "\n{{wPrestige:{{n      {:>10,}".format(targ.player.Dominion.assets.prestige)
-                    msg += "\n{{w||__ Legend:{{n    {:>10,}".format(targ.player.Dominion.assets.total_legend)
-                    msg += "\n{{w||__ Fame:{{n      {:>10,}".format(targ.player.Dominion.assets.fame)
-                    msg += "\n{{w||__ Grandeur:{{n  {:>10,}".format(targ.player.Dominion.assets.grandeur)
-                    msg += "\n{{w||__ Propriety:{{n {:>10,}".format(targ.player.Dominion.assets.propriety)
-                    caller.msg(msg)
-                    return
-        if "renown" in self.switches:
-            renowned = Renown.objects.filter(player__player__isnull=False,
-                                             player__player__roster__roster__name="Active").exclude(
-                                             category__name__icontains="mystery").order_by('-rating')
-            if self.args:
-                renowned = renowned.filter(Q(category__name__iexact=self.args) |
-                                           Q(player__player__username__iexact=self.args))
-            renowned = renowned[:20]
-            table = PrettyTable(["{wName{n", "{wCategory{n", "{wLevel{n", "{wRating{n"])
-            for ob in renowned:
-                table.add_row([str(ob.player), ob.category, ob.level, ob.rating])
-            self.msg(str(table))
-            return
-        if "reputation" in self.switches:
-            rep = Reputation.objects.filter(player__player__isnull=False,
-                                            player__player__roster__roster__name="Active")
-            if "bad" in self.switches:
-                rep = rep.filter(Q(respect__lt=0) | Q(affection__lt=0)).order_by('respect')
-            else:
-                rep = rep.order_by('-respect')
-            if self.lhs:
-                rep = rep.filter(Q(organization__name__iexact=self.lhs) |
-                                 Q(player__player__username__iexact=self.lhs))
-            slice_start = 0
-            slice_end = 20
-            if self.rhs:
-                try:
-                    if len(self.rhslist) > 1:
-                        slice_start, slice_end = self.rhslist
-                    else:
-                        slice_end = self.rhs
-                    slice_start = int(slice_start)
-                    slice_end = int(slice_end)
-                    if (slice_end < 0) or (slice_start < 0) or (slice_end - slice_start > 200):
-                        raise ValueError
-                except (ValueError, TypeError):
-                    caller.msg("Two positive numbers can be specified as start and endpoints, "
-                               "not to exceed 200 results. Example: =0,100")
-                    return
-            rep = rep[slice_start:slice_end]
-            table = PrettyTable(["{wName{n", "{wOrganization{n", "{wAffection{n", "{wRespect{n"])
-            for ob in rep:
-                if ob.organization.secret:
-                    # only show reputation to people in the org
-                    try:
-                        caller_member = ob.organization.active_members.get(player=self.caller.player_ob.Dominion)
-                    except (Member.DoesNotExist, ValueError):
-                        continue
-                    try:
-                        targ_member = ob.organization.active_members.get(player=ob.player)
-                        if targ_member.secret and caller_member.rank > targ_member.rank:
-                            continue
-                    # inactive and non-members will show up for members
-                    except (Member.DoesNotExist, ValueError):
-                        pass
-                table.add_row([str(ob.player), str(ob.organization), ob.affection, ob.respect])
-            self.msg(str(table))
-            return
-        else:
-            caller.msg("Invalid switch.")
+        adjust_type = None
+
+        if self.args:
+            try:
+                target = self.character_search(self.args)
+                asset = AssetOwner.objects.get(player=target.dompc)
+
+                percentage = round((asset.prestige / (AssetOwner.MEDIAN_PRESTIGE * 1.)) * 100)
+                percentage -= percentage % 10
+                descriptor = asset.prestige_descriptor()
+
+                self.msg("%s, is roughly %d%% as notable as the average citizen." % (descriptor, percentage))
+
+            except CommandError as ce:
+                self.msg(ce)
+            except (AssetOwner.DoesNotExist, AssetOwner.MultipleObjectsReturned):
+                self.msg("No such character!")
+            except ValueError:
+                self.msg("That character doesn't seem to be on the list!")
             return
 
-    def get_queryset_for_prestige_table(self):
-        """Determines who goes in the table based on our switches"""
-        from typeclasses.accounts import Account
-
-        def sort_queryset_by_social_rank(queryset):
-            """Helper function to sort by nobles or commoners"""
-            if "nobles" in self.switches:
-                return [own_ob for own_ob in queryset if own_ob.player.player.char_ob.db.social_rank < 7]
-            elif "commoners" in self.switches:
-                return [own_ob for own_ob in queryset if own_ob.player.player.char_ob.db.social_rank >= 7]
-            else:
-                return queryset
         if "orgs" in self.switches:
+            title = "Organizations Currently in the Public Eye"
             assets = AssetOwner.objects.filter(organization_owner__secret=False).filter(
                 organization_owner__members__player__player__roster__roster__name="Active").distinct()
             assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
-        elif "legend" in self.switches:
-            assets = sort_queryset_by_social_rank(
-                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
-            assets = sorted(assets, key=lambda x: x.total_legend, reverse=True)
         else:
-            if "org" in self.switches:
-                try:
-                    org = Organization.objects.get(name__iexact=self.args, secret=False)
-                except Organization.DoesNotExist:
-                    self.msg("No organization by that name.")
-                    return
-                assets = [ob.player.assets for ob in org.active_members.filter(secret=False)]
-            else:
-                assets = [ob.Dominion.assets for ob in Account.objects.filter(roster__roster__name="Active")]
-            assets = sort_queryset_by_social_rank(assets)
-            if "personal" in self.switches:
-                assets = sorted(assets, key=lambda x: x.fame + x.legend, reverse=True)
-            else:
-                assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
-        if "all" not in self.switches:
-            assets = assets[:20]
-        self.display_prestige_table(assets)
+            assets = list(
+                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
 
-    def display_prestige_table(self, assets):
-        """Prints out a table of prestige"""
-        table = PrettyTable(["{wName{n", "{wPrestige{n", "{wFame{n", "{wLegend{n", "{wGrandeur{n", "{wPropriety{n"])
-        for asset in assets:
-            table.add_row([str(asset)[:21], asset.prestige, asset.fame, asset.total_legend, asset.grandeur,
-                           asset.propriety])
-        self.msg(str(table))
+            if "buzz" in self.switches:
+                title = "Who's Momentarily in the News"
+                adjust_type = PrestigeAdjustment.FAME
+                assets = sorted(assets, key=lambda x: x.fame, reverse=True)
+            elif "legend" in self.switches:
+                title = "People of Legendary Renown"
+                adjust_type = PrestigeAdjustment.LEGEND
+                assets = sorted(assets, key=lambda x: x.total_legend, reverse=True)
+            elif "infamous" in self.switches:
+                title = "Those Who Society Shuns"
+                assets = [asset for asset in assets if asset.prestige < 0]
+                assets = sorted(assets, key=lambda x: x.prestige, reverse=False)
+                if len(assets) == 0:
+                    self.msg("There don't seem to be any people with negative prestige right now!")
+                    return
+            else:
+                title = "Who's Being Talked About Right Now"
+                assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
+
+        assets = assets[:20]
+        self.show_rankings(title, assets, adjust_type, show_percent=self.caller.check_permstring("builders"))
 
 
 class CmdThink(ArxCommand):
@@ -2928,7 +2884,7 @@ class CmdLanguages(ArxCommand):
         player = self.caller.player.search(self.lhs)
         if not player:
             return
-        targ = player.db.char_ob
+        targ = player.char_ob
         if not targ:
             self.msg("Not found.")
             return
@@ -3311,7 +3267,7 @@ class CmdFirstImpression(ArxCommand):
             return
         # check if the target has written a first impression of us. If not, we'll need to be in the same room
         received = self.imps_of_me.filter(from_account__entry__player=targ)
-        if not received and targ.db.char_ob.location != self.caller.location:
+        if not received and targ.char_ob.location != self.caller.location:
             self.msg("Must be in the same room.")
             return
         if not self.rhs or len(self.rhs) < 10:
@@ -3340,9 +3296,10 @@ class CmdFirstImpression(ArxCommand):
             xp = 2 if writer_share else 1
             self.caller.adjust_xp(xp)
             self.msg("You have gained %s xp." % xp)
-            targ.db.char_ob.adjust_xp(4)
+            targ.char_ob.adjust_xp(4)
 
 
+# noinspection PyAttributeOutsideInit
 class CmdGetInLine(ArxCommand):
     """
     Manages lines of people waiting their turn in events

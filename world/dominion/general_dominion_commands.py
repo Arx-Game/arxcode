@@ -106,7 +106,7 @@ class CmdAdmDomain(ArxPlayerCommand):
             if not player:
                 caller.msg("No player found by name %s." % self.lhs)
                 return
-            char = player.db.char_ob
+            char = player.char_ob
             if not char:
                 caller.msg("No valid character object for %s." % self.lhs)
                 return
@@ -217,11 +217,11 @@ class CmdAdmDomain(ArxPlayerCommand):
                     traceback.print_exc()
                 return
             if not hasattr(player, 'Dominion'):
-                dompc = setup_utils.setup_dom_for_char(player.db.char_ob)
+                dompc = setup_utils.setup_dom_for_char(player.char_ob)
             else:
                 dompc = player.Dominion
             if "transferowner" in self.switches:
-                family = player.db.char_ob.db.family
+                family = player.char_ob.db.family
                 try:
                     house = Organization.objects.get(name__iexact=family)
                     owner = house.assets
@@ -285,11 +285,11 @@ class CmdAdmDomain(ArxPlayerCommand):
             ruled = "None"
             owned = "None"
             family = None
-            if player.db.char_ob and player.db.char_ob.db.family:
-                family = player.db.char_ob.db.family
+            if player.char_ob and player.char_ob.db.family:
+                family = player.char_ob.db.family
             if hasattr(dompc, 'ruler'):
                 ruled = ", ".join(str(ob) for ob in Domain.objects.filter(ruler_id=dompc.ruler.id))
-            if player.db.char_ob and player.db.char_ob.db.family:
+            if player.char_ob and player.char_ob.db.family:
                 owned = ", ".join(str(ob) for ob in Domain.objects.filter(
                     ruler__house__organization_owner__name__iexact=family))
             caller.msg("{wDomains ruled by {c%s{n: %s" % (dompc, ruled))
@@ -312,8 +312,8 @@ class CmdAdmDomain(ArxPlayerCommand):
                 caller.msg("{wDirect vassals of %s:{n %s" % (fealty, ", ".join(str(ob) for ob in house.vassals.all())))
             pcdomlist = []
             for pc in AccountDB.objects.filter(Dominion__ruler__isnull=False):
-                if pc.db.char_ob and pc.db.char_ob.db.fealty == fealty:
-                    if pc.db.char_ob.db.family != fealty:
+                if pc.char_ob and pc.char_ob.db.fealty == fealty:
+                    if pc.char_ob.db.family != fealty:
                         for dom in pc.Dominion.ruler.holdings.all():
                             pcdomlist.append(dom)
             if pcdomlist:
@@ -662,7 +662,7 @@ class CmdAdmAssets(ArxPlayerCommand):
                 noassets = not hasattr(player.Dominion, 'assets')
             else:
                 noassets = True
-            setup_utils.setup_dom_for_char(player.db.char_ob, nodom, noassets)
+            setup_utils.setup_dom_for_char(player.char_ob, nodom, noassets)
             caller.msg("Dominion initialized for %s. No domain created." % player)
             return
         try:
@@ -710,7 +710,7 @@ class CmdAdmAssets(ArxPlayerCommand):
                 return
             if len(rhslist) == 2:
                 message = rhslist[1]
-            affected = owner.adjust_prestige(value)
+            affected = owner.adjust_prestige(value, reason=message)
             caller.msg("You have adjusted %s's prestige by %s." % (owner, value))
             for obj in affected:
                 obj.msg("%s adjusted %s's prestige by %s for the following reason: %s" % (caller, owner,
@@ -905,7 +905,7 @@ class CmdAdmOrganization(ArxPlayerCommand):
                 share_str = str(clue)
                 targ_type = "clue"
                 briefing_type = "/briefing"
-                text = "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s." % (caller.db.char_ob,
+                text = "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s." % (caller.char_ob,
                                                                                                targ_type, share_str,
                                                                                                org,
                                                                                                briefing_type)
@@ -1150,7 +1150,7 @@ class CmdSetRoom(ArxCommand):
                 player = caller.player.search(lhs)
                 if not player:
                     continue
-                char = player.db.char_ob
+                char = player.char_ob
                 if not char:
                     caller.msg("No character found.")
                     continue
@@ -1564,7 +1564,7 @@ class CmdArmy(ArxPlayerCommand):
             if not self.caller.pay_action_points(ap + base):
                 self.msg("You do not have enough action points.")
                 return
-            result = do_dice_check(self.caller.db.char_ob, difficulty=60 - ap, stat="charm", skill="propaganda",
+            result = do_dice_check(self.caller.char_ob, difficulty=60 - ap, stat="charm", skill="propaganda",
                                    quiet=False)
             if result <= 0:
                 self.msg("Your efforts at propaganda were not successful in helping recruitment.")
@@ -1884,7 +1884,7 @@ class CmdOrganization(ArxPlayerCommand):
                 return
             entry = tarmember.player.player.roster
             entry.refresh_from_db()
-            if tarmember.player.player.db.char_ob.location != self.caller.db.char_ob.location:
+            if tarmember.player.player.char_ob.location != self.caller.char_ob.location:
                 self.msg("You must be in the same room to brief them.")
                 self.msg("Please actually have roleplay about briefing things - "
                          "a 'clue dump' without context is against the rules.")
@@ -1973,7 +1973,7 @@ class CmdOrganization(ArxPlayerCommand):
                 share_str = theory
             text = "You've been briefed and learned a %s. Use {w%s{n to view them: %s" % (share_type, cmd_string,
                                                                                           share_str)
-            tarmember.player.player.msg("%s has briefed you on %s's secrets." % (caller.db.char_ob, org))
+            tarmember.player.player.msg("%s has briefed you on %s's secrets." % (caller.char_ob, org))
             tarmember.player.player.inform(text, category="%s briefing" % org)
             self.msg("You have briefed %s on your organization's secrets." % tarmember)
             return
@@ -2026,7 +2026,7 @@ class CmdOrganization(ArxPlayerCommand):
                 share_str = "%s (#%s)" % (theory, theory.id)
                 targ_type = "theory"
                 briefing_type = "/theorybriefing"
-            text = "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s." % (caller.db.char_ob,
+            text = "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s." % (caller.char_ob,
                                                                                            targ_type, share_str, org,
                                                                                            briefing_type)
             org.inform(text, category)
@@ -2267,7 +2267,7 @@ class CmdOrganization(ArxPlayerCommand):
                                      & Q(player__player=player)).exists():
                 caller.msg("They are already a member of your organization.")
                 return
-            char = player.db.char_ob
+            char = player.char_ob
             if not hasattr(player, 'Dominion'):
                 setup_utils.setup_dom_for_char(char)
             if not player.is_connected:
@@ -2398,7 +2398,7 @@ class CmdFamily(ArxPlayerCommand):
             caller.msg(famtree)
             if player:
                 try:
-                    family = player.db.char_ob.db.family
+                    family = player.char_ob.db.family
                     fam_org = Organization.objects.get(name__iexact=family)
                     details = fam_org.display_public()
                     caller.msg("%s family information:\n%s" % (family, details))
@@ -2410,6 +2410,7 @@ class CmdFamily(ArxPlayerCommand):
         except PlayerOrNpc.DoesNotExist:
             caller.msg("No relatives found for {c%s{n." % self.args)
             return
+
 
 max_proteges = {
     1: 5,
@@ -2441,6 +2442,16 @@ class CmdPatronage(ArxPlayerCommand):
     key = "@patronage"
     locks = "cmd:all()"
     help_category = "Dominion"
+    help_entry_tags = ["patronage"]
+
+    def get_help(self, caller, cmdset):
+        msg = super(CmdPatronage, self).get_help(caller, cmdset)
+        try:
+            num_proteges = max_proteges.get(caller.char_ob.db.social_rank, 0)
+            msg += "\n\nMax proteges you can have: %s" % num_proteges
+        except (AttributeError, ValueError, TypeError):
+            pass
+        return msg
 
     @staticmethod
     def display_patronage(dompc):
@@ -2470,7 +2481,7 @@ class CmdPatronage(ArxPlayerCommand):
         try:
             dompc = self.caller.Dominion
         except AttributeError:
-            dompc = setup_utils.setup_dom_for_char(self.caller.db.char_ob)
+            dompc = setup_utils.setup_dom_for_char(self.caller.char_ob)
         if not self.args and not self.switches:        
             caller.msg(self.display_patronage(dompc), options={'box': True})
             return
@@ -2478,7 +2489,7 @@ class CmdPatronage(ArxPlayerCommand):
             player = caller.search(self.args)
             if not player:
                 return
-            char = player.db.char_ob
+            char = player.char_ob
             if not char:
                 caller.msg("No character found for %s." % player)
                 return
@@ -2497,7 +2508,7 @@ class CmdPatronage(ArxPlayerCommand):
                     caller.msg("They already have a patron.")
                     return
                 num = dompc.proteges.all().count()
-                psrank = caller.db.char_ob.db.social_rank
+                psrank = caller.char_ob.db.social_rank
                 max_p = max_proteges.get(psrank, 0)
                 if num >= max_p:
                     caller.msg("You already have the maximum number of proteges for your social rank.")

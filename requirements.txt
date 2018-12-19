@@ -19,6 +19,5 @@ six==1.10.0
 sqlparse==0.2.2
 Twisted==18.7.0
 Unidecode==0.4.19
-urllib3==1.19.1
 zope.interface==4.4.2
 graphviz==0.8.2

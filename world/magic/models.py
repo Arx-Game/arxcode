@@ -6,19 +6,10 @@ from evennia.utils import logger
 from evennia.utils.ansi import strip_ansi
 from evennia.utils.evtable import EvTable
 from world.roll import Roll
-from server.utils.arx_utils import commafy, inform_staff
-from datetime import datetime
+from server.utils.arx_utils import commafy, inform_staff, classproperty
+from datetime import datetime, timedelta
 import math
 import json
-
-
-class classproperty(object):
-
-    def __init__(self, getter):
-        self.getter= getter
-
-    def __get__(self, instance, owner):
-        return self.getter(owner)
 
 
 class Alignment(SharedMemoryModel):
@@ -209,6 +200,7 @@ class Effect(SharedMemoryModel):
     CODED_APPLY_COMBAT_EFFECT = 14
     CODED_REMOVE_COMBAT_EFFECT = 15
     CODED_SET_WEATHER = 16
+    CODED_ANIMA_RITUAL = 17
 
     CODED_EFFECTS = (
         (CODED_SIGHT, 'Sight'),
@@ -227,6 +219,7 @@ class Effect(SharedMemoryModel):
         (CODED_APPLY_COMBAT_EFFECT, 'Apply a Combat Effect'),
         (CODED_REMOVE_COMBAT_EFFECT, 'Remove a Combat Effect'),
         (CODED_SET_WEATHER, 'Change the Weather'),
+        (CODED_ANIMA_RITUAL, "Anima Ritual"),
     )
 
     name = models.CharField(max_length=20, blank=False, null=False)
@@ -702,6 +695,23 @@ class Practitioner(SharedMemoryModel):
         for condition in conditions.all():
             condition.condition.apply_to_practitioner(self, strength=strength)
 
+    @property
+    def anima_rituals(self):
+        from django.db.models import Q
+        return self.workings.filter(Q(spell__effects__coded_effect=Effect.CODED_ANIMA_RITUAL) |
+                                     Q(weave_effect__coded_effect=Effect.CODED_ANIMA_RITUAL)).distinct().count()
+
+    @property
+    def anima_rituals_this_week(self):
+        from .advancement import MagicAdvancementScript
+
+        script = MagicAdvancementScript.objects.first()
+        try:
+            last_week = script.db.run_date - timedelta(days=7)
+        except AttributeError:
+            last_week = datetime.now() - timedelta(days=7)
+        return self.anima_rituals.filter(finalized_at__gte=last_week)
+
 
 class PractitionerEffect(SharedMemoryModel):
 
@@ -750,6 +760,9 @@ class SkillNode(SharedMemoryModel):
     eyes_open = models.BooleanField(default=False, help_text='If set, then having this node open means '
                                                              'someone\'s eyes are opened.')
     auto_discover = models.BooleanField(default=False)
+    discovered_by_revelations = models.ManyToManyField("character.Revelation", blank=True, related_name="nodes",
+                                                       help_text="If we discover these revelations, the node is "
+                                                                 "automatically discovered.")
     required_resonance = models.PositiveSmallIntegerField(default=10)
     affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='nodes')
     affinity_default = models.BooleanField(default=False,
@@ -943,6 +956,9 @@ class Spell(SharedMemoryModel):
     alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+')
     affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+')
     auto_discover = models.BooleanField(default=False)
+    discovered_by_clues = models.ManyToManyField("character.Clue", blank=True, related_name="spells",
+                                                 help_text="If we discover any of these clues, the spell is "
+                                                           "automatically learned.")
     required_resonance = models.PositiveSmallIntegerField(default=1)
     required_favor = models.PositiveIntegerField(default=0, help_text='A base amount of favor required with Abyssal or ' \
                                                                       'Elysian to cast this spell.')
@@ -962,6 +978,12 @@ class Spell(SharedMemoryModel):
 
     def __unicode__(self):
         return unicode(str(self))
+
+    def get_spell_success_msg(self, practitioner):
+        try:
+            return self.known_by.get(practitioner=practitioner).success_msg or self.success_msg
+        except PractitionerSpell.DoesNotExist:
+            return self.success_msg
 
 
 class SpellEffect(SharedMemoryModel):
@@ -991,6 +1013,7 @@ class PractitionerSpell(SharedMemoryModel):
     learned_by = models.PositiveSmallIntegerField(default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False)
     learned_on = models.DateField(blank=False, null=False)
     learned_notes = models.CharField(max_length=255, blank=True, null=True)
+    success_msg = models.TextField(blank=True, help_text="Custom message for our version of the spell")
 
     class Meta:
         unique_together = ('practitioner', 'spell')
@@ -1319,6 +1342,12 @@ class Working(SharedMemoryModel):
         return []
 
     @property
+    def spell_success_msg(self):
+        if self.spell:
+            return self.spell.get_spell_success_msg(self.lead)
+        return ""
+
+    @property
     def primary_effect(self):
         if self.weave_effect:
             return self.weave_effect
@@ -1420,6 +1449,10 @@ class Working(SharedMemoryModel):
             if not effect_handler:
                 return "The effect that this working targets has not been implemented yet!  " \
                        "Please whine to staff to get on it."
+
+            other_errors = effect_handler.check_for_other_errors()
+            if other_errors:
+                return other_errors
 
             if not effect_handler.valid_target():
                 return "Your target '{}' is not valid for the magical effect you've chosen.".format(self.target_string)
@@ -1577,7 +1610,7 @@ class Working(SharedMemoryModel):
         available_primum = 0
         external_primum = 0
         if self.econ:
-            external_primum += (self.econ / 10)
+            external_primum += (self.econ / 100)
 
         if draft:
             # We include even those who haven't accepted yet.
@@ -1755,6 +1788,9 @@ class Working(SharedMemoryModel):
             if successes >= 1:
                 effect_results = []
                 effect_descriptions = []
+                spell_msg = self.spell_success_msg
+                if spell_msg:
+                    effect_descriptions.append(spell_msg)
                 for effect in self.effects:
                     effect_handler = self.effect_handler(effect, quiet=gm_override)
                     effect_handler.perform()

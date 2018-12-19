@@ -147,7 +147,7 @@ class CmdManageHome(ArxCommand):
         player = caller.player.search(self.lhs)
         if not player:
             return
-        char = player.db.char_ob
+        char = player.char_ob
         if not char:
             caller.msg("No character found.")
             return
@@ -263,6 +263,7 @@ class CmdBuildRoom(CmdDig):
     key = "+buildroom"
     locks = "cmd:all()"
     help_category = "Home"
+    help_entry_tags = ["housing"]
 
     # noinspection PyAttributeOutsideInit
     def func(self):
@@ -445,6 +446,7 @@ class CmdManageRoom(ArxCommand):
     desc_switches = ("desc", "winterdesc", "springdesc", "summerdesc", "falldesc")
     bouncer_switches = ("ban", "unban", "boot")
     personnel_switches = ("addbouncer", "rmbouncer", "adddecorator", "rmdecorator")
+    help_entry_tags = ["housing"]
     
     def check_perms(self):
         """Checks the permissions for the room"""
@@ -655,7 +657,7 @@ class CmdManageRoom(ArxCommand):
         player = caller.player.search(self.args)
         if not player:
             return
-        char = player.db.char_ob
+        char = player.char_ob
         if not char:
             caller.msg("No char.")
             return
@@ -708,6 +710,7 @@ class CmdManageShop(ArxCommand):
     key = "+manageshop"
     locks = "cmd:all()"
     help_category = "Home"
+    help_entry_tags = ["shops"]
 
     def list_prices(self):
         """Lists a table of prices for the shop owner"""
@@ -898,7 +901,7 @@ class CmdManageShop(ArxCommand):
                     org = True
                     targ = Organization.objects.get(name__iexact=self.args)
                 else:
-                    targ = targ.db.char_ob
+                    targ = targ.char_ob
                 if "addblacklist" in self.switches:
                     if org:
                         if targ.name in blacklist:

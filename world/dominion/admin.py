@@ -13,7 +13,7 @@ from .models import (PlayerOrNpc, Organization, Domain, Agent, AgentOb, Minister
                      RPEvent, AccountTransaction, AssignedTask, Plot, PlotAction, PlotUpdate,
                      OrgRelationship, Reputation, TaskSupporter, InfluenceCategory,
                      Renown, SphereOfInfluence, TaskRequirement, ClueForOrg, ActionOOCQuestion,
-                     PlotRoom, Landmark,
+                     PlotRoom, Landmark, PrestigeTier, PrestigeCategory, PrestigeAdjustment,
                      Honorific, Propriety, PCEventParticipation, OrgEventParticipation, Fealty,
                      OrgPlotInvolvement, PCPlotInvolvement)
 
@@ -750,6 +750,27 @@ class FealtyAdmin(DomAdmin):
         return ", ".join(str(ob) for ob in obj.orgs.all())
 
 
+class PrestigeCategoryAdmin(DomAdmin):
+    """Admin for PrestigeCategory"""
+    list_display = ('name', 'male_noun', 'female_noun')
+    search_fields = ('name', 'male_noun', 'female_noun')
+
+
+class PrestigeAdjustmentAdmin(DomAdmin):
+    """Admin for Prestige Adjustments"""
+    list_display = ('id', 'asset_owner', 'category', 'adjusted_on', 'adjusted_by', 'adjustment_type')
+    search_fields = ('asset_owner__player__player__username', 'asset_owner__organization_owner__name')
+    raw_id_fields = ('asset_owner',)
+    list_filter = ('category', 'adjustment_type')
+    readonly_fields = ('adjusted_by', 'effective_value')
+
+
+class PrestigeTierAdmin(DomAdmin):
+    """Admin for Prestige Tiers"""
+    list_display = ('rank_name', 'minimum_prestige')
+    search_fields = ('rank_name',)
+
+
 # Register your models here.
 admin.site.register(PlayerOrNpc, PCAdmin)
 admin.site.register(Organization, OrgAdmin)
@@ -779,3 +800,6 @@ admin.site.register(PraiseOrCondemn, PraiseAdmin)
 admin.site.register(Honorific, HonorificAdmin)
 admin.site.register(Propriety, ProprietyAdmin)
 admin.site.register(Fealty, FealtyAdmin)
+admin.site.register(PrestigeAdjustment, PrestigeAdjustmentAdmin)
+admin.site.register(PrestigeCategory, PrestigeCategoryAdmin)
+admin.site.register(PrestigeTier, PrestigeTierAdmin)

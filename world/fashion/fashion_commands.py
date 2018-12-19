@@ -189,7 +189,6 @@ class CmdFashionModel(ArxCommand):
             return
         player = self.caller.player
         self.check_recency(org)
-        self.check_audience()
         try:
             fame = item.model_for_fashion(player, org)
         except AttributeError:
@@ -206,7 +205,6 @@ class CmdFashionModel(ArxCommand):
         if not outfit or not org:
             return
         self.check_recency(org)
-        self.check_audience()
         fame = outfit.model_outfit_for_fashion(org)
         self.emit_modeling_result(outfit, org, fame)
 
@@ -289,15 +287,6 @@ class CmdFashionModel(ArxCommand):
         if org:
             if qs.filter(db_date_created__gte=last_cron, org=org):
                 raise FashionError("You have displayed fashion too recently for %s to bring them more acclaim." % org)
-
-    def check_audience(self):
-        characters = []
-        for obj in self.caller.location.contents:
-            if obj.is_typeclass("typeclasses.characters.Character") and not obj == self.caller:
-                characters.append(obj)
-        if len(characters) == 0:
-            raise FashionError("There doesn't seem to be anyone here to model for!")
-
 
 
 class CmdAdminFashion(ArxCommand):

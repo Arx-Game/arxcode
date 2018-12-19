@@ -79,6 +79,7 @@ class CmdJob(ArxPlayerCommand):
     key = "@job"
     aliases = ["@jobs", "@bug", "@code", "@typo", "@prp"]
     help_category = "Admin"
+    help_entry_tags = ["requests"]
     locks = "cmd:perm(job) or perm(Builders)"
     query_open_switches = ("mine", "all", "low", "only")
 
