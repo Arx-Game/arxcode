@@ -2242,7 +2242,7 @@ class CmdSocialNotable(ArxCommand):
 
                 result = "%s, is roughly %d%% as notable as the average citizen." % (descriptor, percentage)
 
-                if best_adjust.long_reason:
+                if best_adjust and best_adjust.long_reason:
                     result = "%s %s" % (result, best_adjust.long_reason)
 
                 self.msg(result)

@@ -1856,7 +1856,7 @@ class CmdPRPClue(PRPLorecommand):
                     return
                 targ.roster.discover_clue(clue)
                 self.msg("You have sent them a clue.")
-                targ.inform("A new clue has been sent to you about event %s. Use @clues to view it." % clue.event,
+                targ.inform("Clue '%s' has been sent to you about a plot you're on. Use @clues to view it." % clue,
                             category="Clue Discovery")
                 return
             form = self.caller.attributes.get(self.form_attribute)
