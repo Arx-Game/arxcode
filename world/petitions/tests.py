@@ -4,9 +4,75 @@ from mock import Mock
 
 from server.utils.test_utils import ArxCommandTest
 from world.petitions import petitions_commands
-
+from web.character.models import (Clue, SearchTag)
 
 class TestPetitionCommands(ArxCommandTest):
+    num_additional_characters = 4
+    
+    def test_cmd_matchmaker(self):
+        tag1 = SearchTag.objects.create(name="foo")
+        tag2 = SearchTag.objects.create(name="bar")
+        tag3 = SearchTag.objects.create(name="zep")
+        clue1 = Clue.objects.create(name="foozep")
+        clue1.search_tags.add(tag1)
+        clue1.search_tags.add(tag3)
+        test_blurb1="I love testing"
+        test_blurb2="I love testing too"
+        test_blurb3="I actually hate testing"
+        test_blurb4="I don't even know what this is"
+        test_blurb5="A trip through tiiiime"
+        test_blurb6="I don't want anything!"
+        self.setup_cmd(petitions_commands.CmdMatchmaker,self.char6)
+        self.call_cmd("/active","You're now looking for a match")
+        self.call_cmd("/blurb {}".format(test_blurb6),"Your blurb is now: {}".format(test_blurb6))
+        self.setup_cmd(petitions_commands.CmdMatchmaker,self.char5)
+        self.call_cmd("/seeking marriage,plot,protege,sponsor","You're now looking for: marriage, plot, protege, sponsor,")
+        self.char5.db.social_rank=7
+        self.call_cmd("/blurb {}".format(test_blurb5),"Your blurb is now: {}".format(test_blurb5))
+        self.call_cmd("/playtimes 5,15","You're now listed as playing 5-15")
+        self.call_cmd("/active","You're now looking for a match")
+        self.setup_cmd(petitions_commands.CmdMatchmaker,self.char1)
+        self.call_cmd("/seeking marriage,plot,protege,sponsor","You're now looking for: marriage, plot, protege, sponsor,")
+        self.call_cmd("/blurb {}".format(test_blurb1),"Your blurb is now: {}".format(test_blurb1))
+        self.call_cmd("/active","You're now looking for a match")
+        self.call_cmd("/tags foo,bar","You're now matching: foo; bar;")
+        self.setup_cmd(petitions_commands.CmdMatchmaker,self.char2)
+        self.call_cmd("/seeking plot,sponsor,protege","You're now looking for: plot, sponsor, protege,")
+        self.call_cmd("/blurb {}".format(test_blurb2),"Your blurb is now: {}".format(test_blurb2))
+        self.call_cmd("/active","You're now looking for a match")
+        self.call_cmd("/tags zsep","There's no tag called zsep|You're now matching:")
+        self.call_cmd("/clues fosozep","There's no clue called fosozep|You're now matching:")
+        self.call_cmd("/tags zsep,zep","There's no tag called zsep|You're now matching:")
+        self.call_cmd("/tags zep","You're now matching: zep;")
+        self.char2.db.social_rank=1
+        self.char1.db.social_rank=10
+        self.char3.db.social_rank=3
+        self.char4.db.social_rank=5
+        self.setup_cmd(petitions_commands.CmdMatchmaker,self.char3)
+        self.call_cmd("/seeking marriage,plot,protege,sponsor","You're now looking for: marriage, plot, protege, sponsor,")
+        self.call_cmd("/blurb {}".format(test_blurb3),"Your blurb is now: {}".format(test_blurb3))
+        self.call_cmd("/active","You're now looking for a match")
+        self.call_cmd("/tags bar","You're now matching: bar;")
+        self.setup_cmd(petitions_commands.CmdMatchmaker,self.char4)
+        self.call_cmd("/seeking marriage,plot,protege,sponsor","You're now looking for: marriage, plot, protege, sponsor,")
+        self.call_cmd("/blurb {}".format(test_blurb4),"Your blurb is now: {}".format(test_blurb4))
+        self.call_cmd("/active","You're now looking for a match")
+        self.call_cmd("/clues foozep","You're now matching: foozep;")
+        self.call_cmd("/playtimes 16,20","You're now listed as playing 16-20")
+        self.call_cmd("","Name  Gender Age Matches                         Playtime Blurb                   \n"
+                         "Char6 Female 20  [Time]                          0-0      I don't want anything!"
+                       "  Char  Female 20  [Time][Sponsor][Marriage][Plot] 0-0      I love testing"
+               "          Char2 Female 20  [Time][Protege][Plot]           0-0      I love testing too"
+                   "      Char3 Female 20  [Time][Protege][Marriage]       0-0      I actually hate testing")
+        self.call_cmd("/all","Name  Gender Age Matches                         Playtime Blurb                          \n"
+                      "Char6 Female 20  [Time]                          0-0      I don't want anything!"
+                      "         Char5 Female 20  [Sponsor][Marriage]             5-15     A trip through tiiiime"
+                      "         Char  Female 20  [Time][Sponsor][Marriage][Plot] 0-0      I love testing"
+                      "                 Char2 Female 20  [Time][Protege][Plot]           0-0      I love testing too"
+                      "             Char3 Female 20  [Time][Protege][Marriage]       0-0      I actually hate testing"
+                      "        Char4 Female 20                                  16-20    I don't even know what this is")
+        
+    
     def test_cmd_broker(self):
         from world.petitions.models import BrokeredSale
         from world.dominion.models import CraftingMaterialType
@@ -25,10 +91,14 @@ class TestPetitionCommands(ArxCommandTest):
         self.char1.currency += 20000
         self.assertEqual(self.char2.currency, 0)
         self.call_cmd("/buy ap=1,100",
+                      "Repeat the command to buy 1 ap for 100 each and 100 total")
+        self.call_cmd("/buy ap=1,100",
                       "You have placed an order for 1 Action Points for 100 silver each and 100 total.")
-        self.call_cmd("/reprice 2=500000000", "You cannot afford to pay 499999900 when you only have 19900.0 silver.")
+        self.call_cmd("/reprice 2=500000000", "You cannot afford to pay 499,999,900 when you only have 19,900.0 silver.")
+        self.char1.ndb.debug=True
+        self.char2.ndb.dbeug=True
         self.assertEqual(self.char1.currency, 19900)
-        self.call_cmd("/reprice 2=5000", "You have changed the price to 5000.")
+        self.call_cmd("/reprice 2=5000", "You have changed the price to 5,000.")
         self.assertEqual(self.char1.currency, 15000)
         self.call_cmd("/cancel 2", "You have cancelled the purchase.")
         self.assertEqual(self.char1.currency, 20000)
@@ -78,10 +148,10 @@ class TestPetitionCommands(ArxCommandTest):
         self.call_cmd("/sell ap=600,500", "You do not have enough action points to put on sale.")
         self.call_cmd("/sell military=1, 1000", "You do not have enough military resources to put on sale.")
         self.call_cmd("/sell economic=1,1000",
-                      "Created a new sale of 1 Economic Resources for 1000 silver each and 1000 total.")
+                      "Created a new sale of 1 Economic Resources for 1,000 silver each and 1,000 total.")
         self.assertEqual(self.assetowner.economic, 4)
         self.call_cmd("/sell economic=2,500",
-                      "Created a new sale of 2 Economic Resources for 500 silver each and 1000 total.")
+                      "Created a new sale of 2 Economic Resources for 500 silver each and 1,000 total.")
         self.assertEqual(self.assetowner.economic, 2)
         self.call_cmd("/sell asdf=2,500", "Could not find a material by the name 'asdf'.")
         self.call_cmd("/sell testium=1,500", "Created a new sale of 1 testium for 500 silver each and 500 total.")
@@ -128,9 +198,9 @@ class TestPetitionCommands(ArxCommandTest):
         sale15 = BrokeredSale.objects.create(owner=self.dompc2, sale_type=BrokeredSale.SOCIAL, amount=50, price=300,
                                              broker_type=BrokeredSale.PURCHASE)
         self.assetowner.social = 60
-        self.call_cmd("/sell social=5,250", 'You have sold 5 Social Resources to Testaccount2 for 1500 silver.')
+        self.call_cmd("/sell social=5,250", 'You have sold 5 Social Resources to Testaccount2 for 1,500 silver.')
         self.call_cmd("/sell social=55,350",
-                      'Created a new sale of 55 Social Resources for 350 silver each and 19250 total.')
+                      'Created a new sale of 55 Social Resources for 350 silver each and 19,250 total.')
         self.call_cmd("", 'ID Seller       Type               Price Amount \n'
                           '6  Testaccount2 Economic Resources 5     45     '
                           '7  Testaccount2 testium            5     40     '
@@ -140,13 +210,13 @@ class TestPetitionCommands(ArxCommandTest):
                           '17 Testaccount  Social Resources   350   55     |\n'
                           'ID Buyer        Type             Price Amount \n'
                           '15 Testaccount2 Social Resources 300   45')
-        self.call_cmd("/reprice 17=300", 'You have sold 45 Social Resources to Testaccount2 for 13500 silver.|'
+        self.call_cmd("/reprice 17=300", 'You have sold 45 Social Resources to Testaccount2 for 13,500 silver.|'
                                          'You have changed the price to 300.')
         self.assertEqual(sale15.amount, 0)
         self.assertEqual(self.assetowner2.social, 50)
         self.assertEqual(self.char1.currency, 34925)
         self.call_cmd("/buy military=10,500",
-                      'You have placed an order for 10 Military Resources for 500 silver each and 5000 total.')
+                      'You have placed an order for 10 Military Resources for 500 silver each and 5,000 total.')
         self.assertEqual(self.char1.currency, 29925)
         self.call_cmd("/reprice 18=200", 'You have changed the price to 200.')
         self.assertEqual(self.char1.currency, 32925)

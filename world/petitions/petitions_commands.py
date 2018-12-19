@@ -8,20 +8,117 @@ from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
 from world.petitions.forms import PetitionForm
 from world.petitions.exceptions import PetitionError
-from world.petitions.models import BrokeredSale, Petition
+from world.petitions.models import BrokeredSale, Petition,WantedAd
+from web.character.models import (Clue, SearchTag)
+
 
 
 
 class CmdMatchmaker(ArxCommand):
     """
     Creates or searches wanted ads
+    
+        Usage:
+    -Viewing:
+        matchmaker
+        matchmaker/all
+    -Editing
+        matchmaker/active #Toggles on/off
+        matchmaker/blurb <text>
+        matchmaker/playtimes <start>,<end> #Assume EST
+        matchmaker/clues <clue1>,<clue2>
+        matchmaker/tags <tag1>,<tag2>
+        matchmaker/seeking <marriage>,<plot>,<protege>,<sponsor> #any
     """
     key ="matchmaker"
     help_category = "social"
     aliases =["mm"]
+    
+    def display_matches(self):
+        my_ad = self.caller.dompc.wanted_ad
+        ads = WantedAd.objects.filter(active=True)
+        matches_list = []
+        matched_list = []
+        for ad in ads:
+            matches = ad.match(self.caller.dompc)
+            if matches and (ad.TIME in matches):
+                matches_list.append(matches)
+                matched_list.append(ad)
+        table = PrettyTable(["Name", "Gender", "Age", "Matches","Playtime", "Blurb"])
+        if len(matches_list)>0 and len(matched_list):
+            for match, ad in zip(matches_list, matched_list):
+                matchstring=""
+                for m in match:
+                    matchstring+="[{}]".format(ad.MATCH_TYPES[m][1])
+                table.add_row([ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender,
+                               ad.owner.player.char_ob.db.age,matchstring,
+                               "{}-{}".format(ad.playtime_start,ad.playtime_end),ad.blurb])
+        self.msg(table)
+
+    def display_all_matches(self):
+        my_ad = self.caller.dompc.wanted_ad
+        ads = WantedAd.objects.filter(active=True)
+        table = PrettyTable(["Name", "Gender", "Age", "Matches","Playtime", "Blurb"])
+        for ad in ads:
+            match = ad.match(self.caller.dompc)
+            matchstring=""
+            for m in match:
+                matchstring+="[{}]".format(ad.MATCH_TYPES[m][1])
+            table.add_row([ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender,
+                            ad.owner.player.char_ob.db.age,matchstring,
+                            "{}-{}".format(ad.playtime_start,ad.playtime_end),ad.blurb])
+        self.msg(table)
+
+            
+    def clues(self):
+        ad = self.caller.dompc.wanted_ad
+        clues = []
+        args = self.args.split("/")
+        message="You're now matching: "
+        if args<1:
+            ad.clues.clear()
+            self.msg("You're now matching no clues")
+            return
+        else:
+            ad.clues.clear()
+            for entry in args:
+                try:
+                    clue = self.get_by_name_or_id(Clue,entry)
+                except:
+                    self.msg("There's no clue called {}".format(entry))
+                    self.msg(message)
+                    return
+                ad.clues.add(clue)
+                for tag in clue.search_tags.all():
+                    ad.searchtags.add(tag)
+                message+="{}; ".format(clue.name)
+        self.msg(message)
+        return
+    
+    def tags(self):
+        ad = self.caller.dompc.wanted_ad
+        tags = []
+        message="You're now matching: "
+        if self.lhslist<1:
+            ad.searchtags.clear()
+            self.msg("You're now matching no tags")
+            return
+        else:
+            ad.searchtags.clear()
+            for entry in self.lhslist:
+                try:
+                    tag = self.get_by_name_or_id(SearchTag,entry)
+                except:
+                    self.msg("There's no tag called {}".format(entry))
+                    self.msg(message)
+                    return
+                ad.searchtags.add(tag)
+                message+="{}; ".format(tag.name)
+        self.msg(message)
+        return
 
     def func(self):
-        ad = self.caller.player.char_ob.wanted_ad.get_or_create()
+        ad, created = WantedAd.objects.get_or_create(owner=self.caller.dompc)
         if not self.switches:
             return self.display_matches()
         if "all" in self.switches:
@@ -31,82 +128,57 @@ class CmdMatchmaker(ArxCommand):
                 self.msg("You need to supply both the start and end")
                 return
             else:
-                ad.playtime_start=lhslist[0]
-                ad.playtime_end=lhslist[1]
+                ad.playtime_start=int(self.lhslist[0])
+                ad.playtime_end=int(self.lhslist[1])
                 ad.save()
-                self.msg("You're now listed as playing %s-%s" % (self.caller.player.char_ob.wanted_ad.playtime_start,self.caller.player.char_ob.wanted_ad.playtime_end))
+                self.msg("You're now listed as playing %s-%s" % (self.caller.dompc.wanted_ad.playtime_start,self.caller.dompc.wanted_ad.playtime_end))
                 return
         if "blurb" in self.switches:
             ad.blurb = self.lhs
+            ad.save()
             self.msg("Your blurb is now: %s" % ad.blurb)
             return 
         if "seeking" in self.switches:
-            if lhslist:
+            if self.lhslist:
                 ad.marriage=False
                 ad.plot=False
-                ad.soonsor=False
+                ad.sponsor=False
                 ad.protege=False
                 message="You're now looking for: "
-                for entry in lhslist:
-                    if entry.lower=="marriage":
+                for entry in self.lhslist:
+                    if entry.lower()=="marriage":
                         ad.marriage=True
                         message+="marriage, "
-                    if entry.lower=="plot":
+                    if entry.lower()=="plot":
                         ad.plot=True
                         message+="plot, "
-                    if entry.lower=="sponsor":
+                    if entry.lower()=="sponsor":
                         ad.sponsor=True
                         message+="sponsor, "
-                    if entry.lower=="protege":
+                    if entry.lower()=="protege":
                         ad.protege=True
                         message+="protege, "
                 self.msg(message)
+                ad.save()
                 return
-            else
+            else:
                 self.msg("You need to supply a comma separated list of what you're looking for")
                 return
         if "clues" in self.switches:
             return self.clues()
         if "tags" in self.switches:
             return self.tags()
-        if "activate" in self.switches:
-            ad=self.caller.player.char_ob.wanted_ad
+        if "active" in self.switches:
             ad.active^=True
             if ad.active:
                 string=""
             else:
                 string="not "
             self.msg("You're now %slooking for a match" % string)
+            ad.save()
             return
-        def display_matches(self):
-            my_ad = self.caller.player.char_ob.wanted_ad.get_or_create()
-            ads = WantedAd.objects.filter(active=True)
-            matches_list = []
-            matched_list = []
-            for ad in ads
-                matches = ad.match(self.caller.player.char_ob)
-                if matches:
-                    matches_list.append(matches)
-                    matched_list.append(ad)
-            table = PrettyTable(["Name", "Gender", "Age", "Matches","Playtime", "Blurb"])
-            for matches, ad in matches_list, matched_list
-                table.add_row(ad.owner.name,ad.owner.gender,ad.owner.age,matches,"%s-%s"%(playtime_start,playtime_end),ad.blurb)
+        
 
-        def display_all_matches(self):
-            my_ad = self.caller.player.char_ob.wanted_ad.get_or_create()
-            ads = WantedAd.objects.filter(active=True)
-            table = PrettyTable(["Name", "Gender", "Age", "Matches","Playtime", "Blurb"])
-            for ad in ads
-                matches = ad.match(self.caller.player.char_ob)
-                table.add_row(ad.owner.name,ad.owner.gender,ad.owner.age,matches,"%s-%s"%(playtime_start,playtime_end),ad.blurb)
-
-                
-        def clues(self):
-            self.msg("Placeholder")
-            return
-        def tags(self):
-            self.msg("Placeholder")
-            return
             
 
 class CmdPetition(ArxCommand):
@@ -483,7 +555,7 @@ class CmdBroker(ArxCommand):
         character = self.caller.player.char_ob
         cost = price*amount
         if cost > character.currency:
-            raise PayError("You cannot afford to pay %s when you only have %s silver." % (cost, character.currency))
+            raise PayError("You cannot afford to pay {:,} when you only have {:,} silver.".format(cost, character.currency))
         material_type = None
         if sale_type == BrokeredSale.ACTION_POINTS:
             from evennia.server.models import ServerConfig
@@ -498,6 +570,12 @@ class CmdBroker(ArxCommand):
                 raise self.BrokerError("Could not find a material by the name '%s'." % self.lhs)
             if "nosell" in (material_type.acquisition_modifiers or ""):
                 raise self.BrokerError("You can't put contraband on the broker! Seriously, how are you still alive?")
+        if not(self.caller.ndb.debug) and (self.caller.ndb.broker_amount!=amount or self.caller.ndb.broker_price!=price or self.caller.ndb.broker_name!=self.lhs):
+            self.msg("Repeat the command to buy {} {} for {:,} each and {:,} total".format(amount,self.lhs,price,price*amount))
+            self.caller.ndb.broker_amount=amount
+            self.caller.ndb.broker_price=price
+            self.caller.ndb.broker_name=self.lhs
+            return
         character.pay_money(cost)
         dompc = self.caller.player_ob.Dominion
         sell_orders = BrokeredSale.objects.filter(broker_type=BrokeredSale.SALE, price__lte=price, sale_type=sale_type,
@@ -519,7 +597,7 @@ class CmdBroker(ArxCommand):
                     else:
                         buyamount = amount
                     order.make_purchase(dompc, buyamount)
-                    self.msg("You have bought %s %s from %s for %s silver." % (buyamount, order.material_name, seller,
+                    self.msg("You have bought {} {} from {} for {:,} silver.".format(buyamount, order.material_name, seller,
                                                                                order.price*buyamount))
                     amount -= buyamount
                     if order.price < price:
@@ -531,12 +609,10 @@ class CmdBroker(ArxCommand):
             purchase.delete()
             created = None
         if created:
-            self.msg("You have placed an order for %s %s for %s silver each and %s total." %
-                     (amount, purchase.material_name, price, purchase.amount*price))
+            self.msg("You have placed an order for {} {} for {} silver each and {:,} total.".format(amount, purchase.material_name, price, purchase.amount*price))
         else:
             if amount > 0:
-                self.msg("Added %s to the existing order of %s for %s silver each and %s total." %
-                         (original, purchase.material_name, price, purchase.amount*price))
+                self.msg("Added {} to the existing order of {} for {:,} silver each and {:,} total.".format(original, purchase.material_name, price, purchase.amount*price))
 
     def get_amount(self, args, noun="amount"):
         """Gets a positive number to use for a transaction, or raises a BrokerError"""
@@ -581,6 +657,12 @@ class CmdBroker(ArxCommand):
                 raise self.BrokerError("You can't put contraband on the broker! Seriously, how are you still alive?")
             if not self.caller.player_ob.pay_materials(material_type, amount):
                 raise self.BrokerError("You don't have enough %s to put on sale." % material_type)
+        if not(self.caller.ndb.debug) and (self.caller.ndb.broker_amount!=amount or self.caller.ndb.broker_price!=price or self.caller.ndb.broker_name!=self.lhs):
+            self.msg("Repeat the command to sell {} {} for {:,} each and {:,} total".format(amount,material_type,price,price*amount))
+            self.caller.ndb.broker_amount=amount
+            self.caller.ndb.broker_price=price
+            self.caller.ndb.broker_name=self.lhs
+            return
         dompc = self.caller.player_ob.Dominion
 
         sale, created = dompc.brokered_sales.get_or_create(price=price, sale_type=sale_type,
@@ -595,12 +677,10 @@ class CmdBroker(ArxCommand):
         if amount == 0:
             created = None
         if created:
-            self.msg("Created a new sale of %s %s for %s silver each and %s total." %
-                     (amount, sale.material_name, price, sale.amount*price))
+            self.msg("Created a new sale of {} {} for {:,} silver each and {:,} total.".format(amount, sale.material_name, price, sale.amount*price))
         else:
             if amount > 0:
-                self.msg("Added %s to the existing sale of %s for %s silver each and %s total." %
-                         (original, sale.material_name, price, sale.amount*price))
+                self.msg("Added {} to the existing sale of {} for {:,} silver each and {:,} total.".format(original, sale.material_name, price, sale.amount*price))
 
     def check_for_buyers(self, sale):
         dompc = self.caller.dompc
@@ -620,8 +700,7 @@ class CmdBroker(ArxCommand):
                         buyamount = amount
                     order.make_purchase(dompc, buyamount)
                     amount -= buyamount
-                    self.msg("You have sold %s %s to %s for %s silver." %
-                             (buyamount, order.material_name, buyer, order.price * buyamount))
+                    self.msg("You have sold {} {} to {} for {:,} silver.".format(buyamount, order.material_name, buyer, order.price * buyamount))
         sale.amount = amount
         if amount == 0:
             sale.delete()
@@ -655,10 +734,10 @@ class CmdBroker(ArxCommand):
             raise self.BrokerError("The new price must be different from the current price.")
         sale.change_price(price)
         if not sale.pk:
-            self.msg("You have changed the price to %s, merging with an existing sale." % price)
+            self.msg("You have changed the price to {:,}, merging with an existing sale.".format(price))
             return
         amount_remaining = sale.amount
         if sale.broker_type == BrokeredSale.SALE:
             amount_remaining = self.check_for_buyers(sale)
         if amount_remaining:
-            self.msg("You have changed the price to %s." % price)
+            self.msg("You have changed the price to {:,}.".format(price))

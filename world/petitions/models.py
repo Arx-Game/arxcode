@@ -10,11 +10,13 @@ from evennia.utils.idmapper.models import SharedMemoryModel
 
 from server.utils.exceptions import PayError
 from .exceptions import PetitionError
-web.character.models import (Clue, SearchTag)
+from web.character.models import (Clue, SearchTag)
+from world.dominion.models import PlayerOrNpc
+from world.dominion.general_dominion_commands import CmdPatronage
 
 class Interest(SharedMemoryModel):
     name = models.CharField(max_length=30)
-    wantedadds = models.ManyToManyField(WantedAd)
+    wantedads = models.ManyToManyField("WantedAd", related_name="wanted_ads")
 
 
 class WantedAd(SharedMemoryModel):
@@ -37,44 +39,54 @@ class WantedAd(SharedMemoryModel):
     protege = models.BooleanField(default=False)
     plot = models.BooleanField(default=False)
     active = models.BooleanField(default=False)
-    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="wanted_ad")
+    owner = models.OneToOneField(PlayerOrNpc, related_name="wanted_ad")
 
     def match(self, dompc):
         matches =[]
+
+        overlap = 0
         try:
-            seeker_add = dompc.wanted_ad
+            seeker_ad = dompc.wanted_ad
         except AttributeError:
             return matches
-        if dompc==self.owner
-            return matches
-        if self.playtime_start > self.playtime_end:
-            self.playtime_end+=24
-        if seeker_add.playtime_start > seeker_add.playtime_end:
-            seekeradd.playtime_end+=24
+        my_end =int(self.playtime_end)
+        their_end =int(seeker_ad.playtime_end)
+        my_start =int(self.playtime_start)
+        their_start = int(seeker_ad.playtime_start)
 
-        if seeker_add.playtime_end > self.playtime_end:
-            overlap=self.playtime_end
-        else
-            overlap=seeker_add.playtime_end
-        if seeker_add.playtime_start > self.playtime_start:
-            overlap-=self.playtime_start
+        if dompc==self.owner:
+            return matches
+        if my_start >= my_end:
+            my_end+=24
+        if their_start >= their_end:
+            their_end+=24
+
+        if their_end > my_end:
+            overlap=my_end
         else:
-            overlap-=seeker_add.playtime_start
-        if overlap <2:
+            overlap=their_end
+
+        if their_start > my_start:
+            overlap-=their_start
+        else:
+            overlap-=my_start
+
+        if overlap >2:
             matches.append(self.TIME)
-        if self.sponsor and seeker_add.protege:
-            rankcheck, diff=CmdPatronage.check_social_rank_difference(self.owner,dompc)
+        if self.sponsor and seeker_ad.protege:
+            
+            rankcheck, diff=CmdPatronage().check_social_rank_difference(self.owner.player.char_ob,dompc.player.char_ob)
             if rankcheck:
                 matches.append(self.PROTEGE)
-        if self.protege and seeker_add.sponsor:
-            rankcheck, diff=CmdPatronage.check_social_rank_difference(dompc,self.owner)
+        if self.protege and seeker_ad.sponsor:
+            rankcheck, diff=CmdPatronage().check_social_rank_difference(dompc.player.char_ob,self.owner.player.char_ob)
             if rankcheck:
                 matches.append(self.SPONSOR)
-        if self.marriage and marriage:
+        if self.marriage and seeker_ad.marriage:
             matches.append(self.MARRIAGE)
-        if self.plot and seeker_add.plot:
-            intersect_clues = self.clues.all().intersection(seeker_add.clues.all())
-            intersect_tags = self.searchtags.all().intersection(seeker_add.searchtags.all())
+        if self.plot and seeker_ad.plot:
+            intersect_clues = self.clues.all().intersection(seeker_ad.clues.all())
+            intersect_tags = self.searchtags.all().intersection(seeker_ad.searchtags.all())
             if intersect_clues or intersect_tags:
                 matches.append(self.PLOT)
         return matches
@@ -208,7 +220,7 @@ class BrokeredSale(SharedMemoryModel):
             new_cost = self.price*self.amount
             to_pay = original_cost-new_cost
             if to_pay > buyer.currency:
-                raise PayError("You cannot afford to pay %s when you only have %s silver." % (to_pay, buyer.currency))
+                raise PayError("You cannot afford to pay {:,} when you only have {:,} silver.".format(to_pay, buyer.currency))
             self.owner_character.pay_money(to_pay)
         try:
             other_sale = self.owner.brokered_sales.get(sale_type=self.sale_type, price=new_price,

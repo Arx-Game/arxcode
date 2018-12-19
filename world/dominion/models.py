@@ -77,6 +77,7 @@ from typeclasses.mixins import InformMixin
 from web.character.models import AbstractPlayerAllocations
 from world.stats_and_skills import do_dice_check
 
+
 # Dominion constants
 BASE_WORKER_COST = 0.10
 SILVER_PER_BUILDING = 225.00
