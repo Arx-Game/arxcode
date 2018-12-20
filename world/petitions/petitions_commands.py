@@ -6,6 +6,7 @@ from django.db.models import Q
 from commands.base import ArxCommand
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
+from evennia.utils import evtable
 from world.petitions.forms import PetitionForm
 from world.petitions.exceptions import PetitionError
 from world.petitions.models import BrokeredSale, Petition,WantedAd
@@ -44,29 +45,29 @@ class CmdMatchmaker(ArxCommand):
             if matches and (ad.TIME in matches):
                 matches_list.append(matches)
                 matched_list.append(ad)
-        table = PrettyTable(["Name", "Gender", "Age", "Matches","Playtime", "Blurb"])
+        table = evtable.EvTable("Name", "Gender", "Age", "Matches","Playtime", "Blurb", border="cells", width=78)
         if len(matches_list)>0 and len(matched_list):
             for match, ad in zip(matches_list, matched_list):
                 matchstring=""
                 for m in match:
                     matchstring+="[{}]".format(ad.MATCH_TYPES[m][1])
-                table.add_row([ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender,
+                table.add_row(ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender,
                                ad.owner.player.char_ob.db.age,matchstring,
-                               "{}-{}".format(ad.playtime_start,ad.playtime_end),ad.blurb])
+                               "{}-{}".format(ad.playtime_start,ad.playtime_end),ad.blurb)
         self.msg(table)
 
     def display_all_matches(self):
         my_ad = self.caller.dompc.wanted_ad
         ads = WantedAd.objects.filter(active=True)
-        table = PrettyTable(["Name", "Gender", "Age", "Matches","Playtime", "Blurb"])
+        table = evtable.EvTable("Name", "Gender", "Age", "Matches","Playtime", "Blurb", border="cells", width=78)
         for ad in ads:
             match = ad.match(self.caller.dompc)
             matchstring=""
             for m in match:
                 matchstring+="[{}]".format(ad.MATCH_TYPES[m][1])
-            table.add_row([ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender,
+            table.add_row(ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender,
                             ad.owner.player.char_ob.db.age,matchstring,
-                            "{}-{}".format(ad.playtime_start,ad.playtime_end),ad.blurb])
+                            "{}-{}".format(ad.playtime_start,ad.playtime_end),ad.blurb)
         self.msg(table)
 
             

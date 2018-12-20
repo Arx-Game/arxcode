@@ -30,16 +30,16 @@ class WantedAd(SharedMemoryModel):
     playtime_start = models.PositiveIntegerField(default=0)
     playtime_end = models.PositiveIntegerField(default=0)
     prefer_weekend = models.BooleanField(default=False)
-    interests = models.ManyToManyField(Interest)
-    clues = models.ManyToManyField(Clue)
-    searchtags = models.ManyToManyField(SearchTag)
+    interests = models.ManyToManyField(Interest, blank=True)
+    clues = models.ManyToManyField(Clue, blank=True)
+    searchtags = models.ManyToManyField(SearchTag, blank=True)
     blurb = models.TextField()
     marriage = models.BooleanField(default=False)
     sponsor = models.BooleanField(default=False)
     protege = models.BooleanField(default=False)
     plot = models.BooleanField(default=False)
     active = models.BooleanField(default=False)
-    owner = models.OneToOneField(PlayerOrNpc, related_name="wanted_ad")
+    owner = models.OneToOneField(PlayerOrNpc, related_name="wanted_ad", on_delete=models.CASCADE)
 
     def match(self, dompc):
         matches =[]

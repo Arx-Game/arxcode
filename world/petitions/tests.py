@@ -59,18 +59,23 @@ class TestPetitionCommands(ArxCommandTest):
         self.call_cmd("/active","You're now looking for a match")
         self.call_cmd("/clues foozep","You're now matching: foozep;")
         self.call_cmd("/playtimes 16,20","You're now listed as playing 16-20")
-        self.call_cmd("","Name  Gender Age Matches                         Playtime Blurb                   \n"
-                         "Char6 Female 20  [Time]                          0-0      I don't want anything!"
-                       "  Char  Female 20  [Time][Sponsor][Marriage][Plot] 0-0      I love testing"
-               "          Char2 Female 20  [Time][Protege][Plot]           0-0      I love testing too"
-                   "      Char3 Female 20  [Time][Protege][Marriage]       0-0      I actually hate testing")
-        self.call_cmd("/all","Name  Gender Age Matches                         Playtime Blurb                          \n"
-                      "Char6 Female 20  [Time]                          0-0      I don't want anything!"
-                      "         Char5 Female 20  [Sponsor][Marriage]             5-15     A trip through tiiiime"
-                      "         Char  Female 20  [Time][Sponsor][Marriage][Plot] 0-0      I love testing"
-                      "                 Char2 Female 20  [Time][Protege][Plot]           0-0      I love testing too"
-                      "             Char3 Female 20  [Time][Protege][Marriage]       0-0      I actually hate testing"
-                      "        Char4 Female 20                                  16-20    I don't even know what this is")
+        self.call_cmd("","| Name     | Gender   | Age    | Matches          | Playtime | Blurb         "
+                      "~~~~~~~~~~+~~~~~~~~~~+~~~~~~~~+~~~~~~~~~~~~~~~~~~+~~~~~~~~~~+~~~~~~~~~~~~~~~+\n"
+                      "| Char6    | Female   | 20     | [Time]           | 0-0      | I don't want  |"
+                      "          |          |        |                  |          | anything!     \n"
+                      "| Char     | Female   | 20     | [Time][Sponsor][ | 0-0      | I love        |"
+                      "          |          |        | Marriage][Plot]  |          | testing       \n"
+                      "| Char2    | Female   | 20     | [Time][Protege][ | 0-0      | I love        |"
+                      "          |          |        | Plot]            |          | testing too   \n"
+                      "| Char3    | Female   | 20     | [Time][Protege][ | 0-0      | I actually    |"
+                      "          |          |        | Marriage]        |          | hate testing")
+        self.call_cmd("/all","| Name    | Gender  | Age    | Matches          | Playtime | Blurb           ~~~~~~~~~+~~~~~~~~~+~~~~~~~~+~~~~~~~~~~~~~~~~~~+~~~~~~~~~~+~~~~~~~~~~~~~~~~~+\n"
+                      "| Char6   | Female  | 20     | [Time]           | 0-0      | I don't want    |         |         |        |                  |          | anything!       \n"
+                      "| Char5   | Female  | 20     | [Sponsor][Marria | 5-15     | A trip through  |         |         |        | ge]              |          | tiiiime         \n"
+                      "| Char    | Female  | 20     | [Time][Sponsor][ | 0-0      | I love testing  |         |         |        | Marriage][Plot]  |          |                 \n"
+                      "| Char2   | Female  | 20     | [Time][Protege][ | 0-0      | I love testing  |         |         |        | Plot]            |          | too             \n"
+                      "| Char3   | Female  | 20     | [Time][Protege][ | 0-0      | I actually hate |         |         |        | Marriage]        |          | testing         \n"
+                      "|         |         |        |                  |          | I don't even    | Char4   | Female  | 20     |                  | 16-20    | know what this  |         |         |        |                  |          | is")
         
     
     def test_cmd_broker(self):
