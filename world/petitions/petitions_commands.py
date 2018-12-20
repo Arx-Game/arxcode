@@ -45,29 +45,34 @@ class CmdMatchmaker(ArxCommand):
             if matches and (ad.TIME in matches):
                 matches_list.append(matches)
                 matched_list.append(ad)
-        table = evtable.EvTable("Name", "Gender", "Age", "Matches","Playtime", "Blurb", border="cells", width=78)
+        table = evtable.EvTable("Name/Gender/Age", "Matches","Times", "Blurb", border="cells", width=78)
         if len(matches_list)>0 and len(matched_list):
             for match, ad in zip(matches_list, matched_list):
                 matchstring=""
                 for m in match:
                     matchstring+="[{}]".format(ad.MATCH_TYPES[m][1])
-                table.add_row(ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender,
-                               ad.owner.player.char_ob.db.age,matchstring,
+                table.add_row("{}/{}/{}".format(ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender[0],ad.owner.player.char_ob.db.age)
+                              ,matchstring,
                                "{}-{}".format(ad.playtime_start,ad.playtime_end),ad.blurb)
+        table.reformat_column(2,width=8)
+        table.reformat_column(1,width=18)
+        table.reformat_column(0,width=20)
         self.msg(table)
 
     def display_all_matches(self):
         my_ad = self.caller.dompc.wanted_ad
         ads = WantedAd.objects.filter(active=True)
-        table = evtable.EvTable("Name", "Gender", "Age", "Matches","Playtime", "Blurb", border="cells", width=78)
+        table = evtable.EvTable("Name/Gender/Age", "Matches","Times", "Blurb", border="cells", width=78)
         for ad in ads:
             match = ad.match(self.caller.dompc)
             matchstring=""
             for m in match:
                 matchstring+="[{}]".format(ad.MATCH_TYPES[m][1])
-            table.add_row(ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender,
-                            ad.owner.player.char_ob.db.age,matchstring,
+            table.add_row("{}/{}/{}".format(ad.owner.player.char_ob.key,ad.owner.player.char_ob.db.gender[0],ad.owner.player.char_ob.db.age),matchstring,
                             "{}-{}".format(ad.playtime_start,ad.playtime_end),ad.blurb)
+        table.reformat_column(2,width=8)
+        table.reformat_column(1,width=18)
+        table.reformat_column(0,width=20)
         self.msg(table)
 
             
