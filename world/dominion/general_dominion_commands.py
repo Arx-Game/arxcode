@@ -2513,7 +2513,7 @@ class CmdPatronage(ArxPlayerCommand):
                 if num >= max_p:
                     caller.msg("You already have the maximum number of proteges for your social rank.")
                     return
-                rankcheck, diff = self.check_social_rank_difference(caller.db.char_ob,char)
+                rankcheck, diff = self.check_social_rank_difference(caller.char_ob,char)
                 if not rankcheck: 
                     self.msg("Your social rank must be at least %d higher than your target." % diff)                                      
                     return
