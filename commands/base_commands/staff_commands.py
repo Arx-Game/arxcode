@@ -379,7 +379,7 @@ class CmdSendVision(ArxPlayerCommand):
     @sendvision
 
     Usage:
-        @sendvision <character>=<vision name>/<What they see>
+        @sendvision <character>=<vision name or Clue ID>/<What they see>
         @sendclue <character>,<character2, etc>=<clue ID>/<message>
 
     Send a vision with the appropriate text to a given character.
@@ -428,6 +428,15 @@ class CmdSendVision(ArxPlayerCommand):
             if not char:
                 caller.msg("No valid character for %s." % targ)
                 continue
+            if name.isdigit():
+                try:
+                    vision_object = Clue.objects.get(id=name)
+                except Clue.DoesNotExist:
+                    self.msg("Name was a Clue ID but did not match any existing clue.")
+                    return
+                if vision_object.clue_type != Clue.VISION:
+                    self.msg("You must send a vision, not a regular clue.")
+                    return
             # use the same vision object for all of them once it's created
             vision_object = char.messages.add_vision(msg, caller, name, vision_object)
             header = "{rYou have experienced a vision!{n\n%s" % msg
@@ -945,7 +954,7 @@ class CmdGMEvent(ArxCommand):
             self.msg("Event ended.")
 
 
-class CmdGMNotes(ArxPlayerCommand):
+class CmdGMNotes(ArxCommand):
     """
     Create tags, add notes or secrets. Allows searching for keywords.
     Tags:
@@ -957,10 +966,10 @@ class CmdGMNotes(ArxPlayerCommand):
         @gmnotes/plot[/old] [<plot name or #ID>]
         @gmnotes/rev [<revelation name or #ID>]
         @gmnotes/char <tag name>
-        @gmnotes/viewnotes <character>
+        @gmnotes/viewnotes <character or object>
     Secrets & Clues:
         @gmnotes/secret <char>,<revelation name or #>=<IC message>[/<GMnote>]
-        @gmnotes/quick <simple topic>[=<gmnote for placeholder clue>]
+        @gmnotes/quick <topic>/<gmnotes for placeholder clue>[=<target>]
     Plot Hooks:
         @gmnotes/hook <secret #ID>,<plot #ID>[=<gm notes>]
         @gmnotes/no_gming
@@ -1224,13 +1233,17 @@ class CmdGMNotes(ArxPlayerCommand):
 
     def write_clue_quick(self):
         """Creates clue with title prefixed by "PLACEHOLDER" so you know for sure."""
-        if not self.args:
-            self.CommandError("Please include at least one word for your Placeholder clue.")
+        try:
+            topic, gm_notes = self.lhs.split("/", 1)
+        except ValueError:
+            raise CommandError("Please include a name/identifier and notes for your quick clue.")
+        targ = None
+        if self.rhs:
+            targ = self.search(self.rhs, global_search=True)
         author = self.caller.roster
-        name = "PLACEHOLDER by %s: %s" % (author, self.lhs)
-        gm_notes = self.rhs if self.rhs else ""
-        clue = Clue.objects.create(name=name, gm_notes=gm_notes, author=author)
-        msg = "Created placeholder for '%s' (clue #%s)." % (self.lhs, clue.id)
+        name = "PLACEHOLDER by %s: %s" % (author, topic)
+        clue = Clue.objects.create(name=name, gm_notes=gm_notes, author=author, tangible_object=targ)
+        msg = "Created placeholder for '%s' (clue #%s)." % (topic, clue.id)
         if gm_notes:
             msg += " GM Notes: %s" % gm_notes
         self.msg(msg)
@@ -1292,7 +1305,8 @@ class CmdGMNotes(ArxPlayerCommand):
         plot.inform(msg_for_plot)
 
     def view_character_gmnotes(self):
-        pc = self.character_search(self.lhs)
+        """View notes for a character or object"""
+        pc = self.search(self.lhs, global_search=True)
         msg = "{wGM Notes for {c%s:{n\n\n" % pc.key
         msg += "\n".join(ob.gm_notes for ob in pc.clues.all())
         self.msg(msg)

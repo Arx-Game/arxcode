@@ -894,7 +894,7 @@ class StaffCommandTestsPlus(ArxCommandTest):
     num_additional_characters = 1
 
     def test_cmd_gmnotes(self):
-        self.setup_cmd(staff_commands.CmdGMNotes, self.account)
+        self.setup_cmd(staff_commands.CmdGMNotes, self.char)
         self.call_cmd("vixen", "No SearchTag found using 'vixen'.")
         self.call_cmd("/create vixen", "Tag created for 'vixen'!")
         self.call_cmd("/create bishi", "Tag created for 'bishi'!")
@@ -959,8 +959,10 @@ class StaffCommandTestsPlus(ArxCommandTest):
         self.call_cmd("/plot", '| #   | Plot (owner)           | Summary                                     '
                                '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                                '| 1   | Slypose (Testaccount2) | Sly as a fox.')
-        self.call_cmd("/quick Send Help", "Created placeholder for 'Send Help' (clue #5).")
-        self.call_cmd("/quick Please=She's evil", "Created placeholder for 'Please' (clue #6). GM Notes: She's evil")
+        self.call_cmd("/quick Send Help/test", "Created placeholder for 'Send Help' (clue #5). GM Notes: test")
+        self.call_cmd("/quick Please=She's evil", 'Please include a name/identifier and notes for your quick clue.')
+        self.call_cmd("/quick Please/She's evil=here",
+                      "Created placeholder for 'Please' (clue #6). GM Notes: She's evil")
         self.assertEqual([str(ob) for ob in self.roster_entry.clues_written.all()],
                          ["PLACEHOLDER by Char: Send Help", "PLACEHOLDER by Char: Please"])
         self.call_cmd("/secret Char2,1=Sly you are evil. Srsly./Do not trust.",
@@ -995,6 +997,7 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                        "Repeat command to delete the 'bishi' tag anyway.")
         self.call_cmd("/delete bishi", "Deleting the 'bishi' tag. Poof.")
         self.call_cmd("/viewnotes char2", 'GM Notes for Char2:\n\nSly is incredibly hot and smirkity.\n\nDo not trust.')
+        self.call_cmd("/viewnotes here", "GM Notes for Room:\n\nShe's evil")
 
 
 class JobCommandTests(TestTicketMixins, ArxCommandTest):

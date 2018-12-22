@@ -14,9 +14,9 @@ class ArxCommmandMixin(object):
         """Checks if the commands switches are inside switch_set"""
         return set(self.switches) & set(switch_set)
 
-    def search(self, args):
+    def search(self, args, **kwargs):
         """Standardizes performing a search for caller"""
-        ret = self.caller.search(args)
+        ret = self.caller.search(args, **kwargs)
         if not ret:
             raise self.error_class("Nothing found.")
         return ret

@@ -82,7 +82,8 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
 
         # only visions that have been sent directly to us, not ones shared with us
         self._visions = list(self.obj.roster.clue_discoveries.filter(clue__clue_type=Clue.VISION,
-                                                                     discovery_method="original receiver"))
+                                                                     discovery_method__in=("original receiver",
+                                                                                           "Prior Knowledge")))
         return self._visions
 
     def build_secretslist(self):
@@ -99,14 +100,12 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
 
     def add_vision(self, msg, sender, name, vision_obj=None):
         """adds a vision sent by a god or whatever"""
-        from web.character.models import Clue, ClueDiscovery
-        from datetime import datetime
+        from web.character.models import Clue
         if not vision_obj:
             vision_obj = Clue(desc=msg, name=name, rating=25, author=sender.roster, clue_type=Clue.VISION)
             vision_obj.save()
         if vision_obj not in self.obj.roster.clues.all():
-            ClueDiscovery.objects.create(clue=vision_obj, character=self.obj.roster, date=datetime.now(),
-                                         discovery_method="original receiver")
+            self.obj.roster.discover_clue(vision_obj, message=msg, method="original receiver")
         self._visions = None  # clear cache
         return vision_obj
 
