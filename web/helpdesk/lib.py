@@ -51,13 +51,13 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
     """
     from django.conf import settings
     from django.core.mail import EmailMultiAlternatives
-    from django.template import Context, engines
+    from django.template import engines
 
-    from helpdesk.models import EmailTemplate
-    from helpdesk.settings import HELPDESK_EMAIL_SUBJECT_TEMPLATE
+    from web.helpdesk.models import EmailTemplate
+    from web.helpdesk.settings import HELPDESK_EMAIL_SUBJECT_TEMPLATE
     import os
 
-    context = Context(email_context)
+    context = dict(email_context)
 
     if hasattr(context['queue'], 'locale'):
         locale = getattr(context['queue'], 'locale', '')
@@ -76,9 +76,8 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
         try:
             t = EmailTemplate.objects.get(template_name__iexact=template_name, locale__isnull=True)
         except EmailTemplate.DoesNotExist:
-            logger.warning('template "%s" does not exist, no mail sent' %
-			   template_name)
-            return # just ignore if template doesn't exist
+            logger.warning('template "%s" does not exist, no mail sent' % template_name)
+            return  # just ignore if template doesn't exist
 
     if not sender:
         sender = settings.DEFAULT_FROM_EMAIL
@@ -90,7 +89,6 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
         ).render(context)
 
     email_html_base_file = os.path.join('helpdesk', locale, 'email_html_base.html')
-
 
     ''' keep new lines in html emails '''
     from django.utils.safestring import mark_safe
@@ -240,7 +238,7 @@ def text_is_spam(text, request):
     from django.contrib.sites.models import Site
     from django.conf import settings
     try:
-        from helpdesk.akismet import Akismet
+        from web.helpdesk.akismet import Akismet
     except:
         return False
     try:
