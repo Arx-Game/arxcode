@@ -1347,7 +1347,7 @@ class CmdListClues(ArxPlayerCommand):
     key = "clues"
     locks = "cmd:all()"
     aliases = ["clue", "@zoinks", "@jinkies"]
-    help_category = "Investigation"
+    help_category = "Information"
 
     def get_help(self, caller, cmdset):
         """Custom helpfile that lists clue sharing costs"""
@@ -1487,7 +1487,7 @@ class CmdListRevelations(ArxPlayerCommand):
     """
     key = "@revelations"
     locks = "cmd:all()"
-    help_category = "Investigation"
+    help_category = "Information"
 
     def disp_rev_table(self):
         caller = self.caller

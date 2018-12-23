@@ -89,6 +89,7 @@ class CmdHelp(Command):
     key = "help"
     locks = "cmd:all()"
     aliases = ["news", "+help"]
+    help_category = "Information"
 
     # this is a special cmdhandler flag that makes the cmdhandler also pack
     # the current cmdset with the call to self.func().
