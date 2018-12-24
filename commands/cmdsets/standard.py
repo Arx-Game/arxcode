@@ -192,6 +192,7 @@ class OOCCmdSet(CmdSet):
         self.add(social.CmdFavor())
         self.add(overrides.SystemNoMatch())
         self.add(weather_commands.CmdAdminWeather())
+        self.add(roster.CmdPropriety())
 
         # Exploration!
         self.add(exploration_commands.CmdExplorationCmdSet())
@@ -232,7 +233,7 @@ class StateIndependentCmdSet(CmdSet):
         self.add(plot_commands.CmdPlots())
         self.add(goal_commands.CmdGoals())
         self.add(combat.CmdHeal())
-
+        
         # Magic!
         self.add(magic_commands.MagicCmdSet())
 

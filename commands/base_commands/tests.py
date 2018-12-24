@@ -405,6 +405,23 @@ class OverridesTests(ArxCommandTest):
         self.call_cmd("/resource economic,50 to TestAccount2", "You give 50 economic resources to Char2.")
         self.assertEqual(self.assetowner2.economic, 50)
         self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
+    def test_cmd_inventory(self):
+        self.setup_cmd(overrides.CmdInventory, self.char1)
+        self.char1.currency = 125446
+        self.assetowner.economic = 5446
+        self.call_cmd("","You currently have 0 xp and 100 ap.\n"
+                      "Maximum AP: 300  Weekly AP Gain: 150\n"
+                      "You are carrying (Volume: 0/100):\n"
+                      "Money: coins worth a total of 125,446.00 silver pieces\n"
+                      "Bank Account:           0 silver coins\n"
+                      "Prestige:               0  Resources         Social Clout: 0\n"
+                      "|__ Legend:             0  Economic: 5,446\n"
+                      "|__ Fame:               0  Military:     0\n"
+                      "|__ Grandeur:           0  Social:       0\n"
+                      "|__ Propriety:          0\nMaterials:")
+
+    
+
 
     def test_cmd_say(self):
         self.setup_cmd(overrides.CmdArxSay, self.char1)
@@ -465,6 +482,18 @@ class RosterTests(ArxCommandTest):
         self.assertEqual(self.member.rank, 3)
         self.assertEqual(self.dompc2.patron, None)
 
+        
+    def test_cmd_propriety(self):
+        self.setup_cmd(roster.CmdPropriety, self.account)
+        self.call_cmd(" nonsense", "There's no propriety known as nonsense")
+        self.call_cmd("", "Title                Propriety")
+        self.caller.execute_cmd("admin_propriety/create Tester=50")
+        self.call_cmd("", "Title                Propriety\n"
+                          "Tester                      50")
+        self.caller.execute_cmd("admin_propriety/add Tester=testaccount")
+        self.call_cmd("tester", "These are known to be testers\nChar")
+        self.caller.execute_cmd("admin_propriety/remove Tester=testaccount")
+
 
 # noinspection PyUnresolvedReferences
 class SocialTests(ArxCommandTest):
@@ -486,6 +515,7 @@ class SocialTests(ArxCommandTest):
                           'and players who are on your watch list have a * by their name.\nRoom: Char')
         self.room1.tags.add("private")
         self.call_cmd("", "No visible characters found.")
+
 
     def test_cmd_watch(self):
         self.setup_cmd(social.CmdWatch, self.account)
@@ -676,7 +706,7 @@ class SocialTests(ArxCommandTest):
         prop_mock.return_value = 50
         self.call_cmd("/org test org,40=hi2u", 'You use 1 action points and have 98 remaining this week.|'
                                                'You praise the actions of Test org. You have 0 praises remaining.')
-        org.inform.assert_called_with('Testaccount has praised you. Your prestige has been adjusted by 10200.',
+        org.inform.assert_called_with('Testaccount has praised you. Your prestige has been adjusted by 10,200.',
                                       append=False, category='Praised', week=1)
         self.assertEqual(org_assets.fame, 10200)
         # cleanup property mock

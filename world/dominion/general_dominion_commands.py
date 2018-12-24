@@ -2676,8 +2676,13 @@ class CmdWork(ArxPlayerCommand):
                      .values_list('player__player__username', 'work_total', 'investment_total', 'combined')
                      .order_by('-combined'))
         table = PrettyTable(["Member", "Total Work", "Total Invested", "Combined"])
+        table.align="r"
         for member in members:
             member = [member[0].capitalize()] + list(member[1:])
+            member = list(member)
+            member[1]="{:,}".format(member[1])
+            member[2]="{:,}".format(member[2])
+            member[3]="{:,}".format(member[3])
             table.add_row(member)
         self.msg(str(table))
 

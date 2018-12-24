@@ -1304,7 +1304,7 @@ class PraiseOrCondemn(SharedMemoryModel):
         """Adjusts the prestige of the target after they're praised."""
         self.target.adjust_prestige(self.value)
         msg = "%s has %s you. " % (self.praiser, self.verb)
-        msg += "Your prestige has been adjusted by %s." % self.value
+        msg += "Your prestige has been adjusted by {:,}.".format(self.value)
         self.target.inform(msg, category=self.verb.capitalize())
 
 
@@ -4010,8 +4010,8 @@ class Organization(InformMixin, SharedMemoryModel):
             members = "{wMembers of %s:\n%s" % (self.name, members)
         msg += members
         if display_money:
-            msg += "\n{wMoney{n: %s" % money
-            msg += " {wPrestige{n: %s" % prestige
+            msg += "\n{{wMoney{{n: {:>10,}".format(money)
+            msg += " {{wPrestige{{n: {:>10,}".format(prestige)
             prestige_mod = self.assets.prestige_mod
             resource_mod = int(prestige_mod)
 
@@ -4035,8 +4035,16 @@ class Organization(InformMixin, SharedMemoryModel):
         msg += self.display_work_settings()
         clues = self.clues.all()
         if display_clues:
+            if viewing_member:
+                entry=viewing_member.player.player.roster
+                discovered_clues = entry.clues.all()
             if clues:
-                msg += "\n{wClues Known:{n %s\n" % "; ".join(str(ob) for ob in clues)
+                msg += "\n{wClues Known:"
+                for clue in clues:
+                    if clue in discovered_clues:
+                        msg+="{n %s;" % clue
+                    else:
+                        msg+="{w %s{n;" % clue
             theories = self.theories.all()
             if theories:
                 msg += "\n{wTheories Known:{n %s\n" % "; ".join("%s (#%s)" % (ob, ob.id) for ob in theories)
@@ -5509,10 +5517,10 @@ class Member(SharedMemoryModel):
             current = getattr(self.organization, "%s_influence" % resource_type)
             setattr(self.organization, "%s_influence" % resource_type, current + org_amount)
             self.organization.save()
-        msg += "\nYou and %s both gain %d prestige." % (self.organization, prestige)
+        msg += "\nYou and {} both gain {:,} prestige.".format(self.organization, prestige)
         self.player.assets.adjust_prestige(prestige, PrestigeCategory.INVESTMENT)
         self.organization.assets.adjust_prestige(prestige)
-        msg += "\nYou have increased the %s influence of %s by %d." % (resource_type, self.organization, org_amount)
+        msg += "\nYou have increased the {} influence of {} by {:,}.".format(resource_type, self.organization, org_amount)
         mod = getattr(self.organization, "%s_modifier" % resource_type)
         progress = self.organization.get_progress_to_next_modifier(resource_type)
         msg += "\nCurrent modifier is %s, progress to next is %d/100." % (mod, progress)

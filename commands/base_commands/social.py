@@ -2044,9 +2044,9 @@ class CmdPraise(ArxPlayerCommand):
         praises = praises_or_condemns.filter(value__gte=0)
         condemns = praises_or_condemns.filter(value__lt=0)
         msg = "Praises:\n"
-        table = EvTable("Name", "Praises", "Value", "Message", width=78)
+        table = EvTable("Name", "Praises", "Value", "Message", width=78, align="r")
         for praise in praises:
-            table.add_row(praise.target, praise.number_used, praise.value, praise.message)
+            table.add_row(praise.target, praise.number_used, "{:,}".format(praise.value), praise.message)
         msg += str(table)
         msg += "\nCondemns:\n"
         table = EvTable("Name", "Condemns", "Value", "Message", width=78)
@@ -2203,15 +2203,18 @@ class CmdSocialNotable(ArxCommand):
     The fifth form will show the organizations in the city that people
     are talking about, though will not say precisely why the organization
     is currently notable.
+
     """
     key = "notable"
     locks = "cmd:all()"
+
 
     def show_rankings(self, title, asset_owners, adjust_type, show_percent=False):
         counter = 1
         table = EvTable()
         table.add_column(width=8)
         table.add_column()
+
 
         median = AssetOwner.MEDIAN_PRESTIGE * 1.
 

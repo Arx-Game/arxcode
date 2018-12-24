@@ -17,7 +17,8 @@ from django.db.models import Q
 from web.character.models import Roster
 from server.utils import arx_more
 from typeclasses.bulletin_board.bboard import BBoard
-
+from world.dominion.models import Organization, Propriety, AssetOwner
+from django.template.defaultfilters import pluralize
 
 # limit symbol import for API
 __all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships",
@@ -937,7 +938,51 @@ def display_recognition(caller, charob):
         msg += "\n\n{wModifiers from Organization that hold them in favor/disfavor{n:\n%s" % favor
     caller.msg(msg)
 
+class CmdPropriety(ArxPlayerCommand):
+    """
+    Usage:
+        @Proprieties
+        @Proprieties <propriety title>
 
+    Propriety in Arx is a measure of whether a character conflicts or adheres to the societal norms expected of them by all of Arvani society, in ways that change how they are viewed. This could be appealing to societal biases and being viewed more positively than they otherwise would, or being viewed more negatively because they grow to represent aspects of Arvani culture that are condemned. Propriety modifiers are percentage modifiers on the fame value a character has, so a character with positive propriety finds their fame amplified, while a character with negative propriety finds their fame reduced. This does mean that the more famous a character is, the more benefit or penalty they receive by adhering to or conflicting with thematic social mores. Propriety mods are only reflective of near universal social mores, and regional specific principles are not included, and will be reflected in the respect scores from those great houses. Some regional principles will conflict with the rest of Arvani standards of propriety.
+
+    If a propriety mod would be appropriate to a character, it can be +requested with a justification, if it is reflective of current or past RP and is not in dispute whether it happened, such as a white journal or public statement that represents a societal stance that's listed. Characters wishing to overturn propriety mods can pursue @actions such as social campaigns to try to reverse public opinion.
+    """
+    key = "@Proprieties"
+    aliases = []
+    help_category = "General"
+    locks = "cmd:all()"
+    def func(self):
+        string=""
+        ending=""
+        if self.lhs:
+            try:
+                propriety=Propriety.objects.get(name__iexact=self.lhs)
+            except (Propriety.DoesNotExist,AttributeError):
+                    self.msg("There's no propriety known as %s" % self.lhs)
+                    return
+            if self.lhs.endswith("y") or self.lhs.endswith("d") or self.lhs.endswith("s"):
+                pass
+            elif self.lhs.endswith("h"):
+                ending+="es"
+            else: 
+                ending+="s"
+            string="These are known to be {}{}".format(self.lhs,ending)
+            for owner in propriety.owners.all():
+                longname = owner.player.player.char_ob.db.longname
+                if not longname:
+                    longname = owner.player.player.char_ob.key
+                if not longname:
+                    longname = "Unknown"
+                string+="\n"+longname
+        else:
+            proprieties=Propriety.objects.all()
+            string+="{:20} {}".format("Title","Propriety")
+            for propriety in proprieties:
+                string+="\n{:20} {:>9}".format(propriety.name,propriety.percentage)
+        self.msg(string)
+        return
+            
 class CmdSheet(ArxPlayerCommand):
     """
     @sheet - Displays a character's sheet.
