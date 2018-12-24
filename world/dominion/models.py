@@ -4036,15 +4036,18 @@ class Organization(InformMixin, SharedMemoryModel):
         clues = self.clues.all()
         if display_clues:
             if viewing_member:
-                entry=viewing_member.player.player.roster
+                entry = viewing_member.player.player.roster
                 discovered_clues = entry.clues.all()
+            else:
+                discovered_clues = []
             if clues:
                 msg += "\n{wClues Known:"
                 for clue in clues:
                     if clue in discovered_clues:
-                        msg+="{n %s;" % clue
+                        msg += "{n %s;" % clue
                     else:
-                        msg+="{w %s{n;" % clue
+                        msg += "{w %s{n;" % clue
+                msg += "\n"
             theories = self.theories.all()
             if theories:
                 msg += "\n{wTheories Known:{n %s\n" % "; ".join("%s (#%s)" % (ob, ob.id) for ob in theories)

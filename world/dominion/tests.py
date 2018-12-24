@@ -153,7 +153,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
                       "Webpage: http://play.arxgame.org/topics/org/1/\nMembers of Orgtest:\nSerf (Rank 10): Testaccount\n\n"
                       "Money:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%\nResources: Economic: 0, Military: 0, Social: 0\n"
                       "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\nWork Settings: None found.\n"
-                      "\nClues Known: Org test clue 1; Org test clue 2;\n"
+                      "\nClues Known: Org test clue 1; Org test clue 2;\n\n"
                       "Member stats for Testaccount\n\nRank: 10\nSupport Pool Share: 0/0\nTotal Work: 0\nTasks Completed: 0, Total Rating: 0")
         
         
