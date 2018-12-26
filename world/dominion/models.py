@@ -70,7 +70,7 @@ from .battle import Battle
 from .agenthandler import AgentHandler
 from .managers import CrisisManager, OrganizationManager, LandManager
 from server.utils.arx_utils import get_week, inform_staff, passthrough_properties, CachedProperty, \
-    CachedPropertiesMixin, classproperty, a_or_an, inform_guides, commafy
+    CachedPropertiesMixin, classproperty, a_or_an, inform_guides, commafy, get_full_url
 from server.utils.exceptions import ActionSubmissionError, PayError
 from typeclasses.npcs import npc_types
 from typeclasses.mixins import InformMixin
@@ -104,8 +104,6 @@ LIFESTYLES = {
     }
 PRESTIGE_DECAY_AMOUNT = 0.35
 MAX_PRESTIGE_HISTORY = 10
-
-PAGEROOT = "http://play.arxgame.org"
 
 
 # Create your models here.
@@ -3976,8 +3974,7 @@ class Organization(InformMixin, SharedMemoryModel):
         msg += "{wDesc{n: %s\n" % self.desc
         if not self.secret:
             msg += "\n{wLeaders of %s:\n%s\n" % (self.name, self.display_members(end=2, show_all=show_all))
-        webpage = PAGEROOT + self.get_absolute_url()
-        msg += "{wWebpage{n: %s\n" % webpage
+        msg += "{wWebpage{n: %s\n" % get_full_url(self.get_absolute_url())
         return msg
 
     def display(self, viewing_member=None, display_clues=False, show_all=False):
@@ -6289,8 +6286,7 @@ class RPEvent(SharedMemoryModel):
         msg += "{wEvent Scale:{n %s\n" % self.get_celebration_tier_display()
         msg += "{wDate:{n %s\n" % self.date.strftime("%x %H:%M")
         msg += "{wDesc:{n\n%s\n" % self.desc
-        webpage = PAGEROOT + self.get_absolute_url()
-        msg += "{wEvent Page:{n %s\n" % webpage
+        msg += "{wEvent Page:{n %s\n" % get_full_url(self.get_absolute_url())
         comments = self.comments.filter(db_tags__db_key="white_journal").order_by('-db_date_created')
         if comments:
             from server.utils.prettytable import PrettyTable

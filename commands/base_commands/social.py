@@ -21,7 +21,7 @@ from evennia.scripts.models import ScriptDB
 from commands.base_commands.roster import format_header
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
-from server.utils.arx_utils import inform_staff, time_from_now, inform_guides, commafy, a_or_an
+from server.utils.arx_utils import inform_staff, time_from_now, inform_guides, commafy, a_or_an, get_full_url
 from typeclasses.characters import Character
 from typeclasses.rooms import ArxRoom
 from web.character.models import AccountHistory, FirstContact
@@ -402,12 +402,11 @@ class CmdFinger(ArxPlayerCommand):
                 msg += "{wStatus:{n Last logged in: %s\n" % last_online
         fealty = char.db.fealty or "None"
         msg += "{wFealty:{n %s\n" % fealty
-        pageroot = "http://play.arxgame.org"
+
         quote = char.db.quote
         if quote:
             msg += "{wQuote:{n %s\n" % quote
-        webpage = pageroot + char.get_absolute_url()
-        msg += "{wCharacter page:{n %s\n" % webpage
+        msg += "{wCharacter page:{n %s\n" % get_full_url(char.get_absolute_url())
         if show_hidden or viewing_own_character:
             orgs = player.current_orgs
         else:
@@ -426,7 +425,7 @@ class CmdFinger(ArxPlayerCommand):
                     secret_str = "" if organization not in secret_orgs else " {m(Secret){n"
                     return "%s%s" % (organization.name, secret_str)
 
-                org_str += "%s%s: %s\n" % (s_buffer, format_org_name(org), pageroot + org.get_absolute_url())
+                org_str += "%s%s: %s\n" % (s_buffer, format_org_name(org), get_full_url(org.get_absolute_url()))
                 apply_buffer = True
             msg += "{wOrganizations:{n %s" % org_str
         hooks = player.tags.get(category="rp hooks")

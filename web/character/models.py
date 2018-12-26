@@ -259,7 +259,7 @@ class RosterEntry(SharedMemoryModel):
         flas_q = Q(plot_updates__flashbacks__owner=self) | Q(plot_updates__flashbacks__allowed=self)
         obj_q = Q(game_objects__db_location=self.character)
         qs = SearchTag.objects.filter(clu_q | rev_q | plot_q | beat_q | act_q | evnt_q | flas_q | obj_q)
-        return qs.distinct()
+        return qs.distinct().order_by('name')
 
     def display_tagged_objects(self, tag):
         """
@@ -267,31 +267,14 @@ class RosterEntry(SharedMemoryModel):
             Args:
                 tag: SearchTag object
         """
+        from server.utils.arx_utils import qslist_to_string
         from world.dominion.models import PlotUpdate, RPEvent
+        from web.helpdesk.models import KBItem, KBCategory
         dompc = self.player.Dominion
-        msg = ""
         querysets = []
-
-        def get_queryset_str(qset):
-            """
-            Gets a string representation of the queryset. We check the class name for each object in the
-            queryset because typeclasses will have different class names, and we want to simulate that being
-            a different type of match.
-            """
-            class_name = None
-            message = ""
-            sep = ""
-            for obj in qset:
-                # noinspection PyProtectedMember
-                plural_name = obj._meta.verbose_name_plural
-                if plural_name != class_name:
-                    class_name = plural_name
-                    message += "\n|w[%s]|n " % class_name.title()
-                    sep = ""
-                message += sep + str(obj)
-                sep = "; "
-            return message
-
+        # knowledge base categories & items:
+        querysets.append(KBCategory.objects.filter(search_tags=tag))
+        querysets.append(KBItem.objects.filter(search_tags=tag))
         # append clues/revelations we know:
         for related_name in ("clues", "revelations"):
             querysets.append(getattr(self, related_name).filter(search_tags=tag))
@@ -310,11 +293,9 @@ class RosterEntry(SharedMemoryModel):
         querysets.append(Flashback.objects.filter(Q(beat__in=all_beats) & (Q(owner=self) | Q(allowed=self))))
         # append our tagged inventory items:
         querysets.append(self.character.locations_set.filter(search_tags=tag).order_by('db_typeclass_path'))
-        querysets = [ob.distinct() for ob in querysets if len(ob) > 0]
-        if querysets:
-            msg = "|wTagged as '|235%s|w':|n" % tag
-            for qs in querysets:
-                msg += get_queryset_str(qs)
+        msg = qslist_to_string(querysets)
+        if msg:
+            msg = ("|wTagged as '|235%s|w':|n" % tag) + msg
         return msg
 
     def save(self, *args, **kwargs):

@@ -17,8 +17,7 @@ from django.db.models import Q
 from web.character.models import Roster
 from server.utils import arx_more
 from typeclasses.bulletin_board.bboard import BBoard
-from world.dominion.models import Organization, Propriety, AssetOwner
-from django.template.defaultfilters import pluralize
+from world.dominion.models import Propriety
 
 # limit symbol import for API
 __all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships",
@@ -938,6 +937,7 @@ def display_recognition(caller, charob):
         msg += "\n\n{wModifiers from Organization that hold them in favor/disfavor{n:\n%s" % favor
     caller.msg(msg)
 
+
 class CmdPropriety(ArxPlayerCommand):
     """
     Usage:
@@ -969,7 +969,8 @@ class CmdPropriety(ArxPlayerCommand):
     """
     key = "@Proprieties"
     aliases = []
-    help_category = "General"
+    help_category = "Social"
+    help_entry_tags = ["propriety"]
     locks = "cmd:all()"
 
     def list_propriety_owners(self):
@@ -977,7 +978,7 @@ class CmdPropriety(ArxPlayerCommand):
         string = ""
         try:
             propriety = Propriety.objects.get(name__iexact=self.lhs)
-        except (Propriety.DoesNotExist,AttributeError):
+        except (Propriety.DoesNotExist, AttributeError):
                 return "There's no propriety known as '%s'." % self.lhs
         reputation = " with the '{}' reputation".format(str(propriety).title())
         owners = propriety.owners.all()
@@ -1255,7 +1256,8 @@ class CmdSheet(ArxPlayerCommand):
         """Displays a list of plots or specific plot"""
         from world.dominion.models import PCPlotInvolvement, Plot
         plots = charob.dompc.active_plots
-        recruiter = PCPlotInvolvement.objects.exclude(recruiter_story="").filter(admin_status__gte=PCPlotInvolvement.RECRUITER)
+        recruiter = (PCPlotInvolvement.objects.exclude(recruiter_story="")
+                                              .filter(admin_status__gte=PCPlotInvolvement.RECRUITER))
         recruiting = (plots.filter(dompc_involvement__in=recruiter).distinct())
         plot_num = self.get_num_from_args()
         if not plot_num:

@@ -665,7 +665,7 @@ class SocialTests(ArxCommandTest):
         self.call_cmd("/invite test org=1", 'That organization is already invited.')
         self.call_cmd("1", 'Name: test_event\nHosts: Testaccount\nGMs: Testaccount\nOrgs: test org\nLocation: Room\n'
                            'Event Scale: Grand\nDate: 12/12/30 12:00\nDesc:\ntest description\n'
-                           'Event Page: http://play.arxgame.org/dom/cal/detail/1/')
+                           'Event Page: http://example.com/dom/cal/detail/1/')
 
     @patch("world.dominion.models.get_week")
     @patch("server.utils.arx_utils.get_week")
