@@ -94,24 +94,23 @@ def display_org(request, object_id):
     rank_display = 0
     show_secret = 0
     org = get_object_or_404(Organization, id=object_id)
-    if org.secret:
-        try:
-            if not (org.members.filter(deguilded=False, player__player__id=user.id)
-                    or user.is_staff):
-                raise PermissionDenied
-            if not user.is_staff:
+    if not user.is_staff:
+        if org.secret:
+            try:
+                if not org.members.filter(deguilded=False, player__player__id=user.id).exists():
+                    raise PermissionDenied
                 try:
                     rank_display = user.Dominion.memberships.get(organization=org, deguilded=False).rank
                 except (Member.DoesNotExist, AttributeError):
                     rank_display = 11
                 show_secret = rank_display
-        except (AttributeError, PermissionDenied):
-            raise PermissionDenied
-    elif not user.is_staff:
-        try:
-            show_secret = user.Dominion.memberships.get(organization=org, deguilded=False).rank
-        except (Member.DoesNotExist, AttributeError):
-            show_secret = 11
+            except (AttributeError, PermissionDenied):
+                raise PermissionDenied
+        else:
+            try:
+                show_secret = user.Dominion.memberships.get(organization=org, deguilded=False).rank
+            except (Member.DoesNotExist, AttributeError):
+                show_secret = 11
     try:
         show_money = org.assets.can_be_viewed_by(user)
     except AttributeError:
