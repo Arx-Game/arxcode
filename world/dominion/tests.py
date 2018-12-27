@@ -123,7 +123,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
                       'You use 5 action points and have 50 remaining this week.|'
                       'Your social clout combined with that of your protege reduces difficulty by 22.\n'
                       'Char rolling intellect and economics. \n'
-                      'You and Orgtest both gain 4,000 prestige.\n'
+                      'You and Orgtest both gain 20,000 prestige.\n'
                       'You have increased the economic influence of Orgtest by 25.\n'
                       'Current modifier is 0, progress to next is 1/100.')
         self.call_cmd("/score orgtest2", "No match for an org by the name: orgtest2.")

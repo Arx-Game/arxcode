@@ -737,7 +737,7 @@ class PrestigeNomination(SharedMemoryModel):
         self.save()
 
 
-# noinspection PyMethodParameters,PyPep8Naming
+# noinspection PyMethodParameters,PyPep8Naming,PyTypeChecker
 class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     """
     This model describes the owner of an asset, such as money
@@ -814,7 +814,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             cls._AVERAGE_FAME['last_check'] = now
             assets = list(
                 AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available"))
-                    .order_by('-fame'))
+                                  .order_by('-fame'))
             total = 0
             for asset in assets:
                 total += asset.fame
@@ -882,10 +882,10 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         qualifier = PrestigeTier.rank_for_prestige(value, max_value)
         result = None
         reason = None
-        long_reason = None
+        long_reason = best_adjust and best_adjust.long_reason
         if best_adjust:
-            if include_reason or wants_long_reason and not best_adjust.long_reason:
-                reason = best_adjust.reason
+            if include_reason:
+                reason = long_reason if wants_long_reason and long_reason else best_adjust.reason
             char = self.player.player.char_ob
             gender = char.db.gender or "Male"
             if gender.lower() == "male":
@@ -1337,7 +1337,7 @@ class CharitableDonation(SharedMemoryModel):
         roll += caller.social_clout
         if roll <= 1:
             roll = 1
-        roll /= 100.0
+        roll /= 20.0
         roll *= value/2.0
         prest = int(roll)
         self.giver.adjust_prestige(prest, category=PrestigeCategory.CHARITY)
@@ -5509,7 +5509,7 @@ class Member(SharedMemoryModel):
         percent = (clout + 100) / 100.0
         outcome = int(outcome * percent)
         org_amount = outcome + resources
-        prestige = ((clout * 5) + 50) * org_amount
+        prestige = ((clout * 5) + 50) * org_amount * 5
         if org_amount:
             self.investment_this_week += org_amount
             self.investment_total += org_amount
@@ -5520,7 +5520,8 @@ class Member(SharedMemoryModel):
         msg += "\nYou and {} both gain {:,} prestige.".format(self.organization, prestige)
         self.player.assets.adjust_prestige(prestige, PrestigeCategory.INVESTMENT)
         self.organization.assets.adjust_prestige(prestige)
-        msg += "\nYou have increased the {} influence of {} by {:,}.".format(resource_type, self.organization, org_amount)
+        msg += "\nYou have increased the {} influence of {} by {:,}.".format(resource_type, self.organization,
+                                                                             org_amount)
         mod = getattr(self.organization, "%s_modifier" % resource_type)
         progress = self.organization.get_progress_to_next_modifier(resource_type)
         msg += "\nCurrent modifier is %s, progress to next is %d/100." % (mod, progress)
