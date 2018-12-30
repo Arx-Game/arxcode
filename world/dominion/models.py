@@ -5363,9 +5363,9 @@ class Member(SharedMemoryModel):
     pc_exists = models.BooleanField(blank=True, default=True,
                                     help_text="Whether this member is a player character in the database")
     # stuff that players may set for their members:
-    desc = models.TextField(blank=True, default=True)
-    public_notes = models.TextField(blank=True, default=True)
-    officer_notes = models.TextField(blank=True, default=True)
+    desc = models.TextField(blank=True)
+    public_notes = models.TextField(blank=True)
+    officer_notes = models.TextField(blank=True)
     has_seen_motd = models.BooleanField(default=False)
 
     class Meta:
