@@ -7,10 +7,11 @@ in mind, and then invite others to RP about it.
 from django.db.models import Q
 
 from commands.base import ArxPlayerCommand
+from commands.mixins import RewardRPToolUseMixin
 from web.character.models import Flashback
 
 
-class CmdFlashback(ArxPlayerCommand):
+class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     """
     Create, read, or participate in a flashback
     
@@ -53,32 +54,37 @@ class CmdFlashback(ArxPlayerCommand):
 
     def func(self):
         if not self.switches and not self.args:
-            return self.list_flashbacks()
-        if "create" in self.switches:
-            return self.create_flashback()
-        flashback = self.get_flashback()
-        if not flashback:
-            return
-        if not self.switches:
-            return self.view_flashback(flashback)
-        if "catchup" in self.switches:
-            return self.read_new_posts(flashback)
-        if "post" in self.switches:
-            return self.post_message(flashback)
-        if not self.check_can_use_switch(flashback):
-            return
-        if self.check_switches(self.player_switches):
-            return self.manage_invites(flashback)
-        if self.check_switches(self.change_switches):
-            return self.update_flashback(flashback)
-        self.msg("Invalid switch.")
+            self.list_flashbacks()
+        elif "create" in self.switches:
+            self.create_flashback()
+        else:
+            flashback = self.get_flashback()
+            if not flashback:
+                return
+            if not self.switches:
+                self.view_flashback(flashback)
+            elif "catchup" in self.switches:
+                self.read_new_posts(flashback)
+            elif "post" in self.switches:
+                self.post_message(flashback)
+            else:
+                if not self.check_can_use_switch(flashback):
+                    return
+                if self.check_switches(self.player_switches):
+                    self.manage_invites(flashback)
+                elif self.check_switches(self.change_switches):
+                    self.update_flashback(flashback)
+                else:
+                    self.msg("Invalid switch.")
+                    return
+        self.mark_command_used()
             
     def list_flashbacks(self):
         from evennia.utils.evtable import EvTable
         table = EvTable("ID", "Title", "Owner", "New Posts", width=78, border="cells")
         for flashback in self.accessible_flashbacks:
             table.add_row(flashback.id, flashback.title, flashback.owner,
-                          len(flashback.get_new_posts(self.roster_entry)))
+                          str(len(flashback.get_new_posts(self.roster_entry))))
         self.msg(str(table))
     
     def create_flashback(self):

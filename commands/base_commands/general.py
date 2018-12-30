@@ -12,6 +12,7 @@ from evennia.utils.utils import make_iter, variable_from_module
 from server.utils import prettytable
 from server.utils.arx_utils import raw
 from commands.base import ArxCommand, ArxPlayerCommand
+from commands.mixins import RewardRPToolUseMixin
 
 AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
 
@@ -249,7 +250,7 @@ class CmdGlance(ArxCommand):
                 continue
 
 
-class CmdShout(ArxCommand):
+class CmdShout(RewardRPToolUseMixin, ArxCommand):
     """
     shout
 
@@ -282,6 +283,7 @@ class CmdShout(ArxCommand):
         txt = '{c%s{n shouts %s%s, "%s"' % (caller.name, loudstr, from_dir, args)
         caller.location.msg_contents(txt, exclude=caller, options={'shout': True,
                                                                    'from_dir': from_dir})
+        self.mark_command_used()
 
 
 class CmdFollow(ArxCommand):
@@ -408,7 +410,7 @@ class CmdLook(ArxCommand):
         looking_at_obj.at_desc(looker=caller)
 
 
-class CmdWhisper(ArxCommand):
+class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
     """
     whisper - send private IC message
 
@@ -436,10 +438,11 @@ class CmdWhisper(ArxCommand):
     If no argument is given, you will get a list of your whispers from this
     session.
     """
-
     key = "whisper"
+    aliases = ["mutter"]
     locks = "cmd:not pperm(page_banned)"
     help_category = "Social"
+    simplified_key = "mutter"
 
     def func(self):
         """Implement function using the Msg methods"""
@@ -600,7 +603,7 @@ class CmdWhisper(ArxCommand):
                 self.msg("You posed to %s: %s" % (", ".join(received), message))
             else:
                 self.msg("You whispered to %s, %s" % (", ".join(received), message))
-                if "mutter" in self.switches:
+                if "mutter" in self.switches or "mutter" in self.cmdstring:
                     from random import randint
                     word_list = rhs.split()
                     chosen = []
@@ -617,6 +620,7 @@ class CmdWhisper(ArxCommand):
                     emit_string = ' mutters, "%s{n"' % mutter_text
                     exclude = [caller] + recobjs
                     caller.location.msg_action(self.caller, emit_string, options={'is_pose': True}, exclude=exclude)
+                    self.mark_command_used()
         caller.posecount += 1
 
 

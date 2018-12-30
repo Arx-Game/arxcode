@@ -31,7 +31,8 @@ TRAINING_CAP_PER_WEEK = 10
 PLAYER_ATTRS = ("votes", 'claimed_scenelist', 'random_scenelist', 'validated_list', 'praises', 'condemns',
                 'requested_validation', 'donated_ap', 'masked_validated_list')
 CHARACTER_ATTRS = ("currently_training", "trainer", 'scene_requests', "num_trained", "num_journals",
-                   "num_rel_updates", "num_comments", "num_flashbacks", "support_cooldown", "support_points_spent")
+                   "num_rel_updates", "num_comments", "num_flashbacks", "support_cooldown", "support_points_spent",
+                   "rp_command_used", "random_rp_command_this_week")
 
 
 class BulkInformCreator(object):

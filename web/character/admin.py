@@ -169,7 +169,7 @@ class RevelationAdmin(BaseCharAdmin):
     """Admin for revelations"""
     list_display = ('id', 'name', 'known_by', 'requires')
     inlines = [ClueForRevInline, RevDiscoInline, RevPlotInvolvementInline]
-    search_fields = ('id', 'name', 'characters__character__db_key', 'mysteries__name')
+    search_fields = ('=id', 'name', 'mysteries__name', '=search_tags__name')
     list_filter = (RevelationListFilter, 'mysteries')
     filter_horizontal = ('search_tags', 'mysteries')
     raw_id_fields = ('author',)
@@ -198,7 +198,7 @@ class CluePlotInvolvementInline(admin.TabularInline):
 class ClueAdmin(BaseCharAdmin):
     """Admin for Clues"""
     list_display = ('id', 'name', 'rating', 'used_for')
-    search_fields = ('id', 'name', '=search_tags__name')
+    search_fields = ('=id', 'name', '=search_tags__name')
     inlines = (ClueForRevInline, CluePlotInvolvementInline)
     filter_horizontal = ('search_tags',)
     raw_id_fields = ('author', 'tangible_object',)
@@ -221,7 +221,7 @@ class ClueAdmin(BaseCharAdmin):
 class ClueDiscoveryAdmin(BaseCharAdmin):
     """Admin for ClueDiscoveries"""
     list_display = ('id', 'clue', 'character', 'discovery_method', 'revealed_by', 'investigation')
-    search_fields = ('id', 'clue__name', 'character__character__db_key')
+    search_fields = ('id', 'clue__name', '=character__character__db_key')
     raw_id_fields = ('clue', 'character', 'investigation', 'revealed_by')
 
 
@@ -294,7 +294,7 @@ class InvestigationAdmin(BaseCharAdmin):
     list_display = ('id', 'character', 'topic', 'clue_target', 'active',
                     'ongoing', 'automate_result')
     list_filter = ('active', 'ongoing', 'automate_result', InvestigationListFilter)
-    search_fields = ('character__character__db_key', 'topic', 'clue_target__name')
+    search_fields = ('=character__character__db_key', 'topic', 'clue_target__name', '=id')
     inlines = [RevDiscoInline, ClueDiscoInline, InvestigationAssistantInline]
     raw_id_fields = ('clue_target', 'character',)
 

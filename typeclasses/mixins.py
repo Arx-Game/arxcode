@@ -370,7 +370,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
 
         string = ""
         # get and identify all objects
-        visible = (con for con in self.contents if con != pobject and con.access(pobject, "view"))
+        visible = (con for con in self.contents if con.access(pobject, "view"))
         exits, users, things, worn, sheathed, wielded, places, npcs = [], [], [], [], [], [], [], []
         currency = self.return_currency()
         from typeclasses.places.places import Place
@@ -392,15 +392,17 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 if not con.db.stealth:
                     wielded.append(key)
                 elif hasattr(pobject, 'sensing_check') and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0:
-                    key += "{w (hidden){n"
+                    key += "|w (hidden)|n"
                     wielded.append(key)
             elif con.has_player:
-                # we might have either a title or a fake name
+                # we might have either a permapose or a fake name
                 lname = con.name
                 if con.db.room_title:
-                    lname += "{w(%s){n" % con.db.room_title
+                    lname += "|w (%s)|n" % con.db.room_title
+                elif con == pobject:
+                    continue
                 if con.key in lname and not con.db.false_name:
-                    lname = lname.replace(key, "{c%s{n" % key)
+                    lname = lname.replace(key, "|c%s|n" % key)
                     users.append(lname)
                 else:
                     users.append("{c%s{n" % lname)

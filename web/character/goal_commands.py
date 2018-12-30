@@ -4,14 +4,14 @@ Commands for goals
 from evennia.utils.evtable import EvTable
 
 from commands.base import ArxCommand
-from commands.mixins import CommandError
+from commands.mixins import CommandError, RewardRPToolUseMixin
 from .models import Goal, GoalUpdate
 from server.utils.helpdesk_api import create_ticket, resolve_ticket
 from web.helpdesk.models import Ticket
 from world.dominion.models import Plot, PlotUpdate
 
 
-class CmdGoals(ArxCommand):
+class CmdGoals(RewardRPToolUseMixin, ArxCommand):
     """
     View or set goals for your character
 
@@ -59,22 +59,26 @@ class CmdGoals(ArxCommand):
         """Executes goals cmd"""
         try:
             if not self.args:
-                return self.list_goals()
-            if "create" in self.switches:
-                return self.create_goal()
-            try:
-                goal = self.goals.get(id=self.lhslist[0])
-            except (Goal.DoesNotExist, ValueError, IndexError):
-                raise CommandError("You do not have a goal by that number.")
-            if not self.switches:
-                return self.msg(goal.display())
-            if self.check_switches(self.field_switches):
-                return self.update_goal_field(goal)
-            if "rfr" in self.switches:
-                return self.request_review(goal)
-            raise CommandError("Invalid switch.")
+                self.list_goals()
+            elif "create" in self.switches:
+                self.create_goal()
+            else:
+                try:
+                    goal = self.goals.get(id=self.lhslist[0])
+                except (Goal.DoesNotExist, ValueError, IndexError):
+                    raise CommandError("You do not have a goal by that number.")
+                if not self.switches:
+                    self.msg(goal.display())
+                elif self.check_switches(self.field_switches):
+                    self.update_goal_field(goal)
+                elif "rfr" in self.switches:
+                    self.request_review(goal)
+                else:
+                    raise CommandError("Invalid switch.")
         except CommandError as err:
             self.msg(err)
+        else:
+            self.mark_command_used()
 
     def list_goals(self):
         """Displays our goals for our caller"""

@@ -19,6 +19,7 @@ from evennia.utils.utils import make_iter
 from evennia.scripts.models import ScriptDB
 
 from commands.base_commands.roster import format_header
+from commands.mixins import RewardRPToolUseMixin
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
 from server.utils.arx_utils import inform_staff, time_from_now, inform_guides, commafy, a_or_an, get_full_url
@@ -2133,7 +2134,7 @@ class CmdRoomHistory(ArxCommand):
         return
 
 
-class CmdRoomMood(ArxCommand):
+class CmdRoomMood(RewardRPToolUseMixin, ArxCommand):
     """
     Temporarily adds to room description
 
@@ -2162,6 +2163,7 @@ class CmdRoomMood(ArxCommand):
         mood = (caller, time.time(), self.args)
         caller.location.db.room_mood = mood
         self.caller.location.msg_contents("{w(OOC)The scene set/room mood is now set to:{n %s" % mood[2])
+        self.mark_command_used()
 
 
 class CmdSocialNotable(ArxCommand):
@@ -2207,13 +2209,11 @@ class CmdSocialNotable(ArxCommand):
     key = "notable"
     locks = "cmd:all()"
 
-
     def show_rankings(self, title, asset_owners, adjust_type, show_percent=False):
         counter = 1
         table = EvTable()
         table.add_column(width=8)
         table.add_column()
-
 
         median = AssetOwner.MEDIAN_PRESTIGE * 1.
 
@@ -2335,10 +2335,11 @@ class PrestigeCategoryField(fields.Paxfield):
         return True, None
 
     def webform_field(self, caller=None):
+        from django.forms import CharField
         options = {'label': self.full_name}
         if self.required is not None:
             options['required'] = self.required
-        return django.forms.CharField(**options)
+        return CharField(**options)
 
 
 class FormNomination(forms.Paxform):
@@ -2354,7 +2355,7 @@ class FormNomination(forms.Paxform):
                                          help_text="You must provide one or more characters for this nomination.")
     category = PrestigeCategoryField(required=True, full_name="Category",
                                      help_text="You must provide a valid prestige adjustment category.  "
-                                               "Do 'nominate/types' to see the valid types." )
+                                               "Do 'nominate/types' to see the valid types.")
     type = fields.ChoiceField(required=True, full_name="Adjustment Type",
                               choices=PrestigeNomination.TYPES, help_text="You must define whether this nomination is "
                                                                           "for fame or legend.")
@@ -2374,6 +2375,7 @@ class FormNomination(forms.Paxform):
         except Character.DoesNotExist:
             return self._get_character_by_id(args)
 
+    # noinspection PyMethodMayBeStatic
     def _get_character_by_id(self, args):
         from typeclasses.characters import Character
         try:
@@ -2391,7 +2393,7 @@ class FormNomination(forms.Paxform):
 
         try:
             category = PrestigeCategory.objects.get(name__iexact=values['category'])
-        except Category.DoesNotExist:
+        except PrestigeCategory.DoesNotExist:
             caller.msg("Something has gone horribly wrong; your category seems to no longer be valid.")
             return
 
@@ -2548,7 +2550,7 @@ class CmdSocialReview(ArxCommand):
         approved_by = [str(approver) for approver in nom.approved_by.all()]
         denied_by = [str(denier) for denier in nom.denied_by.all()]
 
-        result =  "\n|wID:|n %d\n" % nom.id
+        result = "\n|wID:|n %d\n" % nom.id
         result += "|wNominees:|n %s\n" % commafy(names)
         result += "|wNominated by:|n %s\n" % str(nom.nominator)
         result += "|wApproved by:|n %s\n" % commafy(approved_by)
@@ -2743,8 +2745,7 @@ class CmdDonate(ArxCommand):
 
 class CmdRandomScene(ArxCommand):
     """
-    @randomscene
-
+    @randomscene - Claim roleplay (RP) scenes for weekly XP.
     Usage:
         @randomscene
         @randomscene/claim <player>=<summary of the scene>
@@ -2752,22 +2753,20 @@ class CmdRandomScene(ArxCommand):
         @randomscene/viewrequests
         @randomscene/online
 
-    Generates three characters, as well as new characters within their first
-    two weeks of play, who you can receive bonus xp for this week by having
-    an RP scene with them. Executing the command generates the names, and
-    then once you meet with the player and have a scene with them, using
-    @randomscene/claim will send a request to that player to validate the
-    scene you both had. If they agree, during the weekly script you'll both
-    receive xp. Requests that aren't answered are wiped in weekly maintenance.
-    /claim requires that both of you be in the same room. @randomscene/online
-    will only display players who are currently in the game.
+    Execute the command to generate names. Once you meet and share a scene,
+    use @randomscene/claim to request they validate it. If they agree, you'll
+    both receive xp during the weekly script. Unanswered requests are wiped
+    weekly. The /claim switch requires both of you to be in the same room.
+    The claimed character will receive XP whether or not they validate.
+    @randomscene/online displays only currently connected players.
 
-    Players should only use @randomscene/claim for meaningful interaction in a
-    scene, not simply being in the same room and/or acknowledging them in
-    passing. If someone uses @randomscene/claim on your PC without meaningful
-    interaction, please do not @randomscene/validate the request, and please
-    let staff know. The player claimed will receive XP whether or not they
-    validate.
+    Players should only use @randomscene/claim after meaningful interaction,
+    not simply being in the same room or acknowledgment in passing. If anyone
+    uses @randomscene/claim on you without meaningful interaction, please do
+    not @randomscene/validate the request, and please let staff know.
+
+    A random RP command is also chosen, granting you weekly XP when used.
+    Use 'help <command>' if you are unfamiliar with its use!
     """
     key = "@randomscene"
     aliases = ["@rs", "randomscene"]
@@ -2776,6 +2775,8 @@ class CmdRandomScene(ArxCommand):
     NUM_SCENES = 3
     NUM_DAYS = 3
     DAYS_FOR_NEWBIE_CHECK = 14
+    random_rp_command_keys = ["knock", "shout", "mutter", "petition", "goals", "+plots", "+room_mood", "+roomtitle",
+                              "+tempdesc", "flashback"]
 
     @property
     def scenelist(self):
@@ -2891,13 +2892,13 @@ class CmdRandomScene(ArxCommand):
         validated = self.validatedlist
         gms = self.gms
         newbies = [ob for ob in self.newbies if ob not in claimlist]
-        msg = "{w@Randomscene Information:{n "
+        msg = "{w@Randomscene Information for this week:{n "
         if "online" in self.switches:
             msg += "{yOnly displaying online characters.{n"
             scenelist = [ob for ob in scenelist if ob.show_online(self.caller.player)]
             newbies = [ob for ob in newbies if ob.show_online(self.caller.player)]
         if scenelist:
-            msg += "\n{wRandomly generated RP partners for this week:{n "
+            msg += "\n{wRandomly generated RP partners:{n "
             msg += list_to_string([ob.key for ob in scenelist])
         if newbies:
             msg += "\n{wNew players who can be also RP'd with for credit:{n "
@@ -2910,14 +2911,20 @@ class CmdRandomScene(ArxCommand):
         else:
             msg += "\n{yReminder: Please only /claim those you have interacted with significantly in a scene.{n"
         if claimlist:
-            msg += "\n{wThose you have already RP'd with this week:{n "
+            msg += "\n{wThose you have already RP'd with:{n "
             msg += list_to_string([ob.key for ob in claimlist])
         if validated:
-            msg += "\n{wThose you have validated scenes for this week:{n "
+            msg += "\n{wThose you have validated scenes for:{n "
             masked = dict(self.masked_validated_list)
             msg += list_to_string([ob.key if ob not in masked else masked[ob] for ob in validated])
         if not any((scenelist, newbies, gms, claimlist, validated)):
             msg = "No characters qualify for @randomscene information to be displayed."
+        # random RP Tool!
+        if not self.caller.db.random_rp_command_this_week and not self.caller.db.rp_command_used:
+            self.generate_random_command()
+        msg += "\n|wRandomly chosen Roleplay Tool:|n %s" % self.caller.db.random_rp_command_this_week
+        if self.caller.db.rp_command_used:
+            msg += "|y (Already used)|n"
         self.msg(msg)
 
     def generate_lists(self):
@@ -2934,6 +2941,10 @@ class CmdRandomScene(ArxCommand):
                 scenelist.extend(choices)
         scenelist = sorted(scenelist, key=lambda x: x.key.capitalize())
         self.caller.player_ob.db.random_scenelist = scenelist
+
+    def generate_random_command(self):
+        """Generates our random RP Tool of the week."""
+        self.caller.db.random_rp_command_this_week = random.choice(self.random_rp_command_keys)
 
     def claim_scene(self):
         """Sends a request from caller to another player to validate their scene."""
@@ -3053,7 +3064,7 @@ class CmdCensus(ArxPlayerCommand):
         self.msg(table)
 
 
-class CmdRoomTitle(ArxCommand):
+class CmdRoomTitle(RewardRPToolUseMixin, ArxCommand):
     """
     Displays what your character is currently doing in the room
 
@@ -3065,7 +3076,7 @@ class CmdRoomTitle(ArxCommand):
     it.
     """
     key = "+roomtitle"
-    aliases = ["room_title"]
+    aliases = ["room_title", "permapose"]
     locks = "cmd:all()"
     help_category = "Social"
 
@@ -3077,10 +3088,10 @@ class CmdRoomTitle(ArxCommand):
             return
         self.caller.db.room_title = self.args
         self.msg("Your roomtitle set to %s {w({n%s{w){n" % (self.caller, self.args))
-        return
+        self.mark_command_used()
 
 
-class CmdTempDesc(ArxCommand):
+class CmdTempDesc(RewardRPToolUseMixin, ArxCommand):
     """
     Appends a temporary description to your regular description
 
@@ -3102,6 +3113,7 @@ class CmdTempDesc(ArxCommand):
             return
         self.caller.additional_desc = self.args
         self.msg("Temporary desc set to: %s" % self.args)
+        self.mark_command_used()
 
 
 class CmdLanguages(ArxCommand):

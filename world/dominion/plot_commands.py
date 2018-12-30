@@ -7,6 +7,7 @@ be player-run.
 from datetime import datetime
 
 from commands.base import ArxCommand
+from commands.mixins import RewardRPToolUseMixin
 from server.utils.helpdesk_api import create_ticket, add_followup, resolve_ticket
 from server.utils.prettytable import PrettyTable
 from server.utils.exceptions import CommandError
@@ -51,7 +52,7 @@ def get_recruiter_xp(character):
     return xp
 
 
-class CmdPlots(ArxCommand):
+class CmdPlots(RewardRPToolUseMixin, ArxCommand):
     """
     Run/Participate in plots! View Usage:
         plots[/old] [<plot ID>][=<beat ID>]
@@ -138,32 +139,35 @@ class CmdPlots(ArxCommand):
         """Executes plot command"""
         try:
             if not self.switches or "old" in self.switches or "timeline" in self.switches:
-                return self.do_plot_displays()
-            if "createbeat" in self.switches:
-                return self.create_beat()
-            if "add" in self.switches:
-                return self.add_object_to_beat()
-            if "search" in self.switches:
-                return self.view_our_tagged_stuff()
-            if self.check_switches(self.admin_switches):
-                return self.do_admin_switches()
-            if "accept" in self.switches:
-                return self.accept_invitation()
-            if "leave" in self.switches:
-                return self.leave_plot()
-            if "pitch" in self.switches:
-                return self.make_plot_pitch()
-            if "findcontact" in self.switches:
-                return self.find_contact()
-            if "rewardrecruiter" in self.switches:
-                return self.reward_recruiter()
-            if "addclue" in self.switches:
-                return self.add_clue()
-            if "addrevelation" in self.switches:
-                return self.add_revelation()
-            raise CommandError("Unrecognized switch.")
+                self.do_plot_displays()
+            elif "createbeat" in self.switches:
+                self.create_beat()
+            elif "add" in self.switches:
+                self.add_object_to_beat()
+            elif "search" in self.switches:
+                self.view_our_tagged_stuff()
+            elif self.check_switches(self.admin_switches):
+                self.do_admin_switches()
+            elif "accept" in self.switches:
+                self.accept_invitation()
+            elif "leave" in self.switches:
+                self.leave_plot()
+            elif "pitch" in self.switches:
+                self.make_plot_pitch()
+            elif "findcontact" in self.switches:
+                self.find_contact()
+            elif "rewardrecruiter" in self.switches:
+                self.reward_recruiter()
+            elif "addclue" in self.switches:
+                self.add_clue()
+            elif "addrevelation" in self.switches:
+                self.add_revelation()
+            else:
+                raise CommandError("Unrecognized switch.")
         except CommandError as err:
             self.msg(err)
+        else:
+            self.mark_command_used()
 
     def do_plot_displays(self):
         """Different display methods"""

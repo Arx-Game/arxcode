@@ -122,3 +122,21 @@ class FormCommandMixin(object):
         new_object = form.save()
         self.msg("%s(#%s) created." % (new_object, new_object.id))
         self.caller.attributes.remove(self.form_attribute)
+
+
+# noinspection PyUnresolvedReferences
+class RewardRPToolUseMixin(object):
+    XP = 1
+    # for dynamic commands, we need a unique identifier
+    simplified_key = None
+
+    def mark_command_used(self):
+        key = self.simplified_key or self.key
+        if self.caller.char_ob.db.rp_command_used:
+            return
+        if self.caller.char_ob.db.random_rp_command_this_week != key:
+            return
+        self.caller.char_ob.db.rp_command_used = key
+        self.msg("You have used '%s', your randomly selected RP Tool command for the week, and gained %s xp." % (
+            key, self.XP))
+        self.caller.char_ob.adjust_xp(self.XP)

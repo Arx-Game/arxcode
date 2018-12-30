@@ -779,13 +779,17 @@ class SocialTestsPlus(ArxCommandTest):
         self.account2.save()
         self.roster_entry2.current_account = PlayerAccount.objects.create(email="foo")
         self.roster_entry2.save()
-        self.call_cmd("", "@Randomscene Information: \nRandomly generated RP partners for this week: Char2"
-                          "\nReminder: Please only /claim those you have interacted with significantly in a scene.")
+        temp = social.random.choice
+        social.random.choice = Mock(return_value="+plots")
+        rptool_str = "\nRandomly chosen Roleplay Tool: +plots"
+        self.call_cmd("", "@Randomscene Information for this week: \nRandomly generated RP partners: Char2"
+                          "\nReminder: Please only /claim those you have interacted with significantly in a scene."
+                          "%s" % rptool_str)
         self.char1.player_ob.db.random_scenelist = [self.char2, self.char2, self.char3]
-        self.call_cmd("/online", "@Randomscene Information: Only displaying online characters."
-                                 "\nRandomly generated RP partners for this week: Char2 and Char2"
+        self.call_cmd("/online", "@Randomscene Information for this week: Only displaying online characters."
+                                 "\nRandomly generated RP partners: Char2 and Char2"
                                  "\nReminder: Please only /claim those you have interacted with significantly "
-                                 "in a scene.")
+                                 "in a scene.%s" % rptool_str)
         self.call_cmd("/claim Char2", 'You must include some summary of the scene. It may be quite short.')
         self.call_cmd("/claim Char2=test test test", 'You have sent Char2 a request to validate your scene: '
                                                      'test test test')
@@ -798,9 +802,9 @@ class SocialTestsPlus(ArxCommandTest):
         self.call_cmd("/claim asdf=meow", "You cannot claim 'asdf'.")
         self.caller = self.char1
         self.call_cmd("/claim Char2=test test test", "You cannot claim 'Char2'.")
-        self.call_cmd("", "@Randomscene Information: \nRandomly generated RP partners for this week: Char2 and Char3"
+        self.call_cmd("", "@Randomscene Information for this week: \nRandomly generated RP partners: Char2 and Char3"
                           "\nReminder: Please only /claim those you have interacted with significantly in a scene."
-                          "\nThose you have already RP'd with this week: Char2")
+                          "\nThose you have already RP'd with: Char2%s" % rptool_str)
         self.caller = self.char2
         self.call_cmd("/viewrequests", '| Name                               | Summary                               '
                                        '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
@@ -815,6 +819,9 @@ class SocialTestsPlus(ArxCommandTest):
         self.char2.player_ob.db.random_scenelist = [self.char3]
         self.call_cmd("/claim char3=testy test", 'You have sent char3 a request to validate your scene: testy test')
         self.caller = self.char3
+        self.char3.db.random_rp_command_this_week = "+plots"
+        self.char3.db.rp_command_used = True
+        rptool_str += " (Already used)"
         self.call_cmd("/viewrequests", '| Name                                | Summary                              '
                                        '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                                        '| asdf                                | testy test')
@@ -824,9 +831,10 @@ class SocialTestsPlus(ArxCommandTest):
                       '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                       '| asdf                                | testy test')
         self.call_cmd("/validate asdf", 'Validating their scene. Both of you will receive xp for it later.')
-        self.call_cmd("", '@Randomscene Information: \nRandomly generated RP partners for this week: Char2\n'
+        self.call_cmd("", '@Randomscene Information for this week: \nRandomly generated RP partners: Char2\n'
                           'Reminder: Please only /claim those you have interacted with significantly in a scene.\n'
-                          'Those you have validated scenes for this week: asdf')
+                          'Those you have validated scenes for: asdf%s' % rptool_str)
+        social.random.choice = temp
 
 
 class StaffCommandTests(ArxCommandTest):
