@@ -2776,7 +2776,7 @@ class CmdRandomScene(ArxCommand):
     NUM_DAYS = 3
     DAYS_FOR_NEWBIE_CHECK = 14
     random_rp_command_keys = ["knock", "shout", "mutter", "petition", "goals", "+plots", "+room_mood", "+roomtitle",
-                              "+tempdesc", "flashback"]
+                              "+tempdesc", "flashback", "favor"]
 
     @property
     def scenelist(self):
@@ -3791,7 +3791,7 @@ class CmdGetInLine(ArxCommand):
             return
 
 
-class CmdFavor(ArxPlayerCommand):
+class CmdFavor(RewardRPToolUseMixin, ArxPlayerCommand):
     """
     Applies favor or disfavor from an organization to a character
 
@@ -3830,14 +3830,17 @@ class CmdFavor(ArxPlayerCommand):
         """Executes the favor command"""
         try:
             if not self.switches or "all" in self.switches:
-                return self.list_favor()
-            if "set" in self.switches or "add" in self.switches:
-                return self.add_favor()
-            if "remove" in self.switches:
-                return self.remove_favor()
-            raise CommandError("Invalid switch.")
+                self.list_favor()
+            elif "set" in self.switches or "add" in self.switches:
+                self.add_favor()
+            elif "remove" in self.switches:
+                self.remove_favor()
+            else:
+                raise CommandError("Invalid switch.")
         except CommandError as err:
             self.msg(err)
+        else:
+            self.mark_command_used()
 
     def list_favor(self):
         """Lists who is in favor/disfavor for an organization"""
