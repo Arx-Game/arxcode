@@ -3790,7 +3790,8 @@ class Reputation(SharedMemoryModel):
         if not self.favor:
             return 0
         try:
-            return self.favor * (self.organization.assets.fame + self.organization.assets.legend)/20
+            weeks = ((datetime.now() - (self.date_gossip_set or datetime.now())).days/7) + 1
+            return self.favor * (self.organization.assets.fame + self.organization.assets.legend)/(20 * weeks)
         except AttributeError:
             return 0
 

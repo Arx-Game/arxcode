@@ -3842,7 +3842,7 @@ class CmdFavor(ArxPlayerCommand):
     def list_favor(self):
         """Lists who is in favor/disfavor for an organization"""
         if "all" in self.switches:
-            favors = Reputation.objects.exclude(favor=0)
+            favors = Reputation.objects.exclude(favor=0).order_by('-date_gossip_set')
             self.msg("Characters with favor: %s" % ", ".join(str(ob) for ob in favors))
             return
         org = self.get_organization(check_perm=False)
