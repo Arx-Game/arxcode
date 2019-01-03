@@ -3798,8 +3798,7 @@ class CmdFavor(ArxPlayerCommand):
     Usage:
         favor <organization>
         favor/all
-        favor/add <organization>=<character>,<value>
-        favor/gossip <organization>=<character>/<text>
+        favor/set <organization>=<character>,<value>/<gossip>
         favor/remove <organization>=<character>
 
     The favor command allows an organization's leadership to show whether
@@ -3820,11 +3819,9 @@ class CmdFavor(ArxPlayerCommand):
     character joins the organization or is promoted above vassal rank, their
     favor is immediately set to 0.
 
-    The gossip switch allows you to set a textstring that corresponds to what
-    npc gossip would hold as the reason for a character being in favor or
-    disfavor. If the favor is removed from the character, the gossip is
-    removed as well. Gossip may not be changed once set, only removed with
-    favor being reset.
+    When adding favor, you must set a gossip text string that displays what
+    npcs would speculate as the reason for someone being held in favor or
+    disfavor by an organization.
     """
     key = "favor"
     help_category = "Social"
@@ -3834,10 +3831,8 @@ class CmdFavor(ArxPlayerCommand):
         try:
             if not self.switches or "all" in self.switches:
                 return self.list_favor()
-            if "add" in self.switches:
+            if "set" in self.switches or "add" in self.switches:
                 return self.add_favor()
-            if "gossip" in self.switches:
-                return self.add_gossip()
             if "remove" in self.switches:
                 return self.remove_favor()
             raise CommandError("Invalid switch.")
@@ -3870,8 +3865,13 @@ class CmdFavor(ArxPlayerCommand):
         """Adds favor to a character, assuming we have points to spare and can afford the cost."""
         org = self.get_organization()
         try:
-            target = self.caller.search(self.rhslist[0])
-            amount = int(self.rhslist[1])
+            rhslist, gossip = self.rhs.split("/", 1)
+            rhslist = rhslist.split(",")
+        except (TypeError, ValueError, AttributeError):
+            raise CommandError("You must provide a name, target, and gossip string.")
+        try:
+            target = self.caller.search(rhslist[0])
+            amount = int(rhslist[1])
         except (IndexError, ValueError, TypeError):
             raise CommandError("You must provide both a target and an amount.")
         if not target:
@@ -3894,16 +3894,17 @@ class CmdFavor(ArxPlayerCommand):
         self.caller.ndb.favor_cost_confirmation = None
         if not self.caller.pay_resources("social", cost):
             raise CommandError("You cannot afford to pay %s resources." % cost)
-        self.set_target_org_favor(target, org, amount)
+        self.set_target_org_favor(target, org, amount, gossip)
 
-    def set_target_org_favor(self, target, org, amount):
+    def set_target_org_favor(self, target, org, amount, gossip):
         """Sets the amount of favor for target's reputation with org"""
         rep, _ = target.Dominion.reputations.get_or_create(organization=org)
         rep.favor = amount
-        rep.npc_gossip = ""
-        rep.date_gossip_set = None
+        rep.npc_gossip = gossip
+        rep.date_gossip_set = datetime.now()
         rep.save()
         self.msg("Set %s's favor in %s to %s." % (target, org, amount))
+        inform_staff("%s set gossip for %s's reputation with %s to: %s" % (self.caller, target, org, gossip))
 
     @staticmethod
     def check_cap(org, amount):
@@ -3914,7 +3915,7 @@ class CmdFavor(ArxPlayerCommand):
         else:
             query = Q(favor__gt=0)
         total = abs(org.reputations.filter(query).aggregate(Sum('favor')).values()[0] or 0) + abs(amount)
-        mod = org.social_modifier
+        mod = org.social_modifier * 5
         if total > mod:
             noun = "favor" if amount > 0 else "disfavor"
             raise CommandError("That would bring your total %s to %s, and you can only spend %s." % (noun, total, mod))
@@ -3944,28 +3945,3 @@ class CmdFavor(ArxPlayerCommand):
             raise CommandError("They have no favor with %s." % org)
         rep.wipe_favor()
         self.msg("Favor for %s removed." % target)
-
-    def add_gossip(self):
-        """Adds gossip to a character's reputation"""
-        org = self.get_organization()
-        try:
-            target, text = self.rhs.split("/")
-            target = self.caller.search(target)
-            if not text or not target:
-                raise ValueError
-        except (TypeError, ValueError):
-            raise CommandError("Must provide both a target and a text message.")
-        self.set_target_org_gossip(target, org, text)
-        inform_staff("%s set gossip for %s's reputation with %s to: %s" % (self.caller, target, org, text))
-
-    def set_target_org_gossip(self, target, org, text):
-        """Sets the gossip for a given character"""
-        rep, _ = target.Dominion.reputations.get_or_create(organization=org)
-        if not rep.favor:
-            raise CommandError("You can only add gossip to someone with non-zero favor.")
-        if rep.date_gossip_set:
-            raise CommandError("You may only set the gossip string once.")
-        rep.npc_gossip = text
-        rep.date_gossip_set = datetime.now()
-        rep.save()
-        self.msg("Gossip for %s set to: %s" % (target, text))

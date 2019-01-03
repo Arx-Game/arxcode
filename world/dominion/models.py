@@ -51,7 +51,7 @@ Every week, a script is called that will run execute_orders() on every
 Army, and then do weekly_adjustment() in every assetowner. So only domains
 that currently have a ruler designated will change on a weekly basis.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from random import randint
 import traceback
 
@@ -60,7 +60,7 @@ from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
 from evennia.utils import create
 from django.db import models
-from django.db.models import Q, Count, F, Sum
+from django.db.models import Q, Count, F, Sum, Case, When
 from django.conf import settings
 from django.core.urlresolvers import reverse
 
@@ -928,10 +928,25 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             percentage *= -1
         value = int(base * percentage/100.0)
         if self.player:
+            # It's not possible to use F expressions on datetime fields so we'll check a range of dates
+            now = datetime.now()
+            last_week = now - timedelta(days=7)
+            two_weeks = now - timedelta(days=14)
+            three_weeks = now - timedelta(days=21)
+            four_weeks = now - timedelta(days=28)
+            # number of weeks since the favor was set, + 1, cap at a month ago
+            num_weeks = (Case(When(date_gossip_set__isnull=True, then=1),
+                              When(date_gossip_set__lte=four_weeks, then=5),
+                              When(date_gossip_set__lte=three_weeks, then=4),
+                              When(date_gossip_set__lte=two_weeks, then=3),
+                              When(date_gossip_set__lte=last_week, then=2),
+                              default=1))
+            # the base prestige they get from each org, then modified by their favor value
+            org_prestige = (F('organization__assets__fame') + F('organization__assets__legend'))/(20 * F('num_weeks'))
+            val = org_prestige * F('favor')
             favor = (self.player.reputations.filter(Q(favor__gt=0) | Q(favor__lt=0))
-                                            .annotate(val=((F('organization__assets__fame')
-                                                           + F('organization__assets__legend'))/20) * F('favor')
-                                                      )
+                                            .annotate(num_weeks=num_weeks)
+                                            .annotate(val=val)
                                             .aggregate(Sum('val'))).values()[0] or 0
             value += favor
         return value

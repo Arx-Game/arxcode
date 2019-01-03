@@ -984,7 +984,8 @@ class CmdPropriety(ArxPlayerCommand):
         owners = propriety.owners.all()
         if not owners:
             string = "No one is currently spoken of{}.".format(reputation)
-        orgs = owners.filter(organization_owner__isnull=False).order_by('organization_owner__name')
+        orgs = (owners.filter(organization_owner__isnull=False)
+                      .exclude(organization_owner__secret=True).order_by('organization_owner__name'))
         ppl = owners.filter(player__isnull=False).order_by('player__player__username')
         if not self.check_switches(["all"]):  # only get active ppl
             ppl = ppl.filter(player__player__roster__roster__name="Active")

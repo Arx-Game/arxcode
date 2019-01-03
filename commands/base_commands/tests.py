@@ -731,26 +731,25 @@ class SocialTests(ArxCommandTest):
         self.call_cmd("testorg", "Those Favored/Disfavored by testorg")
         self.call_cmd("/add testorg=testaccount", "You do not have permission to set favor.")
         org.members.create(player=self.dompc2, rank=1)
-        self.call_cmd("/add testorg=testaccount", "You must provide both a target and an amount.")
-        self.call_cmd("/add testorg=foo,5", "Could not find 'foo'.")
-        self.call_cmd("/add testorg=testaccount,5", "That would bring your total favor to 5, and you can only spend 0.")
+        self.call_cmd("/add testorg=testaccount", 'You must provide a name, target, and gossip string.')
+        self.call_cmd("/add testorg=foo,5/bar", "Could not find 'foo'.")
+        self.call_cmd("/add testorg=testaccount,5/bar",
+                      "That would bring your total favor to 5, and you can only spend 0.")
         org.social_influence = 3000
         mem2 = org.members.create(player=self.dompc, rank=4)
-        self.call_cmd("/add testorg=testaccount,1", "Cannot set favor for a member.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "Cannot set favor for a member.")
         org.category = "noble"
-        self.call_cmd("/add testorg=testaccount,1", "Favor can only be set for vassals or non-members.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "Favor can only be set for vassals or non-members.")
         mem2.rank = 6
-        self.call_cmd("/add testorg=testaccount,1", "Cost will be 200. Repeat the command to confirm.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "Cost will be 200. Repeat the command to confirm.")
         rep = self.dompc.reputations.get(organization=org)
         rep.affection = 10
         rep.respect = 5
-        self.call_cmd("/add testorg=testaccount,1", "Cost will be 185. Repeat the command to confirm.")
-        self.call_cmd("/add testorg=testaccount,1", "You cannot afford to pay 185 resources.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "Cost will be 185. Repeat the command to confirm.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "You cannot afford to pay 185 resources.")
         self.assetowner2.social = 200
         self.account2.ndb.favor_cost_confirmation = 185
-        self.call_cmd("/gossip testorg=testaccount/asdf", "You can only add gossip to someone with non-zero favor.")
-        self.call_cmd("/add testorg=testaccount,1", "Set Testaccount's favor in testorg to 1.")
-        self.call_cmd("/gossip testorg=testaccount/stuff", "Gossip for Testaccount set to: stuff")
+        self.call_cmd("/add testorg=testaccount,1/stuff", "Set Testaccount's favor in testorg to 1.")
         mock_inform_staff.assert_called_with("Testaccount2 set gossip for Testaccount's reputation with "
                                              "testorg to: stuff")
         self.call_cmd("testorg", 'Those Favored/Disfavored by testorg\nTestaccount (1): stuff')
