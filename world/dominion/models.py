@@ -5525,7 +5525,7 @@ class Member(SharedMemoryModel):
         percent = (clout + 100) / 100.0
         outcome = int(outcome * percent)
         org_amount = outcome + resources
-        prestige = ((clout * 5) + 50) * org_amount * 5
+        prestige = ((clout * 5) + 50) * org_amount * 3
         if org_amount:
             self.investment_this_week += org_amount
             self.investment_total += org_amount

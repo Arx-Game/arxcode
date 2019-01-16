@@ -532,7 +532,7 @@ def generate_fealty_chart(request, filename, include_npcs=False):
                 org_name = org_name + "\n(" + org_rank_1.player.player.key.title() + ")"
 
             for vassal in org.assets.estate.vassals.all():
-                is_npc = vassal.house.organization_owner.living_members.all().count() > 0
+                is_npc = vassal.house.organization_owner.living_members.all().count() == 0
                 if vassal.house and (not is_npc or include_npcs):
                     node_color = node_colors.get(vassal.house.organization_owner.rank_1_male, None)
                     name = vassal.house.organization_owner.name

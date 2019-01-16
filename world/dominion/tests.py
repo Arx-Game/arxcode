@@ -76,7 +76,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
         from world.dominion.models import Organization, AssetOwner
         org = Organization.objects.create(name="Orgtest")
         org_owner = AssetOwner.objects.create(organization_owner=org)
-        
+
         member = org.members.create(player=self.dompc)
         self.cmd_class = general_dominion_commands.CmdWork
         self.caller = self.account
@@ -123,18 +123,18 @@ class TestGeneralDominionCommands(ArxCommandTest):
                       'You use 5 action points and have 50 remaining this week.|'
                       'Your social clout combined with that of your protege reduces difficulty by 22.\n'
                       'Char rolling intellect and economics. \n'
-                      'You and Orgtest both gain 20,000 prestige.\n'
+                      'You and Orgtest both gain 12,000 prestige.\n'
                       'You have increased the economic influence of Orgtest by 25.\n'
                       'Current modifier is 0, progress to next is 1/100.')
         self.call_cmd("/score orgtest2", "No match for an org by the name: orgtest2.")
         self.call_cmd("/score orgtest", "Member Total Work Total Invested Combined \n"
                                    "Testaccount          3             25       28")
-        
+
     def test_cmd_organization(self):
         from world.dominion.models import Organization, AssetOwner
         org = Organization.objects.create(name="Orgtest")
         org_owner = AssetOwner.objects.create(organization_owner=org)
-        
+
         member = org.members.create(player=self.dompc)
         self.cmd_class = general_dominion_commands.CmdOrganization
         self.caller = self.account
@@ -155,8 +155,8 @@ class TestGeneralDominionCommands(ArxCommandTest):
                       "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\nWork Settings: None found.\n"
                       "\nClues Known: Org test clue 1; Org test clue 2;\n\n"
                       "Member stats for Testaccount\n\nRank: 10\nSupport Pool Share: 0/0\nTotal Work: 0\nTasks Completed: 0, Total Rating: 0")
-        
-        
+
+
 
 class TestPlotCommands(TestTicketMixins, ArxCommandTest):
     def setUp(self):
