@@ -634,10 +634,12 @@ class CmdPage(ArxPlayerCommand):
       page [<message to last paged player>]
       tell  <player> <message>
       ttell [<message to last paged player>]
+      reply [<message to player who last paged us and other receivers>]
       page/list <number>
       page/noeval
       page/allow <name>
       page/block <name>
+      page/reply <message>
 
     Switch:
       last - shows who you last messaged
@@ -654,7 +656,7 @@ class CmdPage(ArxPlayerCommand):
     """
 
     key = "page"
-    aliases = ['tell', 'p', 'pa', 'pag', 'ttell']
+    aliases = ['tell', 'p', 'pa', 'pag', 'ttell', 'reply']
     locks = "cmd:not pperm(page_banned)"
     help_category = "Comms"
     arg_regex = r'\/|\s|$'
@@ -713,7 +715,7 @@ class CmdPage(ArxPlayerCommand):
                 return
         if 'list' in self.switches or not self.raw:
             pages = pages_we_sent + pages_we_got
-            pages.sort(lambda x, y: cmp(x.date_created, y.date_created))
+            pages.sort(key=lambda x: x.date_created)
 
             number = 5
             if self.args:
@@ -762,8 +764,15 @@ class CmdPage(ArxPlayerCommand):
             lhslist = tarlist
 
         # We are sending. Build a list of targets
-
-        if (not lhs and rhs) or (self.args and not rhs) or cmdstr == 'ttell':
+        if "reply" in self.switches or cmdstr == "reply":
+            if not pages_we_got:
+                self.msg("You haven't received any pages.")
+                return
+            last_page = pages_we_got[-1]
+            receivers = set(last_page.senders + last_page.receivers)
+            receivers.discard(self.caller)
+            rhs = self.args
+        elif (not lhs and rhs) or (self.args and not rhs) or cmdstr == 'ttell':
             # If there are no targets, then set the targets
             # to the last person we paged.
             # also take format of p <message> for last receiver
