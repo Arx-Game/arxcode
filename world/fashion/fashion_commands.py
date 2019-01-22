@@ -37,23 +37,23 @@ class CmdFashionOutfit(ArxCommand):
         outfits [<outfit name>]
         outfits/archives
 
-    Management: The /create switch makes a new outfit from your currently
-    worn, sheathed, and wielded items. The /delete switch deletes an existing
-    outfit, but its items still exist. Note that after deleting a modeled
-    outfit, each of its items' "buzz messages" will revert to their
-    individual value. Toggle the archive status of an outfit by specifying
-    its name after the /archive switch.
+    The /create switch makes a new outfit from your currently worn, sheathed,
+    and wielded items. The /delete switch deletes an existing outfit, but its
+    items still exist. Note that after deleting a modeled outfit, each item's
+    "buzz message" will revert to its individual value. Toggle archival
+    status of an outfit with its name after the /archive switch.
 
-    Viewing: With no switch or name, view your non-archived outfits.
-    Similarly, use the archive switch without a name to see archived outfits.
-    This table shows appraisal* of fashion-worth if it's yet to be modeled,
-    or the buzz impact it had when it was. (See 'help model' for modeling.)
-    Specify any outfit name with no switches to see the items comprising it.
+    Follow base command with an outfit name to see items comprising it. With
+    no switch or name, view your outfits. Similarly, use the archive switch
+    by itself to see archived outfits. These tables show an appraisal number
+    for outfits yet to be modeled, or the buzz their modeling had generated.
 
-    *An outfit's appraisal is based on items that can be modeled. Items
-    that weren't crafted by mortals and pre-modeled items do not count
-    toward the modeling value of an outfit. Appraisal allows a fashion
-    model to compare the potential impact of outfits before events.
+    An outfit's appraisal is based on items that can be modeled; it excludes
+    items not crafted by mortals and all previously-modeled items. Appraisal
+    allows a fashion model to compare outfits, and does not consider the
+    model's skills.
+
+    Other commands that utilize outfits: Wear, Model, Get, Put
     """
     key = "outfit"
     aliases = ["outfits"]

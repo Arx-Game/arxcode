@@ -901,12 +901,10 @@ class Clue(SharedMemoryModel):
         ongoing = self.investigation_set.filter(ongoing=True)
         if ongoing:
             value = self.get_completion_value()
+            # make sure investigations have the correct completion value for this clue
             for investigation in ongoing:
-                investigation.completion_value = value
-                if investigation.active:
-                    # do_roll will take care of saving
-                    investigation.do_roll()
-                else:
+                if investigation.completion_value != value:
+                    investigation.completion_value = value
                     investigation.save()
 
 

@@ -21,6 +21,7 @@ from evennia.utils.utils import (make_iter, crop, time_format, variable_from_mod
                                  inherits_from, list_to_string)
 
 from server.utils import arx_utils, prettytable
+from server.utils.exceptions import CommandError
 from commands.base import ArxCommand, ArxPlayerCommand
 from world.dominion.models import CraftingMaterials
 
@@ -53,16 +54,16 @@ def args_are_currency(args):
     if len(arglist) > 3:
         return False
     return True
-    
+
 
 def money_from_args(args, fromobj):
     """
     Checks whether fromobj has enough money for transaction
-    
+
         Args:
             args (str): String we parse values from
             fromobj (ObjectDB): Object we're getting money from
-            
+
         Returns:
             vals (tuple): (Value we're trying to get and available money)
     """
@@ -191,113 +192,116 @@ class CmdGet(ArxCommand):
       get <obj or all>
       get <x silver>
       get <obj or all> from <obj>
+      get/outfit <outfit name> [from <obj>]
 
     Picks up an object from your location and puts it in
-    your inventory.
+    your inventory. (See 'help outfit' on outfit creation.)
     """
     key = "get"
     aliases = ["grab", "take"]
     locks = "cmd:all()"
 
-    def get_money(self, args, caller, fromobj, echo=True):
-        """Gets silver, which isn't an actual object per se"""
-        val, currency = money_from_args(args, fromobj)
-        if val > currency:
-            caller.msg("There isn't enough money here. You tried to get %s, and there is only %s here." % (val,
-                                                                                                           currency))
-            return
-        fromobj.pay_money(val, caller)
-        if echo:
-            self.echo_get_money(val, fromobj)
-        return val
-
-    def echo_get_money(self, amount, fromobj):
-        """Sends a message when we pick up silver"""
-        caller = self.caller
-        if fromobj == caller.location:
-            caller.msg("You pick up %s silver." % amount)
-            caller.location.msg_contents("%s picks up %s silver." % (caller.name, amount), exclude=caller)
-        else:
-            caller.msg("You get %s silver from %s." % (amount, fromobj.name))
-            caller.location.msg_contents("%s picks up %s silver from %s." % (caller.name, amount, fromobj.name),
-                                         exclude=caller)
-
     def func(self):
         """implements the command."""
-        caller = self.caller
+        try:
+            fromobj, loc = self.get_location_from_args()
+            oblist, moved = self.get_oblist_from_args(loc)
+            for obj in oblist:
+                if not check_volume(obj, self.caller):
+                    return
+                if self.caller == obj:
+                    continue
+                if self.caller == obj.location:
+                    self.caller.msg("You already hold {}.".format(obj))
+                    continue
+                if not obj.at_before_move(destination=self.caller, caller=self.caller):
+                    continue
+                moved.append(obj)
+                obj.move_to(self.caller, quiet=True)
+                # calling hook method
+                obj.at_get(self.caller)
+            if not moved:
+                raise CommandError("You didn't get anything.")
+            self.print_success_message(fromobj, moved)
+        except CommandError as err:
+            self.caller.msg(err)
 
+    def get_location_from_args(self):
+        """
+        Splits user input if a container is specified.
+            Returns:
+                container_obj: a container object, or None
+                loc: a container object, or caller's location
+        """
         if not self.args:
-            caller.msg("Get what?")
-            return
-        # check if we're trying to get some coins
-        if args_are_currency(self.args):
-            self.get_money(self.args, caller, caller.location)
-            return
-        args = self.args.split(" from ")
-        if len(args) == 2:
-            fromobj = caller.search(args[1])
+            raise CommandError("What will you {}?".format(self.cmdstring))
+        container_obj = None
+        argslist = self.args.split(" from ", 1)
+        if len(argslist) == 2:
+            container_obj = self.caller.search(argslist[1])
             # noinspection PyAttributeOutsideInit
-            self.args = args[0]
-            if not fromobj:
-                return
-            loc = fromobj
-            if not (fromobj.db.container or fromobj.dead):
-                caller.msg("That is not a container.")
-                return
-            if fromobj.db.locked and not caller.check_permstring("builders"):
-                caller.msg("%s is locked. Unlock it first." % fromobj)
-                return
-            if args_are_currency(self.args):
-                self.get_money(self.args, caller, fromobj)
-                return     
-        else:
-            fromobj = None
-            loc = caller.location
-        moved = []
+            if not container_obj:
+                raise CommandError("Could not get anything.")
+            elif not (container_obj.db.container or container_obj.dead):
+                raise CommandError("That is not a container.")
+            elif container_obj.db.locked and not self.caller.check_permstring("builders"):
+                raise CommandError("You'll have to unlock {} first.".format(container_obj))
+            self.args = argslist[0]
+        loc = container_obj or self.caller.location
+        return container_obj, loc
+
+    def get_oblist_from_args(self, loc):
+        """
+        Records money moved and returns a list of objects to be gotten.
+        """
+        oblist, moved = [], []
         if self.args == "all":
-            oblist = [ob for ob in loc.contents if ob != caller]
-            val = self.get_money(self.args, caller, loc, echo=False)
+            oblist = [ob for ob in loc.contents if ob != self.caller]
+            val = self.get_money(loc)
+            if val:
+                moved.append("%d silver" % val)
+        elif self.check_switches(("outfit", "outfits")):
+            oblist = self.get_oblist_from_outfit(loc)
+        elif args_are_currency(self.args):
+            val = self.get_money(loc)
             if val:
                 moved.append("%d silver" % val)
         else:
-            obj = caller.search(self.args, location=loc, use_nicks=True, quiet=True)
-            if not obj:
-                AT_SEARCH_RESULT(obj, caller, self.args, False)
-                return
+            obj = self.caller.search(self.args, location=loc, use_nicks=True, quiet=True)
+            if not obj or len(make_iter(obj)) > 1:
+                AT_SEARCH_RESULT(obj, self.caller, self.args, False)
             else:
-                if len(make_iter(obj)) > 1:
-                    AT_SEARCH_RESULT(obj, caller, self.args, False)
-                    return
                 oblist = make_iter(obj)
+        return oblist, moved
 
-        for obj in oblist:
-            if caller == obj:
-                caller.msg("You can't get yourself.")
-                continue
-            # print obj, obj.location, caller, caller==obj.location
-            if caller == obj.location:
-                caller.msg("You already hold that.")
-                continue
-            if not obj.at_before_move(destination=caller, caller=caller):
-                return
-            if not check_volume(obj, caller):
-                return
-            moved.append(obj)
-            obj.move_to(caller, quiet=True)
-            # calling hook method
-            obj.at_get(caller)
-        moved_names = ", ".join(str(ob) for ob in moved)
-        if not moved_names:
-            self.msg("You didn't get anything.")
-            return
+    def get_oblist_from_outfit(self, loc):
+        """Creates a list of objects or raises FashionError if no outfit found."""
+        from world.fashion.exceptions import FashionError
+        from world.fashion.fashion_commands import get_caller_outfit_from_args
+        try:
+            outfit = get_caller_outfit_from_args(self.caller, self.args)
+        except FashionError as err:
+            raise CommandError(err)
+        return [ob for ob in outfit.fashion_items.all() if ob.location == loc]
+
+    def get_money(self, fromobj):
+        """Gets silver, which isn't an actual object per se"""
+        val, currency = money_from_args(self.args, fromobj)
+        if val > currency:
+            raise CommandError("Not enough money. You tried to {verb} {val}, but can only {verb} {currency}.".format(
+                               verb=self.cmdstring, val=val, currency=currency))
+        fromobj.pay_money(val, self.caller)
+        return val
+
+    def print_success_message(self, fromobj, moved):
+        """Sends caller and location messages."""
+        moved_names = list_to_string(moved)
         if fromobj:
-            getmsg = "You get %s from %s." % (moved_names, fromobj.name)
-            gotmsg = "%s gets %s from %s." % (caller.name, moved_names, fromobj.name)
-        else:
-            getmsg = "You pick up %s." % moved_names
-            gotmsg = "%s picks up %s." % (caller.name, moved_names)
-        caller.msg(getmsg)
-        caller.location.msg_contents(gotmsg, exclude=caller)
+            moved_names += " from {}".format(fromobj.name)
+        caller_msg = "You {} {}.".format(self.cmdstring, moved_names)
+        loc_msg = "{} {}s {}.".format(self.caller.name, self.cmdstring, moved_names)
+        self.caller.msg(caller_msg)
+        self.caller.location.msg_contents(loc_msg, exclude=self.caller)
 
 
 class CmdDrop(ArxCommand):
@@ -312,6 +316,7 @@ class CmdDrop(ArxCommand):
     """
 
     key = "drop"
+    aliases = ["put"]
     locks = "cmd:all()"
 
     def func(self):
@@ -1507,7 +1512,7 @@ class CmdArxExamine(CmdExamine):
     Append a * before the search string to examine a player.
 
     """
-    
+
     def func(self):
         """Process command"""
         caller = self.caller

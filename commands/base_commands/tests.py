@@ -13,11 +13,10 @@ from world.dominion.models import PlotAction, Plot, Army, RPEvent
 from world.templates.models import Template
 from web.character.models import PlayerAccount
 
-from commands.base_commands.crafting import CmdCraft
 from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -65,7 +64,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
         self.assertEquals(self.template1.applied_to.count(), 0)
 
-        self.setup_cmd(CmdCraft, self.char1)
+        self.setup_cmd(crafting.CmdCraft, self.char1)
         self.call_cmd("{}".format(recipe.name), None)
         self.call_cmd("/name object", None)
         self.call_cmd("/desc [[TEMPLATE_1]]", "Desc set to:\n[[TEMPLATE_1]]")
@@ -86,7 +85,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
         self.assertIsNone(created_obj.ndb.cached_template_desc)
 
-        self.setup_cmd(CmdCraft, self.char2)
+        self.setup_cmd(crafting.CmdCraft, self.char2)
         self.call_cmd("{}".format(recipe.name), None)
         self.call_cmd("/name object", None)
         self.call_cmd("/desc [[TEMPLATE_1]] and [[TEMPLATE_2]]",
@@ -382,7 +381,67 @@ class StoryActionTests(ArxCommandTest):
                                                       'Story{n sekritfoo', subject='Action 1 Published by Testaccount')
 
 
-class OverridesTests(ArxCommandTest):
+class GeneralTests(TestEquipmentMixins, ArxCommandTest):
+    def test_cmd_put(self):
+        self.setup_cmd(general.CmdPut, self.char2)
+        self.call_cmd("a fox mask", "Usage: put <name> in <name>")
+        self.call_cmd("purse1 in purse1", "You can't put an object inside itself.|Nothing moved.")
+        self.purse1.move_to(self.room1)
+        self.purse1.db.locked = True
+        self.call_cmd("a fox mask in purse1", "You'll have to unlock Purse1 first.")
+        self.purse1.db.locked = False
+        self.call_cmd("hairpins1 in purse1", "You put Hairpins1 in Purse1.")
+        self.mask1.db.quality_level = 11
+        self.catsuit1.wear(self.char2)
+        self.mask1.wear(self.char2)
+        self.create_ze_outfit("Bishikiller")
+        self.mask1.remove(self.char2)
+        self.call_cmd("/outfit Bishikiller in purse1", "Slinkity1 is currently worn and cannot be moved.|"
+                                                       "You put A Fox Mask in Purse1.")
+        self.purse1.db.locked = True
+        self.caller = self.char1  # staff
+        self.call_cmd("5 silver in purse1", "You do not have enough money.")
+        self.char1.db.currency = 30.0
+        self.hairpins1.move_to(self.room1)
+        self.mask1.move_to(self.room1)
+        self.obj1.move_to(self.char1)
+        self.call_cmd("5 silver in purse1", "You put 5.0 silver in Purse1.")
+        self.assertEqual(self.purse1.db.currency, 5.0)
+        self.call_cmd("all in purse1", "You put Obj in Purse1.")
+        self.assertEqual(self.char1.db.currency, 25.0)
+        self.assertEqual(self.obj1.location, self.purse1)
+
+
+class OverridesTests(TestEquipmentMixins, ArxCommandTest):
+    def test_cmd_get(self):
+        self.setup_cmd(overrides.CmdGet, self.char2)
+        self.call_cmd("", "What will you get?")
+        self.call_cmd("obj", "You get Obj.")
+        self.obj1.move_to(self.obj2)
+        self.call_cmd("obj from Obj2", "That is not a container.")
+        self.purse1.move_to(self.room1)
+        self.obj1.move_to(self.purse1)
+        self.purse1.db.locked = True
+        self.call_cmd("obj from purse1", "You'll have to unlock Purse1 first.")
+        self.purse1.db.locked = False
+        self.call_cmd("all from Purse1", "You get Obj from Purse1.")
+        self.call_cmd("5 silver from purse1", "Not enough money. You tried to get 5.0, but can only get 0.0.")
+        self.purse1.db.currency = 30.0
+        self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
+        self.assertEqual(self.obj1.location, self.char2)
+        self.assertEqual(self.char2.db.currency, 5.0)
+        self.assertEqual(self.purse1.db.currency, 25.0)
+        self.mask1.db.quality_level = 11
+        self.catsuit1.wear(self.char2)
+        self.mask1.wear(self.char2)
+        self.create_ze_outfit("Bishikiller")
+        self.mask1.remove(self.char2)
+        self.mask1.move_to(self.purse1)
+        self.call_cmd("/outfit Bishikiller from purse1", "You get A Fox Mask from Purse1.")
+        self.purse1.db.locked = True
+        self.caller = self.char1  # staff
+        self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
+
     def test_cmd_give(self):
         from typeclasses.wearable.wearable import Wearable
         from evennia.utils.create import create_object
@@ -405,12 +464,13 @@ class OverridesTests(ArxCommandTest):
         self.call_cmd("/resource economic,50 to TestAccount2", "You give 50 economic resources to Char2.")
         self.assertEqual(self.assetowner2.economic, 50)
         self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
+
     def test_cmd_inventory(self):
         self.setup_cmd(overrides.CmdInventory, self.char1)
         self.char1.currency = 125446
         self.assetowner.economic = 5446
         self.call_cmd("","You currently have 0 xp and 100 ap.\n"
-                      "Maximum AP: 300  Weekly AP Gain: 150\n"
+                      "Maximum AP: 300  Weekly AP Gain: 140\n"
                       "You are carrying (Volume: 0/100):\n"
                       "Money: coins worth a total of 125,446.00 silver pieces\n"
                       "Bank Account:           0 silver coins\n"
@@ -419,9 +479,6 @@ class OverridesTests(ArxCommandTest):
                       "|__ Fame:               0  Military:     0\n"
                       "|__ Grandeur:           0  Social:       0\n"
                       "|__ Propriety:          0\nMaterials:")
-
-
-
 
     def test_cmd_say(self):
         self.setup_cmd(overrides.CmdArxSay, self.char1)

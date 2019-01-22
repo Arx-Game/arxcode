@@ -10,7 +10,7 @@ from evennia.utils import utils, evtable
 from evennia.utils.utils import make_iter, variable_from_module
 
 from server.utils import prettytable
-from server.utils.arx_utils import raw
+from server.utils.arx_utils import raw, list_to_string
 from commands.base import ArxCommand, ArxPlayerCommand
 from commands.mixins import RewardRPToolUseMixin
 
@@ -1205,13 +1205,77 @@ class CmdPut(ArxCommand):
     """
     Puts an object inside a container
     Usage:
-        put <object or all> in <object>
+        put <object or all or x silver> in <object>
+        put/outfit <outfit name> in <object>
 
     Places an object you hold inside an unlocked
-    container.
+    container. (See 'help outfit' for outfit creation.)
     """
     key = "put"
     locks = "cmd:all()"
+
+    def func(self):
+        """Executes Put command"""
+        from .overrides import args_are_currency
+        caller = self.caller
+
+        args = self.args.split(" in ", 1)
+        if len(args) != 2:
+            caller.msg("Usage: put <name> in <name>")
+            return
+        dest = caller.search(args[1], use_nicks=True, quiet=True)
+        if not dest:
+            return AT_SEARCH_RESULT(dest, caller, args[1])
+        dest = make_iter(dest)[0]
+        if args_are_currency(args[0]):
+            self.put_money(args[0], dest)
+            return
+        if self.check_switches(("outfit", "outfits")):
+            from world.fashion.exceptions import FashionError
+            try:
+                obj_list = self.get_oblist_from_outfit(args[0])
+            except FashionError as err:
+                return caller.msg(err)
+        elif args[0] == "all":
+            obj_list = caller.contents
+        else:
+            obj = caller.search(args[0], location=caller)
+            if not obj:
+                return
+            obj_list = [obj]
+        obj_list = [ob for ob in obj_list if ob.at_before_move(dest, caller=caller)]
+        success = []
+        for obj in obj_list:
+            if obj == dest:
+                caller.msg("You can't put an object inside itself.")
+                continue
+            if not dest.db.container:
+                caller.msg("That is not a container.")
+                return
+            if dest.db.locked and not self.caller.check_permstring("builders"):
+                caller.msg("You'll have to unlock {} first.".format(dest.name))
+                return
+            if dest in obj.contents:
+                caller.msg("You can't place an object in something it contains.")
+                continue
+            max_volume = dest.db.max_volume or 0
+            volume = obj.db.volume or 0
+            if dest.volume + volume > max_volume:
+                caller.msg("No more room; {} won't fit.".format(obj))
+                continue
+            if not obj.access(caller, 'get'):
+                caller.msg("You cannot move {}.".format(obj))
+                continue
+            obj.move_to(dest)
+            success.append(obj)
+            from time import time
+            obj.db.put_time = time()
+        if success:
+            success_str = "%s in %s" % (list_to_string(success), dest.name)
+            caller.msg("You put %s." % success_str)
+            caller.location.msg_contents("%s puts %s." % (caller.name, success_str), exclude=caller)
+        else:
+            self.msg("Nothing moved.")
 
     def put_money(self, args, destination):
         """
@@ -1229,63 +1293,12 @@ class CmdPut(ArxCommand):
         self.caller.pay_money(val, destination)
         self.caller.msg("You put %s silver in %s." % (val, destination))
 
-    def func(self):
-        """Executes Put command"""
-        from .overrides import args_are_currency
-        caller = self.caller
-        args = self.args.split(" in ")
-        if len(args) != 2:
-            caller.msg("Usage: put <name> in <name>")
-            return
-        dest = caller.search(args[1], use_nicks=True, quiet=True)
-        if not dest:
-            return AT_SEARCH_RESULT(dest, caller, args[1])
-        dest = make_iter(dest)[0]
-        if args_are_currency(args[0]):
-            self.put_money(args[0], dest)
-            return
-        if args[0] == "all":
-            obj_list = caller.contents
-        else:
-            obj = caller.search(args[0], location=caller)
-            if not obj:
-                return
-            obj_list = [obj]
-        obj_list = [ob for ob in obj_list if ob.at_before_move(dest, caller=caller)]
-        success = []
-        for obj in obj_list:
-            if not obj:
-                continue
-            if obj == dest:
-                caller.msg("You can't put an object inside itself.")
-                continue
-            if not dest.db.container:
-                caller.msg("%s is not a container." % dest.name)
-                continue
-            if dest.db.locked:
-                caller.msg("%s is locked. Unlock it first." % dest.name)
-                continue
-            if dest in obj.contents:
-                caller.msg("You can't place an object in something it contains.")
-                continue
-            max_volume = dest.db.max_volume or 0
-            volume = obj.db.volume or 0
-            if dest.volume + volume > max_volume:
-                caller.msg("That won't fit in there.")
-                continue
-            if not obj.access(caller, 'get'):
-                caller.msg("You cannot move that.")
-                continue
-            obj.move_to(dest)
-            success.append(obj)
-            from time import time
-            obj.db.put_time = time()
-        if success:
-            success_str = "%s in %s" % (", ".join(ob.name for ob in success), dest.name)
-            caller.msg("You put %s." % success_str)
-            caller.location.msg_contents("%s puts %s." % (caller.name, success_str), exclude=caller)
-        else:
-            self.msg("Nothing moved.")
+    def get_oblist_from_outfit(self, args):
+        """Creates a list of objects or raises FashionError if no outfit found."""
+        from world.fashion.fashion_commands import get_caller_outfit_from_args
+        outfit = get_caller_outfit_from_args(self.caller, args)
+        obj_list = [ob for ob in outfit.fashion_items.all() if ob.location == self.caller]
+        return obj_list
 
 
 class CmdGradient(ArxPlayerCommand):
