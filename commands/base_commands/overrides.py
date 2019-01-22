@@ -316,7 +316,6 @@ class CmdDrop(ArxCommand):
     """
 
     key = "drop"
-    aliases = ["put"]
     locks = "cmd:all()"
 
     def func(self):
