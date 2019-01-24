@@ -1230,6 +1230,17 @@ class XPCommandTests(ArxCommandTest):
         self.call_cmd("/spend dodge", 'You have increased your dodge for a cost of 23 xp. XP remaining: 0')
         # TODO: other switches
 
+    def test_award_xp(self):
+        self.setup_cmd(xp.CmdAwardXP, self.account)
+        self.call_cmd("testaccount2=asdf", "Invalid syntax: Must have an xp amount.")
+        self.char2.db.xp = 0
+        self.call_cmd("testaccount2=5", 'Giving 5 xp to Char2.')
+        self.assertEqual(self.char2.db.xp, 5)
+        self.account2.inform = Mock()
+        self.call_cmd("testaccount2=15/hi u r gr8", 'Giving 15 xp to Char2. Message sent to player: hi u r gr8')
+        self.assertEqual(self.char2.db.xp, 20)
+        self.account2.inform.assert_called_with('You have been awarded 15 xp: hi u r gr8', category="XP")
+
 
 class HelpCommandTests(ArxCommandTest):
     def test_cmd_help(self):
