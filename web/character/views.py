@@ -9,6 +9,7 @@ import cloudinary.forms
 import cloudinary.uploader
 from cloudinary import api
 from cloudinary.forms import cl_init_js_callbacks
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
@@ -725,7 +726,7 @@ class CharacterMixin(object):
         return context
 
 
-class FlashbackListView(CharacterMixin, ListView):
+class FlashbackListView(LoginRequiredMixin, CharacterMixin, ListView):
     """View for listing flashbacks"""
     model = Flashback
     template_name = "character/flashback_list.html"
@@ -736,12 +737,12 @@ class FlashbackListView(CharacterMixin, ListView):
         if not user or not user.is_authenticated():
             raise PermissionDenied
         if user.char_ob != self.character and not (user.is_staff or user.check_permstring("builders")):
-            raise PermissionDenied
+            raise Http404
         entry = self.character.roster
         return Flashback.objects.filter(Q(owner=entry) | Q(allowed=entry)).distinct()
 
 
-class FlashbackCreateView(CharacterMixin, CreateView):
+class FlashbackCreateView(LoginRequiredMixin, CharacterMixin, CreateView):
     """View for creating a flashback"""
     model = Flashback
     template_name = "character/flashback_create_form.html"
@@ -775,7 +776,7 @@ class FlashbackCreateView(CharacterMixin, CreateView):
         return response
 
 
-class FlashbackAddPostView(CharacterMixin, DetailView):
+class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
     """View for an individual flashback or adding a post to it"""
     model = Flashback
     form_class = FlashbackPostForm
@@ -795,7 +796,7 @@ class FlashbackAddPostView(CharacterMixin, DetailView):
         context = super(FlashbackAddPostView, self).get_context_data(**kwargs)
         user = self.request.user
         if user not in self.get_object().all_players and not (user.is_staff or user.check_permstring("builders")):
-            raise PermissionDenied
+            raise Http404
         context['form'] = FlashbackPostForm()
         return context
 

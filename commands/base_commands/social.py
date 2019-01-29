@@ -2632,42 +2632,42 @@ class CmdDonate(ArxCommand):
     def func(self):
         """Execute command."""
         caller = self.caller
-        if "score" in self.switches:
-            return self.display_score()
-        if not self.lhs:
-            self.list_donations(caller)
-            return
-        group = self.get_donation_target()
-        if not group:
-            return
         try:
-            val = int(self.rhs)
-            if val > caller.db.currency:
-                caller.msg("Not enough money.")
+            if "score" in self.switches:
+                return self.display_score()
+            if not self.lhs:
+                self.list_donations(caller)
                 return
-            if val <= 0:
-                raise ValueError
-            if not caller.player.pay_action_points(self.action_point_cost):
-                self.msg("Not enough AP.")
+            group = self.get_donation_target()
+            if not group:
                 return
-            caller.pay_money(val)
-            group.donate(val, self.caller)
-        except (TypeError, ValueError):
-            caller.msg("Must give a positive number.")
-            return
+            try:
+                val = int(self.rhs)
+                if val > caller.db.currency:
+                    raise CommandError("Not enough money.")
+                if val <= 0:
+                    raise ValueError
+                if not caller.player.pay_action_points(self.action_point_cost):
+                    raise CommandError("Not enough AP.")
+                caller.pay_money(val)
+                group.donate(val, self.caller)
+            except (TypeError, ValueError):
+                raise CommandError("Must give a positive number.")
+        except CommandError as err:
+            caller.msg(err)
 
     def list_donations(self, caller):
         """Lists donations to the caller"""
-        caller.msg("{wDonations:{n")
+        msg = "{wDonations:{n\n"
         table = PrettyTable(["{wGroup{n", "{wTotal{n"])
         for donation in self.donations:
             table.add_row([str(donation.receiver), donation.amount])
-        caller.msg(str(table))
+        msg += str(table)
+        caller.msg(msg)
 
     def get_donation_target(self):
         """Get donation object"""
-        result = self.get_org_or_npc_from_args()
-        org, npc = result
+        org, npc = self.get_org_or_npc_from_args()
         if not org and not npc:
             return
         if "hype" in self.switches:
@@ -2683,9 +2683,10 @@ class CmdDonate(ArxCommand):
 
     def get_org_or_npc_from_args(self):
         """Get a tuple of org, npc used for getting the donation object"""
-        org = None
-        npc = None
+        org, npc = None, None
         if "hype" in self.switches:
+            if len(self.lhslist) < 2:
+                raise CommandError("Usage: <player>,<group>=<amount>")
             name = self.lhslist[1]
         else:
             name = self.lhs
@@ -2699,7 +2700,7 @@ class CmdDonate(ArxCommand):
             try:
                 npc = InfluenceCategory.objects.get(name__iexact=name)
             except InfluenceCategory.DoesNotExist:
-                self.msg("Could not find an organization or npc group by the name %s." % name)
+                raise CommandError("Could not find an organization or npc group by the name %s." % name)
         return org, npc
 
     def display_score(self):
@@ -2712,16 +2713,16 @@ class CmdDonate(ArxCommand):
         """Displays a list of the top 10 donors for a given group"""
         org, npc = self.get_org_or_npc_from_args()
         if org and org.secret:
-            self.msg("Cannot display donations for secret orgs.")
-            return
+            raise CommandError("Cannot display donations for secret orgs.")
         group = org or npc
         if not group:
             return
-        self.msg("Top donors for %s" % group)
+        msg = "Top donors for %s\n" % group
         table = PrettyTable(["Donor", "Amount"])
         for donation in group.donations.filter(amount__gt=0).distinct().order_by('-amount'):
             table.add_row([str(donation.giver), str(donation.amount)])
-        self.msg(str(table))
+        msg += str(table)
+        self.msg(msg)
 
     def display_top_donor_for_each_group(self):
         """Displays the highest donor for each group"""

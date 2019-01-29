@@ -365,8 +365,8 @@ class Attack(object):
                 if not target.conscious:
                     can_riposte = False
                 if can_riposte and target and botcher:
-                    riposte_attack = target.combat.do_attack(botcher, allow_botch=False, free_attack=True,
-                                                             is_riposte=True)
+                    riposte_attack = target.combat.do_attack(target=botcher, attacker=target, allow_botch=False,
+                                                             free_attack=True, is_riposte=True)
                 else:
                     self.lost_turn_penalty = 1  # Not += because cleave might accumulate a bunch
         return riposte_attack

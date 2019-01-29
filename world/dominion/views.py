@@ -9,6 +9,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.http import Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.urlresolvers import reverse
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
 from django.template.loader import render_to_string
@@ -134,7 +135,7 @@ class RPEventCreateView(LoginRequiredMixin, CreateView):
         try:
             kwargs['owner'] = self.request.user.Dominion
         except AttributeError:
-            raise Http404
+            raise PermissionDenied
         return kwargs
 
     def get_success_url(self):
@@ -235,7 +236,7 @@ def event_comment(request, pk):
     """
     char = request.user.char_ob
     if not char:
-        raise Http404
+        raise PermissionDenied
     event = get_object_or_404(RPEvent, id=pk)
     if request.method == 'POST':
         form = RPEventCommentForm(request.POST)
@@ -270,7 +271,7 @@ def map_image(request):
 
     TERRAIN_NAMES = {
         Land.COAST: 'Coastal',
-        Land.DESERT: 'Deset',
+        Land.DESERT: 'Desert',
         Land.GRASSLAND: 'Grassland',
         Land.HILL: 'Hills',
         Land.MOUNTAIN: 'Mountains',

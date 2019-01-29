@@ -226,7 +226,7 @@ class ViewTests(ArxTest):
 
     def test_view_flashbacks(self):
         response = self.client.get(reverse('character:list_flashbacks', kwargs={'object_id': self.char2.id}))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(self.client.login(username='TestAccount2', password='testpassword'), True)
         response = self.client.get(reverse('character:list_flashbacks', kwargs={'object_id': self.char2.id}))
         self.assertEqual(response.status_code, 200)
