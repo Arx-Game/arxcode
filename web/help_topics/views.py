@@ -11,6 +11,13 @@ from world.dominion.models import (CraftingRecipe, CraftingMaterialType,
 def topic(request, object_key):
     object_key = object_key.lower()
     topic_ob = get_object_or_404(HelpEntry, db_key__iexact=object_key)
+    can_see = False
+    try:
+        can_see = topic_ob.access(request.user, 'view', default=True)
+    except AttributeError:
+        pass
+    if not can_see:
+        raise PermissionDenied
     return render(request, 'help_topics/topic.html', {'topic': topic_ob, 'page_title': object_key})
 
 
@@ -48,7 +55,7 @@ def list_topics(request):
     secret_orgs = []
     # noinspection PyBroadException
     try:
-        if user.is_staff:
+        if user.is_staff or user.check_permstring("can_see_secret_orgs"):
             secret_orgs = Organization.objects.filter(secret=True)
         else:
             secret_orgs = Organization.objects.filter(Q(members__deguilded=False) & Q(secret=True)
