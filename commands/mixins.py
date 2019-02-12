@@ -89,6 +89,28 @@ class ArxCommmandMixin(object):
         except KeyError:
             raise self.error_class("Invalid Choice. Try one of the following: %s" % ", ".join(original_strings))
 
+    def confirm_command(self, attr, val, prompt_msg):
+        """
+        Prompts the caller to confirm a command.
+
+            Args:
+                attr: Name of the confirmation check.
+                val: Value of the NAttribute to use.
+                prompt_msg: Confirmation prompt message.
+
+            Returns:
+                True if caller has the NAttribute set, False if we have to set
+                it and prompt them for confirmation.
+        """
+        from datetime import date
+        attr = "confirm_%s" % attr
+        val = "%s_%s" % (val, date)
+        if self.caller.nattributes.get(attr) == val:
+            self.caller.nattributes.remove(attr)
+            return True
+        self.caller.nattributes.add(attr, val)
+        self.caller.msg(prompt_msg)
+
 
 class FormCommandMixin(object):
     """Mixin to have command act as a form"""

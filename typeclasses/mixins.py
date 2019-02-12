@@ -973,26 +973,6 @@ class MsgMixins(object):
         """A quick way to ensure a room message, no matter what it's called on. Requires rooms have null location."""
         self.get_room().msg_contents(text=text, **kwargs)
 
-    def confirmation(self, attr, val, prompt_msg):
-        """
-        Prompts the player or character to confirm a choice.
-
-            Args:
-                attr: Name of the confirmation check.
-                val: Value of the NAttribute to use.
-                prompt_msg: Confirmation prompt message.
-
-            Returns:
-                True if we already have the NAttribute set, False if we have to set
-                it and prompt them for confirmation.
-        """
-        attr = "confirm_%s" % attr
-        if self.nattributes.get(attr) == val:
-            self.nattributes.remove(attr)
-            return True
-        self.nattributes.add(attr, val)
-        self.msg(prompt_msg)
-
 
 class LockMixins(object):
     def has_lock_permission(self, caller):

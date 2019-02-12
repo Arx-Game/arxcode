@@ -132,8 +132,7 @@ class InvestigationFormCommand(ArxCommand):
         return True
 
     def refuse_new_clue(self, reason):
-        msg = reason + " Try different tags or abort."
-        self.msg(msg)
+        self.msg("%s Try different tags or abort." % reason)
 
     def offer_placeholder_clue(self):
         """
@@ -141,14 +140,12 @@ class InvestigationFormCommand(ArxCommand):
         """
         ap = self.new_clue_cost
         topic = self.topic_string(color=True)
-        attr = "new_clue_write"
-        prompt = "An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. "
-        prompt += "It will require a great deal of energy (|c%s|n action points) to investigate. " % ap
-        prompt += "Your tag requirements: %s\n" % topic
-        prompt += "|yRepeat the command to confirm and continue.|n"
-        if not self.caller.confirmation(attr, topic, prompt):
+        prompt = ("An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. "
+                 "It will require a great deal of energy (|c%s|n action points) to investigate. "
+                 "Your tag requirements: %s\n|yRepeat the command to confirm and continue.|n" % (ap, topic))
+        if not self.confirm_command("new_clue_write", topic, prompt):
             return False
-        if not self.caller.player.pay_action_points(ap):  # TODO: check command name
+        if not self.caller.player.pay_action_points(ap):
             self.refuse_new_clue("You're too busy for such an investigation. (low AP)")
             return False
         return True

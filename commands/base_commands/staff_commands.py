@@ -1151,12 +1151,11 @@ class CmdGMNotes(ArxCommand):
         """Will request confirmation before deleting a populated tag."""
         tag = self.get_tag(self.args)
         tag_display = tag.display_tagged_objects()
-        confirm_msg = tag_display + "\n|yRepeat command to delete the '%s' tag anyway.|n" % tag
-        if tag_display and not self.caller.confirmation("delete_tag", tag, confirm_msg):
+        confirm_msg = "%s\n|yRepeat command to delete the '%s' tag anyway.|n" % (tag_display, tag)
+        if tag_display and not self.confirm_command("delete_tag", tag, confirm_msg):
             return
         else:
-            delete_msg = "Deleting the '%s' tag. Poof." % tag
-            self.msg(delete_msg)
+            self.msg("Deleting the '%s' tag. Poof." % tag)
             tag.delete()
 
     def view_revelation_tables(self):

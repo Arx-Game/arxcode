@@ -88,7 +88,7 @@ class CmdAdmDomain(ArxPlayerCommand):
     locks = "cmd:perm(Wizards)"
     aliases = ["@admin_domains", "@admdomain", "@admdomains", "@adm_domain", "@adm_domains"]
     help_category = "Dominion"
-    
+
     def func(self):
         caller = self.caller
         if not self.args:
@@ -644,7 +644,7 @@ class CmdAdmAssets(ArxPlayerCommand):
                 self.msg("Other matches: %s" % ", ".join(repr(ob) for ob in other_matches))
         else:
             self.msg("Owner: %r" % owner)
-        
+
     def func(self):
         caller = self.caller
         if not self.switches and not self.args:
@@ -942,7 +942,7 @@ class CmdAdmFamily(ArxPlayerCommand):
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
     aliases = ["@admfamily", "@adm_family"]
-    
+
     def match_player(self, args):
         pcs = PlayerOrNpc.objects.filter(player__username__iexact=args)
         npcs = PlayerOrNpc.objects.filter(npc_name__iexact=args)
@@ -954,7 +954,7 @@ class CmdAdmFamily(ArxPlayerCommand):
             self.caller.msg("Too many matches for %s: %s." % (args, ", ".join(str(ob) for ob in matches)))
             return
         return matches[0]
-    
+
     def func(self):
         caller = self.caller
         if not self.args:
@@ -1075,11 +1075,11 @@ class CmdSetRoom(ArxCommand):
         loc = caller.location
         if not loc or loc.typeclass_path != settings.BASE_ROOM_TYPECLASS:
             caller.msg("You are not in a valid room.")
-            return 
+            return
         if "barracks" in self.switches:
             if not self.args:
                 caller.msg("Valid owners: %s" % ", ".join(str(owner.owner) for owner in AssetOwner.objects.all()))
-                return           
+                return
             players = AssetOwner.objects.filter(player__player__username__iexact=self.args)
             npcs = AssetOwner.objects.filter(player__npc_name__iexact=self.args)
             orgs = AssetOwner.objects.filter(organization_owner__name__iexact=self.args)
@@ -1198,7 +1198,7 @@ class CmdSetRoom(ArxCommand):
                 caller.msg("Some of the rhs failed to convert to numbers.")
                 caller.msg("Aborting setup.")
                 return
-            
+
             entrances = list(ObjectDB.objects.filter(id__in=id_list))
             valid_entrances = list(ObjectDB.objects.filter(db_destination=loc))
             invalid = [ent for ent in entrances if ent not in valid_entrances]
@@ -1515,7 +1515,7 @@ class CmdArmy(ArxPlayerCommand):
             self.msg("The army is full. Its units must be transferred to a different army or combined first.")
             return False
         return True
-        
+
     def view_class_stats(self):
         """
         Views stats for a unit class determined from our args.
@@ -1762,7 +1762,7 @@ class CmdArmy(ArxPlayerCommand):
             army.change_temp_owner(self.caller, None)
             return
         self.msg("Invalid switch.")
-        
+
 
 class CmdOrganization(ArxPlayerCommand):
     """
@@ -1807,7 +1807,7 @@ class CmdOrganization(ArxPlayerCommand):
     locks = "cmd:all()"
     help_category = "Dominion"
     org_locks = ("edit", "boot", "withdraw", "setrank", "invite",
-                 "setruler", "view", "guards", "build", "briefing", 
+                 "setruler", "view", "guards", "build", "briefing",
                  "declarations", "army", "informs", "transactions",
                  "viewassets", "memberdesc", "motd", "admin_petition", "view_petition")
 
@@ -1827,7 +1827,7 @@ class CmdOrganization(ArxPlayerCommand):
         org = myorgs.get(name__iexact=args)
         member = caller.Dominion.memberships.get(organization=org)
         return org, member
-    
+
     def disp_org_locks(self, caller, org):
         table = PrettyTable(["{wPermission{n", "{wRank{n"])
         for lock in self.org_locks:
@@ -1861,7 +1861,7 @@ class CmdOrganization(ArxPlayerCommand):
         except Member.DoesNotExist:
             self.msg("%s is not a member of %s." % (player, org))
             return
-    
+
     def func(self):
         caller = self.caller
         myorgs = Organization.objects.filter(Q(members__player__player=caller)
@@ -1997,11 +1997,9 @@ class CmdOrganization(ArxPlayerCommand):
                 cost = 20 - (2 * org.social_modifier)
                 if cost < 1:
                     cost = 1
-                if caller.ndb.org_clue_cost_warning != org:
-                    caller.ndb.org_clue_cost_warning = org
-                    self.msg("The cost will be %s. Execute the command again to pay it." % cost)
+                prompt_msg = "The cost will be %s. Execute the command again to pay it." % cost
+                if not self.confirm_command("org_clue_cost", "%s_%s" % (org, clue.id), prompt_msg):
                     return
-                caller.ndb.org_clue_cost_warning = None
                 if not caller.pay_action_points(cost):
                     self.msg("You cannot afford to pay %s AP." % cost)
                     return
@@ -2242,7 +2240,7 @@ class CmdOrganization(ArxPlayerCommand):
             caller.msg("You have set %s's rank to %s." % (player, rank))
             player.msg("Your rank has been set to %s in %s." % (rank, org))
             return
-        # other switches can omit the org name if we're only a member of one org   
+        # other switches can omit the org name if we're only a member of one org
         if not self.rhs:
             if len(myorgs) > 1:
                 caller.msg("You belong to more than one organization and must give its name.")
@@ -2483,7 +2481,7 @@ class CmdPatronage(ArxPlayerCommand):
             dompc = self.caller.Dominion
         except AttributeError:
             dompc = setup_utils.setup_dom_for_char(self.caller.char_ob)
-        if not self.args and not self.switches:        
+        if not self.args and not self.switches:
             caller.msg(self.display_patronage(dompc), options={'box': True})
             return
         if self.args:
@@ -2552,7 +2550,7 @@ class CmdPatronage(ArxPlayerCommand):
             caller.ndb.pending_patron = None
             return
         if 'abandon' in self.switches:
-            old = dompc.patron          
+            old = dompc.patron
             if old:
                 dompc.patron = None
                 dompc.save()

@@ -1,5 +1,5 @@
 cloudinary==1.5.0
-Django==1.11.18
+Django==1.11.20
 django-bootstrap-form==3.2.1
 django-classy-tags==0.8.0
 django-crispy-forms==1.7.0
