@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
     <div class="container">
-        <h2>Lore Topics</h2>
+        <h2>Revelation Topics</h2>
         <table class="table table-hover">
             <tr>
                 <th>ID</th>
                 <th>Title</th>
             </tr>
-            {% for entry in lore %}
+            {% for entry in revelations %}
             <tr>
                 <td><a href="/admin/character/revelation/{{ entry.id }}/change">{{ entry.id }}</a></td>
                 <td>{{ entry.name }}</td>
@@ -48,29 +48,17 @@
         </table>
         <h2>Lore Categories</h2>
         <table class="table table-hover">
-            <tr>
-                <th>Title</th>
-                <th>Description</th>
-            </tr>
             {% for category in categories %}
             <tr>
-                <td>{{ category.title}}</td>
-                <td>{{ category.description }}</td>
+                <td><strong>{{ category.title}}</strong><br>{{ category.description }}</td>
             </tr>
             {% endfor %}
         </table>
         <h2>Lore Entries</h2>
         <table class="table table-hover">
-            <tr>
-                <th>Title</th>
-                <th>Question</th>
-                <th>Answer</th>
-            </tr>
             {% for entry in entries %}
             <tr>
-                <td>{{ entry.title }}</td>
-                <td>{{ entry.question }}</td>
-                <td>{{ entry.answer }}</td>
+                <td><strong>{{ entry.title }}</strong><br>Question: {{ entry.question }}<p>Answer: {{ entry.answer }}</p></td>
             </tr>
             {% endfor %}
         </table>

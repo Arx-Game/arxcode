@@ -15,8 +15,8 @@ def admin_search(request):
     if not search_term:
         return render(request, 'admintools/search.html', {'page_title': 'Admin Search Tool'})
 
-    lore_qs = Revelation.objects.filter(Q(name__icontains=search_term) | Q(desc__icontains=search_term) |
-                                        Q(gm_notes__icontains=search_term))
+    rev_qs = Revelation.objects.filter(Q(name__icontains=search_term) | Q(desc__icontains=search_term) |
+                                       Q(gm_notes__icontains=search_term))
 
     clue_qs = Clue.objects.filter(Q(name__icontains=search_term) | Q(desc__icontains=search_term) |
                                   Q(gm_notes__icontains=search_term) | Q(search_tags__name__icontains=search_term))
@@ -35,7 +35,7 @@ def admin_search(request):
 
     context = {
         'page_title': 'Admin Search Tool',
-        'lore': lore_qs,
+        'revelations': rev_qs,
         'clues': clue_qs,
         'crisis_actions': crisis_qs,
         'entries': entries,
