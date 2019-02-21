@@ -57,6 +57,8 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/bbaltread
         @settings/ignore_messenger_notifications
         @settings/ignore_messenger_deliveries
+        @settings/ignore_weather
+        @settings/ignore_model_emits
         @settings/newline_on_messages
         @settings/private_mode
         @settings/ic_only
@@ -65,8 +67,6 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/name_color <color string>
         @settings/verbose_where
         @settings/emit_label
-        @settings/ignore_weather
-        @settings/ignore_model_emits
 
     Switches: /brief suppresses room descs when moving through rooms.
     /posebreak adds a newline between poses from characters.
@@ -76,17 +76,17 @@ class CmdGameSettings(ArxPlayerCommand):
     /bbaltread allows you to read @bb messages on your alts.
     /ignore_messenger_notifications suppresses messenger notifications.
     /ignore_messenger_deliveries will ignore message deliveries to others.
+    /ignore_weather will disable weather emits.
+    /ignore_model_emits will ignore modeling result emits.
     /private_mode prevents logging any messages that are sent to you.
     /ic_only prevents you from receiving pages.
-    /quote_color lets you set a color for dialogue inside quotations.
-    /name_color sets any occurance of your character's name to that color.
-    (Note: name_color currently doesn't revert to quote_color mid-quote)
+    /quote_color sets a color for dialogue inside quotations.
+        See 'help @color' for usage of color codes.
+    /name_color sets a color for occurances of your character's name.
+        Currently name_color doesn't revert back to quote_color mid-quote.
     /verbose_where shows any roomtitle information that someone has set
-    about their current activities, when using the +where command.
+        about their current activities, when using the +where command.
     /emit_label will prefix each emit with its author.
-    /ignore_weather will disable weather emits.
-    /ignore_model_emits will ignore modeling result emits, in case you
-    wish to cut down on such things at parties.
     """
     key = "@settings"
     locks = "cmd:all()"
@@ -97,40 +97,6 @@ class CmdGameSettings(ArxPlayerCommand):
                       'ignore_messenger_deliveries', 'newline_on_messages', 'private_mode',
                       'ic_only', 'ignore_bboard_notifications', 'quote_color', 'name_color',
                       'emit_label', 'ignore_weather', 'ignore_model_emits')
-
-    def togglesetting(self, char, attr, tag=False):
-        """Toggles a setting for the caller"""
-        caller = self.caller
-        if tag:
-            if not char.tags.get(attr):
-                self.msg("%s is now on." % attr)
-                char.tags.add(attr)
-            else:
-                self.msg("%s is now off." % attr)
-                char.tags.remove(attr)
-                char.tags.all()  # update cache until there's a fix for that
-            return
-        char.attributes.add(attr, not char.attributes.get(attr))
-        if not char.attributes.get(attr):
-            caller.msg("%s is now off." % attr)
-        else:
-            caller.msg("%s is now on." % attr)
-
-    def set_quote_color(self, char):
-        """Sets quote color for the caller"""
-        if not self.args:
-            char.attributes.remove("pose_quote_color")
-        else:
-            char.db.pose_quote_color = self.args
-        char.msg('Text will appear inside quotes "%slike this.{n"' % self.args)
-
-    def set_name_color(self, char):
-        """Sets name color for the caller"""
-        if not self.args:
-            char.attributes.remove("name_color")
-        else:
-            char.db.name_color = self.args
-        char.msg('Your name will appear like this: %s%s{n.' % (self.args, char.key))
 
     def func(self):
         """Executes setting command"""
@@ -188,10 +154,10 @@ class CmdGameSettings(ArxPlayerCommand):
             self.togglesetting(caller, "no_post_notifications", tag=True)
             return
         if "quote_color" in switches:
-            self.set_quote_color(char)
+            self.set_text_colors(char, "pose_quote_color")
             return
         if "name_color" in switches:
-            self.set_name_color(char)
+            self.set_text_colors(char, "name_color")
             return
         if "emit_label" in switches:
             self.togglesetting(char, "emit_label", tag=True)
@@ -203,6 +169,40 @@ class CmdGameSettings(ArxPlayerCommand):
             self.togglesetting(char, "ignore_model_emits")
             return
         caller.msg("Invalid switch. Valid switches are: %s" % ", ".join(self.valid_switches))
+
+    def togglesetting(self, char, attr, tag=False):
+        """Toggles a setting for the caller"""
+        caller = self.caller
+        if tag:
+            if not char.tags.get(attr):
+                self.msg("%s is now on." % attr)
+                char.tags.add(attr)
+            else:
+                self.msg("%s is now off." % attr)
+                char.tags.remove(attr)
+                char.tags.all()  # update cache until there's a fix for that
+            return
+        char.attributes.add(attr, not char.attributes.get(attr))
+        if not char.attributes.get(attr):
+            caller.msg("%s is now off." % attr)
+        else:
+            caller.msg("%s is now on." % attr)
+
+    def set_text_colors(self, char, attr):
+        """Sets either pose_quote_color or name_color for the caller"""
+        args = self.args
+        if not args:
+            char.attributes.remove(attr)
+            char.msg('Cleared %s setting.' % attr)
+        else:
+            if not args.startswith(("|", "{")):
+                args = "|%s" % args
+            if attr == "pose_quote_color":
+                char.db.pose_quote_color = args
+                char.msg('Text in quotes will appear %s"like this."|n' % args)
+            else:
+                char.db.name_color = args
+                char.msg('Mentions of your name will look like: %s%s|n' % (args, char.key))
 
 
 class CmdGlance(ArxCommand):
