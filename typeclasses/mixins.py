@@ -915,7 +915,7 @@ class MsgMixins(object):
                     origin = from_obj
                     if not from_obj and options.get('is_magic', False):
                         origin = "Magic System"
-                    self.ndb.pose_history.append((origin, text))
+                    self.ndb.pose_history.append((str(origin), text))
                 except AttributeError:
                     pass
         if options.get('box', False):
