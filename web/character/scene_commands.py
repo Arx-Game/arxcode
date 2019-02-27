@@ -1,6 +1,6 @@
 """
 Commands for flashbacks and other scene management stuff in the Character app.
-Flashbacks are for the Arx equivalent of play-by-post: players can create a 
+Flashbacks are for the Arx equivalent of play-by-post: players can create a
 flashback of a scene that happened in the past with a clear summary and end-goal
 in mind, and then invite others to RP about it.
 """
@@ -14,7 +14,7 @@ from web.character.models import Flashback
 class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     """
     Create, read, or participate in a flashback
-    
+
     Usage:
         flashback
         flashback <ID #>[=<number of last posts to display]
@@ -42,15 +42,10 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     player_switches = ("invite", "uninvite")
     change_switches = ("title", "summary")
     requires_owner = ("invite",) + change_switches
-    
+
     @property
     def roster_entry(self):
         return self.caller.roster
-        
-    @property
-    def accessible_flashbacks(self):
-        return Flashback.objects.filter(Q(owner=self.roster_entry) | 
-                                        Q(allowed=self.roster_entry)).distinct()
 
     def func(self):
         if not self.switches and not self.args:
@@ -78,15 +73,15 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
                     self.msg("Invalid switch.")
                     return
         self.mark_command_used()
-            
+
     def list_flashbacks(self):
         from evennia.utils.evtable import EvTable
         table = EvTable("ID", "Title", "Owner", "New Posts", width=78, border="cells")
-        for flashback in self.accessible_flashbacks:
+        for flashback in self.roster_entry.valid_flashbacks:
             table.add_row(flashback.id, flashback.title, flashback.owner,
                           str(len(flashback.get_new_posts(self.roster_entry))))
         self.msg(str(table))
-    
+
     def create_flashback(self):
         title = self.lhs
         summary = self.rhs or ""
@@ -95,14 +90,14 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             return
         flashback = self.roster_entry.created_flashbacks.create(title=title, summary=summary)
         self.msg("You have created a new flashback with the ID of #%s." % flashback.id)
-    
+
     def get_flashback(self):
         try:
-            return self.accessible_flashbacks.get(id=int(self.lhs))
+            return self.roster_entry.valid_flashbacks.get(id=int(self.lhs))
         except (Flashback.DoesNotExist, ValueError):
             self.msg("No flashback by that ID number.")
             self.list_flashbacks()
-    
+
     def view_flashback(self, flashback):
         try:
             post_limit = int(self.rhs)
@@ -120,7 +115,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
                 msg += "%s\n" % post.display()
                 post.read_by.add(self.roster_entry)
         self.msg(msg)
-    
+
     def manage_invites(self, flashback):
         targ = self.caller.search(self.rhs)
         if not targ:
@@ -129,7 +124,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.invite_target(flashback, targ)
         else:  # uninvite
             self.uninvite_target(flashback, targ)
-    
+
     def invite_target(self, flashback, target):
         if flashback.allowed.filter(id=target.roster.id).exists():
             self.msg("They are already invited to this flashback.")
@@ -138,7 +133,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback.allowed.add(target.roster)
         target.inform("You have been invited by %s to participate in flashback #%s: '%s'." %
                       (self.caller, flashback.id, flashback), category="Flashbacks")
-                    
+
     def uninvite_target(self, flashback, target):
         if not flashback.allowed.filter(id=target.roster.id).exists():
             self.msg("They are already not invited to this flashback.")
@@ -147,14 +142,14 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback.allowed.remove(target.roster)
         target.inform("You have been removed from flashback #%s." % flashback.id,
                       category="Flashbacks")
-                    
+
     def post_message(self, flashback):
         if not self.rhs:
             self.msg("You must include a message.")
             return
         flashback.add_post(self.rhs, self.roster_entry)
         self.msg("You have posted a new message to %s: %s" % (flashback, self.rhs))
-        
+
     def check_can_use_switch(self, flashback):
         if not self.check_switches(self.requires_owner):
             return True
@@ -162,7 +157,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.msg("Only the flashback's owner may use that switch.")
             return False
         return True
-    
+
     def update_flashback(self, flashback):
         if "title" in self.switches:
             field = "title"

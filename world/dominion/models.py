@@ -2499,38 +2499,38 @@ class Plot(SharedMemoryModel):
 
     def display(self, display_connected=True, staff_display=False):
         """Returns string display for the plot and its latest update/beat"""
-        msg = self.display_base()
+        msg = [self.display_base()]
         beats = list(self.beats)
         if display_connected:
             orgs, clue, cast = self.orgs.all(), self.required_clue, self.cast_list
             if clue:
-                msg += "\n{wRequired Clue:{n %s" % self.required_clue
+                msg.append("|wRequired Clue:|n {}".format(self.required_clue))
             if staff_display:
                 subplots, clues, revs = self.subplots.all(), self.clues.all(), self.revelations.all()
                 if self.parent_plot:
-                    msg += "\n{wMain Plot:{n %s (#%s)" % (self.parent_plot, self.parent_plot.id)
+                    msg.append("|wMain Plot:|n {} (#{})".format(self.parent_plot, self.parent_plot.id))
                 if subplots:
-                    msg += "\n{wSubplots:{n %s" % ", ".join(("%s (#%s)" % (ob, ob.id)) for ob in subplots)
+                    msg.append("|wSubplots:|n {}".format(", ".join(("%s (#%s)" % (ob, ob.id)) for ob in subplots)))
                 if clues:
-                    msg += "\n{wClues:{n %s" % "; ".join(("%s (#%s)" % (ob, ob.id)) for ob in clues)
+                    msg.append("|wClues:|n {}".format("; ".join(("%s (#%s)" % (ob, ob.id)) for ob in clues)))
                 if revs:
-                    msg += "\n{wRevelations:{n %s" % "; ".join(("%s (#%s)" % (ob, ob.id)) for ob in revs)
+                    msg.append("|wRevelations:|n {}".format("; ".join(("%s (#%s)" % (ob, ob.id)) for ob in revs)))
             if cast:
-                msg += "\n%s" % cast
+                msg.append(cast)
             if orgs:
-                msg += "\n{wInvolved Organizations:{n %s" % ", ".join(str(ob) for ob in orgs)
+                msg.append("|wInvolved Organizations:|n {}".format(", ".join(str(ob) for ob in orgs)))
         if beats:
             last = beats[-1]
             if self.usage in (self.PLAYER_RUN_PLOT, self.GM_PLOT):
-                msg += "\n{wBeat IDs:{n %s" % ", ".join(str(ob.id) for ob in beats)
-            msg += "\n%s" % last.display_beat(display_connected=display_connected)
-        return msg
+                msg.append("|wBeat IDs:|n {}".format(", ".join(str(ob.id) for ob in beats)))
+            msg.append(last.display_beat(display_connected=display_connected, staff_display=staff_display))
+        return "\n".join(msg)
 
-    def display_timeline(self):
+    def display_timeline(self, staff_display=False):
         """Base plot description plus all beats/updates displays"""
-        msg = self.display_base() + "\n"
         beats = list(self.beats)
-        msg += "\n".join([ob.display_beat() for ob in beats])
+        msg = "{}\n{}".format(self.display_base(),
+                              "\n".join([ob.display_beat(staff_display=staff_display) for ob in beats]))
         return msg
 
     def check_taken_action(self, dompc):
@@ -2777,7 +2777,8 @@ class PlotUpdate(SharedMemoryModel):
     """
     plot = models.ForeignKey("Plot", related_name="updates", db_index=True)
     desc = models.TextField("Story of what happened this update", blank=True)
-    gm_notes = models.TextField("Any ooc notes of consequences", blank=True)
+    ooc_notes = models.TextField("Player-visible ooc notes", blank=True)
+    gm_notes = models.TextField("Staff-visible notes", blank=True)
     date = models.DateTimeField(blank=True, null=True)
     episode = models.ForeignKey("character.Episode", related_name="plot_updates", blank=True, null=True,
                                 on_delete=models.SET_NULL)
@@ -2790,21 +2791,25 @@ class PlotUpdate(SharedMemoryModel):
     def __str__(self):
         return "%s #%s for %s" % (self.noun, self.id, self.plot)
 
-    def display_beat(self, display_connected=True):
+    def display_beat(self, display_connected=True, staff_display=False):
         """Return string display of this update/beat"""
-        msg = "|w[%s|w]|n" % self
+        msg_bits = ["|w[{}|w]|n".format(self)]
         if self.date:
-            msg += " {wDate{n %s" % self.date.strftime("%x %X")
+            msg_bits.append(" |wDate|n {}".format(self.date.strftime("%x %X")))
         tags = self.search_tags.all()
         if tags:
-            msg += " |wTags:|n %s" % ", ".join(("|235%s|n" % tag) for tag in tags)
-        msg += "\n%s" % self.desc if self.desc else "\nPending %s placeholder." % self.noun
+            msg_bits.append(" |wTags:|n %s" % ", ".join(("|235%s|n" % tag) for tag in tags))
+        msg_bits.append("\n{}".format(self.desc or "Pending {} placeholder.".format(self.noun)))
         if display_connected:
             for attr in ("actions", "events", "emits", "flashbacks"):
                 qs = getattr(self, attr).all()
                 if qs:
-                    msg += "\n{w%s:{n %s" % (attr.capitalize(), ", ".join("%s (#%s)" % (ob, ob.id) for ob in qs))
-        return msg
+                    msg_bits.append("\n|w%s:|n %s" % (attr.capitalize(), ", ".join("%s (#%s)" % (ob, ob.id) for ob in qs)))
+        if self.ooc_notes:
+            msg_bits.append("\n{}".format(self.ooc_notes))
+        if staff_display and self.gm_notes:
+            msg_bits.append("\n|wOOC for Staff:|n {}".format(self.gm_notes))
+        return "".join(msg_bits)
 
 
 class AbstractAction(AbstractPlayerAllocations):

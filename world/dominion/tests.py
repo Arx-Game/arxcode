@@ -57,7 +57,7 @@ class TestCrisisCommands(ArxCommandTest):
                                                  subject='Update for test crisis')
             self.call_cmd("1", '[test crisis] (50 Rating)\nNone\n'
                                '[Update #1 for test crisis] Date 08/27/78 12:08:00\ntest gemit\n'
-                               'Actions: Action by Testaccount2 for test crisis (#1)')
+                               'Actions: Action by Testaccount2 for test crisis (#1)\nOOC for Staff: test note')
             self.call_cmd("/update 1/another test episode/test synopsis=test gemit 2",
                           "You have updated the crisis, creating a new episode called 'another test episode'.")
             mock_msg_and_post.assert_called_with("test gemit 2", self.caller, episode_name="another test episode")
@@ -169,16 +169,14 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
 
     def test_cmd_plots(self):
         self.setup_cmd(plot_commands.CmdPlots, self.char2)
-        self.call_cmd("", 'Plot Involvement:\n\nName/ID Involvement')
+        self.call_cmd("", 'Plot (ID) Involvement')
         self.plot1.dompc_involvement.create(dompc=self.dompc2, cast_status=PCPlotInvolvement.SUPPORTING_CAST,
                                             admin_status=PCPlotInvolvement.OWNER)
         plot2_part = self.plot2.dompc_involvement.create(dompc=self.dompc2)
-        self.call_cmd("", 'Plot Involvement:\n\n'
-                          'Name/ID        Involvement             \n'
+        self.call_cmd("", 'Plot (ID)      Involvement             \n'
                           'testplot1 (#1) Supporting Cast (Owner)')
-        self.call_cmd("/old", 'Plot Involvement:\n\n'
-                              'Name/ID        Involvement \n'
-                              'testplot2 (#2) Main Cast')
+        self.call_cmd("/old", 'Resolved Plot (ID) Involvement \n'
+                              'testplot2 (#2)     Main Cast')
         self.call_cmd("4", 'No plot found by that ID.')
         self.call_cmd("1", '[testplot1]\nNone\nInvolved Characters:\nTestaccount2 (Supporting Cast, Owner)')
         self.call_cmd("2", '[testplot2]\nNone\nInvolved Characters:\nTestaccount2 (Main Cast)')
@@ -188,6 +186,10 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.call_cmd("/createbeat 1", "Please use / only to divide IC summary from OOC notes. Usage: <#>=<IC>/<OOC>")
         self.call_cmd("/createbeat 1=asdf/", "Please have a slightly longer IC summary.")
         self.call_cmd("/createbeat 1=Bob died it was super/...sad", "You have created a new beat for testplot1, ID: 2.")
+        prompt = ("[Proposed Edit to Beat #2] Bob died it was super\nOOC Char2: ...sad\nOOC Char2: but not really"
+                  "\nIf this appears correct, repeat command to confirm and continue.")
+        self.call_cmd("/editbeat 2=/but not really", prompt)
+        self.call_cmd("/editbeat 2=/but not really", "Beat #2 has been updated.")
         beat2 = PlotUpdate.objects.get(id=2)
         beat3 = self.plot2.updates.create()
         beat3.delete = Mock()
@@ -232,18 +234,21 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
                                       "for testplot1\n[Rp Events] test event\n[Flashbacks] test flashback\n"
                                       "[Objects] Obj")
         self.call_cmd("/perm 2=foo/recruiter", 'You lack the required permission for that plot.')
-        self.call_cmd("/perm 1=foo", 'You must specify both a name and a permission level.')
+        self.call_cmd("/perm 1=foo", 'You must specify both a name and perm-level.')
         self.call_cmd("/perm 1=foo/recruiter", "No one is involved in your plot by the name 'foo'.")
-        self.call_cmd("/perm 1=testaccount2/recruiter", 'Owners cannot have their status changed.')
+        self.call_cmd("/perm 1=testaccount2/recruiter", 'Owners cannot have their admin permission changed.')
         self.call_cmd("/perm 2=foo/gm", 'You lack the required permission for that plot.')
         self.call_cmd("/perm 1=foo/gm", "No one is involved in your plot by the name 'foo'.")
-        part = self.plot1.dompc_involvement.create(dompc=self.dompc)
-        self.call_cmd("/perm 1=testaccount/gm", "GMs are limited to supporting cast or less.")
-        part.cast_status = PCPlotInvolvement.SUPPORTING_CAST
+        self.plot1.dompc_involvement.create(dompc=self.dompc)
+        gm_err = "GMs are limited to supporting cast; they should not star in stories they're telling."
+        self.call_cmd("/perm 1=testaccount/gm", gm_err)
+        self.call_cmd("/cast 1=testaccount/supporting", "You have added Testaccount to the plot's Supporting Cast members.")
         self.call_cmd("/perm 1=testaccount/gm", "You have marked Testaccount as a GM.")
+        self.call_cmd("/cast 1=testaccount/required", gm_err)
         self.call_cmd("/perm 1=testaccount/player", 'You have marked Testaccount as a Player.')
         self.call_cmd("/perm 1=testaccount/recruiter", 'You have marked Testaccount as a Recruiter.')
-        self.call_cmd("/perm 1=testaccount/owner", "Permission must be 'gm', 'player', or 'recruiter'.")
+        self.call_cmd("/perm 1=testaccount/owner", "You entered 'owner'. Valid permission levels: gm, player, or recruiter. "
+                                                   "Valid cast options: required, main, supporting, or extra.")
         self.call_cmd("/invite 2=testaccount", 'You lack the required permission for that plot.')
         plot2_part.admin_status = PCPlotInvolvement.RECRUITER
         self.call_cmd("/invite 2=testaccount", "That plot has been resolved.")

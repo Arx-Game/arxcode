@@ -54,7 +54,7 @@ def get_recruiter_xp(character):
 
 class CmdPlots(RewardRPToolUseMixin, ArxCommand):
     """
-    Run/Participate in plots! View Usage:
+    Running and participating in plots! View Usage:
         plots[/old] [<plot ID>][=<beat ID>]
         plots/timeline <plot ID>
     Plot Usage:
@@ -71,57 +71,50 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         plots/add/action <action ID>=<beat ID>
         plots/add/gemit <gemit ID>=<beat ID>
         plots/add/flashback <flashback ID>=<beat ID>
+        plots/editbeat <beat ID>=<IC summary>/<ooc appended note>
     Cast Usage:
-        plots/storyhook <plot ID>=<recruiter>/<Example plot hook for meeting>
-        plots/perm <plot ID>=<participant>/<gm, recruiter, or player>
-        plots/invite <ID>=<character>,<casting*>
-            *casting options: required, main, supporting, extra
-        plots/accept <ID>[=<IC description of character's involvement>]
+        plots/invite [<plot ID>=<character>,<casting option*>]
+          *casting options: required, main, supporting, extra
+        plots/invitations (alias: plots/outstanding)
+        plots/accept [<ID>][=<IC description of character's involvement>]
         plots/leave <ID>
-        plots/findcontact <secret ID>
+        plots/perm <ID>=<participant>/<gm, recruiter, or player>
+        plots/cast <ID>=<participant>/<new casting option>
+        plots/storyhook <ID>=<recruiter>/<Example plot hook for meeting>
+        plots/findcontact <Secret ID>
         plots/rewardrecruiter <plot ID>=<recruiter>
 
-    The plots command can be used to pitch ideas for a new storyline. The
-    plots/pitch command will open a ticket for GM approval of your plot.
-    If approved, the plot will be created with you as the plot owner. You
-    can specify an existing plot to pitch a subplot for, such as if you want
-    to run a small subplot in response to a large GM plot. A pitch requires
-    a name, a one-sentence summary of the plot, a longer IC description, and
-    OOC notes describing what the plot aims to accomplish.
-
+    The plots command can be used to pitch storyline ideas. Open a ticket
+    for GM approval of your plot with /pitch. If approved, you become its
+    owner. Pitch requires a name, a one-sentence summary, a longer IC
+    description, and OOC notes on what it aims to accomplish. Your pitch can
+    reference another plot if you want to run a subplot of something larger.
     Plots can be tagged for easy search by topic. Clues, revelations, and
     theories may be added, with notes to show staff why they're connected.
 
-    Update plots with 'beats' - events or actions that advance the plot. For
-    example, after running a plot-related event, use 'plots/createbeat' to
-    summarize what happened with an IC story and ooc notes. Associate that
-    beat with the rpevent by using 'plots/add/rpevent'. Request staff review
-    the beat with 'plots/rfr', which stands for 'request for review'. Staff
-    will make appropriate game adjustments to represent world consequences.
+    Advance a plot with beats: events or actions that progress it. Example,
+    after a relevant event, GM uses /createbeat to summarize the plot update.
+    Tie the event to this beat with /add/rpevent, then show it to staff with
+    /rfr (request for review). Staff will change the world appropriately.
 
-    Plots are hidden until someone is a participant. However, when a secret
-    is marked as a plot hook, the /findcontact command becomes available.
-    Using it will list recruiter characters who have flagged themselves as
-    points of contact for a respective plot. Their story gives ideas for how
-    your character may discover the contact is involved. You then arrange for
-    an IC scene with the recruiter if it's a plot you want to pursue. If
-    you're invited to join and accept, you can use /rewardrecruiter to grant
-    a small xp reward both to the recruiter and yourself.
+    Set plot permissions with /perm. Owners are administrators. GMs create
+    beats; anyone may edit. Recruiters are contacts for newcomers. Casting
+    options define how essential someone is: 'Required' cast must be present;
+    plot is about them. 'Main' cast is involved in most events. 'Supporting'
+    may be present sometimes, and 'Extra' indicates guest appearances.
+    GMs should be Supporting cast at most.
 
-    Players have different permissions (/perm) for a plot. A plot's owner
-    is its administrator, while a GM has the ability to create beats for it.
-    A recruiter is a point of contact for plot newcomers. When inviting,
-    casting options are how essential a character is for the plot to proceed.
-    'Required' cast must be present for an event to occur; the plot is about
-    them. 'Main' cast is involved in most events. 'Supporting' cast may be
-    present only sometimes, while any lower status indicates someone making
-    guest appearances in a few events. GMs must be supporting cast or lower;
-    never central to the story.
+    Plots are typically hidden until you are invited, but if your secret is
+    a plot hook, the /findcontact switch lists recruiter characters who are
+    points of contact for a plot. Their storyhook should give ideas of how
+    characters might discover they are involved. Arrange a RP scene with one
+    to pursue the plot. If they invite and you accept, /rewardrecruiter
+    grants xp to you both. See your invitations with plots/invitations.
     """
     key = "+plots"
     aliases = ["+plot"]
     help_category = "Story"
-    admin_switches = ("storyhook", "rfr", "invite", "perm", "tag")
+    admin_switches = ("storyhook", "rfr", "invite", "invitation", "perm", "cast", "tag")
     recruited_xp = 1
     help_entry_tags = ["plots", "goals"]
 
@@ -142,13 +135,15 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
                 self.do_plot_displays()
             elif "createbeat" in self.switches:
                 self.create_beat()
-            elif "add" in self.switches:
+            elif "editbeat" in self.switches:
+                self.edit_beat()
+            elif self.check_switches(("add", "addclue", "addrevelation", "addtheory")):
                 self.add_object_to_beat()
             elif "search" in self.switches:
                 self.view_our_tagged_stuff()
             elif self.check_switches(self.admin_switches):
                 self.do_admin_switches()
-            elif "accept" in self.switches:
+            elif self.check_switches(("accept", "outstanding", "invitations", "invites")):
                 self.accept_invitation()
             elif "leave" in self.switches:
                 self.leave_plot()
@@ -158,10 +153,6 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
                 self.find_contact()
             elif "rewardrecruiter" in self.switches:
                 self.reward_recruiter()
-            elif "addclue" in self.switches:
-                self.add_clue()
-            elif "addrevelation" in self.switches:
-                self.add_revelation()
             else:
                 raise CommandError("Unrecognized switch.")
         except CommandError as err:
@@ -179,15 +170,18 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
 
     def display_available_plots(self):
         """Lists all plots available to caller"""
-        qs = self.involvement_queryset.filter(plot__resolved="old" in self.switches).distinct()
-        msg = "Plot Involvement:\n"
-        table = PrettyTable(["Name/ID", "Involvement"])
+        old = "old" in self.switches
+        qs = self.involvement_queryset.filter(plot__resolved=old).distinct()
+        table = PrettyTable(["|w{}Plot (ID)|n".format("Resolved " if old else ""), "|wInvolvement|n"])
         for involvement in qs:
-            name = "%s (#%s)" % (involvement.plot, involvement.plot.id)
-            status = involvement.get_modified_status_display()
+            if involvement.activity_status in (involvement.INVITED, involvement.HAS_RP_HOOK):
+                color = "|y"
+            else:
+                color = ""
+            name = "{}{} (#{})|n".format(color, involvement.plot, involvement.plot.id)
+            status = "{}{}|n".format(color, involvement.get_modified_status_display())
             table.add_row([name, status])
-        msg += str(table)
-        self.msg(msg)
+        self.msg(str(table))
 
     def view_plot(self):
         """Views a given plot"""
@@ -234,24 +228,47 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
     def create_beat(self):
         """Creates a beat for a plot."""
         involvement = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.GM)
+        desc, ooc_notes = self.split_ic_from_ooc()
+        plot = involvement.plot
+        beat = plot.updates.create(desc=desc, ooc_notes=ooc_notes, date=datetime.now())
+        self.msg("You have created a new beat for %s, ID: %s." % (plot, beat.id))
+
+    def edit_beat(self):
+        """Allow cast to edit beat after confirmation."""
+        beat = self.get_beat(self.lhs, cast_access=True)
+        desc, ooc_notes = self.split_ic_from_ooc(allow_blank_desc=True)
+        if not (desc or ooc_notes):
+            raise CommandError("Edit the beat with what?")
+        if ooc_notes and beat.ooc_notes:  # appends a new ooc note
+            ooc_notes = "{0}\n{1}".format(beat.ooc_notes, ooc_notes)
+        prompt_msg = ("|w[Proposed Edit to Beat #{}]|n {}\n{}\n|yIf this appears correct, repeat command to "
+                      "confirm and continue.|n".format(beat.id, desc or beat.desc, ooc_notes or beat.ooc_notes))
+        if self.confirm_command("edit_beat", desc, prompt_msg):
+            beat.desc = desc or beat.desc
+            beat.ooc_notes = ooc_notes or beat.ooc_notes
+            beat.save()
+            self.msg("Beat #{} has been updated.".format(beat.id))
+
+    def split_ic_from_ooc(self, allow_blank_desc=False):
+        """Splits rhs and returns an IC description and ooc notes."""
         try:
             desc, ooc_notes = self.rhs.split("/")
         except (ValueError, AttributeError):
             raise CommandError("Please use / only to divide IC summary from OOC notes. Usage: <#>=<IC>/<OOC>")
-        if not desc or len(desc) < 10:
+        if not allow_blank_desc and (not desc or len(desc) < 10):
             raise CommandError("Please have a slightly longer IC summary.")
-        plot = involvement.plot
-        beat = plot.updates.create(desc=desc, gm_notes=ooc_notes, date=datetime.now())
-        self.msg("You have created a new beat for %s, ID: %s." % (plot, beat.id))
+        if ooc_notes:
+            ooc_notes = "|wOOC |c{}|w:|n {}".format(self.caller.key, ooc_notes)
+        return desc, ooc_notes
 
     def add_object_to_beat(self):
         """Adds an object that was the origin of a beat for a plot"""
         # clues and revelations aren't part of beats but using /add is a convenience for players
-        if "clue" in self.switches:
+        if self.check_switches(("clue", "addclue")):
             return self.add_clue()
-        if "revelation" in self.switches:
+        if self.check_switches(("revelation", "addrevelation")):
             return self.add_revelation()
-        if "theory" in self.switches:
+        if self.check_switches(("theory", "addtheory")):
             return self.add_theory()
         beat = self.get_beat(self.rhs, cast_access=True)
         if "rpevent" in self.switches:
@@ -286,7 +303,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
             if self.called_by_staff:
                 qs = Flashback.objects.all()
             else:
-                qs = self.caller.roster.created_flashbacks.all()
+                qs = self.caller.roster.valid_flashbacks
             try:
                 added_obj = qs.get(id=self.lhs)
             except Flashback.DoesNotExist:
@@ -319,67 +336,85 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
 
     def do_admin_switches(self):
         """Switches for changing a plot"""
-        if "perm" in self.switches or "storyhook" in self.switches:
+        if self.check_switches(("perm", "storyhook", "cast")):
             attr = ""
+            story, new_perm, new_cast = None, None, None
             access_level = PCPlotInvolvement.OWNER
             try:
                 name, attr = self.rhs.split("/")
             except (AttributeError, ValueError):
-                if "perm" in self.switches:
-                    raise CommandError("You must specify both a name and a permission level.")
-                else:  # attr being a blank string means it's being wiped
+                if self.check_switches(("perm", "cast")):
+                    raise CommandError("You must specify both a name and %s-level." % self.switches[0])
+                else:  # attr being a blank string means story being wiped
                     name = self.rhs or ""
             if "storyhook" in self.switches:
                 story = attr
-                perm_status = None
                 if name.lower() == self.caller.key.lower():
                     access_level = PCPlotInvolvement.RECRUITER
             else:
-                story = None
                 perm = attr.lower()
                 if perm == "recruiter":
-                    perm_status = PCPlotInvolvement.RECRUITER
+                    new_perm = PCPlotInvolvement.RECRUITER
                 elif perm == "gm":
-                    perm_status = PCPlotInvolvement.GM
+                    new_perm = PCPlotInvolvement.GM
                 elif perm == "player":
-                    perm_status = PCPlotInvolvement.PLAYER
+                    new_perm = PCPlotInvolvement.PLAYER
+                elif perm == "required":
+                    new_cast = PCPlotInvolvement.REQUIRED_CAST
+                elif perm == "main":
+                    new_cast = PCPlotInvolvement.MAIN_CAST
+                elif perm == "supporting":
+                    new_cast = PCPlotInvolvement.SUPPORTING_CAST
+                elif perm == "extra":
+                    new_cast = PCPlotInvolvement.EXTRA
                 else:
-                    raise CommandError("Permission must be 'gm', 'player', or 'recruiter'.")
+                    err = ("You entered '%s'. Valid permission levels: gm, player, or recruiter. "
+                          "Valid cast options: required, main, supporting, or extra." % attr)
+                    raise CommandError(err)
             plot = self.get_involvement_by_plot_id(required_permission=access_level).plot
-            self.change_permission_or_set_story(plot, name, perm_status, story)
-        elif "invite" in self.switches:
+            self.change_permission_or_set_story(plot, name, new_perm, new_cast, story)
+        elif self.check_switches(("invite", "invitation")):
+            if not self.args:
+                return self.msg(self.list_invitations())
             plot = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.RECRUITER).plot
             self.invite_to_plot(plot)
-        elif "rfr" in self.switches or "tag" in self.switches:
+        elif self.check_switches(("rfr", "tag")):
             plot = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.GM, allow_old=True).plot
             if "rfr" in self.switches:
                 self.request_for_review(plot)
             else:
                 self.tag_plot_or_beat(plot)
 
-    def change_permission_or_set_story(self, plot, pc_name, perm_level=None, story=None):
+    def change_permission_or_set_story(self, plot, pc_name, new_perm=None, new_cast=None, story=None):
         """Changes permissions for a plot for a participant or set their recruiter story"""
         involvement = self.get_involvement_by_plot_object(plot, pc_name)
-        if perm_level is not None:
+        success = ["You have "]
+        gm_err = "GMs are limited to supporting cast; they should not star in stories they're telling."
+        if new_perm is not None:
             if involvement.admin_status == PCPlotInvolvement.OWNER:
-                raise CommandError("Owners cannot have their status changed.")
-            if involvement.cast_status < PCPlotInvolvement.SUPPORTING_CAST and perm_level >= PCPlotInvolvement.GM:
-                raise CommandError("GMs are limited to supporting cast or less.")
-            involvement.admin_status = perm_level
-            msg = "You have marked %s as a %s." % (involvement.dompc, involvement.get_admin_status_display())
+                raise CommandError("Owners cannot have their admin permission changed.")
+            if involvement.cast_status < PCPlotInvolvement.SUPPORTING_CAST and new_perm == PCPlotInvolvement.GM:
+                raise CommandError(gm_err)
+            involvement.admin_status = new_perm
+            success.append("marked %s as a %s." % (involvement.dompc, involvement.get_admin_status_display()))
+        elif new_cast is not None:
+            if new_cast < PCPlotInvolvement.SUPPORTING_CAST and involvement.admin_status == PCPlotInvolvement.GM:
+                raise CommandError(gm_err)
+            involvement.cast_status = new_cast
+            success.append("added %s to the plot's %s members." % (involvement.dompc, involvement.get_cast_status_display()))
         else:
             if story:
                 if involvement.admin_status == PCPlotInvolvement.PLAYER:
                     raise CommandError("They must be set as a recruiter to have a story hook set for how "
                                        "someone wanting to become involved in the plot might have heard of them.")
-                msg = "You have set %s's story hook that contacts can see to: %s" % (involvement, story)
+                success.append("set %s's story hook that contacts can see to: %s" % (involvement, story))
             else:
                 if involvement.admin_status == PCPlotInvolvement.RECRUITER:
                     raise CommandError("You cannot remove their hook while they are flagged as a recruiter.")
-                msg = "You have removed %s's story hook." % involvement
+                success.append("removed %s's story hook." % involvement)
             involvement.recruiter_story = story
         involvement.save()
-        self.msg(msg)
+        self.msg("".join(success))
 
     def get_involvement_by_plot_object(self, plot, pc_name):
         """
@@ -447,7 +482,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
 
     def accept_invitation(self):
         """Accepts an invitation to a plot"""
-        if not self.lhs:
+        if not self.lhs or self.check_switches(("outstanding", "invites", "invitations")):
             return self.msg(self.list_invitations())
         try:
             invite = self.invitations.get(plot_id=self.lhs)
@@ -459,7 +494,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
     def list_invitations(self):
         """Returns text of all their invitations to plots"""
         invites = self.invitations
-        return "Outstanding invitations: %s" % ", ".join(str(ob.plot_id) for ob in invites)
+        return "|wOutstanding invitations:|n %s" % ", ".join(str(ob.plot_id) for ob in invites)
 
     def leave_plot(self):
         """Marks us inactive on a plot or deletes an invitation"""
@@ -567,7 +602,7 @@ class CmdGMPlots(ArxCommand):
     @gmplots/recruiting
     @gmplots/timeline [<plot ID>]
     Admin:
-    @gmplots/create <name>/<headline>/<description>[=<parent plot if subplot>]
+    @gmplots/create <name>/<headline>/<desc>[=<parent plot if subplot>]
     @gmplots/end <ID>[=<gm notes of resolution>]
     @gmplots/addbeat/rpevent <plot ID>=<rp event ID>/<story>/<GM Notes>
             /adb/action <plot ID>=<action ID>/<story>/<GM Notes>
@@ -581,11 +616,11 @@ class CmdGMPlots(ArxCommand):
             /pitches/decline <pitch ID>[=<ooc notes to player>]
     @gmplots/perm <plot ID>=<player>,<owner, gm, recruiter, player>
     @gmplots/participation <plot ID>=<player>,<casting choice*>
-        (*required cast, main cast, supporting cast, extra, tangential)
+      (*required cast, main cast, supporting cast, extra, tangential)
     Tagging:
     @gmplots/connect/char <plot ID>=<character>/<desc of relationship>
                     /clue <plot ID>=<clue ID>/<desc of relationship>
-            /connect also supports /revelation, /org
+            /connect supports /revelation, /org same as /clue
     """
     key = "@gmplots"
     help_category = "GMing"
@@ -632,7 +667,7 @@ class CmdGMPlots(ArxCommand):
         else:
             plot = self.get_by_name_or_id(Plot, self.lhs)
             if "timeline" in self.switches:
-                self.msg(plot.display_timeline())
+                self.msg(plot.display_timeline(staff_display=True))
             else:
                 self.msg(plot.display(True, True))
 
