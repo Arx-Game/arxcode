@@ -183,7 +183,7 @@ class SceneCommandTests(ArxCommandTest):
         self.setup_cmd(scene_commands.CmdFlashback, self.account)
         self.call_cmd("/create testing", "You have created a new flashback with the ID of #1.")
         self.call_cmd("/create testing", "There is already a flashback with that title. Please choose another.")
-        self.call_cmd("1", "(#1) testing\nOwner: Char\nSummary: \nPosts: ")
+        self.call_cmd("1", "(#1) testing\nInvolved: Char\nSummary: ")
         self.call_cmd("/catchup 1", "No new posts for #1.")
         self.account2.inform = Mock()
         self.call_cmd("/invite 1=Testaccount2", "You have invited Testaccount2 to participate in this flashback.")
@@ -196,16 +196,17 @@ class SceneCommandTests(ArxCommandTest):
         self.account2.inform.assert_called_with("There is a new post on flashback #1 by Char.",
                                                 category="Flashbacks")
         self.caller = self.account2
-        self.call_cmd("/catchup 1", "New posts for #1\nChar wrote: A new testpost\n")
+        self.call_cmd("/catchup 1", "New posts for #1 testing\nChar wrote: A new testpost\n")
         self.call_cmd("/summary 1=test", "Only the flashback's owner may use that switch.")
+        self.call_cmd("/invite 1=Testaccount", "Only the flashback's owner may use that switch.")
         self.caller = self.account
         self.call_cmd("/uninvite 1=Testaccount2", "You have uninvited Testaccount2 from this flashback.")
         self.account2.inform.assert_called_with("You have been removed from flashback #1.", category="Flashbacks")
         self.call_cmd("/summary 1=test summary", "summary set to: test summary.")
         Flashback.objects.get(id=1).posts.create(poster=self.roster_entry, actions="Foo")
-        self.call_cmd("1=foo", '(#1) testing\nOwner: Char\nSummary: test summary\nPosts:\n'
+        self.call_cmd("1=foo", '(#1) testing\nInvolved: Char\nSummary: test summary\n'
                                'Char wrote: A new testpost\nChar wrote: Foo')
-        self.call_cmd("1=1", '(#1) testing\nOwner: Char\nSummary: test summary\nPosts:\nChar wrote: Foo')
+        self.call_cmd("1=1", '(#1) testing\nInvolved: Char\nSummary: test summary\nChar wrote: Foo')
 
 
 class ViewTests(ArxTest):

@@ -1700,15 +1700,17 @@ class Flashback(SharedMemoryModel):
 
     def display(self, display_summary_only=False, post_limit=None):
         """Returns string display of a flashback."""
-        msg = "(#%s) %s\n" % (self.id, self.title)
-        msg += "Owner: %s\n" % self.owner
-        msg += "Summary: %s\n" % self.summary
+        from server.utils.arx_utils import list_to_string
+        msg = "(#%s) |w%s|n" % (self.id, self.title)
+        msg += "\nInvolved: %s\n" % list_to_string(self.all_players)
+        msg += "\nSummary: %s" % self.summary
         if display_summary_only:
             return msg
         posts = list(self.posts.all())
         if post_limit:
             posts = posts[-post_limit:]
-        msg += "Posts:\n%s" % "\n".join(post.display() for post in posts)
+        if posts:
+            msg += "\n%s" % "\n".join(post.display() for post in posts)
         return msg
 
     def __str__(self):

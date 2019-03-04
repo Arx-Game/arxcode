@@ -13,8 +13,7 @@ from web.character.models import Flashback
 
 class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     """
-    Create, read, or participate in a flashback
-
+    Create, read, or participate in a flashback.
     Usage:
         flashback
         flashback <ID #>[=<number of last posts to display]
@@ -26,20 +25,17 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback/uninvite <ID #>=<player>
         flashback/post <ID #>=<message>
 
-    Flashbacks are a way in which you can flesh out scenes that happened in
-    the past in story form, inviting other players to participate. All
-    flashbacks are private to the players involved and staff, and are assumed
-    to be IC scenes that occurred some time in the past. New posts will
-    inform the characters involved in the flashback. If you wish to no longer
-    be informed or participate, you can uninvite yourself from a flashback.
-    Catchup will summarize all display unread posts a given flashback. Posts
-    can also be made from the webpage, linked from your character page.
+    Flashbacks are story-like roleplay scenes that happened in the past. They
+    are private to invited players and staff. New posts inform the characters
+    involved. If you wish to no longer be informed or participate, you can
+    uninvite yourself from a flashback. Catchup will summarize unread posts.
+    Posts can also be made on the webpage, linked from your character page.
     """
     key = "flashback"
     aliases = ["flashbacks"]
     locks = "cmd:all()"
     help_category = "Story"
-    player_switches = ("invite", "uninvite")
+    invite_switches = ("invite", "uninvite")
     change_switches = ("title", "summary")
     requires_owner = ("invite",) + change_switches
 
@@ -65,7 +61,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             else:
                 if not self.check_can_use_switch(flashback):
                     return
-                if self.check_switches(self.player_switches):
+                if self.check_switches(self.invite_switches):
                     self.manage_invites(flashback)
                 elif self.check_switches(self.change_switches):
                     self.update_flashback(flashback)
@@ -110,7 +106,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         if not new_posts:
             msg = "No new posts for #%s." % flashback.id
         else:
-            msg = "New posts for #%s\n" % flashback.id
+            msg = "New posts for #%s %s\n" % (flashback.id, flashback)
             for post in new_posts:
                 msg += "%s\n" % post.display()
                 post.read_by.add(self.roster_entry)
@@ -153,7 +149,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     def check_can_use_switch(self, flashback):
         if not self.check_switches(self.requires_owner):
             return True
-        if self.roster_entry != flashback.owner:
+        elif self.roster_entry != flashback.owner:
             self.msg("Only the flashback's owner may use that switch.")
             return False
         return True
