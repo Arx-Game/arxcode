@@ -21,15 +21,19 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback/create <title>[=<summary>]
         flashback/title <ID #>=<new title>
         flashback/summary <ID #>=<new summary>
-        flashback/invite <ID #>=<player>
+        flashback/invite[/retro] <ID #>=<player>
         flashback/uninvite <ID #>=<player>
+        flashback/allow <ID #>=<player>,<number of last posts or 'all'>
         flashback/post <ID #>=<message>
 
-    Flashbacks are story-like roleplay scenes that happened in the past. They
-    are private to invited players and staff. New posts inform the characters
-    involved. If you wish to no longer be informed or participate, you can
-    uninvite yourself from a flashback. Catchup will summarize unread posts.
-    Posts can also be made on the webpage, linked from your character page.
+    Flashbacks are roleplay scenes that happened in the past. They are
+    private to invited players and staff. Involved players are informed of
+    new posts. If you no longer wish to be informed or post, you can uninvite
+    yourself. Catchup will summarize unread posts. Posts can also be made
+    from the Flashback link on your character webpage. Players are able to
+    see posts made while they are involved, but adding the /retro switch to
+    invite reveals the entire Flashback. Partial visibility is achieved with
+    /allow, after a regular invitation.
     """
     key = "flashback"
     aliases = ["flashbacks"]
