@@ -21,9 +21,8 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback/create <title>[=<summary>]
         flashback/title <ID #>=<new title>
         flashback/summary <ID #>=<new summary>
-        flashback/invite[/retro] <ID #>=<player>
+        flashback/invite <ID #>=<player>
         flashback/uninvite <ID #>=<player>
-        flashback/allow <ID #>=<player>,<number of last posts or 'all'>
         flashback/post <ID #>=<message>
 
     Flashbacks are roleplay scenes that happened in the past. They are
@@ -42,6 +41,11 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     invite_switches = ("invite", "uninvite")
     change_switches = ("title", "summary")
     requires_owner = ("invite",) + change_switches
+
+    # TODO:
+    # flashback/invite[/retro] <ID #>=<player>
+    # flashback/allow <ID #>=<player>,<number of last posts or 'all'>
+    # flashback/roll <ID#>=<stat>,<skill>[,<ability>][/<difficulty>]
 
     @property
     def roster_entry(self):
