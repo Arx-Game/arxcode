@@ -45,7 +45,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     # TODO:
     # flashback/invite[/retro] <ID #>=<player>
     # flashback/allow <ID #>=<player>,<number of last posts or 'all'>
-    # flashback/roll <ID#>=<stat>,<skill>[,<ability>][/<difficulty>]
+    # flashback/check[/flub] <ID#>=<stat>[+<skill>][ at <difficulty number>]
 
     @property
     def roster_entry(self):
@@ -66,6 +66,8 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
                 self.read_new_posts(flashback)
             elif "post" in self.switches:
                 self.post_message(flashback)
+            elif self.check_switches(("check", "roll")):
+                self.make_flashback_roll(flashback)
             else:
                 if not self.check_can_use_switch(flashback):
                     return
@@ -148,9 +150,17 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
                       category="Flashbacks")
 
     def post_message(self, flashback):
+        roll = flashback.get_dice_roll(self.roster_entry)
         if not self.rhs:
             self.msg("You must include a message.")
             return
+        elif roll:
+            # TODO: confirmation details!
+            if not self.confirm_command():
+                return
+            else:
+                # TODO: delete roll from flashback
+                pass
         flashback.add_post(self.rhs, self.roster_entry)
         self.msg("You have posted a new message to %s: %s" % (flashback, self.rhs))
 
@@ -170,3 +180,23 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         setattr(flashback, field, self.rhs)
         flashback.save()
         self.msg("%s set to: %s." % (field, self.rhs))
+
+    def make_flashback_roll(self, flashback):
+        """Prints reminder of caller's existing dice roll, or saves new one in the flashback."""
+        reminder = "Your next post in Flashback #%s will use this roll" % flashback.id
+        roll = flashback.get_dice_roll(self.roster_entry)
+        if roll:
+            result_str = roll.build_msg()
+            return self.msg("%s: %s" % (reminder, result_str))
+        elif not self.rhs:
+            return self.msg("|wMissing:|n <stat>[+<skill>][ at <difficulty number>]")
+        # no flashback roll for caller exists, so make new one:
+        self.caller.ndb.last_roll.remove()  # in case upcoming @check fails, we don't want old roll!
+        cmd_msg = self.rhs + "=me"
+        flub = "/flub " if "flub" in self.switches else " "
+        self.caller.execute_cmd("@check%s%s" % (flub, cmd_msg))
+        roll = self.caller.ndb.last_roll
+        if roll:  # means @check worked; caller saw their result
+            flashback.set_dice_roll(self.roster_entry, roll)
+            self.msg("%s." % reminder)
+

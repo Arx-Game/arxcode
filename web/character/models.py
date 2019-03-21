@@ -1722,14 +1722,16 @@ class Flashback(SharedMemoryModel):
         all_entries = [self.owner] + list(self.allowed.all())
         return [ob.player for ob in all_entries]
 
-    def add_post(self, actions, poster=None):
+    def add_post(self, actions, poster=None, roll=None):
         """
         Adds a new post to the flashback.
         Args:
             actions: The story post that the poster is writing.
             poster (RosterEntry): The player who added the story post.
+            roll: A dice roll result.
         """
         now = datetime.now()
+        # TODO: add in the roll kwarg
         self.posts.create(poster=poster, actions=actions, db_date_created=now)
         if poster:
             poster.character.messages.num_flashbacks += 1
@@ -1745,6 +1747,27 @@ class Flashback(SharedMemoryModel):
         object_id = self.owner.character.id
         return reverse('character:flashback_post', kwargs={'object_id': object_id, 'flashback_id': self.id})
 
+    def get_dice_roll(self, roster_entry):
+        """Returns a roll object for the given roster, or None."""
+        # TODO
+        pass
+
+    def set_dice_roll(self, roster_entry, roll):
+        """Adds a Roll object."""
+        # TODO
+        pass
+
+    def delete_dice_roll(self, roster_entry):
+        """Deletes a participant's roll."""
+        # TODO
+        pass
+
+
+class FlashbackParticipant(SharedMemoryModel):
+    """A player participating in a Flashback by writing posts."""
+    # TODO: m2m roster, owner bool, posts, roll(text or FK?), active bool.
+    # TODO: with 'active' we can differentiate past participants from ones able to see new posts
+
 
 class FlashbackPost(SharedMemoryModel):
     """A post for a flashback."""
@@ -1753,6 +1776,7 @@ class FlashbackPost(SharedMemoryModel):
     read_by = models.ManyToManyField('RosterEntry', blank=True, related_name="read_flashback_posts")
     actions = models.TextField("The body of the post for your character's actions", blank=True)
     db_date_created = models.DateTimeField(blank=True, null=True)
+    # TODO: add a text field for the roll result string
 
     def display(self):
         """Returns string display of our story post."""
