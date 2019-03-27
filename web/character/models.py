@@ -1721,15 +1721,14 @@ class Flashback(SharedMemoryModel):
 
     @property
     def all_players(self):
-        """List of players who have ever been involved in the flashback."""
-        # all_entries = [self.owner] + list(self.allowed.all())
-        # return [ob.player for ob in all_entries]
+        """List of players who have ever been invited to flashback."""
         return [ob.player for ob in self.participants.all()]
 
     @property
     def current_players(self):
         """List of players who may add posts."""
-        return [ob.participant.player for ob in self.flashback_involvements.filter(can_participate=True)]
+        qs = self.flashback_involvements.filter(status__gte=FlashbackInvolvement.CONTRIBUTOR)
+        return [ob.participant.player for ob in qs]
 
     def add_post(self, actions, poster=None, roll=None):
         """
@@ -1770,6 +1769,11 @@ class FlashbackInvolvement(SharedMemoryModel):
     class Meta:
         unique_together = ('flashback', 'participant')
 
+    @property
+    def contributed(self):
+        """Boolean for any posts"""
+        return self.flashback_posts.exists()
+
     def make_dice_roll(self, check_str, flub=False):
         """Clears character's ndb last_roll, forces @check, keeps result string."""
         char = self.participant.character
@@ -1788,7 +1792,7 @@ class FlashbackInvolvement(SharedMemoryModel):
 class FlashbackPost(SharedMemoryModel):
     """A post for a flashback."""
     flashback = models.ForeignKey('Flashback', related_name="posts")
-    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts")
+    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts", through='FlashbackInvolvement')
     readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts", through='FlashbackInvolvement')
     read_by = models.ManyToManyField('RosterEntry', blank=True, related_name="read_flashback_posts", through='FlashbackInvolvement')
     actions = models.TextField("The body of the post for your character's actions", blank=True)
