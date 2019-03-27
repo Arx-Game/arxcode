@@ -113,7 +113,7 @@ class CmdDiceCheck(ArxCommand):
         if quiet:
             namelist = []
             roll_msg = "|w[Private Roll]|n " + Roll.build_msg(caller.ndb.last_roll)
-            if self.rhs.lower() == "me":
+            if self.rhs.lower() in ("me", str(caller), str(caller.key)):
                 namelist.append("self-only")
             else:  # send roll message to each recipient
                 for name in self.rhs.split(","):

@@ -41,11 +41,13 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     invite_switches = ("invite", "uninvite")
     change_switches = ("title", "summary")
     requires_owner = ("invite",) + change_switches
+    requires_unconcluded = ("post", "roll", "check")
 
     # TODO:
     # flashback/invite[/retro] <ID #>=<player>
     # flashback/allow <ID #>=<player>,<number of last posts or 'all'>
     # flashback/check[/flub] <ID#>=<stat>[+<skill>][ at <difficulty number>]
+    # flashback/conclude <ID #>
 
     @property
     def roster_entry(self):
@@ -58,7 +60,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.create_flashback()
         else:
             flashback = self.get_flashback()
-            if not flashback:
+            if not flashback or not self.check_conclusion(flashback):
                 return
             if not self.switches:
                 self.view_flashback(flashback)
@@ -103,6 +105,9 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         except (Flashback.DoesNotExist, ValueError):
             self.msg("No flashback by that ID number.")
             self.list_flashbacks()
+
+    def get_involvement(self, flashback):
+        return flashback.flashback_involvements.get(participant=self.roster_entry)
 
     def view_flashback(self, flashback):
         try:
@@ -150,11 +155,11 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
                       category="Flashbacks")
 
     def post_message(self, flashback):
-        roll = flashback.get_dice_roll(self.roster_entry)
+        inv = self.get_involvement(flashback)
         if not self.rhs:
             self.msg("You must include a message.")
             return
-        elif roll:
+        elif inv.roll:
             # TODO: confirmation details!
             if not self.confirm_command():
                 return
@@ -172,6 +177,12 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             return False
         return True
 
+    def check_conclusion(self, flashback):
+        if self.check_switches(self.requires_unconcluded) and flashback.concluded:
+            self.msg("That flashback has reached its conclusion.")
+            return False
+        return True
+
     def update_flashback(self, flashback):
         if "title" in self.switches:
             field = "title"
@@ -182,21 +193,13 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         self.msg("%s set to: %s." % (field, self.rhs))
 
     def make_flashback_roll(self, flashback):
-        """Prints reminder of caller's existing dice roll, or saves new one in the flashback."""
-        reminder = "Your next post in Flashback #%s will use this roll" % flashback.id
-        roll = flashback.get_dice_roll(self.roster_entry)
-        if roll:
-            result_str = roll.build_msg()
-            return self.msg("%s: %s" % (reminder, result_str))
+        """Prints reminder of participant's existing dice result, or saves new one."""
+        inv = self.get_involvement(flashback)
+        reminder = "Your next post in flashback #%s will use this roll" % flashback.id
+        if inv.roll:
+            return self.msg("%s: %s" % (reminder, inv.roll))
         elif not self.rhs:
             return self.msg("|wMissing:|n <stat>[+<skill>][ at <difficulty number>]")
-        # no flashback roll for caller exists, so make new one:
-        self.caller.ndb.last_roll.remove()  # in case upcoming @check fails, we don't want old roll!
-        cmd_msg = self.rhs + "=me"
-        flub = "/flub " if "flub" in self.switches else " "
-        self.caller.execute_cmd("@check%s%s" % (flub, cmd_msg))
-        roll = self.caller.ndb.last_roll
-        if roll:  # means @check worked; caller saw their result
-            flashback.set_dice_roll(self.roster_entry, roll)
+        # no flashback roll for caller is waiting on a post, so make new one:
+        if inv.make_dice_roll(self.rhs, flub="flub" in self.switches):
             self.msg("%s." % reminder)
-

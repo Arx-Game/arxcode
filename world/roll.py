@@ -177,14 +177,11 @@ class Roll(object):
             return 1
 
     def build_msg(self, use_color=True):
-        white_col, red_col, cyan_col, green_col, no_col = "", "", "", "", ""
         if use_color:
             white_col, red_col, cyan_col, green_col, no_col = "|w", "|r", "|c", "|g", "|n"
-        name = self.character_name
-        if self.result + self.difficulty >= self.difficulty:
-            resultstr = "%s%s higher" % (white_col, self.result)
         else:
-            resultstr = "%s%s lower" % (red_col, -self.result)
+            white_col, red_col, cyan_col, green_col, no_col = "", "", "", "", ""
+        name = self.character_name
         if self.stats:
             stat_str = ", ".join(self.stats.keys())
             if self.announce_values:
@@ -198,11 +195,15 @@ class Roll(object):
         else:
             skill_str = ""
         if not stat_str or not skill_str:
-            roll_msg = "%s" % (stat_str or skill_str)
+            roll_msg = stat_str or skill_str
         else:
             roll_msg = "%s + %s" % (stat_str, skill_str)
-        msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg, self.difficulty,
-                                                                     resultstr, no_col)
+        if self.result + self.difficulty >= self.difficulty:
+            resultstr = "%s%s higher" % (white_col, self.result)
+        else:
+            resultstr = "%s%s lower" % (red_col, -self.result)
+        msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg,
+                                                                     self.difficulty, resultstr, no_col)
         if self.crit_mult > 1 and self.result >= 0:
             msg = "%s%s rolled a critical!%s %s" % (green_col, name, no_col, msg)
         self.msg = msg

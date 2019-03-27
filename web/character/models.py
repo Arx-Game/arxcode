@@ -1688,15 +1688,18 @@ class Flashback(SharedMemoryModel):
     """
     title = models.CharField(max_length=250, unique=True)
     summary = models.TextField(blank=True)
-    owner = models.ForeignKey('RosterEntry', related_name="created_flashbacks")
-    allowed = models.ManyToManyField('RosterEntry', related_name="allowed_flashbacks", blank=True)
+    participants = models.ManyToManyField('RosterEntry', related_name="flashbacks", through='FlashbackInvolvement')
+    # owner = models.ForeignKey('RosterEntry', related_name="created_flashbacks")
+    # allowed = models.ManyToManyField('RosterEntry', related_name="allowed_flashbacks", blank=True)
+    concluded = models.BooleanField(default=False)
     db_date_created = models.DateTimeField(blank=True, null=True)
     beat = models.ForeignKey("dominion.PlotUpdate", blank=True, null=True, related_name="flashbacks",
                              on_delete=models.SET_NULL)
 
     def get_new_posts(self, entry):
         """Returns posts that entry hasn't read yet."""
-        return self.posts.exclude(Q(read_by=entry) | Q(poster=entry))
+        # return self.posts.exclude(Q(read_by=entry) | Q(poster=entry))
+        return self.posts.filter(Q(readable_by=entry)).exclude(Q(read_by=entry) | Q(poster=entry))
 
     def display(self, display_summary_only=False, post_limit=None):
         """Returns string display of a flashback."""
@@ -1718,9 +1721,15 @@ class Flashback(SharedMemoryModel):
 
     @property
     def all_players(self):
-        """List of players who are involved in the flashback."""
-        all_entries = [self.owner] + list(self.allowed.all())
-        return [ob.player for ob in all_entries]
+        """List of players who have ever been involved in the flashback."""
+        # all_entries = [self.owner] + list(self.allowed.all())
+        # return [ob.player for ob in all_entries]
+        return [ob.player for ob in self.participants.all()]
+
+    @property
+    def current_players(self):
+        """List of players who may add posts."""
+        return [ob.participant.player for ob in self.flashback_involvements.filter(can_participate=True)]
 
     def add_post(self, actions, poster=None, roll=None):
         """
@@ -1731,7 +1740,7 @@ class Flashback(SharedMemoryModel):
             roll: A dice roll result.
         """
         now = datetime.now()
-        # TODO: add in the roll kwarg
+        # TODO: add in the roll kwarg's functionality
         self.posts.create(poster=poster, actions=actions, db_date_created=now)
         if poster:
             poster.character.messages.num_flashbacks += 1
@@ -1747,33 +1756,41 @@ class Flashback(SharedMemoryModel):
         object_id = self.owner.character.id
         return reverse('character:flashback_post', kwargs={'object_id': object_id, 'flashback_id': self.id})
 
-    def get_dice_roll(self, roster_entry):
-        """Returns a roll object for the given roster, or None."""
-        # TODO
-        pass
 
-    def set_dice_roll(self, roster_entry, roll):
-        """Adds a Roll object."""
-        # TODO
-        pass
+class FlashbackInvolvement(SharedMemoryModel):
+    """Through model of a player's participation in a Flashback."""
+    RETIRED, CONTRIBUTOR, OWNER = range(3)
+    STATUS_CHOICES = ((RETIRED, 'Retired'), (CONTRIBUTOR, 'Contributor'), (OWNER, 'Owner'),)
+    flashback = models.ForeignKey('Flashback', related_name="flashback_involvements")
+    participant = models.ForeignKey('RosterEntry', related_name="flashback_involvements")
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=CONTRIBUTOR, blank=True)
+    role_played = models.CharField(max_length=250, blank=True)
+    roll = models.CharField(max_length=250, blank=True)
 
-    def delete_dice_roll(self, roster_entry):
-        """Deletes a participant's roll."""
-        # TODO
-        pass
+    class Meta:
+        unique_together = ('flashback', 'participant')
 
-
-class FlashbackParticipant(SharedMemoryModel):
-    """A player participating in a Flashback by writing posts."""
-    # TODO: m2m roster, owner bool, posts, roll(text or FK?), active bool.
-    # TODO: with 'active' we can differentiate past participants from ones able to see new posts
+    def make_dice_roll(self, check_str, flub=False):
+        """Clears character's ndb last_roll, forces @check, keeps result string."""
+        char = self.participant.character
+        check_str, _ = check_str.split("=", 1)
+        check_str += "=me"
+        flub_str = "/flub" if flub else ""
+        char.ndb.last_roll.remove()
+        char.execute_cmd("@check%s %s" % (flub_str, check_str))
+        roll = char.ndb.last_roll
+        if roll:
+            roll.use_real_name=True  # Thanks, Maskbama.
+            self.roll = roll.build_msg(use_color=False)
+            return True
 
 
 class FlashbackPost(SharedMemoryModel):
     """A post for a flashback."""
     flashback = models.ForeignKey('Flashback', related_name="posts")
     poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts")
-    read_by = models.ManyToManyField('RosterEntry', blank=True, related_name="read_flashback_posts")
+    readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts", through='FlashbackInvolvement')
+    read_by = models.ManyToManyField('RosterEntry', blank=True, related_name="read_flashback_posts", through='FlashbackInvolvement')
     actions = models.TextField("The body of the post for your character's actions", blank=True)
     db_date_created = models.DateTimeField(blank=True, null=True)
     # TODO: add a text field for the roll result string
