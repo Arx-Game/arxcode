@@ -21,18 +21,19 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback/create <title>[=<summary>]
         flashback/title <ID #>=<new title>
         flashback/summary <ID #>=<new summary>
-        flashback/invite <ID #>=<player>
+        flashback/invite [<ID #>=<player>]
         flashback/uninvite <ID #>=<player>
         flashback/post <ID #>=<message>
+        flashback/check[/flub] <ID>=<stat>[+<skill>][ at <difficulty #>]
 
     Flashbacks are roleplay scenes that happened in the past. They are
     private to invited players and staff. Involved players are informed of
     new posts. If you no longer wish to be informed or post, you can uninvite
-    yourself. Catchup will summarize unread posts. Posts can also be made
-    from the Flashback link on your character webpage. Players are able to
-    see posts made while they are involved, but adding the /retro switch to
-    invite reveals the entire Flashback. Partial visibility is achieved with
-    /allow, after a regular invitation.
+    yourself. Catchup shows unread posts. Posts can also be made from the
+    Flashback link on your character webpage. Players can see posts made
+    after they were invited, but adding /retro to an invitation reveals all
+    back-posts. Partial visibility is achieved with /allow, after they have
+    been invited normally. Use /invite without args to see who has access.
     """
     key = "flashback"
     aliases = ["flashbacks"]
@@ -46,7 +47,6 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     # TODO:
     # flashback/invite[/retro] <ID #>=<player>
     # flashback/allow <ID #>=<player>,<number of last posts or 'all'>
-    # flashback/check[/flub] <ID#>=<stat>[+<skill>][ at <difficulty number>]
     # flashback/conclude <ID #>
 
     @property
@@ -85,7 +85,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     def list_flashbacks(self):
         from evennia.utils.evtable import EvTable
         table = EvTable("ID", "Title", "Owner", "New Posts", width=78, border="cells")
-        for flashback in self.roster_entry.valid_flashbacks:
+        for flashback in self.roster_entry.valid_flashbacks:  # TODO: change
             table.add_row(flashback.id, flashback.title, flashback.owner,
                           str(len(flashback.get_new_posts(self.roster_entry))))
         self.msg(str(table))
@@ -101,7 +101,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
 
     def get_flashback(self):
         try:
-            return self.roster_entry.valid_flashbacks.get(id=int(self.lhs))
+            return self.roster_entry.valid_flashbacks.get(id=int(self.lhs))  # TODO: change
         except (Flashback.DoesNotExist, ValueError):
             self.msg("No flashback by that ID number.")
             self.list_flashbacks()
@@ -114,7 +114,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             post_limit = int(self.rhs)
         except (TypeError, ValueError):
             post_limit = None
-        self.msg(flashback.display(post_limit=post_limit))
+        self.msg(flashback.display(post_limit=post_limit, reader=self.roster_entry))
 
     def read_new_posts(self, flashback):
         new_posts = flashback.get_new_posts(self.roster_entry)
@@ -128,46 +128,45 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         self.msg(msg)
 
     def manage_invites(self, flashback):
+        if not self.rhs:
+            return flashback.display_involvement()
         targ = self.caller.search(self.rhs)
         if not targ:
             return
         if "invite" in self.switches:
             self.invite_target(flashback, targ)
-        else:  # uninvite
+        else:
             self.uninvite_target(flashback, targ)
 
     def invite_target(self, flashback, target):
-        if flashback.allowed.filter(id=target.roster.id).exists():
+        if flashback.allowed.filter(id=target.roster.id).exists():  # TODO: change
             self.msg("They are already invited to this flashback.")
             return
         self.msg("You have invited %s to participate in this flashback." % target)
-        flashback.allowed.add(target.roster)
+        flashback.allowed.add(target.roster)  # TODO: change
         target.inform("You have been invited by %s to participate in flashback #%s: '%s'." %
                       (self.caller, flashback.id, flashback), category="Flashbacks")
 
     def uninvite_target(self, flashback, target):
-        if not flashback.allowed.filter(id=target.roster.id).exists():
+        if not flashback.allowed.filter(id=target.roster.id).exists():  # TODO: change
             self.msg("They are already not invited to this flashback.")
             return
         self.msg("You have uninvited %s from this flashback." % target)
-        flashback.allowed.remove(target.roster)
+        flashback.allowed.remove(target.roster)  # TODO: change
         target.inform("You have been removed from flashback #%s." % flashback.id,
                       category="Flashbacks")
 
     def post_message(self, flashback):
-        inv = self.get_involvement(flashback)
         if not self.rhs:
-            self.msg("You must include a message.")
-            return
-        elif inv.roll:
-            # TODO: confirmation details!
-            if not self.confirm_command():
+            return self.msg("You must include a message.")
+        inv = self.get_involvement(flashback)
+        if inv.roll:
+            prompt = ("|wThis roll will accompany the new post:|n %s\n"
+                      "|yPlease repeat command to confirm and continue.|n" % inv.roll)
+            if not self.confirm_command("flashback_%s_post" % flashback.id, self.rhs, prompt):
                 return
-            else:
-                # TODO: delete roll from flashback
-                pass
         flashback.add_post(self.rhs, self.roster_entry)
-        self.msg("You have posted a new message to %s: %s" % (flashback, self.rhs))
+        self.msg("You have posted to |w%s|n: %s" % (flashback, self.rhs))
 
     def check_can_use_switch(self, flashback):
         if not self.check_switches(self.requires_owner):
@@ -200,6 +199,6 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             return self.msg("%s: %s" % (reminder, inv.roll))
         elif not self.rhs:
             return self.msg("|wMissing:|n <stat>[+<skill>][ at <difficulty number>]")
-        # no flashback roll for caller is waiting on a post, so make new one:
-        if inv.make_dice_roll(self.rhs, flub="flub" in self.switches):
-            self.msg("%s." % reminder)
+        else:
+            if inv.make_dice_roll(self.rhs, flub="flub" in self.switches):
+                self.msg("%s." % reminder)

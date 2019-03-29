@@ -1696,54 +1696,101 @@ class Flashback(SharedMemoryModel):
     beat = models.ForeignKey("dominion.PlotUpdate", blank=True, null=True, related_name="flashbacks",
                              on_delete=models.SET_NULL)
 
+    def __str__(self):
+        return self.title
+
     def get_new_posts(self, entry):
         """Returns posts that entry hasn't read yet."""
         # return self.posts.exclude(Q(read_by=entry) | Q(poster=entry))
         return self.posts.filter(Q(readable_by=entry)).exclude(Q(read_by=entry) | Q(poster=entry))
 
-    def display(self, display_summary_only=False, post_limit=None):
-        """Returns string display of a flashback."""
-        from server.utils.arx_utils import list_to_string
-        msg = "(#%s) |w%s|n" % (self.id, self.title)
-        msg += "\nInvolved: %s\n" % list_to_string(self.all_players)
+    def display(self, display_summary_only=False, post_limit=None, reader=None):
+        """
+        Returns string display of a flashback.
+        Args:
+            display_summary_only (boolean)
+            post_limit (int)
+            reader (RosterEntry)
+        """
+        wip = "" if self.concluded else " [work in progress]"
+        msg = "(#%s) |w%s|n%s" % (self.id, self.title, wip)
+        msg += "\nOwners and authors: %s" % ", ".join(self.owners_and_contributors)
         msg += "\nSummary: %s" % self.summary
         if display_summary_only:
             return msg
-        posts = list(self.posts.all())
+        if not reader or reader.player.check_permstring('builder'):
+            posts = list(self.posts.all())
+        else:
+            posts = list(self.posts.filter(readable_by=reader))
         if post_limit:
             posts = posts[-post_limit:]
         if posts:
             msg += "\n%s" % "\n".join(post.display() for post in posts)
         return msg
 
-    def __str__(self):
-        return self.title
+    def display_involvement(self):
+        """A string about who's able to add posts."""
+        msg = "(#%s) |w%s|n - Owners and post authors: %s" % (self.id, self.title, self.owners_and_contributors)
+        msg += "\nCharacters able to see/make new posts: %s" % ", ".join([str(ob) for ob in self.current_rosters])
+        return msg
+
+    @property
+    def owner(self):
+        """Owner's roster entry."""
+        return self.owners.first()
+
+    @property
+    def owners(self):
+        """Queryset of all owners' roster entries."""
+        return self.participants.filter(status=FlashbackInvolvement.OWNER)
+
+    @property
+    def post_authors(self):
+        """Set of post authors' roster entries."""
+        return set(self.posts.exclude(poster__isnull=True).values_list('poster', flat=True))
+
+    @property
+    def owners_and_contributors(self):
+        """List of strings - owners (in hi-def color!) and post authors."""
+        owners_set = set(self.owners)
+        authors_set = self.post_authors.difference(owners_set)
+        return ["|c%s|n" % ob for ob in owners_set] + [str(ob) for ob in authors_set]
 
     @property
     def all_players(self):
-        """List of players who have ever been invited to flashback."""
+        """List of players who have ever been invited to this flashback."""
         return [ob.player for ob in self.participants.all()]
 
     @property
     def current_players(self):
         """List of players who may add posts."""
-        qs = self.flashback_involvements.filter(status__gte=FlashbackInvolvement.CONTRIBUTOR)
-        return [ob.participant.player for ob in qs]
+        return [ob.player for ob in self.current_rosters]
 
-    def add_post(self, actions, poster=None, roll=None):
+    @property
+    def current_rosters(self):
+        """Queryset of roster entries who may add posts."""
+        return self.participants.filter(status__gte=FlashbackInvolvement.CONTRIBUTOR)
+
+    def get_involvement(self, roster_entry):
+        return self.flashback_involvements.get(participant=roster_entry)
+
+    def add_post(self, actions, poster=None):
         """
         Adds a new post to the flashback.
         Args:
-            actions: The story post that the poster is writing.
+            actions (string): The story post that the poster is writing.
             poster (RosterEntry): The player who added the story post.
-            roll: A dice roll result.
+            roll (string): A dice roll result.
         """
         now = datetime.now()
-        # TODO: add in the roll kwarg's functionality
-        self.posts.create(poster=poster, actions=actions, db_date_created=now)
+        inv = self.get_involvement(poster)
+        post = self.posts.create(poster=poster, actions=actions, db_date_created=now, roll=inv.roll)
+        post.readable_by.set(self.current_rosters)
+        post.save()
+        inv.roll.remove()
         if poster:
             poster.character.messages.num_flashbacks += 1
-        for player in self.all_players:
+        for player in self.current_players:
             if poster and poster.player == player:
                 continue
             player.inform("There is a new post on flashback #%s by %s." % (self.id, poster),
@@ -1757,7 +1804,7 @@ class Flashback(SharedMemoryModel):
 
 
 class FlashbackInvolvement(SharedMemoryModel):
-    """Through model of a player's participation in a Flashback."""
+    """Through model of a player's involvement with a Flashback."""
     RETIRED, CONTRIBUTOR, OWNER = range(3)
     STATUS_CHOICES = ((RETIRED, 'Retired'), (CONTRIBUTOR, 'Contributor'), (OWNER, 'Owner'),)
     flashback = models.ForeignKey('Flashback', related_name="flashback_involvements")
@@ -1769,10 +1816,13 @@ class FlashbackInvolvement(SharedMemoryModel):
     class Meta:
         unique_together = ('flashback', 'participant')
 
+    def __str__(self):
+        return str(self.participant)
+
     @property
-    def contributed(self):
-        """Boolean for any posts"""
-        return self.flashback_posts.exists()
+    def contributions(self):
+        """Queryset for our posts"""
+        return self.flashback.posts.filter(poster=self.participant)
 
     def make_dice_roll(self, check_str, flub=False):
         """Clears character's ndb last_roll, forces @check, keeps result string."""
@@ -1792,12 +1842,12 @@ class FlashbackInvolvement(SharedMemoryModel):
 class FlashbackPost(SharedMemoryModel):
     """A post for a flashback."""
     flashback = models.ForeignKey('Flashback', related_name="posts")
-    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts", through='FlashbackInvolvement')
-    readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts", through='FlashbackInvolvement')
-    read_by = models.ManyToManyField('RosterEntry', blank=True, related_name="read_flashback_posts", through='FlashbackInvolvement')
+    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts")
+    readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts")
+    read_by = models.ManyToManyField('RosterEntry', blank=True, related_name="read_flashback_posts")
     actions = models.TextField("The body of the post for your character's actions", blank=True)
     db_date_created = models.DateTimeField(blank=True, null=True)
-    # TODO: add a text field for the roll result string
+    roll = models.CharField(max_length=250, blank=True)
 
     def display(self):
         """Returns string display of our story post."""
