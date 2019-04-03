@@ -60,7 +60,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.create_flashback()
         else:
             flashback = self.get_flashback()
-            if not flashback or not self.check_conclusion(flashback):
+            if not flashback:
                 return
             if not self.switches:
                 self.view_flashback(flashback)
@@ -85,7 +85,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     def list_flashbacks(self):
         from evennia.utils.evtable import EvTable
         table = EvTable("ID", "Title", "Owner", "New Posts", width=78, border="cells")
-        for flashback in self.roster_entry.valid_flashbacks:  # TODO: change
+        for flashback in self.roster_entry.flashbacks.all():
             table.add_row(flashback.id, flashback.title, flashback.owner,
                           str(len(flashback.get_new_posts(self.roster_entry))))
         self.msg(str(table))
@@ -101,13 +101,14 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
 
     def get_flashback(self):
         try:
-            return self.roster_entry.valid_flashbacks.get(id=int(self.lhs))  # TODO: change
+            if self.check_switches(self.requires_unconcluded):
+                fb = self.roster_entry.postable_flashbacks
+            else:
+                fb = self.roster_entry.flashbacks.all()
+            return fb.get(id=int(self.lhs))
         except (Flashback.DoesNotExist, ValueError):
-            self.msg("No flashback by that ID number.")
+            self.msg("No open flashback by that ID number.")
             self.list_flashbacks()
-
-    def get_involvement(self, flashback):
-        return flashback.flashback_involvements.get(participant=self.roster_entry)
 
     def view_flashback(self, flashback):
         try:
@@ -128,7 +129,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         self.msg(msg)
 
     def manage_invites(self, flashback):
-        if not self.rhs:
+        if not self.rhs and "invite" in self.switches:
             return flashback.display_involvement()
         targ = self.caller.search(self.rhs)
         if not targ:
@@ -139,27 +140,35 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.uninvite_target(flashback, targ)
 
     def invite_target(self, flashback, target):
-        if flashback.allowed.filter(id=target.roster.id).exists():  # TODO: change
+        inv = flashback.get_involvement(target.roster)
+        if inv and inv.status >= inv.CONTRIBUTOR:
             self.msg("They are already invited to this flashback.")
             return
-        self.msg("You have invited %s to participate in this flashback." % target)
-        flashback.allowed.add(target.roster)  # TODO: change
+        retro = "retro" in self.switches
+        retro_msg = ", with all previous posts visible" if retro else ""
+        flashback.invite_roster(target.roster, retro=retro)
+        self.msg("You have invited %s to participate in this flashback%s." % (target, retro_msg))
         target.inform("You have been invited by %s to participate in flashback #%s: '%s'." %
                       (self.caller, flashback.id, flashback), category="Flashbacks")
 
     def uninvite_target(self, flashback, target):
-        if not flashback.allowed.filter(id=target.roster.id).exists():  # TODO: change
+        inv = flashback.get_involvement(target.roster)
+        if not inv or inv.status == inv.RETIRED:
             self.msg("They are already not invited to this flashback.")
             return
+        if target.roster in flashback.owners:
+            self.msg("Cannot remove an owner of the flashback.")
+            return
+        flashback.uninvite_roster(target.roster)
         self.msg("You have uninvited %s from this flashback." % target)
-        flashback.allowed.remove(target.roster)  # TODO: change
-        target.inform("You have been removed from flashback #%s." % flashback.id,
-                      category="Flashbacks")
+        if target != self.caller:
+            target.inform("You have been retired from flashback #%s." % flashback.id,
+                          category="Flashbacks")
 
     def post_message(self, flashback):
         if not self.rhs:
             return self.msg("You must include a message.")
-        inv = self.get_involvement(flashback)
+        inv = flashback.get_involvement(self.roster_entry)
         if inv.roll:
             prompt = ("|wThis roll will accompany the new post:|n %s\n"
                       "|yPlease repeat command to confirm and continue.|n" % inv.roll)
@@ -193,7 +202,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
 
     def make_flashback_roll(self, flashback):
         """Prints reminder of participant's existing dice result, or saves new one."""
-        inv = self.get_involvement(flashback)
+        inv = flashback.get_involvement(self.roster_entry)
         reminder = "Your next post in flashback #%s will use this roll" % flashback.id
         if inv.roll:
             return self.msg("%s: %s" % (reminder, inv.roll))

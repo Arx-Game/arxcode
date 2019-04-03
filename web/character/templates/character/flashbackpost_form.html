@@ -7,7 +7,11 @@
             <div class="well text-center">{{ flashback.summary|mush_to_html }}</div>
             {% for post in flashback.posts.all %}
                 <hr/>
-            <div>By {{ post.poster }}<p>{{ post.actions|mush_to_html }}</p></div>
+            <div>By {{ post.poster }}
+            {% if post.roll %}
+            &nbsp;-&nbsp;{{ post.roll }}
+            {% endif %}
+            <p>{{ post.actions|mush_to_html }}</p></div>
             {% endfor %}
         <div id="add_post">
             <form action="." method="post">

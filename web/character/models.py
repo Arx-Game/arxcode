@@ -195,9 +195,10 @@ class RosterEntry(SharedMemoryModel):
         return self.accounthistory_set.order_by('-id')[1:]
 
     @property
-    def valid_flashbacks(self):
-        """Gets queryset of flashbacks we own or are allowed access to."""
-        return Flashback.objects.filter(Q(owner=self) | Q(allowed=self)).distinct()
+    def postable_flashbacks(self):
+        """Queryset of flashbacks we can post to."""
+        old = self.flashback_involvements.filter(status__lte=FlashbackInvolvement.RETIRED)
+        return self.flashbacks.exclude(Q(concluded=True) | Q(participants__in=old))
 
     @property
     def impressions_of_me(self):
@@ -1700,9 +1701,8 @@ class Flashback(SharedMemoryModel):
         return self.title
 
     def get_new_posts(self, entry):
-        """Returns posts that entry hasn't read yet."""
-        # return self.posts.exclude(Q(read_by=entry) | Q(poster=entry))
-        return self.posts.filter(Q(readable_by=entry)).exclude(Q(read_by=entry) | Q(poster=entry))
+        """Returns posts that roster entry hasn't read yet."""
+        return self.posts.filter(Q(readable_by=entry)).exclude(Q(read_by=entry) | Q(poster=entry))  # TODO: change
 
     def display(self, display_summary_only=False, post_limit=None, reader=None):
         """
@@ -1730,7 +1730,8 @@ class Flashback(SharedMemoryModel):
 
     def display_involvement(self):
         """A string about who's able to add posts."""
-        msg = "(#%s) |w%s|n - Owners and post authors: %s" % (self.id, self.title, self.owners_and_contributors)
+        owners_and_contributors = ", ".join(self.owners_and_contributors)
+        msg = "(#%s) |w%s|n - Owners and post authors: %s" % (self.id, self.title, owners_and_contributors)
         msg += "\nCharacters able to see/make new posts: %s" % ", ".join([str(ob) for ob in self.current_rosters])
         return msg
 
@@ -1746,14 +1747,15 @@ class Flashback(SharedMemoryModel):
 
     @property
     def post_authors(self):
-        """Set of post authors' roster entries."""
-        return set(self.posts.exclude(poster__isnull=True).values_list('poster', flat=True))
+        """Queryset of post-authors' roster entries."""
+        all_posts = self.posts.all()
+        return RosterEntry.objects.filter(flashback_posts__in=all_posts)
 
     @property
     def owners_and_contributors(self):
         """List of strings - owners (in hi-def color!) and post authors."""
-        owners_set = set(self.owners)
-        authors_set = self.post_authors.difference(owners_set)
+        owners_set = self.owners.values_list('player__username', flat=True)
+        authors_set = self.post_authors.exclude(id__in=self.owners).values_list('player__username', flat=True)
         return ["|c%s|n" % ob for ob in owners_set] + [str(ob) for ob in authors_set]
 
     @property
@@ -1772,7 +1774,34 @@ class Flashback(SharedMemoryModel):
         return self.participants.filter(status__gte=FlashbackInvolvement.CONTRIBUTOR)
 
     def get_involvement(self, roster_entry):
-        return self.flashback_involvements.get(participant=roster_entry)
+        """Returns a FlashbackInvolvement for the roster entry."""
+        try:
+            return self.flashback_involvements.get(participant=roster_entry)
+        except FlashbackInvolvement.DoesNotExist:
+            return None
+
+    def uninvite_roster(self, roster_entry):
+        """Retires contributor or deletes non-contributor's FlashbackInvolvement."""
+        inv = self.get_involvement(roster_entry)
+        if inv.contributions.exists():
+            inv.status = inv.RETIRED
+            inv.save()
+        else:
+            del inv
+
+    def invite_roster(self, roster_entry, retro=False):
+        """Unretires or creates a FlashbackInvolvement."""
+        inv, gotten = self.flashback_involvements.get_or_create(participant=roster_entry)
+        if gotten:
+            inv.status = inv.CONTRIBUTOR
+            inv.roll = ""
+            inv.save()
+        if retro:
+            ReadablePostModel = FlashbackPostPermission
+            bulk_list = []
+            for post in self.posts.all():
+                bulk_list.append(ReadablePostModel(post=post, reader=roster_entry))
+            ReadablePostModel.objects.bulk_create(bulk_list)  # TODO: double check
 
     def add_post(self, actions, poster=None):
         """
@@ -1785,7 +1814,7 @@ class Flashback(SharedMemoryModel):
         now = datetime.now()
         inv = self.get_involvement(poster)
         post = self.posts.create(poster=poster, actions=actions, db_date_created=now, roll=inv.roll)
-        post.readable_by.set(self.current_rosters)
+        post.readable_by.set(self.current_rosters)  # TODO: change.
         post.save()
         inv.roll.remove()
         if poster:
@@ -1843,8 +1872,7 @@ class FlashbackPost(SharedMemoryModel):
     """A post for a flashback."""
     flashback = models.ForeignKey('Flashback', related_name="posts")
     poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts")
-    readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts")
-    read_by = models.ManyToManyField('RosterEntry', blank=True, related_name="read_flashback_posts")
+    readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts", through='FlashbackPostPermission')
     actions = models.TextField("The body of the post for your character's actions", blank=True)
     db_date_created = models.DateTimeField(blank=True, null=True)
     roll = models.CharField(max_length=250, blank=True)
@@ -1855,6 +1883,13 @@ class FlashbackPost(SharedMemoryModel):
 
     def __str__(self):
         return "Post by %s" % self.poster
+
+
+class FlashbackPostPermission(SharedMemoryModel):
+    """The readability status of a flashback post."""
+    post = models.ForeignKey('FlashbackPost', related_name="flashback_post_permissions")
+    reader = models.ForeignKey('RosterEntry', related_name="flashback_post_permissions")
+    is_read = models.BooleanField(default=False)
 
 
 class Goal(SharedMemoryModel):

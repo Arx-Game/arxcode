@@ -739,7 +739,7 @@ class FlashbackListView(LoginRequiredMixin, CharacterMixin, ListView):
         if user.char_ob != self.character and not (user.is_staff or user.check_permstring("builders")):
             raise Http404
         entry = self.character.roster
-        return Flashback.objects.filter(Q(owner=entry) | Q(allowed=entry)).distinct()
+        return Flashback.objects.filter(Q(owner=entry) | Q(allowed=entry)).distinct()  #TODO: change!
 
 
 class FlashbackCreateView(LoginRequiredMixin, CharacterMixin, CreateView):
