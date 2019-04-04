@@ -1701,8 +1701,9 @@ class Flashback(SharedMemoryModel):
         return self.title
 
     def get_new_posts(self, entry):
-        """Returns posts that roster entry hasn't read yet."""
-        return self.posts.filter(Q(readable_by=entry)).exclude(Q(read_by=entry) | Q(poster=entry))  # TODO: change
+        """Returns queryset of posts that roster entry hasn't read yet."""
+        all_readables = self.posts.filter(readable_by=entry)
+        return all_readables.exclude(readable_by__is_read=True).distinct()
 
     def display(self, display_summary_only=False, post_limit=None, reader=None):
         """
@@ -1714,7 +1715,7 @@ class Flashback(SharedMemoryModel):
         """
         wip = "" if self.concluded else " [work in progress]"
         msg = "(#%s) |w%s|n%s" % (self.id, self.title, wip)
-        msg += "\nOwners and authors: %s" % ", ".join(self.owners_and_contributors)
+        msg += "\nOwners and authors: %s" % self.owners_and_contributors
         msg += "\nSummary: %s" % self.summary
         if display_summary_only:
             return msg
@@ -1730,9 +1731,8 @@ class Flashback(SharedMemoryModel):
 
     def display_involvement(self):
         """A string about who's able to add posts."""
-        owners_and_contributors = ", ".join(self.owners_and_contributors)
-        msg = "(#%s) |w%s|n - Owners and post authors: %s" % (self.id, self.title, owners_and_contributors)
-        msg += "\nCharacters able to see/make new posts: %s" % ", ".join([str(ob) for ob in self.current_rosters])
+        msg = "(#%s) |w%s|n - Owners and post authors: %s" % (self.id, self.title, self.owners_and_contributors)
+        msg += "\nCharacters able to see/make new posts: %s" % ", ".join([str(ob) for ob in self.current_players])
         return msg
 
     @property
@@ -1753,10 +1753,11 @@ class Flashback(SharedMemoryModel):
 
     @property
     def owners_and_contributors(self):
-        """List of strings - owners (in hi-def color!) and post authors."""
-        owners_set = self.owners.values_list('player__username', flat=True)
-        authors_set = self.post_authors.exclude(id__in=self.owners).values_list('player__username', flat=True)
-        return ["|c%s|n" % ob for ob in owners_set] + [str(ob) for ob in authors_set]
+        """String of comma-separated owners (in color!) and post authors."""
+        owners = self.owners
+        owners_names = owners.values_list('player__username', flat=True)
+        authors_names = self.post_authors.exclude(id__in=owners).values_list('player__username', flat=True)
+        return ", ".join(["|c%s|n" % ob for ob in owners_names] + [str(ob) for ob in authors_names])
 
     @property
     def all_players(self):
@@ -1790,18 +1791,32 @@ class Flashback(SharedMemoryModel):
             del inv
 
     def invite_roster(self, roster_entry, retro=False):
-        """Unretires or creates a FlashbackInvolvement."""
+        """Creates or unretires a FlashbackInvolvement."""
         inv, gotten = self.flashback_involvements.get_or_create(participant=roster_entry)
         if gotten:
             inv.status = inv.CONTRIBUTOR
             inv.roll = ""
             inv.save()
         if retro:
-            ReadablePostModel = FlashbackPostPermission
-            bulk_list = []
-            for post in self.posts.all():
-                bulk_list.append(ReadablePostModel(post=post, reader=roster_entry))
-            ReadablePostModel.objects.bulk_create(bulk_list)  # TODO: double check
+            self.allow_back_read(roster_entry)
+
+    def allow_back_read(self, roster_entry, amount=None):
+        """
+        Adds through-model for back-reading posts.
+        Args:
+            roster_entry (RosterEntry): the reader
+            amount (int): number of backposts. None defaults to 'all'.
+        """
+        posts = self.posts.all().prefetch_related('readable_by')
+        if amount != None:
+            start = len(posts) - amount
+            if start > 0:
+                posts = posts[start:amount+start]
+        bulk_list = []
+        for post in posts:
+            if not roster_entry in post.readable_by.all():
+                bulk_list.append(FlashbackPostPermission(post=post, reader=roster_entry))
+        FlashbackPostPermission.objects.bulk_create(bulk_list)
 
     def add_post(self, actions, poster=None):
         """
@@ -1814,8 +1829,7 @@ class Flashback(SharedMemoryModel):
         now = datetime.now()
         inv = self.get_involvement(poster)
         post = self.posts.create(poster=poster, actions=actions, db_date_created=now, roll=inv.roll)
-        post.readable_by.set(self.current_rosters)  # TODO: change.
-        post.save()
+        post.set_new_post_readers()
         inv.roll.remove()
         if poster:
             poster.character.messages.num_flashbacks += 1
@@ -1883,6 +1897,14 @@ class FlashbackPost(SharedMemoryModel):
 
     def __str__(self):
         return "Post by %s" % self.poster
+
+    def set_new_post_readers(self):
+        """Adds current flashback participants as readers. For new posts - Does not check existing!"""
+        bulk_list = []
+        current_rosters = self.flashback.current_rosters.exclude(id=self.poster.id)
+        for roster_entry in current_rosters:
+            bulk_list.append(FlashbackPostPermission(post=self, reader=roster_entry))
+        FlashbackPostPermission.objects.bulk_create(bulk_list)
 
 
 class FlashbackPostPermission(SharedMemoryModel):

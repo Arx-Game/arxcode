@@ -19,33 +19,35 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback <ID #>[=<number of last posts to display]
         flashback/catchup <ID #>
         flashback/create <title>[=<summary>]
+        flashback/conclude <ID #>
         flashback/title <ID #>=<new title>
         flashback/summary <ID #>=<new summary>
-        flashback/invite [<ID #>=<player>]
+        flashback/invite[/retro] [<ID #>=<player>]
         flashback/uninvite <ID #>=<player>
+        flashback/allow <ID #>=<player>,<number of last posts or 'all'>
         flashback/post <ID #>=<message>
         flashback/check[/flub] <ID>=<stat>[+<skill>][ at <difficulty #>]
 
     Flashbacks are roleplay scenes that happened in the past. They are
     private to invited players and staff. Involved players are informed of
-    new posts. If you no longer wish to be informed or post, you can uninvite
-    yourself. Catchup shows unread posts. Posts can also be made from the
-    Flashback link on your character webpage. Players can see posts made
-    after they were invited, but adding /retro to an invitation reveals all
+    new posts. If you no longer wish to be informed or post, you may uninvite
+    self. Catchup shows unread posts. Posts can also be made from your
+    character webpage's Flashbacks link. Players can see posts made after
+    they were invited, but adding /retro to an invitation reveals all
     back-posts. Partial visibility is achieved with /allow, after they have
-    been invited normally. Use /invite without args to see who has access.
+    been invited normally. Use /invite sans args to see who has access. Using
+    /check forces an @check roll, remembers the result for your next post.
     """
     key = "flashback"
     aliases = ["flashbacks"]
     locks = "cmd:all()"
     help_category = "Story"
-    invite_switches = ("invite", "uninvite")
+    invite_switches = ("invite", "uninvite", "allow")
     change_switches = ("title", "summary")
-    requires_owner = ("invite",) + change_switches
+    requires_owner = ("invite", "allow",) + change_switches
     requires_unconcluded = ("post", "roll", "check")
 
     # TODO:
-    # flashback/invite[/retro] <ID #>=<player>
     # flashback/allow <ID #>=<player>,<number of last posts or 'all'>
     # flashback/conclude <ID #>
 
@@ -129,18 +131,22 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         self.msg(msg)
 
     def manage_invites(self, flashback):
+        """Redirects to invite, uninvite, or allowing visible back-posts."""
         if not self.rhs and "invite" in self.switches:
             return flashback.display_involvement()
-        targ = self.caller.search(self.rhs)
+        targ = self.caller.search(self.rhslist[0])
         if not targ:
             return
+        inv = flashback.get_involvement(targ.roster)
         if "invite" in self.switches:
-            self.invite_target(flashback, targ)
+            self.invite_target(flashback, targ, inv)
+        elif "allow" in self.switches:
+            self.mark_readable_posts(flashback, targ, inv)
         else:
-            self.uninvite_target(flashback, targ)
+            self.uninvite_target(flashback, targ, inv)
 
-    def invite_target(self, flashback, target):
-        inv = flashback.get_involvement(target.roster)
+    def invite_target(self, flashback, target, inv=None):
+        """Calls method to create an involvement or change it from 'retired' status."""
         if inv and inv.status >= inv.CONTRIBUTOR:
             self.msg("They are already invited to this flashback.")
             return
@@ -151,10 +157,10 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         target.inform("You have been invited by %s to participate in flashback #%s: '%s'." %
                       (self.caller, flashback.id, flashback), category="Flashbacks")
 
-    def uninvite_target(self, flashback, target):
-        inv = flashback.get_involvement(target.roster)
+    def uninvite_target(self, flashback, target, inv=None):
+        """Calls method to change contributor to 'retired', or delete non-contributor involvement."""
         if not inv or inv.status == inv.RETIRED:
-            self.msg("They are already not invited to this flashback.")
+            self.msg("They are %s in this flashback already." % ("marked as retired" if inv else "not involved"))
             return
         if target.roster in flashback.owners:
             self.msg("Cannot remove an owner of the flashback.")
@@ -164,6 +170,22 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         if target != self.caller:
             target.inform("You have been retired from flashback #%s." % flashback.id,
                           category="Flashbacks")
+
+    def mark_readable_posts(self, flashback, target, inv=None):
+        """Allows a number of back-posts to be readable by target."""
+        if not inv:
+            self.msg("%s needs to be invited to that flashback first." % target)
+            return
+        amount = None
+        if len(self.rhslist) > 1 and self.rhslist[1] != "all":
+            try:
+                amount = int(self.rhslist[1].strip('-'))
+            except (TypeError, ValueError):
+                self.msg("To allow visible back-posts, specify a <number> or <all>.")
+                return
+            amount = int(self.rhslist[1])
+        flashback.allow_back_read(target.roster, amount=amount)
+        self.msg("%s can see %s previous posts in flashback #%s." % (target, self.rhslist[1], flashback.id))
 
     def post_message(self, flashback):
         if not self.rhs:
@@ -182,12 +204,6 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             return True
         elif self.roster_entry != flashback.owner:
             self.msg("Only the flashback's owner may use that switch.")
-            return False
-        return True
-
-    def check_conclusion(self, flashback):
-        if self.check_switches(self.requires_unconcluded) and flashback.concluded:
-            self.msg("That flashback has reached its conclusion.")
             return False
         return True
 
