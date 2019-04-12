@@ -104,6 +104,7 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         if not vision_obj:
             vision_obj = Clue(desc=msg, name=name, rating=25, author=sender.roster, clue_type=Clue.VISION)
             vision_obj.save()
+            msg = ""  # prevent duplicate message
         if vision_obj not in self.obj.roster.clues.all():
             self.obj.roster.discover_clue(vision_obj, message=msg, method="original receiver")
         self._visions = None  # clear cache
