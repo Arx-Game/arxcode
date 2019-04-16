@@ -2089,25 +2089,16 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         """
         if npc:
             return self.total_income - self.costs
-        self.stored_food += self.food_production
-        self.stored_food += self.shipped_food
-        hunger = self.food_consumption - self.stored_food
+
+        # self.harvest_and_feed_the_populace()
         loot = 0
-        if hunger > 0:
-            self.stored_food = 0
-            self.lawlessness += 5
-            # unless we have a very large population, we'll only lose 1 serf as a penalty
-            lost_serfs = hunger / 100 + 1
-            self.kill_serfs(lost_serfs)
-        else:  # hunger is negative, we have enough food for it
-            self.stored_food += hunger
         for army in self.armies.all():
             army.do_weekly_adjustment(week, report)
             if army.plunder:
                 loot += army.plunder
                 army.plunder = 0
                 army.save()
-        self.adjust_population()
+        # self.adjust_population()
         for project in list(self.projects.all()):
             project.advance_project(report)
         total_amount = (self.total_income + loot) - self.costs
@@ -2116,6 +2107,20 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         self.save()
         self.reset_expected_tax_payment()
         return total_amount
+
+    def harvest_and_feed_the_populace(self):
+        """Feeds the population and adjusts lawlessness"""
+        self.stored_food += self.food_production
+        self.stored_food += self.shipped_food
+        hunger = self.food_consumption - self.stored_food
+        if hunger > 0:
+            self.stored_food = 0
+            self.lawlessness += 5
+            # unless we have a very large population, we'll only lose 1 serf as a penalty
+            lost_serfs = hunger / 100 + 1
+            self.kill_serfs(lost_serfs)
+        else:  # hunger is negative, we have enough food for it
+            self.stored_food += hunger
 
     def display(self):
         """Returns formatted string display for a domain"""

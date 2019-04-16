@@ -68,6 +68,21 @@ class TestCrisisCommands(ArxCommandTest):
         self.call_cmd("1", '[test crisis] (100 Rating)\nNone')
 
 
+class TestDomainProgression(ArxCommandTest):
+    def test_hunger_and_lawlessness_weekly_adjustment(self):
+        from world.dominion.models import Domain
+
+        expected_unassigned_serfs = 10000
+        expected_lawlessness = 0
+
+        domain = Domain.objects.create(unassigned_serfs=expected_unassigned_serfs, stored_food=0)
+
+        domain.do_weekly_adjustment(0)
+
+        self.assertEqual(domain.unassigned_serfs, expected_unassigned_serfs)
+        self.assertEqual(domain.lawlessness, expected_lawlessness)
+
+
 class TestGeneralDominionCommands(ArxCommandTest):
     @patch("world.dominion.models.randint")
     @patch("world.dominion.models.get_week")
