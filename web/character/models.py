@@ -1761,7 +1761,7 @@ class Flashback(SharedMemoryModel):
 
     @property
     def all_players(self):
-        """List of players who have ever been invited to this flashback."""
+        """List of players invited to this flashback AND previous authors."""
         return [ob.player for ob in self.participants.all()]
 
     @property
@@ -1780,6 +1780,13 @@ class Flashback(SharedMemoryModel):
             return self.flashback_involvements.get(participant=roster_entry)
         except FlashbackInvolvement.DoesNotExist:
             return None
+
+    def allow_posts_by(self, player):
+        """Boolean for whether player may post to this flashback."""
+        if player.is_staff or player.check_permstring("builders"):
+            return True
+        elif not self.concluded and player in self.current_players:
+            return True
 
     def uninvite_roster(self, roster_entry):
         """Retires contributor or deletes non-contributor's FlashbackInvolvement."""
@@ -1828,7 +1835,8 @@ class Flashback(SharedMemoryModel):
         """
         now = datetime.now()
         inv = self.get_involvement(poster)
-        post = self.posts.create(poster=poster, actions=actions, db_date_created=now, roll=inv.roll)
+        roll = inv.roll if inv else None
+        post = self.posts.create(poster=poster, actions=actions, db_date_created=now, roll=roll)
         post.set_new_post_readers()
         inv.roll.remove()
         if poster:
@@ -1870,15 +1878,15 @@ class FlashbackInvolvement(SharedMemoryModel):
     def make_dice_roll(self, check_str, flub=False):
         """Clears character's ndb last_roll, forces @check, keeps result string."""
         char = self.participant.character
-        check_str, _ = check_str.split("=", 1)
-        check_str += "=me"
+        check_str, _ = check_str.split("=", 1)  # strips any receivers
+        check_str += "=me"  # makes this a private roll
         flub_str = "/flub" if flub else ""
         char.ndb.last_roll.remove()
         char.execute_cmd("@check%s %s" % (flub_str, check_str))
         roll = char.ndb.last_roll
         if roll:
             roll.use_real_name=True  # Thanks, Maskbama.
-            self.roll = roll.build_msg(use_color=False)
+            self.roll = roll.build_msg()
             return True
 
 
@@ -1893,18 +1901,26 @@ class FlashbackPost(SharedMemoryModel):
 
     def display(self):
         """Returns string display of our story post."""
-        return "%s wrote: %s" % (self.poster, self.actions)
+        roll = ("(%s)\n" % self.roll) if self.roll else ""
+        return "%s wrote: %s%s" % (self.poster, roll, self.actions)
 
     def __str__(self):
         return "Post by %s" % self.poster
 
     def set_new_post_readers(self):
-        """Adds current flashback participants as readers. For new posts - Does not check existing!"""
+        """Adds current flashback participants as readers. New post only; does not check existing!"""
         bulk_list = []
         current_rosters = self.flashback.current_rosters.exclude(id=self.poster.id)
         for roster_entry in current_rosters:
             bulk_list.append(FlashbackPostPermission(post=self, reader=roster_entry))
         FlashbackPostPermission.objects.bulk_create(bulk_list)
+
+    def get_permission(self, roster_entry):
+        """Returns a FlashbackPostPermission for the roster entry."""
+        try:
+            return self.flashback_post_permissions.get(reader=roster_entry)
+        except FlashbackPostPermission.DoesNotExist:
+            return None
 
 
 class FlashbackPostPermission(SharedMemoryModel):

@@ -8,7 +8,7 @@
     {% for flashback in object_list %}
         <h2><a href="{% url 'character:flashback_post' object_id=character.id flashback_id=flashback.id %}">{{ flashback }}</a>
         {% if not flashback.concluded %}
-        &nbsp;&nbsp;(In Progress!)
+        &nbsp;(In Progress)
         {% endif %}
         </h2>
         <div>{{ flashback.summary }}</div>

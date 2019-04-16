@@ -31,12 +31,12 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     Flashbacks are roleplay scenes that happened in the past. They are
     private to invited players and staff. Involved players are informed of
     new posts. If you no longer wish to be informed or post, you may uninvite
-    self. Catchup shows unread posts. Posts can also be made from your
+    yourself. Catchup shows unread posts. Posts can also be made from your
     character webpage's Flashbacks link. Players can see posts made after
     they were invited, but adding /retro to an invitation reveals all
     back-posts. Partial visibility is achieved with /allow, after they have
     been invited normally. Use /invite sans args to see who has access. Using
-    /check forces an @check roll, remembers the result for your next post.
+    /check is like @check and the result will prefix your next post.
     """
     key = "flashback"
     aliases = ["flashbacks"]
@@ -48,8 +48,9 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     requires_unconcluded = ("post", "roll", "check")
 
     # TODO:
-    # flashback/allow <ID #>=<player>,<number of last posts or 'all'>
     # flashback/conclude <ID #>
+    # Consider weird user states in migration. Posters who are uninvited, etc.
+    # Use role_played in Involvement?
 
     @property
     def roster_entry(self):

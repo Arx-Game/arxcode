@@ -176,11 +176,8 @@ class Roll(object):
         except (TypeError, ValueError, AttributeError):
             return 1
 
-    def build_msg(self, use_color=True):
-        if use_color:
-            white_col, red_col, cyan_col, green_col, no_col = "|w", "|r", "|c", "|g", "|n"
-        else:
-            white_col, red_col, cyan_col, green_col, no_col = "", "", "", "", ""
+    def build_msg(self):
+        white_col, red_col, cyan_col, green_col, no_col = "|w", "|r", "|c", "|g", "|n"
         name = self.character_name
         if self.stats:
             stat_str = ", ".join(self.stats.keys())

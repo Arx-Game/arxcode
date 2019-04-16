@@ -739,7 +739,7 @@ class FlashbackListView(LoginRequiredMixin, CharacterMixin, ListView):
         if user.char_ob != self.character and not (user.is_staff or user.check_permstring("builders")):
             raise Http404
         entry = self.character.roster
-        return Flashback.objects.filter(Q(owner=entry) | Q(allowed=entry)).distinct()  #TODO: change!
+        return entry.flashbacks.all()
 
 
 class FlashbackCreateView(LoginRequiredMixin, CharacterMixin, CreateView):
@@ -795,8 +795,30 @@ class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
         """Gets context for template, ensures we have permissions"""
         context = super(FlashbackAddPostView, self).get_context_data(**kwargs)
         user = self.request.user
-        if user not in self.get_object().all_players and not (user.is_staff or user.check_permstring("builders")):
+        user_is_staff = bool(user.is_staff or user.check_permstring("builders"))
+        flashback = self.get_object()
+        if user not in flashback.all_players and not user_is_staff:
             raise Http404
+        entry = self.poster
+        involvement = flashback.get_involvement(entry)
+        timeline = []
+        for post in flashback.posts.all():
+            post_permission = post.get_permission(entry)
+            if user_is_staff or post_permission:
+                readable_dict = {'readable': True, 'post': post}
+                timeline.append(readable_dict)
+                if post_permission and not post_permission.is_read:
+                    post_permission.is_read = True
+                    post_permission.save()
+            elif not timeline or timeline[-1]['readable']:
+                unreadable_dict = {'readable': False, 'posts': [post]}
+                timeline.append(unreadable_dict)
+            else:
+                timeline[-1]['posts'].append(post)
+        context['timeline'] = timeline
+        context['allow_add_post'] = bool(user_is_staff or flashback.allow_add_post(user))
+        context['new_post_roll'] = involvement.roll if (context['allow_add_post'] and involvement) else ""
+        context['page_title'] = flashback.title
         context['form'] = FlashbackPostForm()
         return context
 

@@ -2,25 +2,38 @@
 {% load app_filters %}
 {% block content %}
     <div class="container">
-    <a class="btn btn-primary" href="{% url "character:sheet" character.id %}">Back to {{ character.key }}</a>
+        <a href="{% url "character:sheet" character.id %}">&laquo;&nbsp;Back to {{ character.key }}</a>
         <h2 class="text-center">{{ flashback }}</h2>
-            <div class="well text-center">{{ flashback.summary|mush_to_html }}</div>
-            {% for post in flashback.posts.all %}
-                <hr/>
-            <div>By {{ post.poster }}
-            {% if post.roll %}
-            &nbsp;-&nbsp;{{ post.roll }}
+        <div class="well text-center">{{ flashback.summary|mush_to_html }}</div>
+
+        {% for record in timeline %}
+        <div>
+        {% if record.readable %}
+            By {{ record.post.poster }}
+            {% if record.post.roll %}
+            &nbsp;-&nbsp;{{ record.post.roll|mush_to_html }}
             {% endif %}
-            <p>{{ post.actions|mush_to_html }}</p></div>
-            {% endfor %}
+            <p>{{ post.actions|mush_to_html }}</p>
+        {% elif not record.readable %}
+            <p><em>This part of the tale resides in the memory of someone else.</em></p>
+        {% endif %}
+        </div>
+        <hr/>
+        {% endfor %}
+
+        {% if allow_add_post %}
         <div id="add_post">
             <form action="." method="post">
                 {% csrf_token %}
                 <!--table class="table"-->
                 {{ form.as_p }}
                 <!--/table-->
-                <br><button class="btn btn-success" type="submit" name="add_post">Submit Post</button>
+                {% if new_post_roll %}
+                <p>Note! This will accompany your new post: {{ new_post_roll|mush_to_html }}</p>
+                {% endif %}
+                <button class="btn btn-success" type="submit" name="add_post">Submit Post</button>
             </form>
         </div> <!-- write post-->
+        {% endif %}
     </div>
 {% endblock %}
