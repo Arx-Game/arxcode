@@ -815,7 +815,7 @@ class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
                 timeline.append(unreadable_dict)
             else:
                 timeline[-1]['posts'].append(post)
-        context['timeline'] = timeline
+        context['flashback_timeline'] = timeline
         context['allow_add_post'] = bool(user_is_staff or flashback.allow_add_post(user))
         context['new_post_roll'] = involvement.roll if (context['allow_add_post'] and involvement) else ""
         context['page_title'] = flashback.title

@@ -125,7 +125,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         if not new_posts:
             msg = "No new posts for #%s." % flashback.id
         else:
-            msg = "New posts for #%s %s\n" % (flashback.id, flashback)
+            msg = "|w%s|n - (#%s) New Posts!\n" % (flashback, flashback.id)
             for post in new_posts:
                 msg += "%s\n" % post.display()
                 post.read_by.add(self.roster_entry)
@@ -215,7 +215,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             field = "summary"
         setattr(flashback, field, self.rhs)
         flashback.save()
-        self.msg("%s set to: %s." % (field, self.rhs))
+        self.msg("%s set to: %s." % (field.capitalize(), self.rhs))
 
     def make_flashback_roll(self, flashback):
         """Prints reminder of participant's existing dice result, or saves new one."""

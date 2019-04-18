@@ -6,8 +6,8 @@
         <h2 class="text-center">{{ flashback }}</h2>
         <div class="well text-center">{{ flashback.summary|mush_to_html }}</div>
 
-        {% for record in timeline %}
-        <div>
+        {% for record in flashback_timeline %}
+        <div class="dividingBorderAbove">
         {% if record.readable %}
             By {{ record.post.poster }}
             {% if record.post.roll %}
@@ -15,14 +15,15 @@
             {% endif %}
             <p>{{ post.actions|mush_to_html }}</p>
         {% elif not record.readable %}
-            <p><em>This part of the tale resides in the memory of someone else.</em></p>
+            <p><i>This part of the tale resides in the memory of someone else.</i></p>
         {% endif %}
         </div>
-        <hr/>
         {% endfor %}
 
+        <a href="{% url "character:sheet" character.id %}">&laquo;&nbsp;Back to {{ character.key }}</a>
+
         {% if allow_add_post %}
-        <div id="add_post">
+        <div id="add_post" class="dividingBorderAbove">
             <form action="." method="post">
                 {% csrf_token %}
                 <!--table class="table"-->
@@ -31,7 +32,7 @@
                 {% if new_post_roll %}
                 <p>Note! This will accompany your new post: {{ new_post_roll|mush_to_html }}</p>
                 {% endif %}
-                <button class="btn btn-success" type="submit" name="add_post">Submit Post</button>
+                <button class="btn btn-primary" type="submit" name="add_post">Submit Post</button>
             </form>
         </div> <!-- write post-->
         {% endif %}

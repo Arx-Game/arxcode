@@ -202,6 +202,6 @@ class Roll(object):
         msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg,
                                                                      self.difficulty, resultstr, no_col)
         if self.crit_mult > 1 and self.result >= 0:
-            msg = "%s%s rolled a critical!%s %s" % (green_col, name, no_col, msg)
+            msg = "%s %s%s rolled a critical!%s" % (msg, green_col, name, no_col)
         self.msg = msg
         return msg

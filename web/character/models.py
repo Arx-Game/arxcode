@@ -1713,8 +1713,8 @@ class Flashback(SharedMemoryModel):
             post_limit (int)
             reader (RosterEntry)
         """
-        wip = "" if self.concluded else " [work in progress]"
-        msg = "(#%s) |w%s|n%s" % (self.id, self.title, wip)
+        wip = "" if self.concluded else " work in progress!"
+        msg = "|w[%s]|n - (#%s)%s" % (self.title, self.id, wip)
         msg += "\nOwners and authors: %s" % self.owners_and_contributors
         msg += "\nSummary: %s" % self.summary
         if display_summary_only:
@@ -1747,9 +1747,9 @@ class Flashback(SharedMemoryModel):
 
     @property
     def post_authors(self):
-        """Queryset of post-authors' roster entries."""
+        """Queryset of author roster entries."""
         all_posts = self.posts.all()
-        return RosterEntry.objects.filter(flashback_posts__in=all_posts)
+        return RosterEntry.objects.filter(flashback_posts__in=all_posts).distinct()
 
     @property
     def owners_and_contributors(self):
@@ -1761,21 +1761,21 @@ class Flashback(SharedMemoryModel):
 
     @property
     def all_players(self):
-        """List of players invited to this flashback AND previous authors."""
+        """List of players invited to this flashback AND authors who may now be retired/uninvited."""
         return [ob.player for ob in self.participants.all()]
-
-    @property
-    def current_players(self):
-        """List of players who may add posts."""
-        return [ob.player for ob in self.current_rosters]
 
     @property
     def current_rosters(self):
         """Queryset of roster entries who may add posts."""
         return self.participants.filter(status__gte=FlashbackInvolvement.CONTRIBUTOR)
 
+    @property
+    def current_players(self):
+        """List of players who may add posts."""
+        return [ob.player for ob in self.current_rosters]
+
     def get_involvement(self, roster_entry):
-        """Returns a FlashbackInvolvement for the roster entry."""
+        """Returns a FlashbackInvolvement belonging to the roster entry."""
         try:
             return self.flashback_involvements.get(participant=roster_entry)
         except FlashbackInvolvement.DoesNotExist:
@@ -1809,7 +1809,7 @@ class Flashback(SharedMemoryModel):
 
     def allow_back_read(self, roster_entry, amount=None):
         """
-        Adds through-model for back-reading posts.
+        Bulk-adds through-models for back-reading posts.
         Args:
             roster_entry (RosterEntry): the reader
             amount (int): number of backposts. None defaults to 'all'.
@@ -1901,8 +1901,8 @@ class FlashbackPost(SharedMemoryModel):
 
     def display(self):
         """Returns string display of our story post."""
-        roll = ("(%s)\n" % self.roll) if self.roll else ""
-        return "%s wrote: %s%s" % (self.poster, roll, self.actions)
+        roll = ("%s\n" % self.roll) if self.roll else ""
+        return "|w[By %s]|n %s%s" % (self.poster, roll, self.actions)
 
     def __str__(self):
         return "Post by %s" % self.poster
