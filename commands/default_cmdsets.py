@@ -268,7 +268,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_gming_actions_commands(self):
         """Add commands for interacting with crises and GMing"""
-        from world.dominion import crisis_commands
+        from world.dominion.plots import crisis_commands
         self.add(crisis_commands.CmdViewCrisis())
         self.add(crisis_commands.CmdGMCrisis())
         from .base_commands import story_actions

@@ -18,13 +18,13 @@ from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from . import setup_utils
 from web.character.models import Clue
-from world.dominion.models import (Region, Domain, Land, PlayerOrNpc, ClueForOrg, Reputation, Castle,
-                                   AssetOwner, Ruler, Organization, Member, SphereOfInfluence,
-                                   InfluenceCategory, Minister, PlotRoom)
+from world.dominion.models import (Region, Land, PlayerOrNpc, ClueForOrg, Reputation,
+                                   AssetOwner, Organization, Member, SphereOfInfluence,
+                                   InfluenceCategory, PlotRoom)
 
-from world.dominion.domain.models import MilitaryUnit, Army
+from world.dominion.domain.models import Minister, Domain, Ruler, Castle, MilitaryUnit, Army
 
-from .unit_types import type_from_str
+from world.dominion.domain.unit_types import type_from_str
 from world.stats_and_skills import do_dice_check
 
 # Constants for Dominion projects
@@ -1522,7 +1522,7 @@ class CmdArmy(ArxPlayerCommand):
         """
         Views stats for a unit class determined from our args.
         """
-        from .unit_types import cls_from_str, print_unit_names
+        from world.dominion.domain.unit_types import cls_from_str, print_unit_names
         cls = cls_from_str(self.args)
         if not cls:
             self.msg("{wValid types:{n %s" % print_unit_names())

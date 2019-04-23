@@ -10,7 +10,7 @@ magical items, and so on.
 """
 import random
 from .reports import ExplorationReport
-from . import unit_types
+from world.dominion.domain import unit_types
 
 NOTHING = 0
 # types of events

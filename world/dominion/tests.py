@@ -4,8 +4,8 @@ Tests for dominion stuff. Crisis commands, etc.
 from mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
-from . import crisis_commands, general_dominion_commands
-from world.dominion.plots import plot_commands
+from . import general_dominion_commands
+from world.dominion.plots import plot_commands, crisis_commands
 
 from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions, SearchTag
 from world.dominion.models import RPEvent, Organization, CraftingMaterialType, ClueForOrg
@@ -70,7 +70,7 @@ class TestCrisisCommands(ArxCommandTest):
 
 class TestDomainProgression(ArxCommandTest):
     def test_hunger_and_lawlessness_weekly_adjustment(self):
-        from world.dominion.models import Domain
+        from world.dominion.domain.models import Domain
 
         expected_unassigned_serfs = 10000
         expected_lawlessness = 0
