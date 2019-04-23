@@ -1245,7 +1245,7 @@ class CmdSheet(ArxPlayerCommand):
             self.msg("%s" % table)
             return
         # have self.rhs: get storyrequest, print its display().
-        from world.dominion.models import PlotAction
+        from world.dominion.plots.models import PlotAction
         try:
             action = actions.get(id=action_num)
         except (PlotAction.DoesNotExist, ValueError):
@@ -1255,7 +1255,7 @@ class CmdSheet(ArxPlayerCommand):
 
     def display_plots(self, charob):
         """Displays a list of plots or specific plot"""
-        from world.dominion.models import PCPlotInvolvement, Plot
+        from world.dominion.plots.models import PCPlotInvolvement, Plot
         plots = charob.dompc.active_plots
         recruiter = (PCPlotInvolvement.objects.exclude(recruiter_story="")
                                               .filter(admin_status__gte=PCPlotInvolvement.RECRUITER))

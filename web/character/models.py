@@ -271,7 +271,8 @@ class RosterEntry(SharedMemoryModel):
                 tag: SearchTag object
         """
         from server.utils.arx_utils import qslist_to_string
-        from world.dominion.models import PlotUpdate, RPEvent
+        from world.dominion.models import RPEvent
+        from world.dominion.plots.models import PlotUpdate
         from web.helpdesk.models import KBItem, KBCategory
         dompc = self.player.Dominion
         querysets = []
