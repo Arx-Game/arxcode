@@ -2,10 +2,30 @@ from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.utils.utils import lazy_property
 from django.db import models
 from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
+
+from server.utils.arx_utils import CachedPropertiesMixin, CachedProperty
 from world.dominion import unit_types, unit_constants
 from world.dominion.battle import Battle
 
 import traceback
+
+# Dominion constants
+# default value for a global modifier to Dominion income, can be set as a ServerConfig value on a per-game basis
+SILVER_PER_BUILDING = 225.00
+FOOD_PER_FARM = 100.00
+DEFAULT_GLOBAL_INCOME_MOD = -0.25
+# each point in a dominion skill is a 5% bonus
+BONUS_PER_SKILL_POINT = 0.10
+# number of workers for a building to be at full production
+SERFS_PER_BUILDING = 20.0
+# population cap for housing
+BASE_WORKER_COST = 0.10
+POP_PER_HOUSING = 1000
+BASE_POP_GROWTH = 0.01
+DEATHS_PER_LAWLESS = 0.0025
+LAND_SIZE = 10000
+LAND_COORDS = 9
 
 
 class Minister(SharedMemoryModel):
@@ -799,3 +819,738 @@ class MilitaryUnit(UnitTypeInfo):
             self.level += 1
         self.save()
 
+
+class Domain(CachedPropertiesMixin, SharedMemoryModel):
+    """
+    A domain owned by a noble house that resides on a particular Land square on
+    the map we'll generate. This model contains information specifically to
+    the noble's holding, with all the relevant economic data. All of this is
+    assumed to be their property, and its income is drawn upon as a weekly
+    event. It resides in a specific Land square, but a Land square can hold
+    several domains, up to a total area.
+
+    A player may own several different domains, but each should be in a unique
+    square. Conquering other domains inside the same Land square should annex
+    them into a single domain.
+    """
+    # 'grid' square where our domain is. More than 1 domain can be on a square
+    location = models.ForeignKey('MapLocation', on_delete=models.SET_NULL, related_name='domains',
+                                 blank=True, null=True)
+    # The house that rules this domain
+    ruler = models.ForeignKey('Ruler', on_delete=models.SET_NULL, related_name='holdings', blank=True, null=True,
+                              db_index=True)
+    # cosmetic info
+    name = models.CharField(blank=True, null=True, max_length=80)
+    desc = models.TextField(blank=True, null=True)
+    title = models.CharField(blank=True, null=True, max_length=255)
+    destroyed = models.BooleanField(default=False, blank=False)
+
+    # how much of the territory in our land square we control
+    from django.core.validators import MaxValueValidator
+    area = models.PositiveSmallIntegerField(validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0)
+
+    # granaries, food for emergencies, etc
+    stored_food = models.PositiveIntegerField(default=0, blank=0)
+
+    # food from other sources - trade, other holdings of player, etc
+    # this is currently 'in transit', and will be added to food_stored if it arrives
+    shipped_food = models.PositiveIntegerField(default=0, blank=0)
+
+    # percentage out of 100
+    tax_rate = models.PositiveSmallIntegerField(default=10, blank=10)
+
+    # our economic resources
+    num_mines = models.PositiveSmallIntegerField(default=0, blank=0)
+    num_lumber_yards = models.PositiveSmallIntegerField(default=0, blank=0)
+    num_mills = models.PositiveSmallIntegerField(default=0, blank=0)
+    num_housing = models.PositiveIntegerField(default=0, blank=0)
+    num_farms = models.PositiveSmallIntegerField(default=0, blank=0)
+    # workers who are not currently employed in a resource
+    unassigned_serfs = models.PositiveIntegerField(default=0, blank=0)
+    # what proportion of our serfs are slaves and will have no money upkeep
+    slave_labor_percentage = models.PositiveSmallIntegerField(default=0, blank=0)
+    # workers employed in different buildings
+    mining_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
+    lumber_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
+    farming_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
+    mill_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
+
+    # causes mo' problems.
+    lawlessness = models.PositiveSmallIntegerField(default=0, blank=0)
+    amount_plundered = models.PositiveSmallIntegerField(default=0, blank=0)
+    income_modifier = models.PositiveSmallIntegerField(default=100, blank=100)
+
+    @property
+    def land(self):
+        """Returns land square from our location"""
+        if not self.location:
+            return None
+        return self.location.land
+
+    # All income sources are floats for modifier calculations. We'll convert to int at the end
+
+    @CachedProperty
+    def tax_income(self):
+        tax = float(self.tax_rate)/100.0
+        if tax > 1.00:
+            tax = 1.00
+        tax *= float(self.total_serfs)
+        if self.ruler:
+            vassals = self.ruler.vassals.all()
+            for vassal in vassals:
+                try:
+                    for domain in vassal.holdings.all():
+                        amt = domain.liege_taxed_amt
+                        tax += amt
+                except (AttributeError, TypeError, ValueError):
+                    pass
+        return tax
+
+    @staticmethod
+    def required_worker_mod(buildings, workers):
+        """
+        Returns what percentage (as a float between 0.0 to 1.0) we have of
+        the workers needed to run these number of buildings at full strength.
+        """
+        req = buildings * SERFS_PER_BUILDING
+        # if we have more than enough workers, we're at 100%
+        if workers >= req:
+            return 1.0
+        # percentage of our efficiency
+        return workers/req
+
+    def get_resource_income(self, building, workers):
+        """Generates base income from resources"""
+        base = SILVER_PER_BUILDING * building
+        worker_req = self.required_worker_mod(building, workers)
+        return base * worker_req
+
+    def _get_mining_income(self):
+        base = self.get_resource_income(self.num_mines, self.mining_serfs)
+        if self.land:
+            base = (base * self.land.mine_mod)/100.0
+        return base
+
+    def _get_lumber_income(self):
+        base = self.get_resource_income(self.num_lumber_yards, self.lumber_serfs)
+        if self.land:
+            base = (base * self.land.lumber_mod)/100.0
+        return base
+
+    def _get_mill_income(self):
+        base = self.get_resource_income(self.num_mills, self.mill_serfs)
+        return base
+
+    def get_bonus(self, attr):
+        """
+        Checks bonus of ruler for a given skill
+        Args:
+            attr: Skill name to check
+
+        Returns:
+            A percentage multiplier based on their skill
+        """
+        try:
+            skill_value = self.ruler.ruler_skill(attr)
+            skill_value *= BONUS_PER_SKILL_POINT
+            return skill_value
+        except AttributeError:
+            return 0.0
+
+    @CachedProperty
+    def total_income(self):
+        """
+        Returns our total income after all modifiers. All income sources are
+        floats, which we'll convert to an int once we're all done.
+        """
+        from evennia.server.models import ServerConfig
+        amount = self.tax_income
+        amount += self.mining_income
+        amount += self.lumber_income
+        amount += self.mill_income
+        amount = (amount * self.income_modifier)/100.0
+        global_mod = ServerConfig.objects.conf("GLOBAL_INCOME_MOD", default=DEFAULT_GLOBAL_INCOME_MOD)
+        try:
+            amount += int(amount * global_mod)
+        except (TypeError, ValueError):
+            print("Error: Improperly Configured GLOBAL_INCOME_MOD: %s" % global_mod)
+        try:
+            amount += self.ruler.house.get_bonus_income(amount)
+        except AttributeError:
+            pass
+        if self.ruler and self.ruler.castellan:
+            bonus = self.get_bonus('income') * amount
+            amount += bonus
+        # we'll dump the remainder
+        return int(amount)
+
+    def _get_liege_tax(self):
+        if not self.ruler:
+            return 0
+        if not self.ruler.liege:
+            return 0
+        if self.ruler.liege.holdings.all():
+            return self.ruler.liege.holdings.first().tax_rate
+        return 0
+
+    def worker_cost(self, number):
+        """
+        Cost of workers, reduced if they are slaves
+        """
+        if self.slave_labor_percentage > 99:
+            return 0
+        cost = BASE_WORKER_COST * number
+        cost *= (100 - self.slave_labor_percentage)/100
+        if self.ruler and self.ruler.castellan:
+            # every point in upkeep skill reduces cost
+            reduction = 1.00 + self.get_bonus('upkeep')
+            cost /= reduction
+        return int(cost)
+
+    @CachedProperty
+    def costs(self):
+        """
+        Costs/upkeep for all of our production.
+        """
+        costs = 0
+        for army in self.armies.all():
+            costs += army.costs
+        costs += self.worker_cost(self.mining_serfs)
+        costs += self.worker_cost(self.lumber_serfs)
+        costs += self.worker_cost(self.mill_serfs)
+        costs += self.amount_plundered
+        costs += self.liege_taxed_amt
+        return costs
+
+    def _get_liege_taxed_amt(self):
+        if self.liege_taxes:
+            amt = self.ruler.liege_taxes
+            if amt:
+                return amt
+            # check if we have a transaction
+            try:
+                transaction = self.ruler.house.debts.get(category="vassal taxes")
+                return transaction.weekly_amount
+            except ObjectDoesNotExist:
+                amt = (self.total_income * self.liege_taxes)/100
+                self.ruler.house.debts.create(category="vassal taxes", receiver=self.ruler.liege.house,
+                                              weekly_amount=amt)
+                return amt
+        return 0
+
+    def reset_expected_tax_payment(self):
+        """Sets the weekly amount that will be paid to their liege"""
+        amt = (self.total_income * self.liege_taxes) / 100
+        if not amt:
+            return
+        try:
+            transaction = self.ruler.house.debts.get(category="vassal taxes")
+            if transaction.receiver != self.ruler.liege.house:
+                transaction.receiver = self.ruler.liege.house
+        except ObjectDoesNotExist:
+            transaction = self.ruler.house.debts.create(category="vassal taxes", receiver=self.ruler.liege.house,
+                                                        weekly_amount=amt)
+        transaction.weekly_amount = amt
+        transaction.save()
+
+    def _get_food_production(self):
+        """
+        How much food the region produces.
+        """
+        mod = self.required_worker_mod(self.num_farms, self.farming_serfs)
+        amount = (self.num_farms * FOOD_PER_FARM) * mod
+        if self.ruler and self.ruler.castellan:
+            bonus = self.get_bonus('farming') * amount
+            amount += bonus
+        return int(amount)
+
+    def _get_food_consumption(self):
+        """
+        How much food the region consumes from workers. Armies/garrisons will
+        draw upon stored food during do_weekly_adjustment.
+        """
+        return self.total_serfs
+
+    def _get_max_pop(self):
+        """
+        Maximum population.
+        """
+        return self.num_housing * POP_PER_HOUSING
+
+    def _get_employed_serfs(self):
+        """
+        How many serfs are currently working on a field.
+        """
+        return self.mill_serfs + self.mining_serfs + self.farming_serfs + self.lumber_serfs
+
+    def _get_total_serfs(self):
+        """
+        Total of all serfs
+        """
+        return self.employed + self.unassigned_serfs
+
+    def kill_serfs(self, deaths, serf_type=None):
+        """
+        Whenever we lose serfs, we need to lose some that are employed in some field.
+        If serf_type is specified, then we kill serfs who are either 'farming' serfs,
+        'mining' serfs, 'mill' serfs, or 'lumber' sefs. Otherwise, we kill whichever
+        field has the most employed.
+        """
+        if serf_type == "farming":
+            worker_type = "farming_serfs"
+        elif serf_type == "mining":
+            worker_type = "mining_serfs"
+        elif serf_type == "mill":
+            worker_type = "mill_serfs"
+        elif serf_type == "lumber":
+            worker_type = "lumber_serfs"
+        else:
+            # if we have more deaths than unemployed serfs
+            more_deaths = deaths - self.unassigned_serfs
+            if more_deaths < 1:  # only unemployed die
+                self.unassigned_serfs -= deaths
+                self.save()
+                return
+            # gotta kill more
+            worker_types = ["farming_serfs", "mining_serfs", "mill_serfs", "lumber_serfs"]
+            # sort it from most to least
+            worker_types.sort(key=lambda x: getattr(self, x), reverse=True)
+            worker_type = worker_types[0]
+            # now we'll kill the remainder after killing unemployed above
+            self.unassigned_serfs = 0
+            deaths = more_deaths
+        num_workers = getattr(self, worker_type, 0)
+        if num_workers:
+            num_workers -= deaths
+        if num_workers < 0:
+            num_workers = 0
+        setattr(self, worker_type, num_workers)
+        self.save()
+
+    def plundered_by(self, army, week):
+        """
+        An army has successfully pillaged us. Determine the economic impact.
+        """
+        print("%s plundered during week %s" % (self, week))
+        max_pillage = army.size/10
+        pillage = self.total_income
+        if pillage > max_pillage:
+            pillage = max_pillage
+        self.amount_plundered = pillage
+        self.lawlessness += 10
+        self.save()
+        return pillage
+
+    def annex(self, target, week, army):
+        """
+        Absorbs the target domain into this one. We'll take all buildings/serfs
+        from the target, then delete old domain.
+        """
+        # add stuff from target domain to us
+        self.area += target.area
+        self.stored_food += target.stored_food
+        self.unassigned_serfs += target.unassigned_serfs
+        self.mill_serfs += target.mill_serfs
+        self.lumber_serfs += target.lumber_serfs
+        self.mining_serfs += target.mining_serfs
+        self.farming_serfs += target.farming_serfs
+        self.num_farms += target.num_farms
+        self.num_housing += target.num_housing
+        self.num_lumber_yards += target.num_lumber_yards
+        self.num_mills += target.num_mills
+        self.num_mines += target.num_mines
+        for castle in target.castles.all():
+            castle.domain = self
+            castle.save()
+        # now get rid of annexed domain and save changes
+        target.fake_delete()
+        self.save()
+        army.domain = self
+        army.save()
+        print("%s annexed during week %s" % (self, week))
+
+    def fake_delete(self):
+        """
+        Makes us an inactive domain without a presence in the world, but kept for
+        historical reasons (such as description/name).
+        """
+        self.destroyed = True
+        self.area = 0
+        self.stored_food = 0
+        self.unassigned_serfs = 0
+        self.mill_serfs = 0
+        self.lumber_serfs = 0
+        self.mining_serfs = 0
+        self.farming_serfs = 0
+        self.num_farms = 0
+        self.num_housing = 0
+        self.num_lumber_yards = 0
+        self.num_mills = 0
+        self.num_mines = 0
+        self.castles.clear()
+        self.armies.clear()
+        self.save()
+
+    def adjust_population(self):
+        """
+        Increase or decrease population based on our housing and lawlessness.
+        """
+        base_growth = (BASE_POP_GROWTH * self.total_serfs) + 1
+        deaths = 0
+        # if we have no food or no room, population cannot grow
+        if self.stored_food <= 0 or self.total_serfs >= self.max_pop:
+            base_growth = 0
+        else:  # bonuses for growth
+            # bonus for having a lot of room to grow
+            bonus = float(self.max_pop)/self.total_serfs
+            if self.ruler and self.ruler.castellan:
+                bonus += bonus * self.get_bonus('population')
+            bonus = int(bonus) + 1
+            base_growth += bonus
+        if self.lawlessness > 0:
+            # at 100% lawlessness, we have a 5% death rate per week
+            deaths = (self.lawlessness * DEATHS_PER_LAWLESS) * self.total_serfs
+            deaths = int(deaths) + 1
+        adjustment = base_growth - deaths
+        if adjustment < 0:
+            self.kill_serfs(adjustment)
+        else:
+            self.unassigned_serfs += adjustment
+
+    food_production = property(_get_food_production)
+    food_consumption = property(_get_food_consumption)
+    mining_income = property(_get_mining_income)
+    lumber_income = property(_get_lumber_income)
+    mill_income = property(_get_mill_income)
+    max_pop = property(_get_max_pop)
+    employed = property(_get_employed_serfs)
+    total_serfs = property(_get_total_serfs)
+    liege_taxes = property(_get_liege_tax)
+    liege_taxed_amt = property(_get_liege_taxed_amt)
+
+    def __unicode__(self):
+        return "%s (#%s)" % (self.name or 'Unnamed Domain', self.id)
+
+    def __repr__(self):
+        return "<Domain (#%s): %s>" % (self.id, self.name or 'Unnamed')
+
+    def do_weekly_adjustment(self, week, report=None, npc=False):
+        """
+        Determine how much money we're passing up to the ruler of our domain. Make
+        all the people and armies of this domain eat their food for the week. Bad
+        things will happen if they don't have enough food.
+        """
+        if npc:
+            return self.total_income - self.costs
+
+        # self.harvest_and_feed_the_populace()
+        loot = 0
+        for army in self.armies.all():
+            army.do_weekly_adjustment(week, report)
+            if army.plunder:
+                loot += army.plunder
+                army.plunder = 0
+                army.save()
+        # self.adjust_population()
+        for project in list(self.projects.all()):
+            project.advance_project(report)
+        total_amount = (self.total_income + loot) - self.costs
+        # reset the amount of money that's been plundered from us
+        self.amount_plundered = 0
+        self.save()
+        self.reset_expected_tax_payment()
+        return total_amount
+
+    def harvest_and_feed_the_populace(self):
+        """Feeds the population and adjusts lawlessness"""
+        self.stored_food += self.food_production
+        self.stored_food += self.shipped_food
+        hunger = self.food_consumption - self.stored_food
+        if hunger > 0:
+            self.stored_food = 0
+            self.lawlessness += 5
+            # unless we have a very large population, we'll only lose 1 serf as a penalty
+            lost_serfs = hunger / 100 + 1
+            self.kill_serfs(lost_serfs)
+        else:  # hunger is negative, we have enough food for it
+            self.stored_food += hunger
+
+    def display(self):
+        """Returns formatted string display for a domain"""
+        castellan = None
+        liege = "Crownsworn"
+        ministers = []
+        if self.ruler:
+            castellan = self.ruler.castellan
+            liege = self.ruler.liege
+            ministers = self.ruler.ministers.all()
+        mssg = "{wDomain{n: %s\n" % self.name
+        mssg += "{wLand{n: %s\n" % self.land
+        mssg += "{wHouse{n: %s\n" % str(self.ruler)
+        mssg += "{wLiege{n: %s\n" % str(liege)
+        mssg += "{wRuler{n: {c%s{n\n" % castellan
+        if ministers:
+            mssg += "{wMinisters:{n\n"
+            for minister in ministers:
+                mssg += "  {c%s{n   {wCategory:{n %s  {wTitle:{n %s\n" % (minister.player,
+                                                                          minister.get_category_display(),
+                                                                          minister.title)
+        mssg += "{wDesc{n: %s\n" % self.desc
+        mssg += "{wArea{n: %s {wFarms{n: %s {wHousing{n: %s " % (self.area, self.num_farms, self.num_housing)
+        mssg += "{wMines{n: %s {wLumber{n: %s {wMills{n: %s\n" % (self.num_mines, self.num_lumber_yards, self.num_mills)
+        mssg += "{wTotal serfs{n: %s " % self.total_serfs
+        mssg += "{wAssignments: Mines{n: %s {wMills{n: %s " % (self.mining_serfs, self.mill_serfs)
+        mssg += "{wLumber yards:{n %s {wFarms{n: %s\n" % (self.lumber_serfs, self.farming_serfs)
+        mssg += "{wTax Rate{n: %s {wLawlessness{n: %s " % (self.tax_rate, self.lawlessness)
+        mssg += "{wCosts{n: %s {wIncome{n: %s {wLiege's tax rate{n: %s\n" % (self.costs, self.total_income,
+                                                                             self.liege_taxes)
+        mssg += "{wFood Production{n: %s {wFood Consumption{n: %s {wStored Food{n: %s\n" % (self.food_production,
+                                                                                            self.food_consumption,
+                                                                                            self.stored_food)
+        mssg += "\n{wCastles:{n\n"
+        mssg += "{w================================={n\n"
+        for castle in self.castles.all():
+            mssg += castle.display()
+        mssg += "\n{wArmies:{n\n"
+        mssg += "{w================================={n\n"
+        for army in self.armies.all():
+            mssg += army.display()
+        return mssg
+
+    def clear_cached_properties(self):
+        """Clears cached income/cost data"""
+        super(Domain, self).clear_cached_properties()
+        try:
+            self.ruler.house.clear_cached_properties()
+        except (AttributeError, ValueError, TypeError):
+            pass
+
+
+class DomainProject(SharedMemoryModel):
+    """
+    Construction projects with a domain. In general, each should take a week,
+    but may come up with ones that would take more.
+    """
+    # project types
+    BUILD_HOUSING = 1
+    BUILD_FARMS = 2
+    BUILD_MINES = 3
+    BUILD_MILLS = 4
+    BUILD_DEFENSES = 5
+    BUILD_SIEGE_WEAPONS = 6
+    MUSTER_TROOPS = 7
+    BUILD_TROOP_EQUIPMENT = 9
+
+    PROJECT_CHOICES = ((BUILD_HOUSING, 'Build Housing'),
+                       (BUILD_FARMS, 'Build Farms'),
+                       (BUILD_MINES, 'Build Mines'),
+                       (BUILD_MILLS, 'Build Mills'),
+                       (BUILD_DEFENSES, 'Build Defenses'),
+                       (BUILD_SIEGE_WEAPONS, 'Build Siege Weapons'),
+                       (MUSTER_TROOPS, 'Muster Troops'),
+                       (BUILD_TROOP_EQUIPMENT, 'Build Troop Equipment'),)
+
+    type = models.PositiveSmallIntegerField(choices=PROJECT_CHOICES, default=BUILD_HOUSING)
+    amount = models.PositiveSmallIntegerField(blank=1, default=1)
+    unit_type = models.PositiveSmallIntegerField(default=1, blank=1)
+    time_remaining = models.PositiveIntegerField(default=1, blank=1)
+    domain = models.ForeignKey("Domain", related_name="projects", blank=True, null=True)
+    castle = models.ForeignKey("Castle", related_name="projects", blank=True, null=True)
+    military = models.ForeignKey("Army", related_name="projects", blank=True, null=True)
+    unit = models.ForeignKey("MilitaryUnit", related_name="projects", blank=True, null=True)
+
+    def advance_project(self, report=None, increment=1):
+        """Makes progress on a project for a domain"""
+        self.time_remaining -= increment
+        if self.time_remaining < 1:
+            self.finish_project(report)
+        self.save()
+
+    def finish_project(self, report=None):
+        """
+        Does whatever the project set out to do. For muster troops, we'll need to first
+        determine if the unit type we're training more of already exists in the army.
+        If so, we add to the value, and if not, we create a new unit.
+        """
+        if self.type == self.BUILD_HOUSING:
+            self.domain.num_housing += self.amount
+        if self.type == self.BUILD_FARMS:
+            self.domain.num_farms += self.amount
+        if self.type == self.BUILD_MINES:
+            self.domain.num_mines += self.amount
+        if self.type == self.BUILD_MILLS:
+            self.domain.num_mills += self.amount
+        if self.type < self.BUILD_DEFENSES:
+            self.domain.save()
+        if self.type == self.BUILD_DEFENSES:
+            self.castle.level += self.amount
+            self.castle.save()
+        if self.type == self.MUSTER_TROOPS:
+            existing_unit = self.military.find_unit(self.unit_type)
+            if existing_unit:
+                existing_unit.adjust_readiness(self.amount)
+                existing_unit.quantity += self.amount
+                existing_unit.save()
+            else:
+                self.military.units.create(unit_type=self.unit_type, quantity=self.amount)
+        if self.type == self.TRAIN_TROOPS:
+            self.unit.train(self.amount)
+        if self.type == self.BUILD_TROOP_EQUIPMENT:
+            self.unit.equipment += self.amount
+            self.unit.save()
+        if report:
+            # add a copy of this project's data to the report
+            report.add_project_report(self)
+        # we're all done. goodbye, cruel world
+        self.delete()
+
+
+class Castle(SharedMemoryModel):
+    """
+    Castles within a given domain. Although typically we would only have one,
+    it's possible a player might have more than one in a Land square by annexing
+    multiple domains within a square. Castles will have a defense level that augments
+    the strength of any garrison.
+
+    Currently, castles have no upkeep costs. Any costs for their garrison is paid
+    by the domain that owns that army.
+    """
+    MOTTE_AND_BAILEY = 1
+    TIMBER_CASTLE = 2
+    STONE_CASTLE = 3
+    CASTLE_WITH_CURTAIN_WALL = 4
+    FORTIFIED_CASTLE = 5
+    EPIC_CASTLE = 6
+
+    FORTIFICATION_CHOICES = (
+        (MOTTE_AND_BAILEY, 'Motte and Bailey'),
+        (TIMBER_CASTLE, 'Timber Castle'),
+        (STONE_CASTLE, 'Stone Castle'),
+        (CASTLE_WITH_CURTAIN_WALL, 'Castle with Curtain Wall'),
+        (FORTIFIED_CASTLE, 'Fortified Castle'),
+        (EPIC_CASTLE, 'Epic Castle'))
+    level = models.PositiveSmallIntegerField(default=MOTTE_AND_BAILEY)
+    domain = models.ForeignKey("Domain", related_name="castles", blank=True, null=True)
+    damage = models.PositiveSmallIntegerField(default=0, blank=0)
+    # cosmetic info:
+    name = models.CharField(null=True, blank=True, max_length=80)
+    desc = models.TextField(null=True, blank=True)
+
+    def display(self):
+        """Returns formatted string for a castle's display"""
+        msg = "{wName{n: %s {wLevel{n: %s (%s)\n" % (self.name, self.level, self.get_level_display())
+        msg += "{wDescription{n: %s\n" % self.desc
+        return msg
+
+    def get_level_display(self):
+        """
+        Although we have FORTIFICATION_CHOICES defined, we're not actually using
+        'choices' for the level field, because we don't want to have a maximum
+        set for castle.level. So we're going to override the display method
+        that choices normally adds in order to return the string value for the
+        maximum for anything over that threshold value.
+        """
+        for choice in self.FORTIFICATION_CHOICES:
+            if self.level == choice[0]:
+                return choice[1]
+        # if level is too high, return the last element in choices
+        return self.FORTIFICATION_CHOICES[-1][1]
+
+    def __unicode__(self):
+        return "%s (#%s)" % (self.name or "Unnamed Castle", self.id)
+
+    def __repr__(self):
+        return "<Castle (#%s): %s>" % (self.id, self.name)
+
+
+class Ruler(SharedMemoryModel):
+    """
+    This represents the ruling house/entity that controls a domain, along
+    with the liege/vassal relationships. The Castellan is a PcOrNpc object
+    that may be the ruler of the domain or someone they appointed in their
+    place - in either case, they use the skills for governing. The house
+    is the AssetOwner that actually owns the domain and gets the incomes
+    from it - it's assumed to be an Organization. liege is how we establish
+    the liege/vassal relationships between ruler objects.
+    """
+    # the person who's skills are used to govern the domain
+    castellan = models.OneToOneField("PlayerOrNpc", blank=True, null=True)
+    # the house that owns the domain
+    house = models.OneToOneField("AssetOwner", on_delete=models.SET_NULL, related_name="estate", blank=True, null=True)
+    # a ruler object that this object owes its alliegance to
+    liege = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="vassals", blank=True, null=True,
+                              db_index=True)
+
+    def _get_titles(self):
+        return ", ".join(domain.title for domain in self.domains.all())
+    titles = property(_get_titles)
+
+    def __unicode__(self):
+        if self.house:
+            return str(self.house.owner)
+        return str(self.castellan) or "Undefined Ruler (#%s)" % self.id
+
+    def __repr__(self):
+        if self.house:
+            owner = self.house.owner
+        else:
+            owner = self.castellan
+        return "<Ruler (#%s): %s>" % (self.id, owner)
+
+    def minister_skill(self, attr):
+        """
+        Given attr, which must be one of the dominion skills defined in PlayerOrNpc, returns an integer which is
+        the value of the Minister which corresponds to that category. If there is no Minister or more than 1,
+        both of which are errors, we return 0.
+        :param attr: str
+        :return: int
+        """
+        try:
+            if attr == "population":
+                category = Minister.POP
+            elif attr == "warfare":
+                category = Minister.WARFARE
+            elif attr == "farming":
+                category = Minister.FARMING
+            elif attr == "income":
+                category = Minister.INCOME
+            elif attr == "loyalty":
+                category = Minister.LOYALTY
+            elif attr == "upkeep":
+                category = Minister.UPKEEP
+            else:
+                category = Minister.PRODUCTIVITY
+            minister = self.ministers.get(category=category)
+            return getattr(minister.player, attr)
+        except (Minister.DoesNotExist, Minister.MultipleObjectsReturned, AttributeError):
+            return 0
+
+    def ruler_skill(self, attr):
+        """
+        Returns the DomSkill value of the castellan + his ministers
+        :param attr: str
+        :return: int
+        """
+        try:
+            return getattr(self.castellan, attr) + self.minister_skill(attr)
+        except AttributeError:
+            return 0
+
+    @property
+    def vassal_taxes(self):
+        """Total silver we get from our vassals"""
+        if not self.house:
+            return 0
+        return sum(ob.weekly_amount for ob in self.house.incomes.filter(category="vassal taxes"))
+
+    @property
+    def liege_taxes(self):
+        """Total silver we pay to our liege"""
+        if not self.house:
+            return 0
+        return sum(ob.weekly_amount for ob in self.house.debts.filter(category="vassal taxes"))
+
+    def clear_domain_cache(self):
+        """Clears cache for all domains under our rule"""
+        for domain in self.holdings.all():
+            domain.clear_cached_properties()

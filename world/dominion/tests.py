@@ -70,7 +70,7 @@ class TestCrisisCommands(ArxCommandTest):
 
 class TestDomainProgression(ArxCommandTest):
     def test_hunger_and_lawlessness_weekly_adjustment(self):
-        from world.dominion.models import Domain
+        from world.dominion.domain.models import Domain
 
         expected_unassigned_serfs = 10000
         expected_lawlessness = 0

@@ -18,11 +18,10 @@ from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from . import setup_utils
 from web.character.models import Clue
-from world.dominion.models import (Region, Domain, Land, PlayerOrNpc, ClueForOrg, Reputation, Castle,
-                                   AssetOwner, Ruler, Organization, Member, SphereOfInfluence,
-                                   InfluenceCategory, Minister, PlotRoom)
+from world.dominion.models import (Region, Land, PlayerOrNpc, ClueForOrg, Reputation, AssetOwner, Organization, Member,
+                                   SphereOfInfluence, InfluenceCategory, PlotRoom)
 
-from world.dominion.domain.models import MilitaryUnit, Army
+from world.dominion.domain.models import MilitaryUnit, Army, Domain, Castle, Ruler, Minister
 
 from .unit_types import type_from_str
 from world.stats_and_skills import do_dice_check
