@@ -8,14 +8,17 @@ from django.utils.html import escape
 
 from .models import (PlayerOrNpc, Organization, Domain, Agent, AgentOb, Minister, MapLocation,
                      AssetOwner, Region, Land, Castle, WorkSetting, PraiseOrCondemn,
-                     Ruler, Army, Orders, MilitaryUnit, Member, Task, OrgUnitModifiers,
-                     CraftingRecipe, CraftingMaterialType, CraftingMaterials, PlotActionAssistant,
-                     RPEvent, AccountTransaction, AssignedTask, Plot, PlotAction, PlotUpdate,
+                     Ruler, Member, Task, CraftingRecipe, CraftingMaterialType, CraftingMaterials,
+                     RPEvent, AccountTransaction, AssignedTask,
                      OrgRelationship, Reputation, TaskSupporter, InfluenceCategory,
-                     Renown, SphereOfInfluence, TaskRequirement, ClueForOrg, ActionOOCQuestion,
+                     Renown, SphereOfInfluence, TaskRequirement, ClueForOrg,
                      PlotRoom, Landmark, PrestigeTier, PrestigeCategory, PrestigeAdjustment,
-                     Honorific, Propriety, PCEventParticipation, OrgEventParticipation, Fealty,
-                     OrgPlotInvolvement, PCPlotInvolvement)
+                     Honorific, Propriety, PCEventParticipation, OrgEventParticipation, Fealty)
+
+from world.dominion.plots.models import (Plot, PlotAction, PlotUpdate, ActionOOCQuestion,
+                                         PCPlotInvolvement, OrgPlotInvolvement, PlotActionAssistant)
+
+from world.dominion.domain.models import (Army, Orders, MilitaryUnit, OrgUnitModifiers)
 
 from web.help_topics.templatetags.app_filters import mush_to_html
 from world.exploration.models import Shardhaven, ShardhavenType

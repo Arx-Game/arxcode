@@ -28,7 +28,9 @@ from commands.base_commands import roster
 from server.utils.name_paginator import NamePaginator
 from server.utils.view_mixins import LimitPageMixin
 from typeclasses.characters import Character
-from world.dominion.models import Organization, PlotAction, ActionSubmissionError
+from world.dominion.models import Organization
+from world.dominion.plots.models import PlotAction, ActionSubmissionError
+
 from .forms import (PhotoForm, PhotoDirectForm, PhotoUnsignedDirectForm, PortraitSelectForm,
                     PhotoDeleteForm, PhotoEditForm, FlashbackPostForm, FlashbackCreateForm)
 from .models import Photo, Story, Episode, Chapter, Flashback, ClueDiscovery
@@ -429,7 +431,7 @@ class ChapterListView(ListView):
     @property
     def viewable_crises(self):
         """Gets queryset of crises visible to user"""
-        from world.dominion.models import Plot
+        from world.dominion.plots.models import Plot
         return Plot.objects.viewable_by_player(self.request.user).filter(chapter__in=self.get_queryset())
 
     def get_context_data(self, **kwargs):

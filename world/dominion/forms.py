@@ -5,7 +5,8 @@ from django import forms
 from django.db.models import Q
 
 from typeclasses.rooms import ArxRoom
-from world.dominion.models import RPEvent, Organization, PlayerOrNpc, PlotRoom, Plot
+from world.dominion.models import RPEvent, Organization, PlayerOrNpc, PlotRoom
+from world.dominion.plots.models import Plot
 
 
 class RPEventCommentForm(forms.Form):

@@ -4,12 +4,12 @@ Tests for dominion stuff. Crisis commands, etc.
 from mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
-from . import crisis_commands, general_dominion_commands, plot_commands
-from commands.base_commands import roster
+from . import crisis_commands, general_dominion_commands
+from world.dominion.plots import plot_commands
 
 from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions, SearchTag
-from world.dominion.models import Plot, PlotAction, PCPlotInvolvement, RPEvent, PlotUpdate, Organization, \
-    CraftingMaterialType, CraftingMaterials, ClueForOrg
+from world.dominion.models import RPEvent, Organization, CraftingMaterialType, ClueForOrg
+from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement, PlotUpdate
 
 
 class TestCraftingCommands(ArxCommandTest):
@@ -34,9 +34,9 @@ class TestCrisisCommands(ArxCommandTest):
         self.action = self.crisis.actions.create(dompc=self.dompc2, actions="test action", outcome_value=50,
                                                  status=PlotAction.PENDING_PUBLISH)
 
-    @patch('world.dominion.models.datetime')
-    @patch("world.dominion.models.inform_staff")
-    @patch("world.dominion.models.get_week")
+    @patch('world.dominion.plots.models.datetime')
+    @patch("world.dominion.plots.models.inform_staff")
+    @patch("world.dominion.plots.models.get_week")
     def test_cmd_gm_crisis(self, mock_get_week, mock_inform_staff, mock_now):
         self.cmd_class = crisis_commands.CmdGMCrisis
         self.caller = self.account
@@ -334,7 +334,7 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
 
     @patch('django.utils.timezone.now')
     def test_cmd_gm_plots(self, mock_now):
-        from plot_commands import create_plot_pitch
+        from world.dominion.plots.plot_commands import create_plot_pitch
         mock_now.return_value = self.fake_datetime
         self.setup_cmd(plot_commands.CmdGMPlots, self.char1)
         self.call_cmd("/all", '| #   | Plot (owner)           | Summary                                     '

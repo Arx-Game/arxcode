@@ -8,7 +8,9 @@ from datetime import datetime, timedelta
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
 
 from web.character.models import Revelation
-from world.dominion.models import PlotAction, Plot, Army, RPEvent
+from world.dominion.domain.models import Army
+from world.dominion.models import RPEvent
+from world.dominion.plots.models import PlotAction, Plot
 
 from world.templates.models import Template
 from web.character.models import PlayerAccount
@@ -173,8 +175,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
 class StoryActionTests(ArxCommandTest):
 
-    @patch("world.dominion.models.inform_staff")
-    @patch("world.dominion.models.get_week")
+    @patch("world.dominion.plots.models.inform_staff")
+    @patch("world.dominion.plots.models.get_week")
     def test_cmd_action(self, mock_get_week, mock_inform_staff):
         mock_get_week.return_value = 1
         self.setup_cmd(story_actions.CmdAction, self.account)
@@ -294,8 +296,8 @@ class StoryActionTests(ArxCommandTest):
                                                         "testing|Please note that you cannot invite players to an "
                                                         "action once it is submitted.")
 
-    @patch("world.dominion.models.inform_staff")
-    @patch("world.dominion.models.get_week")
+    @patch("world.dominion.plots.models.inform_staff")
+    @patch("world.dominion.plots.models.get_week")
     def test_cmd_gm_action(self, mock_get_week, mock_inform_staff):
         from datetime import datetime
         now = datetime.now()
@@ -1247,7 +1249,7 @@ class HelpCommandTests(ArxCommandTest):
         from evennia.help.models import HelpEntry
         from evennia.utils.utils import dedent
         from commands.default_cmdsets import CharacterCmdSet
-        from world.dominion.plot_commands import CmdPlots
+        from world.dominion.plots.plot_commands import CmdPlots
         entry = HelpEntry.objects.create(db_key="test entry")
         entry.tags.add("plots")
         self.setup_cmd(help.CmdHelp, self.char1)

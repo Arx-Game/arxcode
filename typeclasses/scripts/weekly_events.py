@@ -13,7 +13,8 @@ from django.db.models import Q, F
 from evennia.objects.models import ObjectDB
 from evennia.utils.evtable import EvTable
 
-from world.dominion.models import AssetOwner, Army, Member, AccountTransaction, Orders
+from world.dominion.models import AssetOwner, Member, AccountTransaction
+from world.dominion.domain.models import Army, Orders
 from world.msgs.models import Inform
 from typeclasses.bulletin_board.bboard import BBoard
 from typeclasses.accounts import Account

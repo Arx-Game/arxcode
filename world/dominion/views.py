@@ -2,7 +2,8 @@
 Views related to the Dominion app
 """
 from django.views.generic import ListView, DetailView, CreateView
-from .models import RPEvent, AssignedTask, Plot, Land, Domain, Organization
+from .models import RPEvent, AssignedTask, Land, Domain, Organization
+from world.dominion.plots.models import Plot
 from .forms import RPEventCommentForm, RPEventCreateForm
 from .view_utils import EventHTMLCalendar
 from django.http import HttpResponseRedirect, HttpResponse
