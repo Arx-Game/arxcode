@@ -1820,13 +1820,14 @@ class Flashback(SharedMemoryModel):
         elif not self.concluded and player in self.current_players:
             return True
 
-    def uninvite_roster(self, roster_entry):
-        """Retires contributor or deletes non-contributor's FlashbackInvolvement."""
-        inv = self.get_involvement(roster_entry)
+    def uninvite_roster(self, inv):
+        """Retires contributor or deletes non-contributor's FlashbackInvolvement (inv)."""
         if inv.contributions.exists():
             inv.status = inv.RETIRED
             inv.save()
         else:
+            posts = self.posts.all()
+            inv.participant.flashback_post_permissions.filter(post__in=posts).delete()
             del inv
 
     def invite_roster(self, roster_entry, retro=False):
