@@ -1696,6 +1696,7 @@ class Flashback(SharedMemoryModel):
     db_date_created = models.DateTimeField(blank=True, null=True)
     beat = models.ForeignKey("dominion.PlotUpdate", blank=True, null=True, related_name="flashbacks",
                              on_delete=models.SET_NULL)
+    MAX_XP = 3
 
     def __str__(self):
         return self.title
@@ -1730,9 +1731,12 @@ class Flashback(SharedMemoryModel):
         return msg
 
     def display_involvement(self):
-        """A string about who's able to add posts."""
+        """A string about who is able to add new posts."""
         msg = "(#%s) |w%s|n - Owners and post authors: %s" % (self.id, self.title, self.owners_and_contributors)
-        msg += "\nCharacters able to see/make new posts: %s" % ", ".join([str(ob) for ob in self.current_players])
+        msg += "\nCharacters invited to post: %s" % ", ".join([str(ob) for ob in self.current_players])
+        if self.concluded:
+            msg += ("\nNote: No one may post since this flashback is concluded, but adding viewers is still "
+                    "possible with |w/invite/retro|n or |w/allow|n switches. See 'help flashback' for usage.")
         return msg
 
     @property
@@ -1781,7 +1785,7 @@ class Flashback(SharedMemoryModel):
         except FlashbackInvolvement.DoesNotExist:
             return None
 
-    def allow_posts_by(self, player):
+    def posts_allowed_by(self, player):
         """Boolean for whether player may post to this flashback."""
         if player.is_staff or player.check_permstring("builders"):
             return True
@@ -1841,11 +1845,37 @@ class Flashback(SharedMemoryModel):
         inv.roll.remove()
         if poster:
             poster.character.messages.num_flashbacks += 1
+        self.inform_all_but(poster, "New post by %s on '%s' (flashback #%s)!" % (self, self.id, poster))
+
+    def end_scene(self, ender):
+        """Concludes the flashback."""
+        num_posts = self.posts.count()
+        authors = self.post_authors()
+        msg = "Flashback #%s '%s' has reached its conclusion." % (self.id, self)
+        if num_posts < 1:
+            ender.player.inform("With no posts, '%s' (flashback #%s) was deleted." % (self, self.id),
+                                category="Flashbacks")
+            self.delete()
+            return
+        elif num_posts >= 10 and len(authors) > 1:
+            for roster in authors:
+                player = roster.player
+                val = player.db.event_xp or 0
+                if val < self.MAX_XP:
+                    val += 1
+                    player.char_ob.adjust_xp(1)
+                player.db.event_xp = val
+            msg += " Its authors gained event XP (up to %s weekly)." % self.MAX_XP
+        self.concluded = True
+        self.save()
+        self.inform_all_but(None, msg)
+
+    def inform_all_but(self, roster_entry, msg):
+        """Sends informs to current players except the catalyst."""
         for player in self.current_players:
-            if poster and poster.player == player:
+            if roster_entry and roster_entry.player == player:
                 continue
-            player.inform("There is a new post on flashback #%s by %s." % (self.id, poster),
-                          category="Flashbacks")
+            player.inform(msg, category="Flashbacks")
 
     def get_absolute_url(self):
         """Returns URL of the view of this flashback"""
@@ -1858,8 +1888,8 @@ class FlashbackInvolvement(SharedMemoryModel):
     """Through model of a player's involvement with a Flashback."""
     RETIRED, CONTRIBUTOR, OWNER = range(3)
     STATUS_CHOICES = ((RETIRED, 'Retired'), (CONTRIBUTOR, 'Contributor'), (OWNER, 'Owner'),)
-    flashback = models.ForeignKey('Flashback', related_name="flashback_involvements")
-    participant = models.ForeignKey('RosterEntry', related_name="flashback_involvements")
+    flashback = models.ForeignKey('Flashback', related_name="flashback_involvements", on_delete=models.CASCADE)
+    participant = models.ForeignKey('RosterEntry', related_name="flashback_involvements", on_delete=models.CASCADE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=CONTRIBUTOR, blank=True)
     role_played = models.CharField(max_length=250, blank=True)
     roll = models.CharField(max_length=250, blank=True)
@@ -1892,8 +1922,8 @@ class FlashbackInvolvement(SharedMemoryModel):
 
 class FlashbackPost(SharedMemoryModel):
     """A post for a flashback."""
-    flashback = models.ForeignKey('Flashback', related_name="posts")
-    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts")
+    flashback = models.ForeignKey('Flashback', related_name="posts", on_delete=models.CASCADE)
+    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts", on_delete=models.SET_NULL)
     readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts", through='FlashbackPostPermission')
     actions = models.TextField("The body of the post for your character's actions", blank=True)
     db_date_created = models.DateTimeField(blank=True, null=True)
@@ -1925,9 +1955,12 @@ class FlashbackPost(SharedMemoryModel):
 
 class FlashbackPostPermission(SharedMemoryModel):
     """The readability status of a flashback post."""
-    post = models.ForeignKey('FlashbackPost', related_name="flashback_post_permissions")
-    reader = models.ForeignKey('RosterEntry', related_name="flashback_post_permissions")
+    post = models.ForeignKey('FlashbackPost', related_name="flashback_post_permissions", on_delete=models.CASCADE)
+    reader = models.ForeignKey('RosterEntry', related_name="flashback_post_permissions", on_delete=models.CASCADE)
     is_read = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('post', 'reader')
 
 
 class Goal(SharedMemoryModel):

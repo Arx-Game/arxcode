@@ -22,9 +22,9 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback/conclude <ID #>
         flashback/title <ID #>=<new title>
         flashback/summary <ID #>=<new summary>
-        flashback/invite[/retro] [<ID #>=<player>]
+        flashback/invite[/retro] <ID #>[=<player>]
         flashback/uninvite <ID #>=<player>
-        flashback/allow <ID #>=<player>,<number of last posts or 'all'>
+        flashback/allow <ID #>=<player>[,<number of last posts or 'all'>]
         flashback/post <ID #>=<message>
         flashback/check[/flub] <ID>=<stat>[+<skill>][ at <difficulty #>]
 
@@ -32,23 +32,23 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     private to invited players and staff. Involved players are informed of
     new posts. If you no longer wish to be informed or post, you may uninvite
     yourself. Catchup shows unread posts. Posts can also be made from your
-    character webpage's Flashbacks link. Players can see posts made after
+    character webpage's Flashbacks link. Players will see posts made after
     they were invited, but adding /retro to an invitation reveals all
-    back-posts. Partial visibility is achieved with /allow, after they have
-    been invited normally. Use /invite sans args to see who has access. Using
-    /check is like @check and the result will prefix your next post.
+    back-posts. Partial visibility is achieved with /allow, once they have
+    been invited normally. Use /invite without player to see who has access.
+    Use /check similar to @check - the result will prefix your next post.
     """
     key = "flashback"
     aliases = ["flashbacks"]
     locks = "cmd:all()"
     help_category = "Story"
     invite_switches = ("invite", "uninvite", "allow")
-    change_switches = ("title", "summary")
+    change_switches = ("title", "summary", "conclude")
     requires_owner = ("invite", "allow",) + change_switches
-    requires_unconcluded = ("post", "roll", "check")
+    requires_unconcluded = ("post", "roll", "check", "conclude")
 
     # TODO:
-    # flashback/conclude <ID #>
+    # Do 'post missing' views in model for similar experience as web?
     # Consider weird user states in migration. Posters who are uninvited, etc.
     # Use role_played in Involvement?
 
@@ -110,7 +110,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
                 fb = self.roster_entry.flashbacks.all()
             return fb.get(id=int(self.lhs))
         except (Flashback.DoesNotExist, ValueError):
-            self.msg("No open flashback by that ID number.")
+            self.msg("No ongoing flashback by that ID number.")
             self.list_flashbacks()
 
     def view_flashback(self, flashback):
@@ -152,7 +152,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.msg("They are already invited to this flashback.")
             return
         retro = "retro" in self.switches
-        retro_msg = ", with all previous posts visible" if retro else ""
+        retro_msg = " with all previous posts visible" if retro else ""
         flashback.invite_roster(target.roster, retro=retro)
         self.msg("You have invited %s to participate in this flashback%s." % (target, retro_msg))
         target.inform("You have been invited by %s to participate in flashback #%s: '%s'." %
@@ -182,7 +182,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             try:
                 amount = int(self.rhslist[1].strip('-'))
             except (TypeError, ValueError):
-                self.msg("To allow visible back-posts, specify a <number> or <all>.")
+                self.msg("To allow a number of visible back-posts, specify a <number>.")
                 return
             amount = int(self.rhslist[1])
         flashback.allow_back_read(target.roster, amount=amount)
@@ -209,7 +209,12 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         return True
 
     def update_flashback(self, flashback):
-        if "title" in self.switches:
+        """Sets a field for the flashback, or concludes it."""
+        if "conclude" in self.switches:
+            flashback.end_scene(self.roster_entry)
+            self.msg("Flashback #%s has been concluded." % flashback.id)
+            return
+        elif "title" in self.switches:
             field = "title"
         else:
             field = "summary"

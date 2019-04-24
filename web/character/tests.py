@@ -191,13 +191,14 @@ class SceneCommandTests(ArxCommandTest):
         self.assertEqual(self.char1.messages.num_flashbacks, 0)
         self.call_cmd("/post 1=A new testpost", "You have posted to testing: A new testpost")
         self.assertEqual(self.char1.messages.num_flashbacks, 1)
+        self.account.inform = Mock()
         self.account2.inform = Mock()
         self.call_cmd("/invite/retro 1=Testaccount2", "You have invited Testaccount2 to participate in this "
-                                                      "flashback, with all previous posts visible.")
+                                                      "flashback with all previous posts visible.")
         self.account2.inform.assert_called_with("You have been invited by Testaccount to participate in flashback #1:"
                                                 " 'testing'.", category="Flashbacks")
         mock_build_msg.return_value = "Galvanion checked willpower at difficulty 9001, rolling 9000 lower."
-        self.caller.char_ob.db.willpower = 1
+        self.char.db.willpower = 1
         self.call_cmd("/check 1=willpower", "[Private Roll] %s (Shared with: self-only)|Your next post "
                                             "in flashback #1 will use this roll." % mock_build_msg.return_value)
         self.call_cmd("/check 1=pleading", "Your next post in flashback #1 will use this roll: "
@@ -205,7 +206,7 @@ class SceneCommandTests(ArxCommandTest):
         self.call_cmd("/post 1=boop.", "This roll will accompany the new post: %s\nPlease repeat command to "
                                        "confirm and continue." % mock_build_msg.return_value)
         self.call_cmd("/post 1=boop.", "You have posted to testing: boop.")
-        self.account2.inform.assert_called_with("There is a new post on flashback #1 by Char.",
+        self.account2.inform.assert_called_with("New post by Char on flashback #1!",
                                                 category="Flashbacks")
         self.caller = self.account2
         self.call_cmd("/catchup 1", "testing (#1) New Posts!\n[By Char] A new testpost\n[By Char] "
@@ -218,11 +219,15 @@ class SceneCommandTests(ArxCommandTest):
         self.account2.inform.assert_called_with("You have been retired from flashback #1.", category="Flashbacks")
         self.call_cmd("/summary 1=test summary", "Summary set to: test summary.")
         Flashback.objects.get(id=1).posts.create(poster=self.roster_entry, actions="Foo.")
-        # TODO: if there's gonna be xp involved, test for that!
-        self.call_cmd("/conclude 1", "Flashback #1 testing has reached its conclusion.")
         self.call_cmd("1=foo", "[testing] - (#1)\nOwners and authors: Char\nSummary: test summary\n[By Char] "
                                "A new testpost\n[By Char] %s\nboop.\n[By Char] Foo." % mock_build_msg.return_value)
         self.call_cmd("1=1", "[testing] - (#1)\nOwners and authors: Char\nSummary: test summary\n[By Char] Foo.")
+        self.call_cmd("/conclude 1", "Flashback #1 has been concluded.")
+        self.account.inform.assert_called_with("Flashback #1 'testing' has reached its conclusion.", category="Flashbacks")
+        self.call_cmd("/conclude 1", "No ongoing flashback by that ID number.")
+        self.call_cmd("/create test2", "You have created a new flashback with the ID of #2.")
+        self.call_cmd("/conclude 2", "Flashback #2 has been concluded.")
+        self.account.inform.assert_called_with("With no posts, 'test2' (flashback #2) was deleted.", category="Flashbacks")
 
 
 class ViewTests(ArxTest):

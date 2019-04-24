@@ -29,7 +29,7 @@ PRESTIGE_BOARD_NAME = 'Prestige Changes'
 TRAINING_CAP_PER_WEEK = 10
 
 PLAYER_ATTRS = ("votes", 'claimed_scenelist', 'random_scenelist', 'validated_list', 'praises', 'condemns',
-                'requested_validation', 'donated_ap', 'masked_validated_list')
+                'requested_validation', 'donated_ap', 'masked_validated_list', 'event_xp')
 CHARACTER_ATTRS = ("currently_training", "trainer", 'scene_requests', "num_trained", "num_journals",
                    "num_rel_updates", "num_comments", "num_flashbacks", "support_cooldown", "support_points_spent",
                    "rp_command_used", "random_rp_command_this_week")
@@ -313,7 +313,7 @@ class WeeklyEvents(RunDateMixin, Script):
         for ob in low_activity:
             table.add_row(ob.key, ob.db.previous_posecount)
         board.bb_post(poster_obj=self, msg=str(table), subject="Inactive by Poses List")
-        
+
     # Various 'Beats' -------------------------------------------------
 
     def process_journals(self, player):
@@ -364,7 +364,7 @@ class WeeklyEvents(RunDateMixin, Script):
         we need to track against abuse, but since voting is stored in each
         player it's fairly trivial to check each week on an individual basis
         anyway.
-        """       
+        """
         votes = player.db.votes or []
         for ob in votes:
             self.ndb.recorded_votes[ob] += 1
