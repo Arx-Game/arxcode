@@ -18,6 +18,7 @@ from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from . import setup_utils
 from web.character.models import Clue
+
 from world.dominion.models import (Region, Land, PlayerOrNpc, ClueForOrg, Reputation,
                                    AssetOwner, Organization, Member, SphereOfInfluence,
                                    InfluenceCategory, PlotRoom)

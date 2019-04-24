@@ -62,6 +62,7 @@ from django.db.models import Q, Count, F, Sum, Case, When
 from django.conf import settings
 from django.core.urlresolvers import reverse
 
+from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
 from .reports import WeeklyReport
 from .agenthandler import AgentHandler
 from .managers import OrganizationManager, LandManager
@@ -73,7 +74,6 @@ from typeclasses.mixins import InformMixin
 from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement
 from world.stats_and_skills import do_dice_check
 from world.dominion.dominion_constants import *
-
 
 # Create your models here.
 class PlayerOrNpc(SharedMemoryModel):
@@ -2118,6 +2118,7 @@ class Organization(InformMixin, SharedMemoryModel):
         for pc in self.offline_members.filter(has_seen_motd=True):
             pc.has_seen_motd = False
             pc.save()
+
 
 class ClueForOrg(SharedMemoryModel):
     """Model that shows a clue known by an org"""

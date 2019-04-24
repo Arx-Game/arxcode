@@ -7,7 +7,7 @@ from django.shortcuts import reverse
 from django.utils.html import escape
 
 from .models import (PlayerOrNpc, Organization, Agent, AgentOb, MapLocation,
-                     AssetOwner, Region, Land,  WorkSetting, PraiseOrCondemn,
+                     AssetOwner, Region, Land, WorkSetting, PraiseOrCondemn,
                      Member, Task, CraftingRecipe, CraftingMaterialType, CraftingMaterials,
                      RPEvent, AccountTransaction, AssignedTask,
                      OrgRelationship, Reputation, TaskSupporter, InfluenceCategory,
@@ -18,7 +18,7 @@ from .models import (PlayerOrNpc, Organization, Agent, AgentOb, MapLocation,
 from world.dominion.plots.models import (Plot, PlotAction, PlotUpdate, ActionOOCQuestion,
                                          PCPlotInvolvement, OrgPlotInvolvement, PlotActionAssistant)
 
-from world.dominion.domain.models import (Domain, Castle, Minister, Army, Ruler, Orders, MilitaryUnit, OrgUnitModifiers)
+from world.dominion.domain.models import (Army, Orders, MilitaryUnit, OrgUnitModifiers, Domain, Castle, Ruler, Minister)
 
 from web.help_topics.templatetags.app_filters import mush_to_html
 from world.exploration.models import Shardhaven, ShardhavenType

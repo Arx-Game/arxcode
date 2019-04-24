@@ -1828,7 +1828,7 @@ class CmdSetServerConfig(ArxPlayerCommand):
         except (TypeError, ValueError):
             if not quiet:
                 self.msg("Cannot convert to number. Using Default income value.")
-            from world.dominion.models import DEFAULT_GLOBAL_INCOME_MOD
+            from world.dominion.domain.models import DEFAULT_GLOBAL_INCOME_MOD
             return DEFAULT_GLOBAL_INCOME_MOD
 
     def list_config_values(self):
