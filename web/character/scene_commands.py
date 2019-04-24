@@ -48,7 +48,6 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     requires_unconcluded = ("post", "roll", "check", "conclude")
 
     # TODO:
-    # Do 'post missing' views in model for similar experience as web?
     # Consider weird user states in migration. Posters who are uninvited, etc.
     # Use role_played in Involvement?
 
@@ -114,22 +113,23 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.list_flashbacks()
 
     def view_flashback(self, flashback):
+        """Displays details and posts with possible post-limit."""
         try:
             post_limit = int(self.rhs)
         except (TypeError, ValueError):
             post_limit = None
-        self.msg(flashback.display(post_limit=post_limit, reader=self.roster_entry))
+        self.msg(flashback.display(post_limit=post_limit, reader=self.caller))
 
     def read_new_posts(self, flashback):
-        new_posts = flashback.get_new_posts(self.roster_entry)
+        """Displays unread posts and then marks them read."""
+        roster = self.roster_entry
+        new_posts = flashback.get_new_posts(roster)
         if not new_posts:
-            msg = "No new posts for #%s." % flashback.id
-        else:
-            msg = "|w%s|n - (#%s) New Posts!\n" % (flashback, flashback.id)
-            for post in new_posts:
-                msg += "%s\n" % post.display()
-                post.read_by.add(self.roster_entry)
-        self.msg(msg)
+            self.msg("No new posts for #%s." % flashback.id)
+            return
+        self.msg("|w%s|n (#%s) - New Posts!\n%s" % (flashback, flashback.id,
+                                                    "\n".join([ob.display() for ob in new_posts])))
+        roster.flashback_post_permissions.filter(post__in=new_posts).exclude(is_read=True).update(is_read=True)
 
     def manage_invites(self, flashback):
         """Redirects to invite, uninvite, or allowing visible back-posts."""

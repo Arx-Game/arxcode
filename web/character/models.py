@@ -1703,31 +1703,32 @@ class Flashback(SharedMemoryModel):
 
     def get_new_posts(self, entry):
         """Returns queryset of posts that roster entry hasn't read yet."""
-        all_readables = self.posts.filter(readable_by=entry)
-        return all_readables.exclude(readable_by__is_read=True).distinct()
+        unread = entry.flashback_post_permissions.exclude(is_read=True)
+        return self.posts.filter(readable_by__in=unread)
 
     def display(self, display_summary_only=False, post_limit=None, reader=None):
         """
         Returns string display of a flashback.
         Args:
-            display_summary_only (boolean)
-            post_limit (int)
-            reader (RosterEntry)
+            display_summary_only (boolean): Whether to display posts.
+            post_limit (int): How many posts to limit our display to.
+            reader (Account/Player): The viewer.
         """
         wip = "" if self.concluded else " work in progress!"
         msg = "|w[%s]|n - (#%s)%s" % (self.title, self.id, wip)
         msg += "\nOwners and authors: %s" % self.owners_and_contributors
         msg += "\nSummary: %s" % self.summary
-        if display_summary_only:
+        if display_summary_only or not reader:
             return msg
-        if not reader or reader.player.check_permstring('builder'):
-            posts = list(self.posts.all())
-        else:
-            posts = list(self.posts.filter(readable_by=reader))
+        timeline, _ = self.get_post_timeline(reader)
         if post_limit:
-            posts = posts[-post_limit:]
-        if posts:
-            msg += "\n%s" % "\n".join(post.display() for post in posts)
+            timeline = timeline[-post_limit:]
+        div = "\n|w%s|n" % ("-" * 60)
+        for record in timeline:
+            if record.readable:
+                msg += "\n%s" % record.post.display()
+            else:
+                msg += "{0}\nThis part of the tale resides in the memory of someone else.{0}".format(div)
         return msg
 
     def display_involvement(self):
@@ -1784,6 +1785,33 @@ class Flashback(SharedMemoryModel):
             return self.flashback_involvements.get(participant=roster_entry)
         except FlashbackInvolvement.DoesNotExist:
             return None
+
+    def get_post_timeline(self, player):
+        """
+        Returns a list and a boolean for whether the player is staff. Each item in list
+        is a dict containing either a single readable post, or a cluster of unreadable
+        posts, which obfuscates how much material a reader may be missing.
+        """
+        reader_is_staff = bool(player.is_staff or player.check_permstring("builders"))
+        try:
+            roster = player.roster
+            if not reader_is_staff and roster not in self.participants.all():
+                raise AttributeError
+        except AttributeError:
+            raise AttributeError
+        timeline = []
+        all_posts = self.posts.all()
+        for post in all_posts:
+            if reader_is_staff or post.poster == roster or post.readable_by.filter(reader=roster).exists():
+                readable_dict = {'readable': True, 'post': post}
+                timeline.append(readable_dict)
+            elif not timeline or timeline[-1]['readable']:
+                unreadable_dict = {'readable': False, 'posts': [post]}
+                timeline.append(unreadable_dict)
+            else:
+                timeline[-1]['posts'].append(post)
+        roster.flashback_post_permissions.filter(post__in=all_posts).exclude(is_read=True).update(is_read=True)
+        return timeline, reader_is_staff
 
     def posts_allowed_by(self, player):
         """Boolean for whether player may post to this flashback."""

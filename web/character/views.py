@@ -794,27 +794,13 @@ class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
     def get_context_data(self, **kwargs):
         """Gets context for template, ensures we have permissions"""
         context = super(FlashbackAddPostView, self).get_context_data(**kwargs)
-        user = self.request.user
-        user_is_staff = bool(user.is_staff or user.check_permstring("builders"))
         flashback = self.get_object()
-        if user not in flashback.all_players and not user_is_staff:
+        user = self.request.user
+        try:
+            timeline, user_is_staff = flashback.get_post_timeline(user)
+        except AttributeError:
             raise Http404
-        entry = self.poster
-        involvement = flashback.get_involvement(entry)
-        timeline = []
-        for post in flashback.posts.all():
-            post_permission = post.get_permission(entry)
-            if user_is_staff or post_permission:
-                readable_dict = {'readable': True, 'post': post}
-                timeline.append(readable_dict)
-                if post_permission and not post_permission.is_read:
-                    post_permission.is_read = True
-                    post_permission.save()
-            elif not timeline or timeline[-1]['readable']:
-                unreadable_dict = {'readable': False, 'posts': [post]}
-                timeline.append(unreadable_dict)
-            else:
-                timeline[-1]['posts'].append(post)
+        involvement = flashback.get_involvement(user.roster)
         context['flashback_timeline'] = timeline
         context['allow_add_post'] = bool(user_is_staff or flashback.posts_allowed_by(user))
         context['new_post_roll'] = involvement.roll if (context['allow_add_post'] and involvement) else None
