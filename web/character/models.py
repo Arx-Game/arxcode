@@ -1697,6 +1697,8 @@ class Flashback(SharedMemoryModel):
     beat = models.ForeignKey("dominion.PlotUpdate", blank=True, null=True, related_name="flashbacks",
                              on_delete=models.SET_NULL)
     MAX_XP = 3
+    STRING_DIV = "\n|w%s|n" % ("-" * 70)
+    STRING_MISSING_MEMORY = "Part of this tale resides in the memory of someone else."
 
     def __str__(self):
         return self.title
@@ -1723,12 +1725,12 @@ class Flashback(SharedMemoryModel):
         timeline, _ = self.get_post_timeline(reader)
         if post_limit:
             timeline = timeline[-post_limit:]
-        div = "\n|w%s|n" % ("-" * 60)
+        div = self.STRING_DIV
         for record in timeline:
             if record.readable:
-                msg += "\n%s" % record.post.display()
+                msg += "%s\n%s" % (div, record.post.display())
             else:
-                msg += "{0}\nThis part of the tale resides in the memory of someone else.{0}".format(div)
+                msg += "%s\n%s" % (div, self.STRING_MISSING_MEMORY)
         return msg
 
     def display_involvement(self):
@@ -1788,9 +1790,20 @@ class Flashback(SharedMemoryModel):
 
     def get_post_timeline(self, player):
         """
-        Returns a list and a boolean for whether the player is staff. Each item in list
+        Returns a list, and a bool for whether the player is staff. Each item in list
         is a dict containing either a single readable post, or a cluster of unreadable
-        posts, which obfuscates how much material a reader may be missing.
+        posts which obfuscates how much material a reader may be missing.
+
+            Args:
+                player (Account object): the reader
+
+            Returns:
+                timeline (list of dictionaries): Dicts contain a readability bool
+                    and post (if readable) or posts-list (if unreadable).
+                reader_is_staff (boolean): Whether player is staff.
+
+        timeline example:
+        [{'readable': False, 'posts': [post1, post2]}, {'readable': True, 'post': post}]
         """
         reader_is_staff = bool(player.is_staff or player.check_permstring("builders"))
         try:
@@ -1800,17 +1813,21 @@ class Flashback(SharedMemoryModel):
         except AttributeError:
             raise AttributeError
         timeline = []
-        all_posts = self.posts.all()
+        all_posts = list(self.posts.all())
+        perms = roster.flashback_post_permissions.filter(post__in=all_posts)
         for post in all_posts:
-            if reader_is_staff or post.poster == roster or post.readable_by.filter(reader=roster).exists():
+            perm = [ob for ob in perms if ob.post_id == post.id]  # evaluates 'perms' qs
+            if reader_is_staff or perm or post.poster == roster:
                 readable_dict = {'readable': True, 'post': post}
                 timeline.append(readable_dict)
+                if perm:
+                    perm[0].is_read = True  # cache-safe is cache money, baby
             elif not timeline or timeline[-1]['readable']:
                 unreadable_dict = {'readable': False, 'posts': [post]}
                 timeline.append(unreadable_dict)
             else:
                 timeline[-1]['posts'].append(post)
-        roster.flashback_post_permissions.filter(post__in=all_posts).exclude(is_read=True).update(is_read=True)
+        perms.exclude(is_read=True).update(is_read=True)  # update skips cached objects
         return timeline, reader_is_staff
 
     def posts_allowed_by(self, player):

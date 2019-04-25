@@ -126,13 +126,21 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     def read_new_posts(self, flashback):
         """Displays unread posts and then marks them read."""
         roster = self.roster_entry
-        new_posts = flashback.get_new_posts(roster)
+        perms = (roster.flashback_post_permissions.filter(post__flashback=flashback)
+                                                  .exclude(is_read=True).distinct())
+        perms_list = list(perms)
+        new_posts = flashback.posts.filter(flashback_post_permissions__in=perms_list)
         if not new_posts:
             self.msg("No new posts for #%s." % flashback.id)
             return
-        self.msg("|w%s|n (#%s) - New Posts!\n%s" % (flashback, flashback.id,
-                                                    "\n".join([ob.display() for ob in new_posts])))
-        roster.flashback_post_permissions.filter(post__in=new_posts).exclude(is_read=True).update(is_read=True)
+        msg = "|w%s|n (#%s) - New Posts!" % (flashback, flashback.id)
+        div = flashback.STRING_DIV
+        for post in new_posts:
+            msg += "%s\n%s" % (div, post.display())
+            perm = [ob for ob in perms_list if ob.post_id == post.id]
+            if perm:
+                perm[0].is_read = True  # cache-safe is cache money
+        perms.update(is_read=True)  # update skips cached objects
 
     def manage_invites(self, flashback):
         """Redirects to invite, uninvite, or allowing visible back-posts."""

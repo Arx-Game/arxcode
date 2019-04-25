@@ -15,7 +15,7 @@
             {% endif %}
             <p>{{ post.actions|mush_to_html }}</p>
         {% elif not record.readable %}
-            <p><i>This part of the tale resides in the memory of someone else.</i></p>
+            <p><i>{{ flashback.STRING_MISSING_MEMORY }}</i></p>
         {% endif %}
         </div>
         {% endfor %}
