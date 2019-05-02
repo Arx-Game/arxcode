@@ -801,6 +801,7 @@ class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
         except AttributeError:
             raise Http404
         involvement = flashback.get_involvement(user.roster)
+        context['flashback_featuring'] = flashback.owners_and_contributors
         context['flashback_timeline'] = timeline
         context['allow_add_post'] = bool(user_is_staff or flashback.posts_allowed_by(user))
         context['new_post_roll'] = involvement.roll if (context['allow_add_post'] and involvement) else ""

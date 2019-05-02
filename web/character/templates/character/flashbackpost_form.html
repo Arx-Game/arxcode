@@ -4,7 +4,12 @@
     <div class="container">
         <a href="{% url "character:sheet" character.id %}">&laquo;&nbsp;Back to {{ character.key }}</a>
         <h2 class="text-center">{{ flashback }}</h2>
-        <div class="well text-center">{{ flashback.summary|mush_to_html }}</div>
+        <div class="well text-center">
+            {{ flashback.summary|mush_to_html }}
+            {% if flashback_featuring %}
+            <p>Featuring: {{ flashback_featuring|mush_to_html }}</p>
+            {% endif %}
+        </div>
 
         {% for record in flashback_timeline %}
         <div class="dividingBorderAbove">

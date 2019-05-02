@@ -144,11 +144,14 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
 
     def manage_invites(self, flashback):
         """Redirects to invite, uninvite, or allowing visible back-posts."""
-        if not self.rhs and "invite" in self.switches:
+        if self.rhs:
+            targ = self.caller.search(self.rhslist[0])
+            if not targ:
+                return
+        elif "invite" in self.switches:
             return flashback.display_involvement()
-        targ = self.caller.search(self.rhslist[0])
-        if not targ:
-            return
+        else:
+            targ = self.caller
         inv = flashback.get_involvement(targ.roster)
         if "invite" in self.switches:
             self.invite_target(flashback, targ, inv)

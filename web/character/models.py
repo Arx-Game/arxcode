@@ -1761,8 +1761,8 @@ class Flashback(SharedMemoryModel):
     @property
     def owners_and_contributors(self):
         """String of comma-separated owners (in color!) and post authors."""
-        owners = self.owners
-        owners_names = owners.values_list('player__username', flat=True)
+        owners = list(self.owners)
+        owners_names = self.owners.values_list('player__username', flat=True)
         authors_names = self.post_authors.exclude(id__in=owners).values_list('player__username', flat=True)
         return ", ".join(["|c%s|n" % ob for ob in owners_names] + [str(ob) for ob in authors_names])
 
@@ -1791,16 +1791,16 @@ class Flashback(SharedMemoryModel):
     def get_post_timeline(self, player):
         """
         Returns a list, and a bool for whether the player is staff. Each item in list
-        is a dict containing either a single readable post, or a cluster of unreadable
+        is a dict containing either a single readable post, or a list of unreadable
         posts which obfuscates how much material a reader may be missing.
 
             Args:
                 player (Account object): the reader
 
             Returns:
-                timeline (list of dictionaries): Dicts contain a readability bool
-                    and post (if readable) or posts-list (if unreadable).
                 reader_is_staff (boolean): Whether player is staff.
+                timeline (list of dictionaries): Dicts contain a readability bool
+                    and a post (if readable) or list-of-posts (if unreadable).
 
         timeline example:
         [{'readable': False, 'posts': [post1, post2]}, {'readable': True, 'post': post}]
@@ -1871,7 +1871,7 @@ class Flashback(SharedMemoryModel):
                 posts = posts[start:amount+start]
         bulk_list = []
         for post in posts:
-            if not roster_entry in post.readable_by.all():
+            if not roster_entry in post.readable_by.all() and roster_entry != post.poster:
                 bulk_list.append(FlashbackPostPermission(post=post, reader=roster_entry))
         FlashbackPostPermission.objects.bulk_create(bulk_list)
 
