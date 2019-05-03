@@ -23,20 +23,20 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback/title <ID #>=<new title>
         flashback/summary <ID #>=<new summary>
         flashback/invite[/retro] <ID #>[=<player>]
-        flashback/uninvite <ID #>=<player>
+        flashback/uninvite <ID #>[=<player>]
         flashback/allow <ID #>=<player>[,<number of last posts or 'all'>]
         flashback/post <ID #>=<message>
         flashback/check[/flub] <ID>=<stat>[+<skill>][ at <difficulty #>]
 
-    Flashbacks are roleplay scenes that happened in the past. They are
-    private to invited players and staff. Involved players are informed of
-    new posts. If you no longer wish to be informed or post, you may uninvite
-    yourself. Catchup shows unread posts. Posts can also be made from your
-    character webpage's Flashbacks link. Players will see posts made after
-    they were invited, but adding /retro to an invitation reveals all
-    back-posts. Partial visibility is achieved with /allow, once they have
-    been invited normally. Use /invite without player to see who has access.
-    Use /check similar to @check - the result will prefix your next post.
+    Flashbacks are roleplay scenes that occur in the past, visible to staff
+    and invited players. Players are informed of new posts, but if you no
+    longer wish to be informed or participate, you may uninvite yourself. The
+    /catchup switch shows unread posts. Posts can also be made from your
+    character webpage via the flashbacks link. Players will see posts made
+    after they were invited, but inviting with /retro reveals back-posts.
+    Partial visibility is achieved with /allow, once they have been invited
+    normally. Use /invite without a name to see who has access. Use /check
+    similar to @check - the result will prefix your next post.
     """
     key = "flashback"
     aliases = ["flashbacks"]
@@ -46,10 +46,6 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     change_switches = ("title", "summary", "conclude")
     requires_owner = ("invite", "allow",) + change_switches
     requires_unconcluded = ("post", "roll", "check", "conclude")
-
-    # TODO:
-    # Consider weird user states in migration. Posters who are uninvited, etc.
-    # Use role_played in Involvement?
 
     @property
     def roster_entry(self):
@@ -175,12 +171,13 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     def uninvite_target(self, flashback, target, inv=None):
         """Calls method to change contributor to 'retired', or delete non-contributor involvement."""
         if not inv or inv.status == inv.RETIRED:
-            self.msg("They are %s in this flashback already." % ("marked as retired" if inv else "not involved"))
-            return
-        if target.roster in flashback.owners:
-            self.msg("Cannot remove an owner of the flashback.")
-            return
-        flashback.uninvite_roster(inv)
+            return self.msg("They are %s in this flashback already." % ("marked as retired" if inv else "not involved"))
+        owners = list(flashback.owners)
+        if target.roster in owners:
+            return self.msg("Cannot remove an owner of the flashback.")
+        elif target != self.caller and self.roster_entry not in owners:
+            return self.msg("Only the flashback's owner can uninvite other players.")
+        flashback.uninvite_involvement(inv)
         self.msg("You have uninvited %s from this flashback." % target)
         if target != self.caller:
             target.inform("You have been retired from flashback #%s." % flashback.id,
@@ -202,13 +199,12 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         self.msg("%s can see %s previous posts in flashback #%s." % (target, self.rhslist[1], flashback.id))
 
     def post_message(self, flashback):
+        """Add a new post. Requires confirmation if this will 'consume' a waiting dice roll."""
         if not self.rhs:
             return self.msg("You must include a message.")
         roster = self.roster_entry
         inv = flashback.get_involvement(roster)
-        if not inv:
-            return self.msg("FOOL! You cannot post in a flashback you've not been invited to!")
-        elif inv.roll:
+        if inv.roll:
             prompt = ("|wThis roll will accompany the new post:|n %s\n"
                       "|yPlease repeat command to confirm and continue.|n" % inv.roll)
             if not self.confirm_command("flashback_%s_post" % flashback.id, self.rhs, prompt):
@@ -219,7 +215,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     def check_can_use_switch(self, flashback):
         if not self.check_switches(self.requires_owner):
             return True
-        elif self.roster_entry != flashback.owner:
+        elif not self.roster_entry in flashback.owners:
             self.msg("Only the flashback's owner may use that switch.")
             return False
         return True
@@ -242,9 +238,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         """Prints reminder of participant's existing dice result, or saves new one."""
         inv = flashback.get_involvement(self.roster_entry)
         reminder = "Your next post in flashback #%s will use this roll" % flashback.id
-        if not inv:
-            return self.msg("FOOL! You cannot check skills in a flashback you've not been invited to!")
-        elif inv.roll:
+        if inv.roll:
             return self.msg("%s: %s" % (reminder, inv.roll))
         elif not self.rhs:
             return self.msg("|wMissing:|n <stat>[+<skill>][ at <difficulty number>]")

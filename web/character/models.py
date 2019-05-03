@@ -1690,8 +1690,6 @@ class Flashback(SharedMemoryModel):
     title = models.CharField(max_length=250, unique=True)
     summary = models.TextField(blank=True)
     participants = models.ManyToManyField('RosterEntry', related_name="flashbacks", through='FlashbackInvolvement')
-    # owner = models.ForeignKey('RosterEntry', related_name="created_flashbacks")
-    # allowed = models.ManyToManyField('RosterEntry', related_name="allowed_flashbacks", blank=True)
     concluded = models.BooleanField(default=False)
     db_date_created = models.DateTimeField(blank=True, null=True)
     beat = models.ForeignKey("dominion.PlotUpdate", blank=True, null=True, related_name="flashbacks",
@@ -1722,7 +1720,7 @@ class Flashback(SharedMemoryModel):
         msg += "\nSummary: %s" % self.summary
         if display_summary_only or not reader:
             return msg
-        timeline, _ = self.get_post_timeline(reader)
+        timeline = self.get_post_timeline(reader)
         if post_limit:
             timeline = timeline[-post_limit:]
         div = self.STRING_DIV
@@ -1750,7 +1748,8 @@ class Flashback(SharedMemoryModel):
     @property
     def owners(self):
         """Queryset of all owners' roster entries."""
-        return self.participants.filter(status=FlashbackInvolvement.OWNER)
+        owner = FlashbackInvolvement.OWNER
+        return self.participants.filter(flashbackinvolvement__status=owner)
 
     @property
     def post_authors(self):
@@ -1768,13 +1767,14 @@ class Flashback(SharedMemoryModel):
 
     @property
     def all_players(self):
-        """List of players invited to this flashback AND authors who may now be retired/uninvited."""
+        """List of players invited to this flashback AND retired contributors."""
         return [ob.player for ob in self.participants.all()]
 
     @property
     def current_rosters(self):
         """Queryset of roster entries who may add posts."""
-        return self.participants.filter(status__gte=FlashbackInvolvement.CONTRIBUTOR)
+        contributor = FlashbackInvolvement.CONTRIBUTOR
+        return self.participants.filter(flashbackinvolvement__status__gte=contributor)
 
     @property
     def current_players(self):
@@ -1788,27 +1788,28 @@ class Flashback(SharedMemoryModel):
         except FlashbackInvolvement.DoesNotExist:
             return None
 
-    def get_post_timeline(self, player):
+    def get_post_timeline(self, player, is_staff=None):
         """
-        Returns a list, and a bool for whether the player is staff. Each item in list
-        is a dict containing either a single readable post, or a list of unreadable
-        posts which obfuscates how much material a reader may be missing.
+        Returns a list of dicts that contain either a single readable post, or
+        a list of unreadable posts. Each dict also has a 'readable' boolean.
+        This will obfuscate how much material a reader may be missing in gaps.
 
             Args:
                 player (Account object): the reader
+                is_staff (Bool): optional, prevents redundant check
 
             Returns:
-                reader_is_staff (boolean): Whether player is staff.
-                timeline (list of dictionaries): Dicts contain a readability bool
+                timeline (list of dictionaries): Dicts contain 'readable' bool
                     and a post (if readable) or list-of-posts (if unreadable).
 
         timeline example:
-        [{'readable': False, 'posts': [post1, post2]}, {'readable': True, 'post': post}]
+        [{'readable': False, 'posts': [p1, p2]}, {'readable': True, 'post': p3}]
         """
-        reader_is_staff = bool(player.is_staff or player.check_permstring("builders"))
+        if is_staff == None:
+            is_staff = bool(player.is_staff or player.check_permstring("builders"))
         try:
             roster = player.roster
-            if not reader_is_staff and roster not in self.participants.all():
+            if not is_staff and roster not in self.participants.all():
                 raise AttributeError
         except AttributeError:
             raise AttributeError
@@ -1817,7 +1818,7 @@ class Flashback(SharedMemoryModel):
         perms = roster.flashback_post_permissions.filter(post__in=all_posts)
         for post in all_posts:
             perm = [ob for ob in perms if ob.post_id == post.id]  # evaluates 'perms' qs
-            if reader_is_staff or perm or post.poster == roster:
+            if is_staff or perm or post.poster == roster:
                 readable_dict = {'readable': True, 'post': post}
                 timeline.append(readable_dict)
                 if perm:
@@ -1828,7 +1829,7 @@ class Flashback(SharedMemoryModel):
             else:
                 timeline[-1]['posts'].append(post)
         perms.exclude(is_read=True).update(is_read=True)  # update skips cached objects
-        return timeline, reader_is_staff
+        return timeline
 
     def posts_allowed_by(self, player):
         """Boolean for whether player may post to this flashback."""
@@ -1837,7 +1838,7 @@ class Flashback(SharedMemoryModel):
         elif not self.concluded and player in self.current_players:
             return True
 
-    def uninvite_roster(self, inv):
+    def uninvite_involvement(self, inv):
         """Retires contributor or deletes non-contributor's FlashbackInvolvement (inv)."""
         if inv.contributions.exists():
             inv.status = inv.RETIRED
@@ -1894,7 +1895,7 @@ class Flashback(SharedMemoryModel):
         self.inform_all_but(poster, "New post by %s on '%s' (flashback #%s)!" % (self, self.id, poster))
 
     def end_scene(self, ender):
-        """Concludes the flashback."""
+        """Concludes the flashback. Longer flashbacks may award an event XP."""
         num_posts = self.posts.count()
         authors = self.post_authors()
         msg = "Flashback #%s '%s' has reached its conclusion." % (self.id, self)
@@ -1937,7 +1938,6 @@ class FlashbackInvolvement(SharedMemoryModel):
     flashback = models.ForeignKey('Flashback', related_name="flashback_involvements", on_delete=models.CASCADE)
     participant = models.ForeignKey('RosterEntry', related_name="flashback_involvements", on_delete=models.CASCADE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=CONTRIBUTOR, blank=True)
-    role_played = models.CharField(max_length=250, blank=True)
     roll = models.CharField(max_length=250, blank=True)
 
     class Meta:
@@ -1963,6 +1963,7 @@ class FlashbackInvolvement(SharedMemoryModel):
         if roll:
             roll.use_real_name=True  # Thanks, Maskbama.
             self.roll = roll.build_msg()
+            self.save()
             return True
 
 

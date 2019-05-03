@@ -797,7 +797,8 @@ class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
         flashback = self.get_object()
         user = self.request.user
         try:
-            timeline, user_is_staff = flashback.get_post_timeline(user)
+            user_is_staff = bool(user.is_staff or user.check_permstring("builders"))
+            timeline = flashback.get_post_timeline(player=user, is_staff=user_is_staff)
         except AttributeError:
             raise Http404
         involvement = flashback.get_involvement(user.roster)
