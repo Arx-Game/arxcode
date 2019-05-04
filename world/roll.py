@@ -118,6 +118,7 @@ class Roll(object):
         result = sum(rolls)
         divisor = self.divisor or 1
         result /= divisor
+        result += self.get_modifiers()
         # crit chance is determined here. If we can't crit, we just set the multiplier to be 1
         crit_mult = self.check_crit_mult()
         self.crit_mult = crit_mult
@@ -206,3 +207,6 @@ class Roll(object):
         msg += roll_msg
         self.msg = msg
         return msg
+
+    def get_modifiers(self):
+        return self.character.mods.get_total_modifiers(self.stats, self.skills)

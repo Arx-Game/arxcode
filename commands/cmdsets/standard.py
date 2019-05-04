@@ -291,6 +291,7 @@ class MobileCmdSet(CmdSet):
         self.add(fashion_commands.CmdFashionModel())
         self.add(fashion_commands.CmdFashionOutfit())
         self.add(petitions_commands.CmdPetition())
+        self.add(condition_commands.CmdKnacks())
 
 
 class StaffCmdSet(CmdSet):

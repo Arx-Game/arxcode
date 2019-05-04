@@ -23,6 +23,36 @@ class ConditionsCommandsTests(ArxCommandTest):
         self.call_cmd("/search divine", "Modifiers for/against divine: "
                                         "Modifier on Room of +10 for divine for Defense checks")
 
+    def test_knacks_cmd(self):
+        self.setup_cmd(condition_commands.CmdKnacks, self.char1)
+        self.call_cmd("", "Knacks for Char:")
+        self.call_cmd("asdf", "No knack found by that name.")
+        self.call_cmd("/create asdjfh", "You must provide a description.")
+        self.call_cmd("/create asf=asdf", "You must provide a stat and skill.")
+        self.call_cmd("/create a,b=asdf", "You must provide a name.")
+        self.call_cmd("/create a,b,c=asdf", "a is not a valid stat.")
+        self.call_cmd("/create strength,b,c=asdf", "b is not a valid skill.")
+        self.call_cmd("/create strength,brawl,hit ppl gud=real gud",
+                      "You tried to spend 150 xp, but only have 0 available.")
+        self.char1.adjust_xp(150)
+        self.call_cmd("/create charm,seduction,smirkity vixen=So slyyyyyy",
+                      "You spend 150 xp and have 0 remaining.|"
+                      "You create a knack called 'smirkity vixen' for charm+seduction.")
+        self.call_cmd("", 'Knacks for Char:\n\n'
+                          'Name: smirkity vixen\n'
+                          'Stat: charm Skill: seduction Value: 1\n'
+                          'Description: So slyyyyyy')
+        self.call_cmd("smirkity vixen", 'Name: smirkity vixen\n'
+                                        'Stat: charm Skill: seduction Value: 1\n'
+                                        'Description: So slyyyyyy')
+        self.call_cmd("/train asdf", "No knack found by that name.")
+        self.call_cmd("/train smirkity vixen", "You tried to spend 60 xp, but only have 0 available.")
+        self.char1.adjust_xp(60)
+        self.call_cmd("/train smirkity vixen", 'You spend 60 xp and have 0 remaining.|'
+                                               'You have increased smirkity vixen to rank 2.')
+        self.call_cmd("/create charm,seduction,more smirkity=So smirk",
+                      "You already have a knack for that skill and stat combination.")
+
 
 class TestTriggers(ArxTest):
     def setUp(self):
