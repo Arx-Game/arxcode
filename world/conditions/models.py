@@ -103,6 +103,12 @@ class RollModifier(SharedMemoryModel):
         msg += "|wDescription:|n {}\n".format(self.description)
         return msg
 
+    @property
+    def crit_chance_bonus(self):
+        """Modifiers to crit chance from a roll modifier"""
+        if self.value > 0:
+            return 1 + (self.value // 2)
+
 
 class EffectTrigger(SharedMemoryModel):
     """

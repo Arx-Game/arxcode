@@ -97,7 +97,8 @@ class CmdKnacks(ArxCommand):
     of your character's knack and when/why it might be applicable.
 
     Knacks cost {} xp to create, then {} + {}*rank to increase. Each rank in
-    a knack increases the results of applicable rolls by {}.
+    a knack increases the results of applicable rolls by {} and chance for a
+    critical success by 1 + half your rank (rounded down).
     """
     key = "@knacks"
     aliases = ["knack"]

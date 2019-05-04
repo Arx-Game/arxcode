@@ -35,9 +35,12 @@ class ConditionsCommandsTests(ArxCommandTest):
         self.call_cmd("/create strength,brawl,hit ppl gud=real gud",
                       "You tried to spend 150 xp, but only have 0 available.")
         self.char1.adjust_xp(150)
+        self.assertEqual(self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 0)
         self.call_cmd("/create charm,seduction,smirkity vixen=So slyyyyyy",
                       "You spend 150 xp and have 0 remaining.|"
                       "You create a knack called 'smirkity vixen' for charm+seduction.")
+        self.assertEqual(self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 1)
+        self.assertEqual(self.char1.mods.get_crit_modifiers(["charm"], ["seduction"]), 1)
         self.call_cmd("", 'Knacks for Char:\n\n'
                           'Name: smirkity vixen\n'
                           'Stat: charm Skill: seduction Value: 1\n'
@@ -50,6 +53,8 @@ class ConditionsCommandsTests(ArxCommandTest):
         self.char1.adjust_xp(60)
         self.call_cmd("/train smirkity vixen", 'You spend 60 xp and have 0 remaining.|'
                                                'You have increased smirkity vixen to rank 2.')
+        self.assertEqual(self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 2)
+        self.assertEqual(self.char1.mods.get_crit_modifiers(["charm"], ["seduction"]), 2)
         self.call_cmd("/create charm,seduction,more smirkity=So smirk",
                       "You already have a knack for that skill and stat combination.")
 

@@ -118,7 +118,7 @@ class Roll(object):
         result = sum(rolls)
         divisor = self.divisor or 1
         result /= divisor
-        result += self.get_modifiers()
+        result += self.get_roll_modifiers()
         # crit chance is determined here. If we can't crit, we just set the multiplier to be 1
         crit_mult = self.check_crit_mult()
         self.crit_mult = crit_mult
@@ -160,7 +160,7 @@ class Roll(object):
         try:
             if not self.can_crit:
                 return 1
-            bonus_crit_chance = self.bonus_crit_chance
+            bonus_crit_chance = self.bonus_crit_chance + self.get_crit_chance_modifiers()
             bonus_crit_mult = self.bonus_crit_mult
             roll = randint(1, 100)
             if roll > (5 + bonus_crit_chance):
@@ -208,5 +208,8 @@ class Roll(object):
         self.msg = msg
         return msg
 
-    def get_modifiers(self):
-        return self.character.mods.get_total_modifiers(self.stats, self.skills)
+    def get_roll_modifiers(self):
+        return self.character.mods.get_total_roll_modifiers(self.stats, self.skills)
+
+    def get_crit_chance_modifiers(self):
+        return self.character.mods.get_total_crit_chance_modifiers(self.stats, self.skills)

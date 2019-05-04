@@ -50,11 +50,20 @@ class ModifierHandler(object):
         msg += "\n".join(knack.display_knack() for knack in self.knacks)
         return msg
 
-    def get_total_modifiers(self, stats, skills):
+    def get_total_roll_modifiers(self, stats, skills):
         """Returns the modifiers for given stats and skills"""
         total = 0
         for knack in self.knacks:
-            if knack.stat in stats and knack.skills in skills:
+            if knack.stat in stats and knack.skill in skills:
                 total += knack.value
         return total
         # TODO: Refactor of modifier mixins and combat to move everything here, including temp mods, items, location
+
+    def get_crit_modifiers(self, stats, skills):
+        """Returns the total crit modifier from our knacks"""
+        total = 0
+        for knack in self.knacks:
+            if knack.stat in stats and knack.skill in skills:
+                # 1 + half the value of an applicable knack is added to our crit chance
+                total += knack.crit_chance_bonus
+        return total
