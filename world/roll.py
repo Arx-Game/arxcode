@@ -209,7 +209,13 @@ class Roll(object):
         return msg
 
     def get_roll_modifiers(self):
-        return self.character.mods.get_total_roll_modifiers(self.stats, self.skills)
+        try:
+            return self.character.mods.get_total_roll_modifiers(self.stats, self.skills)
+        except AttributeError:
+            return 0
 
     def get_crit_chance_modifiers(self):
-        return self.character.mods.get_total_crit_chance_modifiers(self.stats, self.skills)
+        try:
+            return self.character.mods.get_total_crit_chance_modifiers(self.stats, self.skills)
+        except AttributeError:
+            return 0
