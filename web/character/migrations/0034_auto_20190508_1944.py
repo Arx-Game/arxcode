@@ -6,6 +6,19 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+def add_involvements(apps, schema_editor):
+    """Change owner / allowed fields to be options on a FlashbackInvolvement."""
+    # TODO: Define classes then loop stuff. FlashbackPostPermissions here too?
+    Flashback = apps.get_model('character', 'Flashback')
+    FlashbackInvolvement = apps.get_model('character', 'FlashbackInvolvement')
+    for flashback in Flashback.objects.all():
+        involved = []
+        # TODO: find the various details of involvement
+        pass
+    FlashbackInvolvement.objects.bulk_create(involved)
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -27,18 +40,6 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('is_read', models.BooleanField(default=False)),
             ],
-        ),
-        migrations.RemoveField(
-            model_name='flashback',
-            name='allowed',
-        ),
-        migrations.RemoveField(
-            model_name='flashback',
-            name='owner',
-        ),
-        migrations.RemoveField(
-            model_name='flashbackpost',
-            name='read_by',
         ),
         migrations.AddField(
             model_name='flashback',
@@ -92,5 +93,18 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name='flashbackinvolvement',
             unique_together=set([('flashback', 'participant')]),
+        ),
+        # TODO: migrations.RunPython(stuff)
+        migrations.RemoveField(
+            model_name='flashback',
+            name='allowed',
+        ),
+        migrations.RemoveField(
+            model_name='flashback',
+            name='owner',
+        ),
+        migrations.RemoveField(
+            model_name='flashbackpost',
+            name='read_by',
         ),
     ]
