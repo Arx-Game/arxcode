@@ -3,6 +3,8 @@ Commands for the fashion app.
 """
 from datetime import datetime, timedelta
 
+from evennia.server.models import ServerConfig
+
 from commands.base import ArxCommand
 from server.utils.prettytable import PrettyTable
 from world.dominion.models import Organization
@@ -262,11 +264,11 @@ class CmdFashionModel(ArxCommand):
         if not qs:
             raise FashionError("Nothing was found.")
         table = PrettyTable(pretty_headers)
-        table.align="r"
+        table.align = "r"
         for q in qs:
             q = list(q)
-            q[1]="{:,}".format(q[1])
-            q[3]="{:,}".format(q[3])
+            q[1] = "{:,}".format(q[1])
+            q[3] = "{:,}".format(q[3])
             # for lowercase names, we'll capitalize them
             if q[0] == q[0].lower():
                 q[0] = q[0].capitalize()
@@ -277,13 +279,16 @@ class CmdFashionModel(ArxCommand):
     def check_recency(self, org=None):
         """Raises an error if we've modelled too recently"""
         from evennia.scripts.models import ScriptDB
+        maximum = ServerConfig.objects.conf(key="MAX_FASHION_PER_WEEK")
+        if not maximum:
+            return
         try:
             last_cron = ScriptDB.objects.get(db_key="Weekly Update").db.run_date - timedelta(days=7)
         except (ScriptDB.DoesNotExist, ValueError, TypeError):
             last_cron = datetime.now() - timedelta(days=7)
         qs = self.caller.dompc.fashion_snapshots
-        if qs.filter(db_date_created__gte=last_cron).count() >= 3:
-            raise FashionError("You may only model up to three items a week before the public tires of you.")
+        if qs.filter(db_date_created__gte=last_cron).count() >= maximum:
+            raise FashionError("You may only model up to %s items a week before the public tires of you." % maximum)
         if org:
             if qs.filter(db_date_created__gte=last_cron, org=org):
                 raise FashionError("You have displayed fashion too recently for %s to bring them more acclaim." % org)

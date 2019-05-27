@@ -157,10 +157,12 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
                                                      "No valid items remain! Try modeling a different outfit.")
         self.assertFalse(outfit2.modeled)
         with patch.object(fashion_commands, 'datetime') as mock_datetime:
+            from evennia.server.models import ServerConfig
+            ServerConfig.objects.conf("MAX_FASHION_PER_WEEK", value=3)
             from datetime import timedelta
             mock_datetime.now = Mock(return_value=fake_dt)
             self.call_cmd("/outfit Friendliest=Orgtest",
-                          'You may only model up to three items a week before the public tires of you.')
+                          'You may only model up to 3 items a week before the public tires of you.')
             mock_datetime.now = Mock(return_value=fake_dt + timedelta(days=8))
             self.call_cmd("/outfit Friendliest=Orgtest",
                           'Pieces of this outfit cannot be modeled:\n- Lickyknife1 has already been used to model '
