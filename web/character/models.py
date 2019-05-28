@@ -1882,7 +1882,6 @@ class Flashback(SharedMemoryModel):
         Args:
             actions (string): The story post that the poster is writing.
             poster (RosterEntry): The player who added the story post.
-            roll (string): A dice roll result.
         """
         now = datetime.now()
         inv = self.get_involvement(poster)
