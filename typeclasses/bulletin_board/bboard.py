@@ -88,12 +88,16 @@ class BBoard(Object):
         if not post:
             return
         if post.tags.get(tagname, category):
-            return poster_obj.msg("|w%s|n has already declared a position on this matter." % org)
+            poster_obj.msg("|w%s|n has already declared a position on this matter." % org)
+            return
         if not org.access(poster_obj, "declarations"):
-            return poster_obj.msg("Your |w%s|n rank is not set to make declarations on their behalf." % org)
+            poster_obj.msg("Your |w%s|n rank is not set to make declarations on their behalf." % org)
+            return
         if len(msg) > 280:
-            return poster_obj.msg("That message is too long for a brief declaration.")
-        poster_obj_str = "" if org.secret else " via |c%s|n" % poster_obj.key
+            poster_obj.msg("That message is too long for a brief declaration.")
+            return
+        secret = org.secret
+        poster_obj_str = "" if secret else " via |c%s|n" % poster_obj.key
         post.db_message += "\n\n--- |w%s|n Stance%s ---\n%s" % (org, poster_obj_str, msg)
         post.tags.add(tagname, category)
         post.save()
@@ -101,8 +105,8 @@ class BBoard(Object):
         poster_obj.msg(success_msg)
         self.notify_subs(success_msg)
         from server.utils.arx_utils import inform_staff
-        if org.secret:
-            success_msg = "(|c%s|n) %s" % (poster_obj.key, success_msg)
+        if secret:
+            success_msg = "(By |c%s|n) %s" % (poster_obj.key, success_msg)
         inform_staff(success_msg)
 
     def has_subscriber(self, pobj):
