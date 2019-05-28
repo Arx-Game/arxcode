@@ -6,17 +6,27 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
-def add_involvements(apps, schema_editor):
-    """Change owner / allowed fields to be options on a FlashbackInvolvement."""
-    # TODO: Define classes then loop stuff. FlashbackPostPermissions here too?
+def add_involvements_and_permissions(apps, schema_editor):
+    """Bulk-create through models for the fields we've placed on death row."""
     Flashback = apps.get_model('character', 'Flashback')
     FlashbackInvolvement = apps.get_model('character', 'FlashbackInvolvement')
-    for flashback in Flashback.objects.all():
-        involved = []
-        # TODO: find the various details of involvement
-        pass
-    FlashbackInvolvement.objects.bulk_create(involved)
-    pass
+    FlashbackPostPermission = apps.get_model('character', 'FlashbackPostPermission')
+    involvements = []
+    permissions = []
+    for fb in Flashback.objects.all():
+        owner = fb.owner
+        participants = set([owner] + [fb.allowed.all()])
+        involvements.append(FlashbackInvolvement(flashback=fb, participant=owner, status=FlashbackInvolvement.OWNER))
+        for friend in fb.allowed.all():
+            if friend != owner:
+                involvements.append(FlashbackInvolvement(flashback=fb, participant=friend, status=FlashbackInvolvement.CONTRIBUTOR))
+        for post in fb.posts.all():
+            poster = post.poster
+            for reader in participants:
+                if reader != poster:
+                    permissions.append(FlashbackPostPermission(post=post, reader=reader))
+    FlashbackInvolvement.objects.bulk_create(involvements)
+    FlashbackPostPermission.objects.bulk_create(permissions)
 
 
 class Migration(migrations.Migration):
@@ -51,11 +61,6 @@ class Migration(migrations.Migration):
             name='roll',
             field=models.CharField(blank=True, max_length=250),
         ),
-        migrations.AlterField(
-            model_name='flashbackpost',
-            name='poster',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='flashback_posts', to='character.RosterEntry'),
-        ),
         migrations.AddField(
             model_name='flashbackpostpermission',
             name='post',
@@ -86,6 +91,11 @@ class Migration(migrations.Migration):
             name='readable_by',
             field=models.ManyToManyField(blank=True, related_name='readable_flashback_posts', through='character.FlashbackPostPermission', to='character.RosterEntry'),
         ),
+        migrations.AlterField(
+            model_name='flashbackpost',
+            name='poster',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='flashback_posts', to='character.RosterEntry'),
+        ),
         migrations.AlterUniqueTogether(
             name='flashbackpostpermission',
             unique_together=set([('post', 'reader')]),
@@ -94,7 +104,7 @@ class Migration(migrations.Migration):
             name='flashbackinvolvement',
             unique_together=set([('flashback', 'participant')]),
         ),
-        # TODO: migrations.RunPython(stuff)
+        migrations.RunPython(add_involvements_and_permissions),
         migrations.RemoveField(
             model_name='flashback',
             name='allowed',

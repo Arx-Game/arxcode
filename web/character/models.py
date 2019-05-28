@@ -260,7 +260,7 @@ class RosterEntry(SharedMemoryModel):
         beat_q = Q(plot_updates__plot__in=dompc.active_plots)
         act_q = Q(actions__in=self.player.participated_actions)
         evnt_q = Q(events__dompcs=dompc) | Q(events__orgs__in=dompc.current_orgs)
-        flas_q = Q(plot_updates__flashbacks__owner=self) | Q(plot_updates__flashbacks__allowed=self)
+        flas_q = Q(plot_updates__flashbacks__in=self.flashbacks.all())
         obj_q = Q(game_objects__db_location=self.character)
         qs = SearchTag.objects.filter(clu_q | rev_q | plot_q | beat_q | act_q | evnt_q | flas_q | obj_q)
         return qs.distinct().order_by('name')
@@ -294,7 +294,7 @@ class RosterEntry(SharedMemoryModel):
         querysets.append(RPEvent.objects.filter(Q(search_tags=tag) &
                                                 (Q(dompcs=dompc) | Q(orgs__in=dompc.current_orgs))))
         # flashbacks:
-        querysets.append(Flashback.objects.filter(Q(beat__in=all_beats) & (Q(owner=self) | Q(allowed=self))))
+        querysets.append(self.flashbacks.filter(beat__in=all_beats))
         # append our tagged inventory items:
         querysets.append(self.character.locations_set.filter(search_tags=tag).order_by('db_typeclass_path'))
         msg = qslist_to_string(querysets)
