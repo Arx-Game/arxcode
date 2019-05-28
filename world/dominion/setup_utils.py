@@ -124,7 +124,7 @@ def srank_dom_stats(srank, region, name, male=True):
     return title, name, dom_size, castle_level
 
 
-def setup_domain(dompc, region, srank, male=True, ruler=None):
+def setup_domain(dompc, region, srank, male=True, ruler=None, liege=None):
     """
     Sets up the domain for a given PlayerOrNpc object passed by
     'dompc'. region must be a Region instance, and srank must be
@@ -137,7 +137,7 @@ def setup_domain(dompc, region, srank, male=True, ruler=None):
             assetowner = dompc.assets
         else:
             assetowner = AssetOwner.objects.create(player=dompc)
-        ruler = Ruler.objects.create(castellan=dompc, house=assetowner)
+        ruler, _ = Ruler.objects.get_or_create(castellan=dompc, house=assetowner, liege=liege)
     else:
         assetowner = ruler.house
     title, name, dom_size, castle_level = srank_dom_stats(srank, region, name, male)
@@ -505,7 +505,7 @@ def setup_dom_for_char(character, create_dompc=True, create_assets=True,
 
 
 def setup_dom_for_npc(name, srank, gender='male', region=None, ruler=None,
-                      create_domain=True):
+                      create_domain=True, liege=None):
     """
     If create_domain is True and region is defined, we also create a domain for
     this npc. Otherwise we just setup their PlayerOrNpc model and AssetOwner
@@ -518,7 +518,7 @@ def setup_dom_for_npc(name, srank, gender='male', region=None, ruler=None,
     domnpc, _ = PlayerOrNpc.objects.get_or_create(npc_name=name)
     setup_assets(domnpc, starting_money(srank))
     if create_domain and region:
-        setup_domain(domnpc, region, srank, male, ruler)
+        setup_domain(domnpc, region, srank, male, ruler, liege)
 
 
 def replace_vassal(domain, player, num_vassals=2):

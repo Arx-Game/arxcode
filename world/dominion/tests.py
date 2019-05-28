@@ -84,6 +84,30 @@ class TestDomainProgression(ArxCommandTest):
 
 
 class TestGeneralDominionCommands(ArxCommandTest):
+    def test_admin_domain(self):
+        from world.dominion.models import Organization, AssetOwner, Region, Land, MapLocation
+        from world.dominion.domain.models import Ruler, Domain
+        self.setup_cmd(general_dominion_commands.CmdAdmDomain, self.account)
+        org = Organization.objects.create(name="Orgtest")
+        pwner = AssetOwner.objects.create(organization_owner=org)
+        envy = Ruler.objects.create(house=pwner)
+        self.call_cmd("", "Player domains: \nNPC domains:")
+        self.call_cmd("/npc_create org", "Usage: <org>=<npc group name>, <social rank #>")
+        self.call_cmd("/npc_create org=Vixens, 7", "Social rank should be in the range of 2-6.")
+        self.call_cmd("/npc_create org=Vixens, 6", "Liege 'Orgtest' does not have a domain.")
+        region = Region.objects.create(name="DLere")
+        land = Land.objects.create(name="Nektulos", region=region)
+        loc = MapLocation.objects.create(name="Darklight", land=land)
+        Domain.objects.create(name="Neriak", location=loc, ruler=envy)
+        self.assertEquals(envy.vassals.first(), None)
+        self.call_cmd("/npc_create org=Vixens, 6", "NPC house created: Vixens")
+        avarice = Ruler.objects.last()
+        self.assertEquals(envy.vassals.first(), avarice)
+        domain = Domain.objects.last()
+        self.assertEquals(avarice.liege, envy)
+        self.assertEquals(domain.ruler, avarice)
+        self.assertEquals(domain.land.region, region)
+
     @patch("world.dominion.models.randint")
     @patch("world.dominion.models.get_week")
     @patch('world.dominion.models.do_dice_check')
