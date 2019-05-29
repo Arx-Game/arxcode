@@ -4,12 +4,12 @@ Tests for dominion stuff. Crisis commands, etc.
 from mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
-from . import crisis_commands, general_dominion_commands, plot_commands
-from commands.base_commands import roster
+from . import crisis_commands, general_dominion_commands
+from world.dominion.plots import plot_commands
 
 from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions, SearchTag
-from world.dominion.models import Plot, PlotAction, PCPlotInvolvement, RPEvent, PlotUpdate, Organization, \
-    CraftingMaterialType, CraftingMaterials, ClueForOrg
+from world.dominion.models import RPEvent, Organization, CraftingMaterialType, ClueForOrg
+from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement, PlotUpdate
 
 
 class TestCraftingCommands(ArxCommandTest):
@@ -34,9 +34,9 @@ class TestCrisisCommands(ArxCommandTest):
         self.action = self.crisis.actions.create(dompc=self.dompc2, actions="test action", outcome_value=50,
                                                  status=PlotAction.PENDING_PUBLISH)
 
-    @patch('world.dominion.models.datetime')
-    @patch("world.dominion.models.inform_staff")
-    @patch("world.dominion.models.get_week")
+    @patch('world.dominion.plots.models.datetime')
+    @patch("world.dominion.plots.models.inform_staff")
+    @patch("world.dominion.plots.models.get_week")
     def test_cmd_gm_crisis(self, mock_get_week, mock_inform_staff, mock_now):
         self.cmd_class = crisis_commands.CmdGMCrisis
         self.caller = self.account
@@ -68,7 +68,46 @@ class TestCrisisCommands(ArxCommandTest):
         self.call_cmd("1", '[test crisis] (100 Rating)\nNone')
 
 
+class TestDomainProgression(ArxCommandTest):
+    def test_hunger_and_lawlessness_weekly_adjustment(self):
+        from world.dominion.domain.models import Domain
+
+        expected_unassigned_serfs = 10000
+        expected_lawlessness = 0
+
+        domain = Domain.objects.create(unassigned_serfs=expected_unassigned_serfs, stored_food=0)
+
+        domain.do_weekly_adjustment(0)
+
+        self.assertEqual(domain.unassigned_serfs, expected_unassigned_serfs)
+        self.assertEqual(domain.lawlessness, expected_lawlessness)
+
+
 class TestGeneralDominionCommands(ArxCommandTest):
+    def test_admin_domain(self):
+        from world.dominion.models import Organization, AssetOwner, Region, Land, MapLocation
+        from world.dominion.domain.models import Ruler, Domain
+        self.setup_cmd(general_dominion_commands.CmdAdmDomain, self.account)
+        org = Organization.objects.create(name="Orgtest")
+        pwner = AssetOwner.objects.create(organization_owner=org)
+        envy = Ruler.objects.create(house=pwner)
+        self.call_cmd("", "Player domains: \nNPC domains:")
+        self.call_cmd("/npc_create org", "Usage: <org>=<npc group name>, <social rank #>")
+        self.call_cmd("/npc_create org=Vixens, 7", "Social rank should be in the range of 2-6.")
+        self.call_cmd("/npc_create org=Vixens, 6", "Liege 'Orgtest' does not have a domain.")
+        region = Region.objects.create(name="DLere")
+        land = Land.objects.create(name="Nektulos", region=region)
+        loc = MapLocation.objects.create(name="Darklight", land=land)
+        Domain.objects.create(name="Neriak", location=loc, ruler=envy)
+        self.assertEquals(envy.vassals.first(), None)
+        self.call_cmd("/npc_create org=Vixens, 6", "NPC house created: Vixens")
+        avarice = Ruler.objects.last()
+        self.assertEquals(envy.vassals.first(), avarice)
+        domain = Domain.objects.last()
+        self.assertEquals(avarice.liege, envy)
+        self.assertEquals(domain.ruler, avarice)
+        self.assertEquals(domain.land.region, region)
+
     @patch("world.dominion.models.randint")
     @patch("world.dominion.models.get_week")
     @patch('world.dominion.models.do_dice_check')
@@ -321,7 +360,7 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
 
     @patch('django.utils.timezone.now')
     def test_cmd_gm_plots(self, mock_now):
-        from plot_commands import create_plot_pitch
+        from world.dominion.plots.plot_commands import create_plot_pitch
         mock_now.return_value = self.fake_datetime
         self.setup_cmd(plot_commands.CmdGMPlots, self.char1)
         self.call_cmd("/all", '| #   | Plot (owner)           | Summary                                     '

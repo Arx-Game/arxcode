@@ -4,8 +4,6 @@ them both using the same underlying database model, though for now going to hand
 them differently due to a Crisis being public, while plots are private and can
 be player-run.
 """
-from datetime import datetime
-
 from commands.base import ArxCommand
 from commands.mixins import RewardRPToolUseMixin
 from server.utils.helpdesk_api import create_ticket, add_followup, resolve_ticket
@@ -14,7 +12,10 @@ from server.utils.exceptions import CommandError
 from server.utils.arx_utils import dict_from_choices_field
 from web.character.models import StoryEmit, Flashback, Clue, Revelation, Theory
 from web.helpdesk.models import Ticket
-from world.dominion.models import PCPlotInvolvement, PlotUpdate, RPEvent, PlotAction, Plot, Organization
+from world.dominion.plots.models import PCPlotInvolvement, PlotUpdate, Plot
+from world.dominion.models import RPEvent, PlotAction, Organization
+
+from datetime import datetime
 
 
 def create_plot_pitch(desc, gm_notes, name, parent_plot, summary, player_ob):

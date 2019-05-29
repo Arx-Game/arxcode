@@ -8,7 +8,7 @@ from django.db.models import Q
 
 from .models import Photo, Flashback, RosterEntry, Clue, Revelation, SearchTag
 from server.utils.arx_utils import inform_staff
-from world.dominion.models import Plot
+from world.dominion.plots.models import Plot
 
 
 class PhotoModelChoiceField(forms.ModelChoiceField):

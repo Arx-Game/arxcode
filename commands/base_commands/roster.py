@@ -1036,6 +1036,7 @@ class CmdSheet(ArxPlayerCommand):
         @sheet/background <character>
         @sheet/personality <character>
         @sheet/recognition <character>
+        @sheet/knacks <character>
         @sheet/desc
         @sheet/stats
         @sheet/all
@@ -1057,7 +1058,7 @@ class CmdSheet(ArxPlayerCommand):
     aliases = ["+sheet", "sheet"]
     help_category = "General"
     locks = "cmd:all()"
-    private_switches = ("secrets", "secret", "visions", "vision", "actions", "plots", "goals")
+    private_switches = ("secrets", "secret", "visions", "vision", "actions", "plots", "goals", "knacks")
     public_switches = ('social', 'background', 'info', 'personality', 'recognition')
 
     def func(self):
@@ -1117,6 +1118,8 @@ class CmdSheet(ArxPlayerCommand):
                 return self.display_plots(charob)
             if 'goals' in switches:
                 return self.display_goals(charob)
+            if 'knacks' in switches:
+                return self.msg(charob.mods.display_knacks())
         if self.check_switches(self.public_switches):
             charob, show_hidden = self.get_character()
             if not charob:
@@ -1245,7 +1248,7 @@ class CmdSheet(ArxPlayerCommand):
             self.msg("%s" % table)
             return
         # have self.rhs: get storyrequest, print its display().
-        from world.dominion.models import PlotAction
+        from world.dominion.plots.models import PlotAction
         try:
             action = actions.get(id=action_num)
         except (PlotAction.DoesNotExist, ValueError):
@@ -1255,7 +1258,7 @@ class CmdSheet(ArxPlayerCommand):
 
     def display_plots(self, charob):
         """Displays a list of plots or specific plot"""
-        from world.dominion.models import PCPlotInvolvement, Plot
+        from world.dominion.plots.models import PCPlotInvolvement, Plot
         plots = charob.dompc.active_plots
         recruiter = (PCPlotInvolvement.objects.exclude(recruiter_story="")
                                               .filter(admin_status__gte=PCPlotInvolvement.RECRUITER))

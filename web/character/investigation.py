@@ -15,7 +15,8 @@ from server.utils.prettytable import PrettyTable
 from web.character.models import (Investigation, Clue, InvestigationAssistant, ClueDiscovery, Theory,
                                   RevelationDiscovery, Revelation, get_random_clue, SearchTag)
 from web.character.forms import ClueCreateForm, RevelationCreateForm
-from world.dominion.models import Agent, Plot
+from world.dominion.models import Agent
+from world.dominion.plots.models import Plot
 from world.stats_and_skills import VALID_STATS, VALID_SKILLS
 
 

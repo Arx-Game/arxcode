@@ -8,7 +8,7 @@ from commands.mixins import CommandError, RewardRPToolUseMixin
 from .models import Goal, GoalUpdate
 from server.utils.helpdesk_api import create_ticket, resolve_ticket
 from web.helpdesk.models import Ticket
-from world.dominion.models import Plot, PlotUpdate
+from world.dominion.plots.models import Plot, PlotUpdate
 
 
 class CmdGoals(RewardRPToolUseMixin, ArxCommand):

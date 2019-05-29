@@ -10,7 +10,7 @@ from server.utils.exceptions import ActionSubmissionError
 from server.utils.arx_utils import dict_from_choices_field
 from commands.base import ArxPlayerCommand
 from server.utils import arx_more
-from world.dominion.models import Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion
+from world.dominion.plots.models import Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion
 
 
 # noinspection PyUnresolvedReferences

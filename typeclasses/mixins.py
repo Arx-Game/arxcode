@@ -540,6 +540,11 @@ class ModifierMixin(object):
     Allows us to set modifiers in different situations with specific values. We check against a tag in the target,
     and if there's a match we apply the modifier.
     """
+    @lazy_property
+    def mods(self):
+        from world.conditions.modifiers_handlers import ModifierHandler
+        return ModifierHandler(self)
+
     @property
     def modifier_tags(self):
         """Gets list of modifier tags this object has"""
