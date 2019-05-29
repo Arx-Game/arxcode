@@ -197,8 +197,9 @@ class RosterEntry(SharedMemoryModel):
     @property
     def postable_flashbacks(self):
         """Queryset of flashbacks we can post to."""
-        old = self.flashback_involvements.filter(status__lte=FlashbackInvolvement.RETIRED)
-        return self.flashbacks.exclude(Q(concluded=True) | Q(participants__in=old))
+        retired = FlashbackInvolvement.RETIRED
+        return self.flashbacks.exclude(Q(concluded=True) |
+                                       Q(flashback_involvements__status__lte=retired))
 
     @property
     def impressions_of_me(self):
@@ -1703,8 +1704,8 @@ class Flashback(SharedMemoryModel):
 
     def get_new_posts(self, entry):
         """Returns queryset of posts that roster entry hasn't read yet."""
-        unread = entry.flashback_post_permissions.exclude(is_read=True)
-        return self.posts.filter(readable_by__in=unread)
+        read = entry.flashback_post_permissions.exclude(is_read=True)
+        return self.posts.filter(readable_by=entry).exclude(flashback_post_permissions__in=read)
 
     def display(self, display_summary_only=False, post_limit=None, reader=None):
         """
@@ -1725,8 +1726,8 @@ class Flashback(SharedMemoryModel):
             timeline = timeline[-post_limit:]
         div = self.STRING_DIV
         for record in timeline:
-            if record.readable:
-                msg += "%s\n%s" % (div, record.post.display())
+            if record['readable']:
+                msg += "%s\n%s" % (div, record['post'].display())
             else:
                 msg += "%s\n%s" % (div, self.STRING_MISSING_MEMORY)
         return msg
@@ -1749,7 +1750,7 @@ class Flashback(SharedMemoryModel):
     def owners(self):
         """Queryset of all owners' roster entries."""
         owner = FlashbackInvolvement.OWNER
-        return self.participants.filter(flashbackinvolvement__status=owner)
+        return self.participants.filter(flashback_involvements__status=owner)
 
     @property
     def post_authors(self):
@@ -1760,9 +1761,10 @@ class Flashback(SharedMemoryModel):
     @property
     def owners_and_contributors(self):
         """String of comma-separated owners (in color!) and post authors."""
-        owners = list(self.owners)
-        owners_names = self.owners.values_list('player__username', flat=True)
-        authors_names = self.post_authors.exclude(id__in=owners).values_list('player__username', flat=True)
+        owners = self.owners
+        owners_ids = [ob.id for ob in owners]
+        owners_names = owners.values_list('player__username', flat=True)
+        authors_names = self.post_authors.exclude(id__in=owners_ids).values_list('player__username', flat=True)
         return ", ".join(["|c%s|n" % ob for ob in owners_names] + [str(ob) for ob in authors_names])
 
     @property
@@ -1774,7 +1776,7 @@ class Flashback(SharedMemoryModel):
     def current_rosters(self):
         """Queryset of roster entries who may add posts."""
         contributor = FlashbackInvolvement.CONTRIBUTOR
-        return self.participants.filter(flashbackinvolvement__status__gte=contributor)
+        return self.participants.filter(flashback_involvements__status__gte=contributor)
 
     @property
     def current_players(self):
@@ -1848,13 +1850,18 @@ class Flashback(SharedMemoryModel):
             inv.participant.flashback_post_permissions.filter(post__in=posts).delete()
             del inv
 
-    def invite_roster(self, roster_entry, retro=False):
+    def invite_roster(self, roster_entry, retro=False, owner=False):
         """Creates or unretires a FlashbackInvolvement."""
-        inv, gotten = self.flashback_involvements.get_or_create(participant=roster_entry)
-        if gotten:
+        inv, created = self.flashback_involvements.get_or_create(participant=roster_entry)
+        if not created:
             inv.status = inv.CONTRIBUTOR
             inv.roll = ""
-            inv.save()
+        if owner:
+            inv.status = inv.OWNER
+        else:
+            roster_entry.player.inform("You have been invited to participate in flashback #%s: '%s'." %
+                                       (self.id, self), category="Flashbacks")
+        inv.save()
         if retro:
             self.allow_back_read(roster_entry)
 
@@ -1888,15 +1895,19 @@ class Flashback(SharedMemoryModel):
         roll = inv.roll if inv else None
         post = self.posts.create(poster=poster, actions=actions, db_date_created=now, roll=roll)
         post.set_new_post_readers()
-        inv.roll.remove()
+        if inv and roll:
+            inv.roll = ""
+            inv.save()
+        poster_msg = ""
         if poster:
             poster.character.messages.num_flashbacks += 1
-        self.inform_all_but(poster, "New post by %s on '%s' (flashback #%s)!" % (self, self.id, poster))
+            poster_msg = " by %s" % poster
+        self.inform_all_but(poster, "New post%s on '%s' (flashback #%s)!" % (poster_msg, self, self.id))
 
     def end_scene(self, ender):
         """Concludes the flashback. Longer flashbacks may award an event XP."""
         num_posts = self.posts.count()
-        authors = self.post_authors()
+        authors = self.post_authors
         msg = "Flashback #%s '%s' has reached its conclusion." % (self.id, self)
         if num_posts < 1:
             ender.player.inform("With no posts, '%s' (flashback #%s) was deleted." % (self, self.id),
@@ -1953,10 +1964,10 @@ class FlashbackInvolvement(SharedMemoryModel):
     def make_dice_roll(self, check_str, flub=False):
         """Clears character's ndb last_roll, forces @check, keeps result string."""
         char = self.participant.character
-        check_str, _ = check_str.split("=", 1)  # strips any receivers
+        check_str = check_str.split("=", 1)[0]  # strips any receivers
         check_str += "=me"  # makes this a private roll
         flub_str = "/flub" if flub else ""
-        char.ndb.last_roll.remove()
+        char.ndb.last_roll = None
         char.execute_cmd("@check%s %s" % (flub_str, check_str))
         roll = char.ndb.last_roll
         if roll:

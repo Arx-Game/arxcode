@@ -168,6 +168,7 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         self.tag3 = SearchTag.objects.create(name="Tag3")
 
     def test_cmd_plots(self):
+        from web.character.models import Flashback
         self.setup_cmd(plot_commands.CmdPlots, self.char2)
         self.call_cmd("", 'Plot (ID) Involvement')
         self.plot1.dompc_involvement.create(dompc=self.dompc2, cast_status=PCPlotInvolvement.SUPPORTING_CAST,
@@ -201,7 +202,8 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
         beat3.delete.assert_called()
         self.assertEqual(event.beat, beat2)
         self.call_cmd("/add/rpevent 1=2", 'It already has been assigned to a plot beat.')
-        flashback = self.roster_entry2.created_flashbacks.create(title="test flashback")
+        flashback = Flashback.objects.create(title="test flashback")
+        flashback.invite_roster(self.roster_entry2, owner=True)
         self.call_cmd("/add/flashback 1=1", "You have added test flashback to beat(ID: 1) of testplot1.")
         self.assertEqual(flashback.beat, beat1)
         gemit = StoryEmit.objects.create(text="test emit")

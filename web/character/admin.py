@@ -408,7 +408,7 @@ class PostInline(admin.StackedInline):
     """Inline for Flashback Posts"""
     model = FlashbackPost
     extra = 0
-    exclude = ('read_by', 'db_date_created')
+    exclude = ('readable_by', 'db_date_created')
     raw_id_fields = ('poster',)
     fieldsets = [(None, {'fields': ['poster']}),
                  ('Story', {'fields': ['actions'], 'classes': ['collapse']}),
@@ -418,8 +418,7 @@ class PostInline(admin.StackedInline):
 class FlashbackAdmin(BaseCharAdmin):
     """Admin for Flashbacks"""
     list_display = ('id', 'title', 'owner',)
-    search_fields = ('id', 'title', 'owner__player__username')
-    raw_id_fields = ('owner',)
+    search_fields = ('id', 'title', 'participants__player__username')
     inlines = [PostInline]
     fieldsets = [(None, {'fields': [('owner', 'title'), 'summary']})]
 
