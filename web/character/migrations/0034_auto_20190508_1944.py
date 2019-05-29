@@ -16,15 +16,15 @@ def add_involvements_and_permissions(apps, schema_editor):
     for fb in Flashback.objects.all():
         owner = fb.owner
         participants = set([owner] + [fb.allowed.all()])
-        involvements.append(FlashbackInvolvement(flashback=fb, participant=owner, status=FlashbackInvolvement.OWNER))
+        involvements.append(FlashbackInvolvement(flashback=fb, participant=owner, status=2))
         for friend in fb.allowed.all():
             if friend != owner:
-                involvements.append(FlashbackInvolvement(flashback=fb, participant=friend, status=FlashbackInvolvement.CONTRIBUTOR))
+                involvements.append(FlashbackInvolvement(flashback=fb, participant=friend, status=1))
         for post in fb.posts.all():
             poster = post.poster
             for reader in participants:
                 if reader != poster:
-                    permissions.append(FlashbackPostPermission(post=post, reader=reader))
+                    permissions.append(FlashbackPostPermission(post=post, reader=reader, is_read=False))
     FlashbackInvolvement.objects.bulk_create(involvements)
     FlashbackPostPermission.objects.bulk_create(permissions)
 
