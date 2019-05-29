@@ -304,7 +304,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
             if self.called_by_staff:
                 qs = Flashback.objects.all()
             else:
-                qs = self.caller.roster.valid_flashbacks
+                qs = self.caller.roster.flashbacks.all()
             try:
                 added_obj = qs.get(id=self.lhs)
             except Flashback.DoesNotExist:

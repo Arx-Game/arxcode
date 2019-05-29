@@ -741,7 +741,7 @@ class FlashbackListView(LoginRequiredMixin, CharacterMixin, ListView):
         if user.char_ob != self.character and not (user.is_staff or user.check_permstring("builders")):
             raise Http404
         entry = self.character.roster
-        return Flashback.objects.filter(Q(owner=entry) | Q(allowed=entry)).distinct()
+        return entry.flashbacks.all()
 
 
 class FlashbackCreateView(LoginRequiredMixin, CharacterMixin, CreateView):
@@ -796,9 +796,19 @@ class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
     def get_context_data(self, **kwargs):
         """Gets context for template, ensures we have permissions"""
         context = super(FlashbackAddPostView, self).get_context_data(**kwargs)
+        flashback = self.get_object()
         user = self.request.user
-        if user not in self.get_object().all_players and not (user.is_staff or user.check_permstring("builders")):
+        try:
+            user_is_staff = bool(user.is_staff or user.check_permstring("builders"))
+            timeline = flashback.get_post_timeline(player=user, is_staff=user_is_staff)
+        except AttributeError:
             raise Http404
+        involvement = flashback.get_involvement(user.roster)
+        context['flashback_featuring'] = flashback.owners_and_contributors
+        context['flashback_timeline'] = timeline
+        context['allow_add_post'] = bool(user_is_staff or flashback.posts_allowed_by(user))
+        context['new_post_roll'] = involvement.roll if (context['allow_add_post'] and involvement) else ""
+        context['page_title'] = flashback.title
         context['form'] = FlashbackPostForm()
         return context
 

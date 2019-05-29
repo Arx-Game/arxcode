@@ -21,7 +21,7 @@ class BBoard(Object):
         category = TAG_CATEGORY
         post.tags.add(tagkey, category=category)
         return post
-    
+
     def bb_post(self, poster_obj, msg, subject="No Subject", poster_name=None,
                 event=None, announce=True):
         """
@@ -74,38 +74,40 @@ class BBoard(Object):
     def bb_orgstance(self, poster_obj, org, msg, postnum):
         """
         Post teeny commentary as addendum to board message.
-        
+
         Args:
             poster_obj: Character
             org: Organization
             msg: str
             postnum: int
         """
-        tagname = "%s_comment" % org
+        category, tagname = "org_comment", "%s_comment" % org
         # I love you so much <3 Do not let orange text bother you!
         # I love you too <3 Because board is calling this, board is now self.
         post = self.get_post(poster_obj, postnum)
         if not post:
             return
-        if post.tags.get(tagname, category="org_comment"):
-            poster_obj.msg("{w%s{n has already declared a position on this matter." % org)
+        if post.tags.get(tagname, category):
+            poster_obj.msg("|w%s|n has already declared a position on this matter." % org)
             return
         if not org.access(poster_obj, "declarations"):
-            poster_obj.msg("Your {w%s{n rank isn't yet high enough to make declarations on their behalf." % org)
+            poster_obj.msg("Your |w%s|n rank is not set to make declarations on their behalf." % org)
             return
         if len(msg) > 280:
             poster_obj.msg("That message is too long for a brief declaration.")
             return
-        if org.secret:
-            post.db_message += "\n\n--- {w%s{n Stance ---\n%s" % (org, msg)
-        else:
-            post.db_message += "\n\n--- {w%s{n Stance (from %s) ---\n%s" % (org, poster_obj, msg)
-        post.tags.add("%s_comment" % org, category="org_comment")
+        secret = org.secret
+        poster_obj_str = "" if secret else " via |c%s|n" % poster_obj.key
+        post.db_message += "\n\n--- |w%s|n Stance%s ---\n%s" % (org, poster_obj_str, msg)
+        post.tags.add(tagname, category)
         post.save()
-        poster_obj.msg("{w%s{n successfully declared a stance on '%s'." % (org, post.db_header))
-        self.notify_subs("{w%s has commented upon proclamation %s.{n" % (org, postnum))
+        success_msg = "|w%s|n%s declared a stance on '%s' (proclamation %s)." % (org, poster_obj_str, post.db_header, postnum)
+        poster_obj.msg(success_msg)
+        self.notify_subs(success_msg)
         from server.utils.arx_utils import inform_staff
-        inform_staff("{c%s {whas posted an org stance for %s." % (poster_obj, org))
+        if secret:
+            success_msg = "(By |c%s|n) %s" % (poster_obj.key, success_msg)
+        inform_staff(success_msg)
 
     def has_subscriber(self, pobj):
         if pobj in self.db.subscriber_list:
@@ -158,7 +160,7 @@ class BBoard(Object):
         if not old:
             return self.posts
         return self.archived_posts
-        
+
     def at_object_creation(self):
         """
         Run at bboard creation.
@@ -213,7 +215,7 @@ class BBoard(Object):
         post.db_message = msg
         post.save()
         return True
-    
+
     @property
     def posts(self):
         return Post.objects.for_board(self).exclude(db_tags__db_key="archived")
@@ -283,7 +285,7 @@ class BBoard(Object):
 
             except AttributeError:
                 pass
-            
+
     @property
     def num_unread_cache(self):
         if self.ndb.num_unread_cache is None:
