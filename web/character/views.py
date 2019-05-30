@@ -770,13 +770,6 @@ class FlashbackCreateView(LoginRequiredMixin, CharacterMixin, CreateView):
         """Gets the URL to redirect us to on a successful submission"""
         return reverse('character:list_flashbacks', kwargs={'object_id': self.character.id})
 
-    def form_valid(self, form):
-        """Update newly created flashback with our owner and return appropriate response"""
-        response = super(FlashbackCreateView, self).form_valid(form)
-        self.object.owner = self.character.roster
-        self.object.save()
-        return response
-
 
 class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
     """View for an individual flashback or adding a post to it"""
