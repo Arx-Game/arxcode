@@ -1766,7 +1766,7 @@ class Flashback(SharedMemoryModel):
         owners_ids = [ob.id for ob in owners]
         owners_names = owners.values_list('player__username', flat=True)
         authors_names = self.post_authors.exclude(id__in=owners_ids).values_list('player__username', flat=True)
-        return ", ".join(["|c%s|n" % ob for ob in owners_names] + [str(ob) for ob in authors_names])
+        return ", ".join(["|c%s|n" % ob.capitalize() for ob in owners_names] + [str(ob.capitalize()) for ob in authors_names])
 
     @property
     def all_players(self):
