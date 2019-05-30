@@ -7,7 +7,7 @@
         <div class="well text-center">
             {{ flashback.summary|mush_to_html }}
             {% if flashback_featuring %}
-            <p>Featuring: {{ flashback_featuring|mush_to_html }}</p>
+            <p><strong>Featuring:</strong> {{ flashback_featuring|mush_to_html }}</p>
             {% endif %}
         </div>
 
@@ -18,7 +18,7 @@
             {% if record.post.roll %}
             &nbsp;-&nbsp;{{ record.post.roll|mush_to_html }}
             {% endif %}
-            <p>{{ post.actions|mush_to_html }}</p>
+            <p>{{ record.post.actions|mush_to_html }}</p>
         {% elif not record.readable %}
             <p><i>{{ flashback.STRING_MISSING_MEMORY }}</i></p>
         {% endif %}
