@@ -153,7 +153,9 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             if not targ:
                 return
         elif "invite" in self.switches:
-            return flashback.display_involvement()
+            msg = flashback.display_involvement()
+            self.msg(msg)
+            return
         else:
             targ = self.caller
         inv = flashback.get_involvement(targ.roster)
