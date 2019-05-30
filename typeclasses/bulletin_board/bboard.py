@@ -76,7 +76,7 @@ class BBoard(Object):
         Post teeny commentary as addendum to board message.
 
         Args:
-            poster_obj: Character
+            poster_obj: Player (account)
             org: Organization
             msg: str
             postnum: int
@@ -88,7 +88,7 @@ class BBoard(Object):
         post = self.get_post(poster_obj, postnum)
         if not post:
             return
-        if post.tags.get(tagname, category):
+        if post.tags.get(tagname=tagname, category=category):
             poster_obj.msg("|w%s|n has already declared a position on this matter." % org)
             return
         if not org.access(poster_obj, "declarations"):
@@ -98,9 +98,9 @@ class BBoard(Object):
             poster_obj.msg("That message is too long for a brief declaration.")
             return
         secret = org.secret
-        poster_obj_str = "" if secret else (" via |c%s|n" % poster_obj.key)
+        poster_obj_str = "" if secret else (" via |c%s|n" % poster_obj)
         post.db_message += "\n\n--- |w%s|n Stance%s ---\n%s" % (org, poster_obj_str, msg)
-        post.tags.add(tagname, category)
+        post.tags.add(tagname=tagname, category=category)
         post.save()
         success_msg = "|w%s|n%s declared a stance on '%s' (proclamation %s)." % (org, poster_obj_str, post.db_header, postnum)
         poster_obj.msg(success_msg)
