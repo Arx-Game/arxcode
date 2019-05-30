@@ -219,7 +219,7 @@ class SceneCommandTests(ArxCommandTest):
         self.call_cmd("/invite 1=Testaccount", "Only the flashback's owner may use that switch.")
         self.call_cmd("/conclude 1", "Only the flashback's owner may use that switch.")
         self.caller = self.account
-        self.call_cmd("/invite 1", "(#1) testing - Owners and post authors: TestAccount\nCharacters invited to post: Testaccount, Testaccount2")
+        self.call_cmd("/invite 1", "(#1) testing - Owners and post authors: Testaccount\nCharacters invited to post: Testaccount, Testaccount2")
         self.call_cmd("/uninvite 1=Testaccount2", "You have uninvited Testaccount2 from this flashback.")
         self.account2.inform.assert_called_with("You have been retired from flashback #1.", category="Flashbacks")
         self.call_cmd("/summary 1=test summary", "Summary set to: test summary.")
