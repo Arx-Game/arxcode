@@ -81,7 +81,8 @@ class BBoard(Object):
             msg: str
             postnum: int
         """
-        category, tagname = "org_comment", "%s_comment" % org
+        category = "org_comment"
+        tagname = "%s_comment" % org
         # I love you so much <3 Do not let orange text bother you!
         # I love you too <3 Because board is calling this, board is now self.
         post = self.get_post(poster_obj, postnum)
@@ -97,7 +98,7 @@ class BBoard(Object):
             poster_obj.msg("That message is too long for a brief declaration.")
             return
         secret = org.secret
-        poster_obj_str = "" if secret else " via |c%s|n" % poster_obj.key
+        poster_obj_str = "" if secret else (" via |c%s|n" % poster_obj.key)
         post.db_message += "\n\n--- |w%s|n Stance%s ---\n%s" % (org, poster_obj_str, msg)
         post.tags.add(tagname, category)
         post.save()
