@@ -27,6 +27,7 @@ class BBoard(Object):
         """
         Post the message to the board.
         """
+        # noinspection PyArgumentList
         post = Post(db_message=msg, db_header=subject)
         post.save()
         posted_by = "Unknown"
@@ -66,7 +67,7 @@ class BBoard(Object):
         return self.db.max_posts or 100
 
     def notify_subs(self, notification):
-        subs = [ob for ob in self.db.subscriber_list if self.access(ob, "read")
+        subs = [ob for ob in self.subscriber_list if self.access(ob, "read")
                 and "no_post_notifications" not in ob.tags.all() and (not hasattr(ob, 'is_guest') or not ob.is_guest())]
         for sub in subs:
             sub.msg(notification)
@@ -102,7 +103,8 @@ class BBoard(Object):
         post.db_message += "\n\n--- |w%s|n Stance%s ---\n%s" % (org, poster_obj_str, msg)
         post.tags.add(tagname, category)
         post.save()
-        success_msg = "|w%s|n%s declared a stance on '%s' (proclamation %s)." % (org, poster_obj_str, post.db_header, postnum)
+        success_msg = "|w%s|n%s declared a stance on '%s' (proclamation %s)." % (org, poster_obj_str, post.db_header,
+                                                                                 postnum)
         poster_obj.msg(success_msg)
         self.notify_subs(success_msg)
         from server.utils.arx_utils import inform_staff
@@ -111,7 +113,7 @@ class BBoard(Object):
         inform_staff(success_msg)
 
     def has_subscriber(self, pobj):
-        if pobj in self.db.subscriber_list:
+        if pobj in self.subscriber_list:
             return True
         else:
             return False
@@ -162,19 +164,19 @@ class BBoard(Object):
             return self.posts
         return self.archived_posts
 
-    def at_object_creation(self):
-        """
-        Run at bboard creation.
-        """
-        self.db.subscriber_list = []
+    @property
+    def subscriber_list(self):
+        if self.db.subscriber_list is None:
+            self.db.subscriber_list = []
+        return self.db.subscriber_list
 
     def subscribe_bboard(self, joiner):
         """
         Run right before a bboard is joined. If this returns a false value,
         bboard joining is aborted.
         """
-        if joiner not in self.db.subscriber_list:
-            self.db.subscriber_list.append(joiner)
+        if joiner not in self.subscriber_list:
+            self.subscriber_list.append(joiner)
             return True
         else:
             return False
@@ -184,8 +186,8 @@ class BBoard(Object):
         Run right before a user leaves a bboard. If this returns a false
         value, leaving the bboard will be aborted.
         """
-        if leaver in self.db.subscriber_list:
-            self.db.subscriber_list.remove(leaver)
+        if leaver in self.subscriber_list:
+            self.subscriber_list.remove(leaver)
             return True
         else:
             return False
@@ -194,6 +196,7 @@ class BBoard(Object):
         """
         Remove post if it's inside the bulletin board.
         """
+        retval = False
         if post in self.posts:
             post.delete()
             retval = True
