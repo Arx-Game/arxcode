@@ -1494,6 +1494,10 @@ class Investigation(AbstractPlayerAllocations):
         self.roll = Investigation.UNSET_ROLL
         self.save()
 
+    def mark_active(self):
+        self.active = True
+        self.do_roll()
+
     @property
     def targeted_clue(self):
         """Tries to fetch a clue automatically if we don't have one. Then returns what we have, or None."""

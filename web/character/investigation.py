@@ -861,7 +861,7 @@ class CmdInvestigate(InvestigationFormCommand):
                 self.caller.assisted_investigations.filter(currently_helping=True)):
             if not self.caller.assisted_investigations.filter(currently_helping=True):
                 if self.caller.player_ob.pay_action_points(self.ap_cost):
-                    created_object.active = True
+                    created_object.mark_active()
                     self.msg("New investigation created. This has been set as your active investigation " +
                              "for the week, and you may add resources/silver to increase its chance of success.")
                 else:
@@ -1044,8 +1044,7 @@ class CmdInvestigate(InvestigationFormCommand):
                     ass.currently_helping = False
                     ass.save()
                     self.msg("No longer assisting in %s" % ass.investigation)
-                ob.active = True
-                ob.save()
+                ob.mark_active()
                 caller.msg("%s set to active." % ob)
                 return
             if "silver" in self.switches:
