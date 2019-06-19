@@ -3,7 +3,7 @@ Places for tabletalk
 """
 
 from typeclasses.objects import Object
-from cmdset_places import DefaultCmdSet, SittingCmdSet
+from .cmdset_places import DefaultCmdSet, SittingCmdSet
 from evennia.utils.utils import make_iter
 
 

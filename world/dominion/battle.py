@@ -181,7 +181,7 @@ class UnitFormation(Formation):
         try:
             x, y, z = self.castle_pos
         except (TypeError, ValueError):
-            print "ERROR: Invalid tuple in self.castle_pos: %s" % str(self.castle_pos)
+            print( "ERROR: Invalid tuple in self.castle_pos: %s" % str(self.castle_pos) )
             x, y, z = DEFENDER_BACK
         unit.castle = self.castle
         unit.move(x, y, z)
@@ -270,7 +270,7 @@ class UnitFormation(Formation):
                     dbobj.do_losses(unit.losses)
                     dbobj.save()
                 except Exception:
-                    print "ERROR in saving unit."
+                    print( "ERROR in saving unit." )
                     traceback.print_exc()
 
     def _all_units(self):

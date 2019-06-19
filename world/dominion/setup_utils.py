@@ -41,7 +41,7 @@ def starting_money(srank):
         if srank > 10 or srank < 1:
             raise TypeError
     except TypeError:
-        print "Invalid Social rank. Using rank 10 as a default."
+        print("Invalid Social rank. Using rank 10 as a default.")
         srank = 10
     val = 11 - srank
     return val * val * val
@@ -582,7 +582,7 @@ def populate(region, end_x, end_y, region_type):
         start_x = region.origin_x_coord
         start_y = region.origin_y_coord
     except AttributeError:
-        print "Invalid object %s passed as region. Cannot populate." % str(region)
+        print ("Invalid object %s passed as region. Cannot populate." % str(region))
         return
     for x in range(start_x, end_x + 1):
         for y in range(start_y, end_y + 1):

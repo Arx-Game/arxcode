@@ -4,7 +4,7 @@ Views for msg app - Msg proxy models, boards, etc
 from collections import defaultdict
 import json
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse, Http404

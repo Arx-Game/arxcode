@@ -79,7 +79,7 @@ class CmdGuestConnect(ArxCommand):
                 request = "http://tools.xioax.com/networking/v2/json/%s/%s" % (addr, api_key)
                 try:
                     data = json.load(urlopen(request))
-                    print "Returned from xiaox: %s" % str(data)
+                    print("Returned from xiaox: %s" % str(data))
                     if data['host-ip']:
                         self.dc_session("Guest connections from VPNs are not permitted, sorry.")
                         return
@@ -89,7 +89,7 @@ class CmdGuestConnect(ArxCommand):
                 except Exception as err:
                     import traceback
                     traceback.print_exc()
-                    print 'Error code on trying to check VPN:', err
+                    print('Error code on trying to check VPN:', err)
         for pc in playerlist:
             if pc.is_guest():
                 # add session check just to be absolutely sure we don't connect to a guest in-use

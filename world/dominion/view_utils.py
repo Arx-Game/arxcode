@@ -1,7 +1,7 @@
 import calendar
 import pytz
 from django.utils.timezone import get_default_timezone
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from evennia.utils.ansi import strip_ansi
 
 

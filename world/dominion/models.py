@@ -60,7 +60,7 @@ from evennia.utils import create
 from django.db import models
 from django.db.models import Q, Count, F, Sum, Case, When
 from django.conf import settings
-from django.core.urlresolvers import reverse
+#from django.core.urlresolvers import reverse
 
 from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
 from .reports import WeeklyReport
@@ -94,7 +94,7 @@ class PlayerOrNpc(SharedMemoryModel):
     or an NPC who has no presence in game, and exists only as a name in the
     database.
     """
-    player = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='Dominion', blank=True, null=True)
+    player = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='Dominion', blank=True, null=True, on_delete=models.CASCADE)
     npc_name = models.CharField(blank=True, null=True, max_length=255)
     parents = models.ManyToManyField("self", symmetrical=False, related_name='children', blank=True)
     spouses = models.ManyToManyField("self", blank=True)
@@ -542,8 +542,8 @@ class PrestigeAdjustment(SharedMemoryModel):
         (LEGEND, "Legend")
     )
 
-    asset_owner = models.ForeignKey('AssetOwner', related_name="prestige_adjustments")
-    category = models.ForeignKey(PrestigeCategory, related_name='+')
+    asset_owner = models.ForeignKey('AssetOwner', related_name="prestige_adjustments", on_delete=models.CASCADE)
+    category = models.ForeignKey(PrestigeCategory, related_name='+', on_delete=models.CASCADE)
     adjustment_type = models.PositiveSmallIntegerField(default=FAME, choices=PRESTIGE_TYPES)
     adjusted_on = models.DateTimeField(auto_now_add=True, blank=False, null=False)
     adjusted_by = models.PositiveIntegerField(default=0, blank=False, null=False)
@@ -626,9 +626,9 @@ class PrestigeNomination(SharedMemoryModel):
     pending = models.BooleanField(default=True)
     approved = models.BooleanField(default=False)
 
-    nominator = models.ForeignKey('PlayerOrNpc', blank=False, null=False, related_name='+')
+    nominator = models.ForeignKey('PlayerOrNpc', blank=False, null=False, related_name='+', on_delete=models.CASCADE)
     nominees = models.ManyToManyField('AssetOwner', related_name='+')
-    category = models.ForeignKey('PrestigeCategory', blank=False, null=False, related_name='+')
+    category = models.ForeignKey('PrestigeCategory', blank=False, null=False, related_name='+', on_delete=models.CASCADE)
     adjust_type = models.PositiveSmallIntegerField(default=TYPE_FAME, choices=TYPES)
     adjust_size = models.PositiveSmallIntegerField(default=SIZE_SMALL, choices=SIZES)
     reason = models.CharField(max_length=40, blank=True, null=True)
@@ -730,8 +730,8 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     access this model with object.assets, and their income will
     be adjusted on a weekly basis with object.assets.do_weekly_adjustment().
     """
-    player = models.OneToOneField('PlayerOrNpc', related_name="assets", blank=True, null=True)
-    organization_owner = models.OneToOneField('Organization', related_name='assets', blank=True, null=True)
+    player = models.OneToOneField('PlayerOrNpc', related_name="assets", blank=True, null=True, on_delete=models.CASCADE)
+    organization_owner = models.OneToOneField('Organization', related_name='assets', blank=True, null=True, on_delete=models.CASCADE)
 
     # money stored in the bank
     vault = models.PositiveIntegerField(default=0, blank=0)
@@ -1258,7 +1258,7 @@ class Honorific(SharedMemoryModel):
     A record of a significant action that permanently alters the legend of an AssetOwner,
     bringing them fame or notoriety.
     """
-    owner = models.ForeignKey('AssetOwner', related_name="honorifics")
+    owner = models.ForeignKey('AssetOwner', related_name="honorifics", on_delete=models.CASCADE)
     title = models.CharField(db_index=True, max_length=200)
     description = models.TextField()
     amount = models.IntegerField(default=0)
@@ -1280,8 +1280,8 @@ class PraiseOrCondemn(SharedMemoryModel):
     Praises or Condemns are a record of someone trying to influence public opinion to increase
     a character's prestige.
     """
-    praiser = models.ForeignKey('PlayerOrNpc', related_name='praises_given')
-    target = models.ForeignKey('AssetOwner', related_name='praises_received')
+    praiser = models.ForeignKey('PlayerOrNpc', related_name='praises_given', on_delete=models.CASCADE)
+    target = models.ForeignKey('AssetOwner', related_name='praises_received', on_delete=models.CASCADE)
     message = models.TextField(blank=True)
     week = models.PositiveSmallIntegerField(default=0, blank=0)
     db_date_created = models.DateTimeField(auto_now_add=True)
@@ -1307,9 +1307,9 @@ class CharitableDonation(SharedMemoryModel):
     Represents all donations from a character to an Organization or Npc Group. They receive some affection
     and prestige in exchange for giving silver.
     """
-    giver = models.ForeignKey('AssetOwner', related_name='donations')
-    organization = models.ForeignKey('Organization', related_name='donations', blank=True, null=True)
-    npc_group = models.ForeignKey('InfluenceCategory', related_name='donations', blank=True, null=True)
+    giver = models.ForeignKey('AssetOwner', related_name='donations', on_delete=models.CASCADE)
+    organization = models.ForeignKey('Organization', related_name='donations', blank=True, null=True, on_delete=models.CASCADE)
+    npc_group = models.ForeignKey('InfluenceCategory', related_name='donations', blank=True, null=True, on_delete=models.CASCADE)
     amount = models.PositiveIntegerField(default=0)
 
     @property
@@ -1380,9 +1380,9 @@ class AccountTransaction(SharedMemoryModel):
     their bank_amount stored in assets.money.bank_amount, and those
     have it as a debt have the same value subtracted.
     """
-    receiver = models.ForeignKey('AssetOwner', related_name='incomes', blank=True, null=True, db_index=True)
+    receiver = models.ForeignKey('AssetOwner', related_name='incomes', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
 
-    sender = models.ForeignKey('AssetOwner', related_name='debts', blank=True, null=True, db_index=True)
+    sender = models.ForeignKey('AssetOwner', related_name='debts', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     # quick description of the type of transaction. taxes between liege/vassal, etc
     category = models.CharField(blank=True, null=True, max_length=255)
 
@@ -1604,7 +1604,7 @@ class HostileArea(SharedMemoryModel):
     land, whatever. If we contain hostile units, then they're contained
     in the self.hostiles property.
     """
-    land = models.ForeignKey('Land', related_name='hostiles', blank=True, null=True)
+    land = models.ForeignKey('Land', related_name='hostiles', blank=True, null=True, on_delete=models.CASCADE)
     desc = models.TextField(blank=True, null=True)
     from django.core.validators import MaxValueValidator
     area = models.PositiveSmallIntegerField(validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0)
@@ -1662,8 +1662,8 @@ class Reputation(SharedMemoryModel):
     """
     A player's reputation to an organization.
     """
-    player = models.ForeignKey('PlayerOrNpc', related_name='reputations', blank=True, null=True, db_index=True)
-    organization = models.ForeignKey('Organization', related_name='reputations', blank=True, null=True, db_index=True)
+    player = models.ForeignKey('PlayerOrNpc', related_name='reputations', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
+    organization = models.ForeignKey('Organization', related_name='reputations', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     # negative affection is dislike/hatred
     affection = models.IntegerField(default=0, blank=0)
     # positive respect is respect/fear, negative is contempt/dismissal
@@ -1739,7 +1739,7 @@ class Organization(InformMixin, SharedMemoryModel):
     name = models.CharField(blank=True, null=True, max_length=255, db_index=True)
     desc = models.TextField(blank=True, null=True)
     category = models.CharField(blank=True, null=True, default="noble", max_length=255)
-    fealty = models.ForeignKey("Fealty", blank=True, null=True, related_name="orgs")
+    fealty = models.ForeignKey("Fealty", blank=True, null=True, related_name="orgs", on_delete=models.CASCADE)
     # In a RP game, titles are IMPORTANT. And we need to divide them by gender.
     rank_1_male = models.CharField(default="Prince", blank=True, null=True, max_length=255)
     rank_1_female = models.CharField(default="Princess", blank=True, null=True, max_length=255)
@@ -2089,7 +2089,7 @@ class Organization(InformMixin, SharedMemoryModel):
 
     def get_absolute_url(self):
         """Returns URL of the org webpage"""
-        return reverse('help_topics:display_org', kwargs={'object_id': self.id})
+        return "http://localhost/" #reverse('help_topics:display_org', kwargs={'object_id': self.id})
 
     @property
     def channel_color(self):
@@ -2134,10 +2134,9 @@ class Organization(InformMixin, SharedMemoryModel):
 
 class ClueForOrg(SharedMemoryModel):
     """Model that shows a clue known by an org"""
-    clue = models.ForeignKey('character.Clue', related_name="org_discoveries", db_index=True)
-    org = models.ForeignKey('Organization', related_name="clue_discoveries", db_index=True)
-    revealed_by = models.ForeignKey('character.RosterEntry', related_name="clues_added_to_orgs", blank=True, null=True,
-                                    db_index=True)
+    clue = models.ForeignKey('character.Clue', related_name="org_discoveries", db_index=True, on_delete=models.CASCADE)
+    org = models.ForeignKey('Organization', related_name="clue_discoveries", db_index=True, on_delete=models.CASCADE)
+    revealed_by = models.ForeignKey('character.RosterEntry', related_name="clues_added_to_orgs", blank=True, null=True, db_index=True, on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ('clue', 'org')
@@ -2345,7 +2344,7 @@ class AgentMission(SharedMemoryModel):
     """
     Missions that AgentObs go on.
     """
-    agentob = models.ForeignKey("AgentOb", related_name="missions", blank=True, null=True)
+    agentob = models.ForeignKey("AgentOb", related_name="missions", blank=True, null=True, on_delete=models.CASCADE)
     active = models.BooleanField(default=True, blank=True)
     success_level = models.SmallIntegerField(default=0, blank=0)
     description = models.TextField(blank=True, null=True)
@@ -2358,9 +2357,8 @@ class AgentOb(SharedMemoryModel):
     """
     Allotment from an Agent class that has a representation in-game.
     """
-    agent_class = models.ForeignKey("Agent", related_name="agent_objects", blank=True, null=True,
-                                    db_index=True)
-    dbobj = models.OneToOneField("objects.ObjectDB", blank=True, null=True)
+    agent_class = models.ForeignKey("Agent", related_name="agent_objects", blank=True, null=True, db_index=True, on_delete=models.CASCADE)
+    dbobj = models.OneToOneField("objects.ObjectDB", blank=True, null=True, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=0, blank=0)
     # whether they're imprisoned, by whom, difficulty to free them, etc
     status_notes = models.TextField(blank=True, null=True)
@@ -2436,7 +2434,7 @@ class WorkSetting(SharedMemoryModel):
     RESOURCE_TYPES = ('Economic', 'Military', 'Social')
     RESOURCE_CHOICES = tuple(enumerate(RESOURCE_TYPES))
 
-    organization = models.ForeignKey('Organization', related_name='work_settings')
+    organization = models.ForeignKey('Organization', related_name='work_settings', on_delete=models.CASCADE)
     stat = models.CharField(blank=True, null=True, max_length=80)
     skill = models.CharField(blank=True, null=True, max_length=80)
     resource = models.PositiveSmallIntegerField(choices=RESOURCE_CHOICES, default=0)
@@ -2495,10 +2493,10 @@ class Member(SharedMemoryModel):
     As far as salary goes, anyone in the Member model can have a WeeklyTransaction
     set up with their Organization.
     """
-    player = models.ForeignKey('PlayerOrNpc', related_name='memberships', blank=True, null=True, db_index=True)
+    player = models.ForeignKey('PlayerOrNpc', related_name='memberships', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     commanding_officer = models.ForeignKey('self', on_delete=models.SET_NULL, related_name='subordinates', blank=True,
                                            null=True)
-    organization = models.ForeignKey('Organization', related_name='members', blank=True, null=True, db_index=True)
+    organization = models.ForeignKey('Organization', related_name='members', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     # work they've gained
     work_this_week = models.PositiveSmallIntegerField(default=0, blank=0)
     work_total = models.PositiveSmallIntegerField(default=0, blank=0)
@@ -2510,7 +2508,7 @@ class Member(SharedMemoryModel):
 
     # a rare case of us not using a player object, since we may designate any type of object as belonging
     # to an organization - character objects without players (npcs), rooms, exits, items, etc.
-    object = models.ForeignKey('objects.ObjectDB', related_name='memberships', blank=True, null=True)
+    object = models.ForeignKey('objects.ObjectDB', related_name='memberships', blank=True, null=True, on_delete=models.CASCADE)
 
     rank = models.PositiveSmallIntegerField(blank=10, default=10)
 
@@ -2858,8 +2856,8 @@ class AssignedTask(SharedMemoryModel):
     """
     A task assigned to a player.
     """
-    task = models.ForeignKey('Task', related_name='assigned_tasks', blank=True, null=True, db_index=True)
-    member = models.ForeignKey('Member', related_name='tasks', blank=True, null=True, db_index=True)
+    task = models.ForeignKey('Task', related_name='assigned_tasks', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
+    member = models.ForeignKey('Member', related_name='tasks', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     finished = models.BooleanField(default=False, blank=False)
     week = models.PositiveSmallIntegerField(blank=0, default=0, db_index=True)
     notes = models.TextField(blank=True, null=True)
@@ -3020,11 +3018,10 @@ class TaskSupporter(SharedMemoryModel):
     """
     A player that has pledged support to someone doing a task
     """
-    player = models.ForeignKey('PlayerOrNpc', related_name='supported_tasks', blank=True, null=True, db_index=True)
-    task = models.ForeignKey('AssignedTask', related_name='supporters', blank=True, null=True, db_index=True)
+    player = models.ForeignKey('PlayerOrNpc', related_name='supported_tasks', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
+    task = models.ForeignKey('AssignedTask', related_name='supporters', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     fake = models.BooleanField(default=False)
-    spheres = models.ManyToManyField('SphereOfInfluence', related_name='supported_tasks', blank=True,
-                                     through='SupportUsed')
+    spheres = models.ManyToManyField('SphereOfInfluence', related_name='supported_tasks', blank=True, through='SupportUsed')
     observer_text = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     additional_points = models.PositiveSmallIntegerField(default=0, blank=0)
@@ -3255,9 +3252,9 @@ class CraftingMaterials(SharedMemoryModel):
     If it is used in a recipe, do NOT set it owned by any asset owner, or by changing
     the amount they'll change the amount required in a recipe!
     """
-    type = models.ForeignKey('CraftingMaterialType', blank=True, null=True, db_index=True)
+    type = models.ForeignKey('CraftingMaterialType', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     amount = models.PositiveIntegerField(blank=0, default=0)
-    owner = models.ForeignKey('AssetOwner', blank=True, null=True, related_name='materials', db_index=True)
+    owner = models.ForeignKey('AssetOwner', blank=True, null=True, related_name='materials', db_index=True, on_delete=models.CASCADE)
 
     class Meta:
         """Define Django meta options"""
@@ -3322,7 +3319,7 @@ class RPEvent(SharedMemoryModel):
     room_desc = models.TextField(blank=True, null=True)
     # a beat with a blank desc will be used for connecting us to a Plot before the Event is finished
     beat = models.ForeignKey("PlotUpdate", blank=True, null=True, related_name="events", on_delete=models.SET_NULL)
-    plotroom = models.ForeignKey('PlotRoom', blank=True, null=True, related_name='events_held_here')
+    plotroom = models.ForeignKey('PlotRoom', blank=True, null=True, related_name='events_held_here', on_delete=models.CASCADE)
     risk = models.PositiveSmallIntegerField(choices=RISK_CHOICES, default=NORMAL_RISK, blank=True)
     search_tags = models.ManyToManyField('character.SearchTag', blank=True, related_name="events")
 
@@ -3514,7 +3511,7 @@ class RPEvent(SharedMemoryModel):
 
     def get_absolute_url(self):
         """Gets absolute URL for the RPEvent from their display view"""
-        return reverse('dominion:display_event', kwargs={'pk': self.id})
+        return "http://localhost/" # reverse('dominion:display_event', kwargs={'pk': self.id})
 
     @CachedProperty
     def attended(self):
@@ -3625,8 +3622,8 @@ class PCEventParticipation(SharedMemoryModel):
     """A PlayerOrNPC participating in an event"""
     MAIN_HOST, HOST, GUEST = range(3)
     STATUS_CHOICES = ((MAIN_HOST, "Main Host"), (HOST, "Host"), (GUEST, "Guest"))
-    dompc = models.ForeignKey('PlayerOrNpc', related_name="event_participation")
-    event = models.ForeignKey('RPEvent', related_name="pc_event_participation")
+    dompc = models.ForeignKey('PlayerOrNpc', related_name="event_participation", on_delete=models.CASCADE)
+    event = models.ForeignKey('RPEvent', related_name="pc_event_participation", on_delete=models.CASCADE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=GUEST)
     gm = models.BooleanField(default=False)
     attended = models.BooleanField(default=False)
@@ -3645,8 +3642,8 @@ class PCEventParticipation(SharedMemoryModel):
 
 class OrgEventParticipation(SharedMemoryModel):
     """An org participating in an event"""
-    org = models.ForeignKey("Organization", related_name="event_participation")
-    event = models.ForeignKey("RPEvent", related_name="org_event_participation")
+    org = models.ForeignKey("Organization", related_name="event_participation", on_delete=models.CASCADE)
+    event = models.ForeignKey("RPEvent", related_name="org_event_participation", on_delete=models.CASCADE)
     social = models.PositiveSmallIntegerField("Social Resources spent by the Org Sponsor", default=0)
 
     def invite(self):
@@ -3671,8 +3668,8 @@ class InfluenceCategory(SharedMemoryModel):
 
 class Renown(SharedMemoryModel):
     """Renown is a player's influence with an npc group, represented by InfluenceCategory"""
-    category = models.ForeignKey("InfluenceCategory", db_index=True)
-    player = models.ForeignKey("PlayerOrNpc", related_name="renown", db_index=True)
+    category = models.ForeignKey("InfluenceCategory", db_index=True, on_delete=models.CASCADE)
+    player = models.ForeignKey("PlayerOrNpc", related_name="renown", db_index=True, on_delete=models.CASCADE)
     rating = models.IntegerField(blank=0, default=0)
 
     class Meta:
@@ -3700,8 +3697,8 @@ class Renown(SharedMemoryModel):
 
 class SphereOfInfluence(SharedMemoryModel):
     """Influence categories for organization - npc groups they have some influence with"""
-    category = models.ForeignKey("InfluenceCategory", db_index=True)
-    org = models.ForeignKey("Organization", related_name="spheres", db_index=True)
+    category = models.ForeignKey("InfluenceCategory", db_index=True, on_delete=models.CASCADE)
+    org = models.ForeignKey("Organization", related_name="spheres", db_index=True, on_delete=models.CASCADE)
     rating = models.IntegerField(blank=0, default=0)
 
     class Meta:
@@ -3727,8 +3724,8 @@ class SphereOfInfluence(SharedMemoryModel):
 
 class TaskRequirement(SharedMemoryModel):
     """NPC groups that are required for tasks"""
-    category = models.ForeignKey("InfluenceCategory", db_index=True)
-    task = models.ForeignKey("Task", related_name="requirements", db_index=True)
+    category = models.ForeignKey("InfluenceCategory", db_index=True, on_delete=models.CASCADE)
+    task = models.ForeignKey("Task", related_name="requirements", db_index=True, on_delete=models.CASCADE)
     minimum_amount = models.PositiveSmallIntegerField(blank=0, default=0)
 
     def __str__(self):
@@ -3738,8 +3735,8 @@ class TaskRequirement(SharedMemoryModel):
 class SupportUsed(SharedMemoryModel):
     """Support given by a TaskSupporter for a specific task, using an npc group under 'sphere'"""
     week = models.PositiveSmallIntegerField(default=0, blank=0)
-    supporter = models.ForeignKey("TaskSupporter", related_name="allocation", db_index=True)
-    sphere = models.ForeignKey("SphereOfInfluence", related_name="usage", db_index=True)
+    supporter = models.ForeignKey("TaskSupporter", related_name="allocation", db_index=True, on_delete=models.CASCADE)
+    sphere = models.ForeignKey("SphereOfInfluence", related_name="usage", db_index=True, on_delete=models.CASCADE)
     rating = models.PositiveSmallIntegerField(blank=0, default=0)
 
     def __str__(self):
@@ -3750,14 +3747,14 @@ class PlotRoom(SharedMemoryModel):
     """Model for creating templates that can be used repeatedly for temporary rooms for RP events"""
     name = models.CharField(blank=False, null=False, max_length=78, db_index=True)
     description = models.TextField(max_length=4096)
-    creator = models.ForeignKey('PlayerOrNpc', related_name='created_plot_rooms', blank=True, null=True, db_index=True)
+    creator = models.ForeignKey('PlayerOrNpc', related_name='created_plot_rooms', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     public = models.BooleanField(default=False)
 
-    location = models.ForeignKey('MapLocation', related_name='plot_rooms', blank=True, null=True)
-    domain = models.ForeignKey('Domain', related_name='plot_rooms', blank=True, null=True)
+    location = models.ForeignKey('MapLocation', related_name='plot_rooms', blank=True, null=True, on_delete=models.CASCADE)
+    domain = models.ForeignKey('Domain', related_name='plot_rooms', blank=True, null=True, on_delete=models.CASCADE)
     wilderness = models.BooleanField(default=True)
 
-    shardhaven_type = models.ForeignKey('exploration.ShardhavenType', related_name='tilesets', blank=True, null=True)
+    shardhaven_type = models.ForeignKey('exploration.ShardhavenType', related_name='tilesets', blank=True, null=True, on_delete=models.CASCADE)
 
     @property
     def land(self):
@@ -3869,7 +3866,7 @@ class Landmark(SharedMemoryModel):
 
     name = models.CharField(blank=False, null=False, max_length=32, db_index=True)
     description = models.TextField(max_length=2048)
-    location = models.ForeignKey('MapLocation', related_name='landmarks', blank=True, null=True)
+    location = models.ForeignKey('MapLocation', related_name='landmarks', blank=True, null=True, on_delete=models.CASCADE)
     landmark_type = models.PositiveSmallIntegerField(choices=CHOICES_TYPE, default=TYPE_UNKNOWN)
 
     def __str__(self):

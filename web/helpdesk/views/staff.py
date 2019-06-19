@@ -18,7 +18,7 @@ except ImportError:
     from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.files.base import ContentFile
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.core import paginator
 from django.db import connection
@@ -1235,7 +1235,7 @@ def ticket_dependency_add(request, ticket_id):
         if form.is_valid():
             ticketdependency = form.save(commit=False)
             ticketdependency.ticket = ticket
-            if ticketdependency.ticket <> ticketdependency.depends_on:
+            if ticketdependency.ticket != ticketdependency.depends_on:
                 ticketdependency.save()
             return HttpResponseRedirect(reverse('helpdesk_view', args=[ticket.id]))
     else:

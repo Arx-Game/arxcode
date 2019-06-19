@@ -36,6 +36,8 @@ class Migration(migrations.Migration):
         ('dominion', '0034_auto_20181105_1756'),
     ]
 
+    atomic = False
+
     operations = [
         # rename the models
         migrations.RenameModel('Crisis', 'Plot'),

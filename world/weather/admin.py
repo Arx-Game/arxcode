@@ -1,5 +1,5 @@
 from django.contrib import admin
-from models import WeatherEmit, WeatherType
+from world.weather.models import WeatherEmit, WeatherType
 
 
 class WeatherEmitInline(admin.StackedInline):

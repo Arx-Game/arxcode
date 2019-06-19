@@ -51,7 +51,7 @@ def get_obstacle_list(request):
 
     try:
         haven = Shardhaven.objects.get(id=haven_id)
-    except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+    except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
         return JsonErrorResponse("No such haven found.", status=404, code=JSON_ERROR_BADPARAM)
 
     obstacles = ShardhavenObstacle.objects.filter(haven_types__in=[haven.haven_type],
@@ -87,7 +87,7 @@ def get_monster_list(request):
 
     try:
         haven = Shardhaven.objects.get(id=haven_id)
-    except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+    except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
         return JsonErrorResponse("No such haven found.", status=404, code=JSON_ERROR_BADPARAM)
 
     monsters = Monster.objects.filter(habitats__in=[haven.haven_type]).order_by('name')
@@ -119,7 +119,7 @@ def get_puzzle_list(request):
 
     try:
         haven = Shardhaven.objects.get(id=haven_id)
-    except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+    except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
         return JsonErrorResponse("No such haven found.", status=404, code=JSON_ERROR_BADPARAM)
 
     puzzles = ShardhavenPuzzle.objects.filter(haven_types__in=[haven.haven_type])
@@ -151,7 +151,7 @@ def get_haven(request):
 
     try:
         haven = Shardhaven.objects.get(id=haven_id)
-    except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+    except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
         return JsonErrorResponse("No such haven found.", status=404, code=JSON_ERROR_BADPARAM)
 
     layout = haven.layout
@@ -229,7 +229,7 @@ def create_room(request):
 
     try:
         haven = Shardhaven.objects.get(id=haven_id)
-    except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+    except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
         return JsonErrorResponse("No such haven found.", status=404, code=JSON_ERROR_BADPARAM)
 
     layout = haven.layout
@@ -278,7 +278,7 @@ def delete_room(request):
 
     try:
         haven = Shardhaven.objects.get(id=haven_id)
-    except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+    except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
         return JsonErrorResponse("No such haven found.", status=404, code=JSON_ERROR_BADPARAM)
 
     layout = haven.layout
@@ -318,7 +318,7 @@ def obstacle_for_id(obstacle_id):
 
     try:
         obstacle = ShardhavenObstacle.objects.get(id=obstacle_id)
-    except ShardhavenObstacle.DoesNotExist, ShardhavenObstacle.MultipleObjectsReturned:
+    except (ShardhavenObstacle.DoesNotExist, ShardhavenObstacle.MultipleObjectsReturned):
         return None
 
     return obstacle
@@ -332,7 +332,7 @@ def monster_for_id(monster_id):
 
     try:
         monster = Monster.objects.get(id=monster_id)
-    except Monster.DoesNotExist, Monster.MultipleObjectsReturned:
+    except (Monster.DoesNotExist, Monster.MultipleObjectsReturned):
         return None
 
     return monster
@@ -346,7 +346,7 @@ def puzzle_for_id(puzzle_id):
 
     try:
         puzzle = ShardhavenPuzzle.objects.get(id=puzzle_id)
-    except ShardhavenPuzzle.DoesNotExist, ShardhavenPuzzle.MultipleObjectsReturned:
+    except (ShardhavenPuzzle.DoesNotExist, ShardhavenPuzzle.MultipleObjectsReturned):
         return None
 
     return puzzle
@@ -369,7 +369,7 @@ def save_room(request):
 
     try:
         haven = Shardhaven.objects.get(id=haven_id)
-    except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+    except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
         return JsonErrorResponse("No such haven found.", status=404, code=JSON_ERROR_BADPARAM)
 
     layout = haven.layout

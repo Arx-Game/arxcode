@@ -35,7 +35,7 @@ class WeatherType(SharedMemoryModel):
 
 class WeatherEmit(SharedMemoryModel):
 
-    weather = models.ForeignKey(WeatherType, related_name='emits')
+    weather = models.ForeignKey(WeatherType, related_name='emits', on_delete=models.CASCADE)
 
     at_night = models.BooleanField('Night', default=True)
     at_morning = models.BooleanField('Morning', default=True)

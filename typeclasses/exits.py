@@ -406,7 +406,7 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
 
         try:
             haven_exit = ShardhavenLayoutExit.objects.get(id=self.db.haven_exit_id)
-        except ShardhavenLayoutExit.DoesNotExist, ShardhavenLayoutExit.MultipleObjectsReturned:
+        except (ShardhavenLayoutExit.DoesNotExist, ShardhavenLayoutExit.MultipleObjectsReturned):
             return None
 
         return haven_exit

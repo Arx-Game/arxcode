@@ -10,7 +10,7 @@ models.py - Model (and hence database) definitions. This is the core of the
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _, ugettext
 from django import VERSION
 from evennia.typeclasses.models import SharedMemoryModel
@@ -284,22 +284,22 @@ class Ticket(SharedMemoryModel):
         (6, _('6. Super Low')),
     )
     title = models.CharField( _('Title'), max_length=200,)
-    queue = models.ForeignKey(Queue, verbose_name=_('Queue'),)
+    queue = models.ForeignKey(Queue, verbose_name=_('Queue'), on_delete=models.CASCADE)
     db_date_created = models.DateTimeField(_('Created'), blank=True, help_text=_('Date this ticket was first created'),)
     modified = models.DateTimeField(_('Modified'), blank=True,
                                     help_text=_('Date this ticket was most recently changed.'))
     submitter_email = models.EmailField(_('Submitter E-Mail'), blank=True, null=True, help_text=_(
         'The submitter will receive an email for all public follow-ups left for this task.'))
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='assigned_to', blank=True, null=True,
-                                    verbose_name=_('Assigned to'))
+                                    verbose_name=_('Assigned to'), on_delete=models.CASCADE)
     submitting_player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='tickets', blank=True, null=True,
-                                          verbose_name=_('Player who opened this ticket'))
+                                          verbose_name=_('Player who opened this ticket'), on_delete=models.CASCADE)
     submitting_room = models.ForeignKey('objects.ObjectDB', blank=True, null=True,
                                         verbose_name=_('Room where this was submitted'), on_delete=models.SET_NULL)
-    plot = models.ForeignKey('dominion.Plot', blank=True, null=True, related_name="tickets")
-    beat = models.ForeignKey('dominion.PlotUpdate', blank=True, null=True, related_name="tickets")
-    goal_update = models.ForeignKey('character.GoalUpdate', blank=True, null=True, related_name="tickets")
-    kb_category = models.ForeignKey('KBCategory', blank=True, null=True)
+    plot = models.ForeignKey('dominion.Plot', blank=True, null=True, related_name="tickets", on_delete=models.CASCADE)
+    beat = models.ForeignKey('dominion.PlotUpdate', blank=True, null=True, related_name="tickets", on_delete=models.CASCADE)
+    goal_update = models.ForeignKey('character.GoalUpdate', blank=True, null=True, related_name="tickets", on_delete=models.CASCADE)
+    kb_category = models.ForeignKey('KBCategory', blank=True, null=True, on_delete=models.CASCADE)
     status = models.IntegerField(_('Status'), choices=STATUS_CHOICES, default=OPEN_STATUS)
     on_hold = models.BooleanField(_('On Hold'), blank=True, default=False, help_text=_(
         'If a ticket is on hold, it will not automatically be escalated.'))
@@ -526,10 +526,7 @@ class FollowUp(models.Model):
     although all staff can see them.
     """
 
-    ticket = models.ForeignKey(
-        Ticket,
-        verbose_name=_('Ticket'),
-        )
+    ticket = models.ForeignKey( Ticket, verbose_name=_('Ticket'), on_delete=models.CASCADE)
 
     date = models.DateTimeField(
         _('Date'),
@@ -562,6 +559,7 @@ class FollowUp(models.Model):
         blank=True,
         null=True,
         verbose_name=_('User'),
+        on_delete=models.CASCADE,
         )
 
     new_status = models.IntegerField(
@@ -601,6 +599,7 @@ class TicketChange(models.Model):
     followup = models.ForeignKey(
         FollowUp,
         verbose_name=_('Follow-up'),
+        on_delete=models.CASCADE,
         )
 
     field = models.CharField(
@@ -650,7 +649,7 @@ def attachment_path(instance, filename):
     att_path = os.path.join(settings.MEDIA_ROOT, path)
     if settings.DEFAULT_FILE_STORAGE == "django.core.files.storage.FileSystemStorage":
         if not os.path.exists(att_path):
-            os.makedirs(att_path, 0777)
+            os.makedirs(att_path, mode=0o777)
     return os.path.join(path, filename)
 
 
@@ -663,6 +662,7 @@ class Attachment(models.Model):
     followup = models.ForeignKey(
         FollowUp,
         verbose_name=_('Follow-up'),
+        on_delete=models.CASCADE,
         )
 
     file = models.FileField(
@@ -851,7 +851,7 @@ class KBCategory(models.Model):
     title = models.CharField(_('Title'), max_length=100, unique=True)
     slug = models.SlugField(_('Slug'), unique=True)
     description = models.TextField(_('Description'), blank=True)
-    parent = models.ForeignKey('self', null=True, blank=True, related_name="subcategories")
+    parent = models.ForeignKey('self', null=True, blank=True, related_name="subcategories", on_delete=models.CASCADE)
     search_tags = models.ManyToManyField('character.SearchTag', blank=True, related_name="kb_categories")
 
     def display(self):
@@ -935,6 +935,7 @@ class SavedSearch(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_('User'),
+        on_delete=models.CASCADE,
         )
 
     title = models.CharField(
@@ -975,7 +976,7 @@ class UserSettings(models.Model):
     We should always refer to user.usersettings.settings['setting_name'].
     """
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     settings_pickled = models.TextField(
         _('Settings Dictionary'),
@@ -986,17 +987,17 @@ class UserSettings(models.Model):
 
     def _set_settings(self, data):
         # data should always be a Python dictionary.
-        import cPickle
+        import pickle
         from .lib import b64encode
-        self.settings_pickled = b64encode(cPickle.dumps(data))
+        self.settings_pickled = b64encode(pickle.dumps(data))
 
     def _get_settings(self):
         # return a python dictionary representing the pickled data.
-        import cPickle
+        import pickle
         from .lib import b64decode
         try:
-            return cPickle.loads(b64decode(str(self.settings_pickled)))
-        except cPickle.UnpicklingError:
+            return pickle.loads(b64decode(str(self.settings_pickled)))
+        except pickle.UnpicklingError:
             return {}
 
     settings = property(_get_settings, _set_settings)
@@ -1124,6 +1125,7 @@ class TicketCC(models.Model):
     ticket = models.ForeignKey(
         Ticket,
         verbose_name=_('Ticket'),
+        on_delete=models.CASCADE,
         )
 
     user = models.ForeignKey(
@@ -1132,6 +1134,7 @@ class TicketCC(models.Model):
         null=True,
         help_text=_('User who wishes to receive updates for this ticket.'),
         verbose_name=_('User'),
+        on_delete=models.CASCADE,
         )
 
     email = models.EmailField(
@@ -1291,11 +1294,13 @@ class TicketCustomFieldValue(models.Model):
     ticket = models.ForeignKey(
         Ticket,
         verbose_name=_('Ticket'),
+        on_delete=models.CASCADE,
         )
 
     field = models.ForeignKey(
         CustomField,
         verbose_name=_('Field'),
+        on_delete=models.CASCADE,
         )
 
     value = models.TextField(blank=True, null=True)
@@ -1321,12 +1326,14 @@ class TicketDependency(models.Model):
         Ticket,
         verbose_name=_('Ticket'),
         related_name='ticketdependency',
+        on_delete=models.CASCADE,
         )
 
     depends_on = models.ForeignKey(
         Ticket,
         verbose_name=_('Depends On Ticket'),
         related_name='depends_on',
+        on_delete=models.CASCADE,
         )
 
     def __unicode__(self):

@@ -27,7 +27,7 @@ def reload_urlconf(urlconf=None):
 
         urlconf = settings.ROOT_URLCONF
     if urlconf in sys.modules:
-        from django.core.urlresolvers import clear_url_caches
+        from django.urls import clear_url_caches
 
         reload(sys.modules[urlconf])
         clear_url_caches()

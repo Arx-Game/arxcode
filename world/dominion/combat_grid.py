@@ -54,7 +54,7 @@ class PositionActor(object):
             y = int(y)
             z = int(z)
         except ValueError:
-            print "ERROR: Did not give 3 arguments to set position: %s" % str(pos)
+            print( "ERROR: Did not give 3 arguments to set position: %s" % str(pos) )
             try:
                 if len(pos) < 2:
                     x = int(pos[0])
@@ -63,14 +63,14 @@ class PositionActor(object):
                 if len(pos) > 3:
                     z = int(pos[2])
             except:
-                print "Arguments also cannot be cast to int for pos: %s" % str(pos)
-                print "Falling back to starting position."
+                print( "Arguments also cannot be cast to int for pos: %s" % str(pos) )
+                print( "Falling back to starting position." )
                 x = self.x_pos
                 y = self.y_pos
                 z = self.z_pos
         except TypeError:
-            print "ERROR:: Invalid type called for set_position: %s is %s" % (str(pos), type(pos))
-            print "Falling back to starting position."
+            print( "ERROR:: Invalid type called for set_position: %s is %s" % (str(pos), type(pos)) )
+            print( "Falling back to starting position." )
             x = self.x_pos
             y = self.y_pos
             z = self.z_pos
@@ -85,7 +85,7 @@ class PositionActor(object):
         try:
             self.grid.move_actor(self, new_pos)
         except AttributeError:
-            print "ERROR: PositionActor.move() called before grid defined."
+            print( "ERROR: PositionActor.move() called before grid defined." )
             traceback.print_exc()
         
     def check_distance_to_actor(self, actor):

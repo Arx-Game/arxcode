@@ -24,7 +24,7 @@ several more options for customizing the Guest account system.
 from evennia import DefaultAccount
 from typeclasses.mixins import MsgMixins, InformMixin
 from web.character.models import PlayerSiteEntry
-
+from typeclasses.characters import Character
 
 class Account(InformMixin, MsgMixins, DefaultAccount):
 

@@ -760,7 +760,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             return None
 
     def get_absolute_url(self):
-        from django.core.urlresolvers import reverse
+        from django.urls import reverse
         return reverse('character:sheet', kwargs={'object_id': self.id})
 
     @lazy_property
@@ -1005,7 +1005,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             trainer.msg(trainer_msg)
         if targ_msg:
             self.msg(targ_msg)
-        print "Character.post_training call: %s" % trainer_diagnostics(trainer)
+        print( "Character.post_training call: %s" % trainer_diagnostics(trainer) )
         return True
 
     def show_online(self, caller, check_puppet=True):

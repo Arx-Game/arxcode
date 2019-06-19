@@ -265,8 +265,8 @@ class Plot(SharedMemoryModel):
 
 class OrgPlotInvolvement(SharedMemoryModel):
     """An org's participation in a plot"""
-    plot = models.ForeignKey("Plot", related_name="org_involvement")
-    org = models.ForeignKey("Organization", related_name="plot_involvement")
+    plot = models.ForeignKey("Plot", related_name="org_involvement", on_delete=models.CASCADE)
+    org = models.ForeignKey("Organization", related_name="plot_involvement", on_delete=models.CASCADE)
     auto_invite_members = models.BooleanField(default=False)
     gm_notes = models.TextField(blank=True)
 
@@ -283,14 +283,13 @@ class PCPlotInvolvement(SharedMemoryModel):
                                (HAS_RP_HOOK, "Has RP Hook"), (LEFT, "Left"), (NOT_ADDED, "Not Added"))
     ADMIN_STATUS_CHOICES = ((OWNER, "Owner"), (GM, "GM"), (RECRUITER, "Recruiter"), (PLAYER, "Player"),
                             (SUBMITTER, "Submitting Player"))
-    plot = models.ForeignKey("Plot", related_name="dompc_involvement")
-    dompc = models.ForeignKey("PlayerOrNpc", related_name="plot_involvement")
+    plot = models.ForeignKey("Plot", related_name="dompc_involvement", on_delete=models.CASCADE)
+    dompc = models.ForeignKey("PlayerOrNpc", related_name="plot_involvement", on_delete=models.CASCADE)
     cast_status = models.PositiveSmallIntegerField(choices=CAST_STATUS_CHOICES, default=MAIN_CAST)
     activity_status = models.PositiveSmallIntegerField(choices=ACTIVITY_STATUS_CHOICES, default=ACTIVE)
     admin_status = models.PositiveSmallIntegerField(choices=ADMIN_STATUS_CHOICES, default=PLAYER)
     recruiter_story = models.TextField(blank=True)
-    recruited_by = models.ForeignKey("PlayerOrNpc", blank=True, null=True, related_name="plot_recruits",
-                                     on_delete=models.SET_NULL)
+    recruited_by = models.ForeignKey("PlayerOrNpc", blank=True, null=True, related_name="plot_recruits", on_delete=models.SET_NULL)
     gm_notes = models.TextField(blank=True)
 
     def __str__(self):
@@ -361,7 +360,7 @@ class PlotUpdate(SharedMemoryModel):
     Container for showing all the Plot Actions during a period and their corresponding
     result on the crisis
     """
-    plot = models.ForeignKey("Plot", related_name="updates", db_index=True)
+    plot = models.ForeignKey("Plot", related_name="updates", db_index=True, on_delete=models.CASCADE)
     desc = models.TextField("Story of what happened this update", blank=True)
     ooc_notes = models.TextField("Player-visible ooc notes", blank=True)
     gm_notes = models.TextField("Staff-visible notes", blank=True)
@@ -732,11 +731,9 @@ class PlotAction(AbstractAction):
     NORMAL_DIFFICULTY = 30
     HARD_DIFFICULTY = 60
     week = models.PositiveSmallIntegerField(default=0, blank=0, db_index=True)
-    dompc = models.ForeignKey("PlayerOrNpc", db_index=True, blank=True, null=True, related_name="actions")
-    plot = models.ForeignKey("Plot", db_index=True, blank=True, null=True, related_name="actions",
-                             on_delete=models.SET_NULL)
-    beat = models.ForeignKey("PlotUpdate", db_index=True, blank=True, null=True, related_name="actions",
-                             on_delete=models.SET_NULL)
+    dompc = models.ForeignKey("PlayerOrNpc", db_index=True, blank=True, null=True, related_name="actions", on_delete=models.CASCADE)
+    plot = models.ForeignKey("Plot", db_index=True, blank=True, null=True, related_name="actions", on_delete=models.SET_NULL)
+    beat = models.ForeignKey("PlotUpdate", db_index=True, blank=True, null=True, related_name="actions", on_delete=models.SET_NULL)
     public = models.BooleanField(default=False, blank=True)
     gm_notes = models.TextField("Any ooc notes for other GMs", blank=True)
     story = models.TextField("Story written by the GM for the player", blank=True)
@@ -746,11 +743,10 @@ class PlotAction(AbstractAction):
     assistants = models.ManyToManyField("PlayerOrNpc", blank=True, through="PlotActionAssistant",
                                         related_name="assisted_actions")
     prefer_offscreen = models.BooleanField(default=False, blank=True)
-    gemit = models.ForeignKey("character.StoryEmit", blank=True, null=True, related_name="actions")
-    gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="gmd_actions",
-                           on_delete=models.SET_NULL)
+    gemit = models.ForeignKey("character.StoryEmit", blank=True, null=True, related_name="actions", on_delete=models.CASCADE)
+    gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="gmd_actions", on_delete=models.SET_NULL)
     search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="actions")
-    working = models.OneToOneField("magic.Working", blank=True, null=True, related_name="action")
+    working = models.OneToOneField("magic.Working", blank=True, null=True, related_name="action", on_delete=models.CASCADE)
 
     UNKNOWN, COMBAT, SUPPORT, SABOTAGE, DIPLOMACY, SCOUTING, RESEARCH = range(7)
 
@@ -1163,8 +1159,8 @@ class PlotActionAssistant(AbstractAction):
     NOUN = "Assist"
     BASE_AP_COST = 10
     MAX_ASSISTS = 4
-    plot_action = models.ForeignKey("PlotAction", db_index=True, related_name="assisting_actions")
-    dompc = models.ForeignKey("PlayerOrNpc", db_index=True, related_name="assisting_actions")
+    plot_action = models.ForeignKey("PlotAction", db_index=True, related_name="assisting_actions", on_delete=models.CASCADE)
+    dompc = models.ForeignKey("PlayerOrNpc", db_index=True, related_name="assisting_actions", on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ('plot_action', 'dompc')
@@ -1272,9 +1268,8 @@ class ActionOOCQuestion(SharedMemoryModel):
     OOC Question about a plot. Can be associated with a given action
     or asked about independently.
     """
-    action = models.ForeignKey("PlotAction", db_index=True, related_name="questions", null=True, blank=True)
-    action_assist = models.ForeignKey("PlotActionAssistant", db_index=True, related_name="questions", null=True,
-                                      blank=True)
+    action = models.ForeignKey("PlotAction", db_index=True, related_name="questions", null=True, blank=True, on_delete=models.CASCADE)
+    action_assist = models.ForeignKey("PlotActionAssistant", db_index=True, related_name="questions", null=True, blank=True, on_delete=models.CASCADE)
     text = models.TextField(blank=True)
     is_intent = models.BooleanField(default=False)
     mark_answered = models.BooleanField(default=False)
@@ -1330,8 +1325,8 @@ class ActionOOCAnswer(SharedMemoryModel):
     """
     OOC answer from a GM about a plot.
     """
-    gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="answers_given")
-    question = models.ForeignKey("ActionOOCQuestion", db_index=True, related_name="answers")
+    gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="answers_given", on_delete=models.CASCADE)
+    question = models.ForeignKey("ActionOOCQuestion", db_index=True, related_name="answers", on_delete=models.CASCADE)
     text = models.TextField(blank=True)
 
     def display(self):

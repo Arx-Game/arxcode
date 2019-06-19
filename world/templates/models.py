@@ -36,7 +36,7 @@ class Template(SharedMemoryModel):
         (OPEN, 'OPEN')
     )
 
-    owner = models.ForeignKey('character.PlayerAccount', related_name='templates', db_index=True)
+    owner = models.ForeignKey('character.PlayerAccount', related_name='templates', db_index=True, on_delete=models.CASCADE)
     desc = models.TextField()
 
     access_level = models.CharField(max_length=2, choices=ACCESS_LEVELS, default=PRIVATE)
@@ -87,8 +87,8 @@ class TemplateGrantee(SharedMemoryModel):
     additional metadata about the grantee status, as the feature
     expands.
     """
-    template = models.ForeignKey('Template')
-    grantee = models.ForeignKey('character.RosterEntry')
+    template = models.ForeignKey('Template', on_delete=models.CASCADE)
+    grantee = models.ForeignKey('character.RosterEntry', on_delete=models.CASCADE)
 
 
 

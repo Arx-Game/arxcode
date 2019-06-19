@@ -79,7 +79,7 @@ class Affinity(SharedMemoryModel):
 
     name = models.CharField(max_length=20, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
-    opposed = models.ForeignKey('self', blank=True, null=True, related_name='+')
+    opposed = models.ForeignKey('self', blank=True, null=True, related_name='+', on_delete=models.CASCADE)
     rank1_desc = models.CharField(max_length=255, default='spark')
     rank2_desc = models.CharField(max_length=255, default='glimmer')
     rank3_desc = models.CharField(max_length=255, default='glow')
@@ -126,8 +126,8 @@ class AlchemicalMaterial(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=False, null=False)
     plural_name = models.CharField(max_length=40, blank=True, null=True)
-    alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+')
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='materials')
+    alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
+    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='materials', on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
 
     def create_instance(self, quantity):
@@ -233,7 +233,7 @@ class Effect(SharedMemoryModel):
     base_cost = models.PositiveSmallIntegerField(default=500)
     required_favor = models.PositiveIntegerField(default=0, help_text='A base amount of favor required to '
                                                                       'weave this effect.')
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+')
+    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
     antagonistic = models.BooleanField(default=False, help_text="Is this effect harmful to the target?")
     want_opposed = models.BooleanField(default=False,
                                        help_text="Is this effect more effective when used on an opposed affinity? "
@@ -294,8 +294,8 @@ class Effect(SharedMemoryModel):
 
 class PractitionerAlignment(SharedMemoryModel):
 
-    practitioner = models.ForeignKey('Practitioner', null=False, blank=False, related_name='alignments')
-    alignment = models.ForeignKey(Alignment, null=False, blank=False)
+    practitioner = models.ForeignKey('Practitioner', null=False, blank=False, related_name='alignments', on_delete=models.CASCADE)
+    alignment = models.ForeignKey(Alignment, null=False, blank=False, on_delete=models.CASCADE)
     value = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -313,8 +313,8 @@ class PractitionerAlignment(SharedMemoryModel):
 
 class PractitionerFavor(SharedMemoryModel):
 
-    practitioner = models.ForeignKey('Practitioner', blank=False, null=False, related_name='favored_by')
-    alignment = models.ForeignKey(Alignment, blank=False, null=False, related_name='favored')
+    practitioner = models.ForeignKey('Practitioner', blank=False, null=False, related_name='favored_by', on_delete=models.CASCADE)
+    alignment = models.ForeignKey(Alignment, blank=False, null=False, related_name='favored', on_delete=models.CASCADE)
     value = models.PositiveIntegerField(default=0)
     gm_notes = models.TextField(blank=True, null=True)
 
@@ -324,12 +324,12 @@ class PractitionerFavor(SharedMemoryModel):
 
 class Practitioner(SharedMemoryModel):
 
-    character = models.OneToOneField('objects.ObjectDB', blank=False, null=False, related_name='practitioner_record')
+    character = models.OneToOneField('objects.ObjectDB', blank=False, null=False, related_name='practitioner_record', on_delete=models.CASCADE)
     potential = models.PositiveIntegerField(default=1)
     anima = models.PositiveIntegerField(default=1)
     unspent_resonance = models.FloatField(default=0.)
-    raw_alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+')
-    raw_affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+')
+    raw_alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
+    raw_affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
     stat = models.CharField(max_length=40, default="intellect")
     skill = models.CharField(max_length=40, default="occult")
     language = models.CharField(max_length=20, default="Arvani",
@@ -725,8 +725,8 @@ class PractitionerEffect(SharedMemoryModel):
         (LEARN_DISCOVERED, 'Discovery'),
     )
 
-    practitioner = models.ForeignKey(Practitioner, default=False, null=False, related_name='effect_discoveries')
-    effect = models.ForeignKey(Effect, default=False, null=False, related_name='known_by')
+    practitioner = models.ForeignKey(Practitioner, default=False, null=False, related_name='effect_discoveries', on_delete=models.CASCADE)
+    effect = models.ForeignKey(Effect, default=False, null=False, related_name='known_by', on_delete=models.CASCADE)
     learned_by = models.PositiveSmallIntegerField(default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False)
     learned_on = models.DateField(blank=True, null=True)
     learned_notes = models.CharField(max_length=255, blank=True, null=True)
@@ -756,7 +756,7 @@ class SkillNode(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
-    parent_node = models.ForeignKey('self', blank=True, null=True, related_name='child_nodes')
+    parent_node = models.ForeignKey('self', blank=True, null=True, related_name='child_nodes', on_delete=models.CASCADE)
     eyes_open = models.BooleanField(default=False, help_text='If set, then having this node open means '
                                                              'someone\'s eyes are opened.')
     auto_discover = models.BooleanField(default=False)
@@ -764,7 +764,7 @@ class SkillNode(SharedMemoryModel):
                                                        help_text="If we discover these revelations, the node is "
                                                                  "automatically discovered.")
     required_resonance = models.PositiveSmallIntegerField(default=10)
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='nodes')
+    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='nodes', on_delete=models.CASCADE)
     affinity_default = models.BooleanField(default=False,
                                            help_text="Does this node function as the default for this "
                                                      "affinity in its tree?")
@@ -782,8 +782,8 @@ class SkillNode(SharedMemoryModel):
 
 class SkillNodeEffect(SharedMemoryModel):
 
-    node = models.ForeignKey(SkillNode, blank=False, null=False, related_name='effect_records')
-    effect = models.ForeignKey(Effect, blank=False, null=False, related_name='node_records')
+    node = models.ForeignKey(SkillNode, blank=False, null=False, related_name='effect_records', on_delete=models.CASCADE)
+    effect = models.ForeignKey(Effect, blank=False, null=False, related_name='node_records', on_delete=models.CASCADE)
     auto_discover = models.BooleanField(default=False)
     required_resonance = models.PositiveSmallIntegerField(default=0)
 
@@ -803,8 +803,8 @@ class SkillNodeResonance(SharedMemoryModel):
         (LEARN_DISCOVERED, 'Discovery'),
     )
 
-    practitioner = models.ForeignKey(Practitioner, default=False, null=False, related_name='node_resonances')
-    node = models.ForeignKey(SkillNode, default=False, null=False, related_name='known_by')
+    practitioner = models.ForeignKey(Practitioner, default=False, null=False, related_name='node_resonances', on_delete=models.CASCADE)
+    node = models.ForeignKey(SkillNode, default=False, null=False, related_name='known_by', on_delete=models.CASCADE)
     raw_resonance = models.FloatField(default=0.0)
     learned_by = models.PositiveSmallIntegerField(default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False)
     learned_on = models.DateField(blank=True, null=True)
@@ -848,10 +848,10 @@ class SkillNodeResonance(SharedMemoryModel):
 class Condition(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=False, null=False)
-    alignment = models.ForeignKey(Alignment, blank=False, null=False)
-    affinity = models.ForeignKey(Affinity, blank=True, null=True)
+    alignment = models.ForeignKey(Alignment, blank=False, null=False, on_delete=models.CASCADE)
+    affinity = models.ForeignKey(Affinity, blank=True, null=True, on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
-    node = models.ForeignKey(SkillNode, blank=False, null=False, related_name='conditions')
+    node = models.ForeignKey(SkillNode, blank=False, null=False, related_name='conditions', on_delete=models.CASCADE)
     auto_discover = models.BooleanField(default=False)
     required_resonance = models.PositiveSmallIntegerField(blank=True, null=True,
                                                           help_text='If auto_discover is set, the Condition will '
@@ -930,8 +930,8 @@ class Condition(SharedMemoryModel):
 
 class PractitionerCondition(SharedMemoryModel):
 
-    practitioner = models.ForeignKey(Practitioner, related_name='conditions')
-    condition = models.ForeignKey(Condition, related_name='afflicted')
+    practitioner = models.ForeignKey(Practitioner, related_name='conditions', on_delete=models.CASCADE)
+    condition = models.ForeignKey(Condition, related_name='afflicted', on_delete=models.CASCADE)
     gm_notes = models.TextField(null=True, blank=True)
 
     class Meta:
@@ -951,10 +951,10 @@ class Spell(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
-    node = models.ForeignKey(SkillNode, blank=False, null=False, related_name='spells')
+    node = models.ForeignKey(SkillNode, blank=False, null=False, related_name='spells', on_delete=models.CASCADE)
     effects = models.ManyToManyField(Effect, through='SpellEffect', related_name='+')
-    alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+')
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+')
+    alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
+    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
     auto_discover = models.BooleanField(default=False)
     discovered_by_clues = models.ManyToManyField("character.Clue", blank=True, related_name="spells",
                                                  help_text="If we discover any of these clues, the spell is "
@@ -988,8 +988,8 @@ class Spell(SharedMemoryModel):
 
 class SpellEffect(SharedMemoryModel):
 
-    spell = models.ForeignKey(Spell, blank=False, null=False, related_name='spell_effects')
-    effect = models.ForeignKey(Effect, blank=False, null=False, related_name='+')
+    spell = models.ForeignKey(Spell, blank=False, null=False, related_name='spell_effects', on_delete=models.CASCADE)
+    effect = models.ForeignKey(Effect, blank=False, null=False, related_name='+', on_delete=models.CASCADE)
     primary = models.BooleanField(default=False)
 
     class Meta:
@@ -1008,8 +1008,8 @@ class PractitionerSpell(SharedMemoryModel):
         (LEARN_DISCOVERED, 'Discovery'),
     )
 
-    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='spell_discoveries')
-    spell = models.ForeignKey(Spell, blank=False, null=False, related_name='known_by')
+    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='spell_discoveries', on_delete=models.CASCADE)
+    spell = models.ForeignKey(Spell, blank=False, null=False, related_name='known_by', on_delete=models.CASCADE)
     learned_by = models.PositiveSmallIntegerField(default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False)
     learned_on = models.DateField(blank=False, null=False)
     learned_notes = models.CharField(max_length=255, blank=True, null=True)
@@ -1029,8 +1029,8 @@ class PractitionerSpell(SharedMemoryModel):
 
 class Attunement(SharedMemoryModel):
 
-    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='attunements')
-    obj = models.ForeignKey('objects.ObjectDB', blank=False, null=False, related_name='attuned_by')
+    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='attunements', on_delete=models.CASCADE)
+    obj = models.ForeignKey('objects.ObjectDB', blank=False, null=False, related_name='attuned_by', on_delete=models.CASCADE)
     raw_attunement_level = models.FloatField(default=0.0)
 
     def __repr__(self):
@@ -1049,8 +1049,8 @@ class Attunement(SharedMemoryModel):
 
 class FamiliarAttunement(SharedMemoryModel):
 
-    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='familiars')
-    familiar = models.ForeignKey('dominion.Agent', blank=False, null=False, related_name='bondmates')
+    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='familiars', on_delete=models.CASCADE)
+    familiar = models.ForeignKey('dominion.Agent', blank=False, null=False, related_name='bondmates', on_delete=models.CASCADE)
     raw_attunement_level = models.FloatField(default=0.0)
 
     def __repr__(self):
@@ -1083,11 +1083,11 @@ class MagicBucket(SharedMemoryModel):
 
 class WorkingParticipant(SharedMemoryModel):
 
-    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='+')
-    working = models.ForeignKey('Working', blank=False, null=False, related_name='participant_records')
+    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='+', on_delete=models.CASCADE)
+    working = models.ForeignKey('Working', blank=False, null=False, related_name='participant_records', on_delete=models.CASCADE)
     accepted = models.BooleanField(default=False)
-    tool = models.ForeignKey(Attunement, blank=True, null=True, related_name='+')
-    familiar = models.ForeignKey(FamiliarAttunement, blank=True, null=True, related_name='+')
+    tool = models.ForeignKey(Attunement, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
+    familiar = models.ForeignKey(FamiliarAttunement, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
     drained = models.ManyToManyField('objects.ObjectDB', related_name='+')
 
     def __str__(self):
@@ -1140,16 +1140,16 @@ class Working(SharedMemoryModel):
         (QUIET_TOTAL, "Total"),
     )
 
-    lead = models.ForeignKey(Practitioner, related_name='workings', blank=False, null=False)
+    lead = models.ForeignKey(Practitioner, related_name='workings', blank=False, null=False, on_delete=models.CASCADE)
     practitioners = models.ManyToManyField(Practitioner, through='WorkingParticipant', related_name='assisted_workings')
     template = models.BooleanField(default=False)
     template_name = models.CharField(max_length=40, blank=True, null=True)
     quiet_level = models.PositiveSmallIntegerField(default=QUIET_NONE, choices=QUIET_TYPES)
     intent = models.TextField(blank=True, null=True)
-    spell = models.ForeignKey(Spell, blank=True, null=True)
-    weave_effect = models.ForeignKey(Effect, blank=True, null=True, related_name='+')
-    weave_alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+')
-    weave_affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+')
+    spell = models.ForeignKey(Spell, blank=True, null=True, on_delete=models.CASCADE)
+    weave_effect = models.ForeignKey(Effect, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
+    weave_alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
+    weave_affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+', on_delete=models.CASCADE)
     target_string = models.CharField(max_length=60, blank=True, null=True)
     econ = models.PositiveSmallIntegerField(blank=True, null=True)
     gm_cost = models.PositiveIntegerField(blank=True, null=True)

@@ -41,8 +41,8 @@ def get_unit_class_by_id(unit_id, unit_model=None):
         cls = _UNIT_TYPES[unit_id]
     except KeyError:
         if unit_model:
-            print "ERROR: Unit type not found for MilitaryUnit obj #%s!" % unit_model.id
-        print "Attempted Unit class ID was %s. Not found, using Infantry as fallback." % unit_id
+            print( "ERROR: Unit type not found for MilitaryUnit obj #%s!" % unit_model.id )
+        print( "Attempted Unit class ID was %s. Not found, using Infantry as fallback." % unit_id )
         traceback.print_exc()
         cls = unit_constants.INFANTRY
     return cls
@@ -170,7 +170,7 @@ class UnitStats(PositionActor):
             self.quantity = dbobj.quantity
             self.starting_quantity = dbobj.quantity
         except AttributeError:
-            print "ERROR: No dbobj for UnitStats found! Using default values."
+            print( "ERROR: No dbobj for UnitStats found! Using default values." )
             traceback.print_exc()
             self.morale = 0
             self.level = 0
@@ -284,7 +284,7 @@ class UnitStats(PositionActor):
                 x, y, z = self.storm_targ_pos
                 self.move_toward_position(x, y, z, self.movement)
             except (TypeError, ValueError):
-                print "ERROR when attempting to move toward castle. storm_targ_pos: %s" % str(self.storm_targ_pos)
+                print( "ERROR when attempting to move toward castle. storm_targ_pos: %s" % str(self.storm_targ_pos) )
         self.log.info("%s has moved. Now at pos: %s" % (self, str(self.position)))
     
     def cleanup(self):

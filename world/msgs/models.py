@@ -32,8 +32,8 @@ class Inform(models.Model):
         is_unread - Whether the player has read the inform
         week - The # of the week during which this inform was created.
     """
-    player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="informs", blank=True, null=True)
-    organization = models.ForeignKey("dominion.Organization", related_name="informs", blank=True, null=True)
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="informs", blank=True, null=True, on_delete=models.CASCADE)
+    organization = models.ForeignKey("dominion.Organization", related_name="informs", blank=True, null=True, on_delete=models.CASCADE)
     message = models.TextField("Information sent to player or org")
     # send date
     date_sent = models.DateTimeField(editable=False, auto_now_add=True, db_index=True)

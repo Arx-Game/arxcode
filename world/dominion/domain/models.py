@@ -43,8 +43,8 @@ class Minister(SharedMemoryModel):
         (WARFARE, 'Warfare'),
         )
     title = models.CharField(blank=True, null=True, max_length=255)
-    player = models.ForeignKey("PlayerOrNpc", related_name="appointments", blank=True, null=True, db_index=True)
-    ruler = models.ForeignKey("Ruler", related_name="ministers", blank=True, null=True, db_index=True)
+    player = models.ForeignKey("PlayerOrNpc", related_name="appointments", blank=True, null=True, db_index=True, on_delete=models.CASCADE)
+    ruler = models.ForeignKey("Ruler", related_name="ministers", blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     category = models.PositiveSmallIntegerField(choices=MINISTER_TYPES, default=INCOME)
 
     def __str__(self):
@@ -62,24 +62,19 @@ class Army(SharedMemoryModel):
     name = models.CharField(blank=True, null=True, max_length=80, db_index=True)
     desc = models.TextField(blank=True, null=True)
     # the domain that we obey the orders of. Not the same as who owns us, necessarily
-    domain = models.ForeignKey("Domain", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                               db_index=True)
+    domain = models.ForeignKey("Domain", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True, db_index=True)
     # current location of this army
     land = models.ForeignKey("Land", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True)
     # if the army is located as a castle garrison
     castle = models.ForeignKey("Castle", on_delete=models.SET_NULL, related_name="garrison", blank=True, null=True)
     # The field leader of this army. Units under his command may have their own commanders
-    general = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                                db_index=True)
+    general = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True, db_index=True)
     # an owner who may be the same person who owns the domain. Or not, in the case of mercs, sent reinforcements, etc
-    owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                              db_index=True)
+    owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True, db_index=True)
     # Someone giving orders for now, like a mercenary group's current employer
-    temp_owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="loaned_armies", blank=True,
-                                   null=True, db_index=True)
+    temp_owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="loaned_armies", blank=True, null=True, db_index=True)
     # a relationship to self for smaller groups within the army
-    group = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                              db_index=True)
+    group = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True, db_index=True)
     # food we're carrying with us on transports or whatever
     stored_food = models.PositiveSmallIntegerField(default=0, blank=0)
     # whether the army is starving. 0 = not starving, 1 = starting to starve, 2 = troops dying/deserting
@@ -547,20 +542,18 @@ class Orders(SharedMemoryModel):
         (EQUIP, 'Upgrade Equipment'),
         # using army in a crisis action
         (CRISIS, 'Crisis Response'))
-    army = models.ForeignKey("Army", related_name="orders", null=True, blank=True, db_index=True)
+    army = models.ForeignKey("Army", related_name="orders", null=True, blank=True, db_index=True, on_delete=models.CASCADE)
     # for realm PVP and realm offense/defense
-    target_domain = models.ForeignKey("Domain", related_name="orders", null=True, blank=True, db_index=True)
+    target_domain = models.ForeignKey("Domain", related_name="orders", null=True, blank=True, db_index=True, on_delete=models.CASCADE)
     # for travel and exploration
-    target_land = models.ForeignKey("Land", related_name="orders", null=True, blank=True)
+    target_land = models.ForeignKey("Land", related_name="orders", null=True, blank=True, on_delete=models.CASCADE)
     # an individual's support for training, morale, equipment
-    target_character = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="orders", blank=True,
-                                         null=True, db_index=True)
+    target_character = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="orders", blank=True, null=True, db_index=True)
     # if we're targeting an action or asist. omg skorpins.
-    action = models.ForeignKey("PlotAction", related_name="orders", null=True, blank=True, db_index=True)
-    action_assist = models.ForeignKey("PlotActionAssistant", related_name="orders", null=True, blank=True,
-                                      db_index=True)
+    action = models.ForeignKey("PlotAction", related_name="orders", null=True, blank=True, db_index=True, on_delete=models.CASCADE)
+    action_assist = models.ForeignKey("PlotActionAssistant", related_name="orders", null=True, blank=True, db_index=True, on_delete=models.CASCADE)
     # if we're assisting another army's orders
-    assisting = models.ForeignKey("self", related_name="assisting_orders", null=True, blank=True, db_index=True)
+    assisting = models.ForeignKey("self", related_name="assisting_orders", null=True, blank=True, db_index=True, on_delete=models.CASCADE)
     type = models.PositiveSmallIntegerField(choices=ORDER_CHOICES, default=TRAIN)
     coin_cost = models.PositiveIntegerField(default=0, blank=0)
     food_cost = models.PositiveIntegerField(default=0, blank=0)
@@ -619,7 +612,7 @@ class UnitTypeInfo(models.Model):
 
 class OrgUnitModifiers(UnitTypeInfo):
     """Model that has modifiers from an org to make a special unit"""
-    org = models.ForeignKey('Organization', related_name="unit_mods", db_index=True)
+    org = models.ForeignKey('Organization', related_name="unit_mods", db_index=True, on_delete=models.CASCADE)
     mod = models.SmallIntegerField(default=0, blank=0)
     name = models.CharField(blank=True, null=True, max_length=80)
 
@@ -638,19 +631,17 @@ class MilitaryUnit(UnitTypeInfo):
     only need to store modifiers for a unit that are specific to it, modifiers it has
     accured.
     """
-    origin = models.ForeignKey('Organization', related_name='units', blank=True, null=True, db_index=True)
+    origin = models.ForeignKey('Organization', related_name='units', blank=True, null=True, db_index=True, on_delete=models.CASCADE)
     commander = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="units", blank=True, null=True)
-    army = models.ForeignKey("Army", related_name="units", blank=True, null=True, db_index=True)
-    orders = models.ForeignKey("Orders", related_name="units", on_delete=models.SET_NULL, blank=True, null=True,
-                               db_index=True)
+    army = models.ForeignKey("Army", related_name="units", blank=True, null=True, db_index=True, on_delete=models.CASCADE)
+    orders = models.ForeignKey("Orders", related_name="units", on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     quantity = models.PositiveSmallIntegerField(default=1, blank=1)
     level = models.PositiveSmallIntegerField(default=0, blank=0)
     equipment = models.PositiveSmallIntegerField(default=0, blank=0)
     # can go negative, such as when adding new recruits to a unit
     xp = models.SmallIntegerField(default=0, blank=0)
     # if a hostile area has bandits or whatever, we're not part of an army, just that
-    hostile_area = models.ForeignKey("HostileArea", on_delete=models.SET_NULL, related_name="units", blank=True,
-                                     null=True)
+    hostile_area = models.ForeignKey("HostileArea", on_delete=models.SET_NULL, related_name="units", blank=True, null=True)
 
     def display(self):
         """
@@ -1354,10 +1345,10 @@ class DomainProject(SharedMemoryModel):
     amount = models.PositiveSmallIntegerField(blank=1, default=1)
     unit_type = models.PositiveSmallIntegerField(default=1, blank=1)
     time_remaining = models.PositiveIntegerField(default=1, blank=1)
-    domain = models.ForeignKey("Domain", related_name="projects", blank=True, null=True)
-    castle = models.ForeignKey("Castle", related_name="projects", blank=True, null=True)
-    military = models.ForeignKey("Army", related_name="projects", blank=True, null=True)
-    unit = models.ForeignKey("MilitaryUnit", related_name="projects", blank=True, null=True)
+    domain = models.ForeignKey("Domain", related_name="projects", blank=True, null=True, on_delete=models.CASCADE)
+    castle = models.ForeignKey("Castle", related_name="projects", blank=True, null=True, on_delete=models.CASCADE)
+    military = models.ForeignKey("Army", related_name="projects", blank=True, null=True, on_delete=models.CASCADE)
+    unit = models.ForeignKey("MilitaryUnit", related_name="projects", blank=True, null=True, on_delete=models.CASCADE)
 
     def advance_project(self, report=None, increment=1):
         """Makes progress on a project for a domain"""
@@ -1430,7 +1421,7 @@ class Castle(SharedMemoryModel):
         (FORTIFIED_CASTLE, 'Fortified Castle'),
         (EPIC_CASTLE, 'Epic Castle'))
     level = models.PositiveSmallIntegerField(default=MOTTE_AND_BAILEY)
-    domain = models.ForeignKey("Domain", related_name="castles", blank=True, null=True)
+    domain = models.ForeignKey("Domain", related_name="castles", blank=True, null=True, on_delete=models.CASCADE)
     damage = models.PositiveSmallIntegerField(default=0, blank=0)
     # cosmetic info:
     name = models.CharField(null=True, blank=True, max_length=80)
@@ -1474,12 +1465,11 @@ class Ruler(SharedMemoryModel):
     the liege/vassal relationships between ruler objects.
     """
     # the person who's skills are used to govern the domain
-    castellan = models.OneToOneField("PlayerOrNpc", blank=True, null=True)
+    castellan = models.OneToOneField("PlayerOrNpc", blank=True, null=True, on_delete=models.CASCADE)
     # the house that owns the domain
     house = models.OneToOneField("AssetOwner", on_delete=models.SET_NULL, related_name="estate", blank=True, null=True)
     # a ruler object that this object owes its alliegance to
-    liege = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="vassals", blank=True, null=True,
-                              db_index=True)
+    liege = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="vassals", blank=True, null=True, db_index=True)
 
     def _get_titles(self):
         return ", ".join(domain.title for domain in self.domains.all())

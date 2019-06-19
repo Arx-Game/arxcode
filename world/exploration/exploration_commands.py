@@ -31,7 +31,7 @@ class CmdTestMonsterBuild(ArxCommand):
             except ValueError:
                 self.msg("You need to provide an integer value!")
                 return
-            except Monster.DoesNotExist, Monster.MultipleObjectsReturned:
+            except (Monster.DoesNotExist, Monster.MultipleObjectsReturned):
                 self.msg("That doesn't appear to be a valid monster!")
                 return
 

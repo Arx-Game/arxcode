@@ -15,7 +15,8 @@ from django.views.static import serve
 urlpatterns = [
     # User Authentication
     url(r'^accounts/login',  auth_views.LoginView.as_view(template_name="login.html"), name='login'),
-    url(r'^accounts/logout', auth_views.logout),
+    # url(r'^accounts/logout', auth_views.logout),
+    url('^accounts/logout', auth_views.LogoutView, {'next_page': settings.LOGIN_REDIRECT_URL}, name='logout'),
 
     # Front page
     url(r'^', include('web.website.urls')),
@@ -24,28 +25,28 @@ urlpatterns = [
 
     # Admin interface
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
-    url(r'^admin/', include(admin.site.urls)),
+    # url(r'^admin/', include(admin.site.urls)),
 
-    url(r'^webclient/', include('web.website.webclient_urls', namespace='webclient', app_name='webclient')),
+    url(r'^webclient/', include(('web.website.webclient_urls', 'webclient'), namespace='webclient')),
 
     # favicon
     url(r'^favicon\.ico$', RedirectView.as_view(url='/static/images/favicon.ico', permanent=False)),
 
-    url(r'^character/', include('web.character.urls', namespace='character', app_name='character')),
+    url(r'^character/', include(('web.character.urls', 'character'), namespace='character')),
 
-    url(r'^topics/', include('web.help_topics.urls', namespace='help_topics', app_name='help_topics')),
+    url(r'^topics/', include(('web.help_topics.urls', 'help_topics'), namespace='help_topics')),
 
-    url(r'^dom/', include('world.dominion.urls', namespace='dominion', app_name='dominion')),
+    url(r'^dom/', include(('world.dominion.urls', 'dominion'), namespace='dominion')),
 
-    url(r'^comms/', include('world.msgs.urls', namespace='msgs', app_name='msgs')),
+    url(r'^comms/', include(('world.msgs.urls', 'msgs'), namespace='msgs')),
 
     url(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
 
     url(r'^support/', include('web.helpdesk.urls')),
 
-    url(r'^admintools/', include('web.admintools.urls', namespace='admintools', app_name='admintools')),
+    url(r'^admintools/', include(('web.admintools.urls', 'admintools'), namespace='admintools')),
 
-    url(r'^explore/', include('world.exploration.urls', namespace='exploration', app_name='exploration')),
+    url(r'^explore/', include(('world.exploration.urls', 'exploration'), namespace='exploration')),
 ]
 
 # This sets up the server if the user want to run the Django

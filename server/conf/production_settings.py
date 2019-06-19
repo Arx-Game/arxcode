@@ -5,12 +5,12 @@ from .base_settings import *
 
 from decouple import config, Csv
 
-TELNET_INTERFACES = config('TELNET_INTERFACES', default='45.33.87.194', cast=Csv())
-WEBSOCKET_CLIENT_INTERFACE = config('WEBSOCKET_CLIENT_INTERFACE', default='45.33.87.194')
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='.arxmush.org, .arxgame.org', cast=Csv())
+TELNET_INTERFACES = config('TELNET_INTERFACES', default='127.0.0.1', cast=Csv())
+WEBSOCKET_CLIENT_INTERFACE = config('WEBSOCKET_CLIENT_INTERFACE', default='172.0.0.1')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='jolt', cast=Csv())
 WEBSERVER_PORTS = [(8000, 5001)]
 WEBSOCKET_CLIENT_PORT = 8001
-WEBSOCKET_CLIENT_URL = "wss://play.arxgame.org/ws"
+WEBSOCKET_CLIENT_URL = "wss://127.0.0.1/ws"
 SSH_PORTS = [8022]
 SSL_PORTS = [4001]
 AMP_PORT = 5000

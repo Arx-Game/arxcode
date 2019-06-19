@@ -109,4 +109,4 @@ class Guest(Account):
         except Exception as err:
             import traceback
             traceback.print_exc()
-            print "Error in logging messages to guest channel: %s" % err
+            print("Error in logging messages to guest channel: %s" % err)

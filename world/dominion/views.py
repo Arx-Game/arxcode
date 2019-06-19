@@ -10,7 +10,7 @@ from .view_utils import EventHTMLCalendar
 from django.http import HttpResponseRedirect, HttpResponse
 from django.http import Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
@@ -527,7 +527,7 @@ def generate_fealty_chart(request, filename, include_npcs=False):
 
     def add_vassals(G, org):
         if not org:
-            print "Something has gone horribly wrong!"
+            print("Something has gone horribly wrong!")
         else:
             org_name = org.name
             org_rank_1 = org.living_members.filter(rank=1).first()
@@ -577,7 +577,7 @@ def generate_fealty_chart(request, filename, include_npcs=False):
         return response
 
     except Exception as e:
-        print e
+        print(e)
         raise Http404
 
 

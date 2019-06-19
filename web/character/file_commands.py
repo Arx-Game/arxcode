@@ -31,7 +31,7 @@ class CmdAdminFile(ArxCommand):
         try:
             character = RosterEntry.objects.get(character__db_key__iexact=accountstring)
             return character.current_account
-        except RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned:
+        except (RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned):
             pass
 
         return None
@@ -45,7 +45,7 @@ class CmdAdminFile(ArxCommand):
             if character.current_account and character.current_account not in result:
                 result.append(character.current_account)
             return result
-        except RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned:
+        except (RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned):
             pass
 
         return None

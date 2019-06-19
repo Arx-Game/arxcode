@@ -16,6 +16,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='ticket',
             name='submitting_player',
-            field=models.ForeignKey(related_name='tickets', verbose_name='Player who opened this ticket', blank=True, to=settings.AUTH_USER_MODEL, null=True),
+            field=models.ForeignKey(related_name='tickets',
+                                    verbose_name='Player who opened this ticket',
+                                    blank=True,
+                                    to=settings.AUTH_USER_MODEL,
+                                    null=True,
+                                    on_delete=models.CASCADE),
         ),
     ]
