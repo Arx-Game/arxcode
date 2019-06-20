@@ -60,7 +60,7 @@ from evennia.utils import create
 from django.db import models
 from django.db.models import Q, Count, F, Sum, Case, When
 from django.conf import settings
-#from django.core.urlresolvers import reverse
+from django.urls import reverse
 
 from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
 from .reports import WeeklyReport
@@ -2089,7 +2089,7 @@ class Organization(InformMixin, SharedMemoryModel):
 
     def get_absolute_url(self):
         """Returns URL of the org webpage"""
-        return "http://localhost/" #reverse('help_topics:display_org', kwargs={'object_id': self.id})
+        return reverse('help_topics:display_org', kwargs={'object_id': self.id})
 
     @property
     def channel_color(self):
