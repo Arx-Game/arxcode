@@ -258,7 +258,7 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
             other_options = options.copy()
             from_dir = options.get('from_dir', 'from nearby')
             new_from_dir = "from the %s" % str(self.reverse_exit)
-            if hasattr(text, '__iter__'):
+            if not isinstance(text, str):
                 text = text[0]
             text = text.replace(from_dir, new_from_dir)
             del other_options['shout']
@@ -392,7 +392,7 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             other_options = options.copy()
             from_dir = options.get('from_dir', 'from nearby')
             new_from_dir = "from the %s" % str(self.reverse_exit)
-            if hasattr(text, '__iter__'):
+            if not isinstance(text, str):
                 text = text[0]
             text = text.replace(from_dir, new_from_dir)
             del other_options['shout']

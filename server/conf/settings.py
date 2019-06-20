@@ -158,8 +158,8 @@ SECRET_KEY = config('SECRET_KEY', default="PLEASEREPLACEME12345")
 HOST_BLOCKER_API_KEY = config('HOST_BLOCKER_API_KEY', default="SOME_KEY")
 import cloudinary
 cloudinary.config(cloud_name=config('CLOUDINARY_NAME', default="SOME_NAME"),
-                  api_key=config('CLOUDINARY_API_KEY', default="SOME_KEY"), api_secret=config('CLOUDINARY_API_SECRET',
-                                                                                              default="SOME_KEY"))
+                  api_key=config('CLOUDINARY_API_KEY', default="SOME_KEY"),
+                  api_secret=config('CLOUDINARY_API_SECRET', default="SOME_KEY"))
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='localhost')

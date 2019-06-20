@@ -173,7 +173,7 @@ class ArxCommandTest(ArxTestConfigMixin, CommandTest):
             stored_msg = [args[0] if args and args[0] else kwargs.get("text", utils.to_str(kwargs, force_string=True))
                           for name, args, kwargs in receiver.msg.mock_calls]
             # Get the first element of a tuple if msg received a tuple instead of a string
-            stored_msg = [smsg[0] if hasattr(smsg, '__iter__') else smsg for smsg in stored_msg]
+            stored_msg = [smsg[0] if not isinstance(smsg, str) else smsg for smsg in stored_msg]
             if msg is not None:
                 returned_msg = self.format_returned_msg(stored_msg, noansi)
                 if msg == "" and returned_msg or returned_msg != msg.strip():

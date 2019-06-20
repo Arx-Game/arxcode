@@ -333,7 +333,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         exclude is a list of objects not to send to. See self.msg() for
                 more info.
         """
-        if hasattr(text, '__iter__'):
+        if not isinstance(text, str):
             try:
                 message = text[0]
             except IndexError:
