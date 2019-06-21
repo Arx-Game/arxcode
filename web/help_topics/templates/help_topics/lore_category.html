@@ -2,23 +2,26 @@
 {% load app_filters %}
 {% block content %}
 <div class="container">
-    <h2>{{ kb_cat.title }}</h2>
+    <h1>{{ kb_cat.title }}</h1>
+    {% if kb_cat.description %}
     <div class="well">
-        <p>{{ kb_cat.description|mush_to_html }}</p>
+        {{ kb_cat.description|mush_to_html }}
     </div>
+    {% endif %}
 
-    <h3>Entries</h3>
+    <h2>Entries</h2>
     {% for entry in kb_items %}
     <div class="dividingBorderAbove">
-        <strong>{{ entry.title|mush_to_html }}</strong>
+        <p class="newsHeading">{{ entry.title|mush_to_html }}</p>
         {% if entry.question %}
-        <br><strong>Question:</strong> {{ entry.question|mush_to_html }}
+        <p class="newsSummary"><strong>Question:</strong> {{ entry.question|mush_to_html }}</p>
         {% endif %}
-        <p><strong>Answer:</strong> {{ entry.answer|mush_to_html }}</p>
+        {% if entry.answer %}
+        <p class="newsSummary"><strong>Answer:</strong> {{ entry.answer|mush_to_html }}</p>
+        {% endif %}
     </div>
     {% empty %}
-    <div>None yet exist.</div>
+    <div class="newsSummary">None yet exist.</div>
     {% endfor %}
-
 </div>
 {% endblock %}
