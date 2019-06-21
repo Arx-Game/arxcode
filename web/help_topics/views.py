@@ -6,6 +6,7 @@ from django.shortcuts import render, get_object_or_404
 from evennia.help.models import HelpEntry
 from world.dominion.models import (CraftingRecipe, CraftingMaterialType,
                                    Organization, Member)
+from web.helpdesk.models import KBCategory
 
 
 def topic(request, object_key):
@@ -62,8 +63,10 @@ def list_topics(request):
                                                       & Q(members__player__player=user))
     except Exception:
         pass
+    lore_categories = KBCategory.objects.all()
     return render(request, 'help_topics/list.html', {'all_topics': all_topics,
                                                      'all_categories': all_categories,
+                                                     'lore_categories': lore_categories,
                                                      'all_orgs': all_orgs,
                                                      'secret_orgs': secret_orgs,
                                                      'page_title': 'topics'})
@@ -175,3 +178,9 @@ def list_commands(request):
                                                               'character_cmds': char_cmds,
                                                               'situational_cmds': situational_cmds,
                                                               'page_title': 'commands'})
+
+def lore_categories(request, object_id):
+    kb_cat = get_object_or_404(KBCategory, id=object_id)
+    return render(request, 'help_topics/lore_category.html', {'kb_cat': kb_cat,
+                                                              'kb_items': kb_cat.kb_items.all(),
+                                                              'page_title': kb_cat})
