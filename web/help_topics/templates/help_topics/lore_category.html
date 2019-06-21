@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load app_filters %}
+{% block content %}
+<div class="container">
+    <h2>{{ kb_cat.title }}</h2>
+    <div class="well">
+        <p>{{ kb_cat.description|mush_to_html }}</p>
+    </div>
+
+    <h3>Entries</h3>
+    {% for entry in kb_items %}
+    <div class="dividingBorderAbove">
+        <strong>{{ entry.title|mush_to_html }}</strong>
+        {% if entry.question %}
+        <br><strong>Question:</strong> {{ entry.question|mush_to_html }}
+        {% endif %}
+        <p><strong>Answer:</strong> {{ entry.answer|mush_to_html }}</p>
+    </div>
+    {% empty %}
+    <div>None yet exist.</div>
+    {% endfor %}
+
+</div>
+{% endblock %}

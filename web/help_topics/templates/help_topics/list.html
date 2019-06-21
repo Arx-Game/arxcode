@@ -44,7 +44,7 @@
 
 	<div class="row {% cycle 'bg-success' 'bg-info' as rowcolors %} text-center">
 	<button data-toggle="collapse" data-target="#Topics">
-	<h1 class="bg-primary">Lore Topics</h1></button>
+	<h1 class="bg-primary">Gameplay Topics</h1></button>
 	</div> <!--button-->
 	<div id="Topics" class="collapse in">
     {% for category in all_categories %}
@@ -64,10 +64,25 @@
       <li>No categories found.</li>
     {% endfor %}
 	</div><!-- collapse-in -->
-	<div class="row"><br><hr /></div>
+
+	<div class="row {% cycle 'bg-success' 'bg-info' as rowcolors %} text-center">
+	<button data-toggle="collapse" data-target="#Lore">
+	<h1 class="bg-primary">Lore Topics</h1></button>
+	</div> <!--button-->
+	<div id="Lore" class="collapse in">
+		<ul class="list-inline text-center">
+		{% for cat in lore_categories %}
+			<li><a href="{% url 'help_topics:lore' cat.id %}">{{ cat }}</a></li>
+			{% empty %}
+			<li>No lore found.</li>
+		{% endfor %}
+		</ul>
+	</div>
 	
 	<div class="row {% cycle rowcolors %}">
-	<h1 class="text-center"><span class="label label-primary">Organizations</span></h1>
+	<button data-toggle="collapse" data-target="#Orgs">
+	<h1 class="bg-primary">Organizations</h1></button>
+	<div id="Orgs" class="collapse in">
 	<ul class="list-inline text-center">
     {% for org in all_orgs %}
                 
@@ -79,7 +94,7 @@
     {% endfor %}
 	</ul>
 	</div>
-	<div class="row"><br><hr /></div>
+	</div>
 	
 	{% if secret_orgs %}
 	<div class="row {% cycle rowcolors %}">
