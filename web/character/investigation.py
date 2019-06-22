@@ -1447,7 +1447,7 @@ class CmdListClues(ArxPlayerCommand):
 
     def disp_clue_table(self):
         table = PrettyTable(["{wClue #{n", "{wSubject{n", "{wType{n"])
-        discoveries = self.clue_discoveries.order_by('date')
+        discoveries = self.clue_discoveries.select_related('clue').order_by('date')
         if "search" in self.switches:
             msg = "{wMatching Clues{n\n"
             discoveries = discoveries.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
