@@ -63,7 +63,7 @@ def list_topics(request):
                                                       & Q(members__player__player=user))
     except Exception:
         pass
-    lore_categories = KBCategory.objects.all()
+    lore_categories = KBCategory.objects.filter(parent__isnull=True)
     return render(request, 'help_topics/list.html', {'all_topics': all_topics,
                                                      'all_categories': all_categories,
                                                      'lore_categories': lore_categories,
@@ -183,4 +183,6 @@ def lore_categories(request, object_id):
     kb_cat = get_object_or_404(KBCategory, id=object_id)
     return render(request, 'help_topics/lore_category.html', {'kb_cat': kb_cat,
                                                               'kb_items': kb_cat.kb_items.all(),
+                                                              'kb_subs': kb_cat.subcategories.all(),
+                                                              'kb_parent': kb_cat.parent,
                                                               'page_title': kb_cat})
