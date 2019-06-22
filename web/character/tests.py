@@ -264,6 +264,18 @@ class ViewTests(ArxTest):
         response = self.client.get(reverse('character:list_flashbacks', kwargs={'object_id': self.char2.id}))
         self.assertEqual(response.status_code, 200)
 
+    def test_view_tagged_clues(self):
+        """tags are rendered with clues"""
+        tag1 = SearchTag.objects.create(name="foo")
+        tag2 = SearchTag.objects.create(name="bar")
+        tag3 = SearchTag.objects.create(name="zep")
+        clue = Clue.objects.create(name="test clue", rating=10, desc="test clue desc")
+        clue.search_tags.add(tag1, tag2, tag3)
+        self.roster_entry2.clue_discoveries.create(clue=clue, message="additional text test")
+        self.assertEqual(self.client.login(username='TestAccount2', password='testpassword'), True)
+        response = self.client.get(reverse('character:list_clues', kwargs={'object_id': self.char2.id}))
+        self.assertContains(response, "foo, bar, zep")
+
 
 class PRPClueTests(ArxCommandTest):
     def setUp(self):
