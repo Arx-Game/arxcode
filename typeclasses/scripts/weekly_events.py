@@ -133,7 +133,6 @@ class WeeklyEvents(RunDateMixin, Script):
         self.post_top_prestige()
         # dominion stuff
         self.do_dominion_events()
-        self.do_investigations()
         self.cleanup_stale_attributes()
         self.post_inactives()
         self.db.pose_counter = (self.db.pose_counter or 0) + 1
@@ -142,6 +141,7 @@ class WeeklyEvents(RunDateMixin, Script):
             self.count_poses()
         self.db.week += 1
         self.reset_action_points()
+        self.do_investigations()
         self.inform_creator.create_and_send_informs()
         if reset:
             self.record_awarded_values()

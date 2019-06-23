@@ -330,21 +330,40 @@ class RosterEntry(SharedMemoryModel):
     @property
     def action_point_regen(self):
         """How many action points we get back in a week."""
-        return 150 - self.action_point_penalty
+        return 150 + self.action_point_regen_modifier
 
     @CachedProperty
-    def action_point_penalty(self):
+    def action_point_regen_modifier(self):
         """AP penalty from our number of fealties"""
+        from world.dominion.plots.models import PlotAction, PlotActionAssistant
+        ap_mod = 0
+        # they lose 10 AP per fealty they're in
         try:
-            return 10 * self.player.Dominion.num_fealties
+            ap_mod -= 10 * self.player.Dominion.num_fealties
         except AttributeError:
-            return 0
+            pass
+        # gain 20 AP for not having an investigation
+        if not self.investigations.filter(active=True).exists():
+            ap_mod += 20
+        # gain 20 AP per unused action, 40 max
+        try:
+            unused_actions = PlotAction.max_requests - self.player.Dominion.recent_actions.count()
+            ap_mod += 20 * unused_actions
+        except AttributeError:
+            pass
+        # gain 5 AP per unused assist, 20 max
+        try:
+            unused_assists = PlotActionAssistant.MAX_ASSISTS - self.player.Dominion.recent_assists.count()
+            ap_mod += 5 * unused_assists
+        except AttributeError:
+            pass
+        return ap_mod
 
     @classmethod
     def clear_ap_cache_in_cached_instances(cls):
         """Invalidate cached_ap_penalty in all cached RosterEntries when Fealty chain changes. Won't happen often."""
         for instance in cls.get_all_cached_instances():
-            delattr(instance, 'action_point_penalty')
+            delattr(instance, 'action_point_regen_modifier')
 
 
 class Story(SharedMemoryModel):
@@ -1497,6 +1516,7 @@ class Investigation(AbstractPlayerAllocations):
     def mark_active(self):
         self.active = True
         self.do_roll()
+        del self.character.action_point_regen_modifier
 
     @property
     def targeted_clue(self):

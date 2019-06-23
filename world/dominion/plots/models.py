@@ -403,7 +403,7 @@ class PlotUpdate(SharedMemoryModel):
 class AbstractAction(AbstractPlayerAllocations):
     """Abstract parent class representing a player's participation in an action"""
     NOUN = "Action"
-    BASE_AP_COST = 50
+    BASE_AP_COST = 200
     secret_actions = models.TextField("Secret actions the player is taking", blank=True)
     attending = models.BooleanField(default=True)
     traitor = models.BooleanField(default=False)
@@ -774,6 +774,10 @@ class PlotAction(AbstractAction):
         return "%s by %s%s" % (self.NOUN, self.author, plot)
 
     @property
+    def authors(self):
+        return [ob.author for ob in self.action_and_assists]
+
+    @property
     def commafied_participants(self):
         dompc_list = [str(self.dompc)]
         for assist in self.assistants.all():
@@ -1071,6 +1075,9 @@ class PlotAction(AbstractAction):
                 assist.submit_or_refund()
             inform_staff("%s submitted action #%s. %s" % (self.author, self.id, self.get_summary_text()))
         super(PlotAction, self).on_submit_success()
+        # clear cached AP regen
+        for dompc in self.authors:
+            del dompc.player.roster.action_point_regen_modifier
 
     def post_edit(self):
         """Announces that we've finished editing our action and are ready for a GM"""
@@ -1160,7 +1167,7 @@ NAMES_OF_PROPERTIES_TO_PASS_THROUGH = ['plot', 'action_and_assists', 'status', '
 class PlotActionAssistant(AbstractAction):
     """An assist for a plot action - a player helping them out and writing how."""
     NOUN = "Assist"
-    BASE_AP_COST = 10
+    BASE_AP_COST = 100
     MAX_ASSISTS = 4
     plot_action = models.ForeignKey("PlotAction", db_index=True, related_name="assisting_actions")
     dompc = models.ForeignKey("PlayerOrNpc", db_index=True, related_name="assisting_actions")
@@ -1253,7 +1260,7 @@ class PlotActionAssistant(AbstractAction):
         # if we haven't spent all our actions, we'll let them use it on assists
         if self.free_action or self.plot_action.free_action:
             return
-        num_actions = self.dompc.recent_actions.count() - 2
+        num_actions = self.dompc.recent_actions.count() - PlotAction.max_requests
         num_assists = self.dompc.recent_assists.count()
         if num_actions < 0:
             num_assists += num_actions
