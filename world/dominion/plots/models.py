@@ -1,14 +1,15 @@
-from evennia.utils.idmapper.models import SharedMemoryModel
+from datetime import datetime
+
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
-from world.dominion.managers import CrisisManager
-from server.utils.arx_utils import inform_staff, passthrough_properties, get_week
-from web.character.models import AbstractPlayerAllocations
-from server.utils.exceptions import ActionSubmissionError
-from django.conf import settings
-from world.dominion.domain.models import Army, Orders
 
-from datetime import datetime
+from evennia.utils.idmapper.models import SharedMemoryModel
+from server.utils.arx_utils import inform_staff, passthrough_properties, get_week
+from server.utils.exceptions import ActionSubmissionError, PayError
+from web.character.models import AbstractPlayerAllocations
+from world.dominion.domain.models import Army, Orders
+from world.dominion.managers import CrisisManager
 
 
 class Plot(SharedMemoryModel):
@@ -390,15 +391,13 @@ class PlotUpdate(SharedMemoryModel):
             for attr in ("actions", "events", "emits", "flashbacks"):
                 qs = getattr(self, attr).all()
                 if qs:
-                    msg_bits.append("\n|w%s:|n %s" % (attr.capitalize(), ", ".join("%s (#%s)" % (ob, ob.id) for ob in qs)))
+                    msg_bits.append("\n|w%s:|n %s" % (attr.capitalize(), ", ".join("%s (#%s)" % (ob,
+                                                                                                 ob.id) for ob in qs)))
         if self.ooc_notes:
             msg_bits.append("\n{}".format(self.ooc_notes))
         if staff_display and self.gm_notes:
             msg_bits.append("\n|wOOC for Staff:|n {}".format(self.gm_notes))
         return "".join(msg_bits)
-
-
-
 
 
 class AbstractAction(AbstractPlayerAllocations):
