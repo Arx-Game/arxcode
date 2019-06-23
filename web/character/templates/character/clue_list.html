@@ -17,17 +17,22 @@
             <td valign="top">{{ clue.clue.id }}</td>
 			<td valign="top"><b>{{ clue.clue.name }}</b></td>
             <td valign="top">{{ clue.clue.desc|mush_to_html }}
-            {% if clue.clue.keywords %}
-                <br/>&nbsp;<br/>
-                {{ clue.clue.keywords|join:", " }}
+            {%  if clue.clue.keywords or clue.message %}
+                <div class="well">
+                {% if clue.clue.keywords %}
+                    <br/>&nbsp;<br/>
+                    <strong>Clue Tags: </strong>{{ clue.clue.keywords|join:", " }}
+                {% endif %}
+                {% if clue.message %}
+                    <br/>&nbsp;<br/>
+                    {{ clue.message|mush_to_html }}
+                {% endif %}
+                </div>
             {% endif %}
-			{% if clue.message %}
-				<br/>&nbsp;<br/>
-				{{ clue.message|mush_to_html }}
-			{% endif %}
 			</td>
 		</tr>
 		{% endfor %}
 	</table>
     {% include "character/_clue_paginator.html" %}
+    </div>
 {% endblock %}
