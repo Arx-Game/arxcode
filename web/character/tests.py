@@ -64,6 +64,7 @@ class InvestigationTests(ArxCommandTest):
         self.caller = self.account2
         self.call_cmd("2", ("[test clue2] (50 Rating)\ntest clue2 desc\n{} This clue was shared with you by Char,"
                             " who noted: {}\n").format(now.strftime("%x %X"), "Love Tehom"*8))
+        self.call_cmd("222", ("No clue found by this ID: 222."))
 
     def test_cmd_helpinvestigate(self):
         self.roster_entry2.investigations.create()
