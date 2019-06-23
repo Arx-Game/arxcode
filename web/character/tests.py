@@ -82,6 +82,15 @@ class InvestigationTests(ArxCommandTest):
             fake_method.return_value = True
             self.call_cmd("/finish", "Char is now helping Char2's investigation on .")
 
+    def test_cmd_theories(self):
+        self.account2.inform = Mock()
+        self.setup_cmd(investigation.CmdTheories, self.account)
+        self.call_cmd("/create gravity=Things fall.", "You have created a new theory.")
+        self.call_cmd("/share 1=TestAccount2", "Theory 1 added to Testaccount2.")
+        self.account2.inform.assert_called_with(
+            "Testaccount has shared theory {w'gravity'{n with you. Use {w@theories 1{n to view it.",
+            category='Theories')
+
     def test_cmd_investigate(self):
         tag1 = SearchTag.objects.create(name="foo")
         tag2 = SearchTag.objects.create(name="bar")
