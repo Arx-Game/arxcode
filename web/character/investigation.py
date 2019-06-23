@@ -1382,8 +1382,7 @@ class CmdListClues(ArxPlayerCommand):
                     except Clue.DoesNotExist:
                         pass
                 if not discovery:
-                    self.msg("No clue found by that ID.")
-                    self.disp_clue_table()
+                    self.msg("No clue found by this ID: {w%s{n." % self.lhs)
                     return
             if not self.switches:
                 self.msg(discovery.display(show_gm_notes=self.called_by_staff))
