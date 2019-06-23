@@ -834,7 +834,7 @@ class KnownCluesView(CharacterMixin, LimitPageMixin, ListView):
                 Q(clue__desc__icontains=text) |
                 Q(clue__name__icontains=text) |
                 Q(message__icontains=text)
-            )
+            ).distinct()
         return queryset
 
     def get_queryset(self):
@@ -846,7 +846,7 @@ class KnownCluesView(CharacterMixin, LimitPageMixin, ListView):
             raise PermissionDenied
         entry = self.character.roster
         qs = entry.clue_discoveries.all().order_by('id')
-        return self.search_filters(qs).select_related('clue').prefetch_related('clue__search_tags')
+        return self.search_filters(qs).select_related('clue')
 
     def get_context_data(self, **kwargs):
         """Gets our context - do special stuff to preserve search tags through pagination"""

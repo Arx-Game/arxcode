@@ -861,10 +861,10 @@ class Clue(SharedMemoryModel):
     def __str__(self):
         return self.name
 
-    @property
+    @CachedProperty
     def keywords(self):
         """List of keywords from our search tags. We use them for auto-matching clues with investigations."""
-        return [ob.name for ob in self.search_tags.all()]
+        return [ob.name for ob in self.search_tags.all().distinct()]
 
     def display(self, show_gm_notes=False, disco_msg=""):
         """String display for clue"""
