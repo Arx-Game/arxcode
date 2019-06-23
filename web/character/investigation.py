@@ -1658,7 +1658,8 @@ class CmdTheories(ArxPlayerCommand):
                     continue
                 theory.share_with(targ)
                 self.msg("Theory %s added to %s." % (self.lhs, targ))
-                targ.inform("%s has shared a theory with you." % self.caller, category="Theories")
+                targ.inform("%s has shared theory {w'%s'{n with you. Use {w@theories %s{n to view it." % (
+                    self.caller, theory.topic, self.lhs), category="Theories")
             return
         if "delete" in self.switches or "forget" in self.switches:
             try:
