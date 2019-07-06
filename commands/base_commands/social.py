@@ -95,7 +95,6 @@ class CmdHangouts(ArxCommand):
     """
     key = "+hangouts"
     locks = "cmd:all()"
-    aliases = ["@hangouts"]
     help_category = "Travel"
 
     def func(self):
@@ -141,7 +140,6 @@ class CmdWhere(ArxPlayerCommand):
     """
     key = "+where"
     locks = "cmd:all()"
-    aliases = ["@where", "where"]
     help_category = "Travel"
     randomscene_switches = ("rs", "randomscene", "randomscenes")
     firstimp_switches = ("firstimp", "firstimpression", "firstimpressions", "fi", "fp")
@@ -242,7 +240,6 @@ class CmdWatch(ArxPlayerCommand):
     """
     key = "+watch"
     locks = "cmd:all()"
-    aliases = ["@watch", "watch"]
     help_category = "Social"
     max_watchlist_size = 50
 
@@ -328,7 +325,6 @@ class CmdFinger(ArxPlayerCommand):
     """
     key = "+finger"
     locks = "cmd:all()"
-    aliases = ["@finger", "finger"]
     help_category = "Social"
 
     def func(self):
@@ -485,7 +481,6 @@ class CmdJournal(ArxCommand):
     """
     key = "journal"
     locks = "cmd:all()"
-    aliases = ["+journal"]
     help_category = "Social"
 
     def journal_index(self, character, j_list):
@@ -794,7 +789,6 @@ class CmdPosebreak(ArxCommand):
     """
     key = "+posebreak"
     locks = "cmd:all()"
-    aliases = ["@posebreak", "posebreak"]
     help_category = "Settings"
 
     def func(self):
@@ -853,7 +847,7 @@ class CmdMessenger(ArxCommand):
     """
     key = "messenger"
     locks = "cmd:all()"
-    aliases = ["+messenger", "messengers", "+messengers", "receive messenger", "receive messengers",
+    aliases = ["messengers", "receive messenger", "receive messengers",
                "receive messages", "message"]
     help_category = "Social"
     delivery_switches = ("deliver", "money", "materials", "silver")
@@ -2576,7 +2570,6 @@ class CmdThink(ArxCommand):
     characters with mind-reading powers may be able to see these.
     """
     key = "+think"
-    aliases = ["think"]
     locks = "cmd:all()"
     help_category = "Social"
 
@@ -2597,7 +2590,6 @@ class CmdFeel(ArxCommand):
     be seen by very sensitive people.
     """
     key = "+feel"
-    aliases = ["feel"]
     locks = "cmd:all()"
     help_category = "Social"
 
@@ -2770,7 +2762,7 @@ class CmdRandomScene(ArxCommand):
     Use 'help <command>' if you are unfamiliar with its use!
     """
     key = "@randomscene"
-    aliases = ["@rs", "randomscene"]
+    aliases = ["@rs"]
     locks = "cmd:all()"
     help_category = "Social"
     NUM_SCENES = 3
@@ -3422,7 +3414,7 @@ class CmdFirstImpression(ArxCommand):
     """
     key = "+firstimpression"
     help_category = "Social"
-    aliases = ["firstimpression", "firstimpressions", "+firstimpressions"]
+    aliases = ["+firstimpressions"]
 
     @property
     def imps_of_me(self):
