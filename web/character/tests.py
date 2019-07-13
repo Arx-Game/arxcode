@@ -203,8 +203,8 @@ class SceneCommandTests(ArxCommandTest):
         self.assertEqual(self.char1.messages.num_flashbacks, 1)
         self.account.inform = Mock()
         self.account2.inform = Mock()
-        self.call_cmd("/invite/retro 1=Testaccount2", "You have invited Testaccount2 to participate in this "
-                                                      "flashback with all previous posts visible.")
+        self.call_cmd("/invite/retro 1=Testaccount2", "You have invited Testaccount2 to participate in "
+                                                      "flashback #1 with all previous posts visible.")
         self.account2.inform.assert_called_with("You have been invited to participate in flashback #1:"
                                                 " 'testing'.", category="Flashbacks")
         mock_build_msg.return_value = "Galvanion checked willpower at difficulty 9001, rolling 9000 lower."
@@ -228,9 +228,13 @@ class SceneCommandTests(ArxCommandTest):
         self.call_cmd("/summary 1=test", "Only the flashback's owner may use that switch.")
         self.call_cmd("/invite 1=Testaccount", "Only the flashback's owner may use that switch.")
         self.call_cmd("/conclude 1", "Only the flashback's owner may use that switch.")
+        self.call_cmd("/uninvite 1", "You have uninvited Testaccount2 from flashback #1.")
+        self.assertEqual(list(fb1.participants.all()), [self.roster_entry])
         self.caller = self.account
-        self.call_cmd("/invite 1", "(#1) testing - Owners and post authors: Testaccount\nCharacters invited to post: Testaccount, Testaccount2")
-        self.call_cmd("/uninvite 1=Testaccount2", "You have uninvited Testaccount2 from this flashback.")
+        self.call_cmd("/invite 1=Testaccount2", "You have invited Testaccount2 to participate in flashback #1.")
+        self.call_cmd("/invite 1",
+                      "(#1) testing - Owners and post authors: Testaccount\nCharacters invited to post: Testaccount, Testaccount2")
+        self.call_cmd("/uninvite 1=Testaccount2", "You have uninvited Testaccount2 from flashback #1.")
         self.account2.inform.assert_called_with("You have been retired from flashback #1.", category="Flashbacks")
         self.call_cmd("/summary 1=test summary", "Summary set to: test summary.")
         fb1.posts.create(poster=self.roster_entry, actions="Foo.")

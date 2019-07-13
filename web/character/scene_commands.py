@@ -174,7 +174,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         retro = "retro" in self.switches
         retro_msg = " with all previous posts visible" if retro else ""
         flashback.invite_roster(target.roster, retro=retro)
-        self.msg("You have invited %s to participate in this flashback%s." % (target, retro_msg))
+        self.msg("You have invited %s to participate in flashback #%s%s." % (target, flashback.id, retro_msg))
 
     def uninvite_target(self, flashback, target, inv=None):
         """Calls method to change contributor to 'retired', or delete non-contributor involvement."""
@@ -186,7 +186,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         elif target != self.caller and self.roster_entry not in owners:
             return self.msg("Only the flashback's owner can uninvite other players.")
         flashback.uninvite_involvement(inv)
-        self.msg("You have uninvited %s from this flashback." % target)
+        self.msg("You have uninvited %s from flashback #%s." % (target, flashback.id))
         if target != self.caller:
             target.inform("You have been retired from flashback #%s." % flashback.id,
                           category="Flashbacks")
