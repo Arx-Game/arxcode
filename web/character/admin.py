@@ -118,7 +118,6 @@ class ClueForRevInline(admin.TabularInline):
     model = ClueForRevelation
     extra = 0
     raw_id_fields = ('clue', 'revelation',)
-    classes = ['collapse']
 
 
 class RevDiscoInline(admin.TabularInline):
@@ -253,7 +252,6 @@ class InvestigationAssistantInline(admin.TabularInline):
     model = InvestigationAssistant
     extra = 0
     raw_id_fields = ("investigation", "char",)
-    classes = ['collapse']
 
 
 class InvestigationListFilter(admin.SimpleListFilter):
@@ -411,22 +409,29 @@ class PostInline(admin.StackedInline):
     exclude = ('readable_by', 'db_date_created')
     raw_id_fields = ('poster',)
     fieldsets = [(None, {'fields': []}),
-                 ('Post', {'fields': ['poster', 'actions'], 'classes': ['collapse']})]
+                 ('Posts', {'fields': ['poster', 'actions'], 'classes': ['collapse']})]
+    classes = ['collapse']
 
 
 class FBParticipantsInline(admin.TabularInline):
     """Inline for Flashback Participants"""
     model = FlashbackInvolvement
     extra = 0
-    readonly_fields = ('roll',)
+    exclude = ('roll',)
+    readonly_fields = ('num_posts',)
     raw_id_fields = ('participant',)
+    classes = ['collapse']
+
+    @staticmethod
+    def num_posts(obj):
+        return obj.contributions.count()
 
 
 class FlashbackAdmin(BaseCharAdmin):
     """Admin for Flashbacks"""
     list_display = ('id', 'title', 'owner',)
     search_fields = ('id', 'title', 'participants__player__username')
-    inlines = [PostInline, FBParticipantsInline]
+    inlines = [FBParticipantsInline, PostInline]
     fieldsets = [(None, {'fields': ['title', 'summary']})]
 
     @staticmethod
