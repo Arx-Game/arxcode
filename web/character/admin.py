@@ -410,10 +410,11 @@ class PostInline(admin.StackedInline):
     extra = 0
     exclude = ('readable_by', 'db_date_created')
     raw_id_fields = ('poster',)
-    fieldsets = [(None, {'fields': ['poster', 'actions'], 'classes': ['collapse']})]
+    fieldsets = [(None, {'fields': []}),
+                 ('Post', {'fields': ['poster', 'actions'], 'classes': ['collapse']})]
 
 
-class FBParticipantsInline(admin.StackedInline):
+class FBParticipantsInline(admin.TabularInline):
     """Inline for Flashback Participants"""
     model = FlashbackInvolvement
     extra = 0
