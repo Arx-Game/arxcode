@@ -1873,7 +1873,7 @@ class Flashback(SharedMemoryModel):
         else:
             posts = self.posts.all()
             inv.participant.flashback_post_permissions.filter(post__in=posts).delete()
-            del inv
+            inv.delete()
 
     def invite_roster(self, roster_entry, retro=False, owner=False):
         """Creates or unretires a FlashbackInvolvement."""

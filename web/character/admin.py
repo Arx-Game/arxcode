@@ -4,7 +4,7 @@ Admin models for Character app
 from django.contrib import admin
 from django.forms import ModelForm
 from .models import (Roster, RosterEntry, Photo, SearchTag, FlashbackPost, Flashback,
-                     Story, Chapter, Episode, StoryEmit,
+                     FlashbackInvolvement, Story, Chapter, Episode, StoryEmit,
                      Milestone, FirstContact, CluePlotInvolvement, RevelationPlotInvolvement,
                      PlayerAccount, AccountHistory, InvestigationAssistant,
                      Mystery, Revelation, Clue, Investigation,
@@ -410,17 +410,23 @@ class PostInline(admin.StackedInline):
     extra = 0
     exclude = ('readable_by', 'db_date_created')
     raw_id_fields = ('poster',)
-    fieldsets = [(None, {'fields': ['poster']}),
-                 ('Story', {'fields': ['actions'], 'classes': ['collapse']}),
-                 ]
+    fieldsets = [(None, {'fields': ['poster', 'actions'], 'classes': ['collapse']})]
+
+
+class FBParticipantsInline(admin.StackedInline):
+    """Inline for Flashback Participants"""
+    model = FlashbackInvolvement
+    extra = 0
+    readonly_fields = ('roll',)
+    raw_id_fields = ('participant',)
 
 
 class FlashbackAdmin(BaseCharAdmin):
     """Admin for Flashbacks"""
     list_display = ('id', 'title', 'owner',)
     search_fields = ('id', 'title', 'participants__player__username')
-    inlines = [PostInline]
-    fieldsets = [(None, {'fields': [('title'), 'summary']})]
+    inlines = [PostInline, FBParticipantsInline]
+    fieldsets = [(None, {'fields': ['title', 'summary']})]
 
     @staticmethod
     def owner(obj):
