@@ -975,7 +975,7 @@ class PlotAction(AbstractAction):
                   'economic': self.total_economic,
                   'military': self.total_military,
                   'social': self.total_social}
-        totals = ", ".join("{c%s{n %s" % (key, value) for key, value in fields.items() if value > 0)
+        totals = ", ".join("{c%s{n %s" % (key, value) for key, value in sorted(fields.items(), key=lambda x: x[0]) if value > 0)
         if totals:
             msg = "{wTotal resources:{n %s" % totals
         return msg
