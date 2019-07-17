@@ -214,6 +214,8 @@ class StoryActionTests(ArxCommandTest):
         self.caller = self.account
         self.call_cmd("/add 1=foo,bar", "Invalid type of resource.")
         self.call_cmd("/add 1=ap,50", "50 ap added. Action #1 Total resources: extra action points 50")
+        self.char.pay_money = Mock(return_value=True)
+        self.call_cmd("/add 1=silver,50", "50 silver added. Action #1 Total resources: extra action points 50, silver 50")
         self.call_cmd("/add 1=army,1", "You have successfully relayed new orders to that army.")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: True")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: False")

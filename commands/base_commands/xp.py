@@ -74,7 +74,7 @@ class CmdUseXP(ArxCommand):
             amt = int(self.rhs)
             if amt <= 0:
                 raise ValueError
-        except ValueError:
+        except (ValueError, TypeError):
             self.msg("Amount must be a positive number.")
             return
         history = self.caller.roster.accounthistory_set.filter(account=account).last()

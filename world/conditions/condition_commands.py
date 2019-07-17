@@ -156,6 +156,7 @@ class CmdKnacks(ArxCommand):
             raise self.error_class("You must provide a name.")
         if self.caller.mods.get_knack_by_name(name):
             raise self.error_class("You already have a knack by that name.")
+        stat, skill = stat.lower(), skill.lower()
         if stat not in VALID_STATS:
             raise self.error_class("{} is not a valid stat.".format(stat))
         if skill not in VALID_SKILLS:
