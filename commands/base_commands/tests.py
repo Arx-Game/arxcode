@@ -650,9 +650,10 @@ class SocialTests(ArxCommandTest):
         mock_datetime.now = Mock(return_value=now)
         mock_get_week.return_value = 1
         self.setup_cmd(social.CmdCalendar, self.account1)
+        self.call_cmd("", "You are not currently creating an event.")
         self.call_cmd("/submit", "You must /create a form first.")
-        self.call_cmd("/create test_event", 'Starting project. It will not be saved until you submit it.'
-                                            ' Does not persist through logout/server reload.|'
+        self.call_cmd("/create test_event", 'Starting project. It will not be saved until you submit it. '
+                                            'Does not persist through logout/server reload.|'
                                             'Name: test_event\nMain Host: Testaccount\nPublic: Public\n'
                                             'Description: None\nDate: None\nLocation: None\nLargesse: Small')
         self.call_cmd("/largesse", 'Level       Cost   Prestige \n'
@@ -675,7 +676,7 @@ class SocialTests(ArxCommandTest):
                                                ('Current time is {} for comparison.|'.format(datestr)) +
                                                'Number of events within 2 hours of that date: 0'))
         self.call_cmd("/gm testaccount", "Testaccount is now marked as a gm.\n"
-                                         "Reminder - please only add a GM for an event if it's an actual "
+                                         "Reminder: Please only add a GM for an event if it's a "
                                          "player-run plot. Tagging a social event as a PRP is strictly prohibited. "
                                          "If you tagged this as a PRP in error, use gm on them again to remove them.")
         self.char1.db.currency = -1.0
@@ -689,6 +690,9 @@ class SocialTests(ArxCommandTest):
         self.call_cmd("/location here", 'Room set to Room.')
         self.call_cmd("/location room2", 'Room set to Room2.')
         self.call_cmd("/location", 'Room set to Room.')
+        self.call_cmd("/private foo", "Private must be set to either 'on' or 'off'.")
+        self.call_cmd("/private on", "Event set to: private")
+        self.call_cmd("/private off", "Event set to: public")
         self.call_cmd('/submit', 'You pay 10000 coins for the event.|'
                                  'New event created: test_event at 12/12/30 12:00:00.')
         self.assertEqual(self.char1.db.currency, 0)
@@ -697,11 +701,7 @@ class SocialTests(ArxCommandTest):
         self.assertEqual(org.events.first(), event)
         self.assertEqual(self.dompc2.events.first(), event)
         self.assertEqual(event.location, self.room)
-        script.post_event.assert_called_with(event, self.account,
-                                             '{wName:{n test_event\n{wMain Host:{n Testaccount\n{wPublic:{n Public\n'
-                                             '{wDescription:{n test description\n{wDate:{n 2030-12-12 12:00:00\n'
-                                             '{wLocation:{n Room\n{wLargesse:{n Grand\n{wGMs:{n Testaccount\n'
-                                             '{wRisk:{n Normal Risk\n{wInvitations:{n Testaccount2\n')
+        script.post_event.assert_called_with(event, self.account, event.display())
         mock_inform_staff.assert_called_with('New event created by Testaccount: test_event, '
                                              'scheduled for 12/12/30 12:00:00.')
         self.call_cmd("/sponsor test org,200=1", "You do not have permission to spend funds for test org.")
@@ -725,7 +725,7 @@ class SocialTests(ArxCommandTest):
                                             'Invited test org to attend.')
         self.call_cmd("/invite test org=1", 'That organization is already invited.')
         self.call_cmd("1", 'Name: test_event\nHosts: Testaccount\nGMs: Testaccount\nOrgs: test org\nLocation: Room\n'
-                           'Event Scale: Grand\nDate: 12/12/30 12:00\nDesc:\ntest description\n'
+                           'Risk: Normal Risk\nEvent Scale: Grand\nDate: 12/12/30 12:00\nDesc:\ntest description\n'
                            'Event Page: http://example.com/dom/cal/detail/1/')
 
     @patch("world.dominion.models.get_week")

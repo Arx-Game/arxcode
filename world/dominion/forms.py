@@ -152,10 +152,10 @@ class RPEventCreateForm(forms.ModelForm):
         from evennia.scripts.models import ScriptDB
         if event.public_event:
             event_manager = ScriptDB.objects.get(db_key="Event Manager")
-            event_manager.post_event(event, self.owner.player, self.display())
+            event_manager.post_event(event, self.owner.player, event.display())
 
     def display(self):
-        """Returns a game-friend display string"""
+        """Returns a game-friendly display string"""
         msg = "{wName:{n %s\n" % self.data.get('name')
         plot = self.data.get('plot')
         if plot:
