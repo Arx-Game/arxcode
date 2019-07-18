@@ -1364,8 +1364,7 @@ class CmdCalendar(ArxPlayerCommand):
 
     def do_display_switches(self):
         """Displays our project if we have one"""
-        proj = self.caller.ndb.event_creation
-        if not self.args and not self.switches and proj:
+        if not self.args and not self.switches:
             self.display_project()
             return
         if self.caller.check_permstring("builders"):
@@ -1581,12 +1580,10 @@ class CmdCalendar(ArxPlayerCommand):
     def display_project(self):
         """Sends a string display of a project"""
         form = self.form
-        msg = "{wEvent you're creating:{n\n"
-        if not form:
-            msg += "None currently."
-            return
+        if form:
+            msg = "|wEvent you're creating:|n\n" + form.display()
         else:
-            msg += form.display()
+            msg = "|wYou are not currently creating an event.|n"
         self.msg(msg, options={'box': True})
 
     def set_form_or_event_attribute(self, param, value, event=None):
@@ -1723,7 +1720,7 @@ class CmdCalendar(ArxPlayerCommand):
         else:
             raise self.CalCmdError("Private must be set to either 'on' or 'off'.")
         self.set_form_or_event_attribute("public_event", public, event)
-        self.msg("Public is now set to: %s" % public)
+        self.msg("Event set to: %s" % ("public" if public else "private"))
 
     def add_or_remove_host(self, event):
         """Adds a host or changes them to a regular guest"""
@@ -1760,10 +1757,10 @@ class CmdCalendar(ArxPlayerCommand):
             gm = self.caller.search(self.lhs).Dominion
         except AttributeError:
             return
-        add_msg = "%s is now marked as a gm.\n"
-        add_msg += "Reminder - please only add a GM for an event if it's an actual player-run plot. Tagging a "
-        add_msg += "social event as a PRP is strictly prohibited. If you tagged this as a PRP in error, use "
-        add_msg += "gm on them again to remove them."
+        add_msg = ("|w%s is now marked as a gm.|n\n"
+                   "Reminder: Please only add a GM for an event if it's a player-run plot. Tagging a "
+                   "social event as a PRP is strictly prohibited. If you tagged this as a PRP in error, use "
+                   "gm on them again to remove them.")
         if event:
             if gm in event.gms:
                 event.untag_gm(gm)

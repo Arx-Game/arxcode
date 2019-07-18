@@ -3426,8 +3426,9 @@ class RPEvent(SharedMemoryModel):
         msg += "{wHosts:{n %s\n" % ", ".join(str(ob) for ob in self.hosts.all())
         if self.beat:
             msg += "{wPlot:{n %s\n" % self.beat.plot
-        if self.gms.all():
-            msg += "{wGMs:{n %s\n" % ", ".join(str(ob) for ob in self.gms.all())
+        gms = self.gms.all()
+        if gms:
+            msg += "{wGMs:{n %s\n" % ", ".join(str(ob) for ob in gms)
         if not self.finished and not self.public_event:
             # prevent seeing names of invites once a private event has started
             if self.date > datetime.now():
@@ -3438,6 +3439,8 @@ class RPEvent(SharedMemoryModel):
         msg += "{wLocation:{n %s\n" % self.location_name
         if not self.public_event:
             msg += "{wPrivate:{n Yes\n"
+        if gms:
+            msg += "|wRisk:|n %s\n" % self.get_risk_display()
         msg += "{wEvent Scale:{n %s\n" % self.get_celebration_tier_display()
         msg += "{wDate:{n %s\n" % self.date.strftime("%x %H:%M")
         msg += "{wDesc:{n\n%s\n" % self.desc
