@@ -650,10 +650,10 @@ class SocialTests(ArxCommandTest):
         mock_datetime.now = Mock(return_value=now)
         mock_get_week.return_value = 1
         self.setup_cmd(social.CmdCalendar, self.account1)
-        self.call_cmd("", "You are not currently creating an event.")
         self.call_cmd("/submit", "You must /create a form first.")
+        self.call_cmd("/create", "You are not currently creating an event.")
         self.call_cmd("/create test_event", 'Starting project. It will not be saved until you submit it. '
-                                            'Does not persist through logout/server reload.|'
+                                            'Does not persist through logout or server reload.\n'
                                             'Name: test_event\nMain Host: Testaccount\nPublic: Public\n'
                                             'Description: None\nDate: None\nLocation: None\nLargesse: Small')
         self.call_cmd("/largesse", 'Level       Cost   Prestige \n'
@@ -704,6 +704,8 @@ class SocialTests(ArxCommandTest):
         script.post_event.assert_called_with(event, self.account, event.display())
         mock_inform_staff.assert_called_with('New event created by Testaccount: test_event, '
                                              'scheduled for 12/12/30 12:00:00.')
+        self.call_cmd("/create test_event", "There is already an event by that name. Choose a different name "
+                                            "or add a number if it's a sequel event.")
         self.call_cmd("/sponsor test org,200=1", "You do not have permission to spend funds for test org.")
         org.locks.add("withdraw:rank(10)")
         org.save()
