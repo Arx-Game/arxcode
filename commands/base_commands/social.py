@@ -1254,16 +1254,15 @@ class CmdMessenger(ArxCommand):
 
 class CmdCalendar(ArxPlayerCommand):
     """
-    @cal
+    @cal - Creates events and displays information about them.
 
     Usage:
-        @cal
+        @cal [<event number>]
         @cal/list
-        @cal <event number>
         @cal/old
         @cal/comments <event number>=<comment number>
     Creation:
-        @cal/create <name>
+        @cal/create [<name>]
         @cal/abort
         @cal/submit
     Creation or Editing:
@@ -1289,8 +1288,7 @@ class CmdCalendar(ArxPlayerCommand):
         @cal/join <event ID>
         @cal/sponsor <org>,<social resources>=<event ID>
 
-    Creates or displays information about events. date should be
-    in the format of 'MM/DD/YY HR:MN'. /private toggles whether the
+    Date should be in 'MM/DD/YY HR:MN' format. /private toggles whether the
     event is public or private (defaults to public). To spend extravagant
     amounts of money in hosting an event for prestige, set the /largesse
     level. To see the valid largesse types with their costs and prestige
@@ -1331,9 +1329,21 @@ class CmdCalendar(ArxPlayerCommand):
     in_progress_switches = ("movehere", "endevent")
 
     @property
+    def project(self):
+        return self.caller.ndb.event_creation
+
+    @project.setter
+    def project(self, val):
+        self.caller.ndb.event_creation = val
+
+    @project.deleter
+    def project(self):
+        self.caller.ndb.event_creation = None
+
+    @property
     def form(self):
         """Returns the RPEventCreateForm for the caller"""
-        proj = self.caller.ndb.event_creation
+        proj = self.project
         if not proj:
             return
         return RPEventCreateForm(proj, owner=self.caller.Dominion)
@@ -1363,8 +1373,8 @@ class CmdCalendar(ArxPlayerCommand):
             self.msg(err)
 
     def do_display_switches(self):
-        """Displays our project if we have one"""
-        if not self.args and not self.switches:
+        """Displays events"""
+        if not self.switches and self.project:
             self.display_project()
             return
         if self.caller.check_permstring("builders"):
@@ -1384,7 +1394,7 @@ class CmdCalendar(ArxPlayerCommand):
 
     @staticmethod
     def display_events(events):
-        """Displays table of events"""
+        """Returns table of events"""
         table = PrettyTable(["{wID{n", "{wName{n", "{wDate{n", "{wHost{n", "{wPublic{n"])
         for event in events:
             host = event.main_host or "No host"
@@ -1479,21 +1489,24 @@ class CmdCalendar(ArxPlayerCommand):
     def do_form_switches(self):
         """Handles form switches"""
         if "abort" in self.switches:
-            self.caller.ndb.event_creation = None
+            del self.project
             self.msg("Event creation cancelled.")
         elif "create" in self.switches:
+            if not self.args:
+                self.display_project()
+                return
             if RPEvent.objects.filter(name__iexact=self.lhs):
-                self.msg("There is already an event by that name. Choose a different name," +
-                         " or add a number if it's a sequel event.")
+                self.msg("There is already an event by that name. Choose a different name "
+                         "or add a number if it's a sequel event.")
                 return
             defaults = RPEvent()
-            proj = {'hosts': [], 'gms': [], 'org_invites': [], 'invites': [], 'name': self.lhs,
-                    'public_event': defaults.public_event, 'risk': defaults.risk,
-                    'celebration_tier': defaults.celebration_tier}
-            self.caller.ndb.event_creation = proj
-            self.msg("{wStarting project. It will not be saved until you submit it. " +
-                     "Does not persist through logout/server reload.{n")
-            self.msg(self.form.display(), options={'box': True})
+            new = {'hosts': [], 'gms': [], 'org_invites': [], 'invites': [], 'name': self.lhs,
+                   'public_event': defaults.public_event, 'risk': defaults.risk,
+                   'celebration_tier': defaults.celebration_tier}
+            self.project = new
+            msg = ("|wStarting project.|n It will not be saved until you submit it. "
+                   "Does not persist through logout or server reload.\n%s" % self.form.display())
+            self.msg(msg, options={'box': True})
         elif "submit" in self.switches:
             form = self.form
             if not form:
@@ -1501,7 +1514,7 @@ class CmdCalendar(ArxPlayerCommand):
             if not form.is_valid():
                 raise self.CalCmdError(form.display_errors() + "\n" + form.display())
             event = form.save()
-            self.caller.ndb.event_creation = None
+            self.project = None
             self.msg("New event created: %s at %s." % (event.name, event.date.strftime("%x %X")))
             inform_staff("New event created by %s: %s, scheduled for %s." % (self.caller, event.name,
                                                                              event.date.strftime("%x %X")))
@@ -1512,7 +1525,7 @@ class CmdCalendar(ArxPlayerCommand):
         if self.rhs:
             event = self.get_event_from_args(self.rhs, check_host=True)
         else:
-            proj = self.caller.ndb.event_creation
+            proj = self.project
             if not proj:
                 raise self.CalCmdError("You must use /create first or specify an event.")
         if 'largesse' in self.switches:
@@ -1592,11 +1605,11 @@ class CmdCalendar(ArxPlayerCommand):
             setattr(event, param, value)
             event.save()
         else:
-            proj = self.caller.ndb.event_creation
+            proj = self.project
             if not proj:
                 raise self.CalCmdError("You must /create to start a project, or specify an event you want to change.")
             proj[param] = value
-            self.caller.ndb.event_creation = proj
+            self.project = proj
 
     def set_date(self, event=None):
         """Sets a date for an event"""
@@ -1738,16 +1751,16 @@ class CmdCalendar(ArxPlayerCommand):
                 event.add_host(host)
                 msg = "%s added to hosts." % host
         else:
-            hosts = self.caller.ndb.event_creation['hosts']
+            hosts = self.project['hosts']
             if host.id in hosts:
                 hosts.remove(host.id)
-                if host.id not in self.caller.ndb.event_creation['invites']:
-                    self.caller.ndb.event_creation['invites'].append(host.id)
+                if host.id not in self.project['invites']:
+                    self.project['invites'].append(host.id)
                 msg = "Changed host to a regular guest. Use /uninvite to remove them completely."
             else:
                 hosts.append(host.id)
-                if host.id in self.caller.ndb.event_creation['invites']:
-                    self.caller.ndb.event_creation['invites'].remove(host.id)
+                if host.id in self.project['invites']:
+                    self.project['invites'].remove(host.id)
                 msg = "%s added to hosts." % host
         self.msg(msg)
 
@@ -1771,17 +1784,17 @@ class CmdCalendar(ArxPlayerCommand):
                 event.add_gm(gm)
                 msg = add_msg % gm
         else:
-            gms = self.caller.ndb.event_creation['gms']
+            gms = self.project['gms']
             if gm.id in gms:
                 msg = "%s is no longer marked as a gm. Use /uninvite to remove them completely." % gm
-                if gm.id not in self.caller.ndb.event_creation['invites']:
-                    self.caller.ndb.event_creation['invites'].append(gm.id)
+                if gm.id not in self.project['invites']:
+                    self.project['invites'].append(gm.id)
             else:
                 if len(gms) >= 2:
                     raise self.CalCmdError("Please limit yourself to one or two designated GMs.")
                 gms.append(gm.id)
-                if gm.id in self.caller.ndb.event_creation['invites']:
-                    self.caller.ndb.event_creation['invites'].remove(gm.id)
+                if gm.id in self.project['invites']:
+                    self.project['invites'].remove(gm.id)
                 msg = add_msg % gm
         self.msg(msg)
 
@@ -1799,7 +1812,7 @@ class CmdCalendar(ArxPlayerCommand):
                         raise self.CalCmdError("They are already invited.")
                     event.add_guest(pc)
             else:
-                proj = self.caller.ndb.event_creation
+                proj = self.project
                 if not proj:
                     raise self.CalCmdError("You must use /create first or specify an event.")
                 if org:
@@ -1840,7 +1853,7 @@ class CmdCalendar(ArxPlayerCommand):
                     raise self.CalCmdError("They are not invited.")
                 event.remove_guest(pc)
         else:
-            proj = self.caller.ndb.event_creation
+            proj = self.project
             if org:
                 if org.id not in proj['org_invites']:
                     raise self.CalCmdError("That organization is not invited.")
@@ -1873,12 +1886,12 @@ class CmdCalendar(ArxPlayerCommand):
                 event.beat = plot.updates.create()
                 msg = "Plot added."
         else:
-            plot_id = self.caller.ndb.event_creation.setdefault('plot', None)
+            plot_id = self.project.setdefault('plot', None)
             if plot_id == plot.id:
-                self.caller.ndb.event_creation['plot'] = None
+                self.project['plot'] = None
                 msg = "Plot removed."
             else:
-                self.caller.ndb.event_creation['plot'] = plot.id
+                self.project['plot'] = plot.id
                 msg = "Plot added."
         self.msg(msg)
 
