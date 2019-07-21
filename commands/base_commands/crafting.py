@@ -2,15 +2,17 @@
 Crafting commands. BEHOLD THE MINIGAME.
 """
 from django.conf import settings
+from django.db.models import Q, Prefetch
+
 from commands.base import ArxCommand
+from evennia.utils import utils
+from evennia.utils.create import create_object
+from evennia.utils.utils import make_iter
+from server.utils.arx_utils import validate_name, inform_staff
+from server.utils.prettytable import PrettyTable
 from world.dominion.models import (AssetOwner, PlayerOrNpc, CraftingRecipe, CraftingMaterials, CraftingMaterialType)
 from world.dominion.setup_utils import setup_dom_for_char
 from world.stats_and_skills import do_dice_check
-from evennia.utils.create import create_object
-from server.utils.prettytable import PrettyTable
-from server.utils.arx_utils import validate_name, inform_staff
-from evennia.utils import utils
-from evennia.utils.utils import make_iter
 from world.templates.mixins import TemplateMixins
 
 AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
@@ -821,7 +823,6 @@ class CmdRecipes(ArxCommand):
 
     def func(self):
         """Implement the command"""
-        from django.db.models import Q
         caller = self.caller
         all_recipes = CraftingRecipe.objects.all()
         recipes = all_recipes.filter(known_by__player__player=caller.player)
@@ -830,8 +831,10 @@ class CmdRecipes(ArxCommand):
             filters = Q(name__iexact=self.args) | Q(skill__iexact=self.args) | Q(ability__iexact=self.args)
             recipes = recipes.filter(filters)
             unknown = unknown.filter(filters)
+        orgs = AssetOwner.objects.select_related('organization_owner').filter(organization_owner__isnull=False)
+        unknown = unknown.prefetch_related(Prefetch('known_by', queryset=orgs, to_attr="_org_owners"))
         recipes = list(recipes)
-        can_learn = [ob for ob in unknown if ob.access(caller, 'learn')]
+        can_learn = [ob for ob in unknown if ob.can_be_learned_by(self.caller)]
         try:
             dompc = PlayerOrNpc.objects.get(player=caller.player)
         except PlayerOrNpc.DoesNotExist:

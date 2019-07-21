@@ -3088,7 +3088,7 @@ class MatList(object):
         return self.mats
 
 
-class CraftingRecipe(SharedMemoryModel):
+class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
     """
     For crafting, a recipe has a name, description, then materials. A lot of information
     is saved as a parsable text string in the 'result' text field. It'll
@@ -3148,6 +3148,21 @@ class CraftingRecipe(SharedMemoryModel):
         default - what to return if no lock of access_type was found
         """
         return self.locks.check(accessing_obj, access_type=access_type, default=default)
+
+    def org_owners(self):
+        return self.known_by.select_related('organization_owner').filter(organization_owner__isnull=False)
+
+    org_owners = CachedProperty(org_owners, '_org_owners')
+
+    def can_be_learned_by(self, learner):
+        """Returns True if learner can learn this recipe, False otherwise"""
+        if not self.access(learner):
+            return False
+        # if we have no orgs that know this recipe, anyone can learn it normally
+        if not self.org_owners:
+            return True
+        # check if they have granted access from any of the orgs that know it
+        return any(ob.access(learner, access_type="recipe") for ob in self.org_owners)
 
     @staticmethod
     def parse_result(results):

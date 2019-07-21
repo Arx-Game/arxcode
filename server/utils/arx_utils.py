@@ -720,7 +720,7 @@ class CachedPropertiesMixin(object):
         cls = self.__class__
         props = [ob for ob in cls.__dict__.values() if isinstance(ob, CachedProperty)]
         for prop in props:
-            delattr(self, prop.name)
+            delattr(self, prop.func.__name__)
 
     def save(self, *args, **kwargs):
         super(CachedPropertiesMixin, self).save(*args, **kwargs)
