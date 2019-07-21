@@ -75,6 +75,8 @@ def list_topics(request):
 def list_recipes(request):
     user = request.user
     all_recipes = CraftingRecipe.objects.all().order_by('ability', 'difficulty')
+    if not user.is_staff:
+        all_recipes = all_recipes.filter(known_by__organization_owner__isnull=True)
     recipe_name = request.GET.get("recipe_name")
     if recipe_name:
         all_recipes = all_recipes.filter(name__icontains=recipe_name)
