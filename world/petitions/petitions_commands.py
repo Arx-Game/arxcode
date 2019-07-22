@@ -41,8 +41,12 @@ class CmdMatchmaker(ArxCommand):
         ads = WantedAd.objects.filter(active=True)
         matches_list = []
         matched_list = []
+        if not my_ad.plot:
+            plot_matches = []
+        else:
+            plot_matches = ads.filter(Q(plot=True) & Q(clues__in=my_ad.clues.all()) | Q(searchtags__in=my_ad.searchtags.all())).distinct()
         for ad in ads:
-            matches = ad.match(self.caller.dompc)
+            matches = ad.match(self.caller.dompc,plot_matches)
             if matches and (ad.TIME in matches):
                 matches_list.append(matches)
                 matched_list.append(ad)
@@ -63,9 +67,13 @@ class CmdMatchmaker(ArxCommand):
     def display_all_matches(self):
         my_ad = self.caller.dompc.wanted_ad
         ads = WantedAd.objects.filter(active=True)
+        if not my_ad.plot:
+            plot_matches = []
+        else:
+            plot_matches = ads.filter(Q(plot=True) & Q(clues__in=my_ad.clues.all()) | Q(searchtags__in=my_ad.searchtags.all())).distinct()
         table = evtable.EvTable("Name/Gender/Age", "Matches","Times", "Blurb", border="cells", width=78)
         for ad in ads:
-            match = ad.match(self.caller.dompc)
+            match = ad.match(self.caller.dompc,plot_matches)
             matchstring=""
             for m in match:
                 matchstring+="[{}]".format(ad.MATCH_TYPES[m][1])

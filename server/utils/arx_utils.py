@@ -9,6 +9,7 @@ import re
 from datetime import datetime
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 
 
 def validate_name(name, formatting=True, not_player=True):
@@ -325,6 +326,7 @@ def post_roster_cleanup(entry):
     Args:
         entry: RosterEntry we're initializing
     """
+    
     entry.player.nicks.clear()
     entry.character.nicks.clear()
     entry.player.attributes.remove("playtimes")
@@ -372,6 +374,10 @@ def post_roster_dompc_cleanup(player):
         dompc = player.Dominion
     except AttributeError:
         return
+    try:
+        dompc.wanted_ad.delete()
+    except ObjectDoesNotExist:
+        pass
     dompc.proteges.clear()
     dompc.patron = None
     dompc.save()

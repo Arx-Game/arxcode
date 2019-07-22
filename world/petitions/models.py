@@ -41,7 +41,21 @@ class WantedAd(SharedMemoryModel):
     active = models.BooleanField(default=False)
     owner = models.OneToOneField(PlayerOrNpc, related_name="wanted_ad", on_delete=models.CASCADE)
 
-    def match(self, dompc):
+    def cleanup():
+        playtime_start=0
+        playtime_end=0
+        prefer_weekend=False
+        interests.clear()
+        clues.clear()
+        searchtags.clear()
+        blurb=""
+        marriage=False
+        sponsor=False
+        protege=False
+        plot=False
+        active=False
+
+    def match(self, dompc,plot_matches):
         matches =[]
 
         overlap = 0
@@ -84,11 +98,8 @@ class WantedAd(SharedMemoryModel):
                 matches.append(self.SPONSOR)
         if self.marriage and seeker_ad.marriage:
             matches.append(self.MARRIAGE)
-        if self.plot and seeker_ad.plot:
-            intersect_clues = self.clues.all().intersection(seeker_ad.clues.all())
-            intersect_tags = self.searchtags.all().intersection(seeker_ad.searchtags.all())
-            if intersect_clues or intersect_tags:
-                matches.append(self.PLOT)
+        if self in plot_matches:
+            matches.append(self.PLOT)
         return matches
                 
 
