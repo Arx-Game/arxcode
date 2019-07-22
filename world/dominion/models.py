@@ -2674,9 +2674,7 @@ class Member(SharedMemoryModel):
         msg += "\nYou and {} both gain {:,} prestige.".format(self.organization, prestige)
         self.player.assets.adjust_prestige(prestige, PrestigeCategory.INVESTMENT)
         self.organization.assets.adjust_prestige(prestige)
-==== BASE ====
         msg += "\nYou have increased the %s influence of %s by %d." % (resource_type, self.organization, org_amount)
-==== BASE ====
         mod = getattr(self.organization, "%s_modifier" % resource_type)
         progress = self.organization.get_progress_to_next_modifier(resource_type)
         msg += "\nCurrent modifier is %s, progress to next is %d/100." % (mod, progress)

@@ -188,7 +188,7 @@ class CmdMatchmaker(ArxCommand):
 
             
 
-class CmdPetition(ArxCommand):
+class CmdPetition(RewardRPToolUseMixin,ArxCommand):
     """
     Creates a petition to an org or the market as a whole
 
