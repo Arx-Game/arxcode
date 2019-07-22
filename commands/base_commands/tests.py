@@ -8,16 +8,17 @@ from datetime import datetime, timedelta
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
 
 from web.character.models import Revelation
-from world.dominion.models import PlotAction, Plot, Army, RPEvent
+from world.dominion.domain.models import Army
+from world.dominion.models import RPEvent
+from world.dominion.plots.models import PlotAction, Plot
 
 from world.templates.models import Template
 from web.character.models import PlayerAccount
 
-from commands.base_commands.crafting import CmdCraft
 from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -65,7 +66,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
         self.assertEquals(self.template1.applied_to.count(), 0)
 
-        self.setup_cmd(CmdCraft, self.char1)
+        self.setup_cmd(crafting.CmdCraft, self.char1)
         self.call_cmd("{}".format(recipe.name), None)
         self.call_cmd("/name object", None)
         self.call_cmd("/desc [[TEMPLATE_1]]", "Desc set to:\n[[TEMPLATE_1]]")
@@ -86,7 +87,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
         self.assertIsNone(created_obj.ndb.cached_template_desc)
 
-        self.setup_cmd(CmdCraft, self.char2)
+        self.setup_cmd(crafting.CmdCraft, self.char2)
         self.call_cmd("{}".format(recipe.name), None)
         self.call_cmd("/name object", None)
         self.call_cmd("/desc [[TEMPLATE_1]] and [[TEMPLATE_2]]",
@@ -174,8 +175,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
 class StoryActionTests(ArxCommandTest):
 
-    @patch("world.dominion.models.inform_staff")
-    @patch("world.dominion.models.get_week")
+    @patch("world.dominion.plots.models.inform_staff")
+    @patch("world.dominion.plots.models.get_week")
     def test_cmd_action(self, mock_get_week, mock_inform_staff):
         mock_get_week.return_value = 1
         self.setup_cmd(story_actions.CmdAction, self.account)
@@ -213,6 +214,8 @@ class StoryActionTests(ArxCommandTest):
         self.caller = self.account
         self.call_cmd("/add 1=foo,bar", "Invalid type of resource.")
         self.call_cmd("/add 1=ap,50", "50 ap added. Action #1 Total resources: extra action points 50")
+        self.char.pay_money = Mock(return_value=True)
+        self.call_cmd("/add 1=silver,50", "50 silver added. Action #1 Total resources: extra action points 50, silver 50")
         self.call_cmd("/add 1=army,1", "You have successfully relayed new orders to that army.")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: True")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: False")
@@ -295,8 +298,8 @@ class StoryActionTests(ArxCommandTest):
                                                         "testing|Please note that you cannot invite players to an "
                                                         "action once it is submitted.")
 
-    @patch("world.dominion.models.inform_staff")
-    @patch("world.dominion.models.get_week")
+    @patch("world.dominion.plots.models.inform_staff")
+    @patch("world.dominion.plots.models.get_week")
     def test_cmd_gm_action(self, mock_get_week, mock_inform_staff):
         from datetime import datetime
         now = datetime.now()
@@ -382,7 +385,67 @@ class StoryActionTests(ArxCommandTest):
                                                       'Story{n sekritfoo', subject='Action 1 Published by Testaccount')
 
 
-class OverridesTests(ArxCommandTest):
+class GeneralTests(TestEquipmentMixins, ArxCommandTest):
+    def test_cmd_put(self):
+        self.setup_cmd(general.CmdPut, self.char2)
+        self.call_cmd("a fox mask", "Usage: put <name> in <name>")
+        self.call_cmd("purse1 in purse1", "You can't put an object inside itself.|Nothing moved.")
+        self.purse1.move_to(self.room1)
+        self.purse1.db.locked = True
+        self.call_cmd("a fox mask in purse1", "You'll have to unlock Purse1 first.")
+        self.purse1.db.locked = False
+        self.call_cmd("hairpins1 in purse1", "You put Hairpins1 in Purse1.")
+        self.mask1.db.quality_level = 11
+        self.catsuit1.wear(self.char2)
+        self.mask1.wear(self.char2)
+        self.create_ze_outfit("Bishikiller")
+        self.mask1.remove(self.char2)
+        self.call_cmd("/outfit Bishikiller in purse1", "Slinkity1 is currently worn and cannot be moved.|"
+                                                       "You put A Fox Mask in Purse1.")
+        self.purse1.db.locked = True
+        self.caller = self.char1  # staff
+        self.call_cmd("5 silver in purse1", "You do not have enough money.")
+        self.char1.db.currency = 30.0
+        self.hairpins1.move_to(self.room1)
+        self.mask1.move_to(self.room1)
+        self.obj1.move_to(self.char1)
+        self.call_cmd("5 silver in purse1", "You put 5.0 silver in Purse1.")
+        self.assertEqual(self.purse1.db.currency, 5.0)
+        self.call_cmd("all in purse1", "You put Obj in Purse1.")
+        self.assertEqual(self.char1.db.currency, 25.0)
+        self.assertEqual(self.obj1.location, self.purse1)
+
+
+class OverridesTests(TestEquipmentMixins, ArxCommandTest):
+    def test_cmd_get(self):
+        self.setup_cmd(overrides.CmdGet, self.char2)
+        self.call_cmd("", "What will you get?")
+        self.call_cmd("obj", "You get Obj.")
+        self.obj1.move_to(self.obj2)
+        self.call_cmd("obj from Obj2", "That is not a container.")
+        self.purse1.move_to(self.room1)
+        self.obj1.move_to(self.purse1)
+        self.purse1.db.locked = True
+        self.call_cmd("obj from purse1", "You'll have to unlock Purse1 first.")
+        self.purse1.db.locked = False
+        self.call_cmd("all from Purse1", "You get Obj from Purse1.")
+        self.call_cmd("5 silver from purse1", "Not enough money. You tried to get 5.0, but can only get 0.0.")
+        self.purse1.db.currency = 30.0
+        self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
+        self.assertEqual(self.obj1.location, self.char2)
+        self.assertEqual(self.char2.db.currency, 5.0)
+        self.assertEqual(self.purse1.db.currency, 25.0)
+        self.mask1.db.quality_level = 11
+        self.catsuit1.wear(self.char2)
+        self.mask1.wear(self.char2)
+        self.create_ze_outfit("Bishikiller")
+        self.mask1.remove(self.char2)
+        self.mask1.move_to(self.purse1)
+        self.call_cmd("/outfit Bishikiller from purse1", "You get A Fox Mask from Purse1.")
+        self.purse1.db.locked = True
+        self.caller = self.char1  # staff
+        self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
+
     def test_cmd_give(self):
         from typeclasses.wearable.wearable import Wearable
         from evennia.utils.create import create_object
@@ -422,6 +485,21 @@ class OverridesTests(ArxCommandTest):
 
     
 
+
+    def test_cmd_inventory(self):
+        self.setup_cmd(overrides.CmdInventory, self.char1)
+        self.char1.currency = 125446
+        self.assetowner.economic = 5446
+        self.call_cmd("","You currently have 0 xp and 100 ap.\n"
+                      "Maximum AP: 300  Weekly AP Gain: 220\n"
+                      "You are carrying (Volume: 0/100):\n"
+                      "Money: coins worth a total of 125,446.00 silver pieces\n"
+                      "Bank Account:           0 silver coins\n"
+                      "Prestige:               0  Resources         Social Clout: 0\n"
+                      "|__ Legend:             0  Economic: 5,446\n"
+                      "|__ Fame:               0  Military:     0\n"
+                      "|__ Grandeur:           0  Social:       0\n"
+                      "|__ Propriety:          0\nMaterials:")
 
     def test_cmd_say(self):
         self.setup_cmd(overrides.CmdArxSay, self.char1)
@@ -482,17 +560,18 @@ class RosterTests(ArxCommandTest):
         self.assertEqual(self.member.rank, 3)
         self.assertEqual(self.dompc2.patron, None)
 
-        
     def test_cmd_propriety(self):
         self.setup_cmd(roster.CmdPropriety, self.account)
-        self.call_cmd(" nonsense", "There's no propriety known as nonsense")
-        self.call_cmd("", "Title                Propriety")
+        self.call_cmd(" nonsense", "There's no propriety known as 'nonsense'.")
+        self.call_cmd("", "Title                     Propriety")
         self.caller.execute_cmd("admin_propriety/create Tester=50")
-        self.call_cmd("", "Title                Propriety\n"
-                          "Tester                      50")
+        self.call_cmd("", "Title                     Propriety\n"
+                          "Tester                           50")
         self.caller.execute_cmd("admin_propriety/add Tester=testaccount")
-        self.call_cmd("tester", "These are known to be testers\nChar")
+        self.call_cmd("tester", "Individuals with the 'Tester' reputation: Char")
         self.caller.execute_cmd("admin_propriety/remove Tester=testaccount")
+        self.caller.execute_cmd("admin_propriety/create Vixen=-3")
+        self.call_cmd("vixen", "No one is currently spoken of with the 'Vixen' reputation.")
 
 
 # noinspection PyUnresolvedReferences
@@ -589,8 +668,9 @@ class SocialTests(ArxCommandTest):
         mock_get_week.return_value = 1
         self.setup_cmd(social.CmdCalendar, self.account1)
         self.call_cmd("/submit", "You must /create a form first.")
-        self.call_cmd("/create test_event", 'Starting project. It will not be saved until you submit it.'
-                                            ' Does not persist through logout/server reload.|'
+        self.call_cmd("/create", "You are not currently creating an event.")
+        self.call_cmd("/create test_event", 'Starting project. It will not be saved until you submit it. '
+                                            'Does not persist through logout or server reload.\n'
                                             'Name: test_event\nMain Host: Testaccount\nPublic: Public\n'
                                             'Description: None\nDate: None\nLocation: None\nLargesse: Small')
         self.call_cmd("/largesse", 'Level       Cost   Prestige \n'
@@ -613,7 +693,7 @@ class SocialTests(ArxCommandTest):
                                                ('Current time is {} for comparison.|'.format(datestr)) +
                                                'Number of events within 2 hours of that date: 0'))
         self.call_cmd("/gm testaccount", "Testaccount is now marked as a gm.\n"
-                                         "Reminder - please only add a GM for an event if it's an actual "
+                                         "Reminder: Please only add a GM for an event if it's a "
                                          "player-run plot. Tagging a social event as a PRP is strictly prohibited. "
                                          "If you tagged this as a PRP in error, use gm on them again to remove them.")
         self.char1.db.currency = -1.0
@@ -627,6 +707,9 @@ class SocialTests(ArxCommandTest):
         self.call_cmd("/location here", 'Room set to Room.')
         self.call_cmd("/location room2", 'Room set to Room2.')
         self.call_cmd("/location", 'Room set to Room.')
+        self.call_cmd("/private foo", "Private must be set to either 'on' or 'off'.")
+        self.call_cmd("/private on", "Event set to: private")
+        self.call_cmd("/private off", "Event set to: public")
         self.call_cmd('/submit', 'You pay 10000 coins for the event.|'
                                  'New event created: test_event at 12/12/30 12:00:00.')
         self.assertEqual(self.char1.db.currency, 0)
@@ -635,13 +718,11 @@ class SocialTests(ArxCommandTest):
         self.assertEqual(org.events.first(), event)
         self.assertEqual(self.dompc2.events.first(), event)
         self.assertEqual(event.location, self.room)
-        script.post_event.assert_called_with(event, self.account,
-                                             '{wName:{n test_event\n{wMain Host:{n Testaccount\n{wPublic:{n Public\n'
-                                             '{wDescription:{n test description\n{wDate:{n 2030-12-12 12:00:00\n'
-                                             '{wLocation:{n Room\n{wLargesse:{n Grand\n{wGMs:{n Testaccount\n'
-                                             '{wRisk:{n Normal Risk\n{wInvitations:{n Testaccount2\n')
+        script.post_event.assert_called_with(event, self.account, event.display())
         mock_inform_staff.assert_called_with('New event created by Testaccount: test_event, '
                                              'scheduled for 12/12/30 12:00:00.')
+        self.call_cmd("/create test_event", "There is already an event by that name. Choose a different name "
+                                            "or add a number if it's a sequel event.")
         self.call_cmd("/sponsor test org,200=1", "You do not have permission to spend funds for test org.")
         org.locks.add("withdraw:rank(10)")
         org.save()
@@ -663,8 +744,8 @@ class SocialTests(ArxCommandTest):
                                             'Invited test org to attend.')
         self.call_cmd("/invite test org=1", 'That organization is already invited.')
         self.call_cmd("1", 'Name: test_event\nHosts: Testaccount\nGMs: Testaccount\nOrgs: test org\nLocation: Room\n'
-                           'Event Scale: Grand\nDate: 12/12/30 12:00\nDesc:\ntest description\n'
-                           'Event Page: http://play.arxgame.org/dom/cal/detail/1/')
+                           'Risk: Normal Risk\nEvent Scale: Grand\nDate: 12/12/30 12:00\nDesc:\ntest description\n'
+                           'Event Page: http://example.com/dom/cal/detail/1/')
 
     @patch("world.dominion.models.get_week")
     @patch("server.utils.arx_utils.get_week")
@@ -730,26 +811,25 @@ class SocialTests(ArxCommandTest):
         self.call_cmd("testorg", "Those Favored/Disfavored by testorg")
         self.call_cmd("/add testorg=testaccount", "You do not have permission to set favor.")
         org.members.create(player=self.dompc2, rank=1)
-        self.call_cmd("/add testorg=testaccount", "You must provide both a target and an amount.")
-        self.call_cmd("/add testorg=foo,5", "Could not find 'foo'.")
-        self.call_cmd("/add testorg=testaccount,5", "That would bring your total favor to 5, and you can only spend 0.")
+        self.call_cmd("/add testorg=testaccount", 'You must provide a name, target, and gossip string.')
+        self.call_cmd("/add testorg=foo,5/bar", "Could not find 'foo'.")
+        self.call_cmd("/add testorg=testaccount,5/bar",
+                      "That would bring your total favor to 5, and you can only spend 0.")
         org.social_influence = 3000
         mem2 = org.members.create(player=self.dompc, rank=4)
-        self.call_cmd("/add testorg=testaccount,1", "Cannot set favor for a member.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "Cannot set favor for a member.")
         org.category = "noble"
-        self.call_cmd("/add testorg=testaccount,1", "Favor can only be set for vassals or non-members.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "Favor can only be set for vassals or non-members.")
         mem2.rank = 6
-        self.call_cmd("/add testorg=testaccount,1", "Cost will be 200. Repeat the command to confirm.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "Cost will be 200. Repeat the command to confirm.")
         rep = self.dompc.reputations.get(organization=org)
         rep.affection = 10
         rep.respect = 5
-        self.call_cmd("/add testorg=testaccount,1", "Cost will be 185. Repeat the command to confirm.")
-        self.call_cmd("/add testorg=testaccount,1", "You cannot afford to pay 185 resources.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "Cost will be 185. Repeat the command to confirm.")
+        self.call_cmd("/add testorg=testaccount,1/bar", "You cannot afford to pay 185 resources.")
         self.assetowner2.social = 200
         self.account2.ndb.favor_cost_confirmation = 185
-        self.call_cmd("/gossip testorg=testaccount/asdf", "You can only add gossip to someone with non-zero favor.")
-        self.call_cmd("/add testorg=testaccount,1", "Set Testaccount's favor in testorg to 1.")
-        self.call_cmd("/gossip testorg=testaccount/stuff", "Gossip for Testaccount set to: stuff")
+        self.call_cmd("/add testorg=testaccount,1/stuff", "Set Testaccount's favor in testorg to 1.")
         mock_inform_staff.assert_called_with("Testaccount2 set gossip for Testaccount's reputation with "
                                              "testorg to: stuff")
         self.call_cmd("testorg", 'Those Favored/Disfavored by testorg\nTestaccount (1): stuff')
@@ -778,13 +858,17 @@ class SocialTestsPlus(ArxCommandTest):
         self.account2.save()
         self.roster_entry2.current_account = PlayerAccount.objects.create(email="foo")
         self.roster_entry2.save()
-        self.call_cmd("", "@Randomscene Information: \nRandomly generated RP partners for this week: Char2"
-                          "\nReminder: Please only /claim those you have interacted with significantly in a scene.")
+        temp = social.random.choice
+        social.random.choice = Mock(return_value="+plots")
+        rptool_str = "\nRandomly chosen Roleplay Tool: +plots"
+        self.call_cmd("", "@Randomscene Information for this week: \nRandomly generated RP partners: Char2"
+                          "\nReminder: Please only /claim those you have interacted with significantly in a scene."
+                          "%s" % rptool_str)
         self.char1.player_ob.db.random_scenelist = [self.char2, self.char2, self.char3]
-        self.call_cmd("/online", "@Randomscene Information: Only displaying online characters."
-                                 "\nRandomly generated RP partners for this week: Char2 and Char2"
+        self.call_cmd("/online", "@Randomscene Information for this week: Only displaying online characters."
+                                 "\nRandomly generated RP partners: Char2 and Char2"
                                  "\nReminder: Please only /claim those you have interacted with significantly "
-                                 "in a scene.")
+                                 "in a scene.%s" % rptool_str)
         self.call_cmd("/claim Char2", 'You must include some summary of the scene. It may be quite short.')
         self.call_cmd("/claim Char2=test test test", 'You have sent Char2 a request to validate your scene: '
                                                      'test test test')
@@ -797,9 +881,9 @@ class SocialTestsPlus(ArxCommandTest):
         self.call_cmd("/claim asdf=meow", "You cannot claim 'asdf'.")
         self.caller = self.char1
         self.call_cmd("/claim Char2=test test test", "You cannot claim 'Char2'.")
-        self.call_cmd("", "@Randomscene Information: \nRandomly generated RP partners for this week: Char2 and Char3"
+        self.call_cmd("", "@Randomscene Information for this week: \nRandomly generated RP partners: Char2 and Char3"
                           "\nReminder: Please only /claim those you have interacted with significantly in a scene."
-                          "\nThose you have already RP'd with this week: Char2")
+                          "\nThose you have already RP'd with: Char2%s" % rptool_str)
         self.caller = self.char2
         self.call_cmd("/viewrequests", '| Name                               | Summary                               '
                                        '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
@@ -814,6 +898,9 @@ class SocialTestsPlus(ArxCommandTest):
         self.char2.player_ob.db.random_scenelist = [self.char3]
         self.call_cmd("/claim char3=testy test", 'You have sent char3 a request to validate your scene: testy test')
         self.caller = self.char3
+        self.char3.db.random_rp_command_this_week = "+plots"
+        self.char3.db.rp_command_used = True
+        rptool_str += " (Already used)"
         self.call_cmd("/viewrequests", '| Name                                | Summary                              '
                                        '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                                        '| asdf                                | testy test')
@@ -823,9 +910,10 @@ class SocialTestsPlus(ArxCommandTest):
                       '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                       '| asdf                                | testy test')
         self.call_cmd("/validate asdf", 'Validating their scene. Both of you will receive xp for it later.')
-        self.call_cmd("", '@Randomscene Information: \nRandomly generated RP partners for this week: Char2\n'
+        self.call_cmd("", '@Randomscene Information for this week: \nRandomly generated RP partners: Char2\n'
                           'Reminder: Please only /claim those you have interacted with significantly in a scene.\n'
-                          'Those you have validated scenes for this week: asdf')
+                          'Those you have validated scenes for: asdf%s' % rptool_str)
+        social.random.choice = temp
 
 
 class StaffCommandTests(ArxCommandTest):
@@ -924,7 +1012,7 @@ class StaffCommandTestsPlus(ArxCommandTest):
     num_additional_characters = 1
 
     def test_cmd_gmnotes(self):
-        self.setup_cmd(staff_commands.CmdGMNotes, self.account)
+        self.setup_cmd(staff_commands.CmdGMNotes, self.char)
         self.call_cmd("vixen", "No SearchTag found using 'vixen'.")
         self.call_cmd("/create vixen", "Tag created for 'vixen'!")
         self.call_cmd("/create bishi", "Tag created for 'bishi'!")
@@ -989,8 +1077,10 @@ class StaffCommandTestsPlus(ArxCommandTest):
         self.call_cmd("/plot", '| #   | Plot (owner)           | Summary                                     '
                                '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                                '| 1   | Slypose (Testaccount2) | Sly as a fox.')
-        self.call_cmd("/quick Send Help", "Created placeholder for 'Send Help' (clue #5).")
-        self.call_cmd("/quick Please=She's evil", "Created placeholder for 'Please' (clue #6). GM Notes: She's evil")
+        self.call_cmd("/quick Send Help/test", "Created placeholder for 'Send Help' (clue #5). GM Notes: test")
+        self.call_cmd("/quick Please=She's evil", 'Please include a name/identifier and notes for your quick clue.')
+        self.call_cmd("/quick Please/She's evil=here",
+                      "Created placeholder for 'Please' (clue #6). GM Notes: She's evil")
         self.assertEqual([str(ob) for ob in self.roster_entry.clues_written.all()],
                          ["PLACEHOLDER by Char: Send Help", "PLACEHOLDER by Char: Please"])
         self.call_cmd("/secret Char2,1=Sly you are evil. Srsly./Do not trust.",
@@ -1025,6 +1115,7 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                        "Repeat command to delete the 'bishi' tag anyway.")
         self.call_cmd("/delete bishi", "Deleting the 'bishi' tag. Poof.")
         self.call_cmd("/viewnotes char2", 'GM Notes for Char2:\n\nSly is incredibly hot and smirkity.\n\nDo not trust.')
+        self.call_cmd("/viewnotes here", "GM Notes for Room:\n\nShe's evil")
 
 
 class JobCommandTests(TestTicketMixins, ArxCommandTest):
@@ -1148,19 +1239,32 @@ class XPCommandTests(ArxCommandTest):
         stats_and_skills.adjust_skill(self.char2, "seduction")
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 8)
         self.char2.adjust_xp(10)
-        self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 10 xp. XP remaining: 0")
+        self.call_cmd("/spend Seduction", 'You spend 10 xp and have 0 remaining.|'
+                                          'You have increased your seduction to 5.')
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 32)
         self.char2.adjust_xp(1062)
         self.call_cmd("/spend Seduction", 'You cannot buy a legendary skill while you still have catchup xp remaining.')
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 5)
-        self.call_cmd("/spend Seduction", "You have increased your seduction for a cost of 1039 xp. XP remaining: 23")
+        self.call_cmd("/spend Seduction", 'You spend 1039 xp and have 23 remaining.|'
+                                          'You have increased your seduction to 6.')
         self.assertEqual(self.char2.db.skills.get("seduction"), 6)
         self.assertEqual(stats_and_skills.get_skill_cost(self.char2, "dodge"), 42)
         self.assertEqual(stats_and_skills.get_skill_cost_increase(self.char2), 1.078)
         self.char2.db.trainer = self.char1
         self.char1.db.skills = {"teaching": 5, "dodge": 2}
-        self.call_cmd("/spend dodge", 'You have increased your dodge for a cost of 23 xp. XP remaining: 0')
+        self.call_cmd("/spend dodge", 'You spend 23 xp and have 0 remaining.|You have increased your dodge to 1.')
         # TODO: other switches
+
+    def test_award_xp(self):
+        self.setup_cmd(xp.CmdAwardXP, self.account)
+        self.call_cmd("testaccount2=asdf", "Invalid syntax: Must have an xp amount.")
+        self.char2.db.xp = 0
+        self.call_cmd("testaccount2=5", 'Giving 5 xp to Char2.')
+        self.assertEqual(self.char2.db.xp, 5)
+        self.account2.inform = Mock()
+        self.call_cmd("testaccount2=15/hi u r gr8", 'Giving 15 xp to Char2. Message sent to player: hi u r gr8')
+        self.assertEqual(self.char2.db.xp, 20)
+        self.account2.inform.assert_called_with('You have been awarded 15 xp: hi u r gr8', category="XP")
 
 
 class HelpCommandTests(ArxCommandTest):
@@ -1168,7 +1272,7 @@ class HelpCommandTests(ArxCommandTest):
         from evennia.help.models import HelpEntry
         from evennia.utils.utils import dedent
         from commands.default_cmdsets import CharacterCmdSet
-        from world.dominion.plot_commands import CmdPlots
+        from world.dominion.plots.plot_commands import CmdPlots
         entry = HelpEntry.objects.create(db_key="test entry")
         entry.tags.add("plots")
         self.setup_cmd(help.CmdHelp, self.char1)

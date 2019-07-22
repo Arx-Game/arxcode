@@ -8,10 +8,10 @@ here.
 from django.conf import settings
 from .arx_utils import inform_staff
 from datetime import datetime
-from web.helpdesk.models import Ticket, Queue, FollowUp
+from web.helpdesk.models import Ticket, Queue, FollowUp, KBItem
 
 
-def create_ticket(caller, message, priority=3, queue_slug=settings.REQUEST_QUEUE_SLUG,
+def create_ticket(caller, message, priority=3, queue_slug=settings.REQUEST_QUEUE_SLUG, kb_category=None,
                   send_email=True, optional_title=None, plot=None, beat=None, goal_update=None):
     """
     Creates a new ticket and returns it.
@@ -29,7 +29,7 @@ def create_ticket(caller, message, priority=3, queue_slug=settings.REQUEST_QUEUE
     # not a fan of emojis in tickets, tbh
     message = message.rstrip(" ;)").rstrip(" :p").rstrip(" :P").rstrip(" ;P").rstrip(" ;p")
     ticket = Ticket(title=optional_title, queue=queue, db_date_created=datetime.now(), submitter_email=email,
-                    submitting_player=caller, submitting_room=room, description=message,
+                    submitting_player=caller, submitting_room=room, description=message, kb_category=kb_category,
                     priority=priority, plot=plot, beat=beat, goal_update=goal_update)
     if optional_title[:-1] in message:
         title = ""
@@ -92,6 +92,16 @@ def resolve_ticket(caller, ticket, message):
                  post=post, subject=subject)
     header = "Your ticket has been closed by %s.\n\n" % caller.key
     mail_update(ticket, message, header)
+    if ticket.kb_category:
+        # get_or_create to allow closing ticket multiple times to 'edit' an entry
+        item, created = KBItem.objects.get_or_create(title=ticket.title)
+        item.category = ticket.kb_category
+        item.question = ticket.description
+        item.answer = ticket.resolution
+        item.save()
+        verb = "created" if created else "changed"
+        inform_staff("Knowledge Base Item '%s' has been %s." % (item, verb))
+        return item
     return True
 
 

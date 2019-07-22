@@ -43,6 +43,8 @@ class RollModifier(SharedMemoryModel):
         (BESEECHING, "Beseeching"), (ANY_PHYSICAL, "Any Physical"), (ANY_MENTAL, "Any Mental"),
         (ANY_SOCIAL, "Any Social"), (ANY_MYSTICAL, "Any Mystical")
     )
+    MODIFIER, KNACK = range(2)
+    MOD_CHOICES = ((MODIFIER, "Modifier"), (KNACK, "Knack"))
     object = models.ForeignKey("objects.ObjectDB", db_index=True, related_name="modifiers")
     value = models.IntegerField(default=0)
     # tag required by the user for this modifier to take effect. if '', then it's for any user
@@ -55,6 +57,9 @@ class RollModifier(SharedMemoryModel):
     stat = models.CharField(blank=True, max_length=40, help_text="Only applies for checks with this stat.")
     skill = models.CharField(blank=True, max_length=40, help_text="Only applies for checks with this skill.")
     ability = models.CharField(blank=True, max_length=40, help_text="Only applies for checks with this ability.")
+    modifier_type = models.PositiveSmallIntegerField(choices=MOD_CHOICES, default=MODIFIER)
+    name = models.CharField(blank=True, max_length=80, db_index=True, help_text="Name of the modifier, for knacks")
+    description = models.TextField(blank=True, help_text="Description of why/how the modifier works")
 
     @classmethod
     def get_check_type_list(cls, check_type):
@@ -91,6 +96,18 @@ class RollModifier(SharedMemoryModel):
             msg += " against %s" % self.target_tag
         msg += " for %s checks" % self.get_check_display()
         return msg
+
+    def display_knack(self):
+        msg = "\n|wName:|n %s\n" % self.name
+        msg += "|wStat:|n {} |wSkill:|n {} |wValue:|n {}\n".format(self.stat, self.skill, self.value)
+        msg += "|wDescription:|n {}\n".format(self.description)
+        return msg
+
+    @property
+    def crit_chance_bonus(self):
+        """Modifiers to crit chance from a roll modifier"""
+        if self.value > 0:
+            return 1 + (self.value // 2)
 
 
 class EffectTrigger(SharedMemoryModel):

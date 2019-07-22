@@ -14,9 +14,9 @@ class ArxCommmandMixin(object):
         """Checks if the commands switches are inside switch_set"""
         return set(self.switches) & set(switch_set)
 
-    def search(self, args):
+    def search(self, args, **kwargs):
         """Standardizes performing a search for caller"""
-        ret = self.caller.search(args)
+        ret = self.caller.search(args, **kwargs)
         if not ret:
             raise self.error_class("Nothing found.")
         return ret
@@ -89,6 +89,28 @@ class ArxCommmandMixin(object):
         except KeyError:
             raise self.error_class("Invalid Choice. Try one of the following: %s" % ", ".join(original_strings))
 
+    def confirm_command(self, attr, val, prompt_msg):
+        """
+        Prompts the caller to confirm a command.
+
+            Args:
+                attr: Name of the confirmation check.
+                val: Value of the NAttribute to use.
+                prompt_msg: Confirmation prompt message.
+
+            Returns:
+                True if caller has the NAttribute set, False if we have to set
+                it and prompt them for confirmation.
+        """
+        from datetime import date
+        attr = "confirm_%s" % attr
+        val = "%s_%s" % (val, date)
+        if self.caller.nattributes.get(attr) == val:
+            self.caller.nattributes.remove(attr)
+            return True
+        self.caller.nattributes.add(attr, val)
+        self.caller.msg(prompt_msg)
+
 
 class FormCommandMixin(object):
     """Mixin to have command act as a form"""
@@ -122,3 +144,21 @@ class FormCommandMixin(object):
         new_object = form.save()
         self.msg("%s(#%s) created." % (new_object, new_object.id))
         self.caller.attributes.remove(self.form_attribute)
+
+
+# noinspection PyUnresolvedReferences
+class RewardRPToolUseMixin(object):
+    XP = 1
+    # for dynamic commands, we need a unique identifier
+    simplified_key = None
+
+    def mark_command_used(self):
+        key = self.simplified_key or self.key
+        if self.caller.char_ob.db.rp_command_used:
+            return
+        if self.caller.char_ob.db.random_rp_command_this_week != key:
+            return
+        self.caller.char_ob.db.rp_command_used = key
+        self.msg("You have used '%s', your randomly selected RP Tool command for the week, and gained %s xp." % (
+            key, self.XP))
+        self.caller.char_ob.adjust_xp(self.XP)

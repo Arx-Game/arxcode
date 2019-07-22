@@ -10,6 +10,7 @@ WEBSOCKET_CLIENT_INTERFACE = config('WEBSOCKET_CLIENT_INTERFACE', default='45.33
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='.arxmush.org, .arxgame.org', cast=Csv())
 WEBSERVER_PORTS = [(8000, 5001)]
 WEBSOCKET_CLIENT_PORT = 8001
+WEBSOCKET_CLIENT_URL = "wss://play.arxgame.org/ws"
 SSH_PORTS = [8022]
 SSL_PORTS = [4001]
 AMP_PORT = 5000
@@ -38,5 +39,5 @@ if SEND_GAME_INDEX:
         'telnet_hostname': 'play.arxgame.org',
         'telnet_port': 3000,
         # At minimum, specify this or the telnet_* options. Both is fine, too.
-        'web_client_url': 'http://play.arxgame.org/webclient',
+        'web_client_url': 'https://play.arxgame.org/webclient',
     }

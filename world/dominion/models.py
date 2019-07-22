@@ -51,49 +51,29 @@ Every week, a script is called that will run execute_orders() on every
 Army, and then do weekly_adjustment() in every assetowner. So only domains
 that currently have a ruler designated will change on a weekly basis.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from random import randint
-import traceback
 
 from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.locks.lockhandler import LockHandler
-from evennia.utils.utils import lazy_property
 from evennia.utils import create
 from django.db import models
-from django.db.models import Q, Count, F, Sum
+from django.db.models import Q, Count, F, Sum, Case, When
 from django.conf import settings
 from django.core.urlresolvers import reverse
 
-from . import unit_types, unit_constants
+from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
 from .reports import WeeklyReport
-from .battle import Battle
 from .agenthandler import AgentHandler
-from .managers import CrisisManager, OrganizationManager, LandManager
-from server.utils.arx_utils import get_week, inform_staff, passthrough_properties, CachedProperty, \
-    CachedPropertiesMixin, classproperty, a_or_an
-from server.utils.exceptions import ActionSubmissionError, PayError
+from .managers import OrganizationManager, LandManager
+from server.utils.arx_utils import get_week, inform_staff, CachedProperty, \
+    CachedPropertiesMixin, classproperty, a_or_an, inform_guides, commafy, get_full_url
+from server.utils.exceptions import PayError
 from typeclasses.npcs import npc_types
 from typeclasses.mixins import InformMixin
-from web.character.models import AbstractPlayerAllocations
+from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement
 from world.stats_and_skills import do_dice_check
 
-
-# Dominion constants
-BASE_WORKER_COST = 0.10
-SILVER_PER_BUILDING = 225.00
-FOOD_PER_FARM = 100.00
-# default value for a global modifier to Dominion income, can be set as a ServerConfig value on a per-game basis
-DEFAULT_GLOBAL_INCOME_MOD = -0.25
-# each point in a dominion skill is a 5% bonus
-BONUS_PER_SKILL_POINT = 0.10
-# number of workers for a building to be at full production
-SERFS_PER_BUILDING = 20.0
-# population cap for housing
-POP_PER_HOUSING = 1000
-BASE_POP_GROWTH = 0.01
-DEATHS_PER_LAWLESS = 0.0025
-LAND_SIZE = 10000
-LAND_COORDS = 9
 LIFESTYLES = {
     0: (-100, -1000),
     1: (0, 0),
@@ -105,8 +85,6 @@ LIFESTYLES = {
     }
 PRESTIGE_DECAY_AMOUNT = 0.35
 MAX_PRESTIGE_HISTORY = 10
-
-PAGEROOT = "http://play.arxgame.org"
 
 
 # Create your models here.
@@ -503,6 +481,7 @@ class PrestigeCategory(SharedMemoryModel):
     name = models.CharField(max_length=30, blank=False, null=False)
     male_noun = models.CharField(max_length=30, blank=False, null=False)
     female_noun = models.CharField(max_length=30, blank=False, null=False)
+    description = models.CharField(max_length=80, blank=True, null=True)
 
     CACHED_TYPES = {}
 
@@ -569,6 +548,7 @@ class PrestigeAdjustment(SharedMemoryModel):
     adjusted_on = models.DateTimeField(auto_now_add=True, blank=False, null=False)
     adjusted_by = models.PositiveIntegerField(default=0, blank=False, null=False)
     reason = models.TextField(blank=True, null=True)
+    long_reason = models.TextField(blank=True, null=True)
 
     @property
     def effective_value(self):
@@ -605,7 +585,140 @@ class PrestigeTier(SharedMemoryModel):
         return self.rank_name
 
 
-# noinspection PyMethodParameters,PyPep8Naming
+class PrestigeNomination(SharedMemoryModel):
+    """Used for storing a player nomination for a prestige adjustment."""
+
+    TYPE_FAME = 0
+    TYPE_LEGEND = 1
+
+    TYPES = (
+        (TYPE_FAME, 'Fame'),
+        (TYPE_LEGEND, 'Legend')
+    )
+
+    SIZE_SMALL = 0
+    SIZE_MEDIUM = 1
+    SIZE_LARGE = 2
+    SIZE_HUGE = 3
+
+    SIZES = (
+        (SIZE_SMALL, 'Small'),
+        (SIZE_MEDIUM, 'Medium'),
+        (SIZE_LARGE, 'Large'),
+        (SIZE_HUGE, 'Huge'),
+    )
+
+    AMOUNTS = {
+        TYPE_FAME: {
+            SIZE_SMALL: 100000,
+            SIZE_MEDIUM: 250000,
+            SIZE_LARGE: 500000,
+            SIZE_HUGE: 1000000
+        },
+        TYPE_LEGEND: {
+            SIZE_SMALL: 5000,
+            SIZE_MEDIUM: 10000,
+            SIZE_LARGE: 25000,
+            SIZE_HUGE: 50000
+        }
+    }
+
+    pending = models.BooleanField(default=True)
+    approved = models.BooleanField(default=False)
+
+    nominator = models.ForeignKey('PlayerOrNpc', blank=False, null=False, related_name='+')
+    nominees = models.ManyToManyField('AssetOwner', related_name='+')
+    category = models.ForeignKey('PrestigeCategory', blank=False, null=False, related_name='+')
+    adjust_type = models.PositiveSmallIntegerField(default=TYPE_FAME, choices=TYPES)
+    adjust_size = models.PositiveSmallIntegerField(default=SIZE_SMALL, choices=SIZES)
+    reason = models.CharField(max_length=40, blank=True, null=True)
+    long_reason = models.TextField(blank=False, null=False)
+
+    approved_by = models.ManyToManyField('PlayerOrNpc', related_name='+')
+    denied_by = models.ManyToManyField('PlayerOrNpc', related_name='+')
+
+    APPROVALS_REQUIRED = 3
+    DENIALS_REQUIRED = 3
+
+    def approve(self, caller):
+        dom_obj = caller.player_ob.Dominion
+
+        if dom_obj in self.approved_by.all():
+            return
+
+        if dom_obj in self.denied_by.all():
+            self.denied_by.remove(dom_obj)
+
+        self.approved_by.add(caller.player_ob.Dominion)
+        self.save()
+        if self.approved_by.count() >= self.__class__.APPROVALS_REQUIRED:
+            self.apply()
+
+    def deny(self, caller):
+        dom_obj = caller.player_ob.Dominion
+
+        if dom_obj in self.denied_by.all():
+            return
+
+        if dom_obj in self.approved_by.all():
+            self.approved_by.remove(dom_obj)
+
+        self.denied_by.add(caller.player_ob.Dominion)
+        self.save()
+        if self.denied_by.count() >= self.__class__.DENIALS_REQUIRED:
+            inform_guides("|wPRESTIGE:|n Nomination %d has been denied." % self.id)
+            self.pending = False
+            self.approved = False
+            self.save()
+
+    def apply(self):
+        if not self.pending:
+            return
+
+        adjust_amount = PrestigeNomination.AMOUNTS[self.adjust_type][self.adjust_size]
+        targets = []
+        for target in self.nominees.all():
+            targets.append("|y" + str(target.owner) + "|n")
+            if self.adjust_type == PrestigeNomination.TYPE_FAME:
+                target.adjust_prestige(adjust_amount, category=self.category, reason=self.reason,
+                                       long_reason=self.long_reason)
+            elif self.adjust_type == PrestigeNomination.TYPE_LEGEND:
+                target.adjust_legend(adjust_amount, category=self.category, reason=self.reason,
+                                     long_reason=self.long_reason)
+
+        comma_targets = commafy(targets)
+        verb = "was"
+        if len(targets) > 1:
+            verb = "were"
+        type_noun = "fame"
+        if self.adjust_type == PrestigeNomination.TYPE_LEGEND:
+            type_noun = "legend"
+
+        size_name = "small"
+        for size_tup in PrestigeNomination.SIZES:
+            if size_tup[0] == self.adjust_size:
+                size_name = size_tup[1].lower()
+
+        inform_guides("|wPRESTIGE:|n Nomination %d has been approved." % self.id)
+        summary = "%s %s just given %d %s %s: %s" % (comma_targets, verb, adjust_amount,
+                                                     str(self.category), type_noun, self.long_reason)
+
+        inform_staff(summary)
+
+        from typeclasses.bulletin_board.bboard import BBoard
+        board = BBoard.objects.get(db_key__iexact="vox populi")
+        subject = "Reputation changes"
+        post_msg = "%s %s just given %s %s %s adjustment:\n\n%s" % (comma_targets, verb, a_or_an(size_name), size_name,
+                                                                    type_noun, self.long_reason)
+        post = board.bb_post(poster_obj=None, poster_name="Prestige Nomination", msg=post_msg, subject=subject)
+        post.tags.add("reputation_change")
+
+        self.pending = False
+        self.approved = True
+        self.save()
+
+
+# noinspection PyMethodParameters,PyPep8Naming,PyTypeChecker
 class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     """
     This model describes the owner of an asset, such as money
@@ -682,7 +795,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             cls._AVERAGE_FAME['last_check'] = now
             assets = list(
                 AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available"))
-                    .order_by('-fame'))
+                                  .order_by('-fame'))
             total = 0
             for asset in assets:
                 total += asset.fame
@@ -745,13 +858,16 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         """Our prestige used for different mods. aggregate of fame, legend, and grandeur"""
         return self.fame + self.total_legend + self.grandeur + self.propriety
 
-    def descriptor_for_value_adjustment(self, value, max_value, best_adjust):
+    def descriptor_for_value_adjustment(self, value, max_value, best_adjust, include_reason=True,
+                                        wants_long_reason=False):
         qualifier = PrestigeTier.rank_for_prestige(value, max_value)
         result = None
         reason = None
+        long_reason = best_adjust and best_adjust.long_reason
         if best_adjust:
-            reason = best_adjust.reason
-            char = self.player.player.db.char_ob
+            if include_reason:
+                reason = long_reason if wants_long_reason and long_reason else best_adjust.reason
+            char = self.player.player.char_ob
             gender = char.db.gender or "Male"
             if gender.lower() == "male":
                 result = best_adjust.category.male_noun
@@ -771,7 +887,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         return result
 
-    def prestige_descriptor(self, adjust_type=None):
+    def prestige_descriptor(self, adjust_type=None, include_reason=True, wants_long_reason=False):
         if not self.player:
             return self.organization_owner.name
 
@@ -779,7 +895,9 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         max_value = AssetOwner.MEDIAN_PRESTIGE
 
         return self.descriptor_for_value_adjustment(value, max_value,
-                                                    self.most_notable_adjustment(adjust_type=adjust_type))
+                                                    self.most_notable_adjustment(adjust_type=adjust_type),
+                                                    wants_long_reason=wants_long_reason,
+                                                    include_reason=include_reason)
 
     @CachedProperty
     def propriety(self):
@@ -791,10 +909,25 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             percentage *= -1
         value = int(base * percentage/100.0)
         if self.player:
+            # It's not possible to use F expressions on datetime fields so we'll check a range of dates
+            now = datetime.now()
+            last_week = now - timedelta(days=7)
+            two_weeks = now - timedelta(days=14)
+            three_weeks = now - timedelta(days=21)
+            four_weeks = now - timedelta(days=28)
+            # number of weeks since the favor was set, + 1, cap at a month ago
+            num_weeks = (Case(When(date_gossip_set__isnull=True, then=1),
+                              When(date_gossip_set__lte=four_weeks, then=5),
+                              When(date_gossip_set__lte=three_weeks, then=4),
+                              When(date_gossip_set__lte=two_weeks, then=3),
+                              When(date_gossip_set__lte=last_week, then=2),
+                              default=1))
+            # the base prestige they get from each org, then modified by their favor value
+            org_prestige = (F('organization__assets__fame') + F('organization__assets__legend'))/(20 * F('num_weeks'))
+            val = org_prestige * F('favor')
             favor = (self.player.reputations.filter(Q(favor__gt=0) | Q(favor__lt=0))
-                                            .annotate(val=((F('organization__assets__fame')
-                                                           + F('organization__assets__legend'))/20) * F('favor')
-                                                      )
+                                            .annotate(num_weeks=num_weeks)
+                                            .annotate(val=val)
                                             .aggregate(Sum('val'))).values()[0] or 0
             value += favor
         return value
@@ -902,7 +1035,8 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         return min(abs(int(base)), abs(self.fame + self.legend) * 2) * sign
 
     # noinspection PyMethodMayBeStatic
-    def store_prestige_record(self, value, adjustment_type=PrestigeAdjustment.FAME, category=None, reason=None):
+    def store_prestige_record(self, value, adjustment_type=PrestigeAdjustment.FAME, category=None,
+                              reason=None, long_reason=None):
         if not category:
             return
 
@@ -913,7 +1047,8 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             category=category,
             adjustment_type=adjustment_type,
             adjusted_by=value,
-            reason=reason
+            reason=reason,
+            long_reason=long_reason
         )
 
         if old_adjustments.count() >= MAX_PRESTIGE_HISTORY:
@@ -939,7 +1074,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         return greatest
 
-    def adjust_prestige(self, value, category=None, reason=None):
+    def adjust_prestige(self, value, category=None, reason=None, long_reason=None):
         """
         Adjusts our prestige. We gain fame equal to the value. We no longer
         adjust the legend, per Apos.
@@ -949,9 +1084,9 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         if category:
             self.store_prestige_record(value, adjustment_type=PrestigeAdjustment.FAME, category=category,
-                                       reason=reason)
+                                       reason=reason, long_reason=long_reason)
 
-    def adjust_legend(self, value, category=None, reason=None):
+    def adjust_legend(self, value, category=None, reason=None, long_reason=None):
         """
         Adjusts our legend. We gain legend equal to the value.
         """
@@ -960,7 +1095,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         if category:
             self.store_prestige_record(value, adjustment_type=PrestigeAdjustment.LEGEND, category=category,
-                                       reason=reason)
+                                       reason=reason, long_reason=long_reason)
 
     @CachedProperty
     def income(self):
@@ -1198,7 +1333,7 @@ class CharitableDonation(SharedMemoryModel):
         roll += caller.social_clout
         if roll <= 1:
             roll = 1
-        roll /= 100.0
+        roll /= 20.0
         roll *= value/2.0
         prest = int(roll)
         self.giver.adjust_prestige(prest, category=PrestigeCategory.CHARITY)
@@ -1513,2084 +1648,6 @@ class MapLocation(SharedMemoryModel):
         return label
 
 
-class Domain(CachedPropertiesMixin, SharedMemoryModel):
-    """
-    A domain owned by a noble house that resides on a particular Land square on
-    the map we'll generate. This model contains information specifically to
-    the noble's holding, with all the relevant economic data. All of this is
-    assumed to be their property, and its income is drawn upon as a weekly
-    event. It resides in a specific Land square, but a Land square can hold
-    several domains, up to a total area.
-
-    A player may own several different domains, but each should be in a unique
-    square. Conquering other domains inside the same Land square should annex
-    them into a single domain.
-    """
-    # 'grid' square where our domain is. More than 1 domain can be on a square
-    location = models.ForeignKey('MapLocation', on_delete=models.SET_NULL, related_name='domains',
-                                 blank=True, null=True)
-    # The house that rules this domain
-    ruler = models.ForeignKey('Ruler', on_delete=models.SET_NULL, related_name='holdings', blank=True, null=True,
-                              db_index=True)
-    # cosmetic info
-    name = models.CharField(blank=True, null=True, max_length=80)
-    desc = models.TextField(blank=True, null=True)
-    title = models.CharField(blank=True, null=True, max_length=255)
-    destroyed = models.BooleanField(default=False, blank=False)
-
-    # how much of the territory in our land square we control
-    from django.core.validators import MaxValueValidator
-    area = models.PositiveSmallIntegerField(validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0)
-
-    # granaries, food for emergencies, etc
-    stored_food = models.PositiveIntegerField(default=0, blank=0)
-
-    # food from other sources - trade, other holdings of player, etc
-    # this is currently 'in transit', and will be added to food_stored if it arrives
-    shipped_food = models.PositiveIntegerField(default=0, blank=0)
-
-    # percentage out of 100
-    tax_rate = models.PositiveSmallIntegerField(default=10, blank=10)
-
-    # our economic resources
-    num_mines = models.PositiveSmallIntegerField(default=0, blank=0)
-    num_lumber_yards = models.PositiveSmallIntegerField(default=0, blank=0)
-    num_mills = models.PositiveSmallIntegerField(default=0, blank=0)
-    num_housing = models.PositiveIntegerField(default=0, blank=0)
-    num_farms = models.PositiveSmallIntegerField(default=0, blank=0)
-    # workers who are not currently employed in a resource
-    unassigned_serfs = models.PositiveIntegerField(default=0, blank=0)
-    # what proportion of our serfs are slaves and will have no money upkeep
-    slave_labor_percentage = models.PositiveSmallIntegerField(default=0, blank=0)
-    # workers employed in different buildings
-    mining_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
-    lumber_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
-    farming_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
-    mill_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
-
-    # causes mo' problems.
-    lawlessness = models.PositiveSmallIntegerField(default=0, blank=0)
-    amount_plundered = models.PositiveSmallIntegerField(default=0, blank=0)
-    income_modifier = models.PositiveSmallIntegerField(default=100, blank=100)
-
-    @property
-    def land(self):
-        """Returns land square from our location"""
-        if not self.location:
-            return None
-        return self.location.land
-
-    # All income sources are floats for modifier calculations. We'll convert to int at the end
-
-    @CachedProperty
-    def tax_income(self):
-        tax = float(self.tax_rate)/100.0
-        if tax > 1.00:
-            tax = 1.00
-        tax *= float(self.total_serfs)
-        if self.ruler:
-            vassals = self.ruler.vassals.all()
-            for vassal in vassals:
-                try:
-                    for domain in vassal.holdings.all():
-                        amt = domain.liege_taxed_amt
-                        tax += amt
-                except (AttributeError, TypeError, ValueError):
-                    pass
-        return tax
-
-    @staticmethod
-    def required_worker_mod(buildings, workers):
-        """
-        Returns what percentage (as a float between 0.0 to 1.0) we have of
-        the workers needed to run these number of buildings at full strength.
-        """
-        req = buildings * SERFS_PER_BUILDING
-        # if we have more than enough workers, we're at 100%
-        if workers >= req:
-            return 1.0
-        # percentage of our efficiency
-        return workers/req
-
-    def get_resource_income(self, building, workers):
-        """Generates base income from resources"""
-        base = SILVER_PER_BUILDING * building
-        worker_req = self.required_worker_mod(building, workers)
-        return base * worker_req
-
-    def _get_mining_income(self):
-        base = self.get_resource_income(self.num_mines, self.mining_serfs)
-        if self.land:
-            base = (base * self.land.mine_mod)/100.0
-        return base
-
-    def _get_lumber_income(self):
-        base = self.get_resource_income(self.num_lumber_yards, self.lumber_serfs)
-        if self.land:
-            base = (base * self.land.lumber_mod)/100.0
-        return base
-
-    def _get_mill_income(self):
-        base = self.get_resource_income(self.num_mills, self.mill_serfs)
-        return base
-
-    def get_bonus(self, attr):
-        """
-        Checks bonus of ruler for a given skill
-        Args:
-            attr: Skill name to check
-
-        Returns:
-            A percentage multiplier based on their skill
-        """
-        try:
-            skill_value = self.ruler.ruler_skill(attr)
-            skill_value *= BONUS_PER_SKILL_POINT
-            return skill_value
-        except AttributeError:
-            return 0.0
-
-    @CachedProperty
-    def total_income(self):
-        """
-        Returns our total income after all modifiers. All income sources are
-        floats, which we'll convert to an int once we're all done.
-        """
-        from evennia.server.models import ServerConfig
-        amount = self.tax_income
-        amount += self.mining_income
-        amount += self.lumber_income
-        amount += self.mill_income
-        amount = (amount * self.income_modifier)/100.0
-        global_mod = ServerConfig.objects.conf("GLOBAL_INCOME_MOD", default=DEFAULT_GLOBAL_INCOME_MOD)
-        try:
-            amount += int(amount * global_mod)
-        except (TypeError, ValueError):
-            print("Error: Improperly Configured GLOBAL_INCOME_MOD: %s" % global_mod)
-        try:
-            amount += self.ruler.house.get_bonus_income(amount)
-        except AttributeError:
-            pass
-        if self.ruler and self.ruler.castellan:
-            bonus = self.get_bonus('income') * amount
-            amount += bonus
-        # we'll dump the remainder
-        return int(amount)
-
-    def _get_liege_tax(self):
-        if not self.ruler:
-            return 0
-        if not self.ruler.liege:
-            return 0
-        if self.ruler.liege.holdings.all():
-            return self.ruler.liege.holdings.first().tax_rate
-        return 0
-
-    def worker_cost(self, number):
-        """
-        Cost of workers, reduced if they are slaves
-        """
-        if self.slave_labor_percentage > 99:
-            return 0
-        cost = BASE_WORKER_COST * number
-        cost *= (100 - self.slave_labor_percentage)/100
-        if self.ruler and self.ruler.castellan:
-            # every point in upkeep skill reduces cost
-            reduction = 1.00 + self.get_bonus('upkeep')
-            cost /= reduction
-        return int(cost)
-
-    @CachedProperty
-    def costs(self):
-        """
-        Costs/upkeep for all of our production.
-        """
-        costs = 0
-        for army in self.armies.all():
-            costs += army.costs
-        costs += self.worker_cost(self.mining_serfs)
-        costs += self.worker_cost(self.lumber_serfs)
-        costs += self.worker_cost(self.mill_serfs)
-        costs += self.amount_plundered
-        costs += self.liege_taxed_amt
-        return costs
-
-    def _get_liege_taxed_amt(self):
-        if self.liege_taxes:
-            amt = self.ruler.liege_taxes
-            if amt:
-                return amt
-            # check if we have a transaction
-            try:
-                transaction = self.ruler.house.debts.get(category="vassal taxes")
-                return transaction.weekly_amount
-            except AccountTransaction.DoesNotExist:
-                amt = (self.total_income * self.liege_taxes)/100
-                self.ruler.house.debts.create(category="vassal taxes", receiver=self.ruler.liege.house,
-                                              weekly_amount=amt)
-                return amt
-        return 0
-
-    def reset_expected_tax_payment(self):
-        """Sets the weekly amount that will be paid to their liege"""
-        amt = (self.total_income * self.liege_taxes) / 100
-        if not amt:
-            return
-        try:
-            transaction = self.ruler.house.debts.get(category="vassal taxes")
-            if transaction.receiver != self.ruler.liege.house:
-                transaction.receiver = self.ruler.liege.house
-        except AccountTransaction.DoesNotExist:
-            transaction = self.ruler.house.debts.create(category="vassal taxes", receiver=self.ruler.liege.house,
-                                                        weekly_amount=amt)
-        transaction.weekly_amount = amt
-        transaction.save()
-
-    def _get_food_production(self):
-        """
-        How much food the region produces.
-        """
-        mod = self.required_worker_mod(self.num_farms, self.farming_serfs)
-        amount = (self.num_farms * FOOD_PER_FARM) * mod
-        if self.ruler and self.ruler.castellan:
-            bonus = self.get_bonus('farming') * amount
-            amount += bonus
-        return int(amount)
-
-    def _get_food_consumption(self):
-        """
-        How much food the region consumes from workers. Armies/garrisons will
-        draw upon stored food during do_weekly_adjustment.
-        """
-        return self.total_serfs
-
-    def _get_max_pop(self):
-        """
-        Maximum population.
-        """
-        return self.num_housing * POP_PER_HOUSING
-
-    def _get_employed_serfs(self):
-        """
-        How many serfs are currently working on a field.
-        """
-        return self.mill_serfs + self.mining_serfs + self.farming_serfs + self.lumber_serfs
-
-    def _get_total_serfs(self):
-        """
-        Total of all serfs
-        """
-        return self.employed + self.unassigned_serfs
-
-    def kill_serfs(self, deaths, serf_type=None):
-        """
-        Whenever we lose serfs, we need to lose some that are employed in some field.
-        If serf_type is specified, then we kill serfs who are either 'farming' serfs,
-        'mining' serfs, 'mill' serfs, or 'lumber' sefs. Otherwise, we kill whichever
-        field has the most employed.
-        """
-        if serf_type == "farming":
-            worker_type = "farming_serfs"
-        elif serf_type == "mining":
-            worker_type = "mining_serfs"
-        elif serf_type == "mill":
-            worker_type = "mill_serfs"
-        elif serf_type == "lumber":
-            worker_type = "lumber_serfs"
-        else:
-            # if we have more deaths than unemployed serfs
-            more_deaths = deaths - self.unassigned_serfs
-            if more_deaths < 1:  # only unemployed die
-                self.unassigned_serfs -= deaths
-                self.save()
-                return
-            # gotta kill more
-            worker_types = ["farming_serfs", "mining_serfs", "mill_serfs", "lumber_serfs"]
-            # sort it from most to least
-            worker_types.sort(key=lambda x: getattr(self, x), reverse=True)
-            worker_type = worker_types[0]
-            # now we'll kill the remainder after killing unemployed above
-            self.unassigned_serfs = 0
-            deaths = more_deaths
-        num_workers = getattr(self, worker_type, 0)
-        if num_workers:
-            num_workers -= deaths
-        if num_workers < 0:
-            num_workers = 0
-        setattr(self, worker_type, num_workers)
-        self.save()
-
-    def plundered_by(self, army, week):
-        """
-        An army has successfully pillaged us. Determine the economic impact.
-        """
-        print("%s plundered during week %s" % (self, week))
-        max_pillage = army.size/10
-        pillage = self.total_income
-        if pillage > max_pillage:
-            pillage = max_pillage
-        self.amount_plundered = pillage
-        self.lawlessness += 10
-        self.save()
-        return pillage
-
-    def annex(self, target, week, army):
-        """
-        Absorbs the target domain into this one. We'll take all buildings/serfs
-        from the target, then delete old domain.
-        """
-        # add stuff from target domain to us
-        self.area += target.area
-        self.stored_food += target.stored_food
-        self.unassigned_serfs += target.unassigned_serfs
-        self.mill_serfs += target.mill_serfs
-        self.lumber_serfs += target.lumber_serfs
-        self.mining_serfs += target.mining_serfs
-        self.farming_serfs += target.farming_serfs
-        self.num_farms += target.num_farms
-        self.num_housing += target.num_housing
-        self.num_lumber_yards += target.num_lumber_yards
-        self.num_mills += target.num_mills
-        self.num_mines += target.num_mines
-        for castle in target.castles.all():
-            castle.domain = self
-            castle.save()
-        # now get rid of annexed domain and save changes
-        target.fake_delete()
-        self.save()
-        army.domain = self
-        army.save()
-        print("%s annexed during week %s" % (self, week))
-
-    def fake_delete(self):
-        """
-        Makes us an inactive domain without a presence in the world, but kept for
-        historical reasons (such as description/name).
-        """
-        self.destroyed = True
-        self.area = 0
-        self.stored_food = 0
-        self.unassigned_serfs = 0
-        self.mill_serfs = 0
-        self.lumber_serfs = 0
-        self.mining_serfs = 0
-        self.farming_serfs = 0
-        self.num_farms = 0
-        self.num_housing = 0
-        self.num_lumber_yards = 0
-        self.num_mills = 0
-        self.num_mines = 0
-        self.castles.clear()
-        self.armies.clear()
-        self.save()
-
-    def adjust_population(self):
-        """
-        Increase or decrease population based on our housing and lawlessness.
-        """
-        base_growth = (BASE_POP_GROWTH * self.total_serfs) + 1
-        deaths = 0
-        # if we have no food or no room, population cannot grow
-        if self.stored_food <= 0 or self.total_serfs >= self.max_pop:
-            base_growth = 0
-        else:  # bonuses for growth
-            # bonus for having a lot of room to grow
-            bonus = float(self.max_pop)/self.total_serfs
-            if self.ruler and self.ruler.castellan:
-                bonus += bonus * self.get_bonus('population')
-            bonus = int(bonus) + 1
-            base_growth += bonus
-        if self.lawlessness > 0:
-            # at 100% lawlessness, we have a 5% death rate per week
-            deaths = (self.lawlessness * DEATHS_PER_LAWLESS) * self.total_serfs
-            deaths = int(deaths) + 1
-        adjustment = base_growth - deaths
-        if adjustment < 0:
-            self.kill_serfs(adjustment)
-        else:
-            self.unassigned_serfs += adjustment
-
-    food_production = property(_get_food_production)
-    food_consumption = property(_get_food_consumption)
-    mining_income = property(_get_mining_income)
-    lumber_income = property(_get_lumber_income)
-    mill_income = property(_get_mill_income)
-    max_pop = property(_get_max_pop)
-    employed = property(_get_employed_serfs)
-    total_serfs = property(_get_total_serfs)
-    liege_taxes = property(_get_liege_tax)
-    liege_taxed_amt = property(_get_liege_taxed_amt)
-
-    def __unicode__(self):
-        return "%s (#%s)" % (self.name or 'Unnamed Domain', self.id)
-
-    def __repr__(self):
-        return "<Domain (#%s): %s>" % (self.id, self.name or 'Unnamed')
-
-    def do_weekly_adjustment(self, week, report=None, npc=False):
-        """
-        Determine how much money we're passing up to the ruler of our domain. Make
-        all the people and armies of this domain eat their food for the week. Bad
-        things will happen if they don't have enough food.
-        """
-        if npc:
-            return self.total_income - self.costs
-        self.stored_food += self.food_production
-        self.stored_food += self.shipped_food
-        hunger = self.food_consumption - self.stored_food
-        loot = 0
-        if hunger > 0:
-            self.stored_food = 0
-            self.lawlessness += 5
-            # unless we have a very large population, we'll only lose 1 serf as a penalty
-            lost_serfs = hunger / 100 + 1
-            self.kill_serfs(lost_serfs)
-        else:  # hunger is negative, we have enough food for it
-            self.stored_food += hunger
-        for army in self.armies.all():
-            army.do_weekly_adjustment(week, report)
-            if army.plunder:
-                loot += army.plunder
-                army.plunder = 0
-                army.save()
-        self.adjust_population()
-        for project in list(self.projects.all()):
-            project.advance_project(report)
-        total_amount = (self.total_income + loot) - self.costs
-        # reset the amount of money that's been plundered from us
-        self.amount_plundered = 0
-        self.save()
-        self.reset_expected_tax_payment()
-        return total_amount
-
-    def display(self):
-        """Returns formatted string display for a domain"""
-        castellan = None
-        liege = "Crownsworn"
-        ministers = []
-        if self.ruler:
-            castellan = self.ruler.castellan
-            liege = self.ruler.liege
-            ministers = self.ruler.ministers.all()
-        mssg = "{wDomain{n: %s\n" % self.name
-        mssg += "{wLand{n: %s\n" % self.land
-        mssg += "{wHouse{n: %s\n" % str(self.ruler)
-        mssg += "{wLiege{n: %s\n" % str(liege)
-        mssg += "{wRuler{n: {c%s{n\n" % castellan
-        if ministers:
-            mssg += "{wMinisters:{n\n"
-            for minister in ministers:
-                mssg += "  {c%s{n   {wCategory:{n %s  {wTitle:{n %s\n" % (minister.player,
-                                                                          minister.get_category_display(),
-                                                                          minister.title)
-        mssg += "{wDesc{n: %s\n" % self.desc
-        mssg += "{wArea{n: %s {wFarms{n: %s {wHousing{n: %s " % (self.area, self.num_farms, self.num_housing)
-        mssg += "{wMines{n: %s {wLumber{n: %s {wMills{n: %s\n" % (self.num_mines, self.num_lumber_yards, self.num_mills)
-        mssg += "{wTotal serfs{n: %s " % self.total_serfs
-        mssg += "{wAssignments: Mines{n: %s {wMills{n: %s " % (self.mining_serfs, self.mill_serfs)
-        mssg += "{wLumber yards:{n %s {wFarms{n: %s\n" % (self.lumber_serfs, self.farming_serfs)
-        mssg += "{wTax Rate{n: %s {wLawlessness{n: %s " % (self.tax_rate, self.lawlessness)
-        mssg += "{wCosts{n: %s {wIncome{n: %s {wLiege's tax rate{n: %s\n" % (self.costs, self.total_income,
-                                                                             self.liege_taxes)
-        mssg += "{wFood Production{n: %s {wFood Consumption{n: %s {wStored Food{n: %s\n" % (self.food_production,
-                                                                                            self.food_consumption,
-                                                                                            self.stored_food)
-        mssg += "\n{wCastles:{n\n"
-        mssg += "{w================================={n\n"
-        for castle in self.castles.all():
-            mssg += castle.display()
-        mssg += "\n{wArmies:{n\n"
-        mssg += "{w================================={n\n"
-        for army in self.armies.all():
-            mssg += army.display()
-        return mssg
-
-    def clear_cached_properties(self):
-        """Clears cached income/cost data"""
-        super(Domain, self).clear_cached_properties()
-        try:
-            self.ruler.house.clear_cached_properties()
-        except (AttributeError, ValueError, TypeError):
-            pass
-
-
-class DomainProject(SharedMemoryModel):
-    """
-    Construction projects with a domain. In general, each should take a week,
-    but may come up with ones that would take more.
-    """
-    # project types
-    BUILD_HOUSING = 1
-    BUILD_FARMS = 2
-    BUILD_MINES = 3
-    BUILD_MILLS = 4
-    BUILD_DEFENSES = 5
-    BUILD_SIEGE_WEAPONS = 6
-    MUSTER_TROOPS = 7
-    BUILD_TROOP_EQUIPMENT = 9
-
-    PROJECT_CHOICES = ((BUILD_HOUSING, 'Build Housing'),
-                       (BUILD_FARMS, 'Build Farms'),
-                       (BUILD_MINES, 'Build Mines'),
-                       (BUILD_MILLS, 'Build Mills'),
-                       (BUILD_DEFENSES, 'Build Defenses'),
-                       (BUILD_SIEGE_WEAPONS, 'Build Siege Weapons'),
-                       (MUSTER_TROOPS, 'Muster Troops'),
-                       (BUILD_TROOP_EQUIPMENT, 'Build Troop Equipment'),)
-
-    type = models.PositiveSmallIntegerField(choices=PROJECT_CHOICES, default=BUILD_HOUSING)
-    amount = models.PositiveSmallIntegerField(blank=1, default=1)
-    unit_type = models.PositiveSmallIntegerField(default=1, blank=1)
-    time_remaining = models.PositiveIntegerField(default=1, blank=1)
-    domain = models.ForeignKey("Domain", related_name="projects", blank=True, null=True)
-    castle = models.ForeignKey("Castle", related_name="projects", blank=True, null=True)
-    military = models.ForeignKey("Army", related_name="projects", blank=True, null=True)
-    unit = models.ForeignKey("MilitaryUnit", related_name="projects", blank=True, null=True)
-
-    def advance_project(self, report=None, increment=1):
-        """Makes progress on a project for a domain"""
-        self.time_remaining -= increment
-        if self.time_remaining < 1:
-            self.finish_project(report)
-        self.save()
-
-    def finish_project(self, report=None):
-        """
-        Does whatever the project set out to do. For muster troops, we'll need to first
-        determine if the unit type we're training more of already exists in the army.
-        If so, we add to the value, and if not, we create a new unit.
-        """
-        if self.type == self.BUILD_HOUSING:
-            self.domain.num_housing += self.amount
-        if self.type == self.BUILD_FARMS:
-            self.domain.num_farms += self.amount
-        if self.type == self.BUILD_MINES:
-            self.domain.num_mines += self.amount
-        if self.type == self.BUILD_MILLS:
-            self.domain.num_mills += self.amount
-        if self.type < self.BUILD_DEFENSES:
-            self.domain.save()
-        if self.type == self.BUILD_DEFENSES:
-            self.castle.level += self.amount
-            self.castle.save()
-        if self.type == self.MUSTER_TROOPS:
-            existing_unit = self.military.find_unit(self.unit_type)
-            if existing_unit:
-                existing_unit.adjust_readiness(self.amount)
-                existing_unit.quantity += self.amount
-                existing_unit.save()
-            else:
-                self.military.units.create(unit_type=self.unit_type, quantity=self.amount)
-        if self.type == self.TRAIN_TROOPS:
-            self.unit.train(self.amount)
-        if self.type == self.BUILD_TROOP_EQUIPMENT:
-            self.unit.equipment += self.amount
-            self.unit.save()
-        if report:
-            # add a copy of this project's data to the report
-            report.add_project_report(self)
-        # we're all done. goodbye, cruel world
-        self.delete()
-
-
-class Castle(SharedMemoryModel):
-    """
-    Castles within a given domain. Although typically we would only have one,
-    it's possible a player might have more than one in a Land square by annexing
-    multiple domains within a square. Castles will have a defense level that augments
-    the strength of any garrison.
-
-    Currently, castles have no upkeep costs. Any costs for their garrison is paid
-    by the domain that owns that army.
-    """
-    MOTTE_AND_BAILEY = 1
-    TIMBER_CASTLE = 2
-    STONE_CASTLE = 3
-    CASTLE_WITH_CURTAIN_WALL = 4
-    FORTIFIED_CASTLE = 5
-    EPIC_CASTLE = 6
-
-    FORTIFICATION_CHOICES = (
-        (MOTTE_AND_BAILEY, 'Motte and Bailey'),
-        (TIMBER_CASTLE, 'Timber Castle'),
-        (STONE_CASTLE, 'Stone Castle'),
-        (CASTLE_WITH_CURTAIN_WALL, 'Castle with Curtain Wall'),
-        (FORTIFIED_CASTLE, 'Fortified Castle'),
-        (EPIC_CASTLE, 'Epic Castle'))
-    level = models.PositiveSmallIntegerField(default=MOTTE_AND_BAILEY)
-    domain = models.ForeignKey("Domain", related_name="castles", blank=True, null=True)
-    damage = models.PositiveSmallIntegerField(default=0, blank=0)
-    # cosmetic info:
-    name = models.CharField(null=True, blank=True, max_length=80)
-    desc = models.TextField(null=True, blank=True)
-
-    def display(self):
-        """Returns formatted string for a castle's display"""
-        msg = "{wName{n: %s {wLevel{n: %s (%s)\n" % (self.name, self.level, self.get_level_display())
-        msg += "{wDescription{n: %s\n" % self.desc
-        return msg
-
-    def get_level_display(self):
-        """
-        Although we have FORTIFICATION_CHOICES defined, we're not actually using
-        'choices' for the level field, because we don't want to have a maximum
-        set for castle.level. So we're going to override the display method
-        that choices normally adds in order to return the string value for the
-        maximum for anything over that threshold value.
-        """
-        for choice in self.FORTIFICATION_CHOICES:
-            if self.level == choice[0]:
-                return choice[1]
-        # if level is too high, return the last element in choices
-        return self.FORTIFICATION_CHOICES[-1][1]
-
-    def __unicode__(self):
-        return "%s (#%s)" % (self.name or "Unnamed Castle", self.id)
-
-    def __repr__(self):
-        return "<Castle (#%s): %s>" % (self.id, self.name)
-
-
-class Minister(SharedMemoryModel):
-    """
-    A minister appointed to assist a ruler in a category.
-    """
-    POP, INCOME, FARMING, PRODUCTIVITY, UPKEEP, LOYALTY, WARFARE = range(7)
-    MINISTER_TYPES = (
-        (POP, 'Population'),
-        (INCOME, 'Income'),
-        (FARMING, 'Farming'),
-        (PRODUCTIVITY, 'Productivity'),
-        (UPKEEP, 'Upkeep'),
-        (LOYALTY, 'Loyalty'),
-        (WARFARE, 'Warfare'),
-        )
-    title = models.CharField(blank=True, null=True, max_length=255)
-    player = models.ForeignKey("PlayerOrNpc", related_name="appointments", blank=True, null=True, db_index=True)
-    ruler = models.ForeignKey("Ruler", related_name="ministers", blank=True, null=True, db_index=True)
-    category = models.PositiveSmallIntegerField(choices=MINISTER_TYPES, default=INCOME)
-
-    def __str__(self):
-        return "%s acting as %s minister for %s" % (self.player, self.get_category_display(), self.ruler)
-
-    def clear_domain_cache(self):
-        """Clears cache for the ruler of this minister"""
-        return self.ruler.clear_domain_cache()
-
-
-class Ruler(SharedMemoryModel):
-    """
-    This represents the ruling house/entity that controls a domain, along
-    with the liege/vassal relationships. The Castellan is a PcOrNpc object
-    that may be the ruler of the domain or someone they appointed in their
-    place - in either case, they use the skills for governing. The house
-    is the AssetOwner that actually owns the domain and gets the incomes
-    from it - it's assumed to be an Organization. liege is how we establish
-    the liege/vassal relationships between ruler objects.
-    """
-    # the person who's skills are used to govern the domain
-    castellan = models.OneToOneField("PlayerOrNpc", blank=True, null=True)
-    # the house that owns the domain
-    house = models.OneToOneField("AssetOwner", on_delete=models.SET_NULL, related_name="estate", blank=True, null=True)
-    # a ruler object that this object owes its alliegance to
-    liege = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="vassals", blank=True, null=True,
-                              db_index=True)
-
-    def _get_titles(self):
-        return ", ".join(domain.title for domain in self.domains.all())
-    titles = property(_get_titles)
-
-    def __unicode__(self):
-        if self.house:
-            return str(self.house.owner)
-        return str(self.castellan) or "Undefined Ruler (#%s)" % self.id
-
-    def __repr__(self):
-        if self.house:
-            owner = self.house.owner
-        else:
-            owner = self.castellan
-        return "<Ruler (#%s): %s>" % (self.id, owner)
-
-    def minister_skill(self, attr):
-        """
-        Given attr, which must be one of the dominion skills defined in PlayerOrNpc, returns an integer which is
-        the value of the Minister which corresponds to that category. If there is no Minister or more than 1,
-        both of which are errors, we return 0.
-        :param attr: str
-        :return: int
-        """
-        try:
-            if attr == "population":
-                category = Minister.POP
-            elif attr == "warfare":
-                category = Minister.WARFARE
-            elif attr == "farming":
-                category = Minister.FARMING
-            elif attr == "income":
-                category = Minister.INCOME
-            elif attr == "loyalty":
-                category = Minister.LOYALTY
-            elif attr == "upkeep":
-                category = Minister.UPKEEP
-            else:
-                category = Minister.PRODUCTIVITY
-            minister = self.ministers.get(category=category)
-            return getattr(minister.player, attr)
-        except (Minister.DoesNotExist, Minister.MultipleObjectsReturned, AttributeError):
-            return 0
-
-    def ruler_skill(self, attr):
-        """
-        Returns the DomSkill value of the castellan + his ministers
-        :param attr: str
-        :return: int
-        """
-        try:
-            return getattr(self.castellan, attr) + self.minister_skill(attr)
-        except AttributeError:
-            return 0
-
-    @property
-    def vassal_taxes(self):
-        """Total silver we get from our vassals"""
-        if not self.house:
-            return 0
-        return sum(ob.weekly_amount for ob in self.house.incomes.filter(category="vassal taxes"))
-
-    @property
-    def liege_taxes(self):
-        """Total silver we pay to our liege"""
-        if not self.house:
-            return 0
-        return sum(ob.weekly_amount for ob in self.house.debts.filter(category="vassal taxes"))
-
-    def clear_domain_cache(self):
-        """Clears cache for all domains under our rule"""
-        for domain in self.holdings.all():
-            domain.clear_cached_properties()
-
-
-class Plot(SharedMemoryModel):
-    """
-    A plot being run in the game. This can either be a crisis affecting organizations or the entire gameworld,
-    a gm plot for some subset of players, a player-run plot for players, or a subplot of any of the above. In
-    general, a crisis is a type of plot that allows offscreen actions to be submitted and is resolved at regular
-    intervals: This is more or less intended for large-scale events. GM Plots and Player Run Plots will tend to
-    be focused on smaller groups of players.
-    """
-    CRISIS, GM_PLOT, PLAYER_RUN_PLOT, PITCH = range(4)
-    USAGE_CHOICES = ((CRISIS, "Crisis"), (GM_PLOT, "GM Plot"), (PLAYER_RUN_PLOT, "Player-Run Plot"),
-                     (PITCH, "Pitch"))
-    name = models.CharField(blank=True, null=True, max_length=255, db_index=True)
-    usage = models.SmallIntegerField(choices=USAGE_CHOICES, default=CRISIS)
-    headline = models.CharField("News-style bulletin", max_length=255, blank=True, null=True)
-    desc = models.TextField(blank=True, null=True)
-    orgs = models.ManyToManyField('Organization', related_name='plots', blank=True, through="OrgPlotInvolvement")
-    dompcs = models.ManyToManyField('PlayerOrNpc', blank=True, related_name='plots', through="PCPlotInvolvement",
-                                    through_fields=("plot", "dompc"))
-    parent_plot = models.ForeignKey('self', related_name="subplots", blank=True, null=True, on_delete=models.SET_NULL)
-    escalation_points = models.SmallIntegerField(default=0, blank=0)
-    results = models.TextField(blank=True, null=True)
-    modifiers = models.TextField(blank=True, null=True)
-    public = models.BooleanField(default=True, blank=True)
-    required_clue = models.ForeignKey('character.Clue', related_name="crises", blank=True, null=True,
-                                      on_delete=models.SET_NULL)
-    resolved = models.BooleanField(default=False)
-    start_date = models.DateTimeField(blank=True, null=True)
-    end_date = models.DateTimeField(blank=True, null=True)
-    chapter = models.ForeignKey('character.Chapter', related_name="crises", blank=True, null=True,
-                                on_delete=models.SET_NULL)
-    search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="plots")
-    objects = CrisisManager()
-
-    class Meta:
-        """Define Django meta options"""
-        verbose_name_plural = "Plots"
-
-    def __str__(self):
-        return self.name
-
-    @property
-    def time_remaining(self):
-        """Returns timedelta of how much time is left before the crisis updates"""
-        now = datetime.now()
-        if self.end_date and self.end_date > now:
-            return self.end_date - now
-
-    @property
-    def rating(self):
-        """Returns how much rating is left in our crisis"""
-        if self.escalation_points:
-            return self.escalation_points - sum(ob.outcome_value for ob in self.actions.filter(
-                status=PlotAction.PUBLISHED))
-
-    @property
-    def beats(self):
-        """Returns updates that have descs written, meaning they aren't pending/future events."""
-        return self.updates.exclude(desc="")
-
-    def display_base(self):
-        """Common plot display information"""
-        msg = "|w[%s|w]{n" % self
-        if self.rating:
-            msg += " |w(%s Rating)|n" % self.rating
-        if self.time_remaining:
-            msg += " {yTime Remaining:{n %s" % str(self.time_remaining).split(".")[0]
-        tags = self.search_tags.all()
-        if tags:
-            msg += " |wTags:|n %s" % ", ".join(("|235%s|n" % tag) for tag in tags)
-        msg += "\n%s" % self.desc
-        return msg
-
-    def display(self, display_connected=True, staff_display=False):
-        """Returns string display for the plot and its latest update/beat"""
-        msg = self.display_base()
-        beats = list(self.beats)
-        if display_connected:
-            orgs, clue, cast = self.orgs.all(), self.required_clue, self.cast_list
-            if clue:
-                msg += "\n{wRequired Clue:{n %s" % self.required_clue
-            if staff_display:
-                subplots, clues, revs = self.subplots.all(), self.clues.all(), self.revelations.all()
-                if self.parent_plot:
-                    msg += "\n{wMain Plot:{n %s (#%s)" % (self.parent_plot, self.parent_plot.id)
-                if subplots:
-                    msg += "\n{wSubplots:{n %s" % ", ".join(("%s (#%s)" % (ob, ob.id)) for ob in subplots)
-                if clues:
-                    msg += "\n{wClues:{n %s" % "; ".join(("%s (#%s)" % (ob, ob.id)) for ob in clues)
-                if revs:
-                    msg += "\n{wRevelations:{n %s" % "; ".join(("%s (#%s)" % (ob, ob.id)) for ob in revs)
-            if cast:
-                msg += "\n%s" % cast
-            if orgs:
-                msg += "\n{wInvolved Organizations:{n %s" % ", ".join(str(ob) for ob in orgs)
-        if beats:
-            last = beats[-1]
-            if self.usage in (self.PLAYER_RUN_PLOT, self.GM_PLOT):
-                msg += "\n{wBeat IDs:{n %s" % ", ".join(str(ob.id) for ob in beats)
-            msg += "\n%s" % last.display_beat(display_connected=display_connected)
-        return msg
-
-    def display_timeline(self):
-        """Base plot description plus all beats/updates displays"""
-        msg = self.display_base() + "\n"
-        beats = list(self.beats)
-        msg += "\n".join([ob.display_beat() for ob in beats])
-        return msg
-
-    def check_taken_action(self, dompc):
-        """Whether player has submitted action for the current crisis update."""
-        return self.actions.filter(Q(dompc=dompc) & Q(beat__isnull=True)
-                                   & ~Q(status__in=(PlotAction.DRAFT, PlotAction.CANCELLED))).exists()
-
-    def raise_submission_errors(self):
-        """Raises errors if it's not valid to submit an action for this crisis"""
-        if self.resolved:
-            raise ActionSubmissionError("%s has been marked as resolved." % self)
-        if self.end_date and datetime.now() > self.end_date:
-            raise ActionSubmissionError("It is past the deadline for %s." % self)
-
-    def raise_creation_errors(self, dompc):
-        """Raise errors if dompc shouldn't be allowed to submit an action for this crisis"""
-        self.raise_submission_errors()
-        if self.check_taken_action(dompc=dompc):
-            raise ActionSubmissionError("You have already submitted an action for this stage of the crisis.")
-
-    def create_update(self, gemit_text, caller=None, gm_notes=None, do_gemit=True,
-                      episode_name=None, episode_synopsis=None):
-        """
-        Creates an update for the crisis. An update functions as saying the current round/turn of actions is
-        over, and announces to the game a synopsis of what occurred. After the update, if the crisis is not
-        resolved, players would be free to put in another action.
-        Args:
-            gemit_text: Summary of what happened in this update
-            caller: The GM who published this
-            gm_notes: Notes to other GMs about what happened
-            do_gemit: Whether to announce this to the whole game
-            episode_name: The name of the episode this happened during
-            episode_synopsis: Summary of an episode if we're creating one
-        """
-        from server.utils.arx_utils import broadcast_msg_and_post
-        gm_notes = gm_notes or ""
-        from web.character.models import Episode, Chapter
-        if not episode_name:
-            latest_episode = Episode.objects.last()
-        else:
-            latest_episode = Chapter.objects.last().episodes.create(name=episode_name, synopsis=episode_synopsis)
-        update = self.updates.create(date=datetime.now(), desc=gemit_text, gm_notes=gm_notes, episode=latest_episode)
-        qs = self.actions.filter(status__in=(PlotAction.PUBLISHED, PlotAction.PENDING_PUBLISH,
-                                             PlotAction.CANCELLED), beat__isnull=True)
-        pending = []
-        already_published = []
-        for action in qs:
-            if action.status == PlotAction.PENDING_PUBLISH:
-                action.send(update=update, caller=caller)
-                pending.append(str(action.id))
-            else:
-                action.update = update
-                action.save()
-                already_published.append(str(action.id))
-        if do_gemit:
-            broadcast_msg_and_post(gemit_text, caller, episode_name=latest_episode.name)
-        pending = "Pending actions published: %s" % ", ".join(pending)
-        already_published = "Already published actions for this update: %s" % ", ".join(already_published)
-        post = "Gemit:\n%s\nGM Notes: %s\n%s\n%s" % (gemit_text, gm_notes, pending, already_published)
-        subject = "Update for %s" % self
-        inform_staff("Crisis update posted by %s for %s:\n%s" % (caller, self, post), post=True, subject=subject)
-
-    def check_can_view(self, user):
-        """Checks if user can view this plot"""
-        if self.public:
-            return True
-        if not user or not user.is_authenticated():
-            return False
-        if user.is_staff or user.check_permstring("builders"):
-            return True
-        return self.required_clue in user.roster.clues.all()
-
-    @property
-    def finished_actions(self):
-        """Returns queryset of all published actions"""
-        return self.actions.filter(status=PlotAction.PUBLISHED)
-
-    def get_viewable_actions(self, user):
-        """Returns actions that the user can view - published actions they participated in, or all if they're staff."""
-        if not user or not user.is_authenticated():
-            return self.finished_actions.filter(public=True)
-        if user.is_staff or user.check_permstring("builders"):
-            return self.finished_actions
-        dompc = user.Dominion
-        return self.finished_actions.filter(Q(dompc=dompc) | Q(assistants=dompc)).order_by('-date_submitted')
-
-    def add_dompc(self, dompc, status=None, recruiter=None):
-        """Invites a dompc to join the plot."""
-        from server.utils.exceptions import CommandError
-        status_types = [ob[1].split()[0].lower() for ob in PCPlotInvolvement.CAST_STATUS_CHOICES]
-        del status_types[-1]
-        status = status if status else "main"
-        if status not in status_types:
-            raise CommandError("Status must be one of these: %s" % ", ".join(status_types))
-        try:
-            involvement = self.dompc_involvement.get(dompc_id=dompc.id)
-            if involvement.activity_status <= PCPlotInvolvement.INVITED:
-                raise CommandError("They are already invited.")
-        except PCPlotInvolvement.DoesNotExist:
-            involvement = PCPlotInvolvement(dompc=dompc, plot=self)
-        involvement.activity_status = PCPlotInvolvement.INVITED
-        involvement.cast_status = status_types.index(status)
-        involvement.save()
-        inf_msg = "You have been invited to join plot '%s'" % self
-        inf_msg += (" by %s" % recruiter) if recruiter else ""
-        inf_msg += ". Use 'plots %s' for details, including other participants. " % self.id
-        inf_msg += "To accept this invitation, use the following command: "
-        inf_msg += "plots/accept %s[=<IC description of character's involvement>]." % self.id
-        if recruiter:
-            inf_msg += "\nIf you accept, a small XP reward can be given to %s (and yourself) with: " % recruiter
-            inf_msg += "'plots/rewardrecruiter %s=%s'. For more help see 'help plots'." % (self.id, recruiter)
-        dompc.inform(inf_msg, category="Plot Invite")
-
-    @property
-    def first_owner(self):
-        """Returns the first owner-level PlayerOrNpc, or None"""
-        owner_inv = self.dompc_involvement.filter(admin_status=PCPlotInvolvement.OWNER).first()
-        if owner_inv:
-            return owner_inv.dompc
-
-    @property
-    def cast_list(self):
-        """Returns string of the cast's status and admin levels."""
-        cast = self.dompc_involvement.filter(activity_status__lte=PCPlotInvolvement.INVITED).order_by('cast_status')
-        msg = "Involved Characters:\n" if cast else ""
-        sep = ""
-        for role in cast:
-            invited = "*Invited* " if role.activity_status == role.INVITED else ""
-            msg += "%s%s|c%s|n" % (sep, invited, role.dompc)
-            status = []
-            if role.cast_status <= 2:
-                status.append(role.get_cast_status_display())
-            if role.admin_status >= 2:
-                status.append(role.get_admin_status_display())
-            if any(status):
-                msg += " (%s)" % ", ".join([ob for ob in status])
-            sep = "\n"
-        return msg
-
-    def inform(self, text, category="Plot", append=True):
-        """Sends an inform to all active participants"""
-        active = self.dompcs.filter(plot_involvement__activity_status=PCPlotInvolvement.ACTIVE)
-        for dompc in active:
-            dompc.inform(text, category=category, append=append)
-
-
-class OrgPlotInvolvement(SharedMemoryModel):
-    """An org's participation in a plot"""
-    plot = models.ForeignKey("Plot", related_name="org_involvement")
-    org = models.ForeignKey("Organization", related_name="plot_involvement")
-    auto_invite_members = models.BooleanField(default=False)
-    gm_notes = models.TextField(blank=True)
-
-
-class PCPlotInvolvement(SharedMemoryModel):
-    """A character's participation in a plot"""
-    REQUIRED_CAST, MAIN_CAST, SUPPORTING_CAST, EXTRA, TANGENTIAL = range(5)
-    ACTIVE, INACTIVE, INVITED, HAS_RP_HOOK, LEFT, NOT_ADDED = range(6)
-    SUBMITTER, PLAYER, RECRUITER, GM, OWNER = range(5)
-    CAST_STATUS_CHOICES = ((REQUIRED_CAST, "Required Cast"), (MAIN_CAST, "Main Cast"),
-                           (SUPPORTING_CAST, "Supporting Cast"),
-                           (EXTRA, "Extra"), (TANGENTIAL, "Tangential"))
-    ACTIVITY_STATUS_CHOICES = ((ACTIVE, "Active"), (INACTIVE, "Inactive"), (INVITED, "Invited"),
-                               (HAS_RP_HOOK, "Has RP Hook"), (LEFT, "Left"), (NOT_ADDED, "Not Added"))
-    ADMIN_STATUS_CHOICES = ((OWNER, "Owner"), (GM, "GM"), (RECRUITER, "Recruiter"), (PLAYER, "Player"),
-                            (SUBMITTER, "Submitting Player"))
-    plot = models.ForeignKey("Plot", related_name="dompc_involvement")
-    dompc = models.ForeignKey("PlayerOrNpc", related_name="plot_involvement")
-    cast_status = models.PositiveSmallIntegerField(choices=CAST_STATUS_CHOICES, default=MAIN_CAST)
-    activity_status = models.PositiveSmallIntegerField(choices=ACTIVITY_STATUS_CHOICES, default=ACTIVE)
-    admin_status = models.PositiveSmallIntegerField(choices=ADMIN_STATUS_CHOICES, default=PLAYER)
-    recruiter_story = models.TextField(blank=True)
-    recruited_by = models.ForeignKey("PlayerOrNpc", blank=True, null=True, related_name="plot_recruits",
-                                     on_delete=models.SET_NULL)
-    gm_notes = models.TextField(blank=True)
-
-    def __str__(self):
-        return str(self.dompc)
-
-    def get_modified_status_display(self):
-        """Modifies status display with whether we're a GM"""
-        msg = self.get_cast_status_display()
-        if self.admin_status > self.PLAYER:
-            msg += " (%s)" % self.get_admin_status_display()
-        return msg
-
-    def display_plot_involvement(self):
-        """
-        Plot info along with attached lore objects that are marked
-        if the character does not know them.
-        """
-        msg = self.plot.display()
-        clues = self.plot.clues.all()
-        revs = self.plot.revelations.all()
-        theories = self.plot.theories.all()
-        our_plots = self.dompc.active_plots.all()
-        subplots = set(self.plot.subplots.all()) & set(our_plots)
-
-        def format_name(obj, unknown):
-            name = "%s(#%s)" % (obj, obj.id)
-            if obj in unknown:
-                name += "({rX{n)"
-            return name
-
-        if self.plot.parent_plot and self.plot.parent_plot in our_plots:
-            # noinspection PyTypeChecker
-            msg += "\n{wParent Plot:{n %s" % format_name(self.plot.parent_plot, [])
-        if subplots:
-            msg += "\n{wSubplots:{n %s" % ", ".join(format_name(ob, []) for ob in subplots)
-        if clues:
-            msg += "\n{wRelated Clues:{n "
-            pc_clues = list(self.dompc.player.roster.clues.all())
-            unknown_clues = [ob for ob in clues if ob not in pc_clues]
-            msg += "; ".join(format_name(ob, unknown_clues) for ob in clues)
-        if revs:
-            msg += "\n{wRelated Revelations:{n "
-            pc_revs = list(self.dompc.player.roster.revelations.all())
-            unknown_revs = [ob for ob in revs if ob not in pc_revs]
-            msg += "; ".join(format_name(ob, unknown_revs) for ob in revs)
-        if theories:
-            msg += "\n{wRelated Theories:{n "
-            pc_theories = list(self.dompc.player.known_theories.all())
-            unknown_theories = [ob for ob in theories if ob not in pc_theories]
-            msg += "; ".join(format_name(ob, unknown_theories) for ob in theories)
-        return msg
-
-    def accept_invitation(self, description=""):
-        self.activity_status = self.ACTIVE
-        if description:
-            if self.gm_notes:
-                self.gm_notes += "\n"
-            self.gm_notes += description
-        self.save()
-
-    def leave_plot(self):
-        self.activity_status = self.LEFT
-        self.save()
-
-
-class PlotUpdate(SharedMemoryModel):
-    """
-    Container for showing all the Plot Actions during a period and their corresponding
-    result on the crisis
-    """
-    plot = models.ForeignKey("Plot", related_name="updates", db_index=True)
-    desc = models.TextField("Story of what happened this update", blank=True)
-    gm_notes = models.TextField("Any ooc notes of consequences", blank=True)
-    date = models.DateTimeField(blank=True, null=True)
-    episode = models.ForeignKey("character.Episode", related_name="plot_updates", blank=True, null=True,
-                                on_delete=models.SET_NULL)
-    search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="plot_updates")
-
-    @property
-    def noun(self):
-        return "Beat" if self.plot.usage == Plot.PLAYER_RUN_PLOT else "Update"
-
-    def __str__(self):
-        return "%s #%s for %s" % (self.noun, self.id, self.plot)
-
-    def display_beat(self, display_connected=True):
-        """Return string display of this update/beat"""
-        msg = "|w[%s|w]|n" % self
-        if self.date:
-            msg += " {wDate{n %s" % self.date.strftime("%x %X")
-        tags = self.search_tags.all()
-        if tags:
-            msg += " |wTags:|n %s" % ", ".join(("|235%s|n" % tag) for tag in tags)
-        msg += "\n%s" % self.desc if self.desc else "\nPending %s placeholder." % self.noun
-        if display_connected:
-            for attr in ("actions", "events", "emits", "flashbacks"):
-                qs = getattr(self, attr).all()
-                if qs:
-                    msg += "\n{w%s:{n %s" % (attr.capitalize(), ", ".join("%s (#%s)" % (ob, ob.id) for ob in qs))
-        return msg
-
-
-class AbstractAction(AbstractPlayerAllocations):
-    """Abstract parent class representing a player's participation in an action"""
-    NOUN = "Action"
-    BASE_AP_COST = 50
-    secret_actions = models.TextField("Secret actions the player is taking", blank=True)
-    attending = models.BooleanField(default=True)
-    traitor = models.BooleanField(default=False)
-    date_submitted = models.DateTimeField(blank=True, null=True)
-    editable = models.BooleanField(default=True)
-    resource_types = ('silver', 'military', 'economic', 'social', 'ap', 'action points', 'army')
-    free_action = models.BooleanField(default=False)
-    difficulty = None
-
-    class Meta:
-        abstract = True
-
-    @property
-    def submitted(self):
-        """Whether they've submitted this or not"""
-        return bool(self.date_submitted)
-
-    @property
-    def ap_refund_amount(self):
-        """How much AP to refund"""
-        return self.action_points + self.BASE_AP_COST
-
-    def pay_action_points(self, amount):
-        """Passthrough method to make the player pay action points"""
-        return self.dompc.player.pay_action_points(amount)
-
-    def refund(self):
-        """Method for refunding a player's resources, AP, etc."""
-        self.pay_action_points(-self.ap_refund_amount)
-        for resource in ('military', 'economic', 'social'):
-            value = getattr(self, resource)
-            if value:
-                self.dompc.player.gain_resources(resource, value)
-        if self.silver:
-            self.dompc.assets.vault += self.silver
-            self.dompc.assets.save()
-
-    def check_view_secret(self, caller):
-        """Whether caller can view the secret part of this action"""
-        if not caller:
-            return
-        if caller.check_permstring("builders") or caller == self.dompc.player:
-            return True
-
-    def get_action_text(self, secret=False, disp_summary=False):
-        """Gets the text of their action"""
-        noun = self.NOUN
-        author = " by {c%s{w" % self.author
-        if secret:
-            prefix_txt = "Secret "
-            action = self.secret_actions
-            if self.traitor:
-                prefix_txt += "{rTraitorous{w "
-            suffix_txt = ":{n %s" % action
-        else:
-            prefix_txt = ""
-            action = self.actions
-            if noun == "Action":
-                noun = "%s" % self.pretty_str
-                author = ""
-            summary = ""
-            if disp_summary:
-                summary = "\n%s" % self.get_summary_text()
-            suffix_txt = "%s\n{wAction:{n %s" % (summary, action)
-        return "\n{w%s%s%s%s{n" % (prefix_txt, noun, author, suffix_txt)
-
-    def get_summary_text(self):
-        """Returns brief formatted summary of this action"""
-        return "{wSummary:{n %s" % self.topic
-
-    @property
-    def ooc_intent(self):
-        """Returns the question that acts as this action's OOC intent - what the player wants"""
-        try:
-            return self.questions.get(is_intent=True)
-        except ActionOOCQuestion.DoesNotExist:
-            return None
-
-    def set_ooc_intent(self, text):
-        """Sets the action's OOC intent"""
-        ooc_intent = self.ooc_intent
-        if not ooc_intent:
-            self.questions.create(text=text, is_intent=True)
-        else:
-            ooc_intent.text = text
-            ooc_intent.save()
-
-    def ask_question(self, text):
-        """Adds an OOC question to GMs by the player"""
-        msg = "{c%s{n added a comment/question about Action #%s:\n%s" % (self.author, self.main_id, text)
-        inform_staff(msg)
-        if self.gm:
-            self.gm.inform(msg, category="Action questions")
-        return self.questions.create(text=text)
-
-    @property
-    def is_main_action(self):
-        """Whether this is the main action. False means we're an assist"""
-        return self.NOUN == "Action"
-
-    @property
-    def author(self):
-        """The author of this action - the main originating character who others are assisting"""
-        return self.dompc
-
-    def inform(self, text, category="Actions", append=False):
-        """Passthrough method to send an inform to the player"""
-        self.dompc.inform(text, category=category, append=append)
-
-    def submit(self):
-        """Attempts to submit this action. Can raise ActionSubmissionErrors."""
-        self.raise_submission_errors()
-        self.on_submit_success()
-
-    def on_submit_success(self):
-        """If no errors were raised, we mark ourselves as submitted and no longer allow edits."""
-        if not self.date_submitted:
-            self.date_submitted = datetime.now()
-        self.editable = False
-        self.save()
-        self.post_edit()
-
-    def raise_submission_errors(self):
-        """Raises errors if this action is not ready for submission."""
-        fields = self.check_incomplete_required_fields()
-        if fields:
-            raise ActionSubmissionError("Incomplete fields: %s" % ", ".join(fields))
-        from server.utils.arx_utils import check_break
-        if check_break():
-            raise ActionSubmissionError("Cannot submit an action while staff are on break.")
-
-    def check_incomplete_required_fields(self):
-        """Returns any required fields that are not yet defined."""
-        fields = []
-        if not self.actions:
-            fields.append("action text")
-        if not self.ooc_intent:
-            fields.append("ooc intent")
-        if not self.topic:
-            fields.append("tldr")
-        if not self.skill_used or not self.stat_used:
-            fields.append("roll")
-        return fields
-
-    def post_edit(self):
-        """In both child classes this check occurs after a resubmit."""
-        pass
-
-    @property
-    def plot_attendance(self):
-        """Returns list of actions we are attending - physically present for"""
-        attended_actions = list(self.dompc.actions.filter(Q(beat__isnull=True)
-                                                          & Q(attending=True)
-                                                          & Q(plot__isnull=False)
-                                                          & ~Q(status=PlotAction.CANCELLED)
-                                                          & Q(date_submitted__isnull=False)))
-        attended_actions += list(self.dompc.assisting_actions.filter(Q(plot_action__beat__isnull=True)
-                                                                     & Q(attending=True)
-                                                                     & Q(plot_action__plot__isnull=False)
-                                                                     & ~Q(plot_action__status=PlotAction.CANCELLED)
-                                                                     & Q(date_submitted__isnull=False)))
-        return attended_actions
-
-    def check_plot_omnipresence(self):
-        """Raises an ActionSubmissionError if we are already attending for this crisis"""
-        if self.attending:
-            already_attending = [ob for ob in self.plot_attendance if ob.plot == self.plot]
-            if already_attending:
-                already_attending = already_attending[-1]
-                raise ActionSubmissionError("You are marked as physically present at %s. Use @action/toggleattend"
-                                            " and also ensure this story reads as a passive role." % already_attending)
-
-    def check_plot_overcrowd(self):
-        """Raises an ActionSubmissionError if too many people are attending"""
-        attendees = self.attendees
-        if len(attendees) > self.attending_limit and not self.prefer_offscreen:
-            excess = len(attendees) - self.attending_limit
-            raise ActionSubmissionError("An onscreen action can have %s people attending in person. %s of you should "
-                                        "check your story, then change to a passive role with @action/toggleattend. "
-                                        "Alternately, the action can be marked as preferring offscreen resolution. "
-                                        "Current attendees: %s" % (self.attending_limit, excess,
-                                                                   ",".join(str(ob) for ob in attendees)))
-
-    def check_plot_errors(self):
-        """Raises ActionSubmissionErrors if anything should stop our submission"""
-        if self.plot:
-            self.plot.raise_submission_errors()
-            self.check_plot_omnipresence()
-        self.check_plot_overcrowd()
-
-    def mark_attending(self):
-        """Marks us as physically attending, raises ActionSubmissionErrors if it shouldn't be allowed."""
-        self.check_plot_errors()
-        self.attending = True
-        self.save()
-
-    def add_resource(self, r_type, value):
-        """
-        Adds a resource to this action of the specified type and value
-        Args:
-            r_type (str or unicode): The resource type
-            value (str or unicode): The value passed.
-
-        Raises:
-            ActionSubmissionError if we run into bad values passed or cannot otherwise submit an action, and ValueError
-            if they submit a value that isn't a positive integer when an amount is specified.
-        """
-        if not self.actions:
-            raise ActionSubmissionError("Join first with the /setaction switch.")
-        if self.plot:
-            try:
-                self.plot.raise_creation_errors(self.dompc)
-            except ActionSubmissionError as err:
-                raise ActionSubmissionError(err)
-        r_type = r_type.lower()
-        if r_type not in self.resource_types:
-            raise ActionSubmissionError("Invalid type of resource.")
-        if r_type == "army":
-            try:
-                return self.add_army(value)
-            except ActionSubmissionError as err:
-                raise ActionSubmissionError(err)
-        try:
-            value = int(value)
-            if value <= 0:
-                raise ValueError
-        except ValueError:
-            raise ActionSubmissionError("Amount must be a positive number.")
-        if r_type == "silver":
-            try:
-                self.dompc.player.char_ob.pay_money(value)
-            except PayError:
-                raise ActionSubmissionError("You cannot afford that.")
-        elif r_type == 'ap' or r_type == 'action points':
-            if not self.dompc.player.pay_action_points(value):
-                raise ActionSubmissionError("You do not have enough action points to exert that kind of effort.")
-            r_type = "action_points"
-        else:
-            if not self.dompc.player.pay_resources(r_type, value):
-                raise ActionSubmissionError("You cannot afford that.")
-        value += getattr(self, r_type)
-        setattr(self, r_type, value)
-        self.save()
-
-    def add_army(self, name_or_id):
-        """Adds army orders to this action. Army can be specified by name or ID."""
-        try:
-            if name_or_id.isdigit():
-                army = Army.objects.get(id=int(name_or_id))
-            else:
-                army = Army.objects.get(name__iexact=name_or_id)
-        except (AttributeError, Army.DoesNotExist):
-            raise ActionSubmissionError("No army by that ID# was found.")
-        if self.is_main_action:
-            action = self
-            action_assist = None
-        else:
-            action = self.plot_action
-            action_assist = self
-        orders = army.send_orders(player=self.dompc.player, order_type=Orders.CRISIS, action=action,
-                                  action_assist=action_assist)
-        if not orders:
-            raise ActionSubmissionError("Failed to send orders to the army.")
-
-    def do_roll(self, stat=None, skill=None, difficulty=None, reset_total=True):
-        """
-        Does a roll for this action
-        Args:
-            stat: stat to override stat currently set in the action
-            skill: skill to override skill currently set in the action
-            difficulty: difficulty to override difficulty currently set in the action
-            reset_total: Whether to recalculate the outcome value
-
-        Returns:
-            An integer result of the roll.
-        """
-        from world.stats_and_skills import do_dice_check
-        self.stat_used = stat or self.stat_used
-        self.skill_used = skill or self.skill_used
-        if difficulty is not None:
-            self.difficulty = difficulty
-        self.roll = do_dice_check(self.dompc.player.char_ob, stat=self.stat_used, skill=self.skill_used,
-                                  difficulty=self.difficulty)
-        self.save()
-        if reset_total:
-            self.calculate_outcome_value()
-        return self.roll
-
-    def display_followups(self):
-        """Returns string of the display of all of our questions."""
-        return "\n".join(question.display() for question in self.questions.all())
-
-    def add_answer(self, gm, text):
-        """Adds a GM's answer to an OOC question"""
-        unanswered = self.unanswered_questions
-        if unanswered:
-            unanswered.last().add_answer(gm, text)
-        else:
-            self.questions.last().add_answer(gm, text)
-
-    def mark_answered(self, gm):
-        """Marks a question as resolved"""
-        for question in self.unanswered_questions:
-            question.mark_answered = True
-            question.save()
-        inform_staff("%s has marked action %s's questions as answered." % (gm, self.main_id))
-
-    @property
-    def main_id(self):
-        """ID of the main action"""
-        return self.main_action.id
-
-    @property
-    def unanswered_questions(self):
-        """Returns queryset of an OOC questions without an answer"""
-        return self.questions.filter(answers__isnull=True).exclude(Q(is_intent=True) | Q(mark_answered=True))
-
-
-class PlotAction(AbstractAction):
-    """
-    An action that a player is taking. May be in response to a Crisis.
-    """
-    NOUN = "Action"
-    EASY_DIFFICULTY = 15
-    NORMAL_DIFFICULTY = 30
-    HARD_DIFFICULTY = 60
-    week = models.PositiveSmallIntegerField(default=0, blank=0, db_index=True)
-    dompc = models.ForeignKey("PlayerOrNpc", db_index=True, blank=True, null=True, related_name="actions")
-    plot = models.ForeignKey("Plot", db_index=True, blank=True, null=True, related_name="actions",
-                             on_delete=models.SET_NULL)
-    beat = models.ForeignKey("PlotUpdate", db_index=True, blank=True, null=True, related_name="actions",
-                             on_delete=models.SET_NULL)
-    public = models.BooleanField(default=False, blank=True)
-    gm_notes = models.TextField("Any ooc notes for other GMs", blank=True)
-    story = models.TextField("Story written by the GM for the player", blank=True)
-    secret_story = models.TextField("Any secret story written for the player", blank=True)
-    difficulty = models.SmallIntegerField(default=0, blank=0)
-    outcome_value = models.SmallIntegerField(default=0, blank=0)
-    assistants = models.ManyToManyField("PlayerOrNpc", blank=True, through="PlotActionAssistant",
-                                        related_name="assisted_actions")
-    prefer_offscreen = models.BooleanField(default=False, blank=True)
-    gemit = models.ForeignKey("character.StoryEmit", blank=True, null=True, related_name="actions")
-    gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="gmd_actions",
-                           on_delete=models.SET_NULL)
-    search_tags = models.ManyToManyField("character.SearchTag", blank=True, related_name="actions")
-    working = models.OneToOneField("magic.Working", blank=True, null=True, related_name="action")
-
-    UNKNOWN, COMBAT, SUPPORT, SABOTAGE, DIPLOMACY, SCOUTING, RESEARCH = range(7)
-
-    CATEGORY_CHOICES = ((UNKNOWN, 'Unknown'), (COMBAT, 'Combat'), (SUPPORT, 'Support'), (SABOTAGE, 'Sabotage'),
-                        (DIPLOMACY, 'Diplomacy'), (SCOUTING, 'Scouting'), (RESEARCH, 'Research'))
-    category = models.PositiveSmallIntegerField(choices=CATEGORY_CHOICES, default=UNKNOWN)
-
-    DRAFT, NEEDS_PLAYER, NEEDS_GM, CANCELLED, PENDING_PUBLISH, PUBLISHED = range(6)
-
-    STATUS_CHOICES = ((DRAFT, 'Draft'), (NEEDS_PLAYER, 'Needs Player Input'), (NEEDS_GM, 'Needs GM Input'),
-                      (CANCELLED, 'Cancelled'), (PENDING_PUBLISH, 'Pending Resolution'), (PUBLISHED, 'Resolved'))
-    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=DRAFT)
-    max_requests = 2
-    num_days = 60
-    attending_limit = 5
-
-    def __str__(self):
-        if self.plot:
-            plot = " for %s" % self.plot
-        else:
-            plot = ""
-        return "%s by %s%s" % (self.NOUN, self.author, plot)
-
-    @property
-    def commafied_participants(self):
-        dompc_list = [str(self.dompc)]
-        for assist in self.assistants.all():
-            dompc_list.append(str(assist))
-        if len(dompc_list) == 1:
-            return str(self.dompc)
-        elif len(dompc_list) == 2:
-            return dompc_list[0] + " and " + dompc_list[1]
-        else:
-            return ", ".join(dompc_list[:-2] + [" and ".join(dompc_list[-2:])])
-
-    @property
-    def pretty_str(self):
-        """Returns formatted display of this action"""
-        if self.plot:
-            plot = " for {m%s{n" % self.plot
-        else:
-            plot = ""
-        return "%s by {c%s{n%s" % (self.NOUN, self.author, plot)
-
-    @property
-    def sent(self):
-        """Whether this action is published"""
-        return bool(self.status == self.PUBLISHED)
-
-    @property
-    def total_social(self):
-        """Total social resources spent"""
-        return self.social + sum(ob.social for ob in self.assisting_actions.all())
-
-    @property
-    def total_economic(self):
-        """Total economic resources spent"""
-        return self.economic + sum(ob.economic for ob in self.assisting_actions.all())
-
-    @property
-    def total_military(self):
-        """Total military resources spent"""
-        return self.military + sum(ob.military for ob in self.assisting_actions.all())
-
-    @property
-    def total_silver(self):
-        """Total silver spent"""
-        return self.silver + sum(ob.silver for ob in self.assisting_actions.all())
-
-    @property
-    def total_action_points(self):
-        """Total action points spent"""
-        return self.action_points + sum(ob.action_points for ob in self.assisting_actions.all())
-
-    @property
-    def action_and_assists_and_invites(self):
-        """List of this action and all our assists, whether they've accepted invite or not"""
-        return [self] + list(self.assisting_actions.all())
-
-    @property
-    def action_and_assists(self):
-        """Listof actions and assists if they've written anything"""
-        return [ob for ob in self.action_and_assists_and_invites if ob.actions]
-
-    @property
-    def all_editable(self):
-        """List of all actions and assists if they're currently editable"""
-        return [ob for ob in self.action_and_assists_and_invites if ob.editable]
-
-    def send(self, update=None, caller=None):
-        """Publishes this action"""
-        if self.plot:
-            msg = "{wGM Response to action for crisis:{n %s" % self.plot
-        else:
-            msg = "{wGM Response to story action of %s" % self.author
-        msg += "\n{wRolls:{n %s" % self.outcome_value
-        msg += "\n\n{wStory Result:{n %s\n\n" % self.story
-        self.week = get_week()
-        if update:
-            self.beat = update
-        if self.status != PlotAction.PUBLISHED:
-            self.inform(msg)
-            for assistant in self.assistants.all():
-                assistant.inform(msg, category="Actions")
-            for orders in self.orders.all():
-                orders.complete = True
-                orders.save()
-            self.status = PlotAction.PUBLISHED
-        if not self.gm:
-            self.gm = caller
-        self.save()
-        if not update:
-            subject = "Action %s Published by %s" % (self.id, caller)
-            post = self.view_tldr()
-            post += "\n{wStory Result:{n %s" % self.story
-            if self.secret_story:
-                post += "\n{wSecret Story{n %s" % self.secret_story
-            inform_staff("Action %s has been published by %s:\n%s" % (self.id, caller, msg),
-                         post=post, subject=subject)
-
-    def view_action(self, caller=None, disp_pending=True, disp_old=False, disp_ooc=True):
-        """
-        Returns a text string of the display of an action.
-
-            Args:
-                caller: Player who is viewing this
-                disp_pending (bool): Whether to display pending questions
-                disp_old (bool): Whether to display answered questions
-                disp_ooc (bool): Whether to only display IC information
-
-            Returns:
-                Text string to display.
-        """
-        msg = "\n"
-        if caller:
-            staff_viewer = caller.check_permstring("builders")
-            participant_viewer = caller == self.dompc.player or caller.Dominion in self.assistants.all()
-        else:
-            staff_viewer = False
-            participant_viewer = False
-        if not self.public and not (staff_viewer or participant_viewer):
-            return msg
-        # print out actions of everyone
-        all_actions = self.action_and_assists
-        view_main_secrets = staff_viewer or self.check_view_secret(caller)
-        if disp_ooc:
-            msg += "{wAction ID:{n #%s" % self.id
-            msg += " {wCategory:{n %s" % self.get_category_display()
-            if self.date_submitted:
-                msg += "  {wDate:{n %s" % self.date_submitted.strftime("%x %X")
-            if staff_viewer:
-                if self.gm is not None:
-                    msg += "  {wGM:{n %s" % self.gm
-        for ob in all_actions:
-            view_secrets = staff_viewer or ob.check_view_secret(caller)
-            msg += ob.get_action_text(disp_summary=view_secrets)
-            if ob.secret_actions and view_secrets:
-                msg += ob.get_action_text(secret=True)
-            if view_secrets and disp_ooc:
-                attending = "[%s]" % ("physically present" if ob.attending else "offscreen")
-                msg += "\n{w%s{n {w%s{n (stat) + {w%s{n (skill) at difficulty {w%s{n" % (
-                    attending,
-                    ob.stat_used.capitalize() or "No stat set",
-                    ob.skill_used.capitalize() or "No skill set",
-                    self.difficulty)
-                if self.sent or (ob.roll_is_set and staff_viewer):
-                    msg += "{w [Dice Roll: %s%s{w]{n " % (self.roll_color(ob.roll), ob.roll_string)
-                if ob.ooc_intent:
-                    msg += "\n%s" % ob.ooc_intent.display()
-            msg += "\n"
-        if self.working:
-            msg += "\n{wWorking:{n %d [%s]: %s" % (self.working.id, self.working.participant_string,
-                                                   self.working.intent)
-        if (disp_pending or disp_old) and disp_ooc:
-            q_and_a_str = self.get_questions_and_answers_display(answered=disp_old, staff=staff_viewer, caller=caller)
-            if q_and_a_str:
-                msg += "\n{wOOC Notes and GM responses\n%s" % q_and_a_str
-        if staff_viewer and self.gm_notes or self.prefer_offscreen:
-            offscreen = "[Offscreen resolution preferred.] " if self.prefer_offscreen else ""
-            msg += "\n{wGM Notes:{n %s%s" % (offscreen, self.gm_notes)
-        if self.sent or staff_viewer:
-            if disp_ooc:
-                msg += "\n{wOutcome Value:{n %s%s{n" % (self.roll_color(self.outcome_value), self.outcome_value)
-            msg += "\n{wStory Result:{n %s" % self.story
-            if self.secret_story and view_main_secrets:
-                msg += "\n{wSecret Story{n %s" % self.secret_story
-        if disp_ooc:
-            msg += "\n" + self.view_total_resources_msg()
-            orders = []
-            for ob in all_actions:
-                orders += list(ob.orders.all())
-            orders = set(orders)
-            if len(orders) > 0:
-                msg += "\n{wArmed Forces Appointed:{n %s" % ", ".join(str(ob.army) for ob in orders)
-            needs_edits = ""
-            if self.status == PlotAction.NEEDS_PLAYER:
-                needs_edits = " Awaiting edits to be submitted by: %s" % \
-                              ", ".join(ob.author for ob in self.all_editable)
-            msg += "\n{w[STATUS: %s]{n%s" % (self.get_status_display(), needs_edits)
-        return msg
-
-    @staticmethod
-    def roll_color(val):
-        """Returns a color string based on positive or negative value."""
-        return "{r" if (val < 0) else "{g"
-
-    def view_tldr(self):
-        """Returns summary message of the action and assists"""
-        msg = "{wSummary of action %s{n" % self.id
-        for action in self.action_and_assists:
-            msg += "\n%s: %s\n" % (action.pretty_str, action.get_summary_text())
-        return msg
-
-    def view_total_resources_msg(self):
-        """Returns string of all resources spent"""
-        msg = ""
-        fields = {'extra action points': self.total_action_points,
-                  'silver': self.total_silver,
-                  'economic': self.total_economic,
-                  'military': self.total_military,
-                  'social': self.total_social}
-        totals = ", ".join("{c%s{n %s" % (key, value) for key, value in fields.items() if value > 0)
-        if totals:
-            msg = "{wTotal resources:{n %s" % totals
-        return msg
-
-    def cancel(self):
-        """Cancels and refunds this action"""
-        for action in self.assisting_actions.all():
-            action.cancel()
-        self.refund()
-        if not self.date_submitted:
-            self.delete()
-        else:
-            self.status = PlotAction.CANCELLED
-            self.save()
-
-    def check_incomplete_required_fields(self):
-        """Checks which fields are incomplete"""
-        fields = super(PlotAction, self).check_incomplete_required_fields()
-        if not self.category:
-            fields.append("category")
-        return fields
-
-    def raise_submission_errors(self):
-        """Raises errors that prevent submission"""
-        super(PlotAction, self).raise_submission_errors()
-        self.check_plot_errors()
-        self.check_draft_errors()
-
-    def check_draft_errors(self):
-        """Checks any errors that occur only during initial creation"""
-        if self.status != PlotAction.DRAFT:
-            return
-        self.check_action_against_maximum_allowed()
-        self.check_warning_prompt_sent()
-
-    def check_action_against_maximum_allowed(self):
-        """Checks if we're over our limit on number of actions"""
-        if self.free_action:
-            return
-        recent_actions = self.dompc.recent_actions
-        num_actions = len(recent_actions)
-        # we allow them to use unspent actions for assists, but not vice-versa
-        num_assists = self.dompc.recent_assists.count()
-        num_assists -= PlotActionAssistant.MAX_ASSISTS
-        if num_assists >= 0:
-            num_actions += num_assists
-        if num_actions >= self.max_requests:
-            raise ActionSubmissionError("You are permitted %s action requests every %s days. Recent actions: %s"
-                                        % (self.max_requests, self.num_days,
-                                           ", ".join(str(ob.id) for ob in recent_actions)))
-
-    def check_warning_prompt_sent(self):
-        """Sends a warning message to the player if they don't have one yet"""
-        if self.dompc.player.ndb.action_submission_prompt != self:
-            self.dompc.player.ndb.action_submission_prompt = self
-            warning = ("{yBefore submitting this action, make certain that you have invited all players you wish to "
-                       "help with the action, and add any resources necessary. Any invited players who have incomplete "
-                       "actions will have their assists deleted.")
-            unready = ", ".join(str(ob.author) for ob in self.get_unready_assisting_actions())
-            if unready:
-                warning += "\n{rThe following assistants are not ready and will be deleted: %s" % unready
-            warning += "\n{yWhen ready, /submit the action again.{n"
-            raise ActionSubmissionError(warning)
-
-    def get_unready_assisting_actions(self):
-        """Gets list of assists that are not yet ready"""
-        unready = []
-        for ob in self.assisting_actions.all():
-            try:
-                ob.raise_submission_errors()
-            except ActionSubmissionError:
-                unready.append(ob)
-        return unready
-
-    def check_unready_assistant(self, dompc):
-        """Checks a given dompc being unready"""
-        try:
-            assist = self.assisting_actions.get(dompc=dompc)
-            assist.raise_submission_errors()
-        except PlotActionAssistant.DoesNotExist:
-            return False
-        except ActionSubmissionError:
-            return True
-        else:
-            return False
-
-    @property
-    def attendees(self):
-        """Returns list of authors of all actions and assists if physically present"""
-        return [ob.author for ob in self.action_and_assists if ob.attending]
-
-    def on_submit_success(self):
-        """Announces us after successful submission. refunds any assistants who weren't ready"""
-        if self.status == PlotAction.DRAFT:
-            self.status = PlotAction.NEEDS_GM
-            for assist in self.assisting_actions.filter(date_submitted__isnull=True):
-                assist.submit_or_refund()
-            inform_staff("%s submitted action #%s. %s" % (self.author, self.id, self.get_summary_text()))
-        super(PlotAction, self).on_submit_success()
-
-    def post_edit(self):
-        """Announces that we've finished editing our action and are ready for a GM"""
-        if self.status == PlotAction.NEEDS_PLAYER and not self.all_editable:
-            self.status = PlotAction.NEEDS_GM
-            self.save()
-            inform_staff("%s has been resubmitted for GM review." % self)
-            if self.gm:
-                self.gm.inform("Action %s has been updated." % self.id, category="Actions")
-
-    def invite(self, dompc):
-        """Invites an assistant, sending them an inform"""
-        if self.assistants.filter(player=dompc.player).exists():
-            raise ActionSubmissionError("They have already been invited.")
-        if dompc == self.dompc:
-            raise ActionSubmissionError("The owner of an action cannot be an assistant.")
-        self.assisting_actions.create(dompc=dompc, stat_used="", skill_used="")
-        msg = "You have been invited by %s to assist with action #%s." % (self.author, self.id)
-        msg += " It will now display under the {w@action{n command. To assist, simply fill out"
-        msg += " the required fields, starting with {w@action/setaction{n, and then {w@action/submit %s{n." % self.id
-        msg += " If the owner submits the action to the GMs before your assist is valid, it will be"
-        msg += " deleted and you will be refunded any AP and resources."
-        msg += " When creating your assist, please only write a story about attempting to modify"
-        msg += " the main action you're assisting. Assists which are unrelated to the action"
-        msg += " should be their own independent @action. Secret actions attempting to undermine"
-        msg += " the action/crisis should use the '/traitor' switch."
-        msg += " To decline this invitation, use {w@action/cancel %s{n." % self.id
-        dompc.inform(msg, category="Action Invitation")
-
-    def roll_all(self):
-        """Rolls for every action and assist, changing outcome value"""
-        for ob in self.action_and_assists:
-            ob.do_roll(reset_total=False)
-        return self.calculate_outcome_value()
-
-    def calculate_outcome_value(self):
-        """Calculates total value of the action"""
-        value = sum(ob.roll for ob in self.action_and_assists)
-        self.outcome_value = value
-        self.save()
-        return self.outcome_value
-
-    def get_questions_and_answers_display(self, answered=False, staff=False, caller=None):
-        """Displays all OOC questions and answers"""
-        qs = self.questions.filter(is_intent=False)
-        if not answered:
-            qs = qs.filter(answers__isnull=True, mark_answered=False)
-        if not staff:
-            dompc = caller.Dominion
-            # players can only see questions they wrote themselves and their answers
-            qs = qs.filter(Q(action_assist__dompc=dompc) | Q(Q(action__dompc=dompc) & Q(action_assist__isnull=True)))
-        qs = list(qs)
-        if staff:
-            for ob in self.assisting_actions.all():
-                if answered:
-                    qs.extend(list(ob.questions.filter(is_intent=False)))
-                else:
-                    qs.extend(list(ob.questions.filter(answers__isnull=True, is_intent=False, mark_answered=False)))
-        return "\n".join(question.display() for question in set(qs))
-
-    @property
-    def main_action(self):
-        """Returns ourself as the main action"""
-        return self
-
-    def make_public(self):
-        """Makes an action public for all players to see"""
-        if self.public:
-            raise ActionSubmissionError("That action has already been made public.")
-        if self.status != PlotAction.PUBLISHED:
-            raise ActionSubmissionError("The action must be finished before you can make details of it public.")
-        self.public = True
-        self.save()
-        xp_value = 2
-        if self.plot and not self.plot.public:
-            xp_value = 1
-        self.dompc.player.char_ob.adjust_xp(xp_value)
-        self.dompc.msg("You have gained %s xp for making your action public." % xp_value)
-        inform_staff("Action %s has been made public." % self.id)
-
-
-NAMES_OF_PROPERTIES_TO_PASS_THROUGH = ['plot', 'action_and_assists', 'status', 'prefer_offscreen', 'attendees',
-                                       'all_editable', 'outcome_value', 'difficulty', 'gm', 'attending_limit']
-
-
-@passthrough_properties('plot_action', *NAMES_OF_PROPERTIES_TO_PASS_THROUGH)
-class PlotActionAssistant(AbstractAction):
-    """An assist for a plot action - a player helping them out and writing how."""
-    NOUN = "Assist"
-    BASE_AP_COST = 10
-    MAX_ASSISTS = 4
-    plot_action = models.ForeignKey("PlotAction", db_index=True, related_name="assisting_actions")
-    dompc = models.ForeignKey("PlayerOrNpc", db_index=True, related_name="assisting_actions")
-
-    class Meta:
-        unique_together = ('plot_action', 'dompc')
-
-    def __str__(self):
-        return "%s assisting %s" % (self.author, self.plot_action)
-
-    @property
-    def pretty_str(self):
-        """Formatted string of the assist"""
-        return "{c%s{n assisting %s" % (self.author, self.plot_action)
-
-    def cancel(self):
-        """Cancels and refunds this assist, then deletes it"""
-        if self.actions:
-            self.refund()
-        self.delete()
-
-    def view_total_resources_msg(self):
-        """Passthrough method to return total resources msg"""
-        return self.plot_action.view_total_resources_msg()
-
-    def calculate_outcome_value(self):
-        """Passthrough method to calculate outcome value"""
-        return self.plot_action.calculate_outcome_value()
-
-    def submit_or_refund(self):
-        """Submits our assist if we're ready, or refunds us"""
-        try:
-            self.submit()
-        except ActionSubmissionError:
-            main_action_msg = "Cancelling incomplete assist: %s\n" % self.author
-            assist_action_msg = "Your assist for %s was incomplete and has been refunded." % self.plot_action
-            self.plot_action.inform(main_action_msg)
-            self.inform(assist_action_msg)
-            self.cancel()
-
-    def post_edit(self):
-        """Passthrough hook for after editing"""
-        self.plot_action.post_edit()
-
-    @property
-    def has_paid_initial_ap_cost(self):
-        """Returns if we've paid our AP cost"""
-        return bool(self.actions)
-
-    @property
-    def main_action(self):
-        """Returns the action we're assisting"""
-        return self.plot_action
-
-    def set_action(self, story):
-        """
-        Sets our assist's actions. If the action has not been set yet, we'll attempt to pay the initial ap cost,
-        raising an error if that fails.
-
-            Args:
-                story (str or unicode): The story of the character's actions, written by the player.
-
-            Raises:
-                ActionSubmissionError if we have not yet paid our AP cost and the player fails to do so here.
-        """
-        self.check_max_assists()
-        if not self.has_paid_initial_ap_cost:
-            self.pay_initial_ap_cost()
-        self.actions = story
-        self.save()
-
-    def ask_question(self, text):
-        """Asks GMs an OOC question"""
-        question = super(PlotActionAssistant, self).ask_question(text)
-        question.action = self.plot_action
-        question.save()
-
-    def pay_initial_ap_cost(self):
-        """Pays our initial AP cost or raises an ActionSubmissionError"""
-        if not self.pay_action_points(self.BASE_AP_COST):
-            raise ActionSubmissionError("You do not have enough action points.")
-
-    def view_action(self, caller=None, disp_pending=True, disp_old=False, disp_ooc=True):
-        """Returns display of the action"""
-        return self.plot_action.view_action(caller=caller, disp_pending=disp_pending, disp_old=disp_old,
-                                            disp_ooc=disp_ooc)
-
-    def check_max_assists(self):
-        """Raises an error if we've assisted too many actions"""
-        # if we haven't spent all our actions, we'll let them use it on assists
-        if self.free_action or self.plot_action.free_action:
-            return
-        num_actions = self.dompc.recent_actions.count() - 2
-        num_assists = self.dompc.recent_assists.count()
-        if num_actions < 0:
-            num_assists += num_actions
-        if num_assists >= self.MAX_ASSISTS:
-            raise ActionSubmissionError("You are assisting too many actions.")
-
-    def raise_submission_errors(self):
-        """Raises errors that prevent submission"""
-        super(PlotActionAssistant, self).raise_submission_errors()
-        self.check_max_assists()
-
-
-class ActionOOCQuestion(SharedMemoryModel):
-    """
-    OOC Question about a plot. Can be associated with a given action
-    or asked about independently.
-    """
-    action = models.ForeignKey("PlotAction", db_index=True, related_name="questions", null=True, blank=True)
-    action_assist = models.ForeignKey("PlotActionAssistant", db_index=True, related_name="questions", null=True,
-                                      blank=True)
-    text = models.TextField(blank=True)
-    is_intent = models.BooleanField(default=False)
-    mark_answered = models.BooleanField(default=False)
-
-    def __str__(self):
-        return "%s %s: %s" % (self.author, self.noun, self.text)
-
-    @property
-    def target(self):
-        """The action or assist this question is from"""
-        if self.action_assist:
-            return self.action_assist
-        return self.action
-
-    @property
-    def author(self):
-        """Who wrote this question"""
-        return self.target.author
-
-    @property
-    def noun(self):
-        """String display of whether we're ooc intentions or a question"""
-        return "OOC %s" % ("intentions" if self.is_intent else "Question")
-
-    def display(self):
-        """Returns string display of this object"""
-        msg = "{c%s{w %s:{n %s" % (self.author, self.noun, self.text)
-        answers = self.answers.all()
-        if answers:
-            msg += "\n%s" % "\n".join(ob.display() for ob in answers)
-        return msg
-
-    @property
-    def text_of_answers(self):
-        """Returns this question and all the answers to it"""
-        return "\n".join("%s wrote: %s" % (ob.gm, ob.text) for ob in self.answers.all())
-
-    @property
-    def main_id(self):
-        """ID of the target of this question"""
-        return self.target.main_id
-
-    def add_answer(self, gm, text):
-        """Adds an answer to this question"""
-        self.answers.create(gm=gm, text=text)
-        self.target.inform("GM %s has posted a followup to action %s: %s" % (gm, self.main_id, text))
-        answer = "{c%s{n wrote: %s\n{c%s{n answered: %s" % (self.author, self.text, gm, text)
-        inform_staff("%s has posted a followup to action %s: %s" % (gm, self.main_id, text), post=answer,
-                     subject="Action %s followup" % self.action.id)
-
-
-class ActionOOCAnswer(SharedMemoryModel):
-    """
-    OOC answer from a GM about a plot.
-    """
-    gm = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, related_name="answers_given")
-    question = models.ForeignKey("ActionOOCQuestion", db_index=True, related_name="answers")
-    text = models.TextField(blank=True)
-
-    def display(self):
-        """Returns string display of this answer"""
-        return "{wReply by {c%s{w:{n %s" % (self.gm, self.text)
-
-
 class OrgRelationship(SharedMemoryModel):
     """
     The relationship between two or more organizations.
@@ -3636,7 +1693,8 @@ class Reputation(SharedMemoryModel):
         if not self.favor:
             return 0
         try:
-            return self.favor * (self.organization.assets.fame + self.organization.assets.legend)/20
+            weeks = ((datetime.now() - (self.date_gossip_set or datetime.now())).days/7) + 1
+            return self.favor * (self.organization.assets.fame + self.organization.assets.legend)/(20 * weeks)
         except AttributeError:
             return 0
 
@@ -3835,8 +1893,7 @@ class Organization(InformMixin, SharedMemoryModel):
         msg += "{wDesc{n: %s\n" % self.desc
         if not self.secret:
             msg += "\n{wLeaders of %s:\n%s\n" % (self.name, self.display_members(end=2, show_all=show_all))
-        webpage = PAGEROOT + self.get_absolute_url()
-        msg += "{wWebpage{n: %s\n" % webpage
+        msg += "{wWebpage{n: %s\n" % get_full_url(self.get_absolute_url())
         return msg
 
     def display(self, viewing_member=None, display_clues=False, show_all=False):
@@ -3895,15 +1952,18 @@ class Organization(InformMixin, SharedMemoryModel):
         clues = self.clues.all()
         if display_clues:
             if viewing_member:
-                entry=viewing_member.player.player.roster
+                entry = viewing_member.player.player.roster
                 discovered_clues = entry.clues.all()
+            else:
+                discovered_clues = []
             if clues:
                 msg += "\n{wClues Known:"
                 for clue in clues:
                     if clue in discovered_clues:
-                        msg+="{n %s;" % clue
+                        msg += "{n %s;" % clue
                     else:
-                        msg+="{w %s{n;" % clue
+                        msg += "{w %s{n;" % clue
+                msg += "\n"
             theories = self.theories.all()
             if theories:
                 msg += "\n{wTheories Known:{n %s\n" % "; ".join("%s (#%s)" % (ob, ob.id) for ob in theories)
@@ -4070,47 +2130,6 @@ class Organization(InformMixin, SharedMemoryModel):
         for pc in self.offline_members.filter(has_seen_motd=True):
             pc.has_seen_motd = False
             pc.save()
-
-
-class UnitTypeInfo(models.Model):
-    """Abstract base class with information about military units"""
-    INFANTRY = unit_constants.INFANTRY
-    PIKE = unit_constants.PIKE
-    CAVALRY = unit_constants.CAVALRY
-    ARCHERS = unit_constants.ARCHERS
-    LONGSHIP = unit_constants.LONGSHIP
-    SIEGE_WEAPON = unit_constants.SIEGE_WEAPON
-    GALLEY = unit_constants.GALLEY
-    DROMOND = unit_constants.DROMOND
-    COG = unit_constants.COG
-
-    UNIT_CHOICES = (
-        (INFANTRY, 'Infantry'),
-        (PIKE, 'Pike'),
-        (CAVALRY, 'Cavalry'),
-        (ARCHERS, 'Archers'),
-        (LONGSHIP, 'Longship'),
-        (SIEGE_WEAPON, 'Siege Weapon'),
-        (GALLEY, 'Galley'),
-        (COG, 'Cog'),
-        (DROMOND, 'Dromond'),
-        )
-    # type will be used to derive units and their stats elsewhere
-    unit_type = models.PositiveSmallIntegerField(choices=UNIT_CHOICES, default=0, blank=0)
-
-    class Meta:
-        abstract = True
-
-
-class OrgUnitModifiers(UnitTypeInfo):
-    """Model that has modifiers from an org to make a special unit"""
-    org = models.ForeignKey('Organization', related_name="unit_mods", db_index=True)
-    mod = models.SmallIntegerField(default=0, blank=0)
-    name = models.CharField(blank=True, null=True, max_length=80)
-
-    class Meta:
-        """Define Django meta options"""
-        verbose_name_plural = "Unit Modifiers"
 
 
 class ClueForOrg(SharedMemoryModel):
@@ -4407,730 +2426,6 @@ class AgentOb(SharedMemoryModel):
         return self.agent_class.access(accessing_obj, access_type, default)
 
 
-class Army(SharedMemoryModel):
-    """
-    Any collection of military units belonging to a given domain.
-    """
-    name = models.CharField(blank=True, null=True, max_length=80, db_index=True)
-    desc = models.TextField(blank=True, null=True)
-    # the domain that we obey the orders of. Not the same as who owns us, necessarily
-    domain = models.ForeignKey("Domain", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                               db_index=True)
-    # current location of this army
-    land = models.ForeignKey("Land", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True)
-    # if the army is located as a castle garrison
-    castle = models.ForeignKey("Castle", on_delete=models.SET_NULL, related_name="garrison", blank=True, null=True)
-    # The field leader of this army. Units under his command may have their own commanders
-    general = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                                db_index=True)
-    # an owner who may be the same person who owns the domain. Or not, in the case of mercs, sent reinforcements, etc
-    owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                              db_index=True)
-    # Someone giving orders for now, like a mercenary group's current employer
-    temp_owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="loaned_armies", blank=True,
-                                   null=True, db_index=True)
-    # a relationship to self for smaller groups within the army
-    group = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                              db_index=True)
-    # food we're carrying with us on transports or whatever
-    stored_food = models.PositiveSmallIntegerField(default=0, blank=0)
-    # whether the army is starving. 0 = not starving, 1 = starting to starve, 2 = troops dying/deserting
-    starvation_level = models.PositiveSmallIntegerField(default=0, blank=0)
-    morale = models.PositiveSmallIntegerField(default=100, blank=100)
-    # how much booty an army is carrying.
-    plunder = models.PositiveSmallIntegerField(default=0, blank=0)
-
-    class Meta:
-        """Define Django meta options"""
-        verbose_name_plural = "Armies"
-
-    def display(self):
-        """
-        Like domain.display(), returns a string for the mush of our
-        different attributes.
-        """
-        # self.owner is an AssetOwner, so its string name is AssetOwner.owner
-        owner = self.owner
-        if owner:
-            owner = owner.owner
-        msg = "{wName{n: %s {wGeneral{n: %s\n" % (self.name, self.general)
-        msg += "{wDomain{n: %s {wLocation{n: %s\n" % (self.domain, self.land)
-        msg += "{wOwner{n: %s\n" % owner
-        msg += "{wDescription{n: %s\n" % self.desc
-        msg += "{wMorale{n: %s {wFood{n: %s {wStarvation Level{n: %s {wPlunder{n: %s\n" % (self.morale, self.plunder,
-                                                                                           self.starvation_level,
-                                                                                           self.plunder)
-        msg += "{wUnits{n:\n"
-        from evennia.utils.evtable import EvTable
-        table = EvTable("{wID{n", "{wCommander{n", "{wType{n", "{wAmt{n", "{wLvl{n", "{wEquip{n", "{wXP{n", width=78,
-                        border="cells")
-        for unit in self.units.all():
-            typestr = unit.type.capitalize()
-            cmdstr = ""
-            if unit.commander:
-                cmdstr = "{c%s{n" % unit.commander
-            table.add_row(unit.id, cmdstr, typestr, unit.quantity, unit.level, unit.equipment, unit.xp)
-        msg += str(table)
-        return msg
-
-    def can_change(self, player):
-        """
-        Checks if a given player has permission to change the structure of this
-        army, edit it, or destroy it.
-        """
-        # check if player is staff
-        if player.check_permstring("builder"):
-            return True
-        # checks player's access because our owner can be an Org
-        if self.owner.access(player, "army"):
-            return True
-        if player.Dominion.appointments.filter(category=Minister.WARFARE, ruler__house=self.owner):
-            return True
-        return False
-
-    def can_order(self, player):
-        """
-        Checks if a given player has permission to issue orders to this army.
-        """
-        # if we can change the army, we can also order it
-        if self.can_change(player):
-            return True
-        dompc = player.Dominion
-        # check if we're appointed as general of this army
-        if dompc == self.general:
-            return True
-        # check player's access because temp owner can also be an org
-        if self.temp_owner and self.temp_owner.access(player, "army"):
-            return True
-        if self.temp_owner and dompc.appointments.filter(category=Minister.WARFARE, ruler__house=self.temp_owner):
-            return True
-        return False
-
-    def can_view(self, player):
-        """
-        Checks if given player has permission to view Army details.
-        """
-        # if we can order army, we can also view it
-        if self.can_order(player):
-            return True
-        # checks if we're a unit commander
-        if player.Dominion.units.filter(army=self):
-            return True
-        # checks if we're part of the org the army belongs to
-        if player.Dominion.memberships.filter(Q(deguilded=False) & (
-                    Q(organization__assets=self.owner) | Q(organization__assets=self.temp_owner))):
-            return True
-
-    @property
-    def pending_orders(self):
-        """
-        Returns pending orders if they exist.
-        """
-        return self.orders.filter(complete=False)
-
-    def send_orders(self, player, order_type, target_domain=None, target_land=None, target_character=None,
-                    action=None, action_assist=None, assisting=None):
-        """
-        Checks permission to send orders to an army, then records the category
-        of orders and their target.
-        """
-        # first checks for access
-        if not self.can_order(player):
-            player.msg("You don't have access to that Army.")
-            return
-        # create new orders for this unit
-        if self.pending_orders:
-            player.msg("That army has pending orders that must be canceled first.")
-            return
-        return self.orders.create(type=order_type, target_domain=target_domain, target_land=target_land,
-                                  target_character=target_character, action=action, action_assist=action_assist,
-                                  assisting=assisting)
-
-    def find_unit(self, unit_type):
-        """
-        Find a unit that we have of the given unit_type. Armies should only have one of each unit_type
-        of unit in them, so we can always just return the first match of the queryset.
-        """
-        qs = self.units.filter(unit_type=unit_type)
-        if len(qs) < 1:
-            return None
-        return qs[0]
-
-    def change_general(self, caller, general):
-        """Change an army's general. Informs old and new generals of change.
-
-        Sets an Army's general to new character or to None and informs the old
-        general of the change, if they exist.
-
-        Args:
-            caller: a player object
-            general: a player object
-        """
-        if self.general:
-            self.general.inform("%s has relieved you from duty as general of army: %s." % (caller, self))
-        if general:
-            self.general = general.Dominion
-            self.save()
-            general.inform("%s has set you as the general of army: %s." % (caller, self))
-            return
-        self.general = None
-        self.save()
-
-    def change_temp_owner(self, caller, temp_owner):
-        """Change an army's temp_owner. Informs old and new temp_owners of change.
-
-        Sets an Army's temp_owner to new character or to None and informs the old
-        temp_owner of the change, if they exist.
-
-        Args:
-            caller: a player object
-            temp_owner: an AssetOwner
-        """
-        if self.temp_owner:
-            self.temp_owner.inform_owner("%s has retrieved an army that you temporarily controlled: %s." % (caller,
-                                                                                                            self))
-        self.temp_owner = temp_owner
-        self.save()
-        if temp_owner:
-            temp_owner.inform_owner("%s has given you temporary control of army: %s." % (caller, self))
-
-    @property
-    def max_units(self):
-        """How many units can be in the army"""
-        if not self.general:
-            return 0
-        # TODO maybe look at general's command/leadership
-        return 5
-
-    @property
-    def at_capacity(self):
-        """Whether the army is maxxed out"""
-        if self.units.count() >= self.max_units:
-            return True
-
-    def get_unit_class(self, name):
-        """Gets the class of a unit type, special or otherwise"""
-        try:
-            match = self.owner.organization_owner.unit_mods.get(name__iexact=name)
-            # get unit type from match and return it
-            return unit_types.get_unit_class_by_id(match.unit_type)
-        except (AttributeError, OrgUnitModifiers.DoesNotExist):
-            pass
-        # no match, get unit type from string and return it
-        return unit_types.cls_from_str(name)
-
-    def get_food_consumption(self):
-        """
-        Total food consumption for our army
-        """
-        hunger = 0
-        for unit in self.units.all():
-            hunger += unit.food_consumption
-        return hunger
-
-    def consume_food(self, report=None):
-        """
-        To do: have food eaten while we're executing orders, which limits
-        how far out we can be. Otherwise we're just a drain on our owner
-        or temp owner domain, or it's converted into money cost
-        """
-        total = self.get_food_consumption()
-        consumed = 0
-        if self.domain:
-            if self.domain.stored_food > total:
-                self.domain.stored_food -= total
-                consumed = total
-                total = 0
-            else:
-                consumed = self.domain.stored_food
-                total -= self.domain.stored_food
-                self.domain.stored_food = 0
-            self.domain.save()
-        cost = total * 10
-        if cost:
-            owner = self.temp_owner or self.owner
-            if owner:
-                owner.vault -= cost
-                owner.save()
-        report.add_army_consumption_report(self, food=consumed, silver=cost)
-
-    def starve(self):
-        """
-        If our hunger is too great, troops start to die and desert.
-        """
-        for unit in self.units.all():
-            unit.decimate()
-
-    # noinspection PyMethodMayBeStatic
-    def countermand(self):
-        """
-        Erases our orders, refunds the value to our domain.
-        """
-        pass
-
-    def execute_orders(self, week, report=None):
-        """
-        Execute our orders. This will be called from the Weekly Script,
-        along with do_weekly_adjustment. Error checking on the validity
-        of orders should be done at the player-command level, not here.
-        """
-        # stoof here later
-        self.orders.filter(week__lt=week - 1, action__isnull=True).update(complete=True)
-        # if not orders:
-        #     self.morale += 1
-        #     self.save()
-        #     return
-        # for order in orders:
-        #     if order.type == Orders.TRAIN:
-        #         for unit in self.units.all():
-        #             unit.train()
-        #         return
-        #     if order.type == Orders.EXPLORE:
-        #         explore = Exploration(self, self.land, self.domain, week)
-        #         explore.event()
-        #         return
-        #     if order.type == Orders.RAID:
-        #         if self.do_battle(order.target_domain, week):
-        #             # raid was successful
-        #             self.pillage(order.target_domain, week)
-        #         else:
-        #             self.morale -= 10
-        #             self.save()
-        #     if order.type == Orders.CONQUER:
-        #         if self.do_battle(order.target_domain, week):
-        #             # conquest was successful
-        #             self.conquer(order.target_domain, week)
-        #         else:
-        #             self.morale -= 10
-        #             self.save()
-        #     if order.type == Orders.ENFORCE_ORDER:
-        #         self.pacify(self.domain)
-        #     if order.type == Orders.BESIEGE:
-        #         # to be implemented later
-        #         pass
-        #     if order.type == Orders.MARCH:
-        #         if order.target_domain:
-        #             self.domain = order.target_domain
-        #         self.land = order.target_land
-        #         self.save()
-        # to do : add to report here
-        if report:
-            print("Placeholder for army orders report")
-
-    def do_battle(self, tdomain, week):
-        """
-        Returns True if attackers win, False if defenders
-        win or if there was a stalemate/tie.
-        """
-        # noinspection PyBroadException
-        try:
-            e_armies = tdomain.armies.filter(land_id=tdomain.land.id)
-            if not e_armies:
-                # No opposition. We win without a fight
-                return True
-            atkpc = self.general
-            defpc = None
-            if self.domain and self.domain.ruler and self.domain.ruler.castellan:
-                atkpc = self.domain.ruler.castellan
-            if tdomain and tdomain.ruler and tdomain.ruler.castellan:
-                defpc = tdomain.ruler.castellan
-            battle = Battle(armies_atk=self, armies_def=e_armies, week=week,
-                            pc_atk=atkpc, pc_def=defpc, atk_domain=self.domain, def_domain=tdomain)
-            result = battle.begin_combat()
-            # returns True if result shows ATK_WIN, False otherwise
-            return result == Battle.ATK_WIN
-        except Exception:
-            print("ERROR: Could not generate battle on domain.")
-            traceback.print_exc()
-
-    def pillage(self, target, week):
-        """
-        Successfully pillaging resources from the target domain
-        and adding them to our own domain.
-        """
-        loot = target.plundered_by(self, week)
-        self.plunder += loot
-        self.save()
-
-    def pacify(self, target):
-        """Puts down unreset"""
-        percent = float(self.quantity)/target.total_serfs
-        percent *= 100
-        percent = int(percent)
-        target.lawlessness -= percent
-        target.save()
-        self.morale -= 1
-        self.save()
-
-    def conquer(self, target, week):
-        """
-        Conquers a domain. If the army has a domain, that domain will
-        absorb the target if they're bordering, or just change the rulers
-        while keeping it intact otherwise. If the army has no domain, then
-        the general will be set as the ruler of the domain.
-        """
-        bordering = None
-        ruler = None
-        other_domains = None
-        # send remaining armies to other domains
-        if target.ruler:
-            other_domains = Domain.objects.filter(ruler_id=target.ruler.id).exclude(id=target.id)
-        if other_domains:
-            for army in target.armies.all():
-                army.domain = other_domains[0]
-                army.save()
-        else:  # armies have nowhere to go, so having their owning domain wiped
-            target.armies.clear()
-        for castle in target.castles.all():
-            castle.garrison.clear()
-        if not self.domain:
-            # The general becomes the ruler
-            if self.owner:
-                castellan = None
-                if self.general:
-                    castellan = self.general.player
-                ruler_list = Ruler.objects.filter(house_id=self.owner)
-                if ruler_list:
-                    ruler = ruler_list[0]
-                else:
-                    ruler = Ruler.objects.create(house=self.owner, castellan=castellan)
-            # determine if we have a bordering domain that can absorb this
-        else:
-            ruler = self.domain.ruler
-            if ruler:
-                bordering = Domain.objects.filter(land_id=target.land.id).filter(
-                    ruler_id=ruler.id)
-        # we have a bordering domain. We will annex/absorb the domain into it
-        if bordering:
-            if self.domain in bordering:
-                conqueror = self.domain
-            else:
-                conqueror = bordering[0]
-            conqueror.annex(target, week, self)
-        else:  # no bordering domain. So domain intact, but changing owner
-            # set the domain's ruler
-            target.ruler = ruler
-            target.lawlessness += 50
-            target.save()
-            # set army as occupying the domain
-            self.domain = target
-            self.save()
-
-    # noinspection PyUnusedLocal
-    def do_weekly_adjustment(self, week, report=None):
-        """
-        Weekly maintenance for the army. Consume food.
-        """
-        self.consume_food(report)
-
-    def _get_costs(self):
-        """
-        Costs for the army.
-        """
-        cost = 0
-        for unit in self.units.all():
-            cost += unit.costs
-        return cost
-    costs = property(_get_costs)
-
-    def _get_size(self):
-        """
-        Total size of our army
-        """
-        size = 0
-        for unit in self.units.all():
-            size += unit.quantity
-        return size
-    size = property(_get_size)
-
-    def __unicode__(self):
-        return "%s (#%s)" % (self.name or "Unnamed army", self.id)
-
-    def __repr__(self):
-        return "<Army (#%s): %s>" % (self.id, self.name)
-
-    def save(self, *args, **kwargs):
-        """Saves changes and clears cache"""
-        super(Army, self).save(*args, **kwargs)
-        try:
-            self.owner.clear_cached_properties()
-        except (AttributeError, ValueError, TypeError):
-            pass
-
-
-class Orders(SharedMemoryModel):
-    """
-    Orders for an army that will be executed during weekly maintenance. These
-    are macro-scale orders for the entire army. Tactical commands during battle
-    will not be handled in the model level, but in a separate combat simulator.
-    Orders cannot be given to individual units. For separate units to be given
-    orders, they must be separated into different armies. This will be handled
-    by player commands for Dominion.
-    """
-    TRAIN = 1
-    EXPLORE = 2
-    RAID = 3
-    CONQUER = 4
-    ENFORCE_ORDER = 5
-    BESIEGE = 6
-    MARCH = 7
-    DEFEND = 8
-    PATROL = 9
-    ASSIST = 10
-    BOLSTER = 11
-    EQUIP = 12
-    CRISIS = 13
-
-    ORDER_CHOICES = (
-        (TRAIN, 'Troop Training'),
-        (EXPLORE, 'Explore territory'),
-        (RAID, 'Raid Domain'),
-        (CONQUER, 'Conquer Domain'),
-        (ENFORCE_ORDER, 'Enforce Order'),
-        (BESIEGE, 'Besiege Castle'),
-        (MARCH, 'March'),
-        (DEFEND, 'Defend'),
-        # like killing bandits
-        (PATROL, 'Patrol'),
-        # assisting other armies' orders
-        (ASSIST, 'Assist'),
-        # restoring morale
-        (BOLSTER, 'Bolster Morale'),
-        (EQUIP, 'Upgrade Equipment'),
-        # using army in a crisis action
-        (CRISIS, 'Crisis Response'))
-    army = models.ForeignKey("Army", related_name="orders", null=True, blank=True, db_index=True)
-    # for realm PVP and realm offense/defense
-    target_domain = models.ForeignKey("Domain", related_name="orders", null=True, blank=True, db_index=True)
-    # for travel and exploration
-    target_land = models.ForeignKey("Land", related_name="orders", null=True, blank=True)
-    # an individual's support for training, morale, equipment
-    target_character = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="orders", blank=True,
-                                         null=True, db_index=True)
-    # if we're targeting an action or asist. omg skorpins.
-    action = models.ForeignKey("PlotAction", related_name="orders", null=True, blank=True, db_index=True)
-    action_assist = models.ForeignKey("PlotActionAssistant", related_name="orders", null=True, blank=True,
-                                      db_index=True)
-    # if we're assisting another army's orders
-    assisting = models.ForeignKey("self", related_name="assisting_orders", null=True, blank=True, db_index=True)
-    type = models.PositiveSmallIntegerField(choices=ORDER_CHOICES, default=TRAIN)
-    coin_cost = models.PositiveIntegerField(default=0, blank=0)
-    food_cost = models.PositiveIntegerField(default=0, blank=0)
-    # If orders were given this week, they're still pending
-    week = models.PositiveSmallIntegerField(default=0, blank=0)
-    complete = models.BooleanField(default=False, blank=False)
-
-    class Meta:
-        """Define Django meta options"""
-        verbose_name_plural = "Army Orders"
-
-    def calculate_cost(self):
-        """
-        Calculates cost for an action and assigns self.coin_cost
-        """
-        DIV = 100
-        costs = sum((ob.costs/DIV) + 1 for ob in self.units.all())
-        self.coin_cost = costs
-        self.save()
-
-    @property
-    def troops_sent(self):
-        """Returns display of troops being ordered"""
-        return ", ".join("%s %s" % (ob.quantity, ob.type) for ob in self.army.units.all())
-
-
-class MilitaryUnit(UnitTypeInfo):
-    """
-    An individual unit belonging to an army for a domain. Each unit can have its own
-    commander, while the overall army has its general. It is assumed that every
-    unit in an army is in the same space, and will all respond to the same orders.
-
-    Most combat stats for a unit will be generated at runtime based on its 'type'. We'll
-    only need to store modifiers for a unit that are specific to it, modifiers it has
-    accured.
-    """
-    origin = models.ForeignKey('Organization', related_name='units', blank=True, null=True, db_index=True)
-    commander = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="units", blank=True, null=True)
-    army = models.ForeignKey("Army", related_name="units", blank=True, null=True, db_index=True)
-    orders = models.ForeignKey("Orders", related_name="units", on_delete=models.SET_NULL, blank=True, null=True,
-                               db_index=True)
-    quantity = models.PositiveSmallIntegerField(default=1, blank=1)
-    level = models.PositiveSmallIntegerField(default=0, blank=0)
-    equipment = models.PositiveSmallIntegerField(default=0, blank=0)
-    # can go negative, such as when adding new recruits to a unit
-    xp = models.SmallIntegerField(default=0, blank=0)
-    # if a hostile area has bandits or whatever, we're not part of an army, just that
-    hostile_area = models.ForeignKey("HostileArea", on_delete=models.SET_NULL, related_name="units", blank=True,
-                                     null=True)
-
-    def display(self):
-        """
-        Returns a string representation of this unit's stats.
-        """
-        cmdstr = ""
-        if self.commander:
-            cmdstr = "{c%s{n " % self.commander
-        msg = "{wID:{n#%s %s{wType{n: %-12s {wAmount{n: %-7s" % (self.id, cmdstr, self.type.capitalize(), self.quantity)
-        msg += " {wLevel{n: %s {wEquip{n: %s {wXP{n: %s" % (self.level, self.equipment, self.xp)
-        return msg
-
-    def change_commander(self, caller, commander):
-        """Informs commanders of a change, if they exist.
-
-        Sets a unit's commander to new character or to None and informs the old
-        commander of the change.
-
-        Args:
-            caller: a player object
-            commander: a player object
-        """
-        old_commander = self.commander
-        if old_commander:
-            old_commander.inform("%s has relieved you of command of unit %s." % (caller, self.id))
-        if commander:
-            self.commander = commander.Dominion
-            self.save()
-            commander.inform("%s has set you in command of unit %s." % (caller, self.id))
-            return
-        self.commander = None
-        self.save()
-
-    def split(self, qty):
-        """Create a duplicate unit with a specified quantity.
-
-        Copies a unit, but with a specific quantity and no commander to simulate
-        it being split.
-
-        Args:
-            qty: an integer
-        """
-        self.quantity -= qty
-        self.save()
-        MilitaryUnit.objects.create(origin=self.origin, army=self.army, orders=self.orders, quantity=qty,
-                                    level=self.level, equipment=self.equipment, xp=self.xp,
-                                    hostile_area=self.hostile_area, unit_type=self.unit_type)
-
-    def decimate(self, amount=0.10):
-        """
-        Losing a percentage of our troops. Generally this is due to death
-        from starvation or desertion. In this case, we don't care which.
-        """
-        # Ten percent of our troops
-        losses = self.quantity * amount
-        # lose it, rounded up
-        self.do_losses(int(round(losses)))
-
-    def do_losses(self, losses):
-        """
-        Lose troops. If we have 0 left, this unit is gone.
-        """
-        self.quantity -= losses
-        if self.quantity <= 0:
-            self.delete()
-
-    def train(self, val=1):
-        """
-        Getting xp, and increasing our level if we have enough. The default
-        value is for weekly troop training as a command. Battles will generally
-        give much more than normal training.
-        """
-        self.gain_xp(val)
-
-    # noinspection PyMethodMayBeStatic
-    def adjust_readiness(self, troops, training=0, equip=0):
-        """
-        Degrades the existing training and equipment level of our troops
-        when we merge into others. This does not perform the merger, only
-        changes our readiness by the given number of troops, training level,
-        and equipment level.
-        """
-        pass
-
-    @lazy_property
-    def stats(self):
-        """Returns stats for this type of unit"""
-        return unit_types.get_unit_stats(self)
-
-    def _get_costs(self):
-        """
-        Costs for the unit.
-        """
-        try:
-            cost = self.stats.silver_upkeep
-        except AttributeError:
-            print("Type %s is not a recognized MilitaryUnit type!" % self.unit_type)
-            print("Warning. No cost assigned to <MilitaryUnit- ID: %s>" % self.id)
-            cost = 0
-        cost *= self.quantity
-        return cost
-
-    def _get_food_consumption(self):
-        """
-        Food for the unit
-        """
-        try:
-            hunger = self.stats.food_upkeep
-        except AttributeError:
-            print("Type %s is not a recognized Military type!" % self.unit_type)
-            print("Warning. No food upkeep assigned to <MilitaryUnit - ID: %s>" % self.id)
-            hunger = 0
-        hunger *= self.quantity
-        return hunger
-
-    food_consumption = property(_get_food_consumption)
-    costs = property(_get_costs)
-
-    def _get_type_name(self):
-        try:
-            return self.stats.name.lower()
-        except AttributeError:
-            return "unknown type"
-    type = property(_get_type_name)
-
-    def __unicode__(self):
-        return "%s %s" % (self.quantity, self.type)
-
-    def __repr__(self):
-        return "<Unit (#%s): %s %s>" % (self.id, self.quantity, self.type)
-
-    def save(self, *args, **kwargs):
-        """Saves changes and clears cache"""
-        super(MilitaryUnit, self).save(*args, **kwargs)
-        try:
-            self.army.owner.clear_cached_properties()
-        except (AttributeError, TypeError, ValueError):
-            pass
-
-    def combine_units(self, target):
-        """
-        Combine our units. get average of both worlds. Mediocrity wins!
-        """
-        total = self.quantity + target.quantity
-        self.level = ((self.level * self.quantity) + (target.level * target.quantity))/total
-        self.equipment = ((self.equipment * self.quantity) + (target.equipment * target.quantity))/total
-        self.quantity = total
-        self.xp = ((self.quantity * self.xp) + (target.quantity * target.xp))/total
-        self.save()
-        target.delete()
-
-    def gain_xp(self, amount):
-        """
-        Gain xp, divided among our quantity
-        Args:
-            amount: int
-        """
-        gain = int(round(float(amount)/self.quantity))
-        # always gain at least 1 xp
-        if gain < 1:
-            gain = 1
-        self.xp += gain
-        levelup_cost = self.stats.levelup_cost
-        if self.xp > levelup_cost:
-            self.xp -= levelup_cost
-            self.level += 1
-        self.save()
-
-
 class WorkSetting(SharedMemoryModel):
     """
     An Organization's options for work performed by its members. For a particular
@@ -5222,9 +2517,9 @@ class Member(SharedMemoryModel):
     pc_exists = models.BooleanField(blank=True, default=True,
                                     help_text="Whether this member is a player character in the database")
     # stuff that players may set for their members:
-    desc = models.TextField(blank=True, default=True)
-    public_notes = models.TextField(blank=True, default=True)
-    officer_notes = models.TextField(blank=True, default=True)
+    desc = models.TextField(blank=True)
+    public_notes = models.TextField(blank=True)
+    officer_notes = models.TextField(blank=True)
     has_seen_motd = models.BooleanField(default=False)
 
     class Meta:
@@ -5368,7 +2663,7 @@ class Member(SharedMemoryModel):
         percent = (clout + 100) / 100.0
         outcome = int(outcome * percent)
         org_amount = outcome + resources
-        prestige = ((clout * 5) + 50) * org_amount
+        prestige = ((clout * 5) + 50) * org_amount * 3
         if org_amount:
             self.investment_this_week += org_amount
             self.investment_total += org_amount
@@ -5379,7 +2674,9 @@ class Member(SharedMemoryModel):
         msg += "\nYou and {} both gain {:,} prestige.".format(self.organization, prestige)
         self.player.assets.adjust_prestige(prestige, PrestigeCategory.INVESTMENT)
         self.organization.assets.adjust_prestige(prestige)
-        msg += "\nYou have increased the {} influence of {} by {:,}.".format(resource_type, self.organization, org_amount)
+==== BASE ====
+        msg += "\nYou have increased the %s influence of %s by %d." % (resource_type, self.organization, org_amount)
+==== BASE ====
         mod = getattr(self.organization, "%s_modifier" % resource_type)
         progress = self.organization.get_progress_to_next_modifier(resource_type)
         msg += "\nCurrent modifier is %s, progress to next is %d/100." % (mod, progress)
@@ -5792,7 +3089,7 @@ class MatList(object):
         return self.mats
 
 
-class CraftingRecipe(SharedMemoryModel):
+class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
     """
     For crafting, a recipe has a name, description, then materials. A lot of information
     is saved as a parsable text string in the 'result' text field. It'll
@@ -5852,6 +3149,21 @@ class CraftingRecipe(SharedMemoryModel):
         default - what to return if no lock of access_type was found
         """
         return self.locks.check(accessing_obj, access_type=access_type, default=default)
+
+    def org_owners(self):
+        return self.known_by.select_related('organization_owner').filter(organization_owner__isnull=False)
+
+    org_owners = CachedProperty(org_owners, '_org_owners')
+
+    def can_be_learned_by(self, learner):
+        """Returns True if learner can learn this recipe, False otherwise"""
+        if not self.access(learner):
+            return False
+        # if we have no orgs that know this recipe, anyone can learn it normally
+        if not self.org_owners:
+            return True
+        # check if they have granted access from any of the orgs that know it
+        return any(ob.access(learner, access_type="recipe") for ob in self.org_owners)
 
     @staticmethod
     def parse_result(results):
@@ -6130,8 +3442,9 @@ class RPEvent(SharedMemoryModel):
         msg += "{wHosts:{n %s\n" % ", ".join(str(ob) for ob in self.hosts.all())
         if self.beat:
             msg += "{wPlot:{n %s\n" % self.beat.plot
-        if self.gms.all():
-            msg += "{wGMs:{n %s\n" % ", ".join(str(ob) for ob in self.gms.all())
+        gms = self.gms.all()
+        if gms:
+            msg += "{wGMs:{n %s\n" % ", ".join(str(ob) for ob in gms)
         if not self.finished and not self.public_event:
             # prevent seeing names of invites once a private event has started
             if self.date > datetime.now():
@@ -6142,11 +3455,12 @@ class RPEvent(SharedMemoryModel):
         msg += "{wLocation:{n %s\n" % self.location_name
         if not self.public_event:
             msg += "{wPrivate:{n Yes\n"
+        if gms:
+            msg += "|wRisk:|n %s\n" % self.get_risk_display()
         msg += "{wEvent Scale:{n %s\n" % self.get_celebration_tier_display()
         msg += "{wDate:{n %s\n" % self.date.strftime("%x %H:%M")
         msg += "{wDesc:{n\n%s\n" % self.desc
-        webpage = PAGEROOT + self.get_absolute_url()
-        msg += "{wEvent Page:{n %s\n" % webpage
+        msg += "{wEvent Page:{n %s\n" % get_full_url(self.get_absolute_url())
         comments = self.comments.filter(db_tags__db_key="white_journal").order_by('-db_date_created')
         if comments:
             from server.utils.prettytable import PrettyTable

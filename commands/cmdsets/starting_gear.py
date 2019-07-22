@@ -14,13 +14,15 @@ creative process.
 """
 from world.dominion.setup_utils import setup_dom_for_char
 from evennia import CmdSet
+from evennia.utils.logger import log_info
 from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils import arx_utils
 from world.dominion.models import (CraftingMaterialType, PlayerOrNpc,
                                    CraftingRecipe, AssetOwner)
 from commands.base_commands.crafting import (create_decorative_weapon, create_wearable, create_weapon,
                                              create_place, create_book, create_container,
-                                             create_wearable_container, create_generic)
+                                             create_wearable_container, create_generic, PERFUME, create_mask,
+                                             create_consumable)
 
 CASH = 6000
 
@@ -55,6 +57,7 @@ class CmdStartingGear(ArxCommand):
         startgear/name
         startgear/adorn <type of material>=<amount>
         startgear/desc
+        startgear/altdesc
         startgear/abandon
         startgear/finish
         startgear/refundremainder
@@ -86,6 +89,8 @@ class CmdStartingGear(ArxCommand):
         msg = "{wRecipe:{n %s\n" % recipe.name
         msg += "{wName:{n %s\n" % proj[1]
         msg += "{wDesc:{n %s\n" % proj[2]
+        if proj[4]:
+            msg += "{wAlt Desc:{n %s\n" % proj[4]
         adorns = proj[3]
         if adorns:
             msg += "{wAdornments:{n %s\n" % ", ".join("%s: %s" % (CraftingMaterialType.objects.get(id=mat).name, amt)
@@ -119,8 +124,8 @@ class CmdStartingGear(ArxCommand):
             except CraftingRecipe.DoesNotExist:
                 caller.msg("No recipe found by the name %s." % self.lhs)
                 return
-            # proj = [id, name, desc, adorns, forgery]
-            proj = [recipe.id, "", "", {}, {}]
+            # proj = [id, name, desc, adorns, altdesc]
+            proj = [recipe.id, "", "", {}, ""]
             cost = recipe.value
             caller.msg("Its cost is {w%s{n." % cost)
             if cost > caller.db.startgear_val:
@@ -197,6 +202,13 @@ class CmdStartingGear(ArxCommand):
             caller.db.startgear_project = proj
             caller.msg("Desc set to:\n%s" % self.args)
             return
+        if "altdesc" in self.switches:
+            if not self.args:
+                caller.msg("Describe them how? This is only used for disguise recipes.")
+                return
+            proj[4] = self.args
+            caller.msg("This is only used for disguise recipes. Alternate description set to:\n%s" % self.args)
+            return
         if "abandon" in self.switches or "abort" in self.switches:
             caller.msg("You have abandoned this crafting project. You may now start another.")
             caller.attributes.remove("startgear_project")
@@ -243,6 +255,10 @@ class CmdStartingGear(ArxCommand):
                 obj, quality = create_decorative_weapon(recipe, roll, proj, caller)
             elif otype == "wearable_container":
                 obj, quality = create_wearable_container(recipe, roll, proj, caller)
+            elif otype == "perfume":
+                obj, quality = create_consumable(recipe, roll, proj, caller, PERFUME)
+            elif otype == "disguise":
+                obj, quality = create_mask(recipe, roll, proj, caller, proj[4])
             else:
                 obj, quality = create_generic(recipe, roll, proj, caller)
             # finish stuff universal to all crafted objects
@@ -270,16 +286,16 @@ class CmdStartingGear(ArxCommand):
 
 def setup_gear_for_char(character, money=CASH, reset=False):
     if not reset and "given_starting_gear" in character.tags.all():
-        print "Startgear aborted for %s" % character
+        log_info("Startgear aborted for %s" % character)
         return
     character.db.startgear_val = money
     cmds = StartingGearCmdSet
     if cmds.key not in [ob.key for ob in character.cmdset.all()]:
         character.cmdset.add(cmds, permanent=True)
     else:
-        print "startgear command not added to %s" % character
+        log_info("startgear command not added to %s" % character)
     character.tags.add("given_starting_gear")
-    print "Startgear setup finished for %s" % character
+    log_info("Startgear setup finished for %s" % character)
 
 
 class CmdSetupGear(ArxPlayerCommand):
@@ -311,4 +327,3 @@ class CmdSetupGear(ArxPlayerCommand):
             setup_gear_for_char(char, reset=True)
         caller.msg("Starting money for gear granted to %s." % char)
         arx_utils.inform_staff("%s has given %s money for startgear." % (caller, char))
-        return

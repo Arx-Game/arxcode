@@ -19,19 +19,24 @@ from evennia.utils.utils import make_iter
 from evennia.scripts.models import ScriptDB
 
 from commands.base_commands.roster import format_header
+from commands.mixins import RewardRPToolUseMixin
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
-from server.utils.arx_utils import inform_staff, time_from_now
+from server.utils.arx_utils import inform_staff, time_from_now, inform_guides, commafy, a_or_an, get_full_url
 from typeclasses.characters import Character
 from typeclasses.rooms import ArxRoom
 from web.character.models import AccountHistory, FirstContact
 from world.dominion.forms import RPEventCreateForm
 from world.dominion.models import (RPEvent, Agent, CraftingMaterialType, CraftingMaterials,
                                    AssetOwner, Reputation, Member, PlotRoom,
-                                   Organization, InfluenceCategory, PlotAction, PrestigeAdjustment)
+                                   Organization, InfluenceCategory, PlotAction, PrestigeAdjustment,
+                                   PrestigeCategory, PrestigeNomination)
 from world.msgs.models import Journal, Messenger
 from world.msgs.managers import reload_model_as_proxy
 from world.stats_and_skills import do_dice_check
+
+from paxforms import forms, fields
+from paxforms.paxform_commands import PaxformCommand
 
 
 def char_name(character_object, verbose_where=False, watch_list=None):
@@ -90,7 +95,6 @@ class CmdHangouts(ArxCommand):
     """
     key = "+hangouts"
     locks = "cmd:all()"
-    aliases = ["@hangouts"]
     help_category = "Travel"
 
     def func(self):
@@ -136,7 +140,6 @@ class CmdWhere(ArxPlayerCommand):
     """
     key = "+where"
     locks = "cmd:all()"
-    aliases = ["@where", "where"]
     help_category = "Travel"
     randomscene_switches = ("rs", "randomscene", "randomscenes")
     firstimp_switches = ("firstimp", "firstimpression", "firstimpressions", "fi", "fp")
@@ -237,7 +240,6 @@ class CmdWatch(ArxPlayerCommand):
     """
     key = "+watch"
     locks = "cmd:all()"
-    aliases = ["@watch", "watch"]
     help_category = "Social"
     max_watchlist_size = 50
 
@@ -323,7 +325,6 @@ class CmdFinger(ArxPlayerCommand):
     """
     key = "+finger"
     locks = "cmd:all()"
-    aliases = ["@finger", "finger"]
     help_category = "Social"
 
     def func(self):
@@ -398,12 +399,11 @@ class CmdFinger(ArxPlayerCommand):
                 msg += "{wStatus:{n Last logged in: %s\n" % last_online
         fealty = char.db.fealty or "None"
         msg += "{wFealty:{n %s\n" % fealty
-        pageroot = "http://play.arxgame.org"
+
         quote = char.db.quote
         if quote:
             msg += "{wQuote:{n %s\n" % quote
-        webpage = pageroot + char.get_absolute_url()
-        msg += "{wCharacter page:{n %s\n" % webpage
+        msg += "{wCharacter page:{n %s\n" % get_full_url(char.get_absolute_url())
         if show_hidden or viewing_own_character:
             orgs = player.current_orgs
         else:
@@ -422,7 +422,7 @@ class CmdFinger(ArxPlayerCommand):
                     secret_str = "" if organization not in secret_orgs else " {m(Secret){n"
                     return "%s%s" % (organization.name, secret_str)
 
-                org_str += "%s%s: %s\n" % (s_buffer, format_org_name(org), pageroot + org.get_absolute_url())
+                org_str += "%s%s: %s\n" % (s_buffer, format_org_name(org), get_full_url(org.get_absolute_url()))
                 apply_buffer = True
             msg += "{wOrganizations:{n %s" % org_str
         hooks = player.tags.get(category="rp hooks")
@@ -481,7 +481,6 @@ class CmdJournal(ArxCommand):
     """
     key = "journal"
     locks = "cmd:all()"
-    aliases = ["+journal"]
     help_category = "Social"
 
     def journal_index(self, character, j_list):
@@ -790,7 +789,6 @@ class CmdPosebreak(ArxCommand):
     """
     key = "+posebreak"
     locks = "cmd:all()"
-    aliases = ["@posebreak", "posebreak"]
     help_category = "Settings"
 
     def func(self):
@@ -849,7 +847,7 @@ class CmdMessenger(ArxCommand):
     """
     key = "messenger"
     locks = "cmd:all()"
-    aliases = ["+messenger", "messengers", "+messengers", "receive messenger", "receive messengers",
+    aliases = ["messengers", "receive messenger", "receive messengers",
                "receive messages", "message"]
     help_category = "Social"
     delivery_switches = ("deliver", "money", "materials", "silver")
@@ -1256,16 +1254,15 @@ class CmdMessenger(ArxCommand):
 
 class CmdCalendar(ArxPlayerCommand):
     """
-    @cal
+    @cal - Creates events and displays information about them.
 
     Usage:
-        @cal
+        @cal [<event number>]
         @cal/list
-        @cal <event number>
         @cal/old
         @cal/comments <event number>=<comment number>
     Creation:
-        @cal/create <name>
+        @cal/create [<name>]
         @cal/abort
         @cal/submit
     Creation or Editing:
@@ -1291,8 +1288,7 @@ class CmdCalendar(ArxPlayerCommand):
         @cal/join <event ID>
         @cal/sponsor <org>,<social resources>=<event ID>
 
-    Creates or displays information about events. date should be
-    in the format of 'MM/DD/YY HR:MN'. /private toggles whether the
+    Date should be in 'MM/DD/YY HR:MN' format. /private toggles whether the
     event is public or private (defaults to public). To spend extravagant
     amounts of money in hosting an event for prestige, set the /largesse
     level. To see the valid largesse types with their costs and prestige
@@ -1333,9 +1329,21 @@ class CmdCalendar(ArxPlayerCommand):
     in_progress_switches = ("movehere", "endevent")
 
     @property
+    def project(self):
+        return self.caller.ndb.event_creation
+
+    @project.setter
+    def project(self, val):
+        self.caller.ndb.event_creation = val
+
+    @project.deleter
+    def project(self):
+        self.caller.ndb.event_creation = None
+
+    @property
     def form(self):
         """Returns the RPEventCreateForm for the caller"""
-        proj = self.caller.ndb.event_creation
+        proj = self.project
         if not proj:
             return
         return RPEventCreateForm(proj, owner=self.caller.Dominion)
@@ -1365,9 +1373,8 @@ class CmdCalendar(ArxPlayerCommand):
             self.msg(err)
 
     def do_display_switches(self):
-        """Displays our project if we have one"""
-        proj = self.caller.ndb.event_creation
-        if not self.args and not self.switches and proj:
+        """Displays events"""
+        if not self.switches and self.project:
             self.display_project()
             return
         if self.caller.check_permstring("builders"):
@@ -1387,7 +1394,7 @@ class CmdCalendar(ArxPlayerCommand):
 
     @staticmethod
     def display_events(events):
-        """Displays table of events"""
+        """Returns table of events"""
         table = PrettyTable(["{wID{n", "{wName{n", "{wDate{n", "{wHost{n", "{wPublic{n"])
         for event in events:
             host = event.main_host or "No host"
@@ -1482,21 +1489,24 @@ class CmdCalendar(ArxPlayerCommand):
     def do_form_switches(self):
         """Handles form switches"""
         if "abort" in self.switches:
-            self.caller.ndb.event_creation = None
+            del self.project
             self.msg("Event creation cancelled.")
         elif "create" in self.switches:
+            if not self.args:
+                self.display_project()
+                return
             if RPEvent.objects.filter(name__iexact=self.lhs):
-                self.msg("There is already an event by that name. Choose a different name," +
-                         " or add a number if it's a sequel event.")
+                self.msg("There is already an event by that name. Choose a different name "
+                         "or add a number if it's a sequel event.")
                 return
             defaults = RPEvent()
-            proj = {'hosts': [], 'gms': [], 'org_invites': [], 'invites': [], 'name': self.lhs,
-                    'public_event': defaults.public_event, 'risk': defaults.risk,
-                    'celebration_tier': defaults.celebration_tier}
-            self.caller.ndb.event_creation = proj
-            self.msg("{wStarting project. It will not be saved until you submit it. " +
-                     "Does not persist through logout/server reload.{n")
-            self.msg(self.form.display(), options={'box': True})
+            new = {'hosts': [], 'gms': [], 'org_invites': [], 'invites': [], 'name': self.lhs,
+                   'public_event': defaults.public_event, 'risk': defaults.risk,
+                   'celebration_tier': defaults.celebration_tier}
+            self.project = new
+            msg = ("|wStarting project.|n It will not be saved until you submit it. "
+                   "Does not persist through logout or server reload.\n%s" % self.form.display())
+            self.msg(msg, options={'box': True})
         elif "submit" in self.switches:
             form = self.form
             if not form:
@@ -1504,7 +1514,7 @@ class CmdCalendar(ArxPlayerCommand):
             if not form.is_valid():
                 raise self.CalCmdError(form.display_errors() + "\n" + form.display())
             event = form.save()
-            self.caller.ndb.event_creation = None
+            self.project = None
             self.msg("New event created: %s at %s." % (event.name, event.date.strftime("%x %X")))
             inform_staff("New event created by %s: %s, scheduled for %s." % (self.caller, event.name,
                                                                              event.date.strftime("%x %X")))
@@ -1515,7 +1525,7 @@ class CmdCalendar(ArxPlayerCommand):
         if self.rhs:
             event = self.get_event_from_args(self.rhs, check_host=True)
         else:
-            proj = self.caller.ndb.event_creation
+            proj = self.project
             if not proj:
                 raise self.CalCmdError("You must use /create first or specify an event.")
         if 'largesse' in self.switches:
@@ -1583,12 +1593,10 @@ class CmdCalendar(ArxPlayerCommand):
     def display_project(self):
         """Sends a string display of a project"""
         form = self.form
-        msg = "{wEvent you're creating:{n\n"
-        if not form:
-            msg += "None currently."
-            return
+        if form:
+            msg = "|wEvent you're creating:|n\n" + form.display()
         else:
-            msg += form.display()
+            msg = "|wYou are not currently creating an event.|n"
         self.msg(msg, options={'box': True})
 
     def set_form_or_event_attribute(self, param, value, event=None):
@@ -1597,11 +1605,11 @@ class CmdCalendar(ArxPlayerCommand):
             setattr(event, param, value)
             event.save()
         else:
-            proj = self.caller.ndb.event_creation
+            proj = self.project
             if not proj:
                 raise self.CalCmdError("You must /create to start a project, or specify an event you want to change.")
             proj[param] = value
-            self.caller.ndb.event_creation = proj
+            self.project = proj
 
     def set_date(self, event=None):
         """Sets a date for an event"""
@@ -1725,7 +1733,7 @@ class CmdCalendar(ArxPlayerCommand):
         else:
             raise self.CalCmdError("Private must be set to either 'on' or 'off'.")
         self.set_form_or_event_attribute("public_event", public, event)
-        self.msg("Public is now set to: %s" % public)
+        self.msg("Event set to: %s" % ("public" if public else "private"))
 
     def add_or_remove_host(self, event):
         """Adds a host or changes them to a regular guest"""
@@ -1743,16 +1751,16 @@ class CmdCalendar(ArxPlayerCommand):
                 event.add_host(host)
                 msg = "%s added to hosts." % host
         else:
-            hosts = self.caller.ndb.event_creation['hosts']
+            hosts = self.project['hosts']
             if host.id in hosts:
                 hosts.remove(host.id)
-                if host.id not in self.caller.ndb.event_creation['invites']:
-                    self.caller.ndb.event_creation['invites'].append(host.id)
+                if host.id not in self.project['invites']:
+                    self.project['invites'].append(host.id)
                 msg = "Changed host to a regular guest. Use /uninvite to remove them completely."
             else:
                 hosts.append(host.id)
-                if host.id in self.caller.ndb.event_creation['invites']:
-                    self.caller.ndb.event_creation['invites'].remove(host.id)
+                if host.id in self.project['invites']:
+                    self.project['invites'].remove(host.id)
                 msg = "%s added to hosts." % host
         self.msg(msg)
 
@@ -1762,10 +1770,10 @@ class CmdCalendar(ArxPlayerCommand):
             gm = self.caller.search(self.lhs).Dominion
         except AttributeError:
             return
-        add_msg = "%s is now marked as a gm.\n"
-        add_msg += "Reminder - please only add a GM for an event if it's an actual player-run plot. Tagging a "
-        add_msg += "social event as a PRP is strictly prohibited. If you tagged this as a PRP in error, use "
-        add_msg += "gm on them again to remove them."
+        add_msg = ("|w%s is now marked as a gm.|n\n"
+                   "Reminder: Please only add a GM for an event if it's a player-run plot. Tagging a "
+                   "social event as a PRP is strictly prohibited. If you tagged this as a PRP in error, use "
+                   "gm on them again to remove them.")
         if event:
             if gm in event.gms:
                 event.untag_gm(gm)
@@ -1776,17 +1784,17 @@ class CmdCalendar(ArxPlayerCommand):
                 event.add_gm(gm)
                 msg = add_msg % gm
         else:
-            gms = self.caller.ndb.event_creation['gms']
+            gms = self.project['gms']
             if gm.id in gms:
                 msg = "%s is no longer marked as a gm. Use /uninvite to remove them completely." % gm
-                if gm.id not in self.caller.ndb.event_creation['invites']:
-                    self.caller.ndb.event_creation['invites'].append(gm.id)
+                if gm.id not in self.project['invites']:
+                    self.project['invites'].append(gm.id)
             else:
                 if len(gms) >= 2:
                     raise self.CalCmdError("Please limit yourself to one or two designated GMs.")
                 gms.append(gm.id)
-                if gm.id in self.caller.ndb.event_creation['invites']:
-                    self.caller.ndb.event_creation['invites'].remove(gm.id)
+                if gm.id in self.project['invites']:
+                    self.project['invites'].remove(gm.id)
                 msg = add_msg % gm
         self.msg(msg)
 
@@ -1804,7 +1812,7 @@ class CmdCalendar(ArxPlayerCommand):
                         raise self.CalCmdError("They are already invited.")
                     event.add_guest(pc)
             else:
-                proj = self.caller.ndb.event_creation
+                proj = self.project
                 if not proj:
                     raise self.CalCmdError("You must use /create first or specify an event.")
                 if org:
@@ -1845,7 +1853,7 @@ class CmdCalendar(ArxPlayerCommand):
                     raise self.CalCmdError("They are not invited.")
                 event.remove_guest(pc)
         else:
-            proj = self.caller.ndb.event_creation
+            proj = self.project
             if org:
                 if org.id not in proj['org_invites']:
                     raise self.CalCmdError("That organization is not invited.")
@@ -1878,12 +1886,12 @@ class CmdCalendar(ArxPlayerCommand):
                 event.beat = plot.updates.create()
                 msg = "Plot added."
         else:
-            plot_id = self.caller.ndb.event_creation.setdefault('plot', None)
+            plot_id = self.project.setdefault('plot', None)
             if plot_id == plot.id:
-                self.caller.ndb.event_creation['plot'] = None
+                self.project['plot'] = None
                 msg = "Plot removed."
             else:
-                self.caller.ndb.event_creation['plot'] = plot.id
+                self.project['plot'] = plot.id
                 msg = "Plot added."
         self.msg(msg)
 
@@ -2130,7 +2138,7 @@ class CmdRoomHistory(ArxCommand):
         return
 
 
-class CmdRoomMood(ArxCommand):
+class CmdRoomMood(RewardRPToolUseMixin, ArxCommand):
     """
     Temporarily adds to room description
 
@@ -2159,6 +2167,7 @@ class CmdRoomMood(ArxCommand):
         mood = (caller, time.time(), self.args)
         caller.location.db.room_mood = mood
         self.caller.location.msg_contents("{w(OOC)The scene set/room mood is now set to:{n %s" % mood[2])
+        self.mark_command_used()
 
 
 class CmdSocialNotable(ArxCommand):
@@ -2236,9 +2245,15 @@ class CmdSocialNotable(ArxCommand):
 
                 percentage = round((asset.prestige / (AssetOwner.MEDIAN_PRESTIGE * 1.)) * 100)
                 percentage -= percentage % 10
-                descriptor = asset.prestige_descriptor()
+                descriptor = asset.prestige_descriptor(None, include_reason=False, wants_long_reason=True)
+                best_adjust = asset.most_notable_adjustment(adjust_type=None)
 
-                self.msg("%s, is roughly %d%% as notable as the average citizen." % (descriptor, percentage))
+                result = "%s, is roughly %d%% as notable as the average citizen." % (descriptor, percentage)
+
+                if best_adjust and best_adjust.long_reason:
+                    result = "%s %s" % (result, best_adjust.long_reason)
+
+                self.msg(result)
 
             except CommandError as ce:
                 self.msg(ce)
@@ -2280,6 +2295,281 @@ class CmdSocialNotable(ArxCommand):
         self.show_rankings(title, assets, adjust_type, show_percent=self.caller.check_permstring("builders"))
 
 
+class PrestigeCategoryField(fields.Paxfield):
+    """
+    This field contains a single prestige category
+    """
+
+    def __init__(self, required=False, **kwargs):
+        super(PrestigeCategoryField, self).__init__(**kwargs)
+        self._required = required
+        self._value = None
+
+    # noinspection PyMethodMayBeStatic
+    def _get_category(self, args):
+        try:
+            return PrestigeCategory.objects.get(name__iexact=args)
+        except PrestigeCategory.DoesNotExist:
+            return None
+
+    def set(self, value, caller=None):
+
+        if value is None:
+            self._value = None
+            return True, None
+
+        category_obj = self._get_category(value)
+        if not category_obj:
+            return False, "No such prestige category '%s'" % value
+
+        self._value = value
+        return self.validate(caller=caller)
+
+    def get(self):
+        if self._value:
+            return self._value
+        else:
+            return self.default
+
+    def get_display_params(self):
+        return "<category>"
+
+    def validate(self, caller=None):
+        if self.required and not self.get():
+            return False, "Required field {} was not provided.  {}".format(self.full_name, self.help_text or "")
+
+        return True, None
+
+    def webform_field(self, caller=None):
+        from django.forms import CharField
+        options = {'label': self.full_name}
+        if self.required is not None:
+            options['required'] = self.required
+        return CharField(**options)
+
+
+class FormNomination(forms.Paxform):
+
+    form_key = "social_nomination"
+    form_purpose = "Describes a social nomination for one or more players."
+    form_description = '''
+    This command allows you to fill out a nomination for a prestige adjustment
+    for one or more players, of a given type.
+    '''
+
+    nominees = fields.CharacterListField(required=True, full_name="Nominees",
+                                         help_text="You must provide one or more characters for this nomination.")
+    category = PrestigeCategoryField(required=True, full_name="Category",
+                                     help_text="You must provide a valid prestige adjustment category.  "
+                                               "Do 'nominate/types' to see the valid types.")
+    type = fields.ChoiceField(required=True, full_name="Adjustment Type",
+                              choices=PrestigeNomination.TYPES, help_text="You must define whether this nomination is "
+                                                                          "for fame or legend.")
+    size = fields.ChoiceField(required=True, full_name="Adjustment Size",
+                              choices=PrestigeNomination.SIZES, help_text="You must provide a valid nomination size.")
+    summary = fields.TextField(required=False, max_length=40, full_name="Short Summary",
+                               help_text="This summary should be very short, and suitable for inclusion on the "
+                                         "'notable' list.")
+    reason = fields.TextField(required=True, max_length=2048, full_name="Reason",
+                              help_text="The reason should be a description of what these nominees did that is so "
+                                        "notable.")
+
+    def _get_character(self, args):
+        from typeclasses.characters import Character
+        try:
+            return Character.objects.get(db_key__iexact=args)
+        except Character.DoesNotExist:
+            return self._get_character_by_id(args)
+
+    # noinspection PyMethodMayBeStatic
+    def _get_character_by_id(self, args):
+        from typeclasses.characters import Character
+        try:
+            key = int(args)
+            return Character.objects.get(pk=key)
+        except (Character.DoesNotExist, ValueError):
+            return None
+
+    def submit(self, caller, values):
+        character_list = [self._get_character(value) for value in values['nominees']]
+        asset_owners = [char_obj.player_ob.Dominion.assets for char_obj in character_list]
+        short_reason = None
+        if 'summary' in values:
+            short_reason = values['summary']
+
+        try:
+            category = PrestigeCategory.objects.get(name__iexact=values['category'])
+        except PrestigeCategory.DoesNotExist:
+            caller.msg("Something has gone horribly wrong; your category seems to no longer be valid.")
+            return
+
+        nomination = PrestigeNomination.objects.create(nominator=caller.player_ob.Dominion,
+                                                       category=category, reason=short_reason,
+                                                       long_reason=values['reason'], adjust_type=values['type'],
+                                                       adjust_size=values['size'])
+        for asset_owner in asset_owners:
+            nomination.nominees.add(asset_owner)
+        caller.msg("Nomination submitted.")
+
+        character_names = ["|y" + char_obj.key + "|n" for char_obj in character_list]
+        verb = "was"
+        if len(character_names) > 1:
+            verb = "were"
+
+        adjust_type = "fame"
+        if values['type'] == PrestigeNomination.TYPE_LEGEND:
+            adjust_type = "legend"
+
+        size_name = "small"
+        for size_tup in PrestigeNomination.SIZES:
+            if size_tup[0] == values['size']:
+                size_name = size_tup[1].lower()
+
+        inform_guides("|wPRESTIGE:|n %s %s nominated for %s %s %s adjustment.  Do 'review_nomination %d' for details."
+                      % (commafy(character_names), verb, a_or_an(size_name), size_name, adjust_type, nomination.id))
+
+
+class CmdSocialNominate(PaxformCommand):
+    """
+Describes a social nomination for one or more players.
+
+Usage:
+  nominate/create
+  nominate/check
+  nominate/category <category>
+  nominate/nominees <character1>[,character2...]
+  nominate/reason [value]
+  nominate/size [Small||Medium||Large||Huge]
+  nominate/summary [value]
+  nominate/cancel
+  nominate/submit
+  nominate/types
+
+This command allows you to fill out a nomination for a prestige adjustment
+for one or more players, of a given type.  /create, /cancel, and /submit
+will manage the submission of this form, while /check will make sure your
+form has valid values.
+
+The /category, /nominees, /reason, /size, and /summary values will fill
+out the various fields of the form.
+
+Lastly, nominate/types will list the valid categories you can use in
+filling out a nomination.
+    """
+
+    key = "nominate"
+    locks = "cmd:all()"
+    form_class = FormNomination
+
+    def func(self):
+        if "types" in self.switches:
+            table = EvTable("|wName|n", "|wDescription|n")
+            for prestige_type in PrestigeCategory.objects.all():
+                table.add_row(prestige_type.name, prestige_type.description)
+            self.msg(str(table))
+            return
+
+        super(CmdSocialNominate, self).func()
+
+
+class CmdSocialReview(ArxCommand):
+    """
+    Reviews pending social nominations.
+
+    Usage:
+      review_nomination [id]
+      review_nomination/approve <id>
+      review_nomination/deny <id>
+    """
+    key = "review_nomination"
+    locks = "cmd:perm(helper)"
+
+    # noinspection PyMethodMayBeStatic
+    def pending_nomination(self, arg):
+        try:
+            int_arg = int(arg)
+            nomination = PrestigeNomination.objects.get(id=int_arg)
+            return nomination
+        except (ValueError, PrestigeNomination.DoesNotExist):
+            return None
+
+    def func(self):
+        if not self.args:
+            pending = PrestigeNomination.objects.filter(pending=True)
+
+            if pending.count() == 0:
+                self.msg("No pending nominations.")
+                return
+
+            table = EvTable("|wID|n", "|wType|n", "|wSize|n", "|wCharacters|n")
+            for nom in pending.all():
+                adjust_type = "Fame"
+                if nom.adjust_type == PrestigeNomination.TYPE_LEGEND:
+                    adjust_type = "Legend"
+
+                size_name = "Small"
+                for size_tup in PrestigeNomination.SIZES:
+                    if size_tup[0] == nom.adjust_size:
+                        size_name = size_tup[1]
+
+                names = [str(nominee) for nominee in nom.nominees.all()]
+                table.add_row(nom.id, adjust_type, size_name, commafy(names))
+            self.msg(table)
+            return
+
+        nom = self.pending_nomination(self.args)
+        if not nom:
+            self.msg("No pending nomination with that ID.")
+            return
+
+        if "approve" in self.switches:
+            if self.caller.check_permstring("builders"):
+                self.msg("Since you're staff, approving immediately.")
+                nom.apply()
+                return
+            nom.approve(self.caller)
+            self.msg("Your approval has been recorded.")
+            return
+
+        if "deny" in self.switches:
+            if self.caller.check_permstring("builders"):
+                self.msg("Since you're staff, denying immediately.")
+                inform_guides("|wPRESTIGE:|n %s has manually denied nomination %d" % (self.caller.name, nom.id))
+                nom.pending = False
+                nom.approved = False
+                nom.save()
+                return
+            nom.deny(self.caller)
+            self.msg("Your denial has been recorded.")
+            return
+
+        adjust_type = "Fame"
+        if nom.adjust_type == PrestigeNomination.TYPE_LEGEND:
+            adjust_type = "Legend"
+
+        size_name = "Small"
+        for size_tup in PrestigeNomination.SIZES:
+            if size_tup[0] == nom.adjust_size:
+                size_name = size_tup[1]
+
+        names = [str(nominee) for nominee in nom.nominees.all()]
+        approved_by = [str(approver) for approver in nom.approved_by.all()]
+        denied_by = [str(denier) for denier in nom.denied_by.all()]
+
+        result = "\n|wID:|n %d\n" % nom.id
+        result += "|wNominees:|n %s\n" % commafy(names)
+        result += "|wNominated by:|n %s\n" % str(nom.nominator)
+        result += "|wApproved by:|n %s\n" % commafy(approved_by)
+        result += "|wDenied by: %s\n" % commafy(denied_by)
+        result += "|wType:|n %s %s\n" % (size_name, adjust_type)
+        if nom.reason:
+            result += "|wSummary:|n %s\n" % nom.reason
+        result += "|wReason:|n\n%s\n" % nom.long_reason
+        self.msg(result)
+
+        return
+
+
 class CmdThink(ArxCommand):
     """
     Think to yourself
@@ -2292,7 +2582,6 @@ class CmdThink(ArxCommand):
     characters with mind-reading powers may be able to see these.
     """
     key = "+think"
-    aliases = ["think"]
     locks = "cmd:all()"
     help_category = "Social"
 
@@ -2313,7 +2602,6 @@ class CmdFeel(ArxCommand):
     be seen by very sensitive people.
     """
     key = "+feel"
-    aliases = ["feel"]
     locks = "cmd:all()"
     help_category = "Social"
 
@@ -2348,42 +2636,42 @@ class CmdDonate(ArxCommand):
     def func(self):
         """Execute command."""
         caller = self.caller
-        if "score" in self.switches:
-            return self.display_score()
-        if not self.lhs:
-            self.list_donations(caller)
-            return
-        group = self.get_donation_target()
-        if not group:
-            return
         try:
-            val = int(self.rhs)
-            if val > caller.db.currency:
-                caller.msg("Not enough money.")
+            if "score" in self.switches:
+                return self.display_score()
+            if not self.lhs:
+                self.list_donations(caller)
                 return
-            if val <= 0:
-                raise ValueError
-            if not caller.player.pay_action_points(self.action_point_cost):
-                self.msg("Not enough AP.")
+            group = self.get_donation_target()
+            if not group:
                 return
-            caller.pay_money(val)
-            group.donate(val, self.caller)
-        except (TypeError, ValueError):
-            caller.msg("Must give a positive number.")
-            return
+            try:
+                val = int(self.rhs)
+                if val > caller.db.currency:
+                    raise CommandError("Not enough money.")
+                if val <= 0:
+                    raise ValueError
+                if not caller.player.pay_action_points(self.action_point_cost):
+                    raise CommandError("Not enough AP.")
+                caller.pay_money(val)
+                group.donate(val, self.caller)
+            except (TypeError, ValueError):
+                raise CommandError("Must give a positive number.")
+        except CommandError as err:
+            caller.msg(err)
 
     def list_donations(self, caller):
         """Lists donations to the caller"""
-        caller.msg("{wDonations:{n")
+        msg = "{wDonations:{n\n"
         table = PrettyTable(["{wGroup{n", "{wTotal{n"])
         for donation in self.donations:
             table.add_row([str(donation.receiver), donation.amount])
-        caller.msg(str(table))
+        msg += str(table)
+        caller.msg(msg)
 
     def get_donation_target(self):
         """Get donation object"""
-        result = self.get_org_or_npc_from_args()
-        org, npc = result
+        org, npc = self.get_org_or_npc_from_args()
         if not org and not npc:
             return
         if "hype" in self.switches:
@@ -2399,9 +2687,10 @@ class CmdDonate(ArxCommand):
 
     def get_org_or_npc_from_args(self):
         """Get a tuple of org, npc used for getting the donation object"""
-        org = None
-        npc = None
+        org, npc = None, None
         if "hype" in self.switches:
+            if len(self.lhslist) < 2:
+                raise CommandError("Usage: <player>,<group>=<amount>")
             name = self.lhslist[1]
         else:
             name = self.lhs
@@ -2415,7 +2704,7 @@ class CmdDonate(ArxCommand):
             try:
                 npc = InfluenceCategory.objects.get(name__iexact=name)
             except InfluenceCategory.DoesNotExist:
-                self.msg("Could not find an organization or npc group by the name %s." % name)
+                raise CommandError("Could not find an organization or npc group by the name %s." % name)
         return org, npc
 
     def display_score(self):
@@ -2428,16 +2717,16 @@ class CmdDonate(ArxCommand):
         """Displays a list of the top 10 donors for a given group"""
         org, npc = self.get_org_or_npc_from_args()
         if org and org.secret:
-            self.msg("Cannot display donations for secret orgs.")
-            return
+            raise CommandError("Cannot display donations for secret orgs.")
         group = org or npc
         if not group:
             return
-        self.msg("Top donors for %s" % group)
+        msg = "Top donors for %s\n" % group
         table = PrettyTable(["Donor", "Amount"])
         for donation in group.donations.filter(amount__gt=0).distinct().order_by('-amount'):
             table.add_row([str(donation.giver), str(donation.amount)])
-        self.msg(str(table))
+        msg += str(table)
+        self.msg(msg)
 
     def display_top_donor_for_each_group(self):
         """Displays the highest donor for each group"""
@@ -2461,8 +2750,7 @@ class CmdDonate(ArxCommand):
 
 class CmdRandomScene(ArxCommand):
     """
-    @randomscene
-
+    @randomscene - Claim roleplay (RP) scenes for weekly XP.
     Usage:
         @randomscene
         @randomscene/claim <player>=<summary of the scene>
@@ -2470,30 +2758,30 @@ class CmdRandomScene(ArxCommand):
         @randomscene/viewrequests
         @randomscene/online
 
-    Generates three characters, as well as new characters within their first
-    two weeks of play, who you can receive bonus xp for this week by having
-    an RP scene with them. Executing the command generates the names, and
-    then once you meet with the player and have a scene with them, using
-    @randomscene/claim will send a request to that player to validate the
-    scene you both had. If they agree, during the weekly script you'll both
-    receive xp. Requests that aren't answered are wiped in weekly maintenance.
-    /claim requires that both of you be in the same room. @randomscene/online
-    will only display players who are currently in the game.
+    Execute the command to generate names. Once you meet and share a scene,
+    use @randomscene/claim to request they validate it. If they agree, you'll
+    both receive xp during the weekly script. Unanswered requests are wiped
+    weekly. The /claim switch requires both of you to be in the same room.
+    The claimed character will receive XP whether or not they validate.
+    @randomscene/online displays only currently connected players.
 
-    Players should only use @randomscene/claim for meaningful interaction in a
-    scene, not simply being in the same room and/or acknowledging them in
-    passing. If someone uses @randomscene/claim on your PC without meaningful
-    interaction, please do not @randomscene/validate the request, and please
-    let staff know. The player claimed will receive XP whether or not they
-    validate.
+    Players should only use @randomscene/claim after meaningful interaction,
+    not simply being in the same room or acknowledgment in passing. If anyone
+    uses @randomscene/claim on you without meaningful interaction, please do
+    not @randomscene/validate the request, and please let staff know.
+
+    A random RP command is also chosen, granting you weekly XP when used.
+    Use 'help <command>' if you are unfamiliar with its use!
     """
     key = "@randomscene"
-    aliases = ["@rs", "randomscene"]
+    aliases = ["@rs"]
     locks = "cmd:all()"
     help_category = "Social"
     NUM_SCENES = 3
     NUM_DAYS = 3
     DAYS_FOR_NEWBIE_CHECK = 14
+    random_rp_command_keys = ["knock", "shout", "mutter", "petition", "goals", "+plots", "+room_mood", "+roomtitle",
+                              "+tempdesc", "flashback", "favor"]
 
     @property
     def scenelist(self):
@@ -2609,13 +2897,13 @@ class CmdRandomScene(ArxCommand):
         validated = self.validatedlist
         gms = self.gms
         newbies = [ob for ob in self.newbies if ob not in claimlist]
-        msg = "{w@Randomscene Information:{n "
+        msg = "{w@Randomscene Information for this week:{n "
         if "online" in self.switches:
             msg += "{yOnly displaying online characters.{n"
             scenelist = [ob for ob in scenelist if ob.show_online(self.caller.player)]
             newbies = [ob for ob in newbies if ob.show_online(self.caller.player)]
         if scenelist:
-            msg += "\n{wRandomly generated RP partners for this week:{n "
+            msg += "\n{wRandomly generated RP partners:{n "
             msg += list_to_string([ob.key for ob in scenelist])
         if newbies:
             msg += "\n{wNew players who can be also RP'd with for credit:{n "
@@ -2628,14 +2916,20 @@ class CmdRandomScene(ArxCommand):
         else:
             msg += "\n{yReminder: Please only /claim those you have interacted with significantly in a scene.{n"
         if claimlist:
-            msg += "\n{wThose you have already RP'd with this week:{n "
+            msg += "\n{wThose you have already RP'd with:{n "
             msg += list_to_string([ob.key for ob in claimlist])
         if validated:
-            msg += "\n{wThose you have validated scenes for this week:{n "
+            msg += "\n{wThose you have validated scenes for:{n "
             masked = dict(self.masked_validated_list)
             msg += list_to_string([ob.key if ob not in masked else masked[ob] for ob in validated])
         if not any((scenelist, newbies, gms, claimlist, validated)):
             msg = "No characters qualify for @randomscene information to be displayed."
+        # random RP Tool!
+        if not self.caller.db.random_rp_command_this_week and not self.caller.db.rp_command_used:
+            self.generate_random_command()
+        msg += "\n|wRandomly chosen Roleplay Tool:|n %s" % self.caller.db.random_rp_command_this_week
+        if self.caller.db.rp_command_used:
+            msg += "|y (Already used)|n"
         self.msg(msg)
 
     def generate_lists(self):
@@ -2652,6 +2946,10 @@ class CmdRandomScene(ArxCommand):
                 scenelist.extend(choices)
         scenelist = sorted(scenelist, key=lambda x: x.key.capitalize())
         self.caller.player_ob.db.random_scenelist = scenelist
+
+    def generate_random_command(self):
+        """Generates our random RP Tool of the week."""
+        self.caller.db.random_rp_command_this_week = random.choice(self.random_rp_command_keys)
 
     def claim_scene(self):
         """Sends a request from caller to another player to validate their scene."""
@@ -2771,7 +3069,7 @@ class CmdCensus(ArxPlayerCommand):
         self.msg(table)
 
 
-class CmdRoomTitle(ArxCommand):
+class CmdRoomTitle(RewardRPToolUseMixin, ArxCommand):
     """
     Displays what your character is currently doing in the room
 
@@ -2783,7 +3081,7 @@ class CmdRoomTitle(ArxCommand):
     it.
     """
     key = "+roomtitle"
-    aliases = ["room_title"]
+    aliases = ["room_title", "permapose"]
     locks = "cmd:all()"
     help_category = "Social"
 
@@ -2795,10 +3093,10 @@ class CmdRoomTitle(ArxCommand):
             return
         self.caller.db.room_title = self.args
         self.msg("Your roomtitle set to %s {w({n%s{w){n" % (self.caller, self.args))
-        return
+        self.mark_command_used()
 
 
-class CmdTempDesc(ArxCommand):
+class CmdTempDesc(RewardRPToolUseMixin, ArxCommand):
     """
     Appends a temporary description to your regular description
 
@@ -2820,6 +3118,7 @@ class CmdTempDesc(ArxCommand):
             return
         self.caller.additional_desc = self.args
         self.msg("Temporary desc set to: %s" % self.args)
+        self.mark_command_used()
 
 
 class CmdLanguages(ArxCommand):
@@ -3127,7 +3426,7 @@ class CmdFirstImpression(ArxCommand):
     """
     key = "+firstimpression"
     help_category = "Social"
-    aliases = ["firstimpression", "firstimpressions", "+firstimpressions"]
+    aliases = ["+firstimpressions"]
 
     @property
     def imps_of_me(self):
@@ -3497,15 +3796,14 @@ class CmdGetInLine(ArxCommand):
             return
 
 
-class CmdFavor(ArxPlayerCommand):
+class CmdFavor(RewardRPToolUseMixin, ArxPlayerCommand):
     """
     Applies favor or disfavor from an organization to a character
 
     Usage:
         favor <organization>
         favor/all
-        favor/add <organization>=<character>,<value>
-        favor/gossip <organization>=<character>/<text>
+        favor/set <organization>=<character>,<value>/<gossip>
         favor/remove <organization>=<character>
 
     The favor command allows an organization's leadership to show whether
@@ -3526,11 +3824,9 @@ class CmdFavor(ArxPlayerCommand):
     character joins the organization or is promoted above vassal rank, their
     favor is immediately set to 0.
 
-    The gossip switch allows you to set a textstring that corresponds to what
-    npc gossip would hold as the reason for a character being in favor or
-    disfavor. If the favor is removed from the character, the gossip is
-    removed as well. Gossip may not be changed once set, only removed with
-    favor being reset.
+    When adding favor, you must set a gossip text string that displays what
+    npcs would speculate as the reason for someone being held in favor or
+    disfavor by an organization.
     """
     key = "favor"
     help_category = "Social"
@@ -3539,21 +3835,22 @@ class CmdFavor(ArxPlayerCommand):
         """Executes the favor command"""
         try:
             if not self.switches or "all" in self.switches:
-                return self.list_favor()
-            if "add" in self.switches:
-                return self.add_favor()
-            if "gossip" in self.switches:
-                return self.add_gossip()
-            if "remove" in self.switches:
-                return self.remove_favor()
-            raise CommandError("Invalid switch.")
+                self.list_favor()
+            elif "set" in self.switches or "add" in self.switches:
+                self.add_favor()
+            elif "remove" in self.switches:
+                self.remove_favor()
+            else:
+                raise CommandError("Invalid switch.")
         except CommandError as err:
             self.msg(err)
+        else:
+            self.mark_command_used()
 
     def list_favor(self):
         """Lists who is in favor/disfavor for an organization"""
         if "all" in self.switches:
-            favors = Reputation.objects.exclude(favor=0)
+            favors = Reputation.objects.exclude(favor=0).order_by('-date_gossip_set')
             self.msg("Characters with favor: %s" % ", ".join(str(ob) for ob in favors))
             return
         org = self.get_organization(check_perm=False)
@@ -3576,8 +3873,13 @@ class CmdFavor(ArxPlayerCommand):
         """Adds favor to a character, assuming we have points to spare and can afford the cost."""
         org = self.get_organization()
         try:
-            target = self.caller.search(self.rhslist[0])
-            amount = int(self.rhslist[1])
+            rhslist, gossip = self.rhs.split("/", 1)
+            rhslist = rhslist.split(",")
+        except (TypeError, ValueError, AttributeError):
+            raise CommandError("You must provide a name, target, and gossip string.")
+        try:
+            target = self.caller.search(rhslist[0])
+            amount = int(rhslist[1])
         except (IndexError, ValueError, TypeError):
             raise CommandError("You must provide both a target and an amount.")
         if not target:
@@ -3600,16 +3902,17 @@ class CmdFavor(ArxPlayerCommand):
         self.caller.ndb.favor_cost_confirmation = None
         if not self.caller.pay_resources("social", cost):
             raise CommandError("You cannot afford to pay %s resources." % cost)
-        self.set_target_org_favor(target, org, amount)
+        self.set_target_org_favor(target, org, amount, gossip)
 
-    def set_target_org_favor(self, target, org, amount):
+    def set_target_org_favor(self, target, org, amount, gossip):
         """Sets the amount of favor for target's reputation with org"""
         rep, _ = target.Dominion.reputations.get_or_create(organization=org)
         rep.favor = amount
-        rep.npc_gossip = ""
-        rep.date_gossip_set = None
+        rep.npc_gossip = gossip
+        rep.date_gossip_set = datetime.now()
         rep.save()
         self.msg("Set %s's favor in %s to %s." % (target, org, amount))
+        inform_staff("%s set gossip for %s's reputation with %s to: %s" % (self.caller, target, org, gossip))
 
     @staticmethod
     def check_cap(org, amount):
@@ -3620,7 +3923,7 @@ class CmdFavor(ArxPlayerCommand):
         else:
             query = Q(favor__gt=0)
         total = abs(org.reputations.filter(query).aggregate(Sum('favor')).values()[0] or 0) + abs(amount)
-        mod = org.social_modifier
+        mod = org.social_modifier * 5
         if total > mod:
             noun = "favor" if amount > 0 else "disfavor"
             raise CommandError("That would bring your total %s to %s, and you can only spend %s." % (noun, total, mod))
@@ -3650,28 +3953,3 @@ class CmdFavor(ArxPlayerCommand):
             raise CommandError("They have no favor with %s." % org)
         rep.wipe_favor()
         self.msg("Favor for %s removed." % target)
-
-    def add_gossip(self):
-        """Adds gossip to a character's reputation"""
-        org = self.get_organization()
-        try:
-            target, text = self.rhs.split("/")
-            target = self.caller.search(target)
-            if not text or not target:
-                raise ValueError
-        except (TypeError, ValueError):
-            raise CommandError("Must provide both a target and a text message.")
-        self.set_target_org_gossip(target, org, text)
-        inform_staff("%s set gossip for %s's reputation with %s to: %s" % (self.caller, target, org, text))
-
-    def set_target_org_gossip(self, target, org, text):
-        """Sets the gossip for a given character"""
-        rep, _ = target.Dominion.reputations.get_or_create(organization=org)
-        if not rep.favor:
-            raise CommandError("You can only add gossip to someone with non-zero favor.")
-        if rep.date_gossip_set:
-            raise CommandError("You may only set the gossip string once.")
-        rep.npc_gossip = text
-        rep.date_gossip_set = datetime.now()
-        rep.save()
-        self.msg("Gossip for %s set to: %s" % (target, text))

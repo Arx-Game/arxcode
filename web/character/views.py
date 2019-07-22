@@ -9,6 +9,7 @@ import cloudinary.forms
 import cloudinary.uploader
 from cloudinary import api
 from cloudinary.forms import cl_init_js_callbacks
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
@@ -27,7 +28,9 @@ from commands.base_commands import roster
 from server.utils.name_paginator import NamePaginator
 from server.utils.view_mixins import LimitPageMixin
 from typeclasses.characters import Character
-from world.dominion.models import Organization, PlotAction, ActionSubmissionError
+from world.dominion.models import Organization
+from world.dominion.plots.models import PlotAction, ActionSubmissionError
+
 from .forms import (PhotoForm, PhotoDirectForm, PhotoUnsignedDirectForm, PortraitSelectForm,
                     PhotoDeleteForm, PhotoEditForm, FlashbackPostForm, FlashbackCreateForm)
 from .models import Photo, Story, Episode, Chapter, Flashback, ClueDiscovery
@@ -428,7 +431,7 @@ class ChapterListView(ListView):
     @property
     def viewable_crises(self):
         """Gets queryset of crises visible to user"""
-        from world.dominion.models import Plot
+        from world.dominion.plots.models import Plot
         return Plot.objects.viewable_by_player(self.request.user).filter(chapter__in=self.get_queryset())
 
     def get_context_data(self, **kwargs):
@@ -725,7 +728,7 @@ class CharacterMixin(object):
         return context
 
 
-class FlashbackListView(CharacterMixin, ListView):
+class FlashbackListView(LoginRequiredMixin, CharacterMixin, ListView):
     """View for listing flashbacks"""
     model = Flashback
     template_name = "character/flashback_list.html"
@@ -736,12 +739,12 @@ class FlashbackListView(CharacterMixin, ListView):
         if not user or not user.is_authenticated():
             raise PermissionDenied
         if user.char_ob != self.character and not (user.is_staff or user.check_permstring("builders")):
-            raise PermissionDenied
+            raise Http404
         entry = self.character.roster
-        return Flashback.objects.filter(Q(owner=entry) | Q(allowed=entry)).distinct()
+        return entry.flashbacks.all()
 
 
-class FlashbackCreateView(CharacterMixin, CreateView):
+class FlashbackCreateView(LoginRequiredMixin, CharacterMixin, CreateView):
     """View for creating a flashback"""
     model = Flashback
     template_name = "character/flashback_create_form.html"
@@ -767,15 +770,8 @@ class FlashbackCreateView(CharacterMixin, CreateView):
         """Gets the URL to redirect us to on a successful submission"""
         return reverse('character:list_flashbacks', kwargs={'object_id': self.character.id})
 
-    def form_valid(self, form):
-        """Update newly created flashback with our owner and return appropriate response"""
-        response = super(FlashbackCreateView, self).form_valid(form)
-        self.object.owner = self.character.roster
-        self.object.save()
-        return response
 
-
-class FlashbackAddPostView(CharacterMixin, DetailView):
+class FlashbackAddPostView(LoginRequiredMixin, CharacterMixin, DetailView):
     """View for an individual flashback or adding a post to it"""
     model = Flashback
     form_class = FlashbackPostForm
@@ -793,9 +789,19 @@ class FlashbackAddPostView(CharacterMixin, DetailView):
     def get_context_data(self, **kwargs):
         """Gets context for template, ensures we have permissions"""
         context = super(FlashbackAddPostView, self).get_context_data(**kwargs)
+        flashback = self.get_object()
         user = self.request.user
-        if user not in self.get_object().all_players and not (user.is_staff or user.check_permstring("builders")):
-            raise PermissionDenied
+        try:
+            user_is_staff = bool(user.is_staff or user.check_permstring("builders"))
+            timeline = flashback.get_post_timeline(player=user, is_staff=user_is_staff)
+        except AttributeError:
+            raise Http404
+        involvement = flashback.get_involvement(user.roster)
+        context['flashback_featuring'] = flashback.owners_and_contributors
+        context['flashback_timeline'] = timeline
+        context['allow_add_post'] = bool(user_is_staff or flashback.posts_allowed_by(user))
+        context['new_post_roll'] = involvement.roll if (context['allow_add_post'] and involvement) else ""
+        context['page_title'] = flashback.title
         context['form'] = FlashbackPostForm()
         return context
 
@@ -828,7 +834,7 @@ class KnownCluesView(CharacterMixin, LimitPageMixin, ListView):
                 Q(clue__desc__icontains=text) |
                 Q(clue__name__icontains=text) |
                 Q(message__icontains=text)
-            )
+            ).distinct()
         return queryset
 
     def get_queryset(self):
@@ -840,7 +846,7 @@ class KnownCluesView(CharacterMixin, LimitPageMixin, ListView):
             raise PermissionDenied
         entry = self.character.roster
         qs = entry.clue_discoveries.all().order_by('id')
-        return self.search_filters(qs)
+        return self.search_filters(qs).select_related('clue')
 
     def get_context_data(self, **kwargs):
         """Gets our context - do special stuff to preserve search tags through pagination"""
@@ -853,4 +859,3 @@ class KnownCluesView(CharacterMixin, LimitPageMixin, ListView):
         context['search_tags'] = search_tags
         context['page_title'] = "%s - Known Clues" % self.character.name
         return context
-

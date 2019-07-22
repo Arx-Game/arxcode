@@ -60,9 +60,9 @@ class EventManager(Script):
         """
         idles = self.db.idle_events
         actives = self.db.active_events
-        for eventid in idles:
+        for eventid, counter in idles.items():
             # if the event has been idle for an hour, close it down
-            if idles[eventid] >= 12:
+            if counter >= 12:
                 # noinspection PyBroadException
                 try:
                     event = RPEvent.objects.get(id=eventid)

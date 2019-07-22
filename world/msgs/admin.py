@@ -74,9 +74,9 @@ class MsgAdmin(admin.ModelAdmin):
                     'message')
     list_display_links = ("id",)
     ordering = ["-db_date_created"]
-    search_fields = ['db_sender_accounts__db_key',
-                     "db_sender_objects__db_key", "db_receivers_objects__db_key",
-                     'id', '^db_date_created']
+    search_fields = ['=db_sender_accounts__db_key',
+                     "=db_sender_objects__db_key", "=db_receivers_objects__db_key",
+                     '=id']
     save_as = True
     save_on_top = True
     list_select_related = True
@@ -120,7 +120,7 @@ class ClueForCharacterInline(admin.StackedInline):
 
 
 class ArxObjectDBAdmin(ObjectDBAdmin):
-    search_fields = ['id', 'db_key', 'db_location__db_key']
+    search_fields = ['=id', 'db_key']
     inlines = tuple(ObjectDBAdmin.inlines) + (ClueForCharacterInline,)
 
     

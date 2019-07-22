@@ -18,7 +18,7 @@ class CmdDiceString(ArxCommand):
     """
     key = "@dicestring"
     locks = "cmd:all()"
-    
+
     def func(self):
         """ Handles the toggle """
         caller = self.caller
@@ -51,8 +51,8 @@ class CmdDiceCheck(ArxCommand):
     send results to specific people only. For example, if you
     are attempting to lie to someone in a whispered conversation,
     you might '@check charm+manipulation=Bob' for lying to Bob at
-    the default difficulty of 15. The flub switch allows you to 
-    intentionally, silently fail and uses the same arguments as a 
+    the default difficulty of 15. The flub switch allows you to
+    intentionally, silently fail and uses the same arguments as a
     regular check.
 
     The dice roll system has a stronger emphasis on skills than
@@ -64,21 +64,20 @@ class CmdDiceCheck(ArxCommand):
     key = "check"
     aliases = ['+roll']
     locks = "cmd:all()"
-    
+
     def func(self):
         """Run the @check command"""
-
         caller = self.caller
-        skill = None
-        maximum_difference = 100
-        flub = "flub" in self.switches
-        
         if not self.args:
             caller.msg("Usage: @check <stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
             return
         args = self.lhs if self.rhs else self.args
         args = args.lower()
-        # if args contains ' at ', then we split into halves. otherwise, it's default of 6
+        skill = None
+        maximum_difference = 100
+        flub = "flub" in self.switches
+        quiet = bool(self.rhs)
+        # if args contains ' at ', then we split into halves. otherwise it's default difficulty
         diff_list = args.split(' at ')
         difficulty = stats_and_skills.DIFF_DEFAULT
         if len(diff_list) > 1:
@@ -97,7 +96,6 @@ class CmdDiceCheck(ArxCommand):
             return
         # get unique string that matches stat
         stat = matches[0]
-        
         if skill:
             matches = stats_and_skills.get_partial_match(skill, "skill")
             if not matches:
@@ -111,41 +109,44 @@ class CmdDiceCheck(ArxCommand):
                 caller.msg("There must be one unique match for a character skill. Please check spelling and try again.")
                 return
             skill = matches[0]
-        quiet = bool(self.rhs)
         stats_and_skills.do_dice_check(caller, stat, skill, difficulty, quiet=quiet, flub=flub)
         if quiet:
-            namelist = [name.strip() for name in self.rhs.split(",") if caller.search(name.strip(), use_nicks=True)]
-            roll_msg = Roll.build_msg(caller.ndb.last_roll) + " " + "(Private roll sent to: %s)" % ", ".join(namelist)
-            caller.msg(roll_msg)
-            # they have a recipient list; only tell those people (and GMs)
-            for name in namelist:
-                recipient = caller.search(name, use_nicks=True)
-                recipient.msg(roll_msg, options={'roll':True})
+            namelist = []
+            roll_msg = "|w[Private Roll]|n " + Roll.build_msg(caller.ndb.last_roll)
+            if self.rhs.lower() in ("me", "self", str(caller), str(caller.key)):
+                namelist.append("self-only")
+            else:  # send roll message to each recipient
+                for name in self.rhs.split(","):
+                    recipient = caller.search(name.strip(), use_nicks=True)
+                    if recipient:
+                        namelist.append(name.strip())
+                        recipient.msg(roll_msg, options={'roll':True})
+            roll_msg += " (Shared with: %s)" % ", ".join(namelist)
+            caller.msg(roll_msg, options={'roll':True})
             # GMs always get to see rolls.
             staff_list = [x for x in caller.location.contents if x.check_permstring("Builders")]
-            for GM in staff_list:
-                GM.msg("{w(Private roll) {n" + roll_msg)
-            return
-        
+            for gm in staff_list:
+                gm.msg(roll_msg, options={'roll':True})
+
 
 class CmdSpoofCheck(ArxCommand):
     """
     @gmcheck
-    
+
     Usage:
         @gmcheck <stat>/<value>[+<skill>/<value>][ at <difficulty>]
         @gmcheck/can_crit <same as above>
         @gmcheck/flub <same as above>
-        
+
     Performs a stat + skill at difficulty check with specified values. If no
-    difficulty is set, default is used. Intended for GMs to make rolls for NPCs 
+    difficulty is set, default is used. Intended for GMs to make rolls for NPCs
     that don't necessarily exist as characters in-game. The /can_crit switch
     allows the roll to crit. The /flub switch intentionally, silently fails.
     """
-    
+
     key = "@gmcheck"
     locks = "cmd:all()"
-    
+
     def get_value_pair(self, argstr):
         try:
             argstr = argstr.strip()
@@ -158,7 +159,7 @@ class CmdSpoofCheck(ArxCommand):
             return key, val
         except (IndexError, TypeError, ValueError):
             self.msg("Specify name/value for stats/skills.")
-    
+
     def func(self):
         maximum_difference = 100
         crit = "can_crit" in self.switches

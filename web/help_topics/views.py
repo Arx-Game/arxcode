@@ -6,11 +6,19 @@ from django.shortcuts import render, get_object_or_404
 from evennia.help.models import HelpEntry
 from world.dominion.models import (CraftingRecipe, CraftingMaterialType,
                                    Organization, Member)
+from web.helpdesk.models import KBCategory
 
 
 def topic(request, object_key):
     object_key = object_key.lower()
     topic_ob = get_object_or_404(HelpEntry, db_key__iexact=object_key)
+    can_see = False
+    try:
+        can_see = topic_ob.access(request.user, 'view', default=True)
+    except AttributeError:
+        pass
+    if not can_see:
+        raise PermissionDenied
     return render(request, 'help_topics/topic.html', {'topic': topic_ob, 'page_title': object_key})
 
 
@@ -48,15 +56,17 @@ def list_topics(request):
     secret_orgs = []
     # noinspection PyBroadException
     try:
-        if user.is_staff:
+        if user.is_staff or user.check_permstring("can_see_secret_orgs"):
             secret_orgs = Organization.objects.filter(secret=True)
         else:
             secret_orgs = Organization.objects.filter(Q(members__deguilded=False) & Q(secret=True)
                                                       & Q(members__player__player=user))
     except Exception:
         pass
+    lore_categories = KBCategory.objects.filter(parent__isnull=True)
     return render(request, 'help_topics/list.html', {'all_topics': all_topics,
                                                      'all_categories': all_categories,
+                                                     'lore_categories': lore_categories,
                                                      'all_orgs': all_orgs,
                                                      'secret_orgs': secret_orgs,
                                                      'page_title': 'topics'})
@@ -65,6 +75,8 @@ def list_topics(request):
 def list_recipes(request):
     user = request.user
     all_recipes = CraftingRecipe.objects.all().order_by('ability', 'difficulty')
+    if not user.is_staff:
+        all_recipes = all_recipes.exclude(known_by__organization_owner__isnull=False)
     recipe_name = request.GET.get("recipe_name")
     if recipe_name:
         all_recipes = all_recipes.filter(name__icontains=recipe_name)
@@ -94,24 +106,23 @@ def display_org(request, object_id):
     rank_display = 0
     show_secret = 0
     org = get_object_or_404(Organization, id=object_id)
-    if org.secret:
-        try:
-            if not (org.members.filter(deguilded=False, player__player__id=user.id)
-                    or user.is_staff):
-                raise PermissionDenied
-            if not user.is_staff:
+    if not user.is_staff:
+        if org.secret:
+            try:
+                if not org.members.filter(deguilded=False, player__player__id=user.id).exists():
+                    raise PermissionDenied
                 try:
                     rank_display = user.Dominion.memberships.get(organization=org, deguilded=False).rank
                 except (Member.DoesNotExist, AttributeError):
                     rank_display = 11
                 show_secret = rank_display
-        except (AttributeError, PermissionDenied):
-            raise PermissionDenied
-    elif not user.is_staff:
-        try:
-            show_secret = user.Dominion.memberships.get(organization=org, deguilded=False).rank
-        except (Member.DoesNotExist, AttributeError):
-            show_secret = 11
+            except (AttributeError, PermissionDenied):
+                raise PermissionDenied
+        else:
+            try:
+                show_secret = user.Dominion.memberships.get(organization=org, deguilded=False).rank
+            except (Member.DoesNotExist, AttributeError):
+                show_secret = 11
     try:
         show_money = org.assets.can_be_viewed_by(user)
     except AttributeError:
@@ -169,3 +180,11 @@ def list_commands(request):
                                                               'character_cmds': char_cmds,
                                                               'situational_cmds': situational_cmds,
                                                               'page_title': 'commands'})
+
+def lore_categories(request, object_id):
+    kb_cat = get_object_or_404(KBCategory, id=object_id)
+    return render(request, 'help_topics/lore_category.html', {'kb_cat': kb_cat,
+                                                              'kb_items': kb_cat.kb_items.all(),
+                                                              'kb_subs': kb_cat.subcategories.all(),
+                                                              'kb_parent': kb_cat.parent,
+                                                              'page_title': kb_cat})

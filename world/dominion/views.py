@@ -2,13 +2,16 @@
 Views related to the Dominion app
 """
 from django.views.generic import ListView, DetailView, CreateView
-from .models import RPEvent, AssignedTask, Plot, Land, Domain, Organization
+from .models import RPEvent, AssignedTask, Land, Organization
+from world.dominion.domain.models import Domain
+from world.dominion.plots.models import Plot
 from .forms import RPEventCommentForm, RPEventCreateForm
 from .view_utils import EventHTMLCalendar
 from django.http import HttpResponseRedirect, HttpResponse
 from django.http import Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.urlresolvers import reverse
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
 from django.template.loader import render_to_string
@@ -134,7 +137,7 @@ class RPEventCreateView(LoginRequiredMixin, CreateView):
         try:
             kwargs['owner'] = self.request.user.Dominion
         except AttributeError:
-            raise Http404
+            raise PermissionDenied
         return kwargs
 
     def get_success_url(self):
@@ -235,7 +238,7 @@ def event_comment(request, pk):
     """
     char = request.user.char_ob
     if not char:
-        raise Http404
+        raise PermissionDenied
     event = get_object_or_404(RPEvent, id=pk)
     if request.method == 'POST':
         form = RPEventCommentForm(request.POST)
@@ -270,7 +273,7 @@ def map_image(request):
 
     TERRAIN_NAMES = {
         Land.COAST: 'Coastal',
-        Land.DESERT: 'Deset',
+        Land.DESERT: 'Desert',
         Land.GRASSLAND: 'Grassland',
         Land.HILL: 'Hills',
         Land.MOUNTAIN: 'Mountains',
@@ -532,7 +535,7 @@ def generate_fealty_chart(request, filename, include_npcs=False):
                 org_name = org_name + "\n(" + org_rank_1.player.player.key.title() + ")"
 
             for vassal in org.assets.estate.vassals.all():
-                is_npc = vassal.house.organization_owner.living_members.all().count() > 0
+                is_npc = vassal.house.organization_owner.living_members.all().count() == 0
                 if vassal.house and (not is_npc or include_npcs):
                     node_color = node_colors.get(vassal.house.organization_owner.rank_1_male, None)
                     name = vassal.house.organization_owner.name

@@ -15,7 +15,8 @@ from server.utils.prettytable import PrettyTable
 from web.character.models import (Investigation, Clue, InvestigationAssistant, ClueDiscovery, Theory,
                                   RevelationDiscovery, Revelation, get_random_clue, SearchTag)
 from web.character.forms import ClueCreateForm, RevelationCreateForm
-from world.dominion.models import Agent, Plot
+from world.dominion.models import Agent
+from world.dominion.plots.models import Plot
 from world.stats_and_skills import VALID_STATS, VALID_SKILLS
 
 
@@ -132,8 +133,7 @@ class InvestigationFormCommand(ArxCommand):
         return True
 
     def refuse_new_clue(self, reason):
-        msg = reason + " Try different tags or abort."
-        self.msg(msg)
+        self.msg("%s Try different tags or abort." % reason)
 
     def offer_placeholder_clue(self):
         """
@@ -141,14 +141,12 @@ class InvestigationFormCommand(ArxCommand):
         """
         ap = self.new_clue_cost
         topic = self.topic_string(color=True)
-        attr = "new_clue_write"
-        prompt = "An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. "
-        prompt += "It will require a great deal of energy (|c%s|n action points) to investigate. " % ap
-        prompt += "Your tag requirements: %s\n" % topic
-        prompt += "|yRepeat the command to confirm and continue.|n"
-        if not self.caller.confirmation(attr, topic, prompt):
+        prompt = ("An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. "
+                 "It will require a great deal of energy (|c%s|n action points) to investigate. "
+                 "Your tag requirements: %s\n|yRepeat the command to confirm and continue.|n" % (ap, topic))
+        if not self.confirm_command("new_clue_write", topic, prompt):
             return False
-        if not self.caller.player.pay_action_points(ap):  # TODO: check command name
+        if not self.caller.player.pay_action_points(ap):
             self.refuse_new_clue("You're too busy for such an investigation. (low AP)")
             return False
         return True
@@ -863,7 +861,7 @@ class CmdInvestigate(InvestigationFormCommand):
                 self.caller.assisted_investigations.filter(currently_helping=True)):
             if not self.caller.assisted_investigations.filter(currently_helping=True):
                 if self.caller.player_ob.pay_action_points(self.ap_cost):
-                    created_object.active = True
+                    created_object.mark_active()
                     self.msg("New investigation created. This has been set as your active investigation " +
                              "for the week, and you may add resources/silver to increase its chance of success.")
                 else:
@@ -1046,8 +1044,7 @@ class CmdInvestigate(InvestigationFormCommand):
                     ass.currently_helping = False
                     ass.save()
                     self.msg("No longer assisting in %s" % ass.investigation)
-                ob.active = True
-                ob.save()
+                ob.mark_active()
                 caller.msg("%s set to active." % ob)
                 return
             if "silver" in self.switches:
@@ -1350,7 +1347,7 @@ class CmdListClues(ArxPlayerCommand):
     key = "clues"
     locks = "cmd:all()"
     aliases = ["clue", "@zoinks", "@jinkies"]
-    help_category = "Investigation"
+    help_category = "Information"
 
     def get_help(self, caller, cmdset):
         """Custom helpfile that lists clue sharing costs"""
@@ -1385,8 +1382,7 @@ class CmdListClues(ArxPlayerCommand):
                     except Clue.DoesNotExist:
                         pass
                 if not discovery:
-                    self.msg("No clue found by that ID.")
-                    self.disp_clue_table()
+                    self.msg("No clue found by this ID: {w%s{n." % self.lhs)
                     return
             if not self.switches:
                 self.msg(discovery.display(show_gm_notes=self.called_by_staff))
@@ -1450,7 +1446,7 @@ class CmdListClues(ArxPlayerCommand):
 
     def disp_clue_table(self):
         table = PrettyTable(["{wClue #{n", "{wSubject{n", "{wType{n"])
-        discoveries = self.clue_discoveries.order_by('date')
+        discoveries = self.clue_discoveries.select_related('clue').order_by('date')
         if "search" in self.switches:
             msg = "{wMatching Clues{n\n"
             discoveries = discoveries.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
@@ -1490,7 +1486,7 @@ class CmdListRevelations(ArxPlayerCommand):
     """
     key = "@revelations"
     locks = "cmd:all()"
-    help_category = "Investigation"
+    help_category = "Information"
 
     def disp_rev_table(self):
         caller = self.caller
@@ -1662,7 +1658,8 @@ class CmdTheories(ArxPlayerCommand):
                     continue
                 theory.share_with(targ)
                 self.msg("Theory %s added to %s." % (self.lhs, targ))
-                targ.inform("%s has shared a theory with you." % self.caller, category="Theories")
+                targ.inform("%s has shared theory {w'%s'{n with you. Use {w@theories %s{n to view it." % (
+                    self.caller, theory.topic, self.lhs), category="Theories")
             return
         if "delete" in self.switches or "forget" in self.switches:
             try:
@@ -1859,7 +1856,7 @@ class CmdPRPClue(PRPLorecommand):
                     return
                 targ.roster.discover_clue(clue)
                 self.msg("You have sent them a clue.")
-                targ.inform("A new clue has been sent to you about event %s. Use @clues to view it." % clue.event,
+                targ.inform("Clue '%s' has been sent to you about a plot you're on. Use @clues to view it." % clue,
                             category="Clue Discovery")
                 return
             form = self.caller.attributes.get(self.form_attribute)

@@ -18,10 +18,11 @@ from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from . import setup_utils
 from web.character.models import Clue
-from world.dominion.models import (Region, Domain, Land, PlayerOrNpc, Army, ClueForOrg, Reputation,
-                                   Castle, AssetOwner, MilitaryUnit,
-                                   Ruler, Organization, Member, SphereOfInfluence,
-                                   InfluenceCategory, Minister, PlotRoom)
+from world.dominion.models import (Region, Land, PlayerOrNpc, ClueForOrg, Reputation, AssetOwner, Organization, Member,
+                                   SphereOfInfluence, InfluenceCategory, PlotRoom)
+
+from world.dominion.domain.models import MilitaryUnit, Army, Domain, Castle, Ruler, Minister
+
 from .unit_types import type_from_str
 from world.stats_and_skills import do_dice_check
 
@@ -39,6 +40,7 @@ class CmdAdmDomain(ArxPlayerCommand):
     Usage:
       @admin_domain
       @admin_domain/create player=region[, social rank]
+      @admin_domain/npc_create <existing org>=<new npc group name>, <srank>
       @admin_domain/replacevassal receiver=domain_id, numvassals
       @admin_domain/createvassal receiver=liege_domain_id, numvassals
       @admin_domain/transferowner receiver=domain_id
@@ -88,324 +90,346 @@ class CmdAdmDomain(ArxPlayerCommand):
     locks = "cmd:perm(Wizards)"
     aliases = ["@admin_domains", "@admdomain", "@admdomains", "@adm_domain", "@adm_domains"]
     help_category = "Dominion"
-    
+
     def func(self):
         caller = self.caller
-        if not self.args:
-            pcdomains = ", ".join((repr(dom) for dom in Domain.objects.filter(ruler__castellan__isnull=False)))
-            caller.msg("{wPlayer domains:{n %s" % pcdomains)
-            npcdomains = ", ".join((repr(dom) for dom in Domain.objects.filter(ruler__castellan__player__isnull=True)))
-            caller.msg("{wNPC domains:{n %s" % npcdomains)
-            return
-        if "create" in self.switches:
-            # usage: @admin_domain/create player=region[, social rank]
-            if not self.rhs:
-                caller.msg("Invalid usage. Requires player=region.")
-                return
-            player = caller.search(self.lhs)
-            if not player:
-                caller.msg("No player found by name %s." % self.lhs)
-                return
-            char = player.char_ob
-            if not char:
-                caller.msg("No valid character object for %s." % self.lhs)
-                return
-            if len(self.rhslist) > 1:
-                region = self.rhslist[0]
-                srank = self.rhslist[1]
-            else:
-                region = self.rhs
-                srank = char.db.social_rank
-            # Get our social rank and region from rhs arguments
-            try:
-                srank = int(srank)
-                region = Region.objects.get(name__iexact=region)
-            except ValueError:
-                caller.msg("Character's Social rank must be a number. It was %s." % srank)
-                return
-            except Region.DoesNotExist:
-                caller.msg("No region found of name %s." % self.rhslist[0])
-                caller.msg("List of regions: %s" % ", ".join(str(region) for region in Region.objects.all()))
-                return
-            # we will only create an npc liege if our social rank is 4 or higher
-            create_liege = srank > 3
-            # The player has no Dominion object, so we must create it.
-            if not hasattr(player, 'Dominion'):
-                caller.msg("Creating a new domain of rank %s for %s." % (srank, char))
-                dom = setup_utils.setup_dom_for_char(char, create_dompc=True, create_assets=True,
-                                                     region=region, srank=srank, create_liege=create_liege)
-            # Has a dominion object, so just set up the domain
-            else:
-                needs_assets = not hasattr(player.Dominion, 'assets')
-                caller.msg("Setting up Dominion for player %s, and creating a new domain of rank %s." % (char, srank))
-                dom = setup_utils.setup_dom_for_char(char, create_dompc=False, create_assets=needs_assets,
-                                                     region=region, srank=srank, create_liege=create_liege)
-            if not dom:
-                caller.msg("Dominion failed to create a new domain.")
-                return
-            if srank == 2:
-                try:
-                    house = Organization.objects.get(name__iexact="Grayson")
-                    if dom.ruler != house.assets.estate:
-                        dom.ruler.liege = house.assets.estate
-                        dom.ruler.save()
-                except Organization.DoesNotExist:
-                    caller.msg("Dominion could not find a suitable liege.")
-            if srank == 3:
-                try:
-                    if region.name == "Lyceum":
-                        house = Organization.objects.get(name__iexact="Velenosa")
-                    elif region.name == "Oathlands":
-                        house = Organization.objects.get(name__iexact="Valardin")
-                    elif region.name == "Mourning Isles":
-                        house = Organization.objects.get(name__iexact="Thrax")
-                    elif region.name == "Northlands":
-                        house = Organization.objects.get(name__iexact="Redrain")
-                    elif region.name == "Crownlands":
-                        house = Organization.objects.get(name__iexact="Grayson")
-                    else:
-                        self.msg("House for that region not found.")
-                        return
-                    # Make sure we're not the same house
-                    if dom.ruler != house.assets.estate:
-                        dom.ruler.liege = house.assets.estate
-                        dom.ruler.save()
-                except (Organization.DoesNotExist, AttributeError):
-                    caller.msg("Dominion could not find a suitable liege.")
-            caller.msg("New Domain #%s created: %s in land square: %s" % (dom.id, str(dom), str(dom.land)))
-            return
-        if ("transferowner" in self.switches or "transferrule" in self.switches
-                or "replacevassal" in self.switches or "createvassal" in self.switches):
-            # usage: @admin_domain/transfer receiver=domain_id
-            if not self.rhs or not self.lhs:
-                caller.msg("Usage: @admin_domain/transfer receiver=domain's id")
-                return
-            player = caller.search(self.lhs)
-            if not player:
-                caller.msg("No player by the name %s." % self.lhs)
-                return
-            try:
-                d_id = int(self.rhslist[0])
-                if len(self.rhslist) > 1:
-                    num_vassals = int(self.rhslist[1])
-                else:
-                    num_vassals = 2
-                dom = Domain.objects.get(id=d_id)
-            except ValueError:
-                caller.msg("Domain's id must be a number.")
-                return
-            except Domain.DoesNotExist:
-                caller.msg("No domain by that id number.")
-                return
-            if "createvassal" in self.switches:
-                try:
-                    region = dom.land.region
-                    setup_utils.setup_dom_for_char(player.char_ob, liege_domain=dom, region=region)
-                    caller.msg("Vassal created.")
-                except Exception as err:
-                    caller.msg(err)
-                    import traceback
-                    traceback.print_exc()
-                return
-            if "replacevassal" in self.switches:
-                try:
-                    setup_utils.replace_vassal(dom, player, num_vassals)
-                    caller.msg("%s now ruled by %s." % (dom, player))
-                except Exception as err:
-                    caller.msg(err)
-                    import traceback
-                    traceback.print_exc()
-                return
-            if not hasattr(player, 'Dominion'):
-                dompc = setup_utils.setup_dom_for_char(player.char_ob)
-            else:
-                dompc = player.Dominion
-            if "transferowner" in self.switches:
-                family = player.char_ob.db.family
-                try:
-                    house = Organization.objects.get(name__iexact=family)
-                    owner = house.assets
-                    # if the organization's AssetOwner has no Ruler object
-                    if hasattr(owner, 'estate'):
-                        ruler = owner.estate
-                    else:
-                        ruler = Ruler.objects.create(house=owner, castellan=dompc)
-                except Organization.DoesNotExist:
-                    ruler = setup_utils.setup_ruler(family, dompc)
-                dom.ruler = ruler
-                dom.save()
-                caller.msg("%s set to rule %s." % (ruler, dom))
-                return
-            if not dom.ruler:
-                dom.ruler.create(castellan=dompc)
-            else:
-                dom.ruler.castellan = dompc
-                dom.ruler.save()
-            dom.save()
-            caller.msg("Ruler set to be %s." % str(dompc))
-            return
-        if "list_land" in self.switches:
-            x, y = None, None
-            try:
-                # ast.literal_eval will parse a string into a tuple
-                x, y = literal_eval(self.lhs)
-                land = Land.objects.get(x_coord=x, y_coord=y)
-            # literal_eval gets SyntaxError if it gets no argument, not ValueError
-            except (SyntaxError, ValueError):
-                caller.msg("Must provide 'x,y' values for a Land square.")
-                valid_land = ", ".join(str(land) for land in Land.objects.all())
-                caller.msg("Valid land squares: %s" % valid_land)
-                return
-            except Land.DoesNotExist:
-                caller.msg("No land square matches (%s,%s)." % (x, y))
-                valid_land = ", ".join(str(land) for land in Land.objects.all())
-                caller.msg("Valid land squares: %s" % valid_land)
-                return
-            doms = ", ".join(str(dom) for dom in land.domains.all())
-            caller.msg("Domains at (%s, %s): %s" % (x, y, doms))
-            return
-        if "list_char" in self.switches:
-            player = caller.search(self.args)
-            if not player:
-                try:
-                    dompc = PlayerOrNpc.objects.get(npc_name__iexact=self.args)
-                except PlayerOrNpc.DoesNotExist:
-                    dompc = None
-                except PlayerOrNpc.MultipleObjectsReturned as err:
-                    caller.msg("More than one match for %s: %s" % (self.args, err))
-                    return
-            else:
-                if not hasattr(player, 'Dominion'):
-                    caller.msg("%s has no Dominion object." % player)
-                    return
-                dompc = player.Dominion
-            if not dompc:
-                caller.msg("No character by name: %s" % self.args)
-                return
-            ruled = "None"
-            owned = "None"
-            family = None
-            if player.char_ob and player.char_ob.db.family:
-                family = player.char_ob.db.family
-            if hasattr(dompc, 'ruler'):
-                ruled = ", ".join(str(ob) for ob in Domain.objects.filter(ruler_id=dompc.ruler.id))
-            if player.char_ob and player.char_ob.db.family:
-                owned = ", ".join(str(ob) for ob in Domain.objects.filter(
-                    ruler__house__organization_owner__name__iexact=family))
-            caller.msg("{wDomains ruled by {c%s{n: %s" % (dompc, ruled))
-            caller.msg("{wDomains owned directly by {c%s {wfamily{n: %s" % (family, owned))
-            return
-        if "list" in self.switches:
-            valid_fealty = ("Grayson", "Velenosa", "Redrain", "Valardin", "Thrax")
-            fealty = self.args.capitalize()
-            if fealty not in valid_fealty:
-                caller.msg("Listing by fealty must be in %s, you provided %s." % (valid_fealty, fealty))
-                return
-            house = Ruler.objects.filter(house__organization_owner__name__iexact=fealty)
-            if not house:
-                caller.msg("No matches for %s." % fealty)
-                return
-            house = house[0]
-            caller.msg("{wDomains of %s{n" % fealty)
-            caller.msg("{wDirect holdings:{n %s" % ", ".join(str(ob) for ob in house.holdings.all()))
-            if house.vassals.all():
-                caller.msg("{wDirect vassals of %s:{n %s" % (fealty, ", ".join(str(ob) for ob in house.vassals.all())))
-            pcdomlist = []
-            for pc in AccountDB.objects.filter(Dominion__ruler__isnull=False):
-                if pc.char_ob and pc.char_ob.db.fealty == fealty:
-                    if pc.char_ob.db.family != fealty:
-                        for dom in pc.Dominion.ruler.holdings.all():
-                            pcdomlist.append(dom)
-            if pcdomlist:
-                caller.msg("{wPlayer domains under %s:{n %s" % (fealty, ", ".join(str(ob) for ob in pcdomlist)))
-                return
-            return
-        if "move" in self.switches:
-            x, y = None, None
-            try:
-                dom = Domain.objects.get(id=int(self.lhs))
-                x, y = literal_eval(self.rhs)
-                land = Land.objects.get(x_coord=x, y_coord=y)
-            # Syntax for no self.rhs, Type for no lhs, Value for not for lhs/rhs not being digits
-            except (SyntaxError, TypeError, ValueError):
-                caller.msg("Usage: @admdomain/move dom_id=(x,y)")
-                caller.msg("You entered: %s" % self.args)
-                return
-            except Domain.DoesNotExist:
-                caller.msg("No domain with that id.")
-                return
-            except Land.DoesNotExist:
-                caller.msg("No land with coords (%s,%s)." % (x, y))
-                return
-            if land.free_area < dom.area:
-                caller.msg("%s only has %s free area, need %s." % (str(land), land.free_area, dom.area))
-                return
-            old = dom.land
-            dom.land = land
-            dom.save()
-            caller.msg("Domain %s moved from %s to %s." % (str(dom), str(old), str(land)))
-            return
-        # after this point, self.lhs must be the domain
-        if not self.lhs:
-            caller.msg("Must provide a domain number.")
-            return
         try:
-            if self.lhs.isdigit():
-                dom = Domain.objects.get(id=self.lhs)
-            else:
-                dom = Domain.objects.get(name__iexact=self.lhs)
-        except ValueError:
-            caller.msg("Domain must be a number for the domain's ID.")
-            return
-        except Domain.DoesNotExist:
-            caller.msg("No domain by that number or name.")
-            return
-        if "liege" in self.switches:
-            try:
-                house = Organization.objects.get(name__iexact=self.rhs)
-                estate = house.assets.estate
-            except (Organization.DoesNotExist, AttributeError):
-                caller.msg("Family %s does not exist or has not been set up properly." % self.rhs)
+            if not self.args:
+                pcdomains = ", ".join((repr(dom) for dom in Domain.objects.filter(ruler__castellan__isnull=False)))
+                npcdomains = ", ".join((repr(dom) for dom in Domain.objects.filter(ruler__castellan__player__isnull=True)))
+                caller.msg("|wPlayer domains:|n %s\n|wNPC domains:|n %s" % (pcdomains, npcdomains))
                 return
-            caller_change_field(caller, dom.ruler, "liege", estate)
-            return
-        if "view" in self.switches or not self.switches:
-            mssg = dom.display()
-            caller.msg(mssg)
-            return
-        if "delete" in self.switches:
-            # this nullifies its values and removes it from play, doesn't fully delete it
-            # keeps description/name intact for historical reasons
-            dom.fake_delete()
-            caller.msg("Domain %s has been removed." % dom.id)
-            return
-        # after this point, we're matching the switches to fields in the domain
-        # to change them
-        attr_switches = ("name", "desc", "title", "area", "stored_food", "tax_rate",
-                         "num_mines", "num_lumber_yards", "num_mills", "num_housing",
-                         "num_farms", "unassigned_serfs", "slave_labor_percentage",
-                         "mining_serfs", "lumber_serfs", "farming_serfs", "mill_serfs",
-                         "lawlessness", "amount_plundered", "income_modifier")
-        switches = [switch for switch in self.switches if switch in attr_switches]
-        if not switches:
-            caller.msg("All switches must be in the following: %s. You passed %s." % (str(attr_switches),
-                                                                                      str(self.switches)))
-            return
-        if not self.rhs:
-            caller.msg("You must pass a value to change the domain field to.")
-            return
-        # if switch isn't 'name', 'desc', or 'title', val will be a number
-        if any(True for ob in switches if ob not in ("name", "desc", "title")):
+            if "npc_create" in self.switches:
+                org = self.get_by_name_or_id(Organization, self.lhs)
+                try:
+                    name, srank = self.rhslist
+                    srank = int(srank)
+                except (TypeError, ValueError):
+                    raise self.error_class("Usage: <org>=<npc group name>, <social rank #>")
+                if srank > 6 or srank < 2:
+                    raise self.error_class("Social rank should be in the range of 2-6.")
+                liege = org.assets.estate
+                try:
+                    region = liege.holdings.first().land.region
+                except AttributeError:
+                    raise self.error_class("Liege '%s' does not have a domain." % liege)
+                try:
+                    setup_utils.setup_dom_for_npc(name, int(srank), region=region, liege=liege)
+                except ValueError as err:
+                    raise self.error_class(err)
+                caller.msg("NPC house created: %s" % name)
+                return
+            if "create" in self.switches:
+                # usage: @admin_domain/create player=region[, social rank]
+                if not self.rhs:
+                    caller.msg("Invalid usage. Requires player=region.")
+                    return
+                player = caller.search(self.lhs)
+                if not player:
+                    caller.msg("No player found by name %s." % self.lhs)
+                    return
+                char = player.char_ob
+                if not char:
+                    caller.msg("No valid character object for %s." % self.lhs)
+                    return
+                if len(self.rhslist) > 1:
+                    region = self.rhslist[0]
+                    srank = self.rhslist[1]
+                else:
+                    region = self.rhs
+                    srank = char.db.social_rank
+                # Get our social rank and region from rhs arguments
+                try:
+                    srank = int(srank)
+                    region = Region.objects.get(name__iexact=region)
+                except ValueError:
+                    caller.msg("Character's Social rank must be a number. It was %s." % srank)
+                    return
+                except Region.DoesNotExist:
+                    caller.msg("No region found of name %s." % self.rhslist[0])
+                    caller.msg("List of regions: %s" % ", ".join(str(region) for region in Region.objects.all()))
+                    return
+                # we will only create an npc liege if our social rank is 4 or higher
+                create_liege = srank > 3
+                # The player has no Dominion object, so we must create it.
+                if not hasattr(player, 'Dominion'):
+                    caller.msg("Creating a new domain of rank %s for %s." % (srank, char))
+                    dom = setup_utils.setup_dom_for_char(char, create_dompc=True, create_assets=True,
+                                                         region=region, srank=srank, create_liege=create_liege)
+                # Has a dominion object, so just set up the domain
+                else:
+                    needs_assets = not hasattr(player.Dominion, 'assets')
+                    caller.msg("Setting up Dominion for player %s, and creating a new domain of rank %s." % (char, srank))
+                    dom = setup_utils.setup_dom_for_char(char, create_dompc=False, create_assets=needs_assets,
+                                                         region=region, srank=srank, create_liege=create_liege)
+                if not dom:
+                    caller.msg("Dominion failed to create a new domain.")
+                    return
+                if srank == 2:
+                    try:
+                        house = Organization.objects.get(name__iexact="Grayson")
+                        if dom.ruler != house.assets.estate:
+                            dom.ruler.liege = house.assets.estate
+                            dom.ruler.save()
+                    except Organization.DoesNotExist:
+                        caller.msg("Dominion could not find a suitable liege.")
+                if srank == 3:
+                    try:
+                        if region.name == "Lyceum":
+                            house = Organization.objects.get(name__iexact="Velenosa")
+                        elif region.name == "Oathlands":
+                            house = Organization.objects.get(name__iexact="Valardin")
+                        elif region.name == "Mourning Isles":
+                            house = Organization.objects.get(name__iexact="Thrax")
+                        elif region.name == "Northlands":
+                            house = Organization.objects.get(name__iexact="Redrain")
+                        elif region.name == "Crownlands":
+                            house = Organization.objects.get(name__iexact="Grayson")
+                        else:
+                            self.msg("House for that region not found.")
+                            return
+                        # Make sure we're not the same house
+                        if dom.ruler != house.assets.estate:
+                            dom.ruler.liege = house.assets.estate
+                            dom.ruler.save()
+                    except (Organization.DoesNotExist, AttributeError):
+                        caller.msg("Dominion could not find a suitable liege.")
+                caller.msg("New Domain #%s created: %s in land square: %s" % (dom.id, str(dom), str(dom.land)))
+                return
+            if ("transferowner" in self.switches or "transferrule" in self.switches
+                    or "replacevassal" in self.switches or "createvassal" in self.switches):
+                # usage: @admin_domain/transfer receiver=domain_id
+                if not self.rhs or not self.lhs:
+                    caller.msg("Usage: @admin_domain/transfer receiver=domain's id")
+                    return
+                player = caller.search(self.lhs)
+                if not player:
+                    caller.msg("No player by the name %s." % self.lhs)
+                    return
+                try:
+                    d_id = int(self.rhslist[0])
+                    if len(self.rhslist) > 1:
+                        num_vassals = int(self.rhslist[1])
+                    else:
+                        num_vassals = 2
+                    dom = Domain.objects.get(id=d_id)
+                except ValueError:
+                    caller.msg("Domain's id must be a number.")
+                    return
+                except Domain.DoesNotExist:
+                    caller.msg("No domain by that id number.")
+                    return
+                if "createvassal" in self.switches:
+                    try:
+                        region = dom.land.region
+                        setup_utils.setup_dom_for_char(player.char_ob, liege_domain=dom, region=region)
+                        caller.msg("Vassal created.")
+                    except Exception as err:
+                        caller.msg(err)
+                        import traceback
+                        traceback.print_exc()
+                    return
+                if "replacevassal" in self.switches:
+                    try:
+                        setup_utils.replace_vassal(dom, player, num_vassals)
+                        caller.msg("%s now ruled by %s." % (dom, player))
+                    except Exception as err:
+                        caller.msg(err)
+                        import traceback
+                        traceback.print_exc()
+                    return
+                if not hasattr(player, 'Dominion'):
+                    dompc = setup_utils.setup_dom_for_char(player.char_ob)
+                else:
+                    dompc = player.Dominion
+                if "transferowner" in self.switches:
+                    family = player.char_ob.db.family
+                    try:
+                        house = Organization.objects.get(name__iexact=family)
+                        owner = house.assets
+                        # if the organization's AssetOwner has no Ruler object
+                        if hasattr(owner, 'estate'):
+                            ruler = owner.estate
+                        else:
+                            ruler = Ruler.objects.create(house=owner, castellan=dompc)
+                    except Organization.DoesNotExist:
+                        ruler = setup_utils.setup_ruler(family, dompc)
+                    dom.ruler = ruler
+                    dom.save()
+                    caller.msg("%s set to rule %s." % (ruler, dom))
+                    return
+                if not dom.ruler:
+                    dom.ruler.create(castellan=dompc)
+                else:
+                    dom.ruler.castellan = dompc
+                    dom.ruler.save()
+                dom.save()
+                caller.msg("Ruler set to be %s." % str(dompc))
+                return
+            if "list_land" in self.switches:
+                x, y = None, None
+                try:
+                    # ast.literal_eval will parse a string into a tuple
+                    x, y = literal_eval(self.lhs)
+                    land = Land.objects.get(x_coord=x, y_coord=y)
+                # literal_eval gets SyntaxError if it gets no argument, not ValueError
+                except (SyntaxError, ValueError):
+                    caller.msg("Must provide 'x,y' values for a Land square.")
+                    valid_land = ", ".join(str(land) for land in Land.objects.all())
+                    caller.msg("Valid land squares: %s" % valid_land)
+                    return
+                except Land.DoesNotExist:
+                    caller.msg("No land square matches (%s,%s)." % (x, y))
+                    valid_land = ", ".join(str(land) for land in Land.objects.all())
+                    caller.msg("Valid land squares: %s" % valid_land)
+                    return
+                doms = ", ".join(str(dom) for dom in land.domains.all())
+                caller.msg("Domains at (%s, %s): %s" % (x, y, doms))
+                return
+            if "list_char" in self.switches:
+                player = caller.search(self.args)
+                if not player:
+                    try:
+                        dompc = PlayerOrNpc.objects.get(npc_name__iexact=self.args)
+                    except PlayerOrNpc.DoesNotExist:
+                        dompc = None
+                    except PlayerOrNpc.MultipleObjectsReturned as err:
+                        caller.msg("More than one match for %s: %s" % (self.args, err))
+                        return
+                else:
+                    if not hasattr(player, 'Dominion'):
+                        caller.msg("%s has no Dominion object." % player)
+                        return
+                    dompc = player.Dominion
+                if not dompc:
+                    caller.msg("No character by name: %s" % self.args)
+                    return
+                ruled = "None"
+                owned = "None"
+                family = None
+                if player.char_ob and player.char_ob.db.family:
+                    family = player.char_ob.db.family
+                if hasattr(dompc, 'ruler'):
+                    ruled = ", ".join(str(ob) for ob in Domain.objects.filter(ruler_id=dompc.ruler.id))
+                if player.char_ob and player.char_ob.db.family:
+                    owned = ", ".join(str(ob) for ob in Domain.objects.filter(
+                        ruler__house__organization_owner__name__iexact=family))
+                caller.msg("{wDomains ruled by {c%s{n: %s" % (dompc, ruled))
+                caller.msg("{wDomains owned directly by {c%s {wfamily{n: %s" % (family, owned))
+                return
+            if "list" in self.switches:
+                valid_fealty = ("Grayson", "Velenosa", "Redrain", "Valardin", "Thrax")
+                fealty = self.args.capitalize()
+                if fealty not in valid_fealty:
+                    caller.msg("Listing by fealty must be in %s, you provided %s." % (valid_fealty, fealty))
+                    return
+                house = Ruler.objects.filter(house__organization_owner__name__iexact=fealty)
+                if not house:
+                    caller.msg("No matches for %s." % fealty)
+                    return
+                house = house[0]
+                caller.msg("{wDomains of %s{n" % fealty)
+                caller.msg("{wDirect holdings:{n %s" % ", ".join(str(ob) for ob in house.holdings.all()))
+                if house.vassals.all():
+                    caller.msg("{wDirect vassals of %s:{n %s" % (fealty, ", ".join(str(ob) for ob in house.vassals.all())))
+                pcdomlist = []
+                for pc in AccountDB.objects.filter(Dominion__ruler__isnull=False):
+                    if pc.char_ob and pc.char_ob.db.fealty == fealty:
+                        if pc.char_ob.db.family != fealty:
+                            for dom in pc.Dominion.ruler.holdings.all():
+                                pcdomlist.append(dom)
+                if pcdomlist:
+                    caller.msg("{wPlayer domains under %s:{n %s" % (fealty, ", ".join(str(ob) for ob in pcdomlist)))
+                    return
+                return
+            if "move" in self.switches:
+                x, y = None, None
+                try:
+                    dom = Domain.objects.get(id=int(self.lhs))
+                    x, y = literal_eval(self.rhs)
+                    land = Land.objects.get(x_coord=x, y_coord=y)
+                # Syntax for no self.rhs, Type for no lhs, Value for not for lhs/rhs not being digits
+                except (SyntaxError, TypeError, ValueError):
+                    caller.msg("Usage: @admdomain/move dom_id=(x,y)")
+                    caller.msg("You entered: %s" % self.args)
+                    return
+                except Domain.DoesNotExist:
+                    caller.msg("No domain with that id.")
+                    return
+                except Land.DoesNotExist:
+                    caller.msg("No land with coords (%s,%s)." % (x, y))
+                    return
+                if land.free_area < dom.area:
+                    caller.msg("%s only has %s free area, need %s." % (str(land), land.free_area, dom.area))
+                    return
+                old = dom.land
+                dom.land = land
+                dom.save()
+                caller.msg("Domain %s moved from %s to %s." % (str(dom), str(old), str(land)))
+                return
+            # after this point, self.lhs must be the domain
+            if not self.lhs:
+                caller.msg("Must provide a domain number.")
+                return
             try:
-                val = int(self.rhs)
+                if self.lhs.isdigit():
+                    dom = Domain.objects.get(id=self.lhs)
+                else:
+                    dom = Domain.objects.get(name__iexact=self.lhs)
             except ValueError:
-                caller.msg("Right hand side value must be a number.")
+                caller.msg("Domain must be a number for the domain's ID.")
                 return
-        else:  # switch is 'name', 'desc', or 'title', so val will be a string
-            val = self.rhs
-        for switch in switches:
-            caller_change_field(caller, dom, switch, val)
-        dom.save()
+            except Domain.DoesNotExist:
+                caller.msg("No domain by that number or name.")
+                return
+            if "liege" in self.switches:
+                try:
+                    house = Organization.objects.get(name__iexact=self.rhs)
+                    estate = house.assets.estate
+                except (Organization.DoesNotExist, AttributeError):
+                    caller.msg("Family %s does not exist or has not been set up properly." % self.rhs)
+                    return
+                caller_change_field(caller, dom.ruler, "liege", estate)
+                return
+            if "view" in self.switches or not self.switches:
+                mssg = dom.display()
+                caller.msg(mssg)
+                return
+            if "delete" in self.switches:
+                # this nullifies its values and removes it from play, doesn't fully delete it
+                # keeps description/name intact for historical reasons
+                dom.fake_delete()
+                caller.msg("Domain %s has been removed." % dom.id)
+                return
+            # after this point, we're matching the switches to fields in the domain
+            # to change them
+            attr_switches = ("name", "desc", "title", "area", "stored_food", "tax_rate",
+                             "num_mines", "num_lumber_yards", "num_mills", "num_housing",
+                             "num_farms", "unassigned_serfs", "slave_labor_percentage",
+                             "mining_serfs", "lumber_serfs", "farming_serfs", "mill_serfs",
+                             "lawlessness", "amount_plundered", "income_modifier")
+            switches = [switch for switch in self.switches if switch in attr_switches]
+            if not switches:
+                caller.msg("All switches must be in the following: %s. You passed %s." % (str(attr_switches),
+                                                                                          str(self.switches)))
+                return
+            if not self.rhs:
+                caller.msg("You must pass a value to change the domain field to.")
+                return
+            # if switch isn't 'name', 'desc', or 'title', val will be a number
+            if any(True for ob in switches if ob not in ("name", "desc", "title")):
+                try:
+                    val = int(self.rhs)
+                except ValueError:
+                    caller.msg("Right hand side value must be a number.")
+                    return
+            else:  # switch is 'name', 'desc', or 'title', so val will be a string
+                val = self.rhs
+            for switch in switches:
+                caller_change_field(caller, dom, switch, val)
+            dom.save()
+        except self.error_class as err:
+            self.caller.msg(err)
 
 
 class CmdAdmCastle(ArxPlayerCommand):
@@ -644,7 +668,7 @@ class CmdAdmAssets(ArxPlayerCommand):
                 self.msg("Other matches: %s" % ", ".join(repr(ob) for ob in other_matches))
         else:
             self.msg("Owner: %r" % owner)
-        
+
     def func(self):
         caller = self.caller
         if not self.switches and not self.args:
@@ -942,7 +966,7 @@ class CmdAdmFamily(ArxPlayerCommand):
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
     aliases = ["@admfamily", "@adm_family"]
-    
+
     def match_player(self, args):
         pcs = PlayerOrNpc.objects.filter(player__username__iexact=args)
         npcs = PlayerOrNpc.objects.filter(npc_name__iexact=args)
@@ -954,7 +978,7 @@ class CmdAdmFamily(ArxPlayerCommand):
             self.caller.msg("Too many matches for %s: %s." % (args, ", ".join(str(ob) for ob in matches)))
             return
         return matches[0]
-    
+
     def func(self):
         caller = self.caller
         if not self.args:
@@ -1075,11 +1099,11 @@ class CmdSetRoom(ArxCommand):
         loc = caller.location
         if not loc or loc.typeclass_path != settings.BASE_ROOM_TYPECLASS:
             caller.msg("You are not in a valid room.")
-            return 
+            return
         if "barracks" in self.switches:
             if not self.args:
                 caller.msg("Valid owners: %s" % ", ".join(str(owner.owner) for owner in AssetOwner.objects.all()))
-                return           
+                return
             players = AssetOwner.objects.filter(player__player__username__iexact=self.args)
             npcs = AssetOwner.objects.filter(player__npc_name__iexact=self.args)
             orgs = AssetOwner.objects.filter(organization_owner__name__iexact=self.args)
@@ -1198,7 +1222,7 @@ class CmdSetRoom(ArxCommand):
                 caller.msg("Some of the rhs failed to convert to numbers.")
                 caller.msg("Aborting setup.")
                 return
-            
+
             entrances = list(ObjectDB.objects.filter(id__in=id_list))
             valid_entrances = list(ObjectDB.objects.filter(db_destination=loc))
             invalid = [ent for ent in entrances if ent not in valid_entrances]
@@ -1515,7 +1539,7 @@ class CmdArmy(ArxPlayerCommand):
             self.msg("The army is full. Its units must be transferred to a different army or combined first.")
             return False
         return True
-        
+
     def view_class_stats(self):
         """
         Views stats for a unit class determined from our args.
@@ -1762,7 +1786,7 @@ class CmdArmy(ArxPlayerCommand):
             army.change_temp_owner(self.caller, None)
             return
         self.msg("Invalid switch.")
-        
+
 
 class CmdOrganization(ArxPlayerCommand):
     """
@@ -1807,9 +1831,10 @@ class CmdOrganization(ArxPlayerCommand):
     locks = "cmd:all()"
     help_category = "Dominion"
     org_locks = ("edit", "boot", "withdraw", "setrank", "invite",
-                 "setruler", "view", "guards", "build", "briefing", 
+                 "setruler", "view", "guards", "build", "briefing",
                  "declarations", "army", "informs", "transactions",
-                 "viewassets", "memberdesc", "motd", "admin_petition", "view_petition")
+                 "viewassets", "memberdesc", "motd", "admin_petition",
+                 "view_petition", "recipe")
 
     @staticmethod
     def get_org_and_member(caller, myorgs, args):
@@ -1827,7 +1852,7 @@ class CmdOrganization(ArxPlayerCommand):
         org = myorgs.get(name__iexact=args)
         member = caller.Dominion.memberships.get(organization=org)
         return org, member
-    
+
     def disp_org_locks(self, caller, org):
         table = PrettyTable(["{wPermission{n", "{wRank{n"])
         for lock in self.org_locks:
@@ -1861,7 +1886,7 @@ class CmdOrganization(ArxPlayerCommand):
         except Member.DoesNotExist:
             self.msg("%s is not a member of %s." % (player, org))
             return
-    
+
     def func(self):
         caller = self.caller
         myorgs = Organization.objects.filter(Q(members__player__player=caller)
@@ -1997,11 +2022,9 @@ class CmdOrganization(ArxPlayerCommand):
                 cost = 20 - (2 * org.social_modifier)
                 if cost < 1:
                     cost = 1
-                if caller.ndb.org_clue_cost_warning != org:
-                    caller.ndb.org_clue_cost_warning = org
-                    self.msg("The cost will be %s. Execute the command again to pay it." % cost)
+                prompt_msg = "The cost will be %s. Execute the command again to pay it." % cost
+                if not self.confirm_command("org_clue_cost", "%s_%s" % (org, clue.id), prompt_msg):
                     return
-                caller.ndb.org_clue_cost_warning = None
                 if not caller.pay_action_points(cost):
                     self.msg("You cannot afford to pay %s AP." % cost)
                     return
@@ -2242,7 +2265,7 @@ class CmdOrganization(ArxPlayerCommand):
             caller.msg("You have set %s's rank to %s." % (player, rank))
             player.msg("Your rank has been set to %s in %s." % (rank, org))
             return
-        # other switches can omit the org name if we're only a member of one org   
+        # other switches can omit the org name if we're only a member of one org
         if not self.rhs:
             if len(myorgs) > 1:
                 caller.msg("You belong to more than one organization and must give its name.")
@@ -2482,7 +2505,7 @@ class CmdPatronage(ArxPlayerCommand):
             dompc = self.caller.Dominion
         except AttributeError:
             dompc = setup_utils.setup_dom_for_char(self.caller.char_ob)
-        if not self.args and not self.switches:        
+        if not self.args and not self.switches:
             caller.msg(self.display_patronage(dompc), options={'box': True})
             return
         if self.args:
@@ -2555,7 +2578,7 @@ class CmdPatronage(ArxPlayerCommand):
             caller.ndb.pending_patron = None
             return
         if 'abandon' in self.switches:
-            old = dompc.patron          
+            old = dompc.patron
             if old:
                 dompc.patron = None
                 dompc.save()

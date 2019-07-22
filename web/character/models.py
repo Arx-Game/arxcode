@@ -195,10 +195,15 @@ class RosterEntry(SharedMemoryModel):
         return self.accounthistory_set.order_by('-id')[1:]
 
     @property
+    def postable_flashbacks(self):
+        """Queryset of flashbacks we can post to."""
+        retired = FlashbackInvolvement.RETIRED
+        return self.flashbacks.exclude(Q(concluded=True) |
+                                       Q(flashback_involvements__status__lte=retired))
+
+    @property
     def impressions_of_me(self):
-        """
-        Gets queryset of all our current first impressions
-        """
+        """Gets queryset of all our current first impressions"""
         try:
             return self.current_history.received_contacts.all()
         except AttributeError:
@@ -256,10 +261,10 @@ class RosterEntry(SharedMemoryModel):
         beat_q = Q(plot_updates__plot__in=dompc.active_plots)
         act_q = Q(actions__in=self.player.participated_actions)
         evnt_q = Q(events__dompcs=dompc) | Q(events__orgs__in=dompc.current_orgs)
-        flas_q = Q(plot_updates__flashbacks__owner=self) | Q(plot_updates__flashbacks__allowed=self)
+        flas_q = Q(plot_updates__flashbacks__in=self.flashbacks.all())
         obj_q = Q(game_objects__db_location=self.character)
         qs = SearchTag.objects.filter(clu_q | rev_q | plot_q | beat_q | act_q | evnt_q | flas_q | obj_q)
-        return qs.distinct()
+        return qs.distinct().order_by('name')
 
     def display_tagged_objects(self, tag):
         """
@@ -267,31 +272,15 @@ class RosterEntry(SharedMemoryModel):
             Args:
                 tag: SearchTag object
         """
-        from world.dominion.models import PlotUpdate, RPEvent
+        from server.utils.arx_utils import qslist_to_string
+        from world.dominion.models import RPEvent
+        from world.dominion.plots.models import PlotUpdate
+        from web.helpdesk.models import KBItem, KBCategory
         dompc = self.player.Dominion
-        msg = ""
         querysets = []
-
-        def get_queryset_str(qset):
-            """
-            Gets a string representation of the queryset. We check the class name for each object in the
-            queryset because typeclasses will have different class names, and we want to simulate that being
-            a different type of match.
-            """
-            class_name = None
-            message = ""
-            sep = ""
-            for obj in qset:
-                # noinspection PyProtectedMember
-                plural_name = obj._meta.verbose_name_plural
-                if plural_name != class_name:
-                    class_name = plural_name
-                    message += "\n|w[%s]|n " % class_name.title()
-                    sep = ""
-                message += sep + str(obj)
-                sep = "; "
-            return message
-
+        # knowledge base categories & items:
+        querysets.append(KBCategory.objects.filter(search_tags=tag))
+        querysets.append(KBItem.objects.filter(search_tags=tag))
         # append clues/revelations we know:
         for related_name in ("clues", "revelations"):
             querysets.append(getattr(self, related_name).filter(search_tags=tag))
@@ -307,14 +296,12 @@ class RosterEntry(SharedMemoryModel):
         querysets.append(RPEvent.objects.filter(Q(search_tags=tag) &
                                                 (Q(dompcs=dompc) | Q(orgs__in=dompc.current_orgs))))
         # flashbacks:
-        querysets.append(Flashback.objects.filter(Q(beat__in=all_beats) & (Q(owner=self) | Q(allowed=self))))
+        querysets.append(self.flashbacks.filter(beat__in=all_beats))
         # append our tagged inventory items:
         querysets.append(self.character.locations_set.filter(search_tags=tag).order_by('db_typeclass_path'))
-        querysets = [ob.distinct() for ob in querysets if len(ob) > 0]
-        if querysets:
-            msg = "|wTagged as '|235%s|w':|n" % tag
-            for qs in querysets:
-                msg += get_queryset_str(qs)
+        msg = qslist_to_string(querysets)
+        if msg:
+            msg = ("|wTagged as '|235%s|w':|n" % tag) + msg
         return msg
 
     def save(self, *args, **kwargs):
@@ -343,21 +330,40 @@ class RosterEntry(SharedMemoryModel):
     @property
     def action_point_regen(self):
         """How many action points we get back in a week."""
-        return 150 - self.action_point_penalty
+        return 150 + self.action_point_regen_modifier
 
     @CachedProperty
-    def action_point_penalty(self):
+    def action_point_regen_modifier(self):
         """AP penalty from our number of fealties"""
+        from world.dominion.plots.models import PlotAction, PlotActionAssistant
+        ap_mod = 0
+        # they lose 10 AP per fealty they're in
         try:
-            return 10 * self.player.Dominion.num_fealties
+            ap_mod -= 10 * self.player.Dominion.num_fealties
         except AttributeError:
-            return 0
+            pass
+        # gain 20 AP for not having an investigation
+        if not self.investigations.filter(active=True).exists():
+            ap_mod += 20
+        # gain 20 AP per unused action, 40 max
+        try:
+            unused_actions = PlotAction.max_requests - self.player.Dominion.recent_actions.count()
+            ap_mod += 20 * unused_actions
+        except AttributeError:
+            pass
+        # gain 5 AP per unused assist, 20 max
+        try:
+            unused_assists = PlotActionAssistant.MAX_ASSISTS - self.player.Dominion.recent_assists.count()
+            ap_mod += 5 * unused_assists
+        except AttributeError:
+            pass
+        return ap_mod
 
     @classmethod
     def clear_ap_cache_in_cached_instances(cls):
         """Invalidate cached_ap_penalty in all cached RosterEntries when Fealty chain changes. Won't happen often."""
         for instance in cls.get_all_cached_instances():
-            delattr(instance, 'action_point_penalty')
+            delattr(instance, 'action_point_regen_modifier')
 
 
 class Story(SharedMemoryModel):
@@ -874,10 +880,10 @@ class Clue(SharedMemoryModel):
     def __str__(self):
         return self.name
 
-    @property
+    @CachedProperty
     def keywords(self):
         """List of keywords from our search tags. We use them for auto-matching clues with investigations."""
-        return [ob.name for ob in self.search_tags.all()]
+        return [ob.name for ob in self.search_tags.all().distinct()]
 
     def display(self, show_gm_notes=False, disco_msg=""):
         """String display for clue"""
@@ -920,12 +926,10 @@ class Clue(SharedMemoryModel):
         ongoing = self.investigation_set.filter(ongoing=True)
         if ongoing:
             value = self.get_completion_value()
+            # make sure investigations have the correct completion value for this clue
             for investigation in ongoing:
-                investigation.completion_value = value
-                if investigation.active:
-                    # do_roll will take care of saving
-                    investigation.do_roll()
-                else:
+                if investigation.completion_value != value:
+                    investigation.completion_value = value
                     investigation.save()
 
 
@@ -1509,6 +1513,11 @@ class Investigation(AbstractPlayerAllocations):
         self.roll = Investigation.UNSET_ROLL
         self.save()
 
+    def mark_active(self):
+        self.active = True
+        self.do_roll()
+        del self.character.action_point_regen_modifier
+
     @property
     def targeted_clue(self):
         """Tries to fetch a clue automatically if we don't have one. Then returns what we have, or None."""
@@ -1706,54 +1715,249 @@ class Flashback(SharedMemoryModel):
     """
     title = models.CharField(max_length=250, unique=True)
     summary = models.TextField(blank=True)
-    owner = models.ForeignKey('RosterEntry', related_name="created_flashbacks")
-    allowed = models.ManyToManyField('RosterEntry', related_name="allowed_flashbacks", blank=True)
+    participants = models.ManyToManyField('RosterEntry', related_name="flashbacks", through='FlashbackInvolvement')
+    concluded = models.BooleanField(default=False)
     db_date_created = models.DateTimeField(blank=True, null=True)
     beat = models.ForeignKey("dominion.PlotUpdate", blank=True, null=True, related_name="flashbacks",
                              on_delete=models.SET_NULL)
-
-    def get_new_posts(self, entry):
-        """Returns posts that entry hasn't read yet."""
-        return self.posts.exclude(Q(read_by=entry) | Q(poster=entry))
-
-    def display(self, display_summary_only=False, post_limit=None):
-        """Returns string display of a flashback."""
-        msg = "(#%s) %s\n" % (self.id, self.title)
-        msg += "Owner: %s\n" % self.owner
-        msg += "Summary: %s\n" % self.summary
-        if display_summary_only:
-            return msg
-        posts = list(self.posts.all())
-        if post_limit:
-            posts = posts[-post_limit:]
-        msg += "Posts:\n%s" % "\n".join(post.display() for post in posts)
-        return msg
+    MAX_XP = 3
+    STRING_DIV = "\n|w%s|n" % ("-" * 70)
+    STRING_MISSING_MEMORY = "Part of this tale resides in the memory of someone else."
 
     def __str__(self):
         return self.title
 
+    def get_new_posts(self, entry):
+        """Returns queryset of posts that roster entry hasn't read yet."""
+        read = entry.flashback_post_permissions.exclude(is_read=True)
+        return self.posts.filter(readable_by=entry).exclude(flashback_post_permissions__in=read)
+
+    def display(self, display_summary_only=False, post_limit=None, reader=None):
+        """
+        Returns string display of a flashback.
+        Args:
+            display_summary_only (boolean): Whether to display posts.
+            post_limit (int): How many posts to limit our display to.
+            reader (Account/Player): The viewer.
+        """
+        wip = "" if self.concluded else " work in progress!"
+        msg = "|w[%s]|n - (#%s)%s" % (self.title, self.id, wip)
+        msg += "\nOwners and authors: %s" % self.owners_and_contributors
+        msg += "\nSummary: %s" % self.summary
+        if display_summary_only or not reader:
+            return msg
+        timeline = self.get_post_timeline(reader)
+        if post_limit:
+            timeline = timeline[-post_limit:]
+        div = self.STRING_DIV
+        for record in timeline:
+            if record['readable']:
+                msg += "%s\n%s" % (div, record['post'].display())
+            else:
+                msg += "%s\n%s" % (div, self.STRING_MISSING_MEMORY)
+        return msg
+
+    def display_involvement(self):
+        """A string about who is able to add new posts."""
+        msg = "(#%s) |w%s|n - Owners and post authors: %s" % (self.id, self.title, self.owners_and_contributors)
+        msg += "\nCharacters invited to post: %s" % ", ".join([str(ob) for ob in self.current_players])
+        if self.concluded:
+            msg += ("\nNote: No one may post since this flashback is concluded, but adding viewers is still "
+                    "possible with |w/invite/retro|n or |w/allow|n switches. See 'help flashback' for usage.")
+        return msg
+
+    @property
+    def owner(self):
+        """Owner's roster entry."""
+        return self.owners.first()
+
+    @property
+    def owners(self):
+        """Queryset of all owners' roster entries."""
+        owner = FlashbackInvolvement.OWNER
+        return self.participants.filter(flashback_involvements__status=owner)
+
+    @property
+    def post_authors(self):
+        """Queryset of author roster entries."""
+        all_posts = self.posts.all()
+        return RosterEntry.objects.filter(flashback_posts__in=all_posts).distinct()
+
+    @property
+    def owners_and_contributors(self):
+        """String of comma-separated owners (in color!) and post authors."""
+        owners = self.owners
+        owners_ids = [ob.id for ob in owners]
+        owners_names = owners.values_list('player__username', flat=True)
+        authors_names = self.post_authors.exclude(id__in=owners_ids).values_list('player__username', flat=True)
+        return ", ".join(["|c%s|n" % ob.capitalize() for ob in owners_names] + [str(ob.capitalize()) for ob in authors_names])
+
     @property
     def all_players(self):
-        """List of players who are involved in the flashback."""
-        all_entries = [self.owner] + list(self.allowed.all())
-        return [ob.player for ob in all_entries]
+        """List of players invited to this flashback AND retired contributors."""
+        return [ob.player for ob in self.participants.all()]
+
+    @property
+    def current_rosters(self):
+        """Queryset of roster entries who may add posts."""
+        contributor = FlashbackInvolvement.CONTRIBUTOR
+        return self.participants.filter(flashback_involvements__status__gte=contributor)
+
+    @property
+    def current_players(self):
+        """List of players who may add posts."""
+        return [ob.player for ob in self.current_rosters]
+
+    def get_involvement(self, roster_entry):
+        """Returns a FlashbackInvolvement belonging to the roster entry."""
+        try:
+            return self.flashback_involvements.get(participant=roster_entry)
+        except FlashbackInvolvement.DoesNotExist:
+            return None
+
+    def get_post_timeline(self, player, is_staff=None):
+        """
+        Returns a list of dicts that contain either a single readable post, or
+        a list of unreadable posts. Each dict also has a 'readable' boolean.
+        This will obfuscate how much material a reader may be missing in gaps.
+
+            Args:
+                player (Account object): the reader
+                is_staff (Bool): optional, prevents redundant check
+
+            Returns:
+                timeline (list of dictionaries): Dicts contain 'readable' bool
+                    and a post (if readable) or list-of-posts (if unreadable).
+
+        timeline example:
+        [{'readable': False, 'posts': [p1, p2]}, {'readable': True, 'post': p3}]
+        """
+        if is_staff == None:
+            is_staff = bool(player.is_staff or player.check_permstring("builders"))
+        try:
+            roster = player.roster
+            if not is_staff and roster not in self.participants.all():
+                raise AttributeError
+        except AttributeError:
+            raise AttributeError
+        timeline = []
+        all_posts = list(self.posts.all())
+        perms = roster.flashback_post_permissions.filter(post__in=all_posts)
+        for post in all_posts:
+            perm = [ob for ob in perms if ob.post_id == post.id]  # evaluates 'perms' qs
+            if is_staff or perm or post.poster == roster:
+                readable_dict = {'readable': True, 'post': post}
+                timeline.append(readable_dict)
+                if perm:
+                    perm[0].is_read = True  # cache-safe is cache money, baby
+            elif not timeline or timeline[-1]['readable']:
+                unreadable_dict = {'readable': False, 'posts': [post]}
+                timeline.append(unreadable_dict)
+            else:
+                timeline[-1]['posts'].append(post)
+        perms.exclude(is_read=True).update(is_read=True)  # update skips cached objects
+        return timeline
+
+    def posts_allowed_by(self, player):
+        """Boolean for whether player may post to this flashback."""
+        if player.is_staff or player.check_permstring("builders"):
+            return True
+        elif not self.concluded and player in self.current_players:
+            return True
+
+    def uninvite_involvement(self, inv):
+        """Retires contributor or deletes non-contributor's FlashbackInvolvement (inv)."""
+        if inv.contributions.exists():
+            inv.status = inv.RETIRED
+            inv.save()
+        else:
+            posts = self.posts.all()
+            inv.participant.flashback_post_permissions.filter(post__in=posts).delete()
+            inv.delete()
+
+    def invite_roster(self, roster_entry, retro=False, owner=False):
+        """Creates or unretires a FlashbackInvolvement."""
+        inv, created = self.flashback_involvements.get_or_create(participant=roster_entry)
+        if not created:
+            inv.status = inv.CONTRIBUTOR
+            inv.roll = ""
+        if owner:
+            inv.status = inv.OWNER
+        else:
+            roster_entry.player.inform("You have been invited to participate in flashback #%s: '%s'." %
+                                       (self.id, self), category="Flashbacks")
+        inv.save()
+        if retro:
+            self.allow_back_read(roster_entry)
+
+    def allow_back_read(self, roster_entry, amount=None):
+        """
+        Bulk-adds through-models for back-reading posts.
+        Args:
+            roster_entry (RosterEntry): the reader
+            amount (int): number of backposts. None defaults to 'all'.
+        """
+        posts = self.posts.all().prefetch_related('readable_by')
+        if amount != None:
+            start = len(posts) - amount
+            if start > 0:
+                posts = posts[start:amount+start]
+        bulk_list = []
+        for post in posts:
+            if not roster_entry in post.readable_by.all() and roster_entry != post.poster:
+                bulk_list.append(FlashbackPostPermission(post=post, reader=roster_entry))
+        FlashbackPostPermission.objects.bulk_create(bulk_list)
 
     def add_post(self, actions, poster=None):
         """
         Adds a new post to the flashback.
         Args:
-            actions: The story post that the poster is writing.
+            actions (string): The story post that the poster is writing.
             poster (RosterEntry): The player who added the story post.
         """
         now = datetime.now()
-        self.posts.create(poster=poster, actions=actions, db_date_created=now)
+        inv = self.get_involvement(poster)
+        roll = inv.roll if inv else None
+        post = self.posts.create(poster=poster, actions=actions, db_date_created=now, roll=roll)
+        post.set_new_post_readers()
+        if inv and roll:
+            inv.roll = ""
+            inv.save()
+        poster_msg = ""
         if poster:
             poster.character.messages.num_flashbacks += 1
-        for player in self.all_players:
-            if poster and poster.player == player:
+            poster_msg = " by %s" % poster
+        self.inform_all_but(poster, "New post%s on '%s' (flashback #%s)!" % (poster_msg, self, self.id))
+
+    def end_scene(self, ender):
+        """Concludes the flashback. Longer flashbacks may award an event XP."""
+        num_posts = self.posts.count()
+        authors = self.post_authors
+        msg = "Flashback #%s '%s' has reached its conclusion." % (self.id, self)
+        if num_posts < 1:
+            ender.player.inform("With no posts, '%s' (flashback #%s) was deleted." % (self, self.id),
+                                category="Flashbacks")
+            self.delete()
+            return
+        elif num_posts >= 10 and len(authors) > 1:
+            for roster in authors:
+                player = roster.player
+                val = player.db.event_xp or 0
+                if val < self.MAX_XP:
+                    val += 1
+                    player.char_ob.adjust_xp(1)
+                player.db.event_xp = val
+            msg += " Its authors gained event XP (up to %s weekly)." % self.MAX_XP
+        self.concluded = True
+        self.save()
+        self.inform_all_but(None, msg)
+
+    def inform_all_but(self, roster_entry, msg):
+        """Sends informs to current players except the catalyst."""
+        for player in self.current_players:
+            if roster_entry and roster_entry.player == player:
                 continue
-            player.inform("There is a new post on flashback #%s by %s." % (self.id, poster),
-                          category="Flashbacks")
+            player.inform(msg, category="Flashbacks")
 
     def get_absolute_url(self):
         """Returns URL of the view of this flashback"""
@@ -1762,20 +1966,83 @@ class Flashback(SharedMemoryModel):
         return reverse('character:flashback_post', kwargs={'object_id': object_id, 'flashback_id': self.id})
 
 
+class FlashbackInvolvement(SharedMemoryModel):
+    """Through model of a player's involvement with a Flashback."""
+    RETIRED, CONTRIBUTOR, OWNER = range(3)
+    STATUS_CHOICES = ((RETIRED, 'Retired'), (CONTRIBUTOR, 'Contributor'), (OWNER, 'Owner'),)
+    flashback = models.ForeignKey('Flashback', related_name="flashback_involvements", on_delete=models.CASCADE)
+    participant = models.ForeignKey('RosterEntry', related_name="flashback_involvements", on_delete=models.CASCADE)
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=CONTRIBUTOR, blank=True)
+    roll = models.CharField(max_length=250, blank=True)
+
+    class Meta:
+        unique_together = ('flashback', 'participant')
+
+    def __str__(self):
+        return str(self.participant)
+
+    @property
+    def contributions(self):
+        """Queryset for our posts"""
+        return self.flashback.posts.filter(poster=self.participant)
+
+    def make_dice_roll(self, check_str, flub=False):
+        """Clears character's ndb last_roll, forces @check, keeps result string."""
+        char = self.participant.character
+        check_str = check_str.split("=", 1)[0]  # strips any receivers
+        check_str += "=me"  # makes this a private roll
+        flub_str = "/flub" if flub else ""
+        char.ndb.last_roll = None
+        char.execute_cmd("@check%s %s" % (flub_str, check_str))
+        roll = char.ndb.last_roll
+        if roll:
+            roll.use_real_name=True  # Thanks, Maskbama.
+            self.roll = roll.build_msg()
+            self.save()
+            return True
+
+
 class FlashbackPost(SharedMemoryModel):
     """A post for a flashback."""
-    flashback = models.ForeignKey('Flashback', related_name="posts")
-    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts")
-    read_by = models.ManyToManyField('RosterEntry', blank=True, related_name="read_flashback_posts")
+    flashback = models.ForeignKey('Flashback', related_name="posts", on_delete=models.CASCADE)
+    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts", on_delete=models.SET_NULL)
+    readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts", through='FlashbackPostPermission')
     actions = models.TextField("The body of the post for your character's actions", blank=True)
     db_date_created = models.DateTimeField(blank=True, null=True)
+    roll = models.CharField(max_length=250, blank=True)
 
     def display(self):
         """Returns string display of our story post."""
-        return "%s wrote: %s" % (self.poster, self.actions)
+        roll = ("%s\n" % self.roll) if self.roll else ""
+        return "|w[By %s]|n %s%s" % (self.poster, roll, self.actions)
 
     def __str__(self):
         return "Post by %s" % self.poster
+
+    def set_new_post_readers(self):
+        """Adds current flashback participants as readers. New post only; does not check existing!"""
+        bulk_list = []
+        current_rosters = self.flashback.current_rosters.exclude(id=self.poster.id)
+        for roster_entry in current_rosters:
+            bulk_list.append(FlashbackPostPermission(post=self, reader=roster_entry))
+        FlashbackPostPermission.objects.bulk_create(bulk_list)
+
+    def get_permission(self, roster_entry):
+        """Returns a FlashbackPostPermission for the roster entry."""
+        try:
+            return self.flashback_post_permissions.get(reader=roster_entry)
+        except FlashbackPostPermission.DoesNotExist:
+            return None
+
+
+class FlashbackPostPermission(SharedMemoryModel):
+    """The readability status of a flashback post."""
+    post = models.ForeignKey('FlashbackPost', related_name="flashback_post_permissions", on_delete=models.CASCADE)
+    reader = models.ForeignKey('RosterEntry', related_name="flashback_post_permissions", on_delete=models.CASCADE)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('post', 'reader')
 
 
 class Goal(SharedMemoryModel):
