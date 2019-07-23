@@ -345,6 +345,8 @@ def post_roster_dompc_cleanup(player):
         dompc = player.Dominion
     except AttributeError:
         return
+    settings=dompc.petition_settings.get_or_create()
+    settings.cleanup()
     dompc.proteges.clear()
     dompc.patron = None
     dompc.save()
