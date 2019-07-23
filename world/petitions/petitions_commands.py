@@ -4,6 +4,7 @@ Commands for petitions app
 from django.db.models import Q
 
 from commands.base import ArxCommand
+from commands.mixins import RewardRPToolUseMixin
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
 from world.petitions.forms import PetitionForm
@@ -12,7 +13,7 @@ from world.petitions.models import BrokeredSale, Petition, PetitionSettings
 from world.dominion.models import Organization
 from datetime import date
 
-class CmdPetition(ArxCommand):
+class CmdPetition(RewardRPToolUseMixin, ArxCommand)::
     """
     Creates a petition to an org or the market as a whole
 
@@ -64,6 +65,7 @@ class CmdPetition(ArxCommand):
     def func(self):
         """Executes petition command"""
         settings,created=self.caller.dompc.petition_settings.get_or_create()
+        self.mark_command_used()
         try:
             if self.check_switches(self.list_switches) or (not self.switches and not self.args.isdigit()):
                 return self.list_petitions()
