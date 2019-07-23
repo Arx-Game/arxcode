@@ -370,7 +370,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
 
         string = ""
         # get and identify all objects
-        visible = (con for con in self.contents if con != pobject and con.access(pobject, "view"))
+        visible = (con for con in self.contents if con.access(pobject, "view"))
         exits, users, things, worn, sheathed, wielded, places, npcs = [], [], [], [], [], [], [], []
         currency = self.return_currency()
         from typeclasses.places.places import Place
@@ -392,15 +392,17 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 if not con.db.stealth:
                     wielded.append(key)
                 elif hasattr(pobject, 'sensing_check') and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0:
-                    key += "{w (hidden){n"
+                    key += "|w (hidden)|n"
                     wielded.append(key)
             elif con.has_player:
-                # we might have either a title or a fake name
+                # we might have either a permapose or a fake name
                 lname = con.name
                 if con.db.room_title:
-                    lname += "{w(%s){n" % con.db.room_title
+                    lname += "|w (%s)|n" % con.db.room_title
+                elif con == pobject:
+                    continue
                 if con.key in lname and not con.db.false_name:
-                    lname = lname.replace(key, "{c%s{n" % key)
+                    lname = lname.replace(key, "|c%s|n" % key)
                     users.append(lname)
                 else:
                     users.append("{c%s{n" % lname)
@@ -538,6 +540,11 @@ class ModifierMixin(object):
     Allows us to set modifiers in different situations with specific values. We check against a tag in the target,
     and if there's a match we apply the modifier.
     """
+    @lazy_property
+    def mods(self):
+        from world.conditions.modifiers_handlers import ModifierHandler
+        return ModifierHandler(self)
+
     @property
     def modifier_tags(self):
         """Gets list of modifier tags this object has"""
@@ -913,7 +920,7 @@ class MsgMixins(object):
                     origin = from_obj
                     if not from_obj and options.get('is_magic', False):
                         origin = "Magic System"
-                    self.ndb.pose_history.append((origin, text))
+                    self.ndb.pose_history.append((str(origin), text))
                 except AttributeError:
                     pass
         if options.get('box', False):
@@ -970,26 +977,6 @@ class MsgMixins(object):
     def msg_location_or_contents(self, text=None, **kwargs):
         """A quick way to ensure a room message, no matter what it's called on. Requires rooms have null location."""
         self.get_room().msg_contents(text=text, **kwargs)
-
-    def confirmation(self, attr, val, prompt_msg):
-        """
-        Prompts the player or character to confirm a choice.
-
-            Args:
-                attr: Name of the confirmation check.
-                val: Value of the NAttribute to use.
-                prompt_msg: Confirmation prompt message.
-
-            Returns:
-                True if we already have the NAttribute set, False if we have to set
-                it and prompt them for confirmation.
-        """
-        attr = "confirm_%s" % attr
-        if self.nattributes.get(attr) == val:
-            self.nattributes.remove(attr)
-            return True
-        self.nattributes.add(attr, val)
-        self.msg(prompt_msg)
 
 
 class LockMixins(object):

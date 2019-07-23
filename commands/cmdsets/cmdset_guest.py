@@ -63,6 +63,8 @@ class GuestCmdSet(CmdSet):
             self.add(social.CmdWhere())
             self.add(social.CmdFinger())
             self.add(social.CmdCensus())
+            from web.helpdesk import lore_commands
+            self.add(lore_commands.CmdLoreSearch())
         except Exception as err:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             traceback.print_tb(exc_traceback, limit=5, file=sys.stdout)

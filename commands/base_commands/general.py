@@ -10,8 +10,9 @@ from evennia.utils import utils, evtable
 from evennia.utils.utils import make_iter, variable_from_module
 
 from server.utils import prettytable
-from server.utils.arx_utils import raw
+from server.utils.arx_utils import raw, list_to_string
 from commands.base import ArxCommand, ArxPlayerCommand
+from commands.mixins import RewardRPToolUseMixin
 
 AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
 
@@ -56,6 +57,8 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/bbaltread
         @settings/ignore_messenger_notifications
         @settings/ignore_messenger_deliveries
+        @settings/ignore_weather
+        @settings/ignore_model_emits
         @settings/newline_on_messages
         @settings/private_mode
         @settings/ic_only
@@ -64,8 +67,6 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/name_color <color string>
         @settings/verbose_where
         @settings/emit_label
-        @settings/ignore_weather
-        @settings/ignore_model_emits
 
     Switches: /brief suppresses room descs when moving through rooms.
     /posebreak adds a newline between poses from characters.
@@ -75,17 +76,17 @@ class CmdGameSettings(ArxPlayerCommand):
     /bbaltread allows you to read @bb messages on your alts.
     /ignore_messenger_notifications suppresses messenger notifications.
     /ignore_messenger_deliveries will ignore message deliveries to others.
+    /ignore_weather will disable weather emits.
+    /ignore_model_emits will ignore modeling result emits.
     /private_mode prevents logging any messages that are sent to you.
     /ic_only prevents you from receiving pages.
-    /quote_color lets you set a color for dialogue inside quotations.
-    /name_color sets any occurance of your character's name to that color.
-    (Note: name_color currently doesn't revert to quote_color mid-quote)
+    /quote_color sets a color for dialogue inside quotations.
+        See 'help @color' for usage of color codes.
+    /name_color sets a color for occurances of your character's name.
+        Currently name_color doesn't revert back to quote_color mid-quote.
     /verbose_where shows any roomtitle information that someone has set
-    about their current activities, when using the +where command.
+        about their current activities, when using the +where command.
     /emit_label will prefix each emit with its author.
-    /ignore_weather will disable weather emits.
-    /ignore_model_emits will ignore modeling result emits, in case you
-    wish to cut down on such things at parties.
     """
     key = "@settings"
     locks = "cmd:all()"
@@ -96,40 +97,6 @@ class CmdGameSettings(ArxPlayerCommand):
                       'ignore_messenger_deliveries', 'newline_on_messages', 'private_mode',
                       'ic_only', 'ignore_bboard_notifications', 'quote_color', 'name_color',
                       'emit_label', 'ignore_weather', 'ignore_model_emits')
-
-    def togglesetting(self, char, attr, tag=False):
-        """Toggles a setting for the caller"""
-        caller = self.caller
-        if tag:
-            if not char.tags.get(attr):
-                self.msg("%s is now on." % attr)
-                char.tags.add(attr)
-            else:
-                self.msg("%s is now off." % attr)
-                char.tags.remove(attr)
-                char.tags.all()  # update cache until there's a fix for that
-            return
-        char.attributes.add(attr, not char.attributes.get(attr))
-        if not char.attributes.get(attr):
-            caller.msg("%s is now off." % attr)
-        else:
-            caller.msg("%s is now on." % attr)
-
-    def set_quote_color(self, char):
-        """Sets quote color for the caller"""
-        if not self.args:
-            char.attributes.remove("pose_quote_color")
-        else:
-            char.db.pose_quote_color = self.args
-        char.msg('Text will appear inside quotes "%slike this.{n"' % self.args)
-
-    def set_name_color(self, char):
-        """Sets name color for the caller"""
-        if not self.args:
-            char.attributes.remove("name_color")
-        else:
-            char.db.name_color = self.args
-        char.msg('Your name will appear like this: %s%s{n.' % (self.args, char.key))
 
     def func(self):
         """Executes setting command"""
@@ -187,10 +154,10 @@ class CmdGameSettings(ArxPlayerCommand):
             self.togglesetting(caller, "no_post_notifications", tag=True)
             return
         if "quote_color" in switches:
-            self.set_quote_color(char)
+            self.set_text_colors(char, "pose_quote_color")
             return
         if "name_color" in switches:
-            self.set_name_color(char)
+            self.set_text_colors(char, "name_color")
             return
         if "emit_label" in switches:
             self.togglesetting(char, "emit_label", tag=True)
@@ -202,6 +169,40 @@ class CmdGameSettings(ArxPlayerCommand):
             self.togglesetting(char, "ignore_model_emits")
             return
         caller.msg("Invalid switch. Valid switches are: %s" % ", ".join(self.valid_switches))
+
+    def togglesetting(self, char, attr, tag=False):
+        """Toggles a setting for the caller"""
+        caller = self.caller
+        if tag:
+            if not char.tags.get(attr):
+                self.msg("%s is now on." % attr)
+                char.tags.add(attr)
+            else:
+                self.msg("%s is now off." % attr)
+                char.tags.remove(attr)
+                char.tags.all()  # update cache until there's a fix for that
+            return
+        char.attributes.add(attr, not char.attributes.get(attr))
+        if not char.attributes.get(attr):
+            caller.msg("%s is now off." % attr)
+        else:
+            caller.msg("%s is now on." % attr)
+
+    def set_text_colors(self, char, attr):
+        """Sets either pose_quote_color or name_color for the caller"""
+        args = self.args
+        if not args:
+            char.attributes.remove(attr)
+            char.msg('Cleared %s setting.' % attr)
+        else:
+            if not args.startswith(("|", "{")):
+                args = "|%s" % args
+            if attr == "pose_quote_color":
+                char.db.pose_quote_color = args
+                char.msg('Text in quotes will appear %s"like this."|n' % args)
+            else:
+                char.db.name_color = args
+                char.msg('Mentions of your name will look like: %s%s|n' % (args, char.key))
 
 
 class CmdGlance(ArxCommand):
@@ -249,7 +250,7 @@ class CmdGlance(ArxCommand):
                 continue
 
 
-class CmdShout(ArxCommand):
+class CmdShout(RewardRPToolUseMixin, ArxCommand):
     """
     shout
 
@@ -282,6 +283,7 @@ class CmdShout(ArxCommand):
         txt = '{c%s{n shouts %s%s, "%s"' % (caller.name, loudstr, from_dir, args)
         caller.location.msg_contents(txt, exclude=caller, options={'shout': True,
                                                                    'from_dir': from_dir})
+        self.mark_command_used()
 
 
 class CmdFollow(ArxCommand):
@@ -408,7 +410,7 @@ class CmdLook(ArxCommand):
         looking_at_obj.at_desc(looker=caller)
 
 
-class CmdWhisper(ArxCommand):
+class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
     """
     whisper - send private IC message
 
@@ -436,10 +438,11 @@ class CmdWhisper(ArxCommand):
     If no argument is given, you will get a list of your whispers from this
     session.
     """
-
     key = "whisper"
+    aliases = ["mutter"]
     locks = "cmd:not pperm(page_banned)"
     help_category = "Social"
+    simplified_key = "mutter"
 
     def func(self):
         """Implement function using the Msg methods"""
@@ -600,7 +603,7 @@ class CmdWhisper(ArxCommand):
                 self.msg("You posed to %s: %s" % (", ".join(received), message))
             else:
                 self.msg("You whispered to %s, %s" % (", ".join(received), message))
-                if "mutter" in self.switches:
+                if "mutter" in self.switches or "mutter" in self.cmdstring:
                     from random import randint
                     word_list = rhs.split()
                     chosen = []
@@ -617,6 +620,7 @@ class CmdWhisper(ArxCommand):
                     emit_string = ' mutters, "%s{n"' % mutter_text
                     exclude = [caller] + recobjs
                     caller.location.msg_action(self.caller, emit_string, options={'is_pose': True}, exclude=exclude)
+                    self.mark_command_used()
         caller.posecount += 1
 
 
@@ -630,10 +634,12 @@ class CmdPage(ArxPlayerCommand):
       page [<message to last paged player>]
       tell  <player> <message>
       ttell [<message to last paged player>]
+      reply [<message to player who last paged us and other receivers>]
       page/list <number>
       page/noeval
       page/allow <name>
       page/block <name>
+      page/reply <message>
 
     Switch:
       last - shows who you last messaged
@@ -650,7 +656,7 @@ class CmdPage(ArxPlayerCommand):
     """
 
     key = "page"
-    aliases = ['tell', 'p', 'pa', 'pag', 'ttell']
+    aliases = ['tell', 'p', 'pa', 'pag', 'ttell', 'reply']
     locks = "cmd:not pperm(page_banned)"
     help_category = "Comms"
     arg_regex = r'\/|\s|$'
@@ -709,7 +715,7 @@ class CmdPage(ArxPlayerCommand):
                 return
         if 'list' in self.switches or not self.raw:
             pages = pages_we_sent + pages_we_got
-            pages.sort(lambda x, y: cmp(x.date_created, y.date_created))
+            pages.sort(key=lambda x: x.date_created)
 
             number = 5
             if self.args:
@@ -758,8 +764,15 @@ class CmdPage(ArxPlayerCommand):
             lhslist = tarlist
 
         # We are sending. Build a list of targets
-
-        if (not lhs and rhs) or (self.args and not rhs) or cmdstr == 'ttell':
+        if "reply" in self.switches or cmdstr == "reply":
+            if not pages_we_got:
+                self.msg("You haven't received any pages.")
+                return
+            last_page = pages_we_got[-1]
+            receivers = set(last_page.senders + last_page.receivers)
+            receivers.discard(self.caller)
+            rhs = self.args
+        elif (not lhs and rhs) or (self.args and not rhs) or cmdstr == 'ttell':
             # If there are no targets, then set the targets
             # to the last person we paged.
             # also take format of p <message> for last receiver
@@ -1192,13 +1205,77 @@ class CmdPut(ArxCommand):
     """
     Puts an object inside a container
     Usage:
-        put <object or all> in <object>
+        put <object or all or x silver> in <object>
+        put/outfit <outfit name> in <object>
 
     Places an object you hold inside an unlocked
-    container.
+    container. (See 'help outfit' for outfit creation.)
     """
     key = "put"
     locks = "cmd:all()"
+
+    def func(self):
+        """Executes Put command"""
+        from .overrides import args_are_currency
+        caller = self.caller
+
+        args = self.args.split(" in ", 1)
+        if len(args) != 2:
+            caller.msg("Usage: put <name> in <name>")
+            return
+        dest = caller.search(args[1], use_nicks=True, quiet=True)
+        if not dest:
+            return AT_SEARCH_RESULT(dest, caller, args[1])
+        dest = make_iter(dest)[0]
+        if args_are_currency(args[0]):
+            self.put_money(args[0], dest)
+            return
+        if self.check_switches(("outfit", "outfits")):
+            from world.fashion.exceptions import FashionError
+            try:
+                obj_list = self.get_oblist_from_outfit(args[0])
+            except FashionError as err:
+                return caller.msg(err)
+        elif args[0] == "all":
+            obj_list = caller.contents
+        else:
+            obj = caller.search(args[0], location=caller)
+            if not obj:
+                return
+            obj_list = [obj]
+        obj_list = [ob for ob in obj_list if ob.at_before_move(dest, caller=caller)]
+        success = []
+        for obj in obj_list:
+            if obj == dest:
+                caller.msg("You can't put an object inside itself.")
+                continue
+            if not dest.db.container:
+                caller.msg("That is not a container.")
+                return
+            if dest.db.locked and not self.caller.check_permstring("builders"):
+                caller.msg("You'll have to unlock {} first.".format(dest.name))
+                return
+            if dest in obj.contents:
+                caller.msg("You can't place an object in something it contains.")
+                continue
+            max_volume = dest.db.max_volume or 0
+            volume = obj.db.volume or 0
+            if dest.volume + volume > max_volume:
+                caller.msg("No more room; {} won't fit.".format(obj))
+                continue
+            if not obj.access(caller, 'get'):
+                caller.msg("You cannot move {}.".format(obj))
+                continue
+            obj.move_to(dest)
+            success.append(obj)
+            from time import time
+            obj.db.put_time = time()
+        if success:
+            success_str = "%s in %s" % (list_to_string(success), dest.name)
+            caller.msg("You put %s." % success_str)
+            caller.location.msg_contents("%s puts %s." % (caller.name, success_str), exclude=caller)
+        else:
+            self.msg("Nothing moved.")
 
     def put_money(self, args, destination):
         """
@@ -1216,63 +1293,12 @@ class CmdPut(ArxCommand):
         self.caller.pay_money(val, destination)
         self.caller.msg("You put %s silver in %s." % (val, destination))
 
-    def func(self):
-        """Executes Put command"""
-        from .overrides import args_are_currency
-        caller = self.caller
-        args = self.args.split(" in ")
-        if len(args) != 2:
-            caller.msg("Usage: put <name> in <name>")
-            return
-        dest = caller.search(args[1], use_nicks=True, quiet=True)
-        if not dest:
-            return AT_SEARCH_RESULT(dest, caller, args[1])
-        dest = make_iter(dest)[0]
-        if args_are_currency(args[0]):
-            self.put_money(args[0], dest)
-            return
-        if args[0] == "all":
-            obj_list = caller.contents
-        else:
-            obj = caller.search(args[0], location=caller)
-            if not obj:
-                return
-            obj_list = [obj]
-        obj_list = [ob for ob in obj_list if ob.at_before_move(dest, caller=caller)]
-        success = []
-        for obj in obj_list:
-            if not obj:
-                continue
-            if obj == dest:
-                caller.msg("You can't put an object inside itself.")
-                continue
-            if not dest.db.container:
-                caller.msg("%s is not a container." % dest.name)
-                continue
-            if dest.db.locked:
-                caller.msg("%s is locked. Unlock it first." % dest.name)
-                continue
-            if dest in obj.contents:
-                caller.msg("You can't place an object in something it contains.")
-                continue
-            max_volume = dest.db.max_volume or 0
-            volume = obj.db.volume or 0
-            if dest.volume + volume > max_volume:
-                caller.msg("That won't fit in there.")
-                continue
-            if not obj.access(caller, 'get'):
-                caller.msg("You cannot move that.")
-                continue
-            obj.move_to(dest)
-            success.append(obj)
-            from time import time
-            obj.db.put_time = time()
-        if success:
-            success_str = "%s in %s" % (", ".join(ob.name for ob in success), dest.name)
-            caller.msg("You put %s." % success_str)
-            caller.location.msg_contents("%s puts %s." % (caller.name, success_str), exclude=caller)
-        else:
-            self.msg("Nothing moved.")
+    def get_oblist_from_outfit(self, args):
+        """Creates a list of objects or raises FashionError if no outfit found."""
+        from world.fashion.fashion_commands import get_caller_outfit_from_args
+        outfit = get_caller_outfit_from_args(self.caller, args)
+        obj_list = [ob for ob in outfit.fashion_items.all() if ob.location == self.caller]
+        return obj_list
 
 
 class CmdGradient(ArxPlayerCommand):

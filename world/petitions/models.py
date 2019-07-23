@@ -87,14 +87,17 @@ class BrokeredSale(SharedMemoryModel):
             raise PayError("You want to buy %s, but there is only %s for sale." % (amount, self.amount))
         cost = self.price * amount
         self.amount -= amount
-        self.save()
-        self.record_sale(buyer, amount)
         if self.broker_type == self.SALE:
             self.send_goods(buyer, amount)
             self.pay_owner(buyer, amount, cost)
         else:
             self.send_goods(self.owner, amount)
             self.pay_seller(buyer, amount, cost)
+        if self.amount:
+            self.save()
+            self.record_sale(buyer, amount)
+        else:
+            self.delete()
         return cost
 
     def send_goods(self, buyer, amount):

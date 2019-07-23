@@ -1,9 +1,9 @@
 """
 Views for msg app - Msg proxy models, boards, etc
 """
+from collections import defaultdict
 import json
 
-from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
@@ -370,7 +370,6 @@ def post_list_global_search(request):
             'board': post.bulletin_board
         }
 
-
     user = request.user
     if not user or not user.is_authenticated():
         read_posts = []
@@ -394,15 +393,15 @@ def post_list_global_search(request):
 
 def post_view_all(request, board_id):
     """View for seeing all posts at once. It'll mark them all read."""
-    def post_map(post, bulletin_board, read_posts_list):
+    def post_map(post_to_map, bulletin_board, read_posts_list):
         """Returns dict of information about each individual post to add to context"""
         return {
-            'id': post.id,
-            'poster': bulletin_board.get_poster(post),
-            'subject': ansi.strip_ansi(post.db_header),
-            'date': post.db_date_created.strftime("%x"),
-            'unread': post not in read_posts_list,
-            'text': ansi.strip_ansi(post.db_message)
+            'id': post_to_map.id,
+            'poster': bulletin_board.get_poster(post_to_map),
+            'subject': ansi.strip_ansi(post_to_map.db_header),
+            'date': post_to_map.db_date_created.strftime("%x"),
+            'unread': post_to_map not in read_posts_list,
+            'text': ansi.strip_ansi(post_to_map.db_message)
         }
 
     board = board_for_request(request, board_id)
@@ -431,21 +430,21 @@ def post_view_all(request, board_id):
                     board.zero_unread_cache(account)
         ReadPostModel.objects.bulk_create(bulk_list)
 
-    posts = map(lambda post: post_map(post, board, read_posts), raw_posts)
+    posts = map(lambda post_to_map: post_map(post_to_map, board, read_posts), raw_posts)
     return render(request, 'msgs/post_view_all.html', {'board': board, 'page_title': board.key + " - Posts",
                                                        'posts': posts})
 
 
 def post_view_unread_board(request, board_id):
     """View for seeing all posts at once. It'll mark them all read."""
-    def post_map(post, bulletin_board):
+    def post_map(post_to_map, bulletin_board):
         """Returns dict of information about each individual post to add to context"""
         return {
-            'id': post.id,
-            'poster': bulletin_board.get_poster(post),
-            'subject': ansi.strip_ansi(post.db_header),
-            'date': post.db_date_created.strftime("%x"),
-            'text': ansi.strip_ansi(post.db_message)
+            'id': post_to_map.id,
+            'poster': bulletin_board.get_poster(post_to_map),
+            'subject': ansi.strip_ansi(post_to_map.db_header),
+            'date': post_to_map.db_date_created.strftime("%x"),
+            'text': ansi.strip_ansi(post_to_map.db_message)
         }
 
     board = board_for_request(request, board_id)
@@ -460,15 +459,18 @@ def post_view_unread_board(request, board_id):
         accounts.extend(alts)
         ReadPostModel = Post.db_receivers_accounts.through
         bulk_list = []
-
-        for post in unread_posts:
-            for account in accounts:
-                bulk_list.append(ReadPostModel(accountdb=account, msg=post))
-                # They've read everything, clear out their unread cache count
-                board.zero_unread_cache(account)
+        read_by_alts = defaultdict(list)
+        for alt in alts:
+            read_by_alts[alt] = list(unread_posts.filter(db_receivers_accounts=alt))
+        for account in accounts:
+            for post in unread_posts:
+                if post not in read_by_alts[account]:
+                    bulk_list.append(ReadPostModel(accountdb=account, msg=post))
+            # They've read everything, clear out their unread cache count
+            board.zero_unread_cache(account)
         ReadPostModel.objects.bulk_create(bulk_list)
 
-    posts = map(lambda post: post_map(post, board), unread_posts)
+    posts = map(lambda post_to_map: post_map(post_to_map, board), unread_posts)
     return render(request, 'msgs/post_view_all.html', {'board': board, 'page_title': board.key + " - Unread Posts",
                                                        'posts': posts})
 
@@ -476,15 +478,15 @@ def post_view_unread_board(request, board_id):
 def post_view_unread(request):
     """View for seeing all posts at once. It'll mark them all read."""
 
-    def post_map(post):
+    def post_map(post_to_map):
         """Returns dict of information about each individual post to add to context"""
         return {
-            'id': post.id,
-            'board': post.bulletin_board.key,
-            'poster': post.poster_name,
-            'subject': ansi.strip_ansi(post.db_header),
-            'date': post.db_date_created.strftime("%x"),
-            'text': ansi.strip_ansi(post.db_message)
+            'id': post_to_map.id,
+            'board': post_to_map.bulletin_board.key,
+            'poster': post_to_map.poster_name,
+            'subject': ansi.strip_ansi(post_to_map.db_header),
+            'date': post_to_map.db_date_created.strftime("%x"),
+            'text': ansi.strip_ansi(post_to_map.db_message)
         }
 
     raw_boards = get_boards(request.user)

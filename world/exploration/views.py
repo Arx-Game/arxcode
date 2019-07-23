@@ -471,3 +471,11 @@ def save_room(request):
         room_exit.save()
 
     return JsonResponse({})
+
+
+def shardhaven_editor_view(request):
+    from django.shortcuts import render
+    context = {
+        'page_title': 'Shardhaven Editor',
+    }
+    return render(request, "exploration/shardhaven_editor.html", context)

@@ -26,7 +26,7 @@ def get_boards(caller):
     bb_list = list(BBoard.objects.all())
     bb_list = [ob for ob in bb_list if ob.access(caller, 'read')]
     return bb_list
-    
+
 
 def list_bboards(caller, old=False):
     """
@@ -128,7 +128,7 @@ def list_messages(caller, board, board_num, old=False):
         if unread:
             poster = "{0}".format(poster) + "{n"
         msgtable.add_row([bbmsgnum, subject, date, poster])
-    caller.msg(msgtable) 
+    caller.msg(msgtable)
     pass
 
 
@@ -156,13 +156,13 @@ class CmdBBNew(ArxPlayerCommand):
 
     Usage:
         +bbnew  - retrieve a single post
-        +bbnew <number of posts>[=<board num>] - retrive posts
+        +bbnew <number of posts>[=<board num>] - retrieve posts
         +bbnew all[=<board num>] - retrieve all posts
         +bbnew/markread <number of posts or all>[=<board num>]
 
     +bbnew will retrieve unread messages. If an argument is passed,
     it will retrieve up to the number of messages specified.
-        
+
     """
     key = "+bbnew"
     aliases = ["@bbnew", "bbnew"]
@@ -197,8 +197,7 @@ class CmdBBNew(ArxPlayerCommand):
                 caller.msg("Argument must either be 'all' or a number.")
                 return
         found_posts = 0
-        caller.msg("{wUnread posts:")
-        caller.msg("{w" + "-"*60 + "{n")
+        caller.msg("|wUnread posts:\n{}|n".format("-" * 60))
         noread = "markread" in self.switches
         for bb in my_subs:
             posts = bb.get_unread_posts(caller)
@@ -277,7 +276,7 @@ class CmdBBReadOrPost(ArxPlayerCommand):
                 reader.msg("Use {w@bbsub{n to subscribe to it.")
                 return
             list_messages(reader, board_to_check, arguments, old)
-            
+
         if not switches or old and len(switches) == 1:
             arglist = args.split("/")
             if len(arglist) < 2:
@@ -289,21 +288,21 @@ class CmdBBReadOrPost(ArxPlayerCommand):
                     # build arguments for bbnew command
                     args = " all=%s" % arglist[0]
                 else:
-                    switches.append('read')              
+                    switches.append('read')
         if 'new' in switches or 'catchup' in switches:
             if 'catchup' in switches:
                 caller.execute_cmd("+bbnew/markread" + args)
                 return
             caller.execute_cmd("+bbnew"+args)
-            return               
+            return
         # both post/read share board #
         arglist = args.split("/")
-        
+
         board = access_bboard(caller, arglist[0])
         if not board:
             return
-        
-        if 'read' in switches:          
+
+        if 'read' in switches:
             if len(arglist) < 2:
                 board_check(caller, args)
                 return
@@ -352,7 +351,7 @@ class CmdBBReadOrPost(ArxPlayerCommand):
                 method = "archive_post"
             if len(arglist) < 2:
                 caller.msg("Usage: @bb/%s <board #>/<post #>" % switchname)
-                return         
+                return
             try:
                 post_num = int(arglist[1])
             except ValueError:
@@ -394,7 +393,7 @@ class CmdBBReadOrPost(ArxPlayerCommand):
                 self.msg("Post edited.")
                 inform_staff("%s has edited post %s on board %s." % (caller, post_num, board))
             return
-        if 'post' in switches:        
+        if 'post' in switches:
             if not self.rhs:
                 caller.msg("Usage: @bb/post <board #>/<subject> = <post message>")
                 return
@@ -408,15 +407,15 @@ class CmdBBReadOrPost(ArxPlayerCommand):
             if not board:
                 return
             board.bb_post(caller, self.rhs, subject)
-            
+
 
 class CmdOrgStance(ArxPlayerCommand):
     """
     @bborgstance - post an org's response to a Proclamation
-    
+
     Usage:
         @bborgstance <post #>/<org>=<brief declaration>
-        
+
     Declare your org's bold, nuanced political stance in response to a posted
     proclamation - in a svelte 280 characters or less.
     """
@@ -424,7 +423,7 @@ class CmdOrgStance(ArxPlayerCommand):
     aliases = ["bborgstance", "+bborgstance"]
     help_category = "Comms"
     locks = "cmd:not pperm(bboard_banned)"
-    
+
     def func(self):
         lhs = self.lhs
         arglist = lhs.split("/")
@@ -444,7 +443,7 @@ class CmdOrgStance(ArxPlayerCommand):
             return
         board = BBoard.objects.get(db_key__iexact="proclamations")
         board.bb_orgstance(self.caller, org, self.rhs, postnum)
-        
+
 
 class CmdBBSub(ArxPlayerCommand):
     """

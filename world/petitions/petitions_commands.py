@@ -4,6 +4,7 @@ Commands for petitions app
 from django.db.models import Q
 
 from commands.base import ArxCommand
+from commands.mixins import RewardRPToolUseMixin
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
 from world.petitions.forms import PetitionForm
@@ -12,7 +13,7 @@ from world.petitions.models import BrokeredSale, Petition, PetitionSettings
 from world.dominion.models import Organization
 from datetime import date
 
-class CmdPetition(ArxCommand):
+class CmdPetition(RewardRPToolUseMixin, ArxCommand):
     """
     Creates a petition to an org or the market as a whole
 
@@ -66,20 +67,22 @@ class CmdPetition(ArxCommand):
         settings=self.caller.dompc.petition_settings.get_or_create()
         try:
             if self.check_switches(self.list_switches) or (not self.switches and not self.args.isdigit()):
-                return self.list_petitions()
+                self.list_petitions()
             elif not self.switches and self.args.isdigit():
-                return self.display_petition()
+                self.display_petition()
             elif self.check_switches(self.anyone_switches):
-                return self.do_any_access_switches()
+                self.do_any_access_switches()
             elif self.check_switches(self.admin_switches):
-                return self.do_admin_switches()
+                self.do_admin_switches()
             elif self.check_switches(self.creation_switches):
-                return self.do_creation_switches()
+                self.do_creation_switches()
             elif self.check_switches(self.owner_switches):
-                return self.do_owner_switches()
-            elif self.check_switches(ignore_switches):
-                return self.do_ignore_switches()
-            raise self.PetitionCommandError("Invalid switch.")
+
+                self.do_owner_switches()
+            else:
+                raise self.PetitionCommandError("Invalid switch.")
+            self.mark_command_used()
+
         except (self.PetitionCommandError, PetitionError) as err:
             self.msg(err)
 
@@ -471,7 +474,6 @@ class CmdBroker(ArxCommand):
                     amount -= buyamount
                     if order.price < price:
                         character.pay_money(-(price-order.price)*buyamount)
-
         purchase.amount = amount
         purchase.save()
         if amount == 0:
@@ -590,7 +592,7 @@ class CmdBroker(ArxCommand):
         if sale.owner != self.caller.player_ob.Dominion:
             raise self.BrokerError("You can only cancel your own %ss." % display)
         sale.cancel()
-        self.msg("You have cancelled the %s." % (display))
+        self.msg("You have cancelled the %s." % display)
 
     def change_sale_price(self):
         """Changes the price of a sale"""

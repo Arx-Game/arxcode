@@ -207,9 +207,6 @@ if helpdesk_settings.HELPDESK_KB_ENABLED:
         url(r'^kb/(?P<item>[0-9]+)/$',
             kb.item, name='helpdesk_kb_item'),
 
-        url(r'^kb/(?P<item>[0-9]+)/vote/$',
-            kb.vote, name='helpdesk_kb_vote'),
-
         url(r'^kb/(?P<slug>[A-Za-z0-9_-]+)/$',
             kb.category, name='helpdesk_kb_category'),
     ]

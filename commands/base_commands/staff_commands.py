@@ -19,7 +19,8 @@ from server.utils.prettytable import PrettyTable
 from server.utils.exceptions import CommandError
 from commands.base import ArxCommand, ArxPlayerCommand
 from web.character.models import Clue, SearchTag, Revelation, StoryEmit, Flashback, CluePlotInvolvement
-from world.dominion.models import Organization, RPEvent, Propriety, AssetOwner, Plot, PlotAction, PrestigeCategory
+from world.dominion.models import Organization, RPEvent, Propriety, AssetOwner, PrestigeCategory
+from world.dominion.plots.models import Plot, PlotAction
 from typeclasses.characters import Character
 
 PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
@@ -379,7 +380,7 @@ class CmdSendVision(ArxPlayerCommand):
     @sendvision
 
     Usage:
-        @sendvision <character>=<vision name>/<What they see>
+        @sendvision <character>=<vision name or Clue ID>/<What they see>
         @sendclue <character>,<character2, etc>=<clue ID>/<message>
 
     Send a vision with the appropriate text to a given character.
@@ -428,6 +429,15 @@ class CmdSendVision(ArxPlayerCommand):
             if not char:
                 caller.msg("No valid character for %s." % targ)
                 continue
+            if name.isdigit():
+                try:
+                    vision_object = Clue.objects.get(id=name)
+                except Clue.DoesNotExist:
+                    self.msg("Name was a Clue ID but did not match any existing clue.")
+                    return
+                if vision_object.clue_type != Clue.VISION:
+                    self.msg("You must send a vision, not a regular clue.")
+                    return
             # use the same vision object for all of them once it's created
             vision_object = char.messages.add_vision(msg, caller, name, vision_object)
             header = "{rYou have experienced a vision!{n\n%s" % msg
@@ -945,7 +955,7 @@ class CmdGMEvent(ArxCommand):
             self.msg("Event ended.")
 
 
-class CmdGMNotes(ArxPlayerCommand):
+class CmdGMNotes(ArxCommand):
     """
     Create tags, add notes or secrets. Allows searching for keywords.
     Tags:
@@ -957,10 +967,10 @@ class CmdGMNotes(ArxPlayerCommand):
         @gmnotes/plot[/old] [<plot name or #ID>]
         @gmnotes/rev [<revelation name or #ID>]
         @gmnotes/char <tag name>
-        @gmnotes/viewnotes <character>
+        @gmnotes/viewnotes <character or object>
     Secrets & Clues:
         @gmnotes/secret <char>,<revelation name or #>=<IC message>[/<GMnote>]
-        @gmnotes/quick <simple topic>[=<gmnote for placeholder clue>]
+        @gmnotes/quick <topic>/<gmnotes for placeholder clue>[=<target>]
     Plot Hooks:
         @gmnotes/hook <secret #ID>,<plot #ID>[=<gm notes>]
         @gmnotes/no_gming
@@ -1142,12 +1152,11 @@ class CmdGMNotes(ArxPlayerCommand):
         """Will request confirmation before deleting a populated tag."""
         tag = self.get_tag(self.args)
         tag_display = tag.display_tagged_objects()
-        confirm_msg = tag_display + "\n|yRepeat command to delete the '%s' tag anyway.|n" % tag
-        if tag_display and not self.caller.confirmation("delete_tag", tag, confirm_msg):
+        confirm_msg = "%s\n|yRepeat command to delete the '%s' tag anyway.|n" % (tag_display, tag)
+        if tag_display and not self.confirm_command("delete_tag", tag, confirm_msg):
             return
         else:
-            delete_msg = "Deleting the '%s' tag. Poof." % tag
-            self.msg(delete_msg)
+            self.msg("Deleting the '%s' tag. Poof." % tag)
             tag.delete()
 
     def view_revelation_tables(self):
@@ -1224,13 +1233,17 @@ class CmdGMNotes(ArxPlayerCommand):
 
     def write_clue_quick(self):
         """Creates clue with title prefixed by "PLACEHOLDER" so you know for sure."""
-        if not self.args:
-            self.CommandError("Please include at least one word for your Placeholder clue.")
+        try:
+            topic, gm_notes = self.lhs.split("/", 1)
+        except ValueError:
+            raise CommandError("Please include a name/identifier and notes for your quick clue.")
+        targ = None
+        if self.rhs:
+            targ = self.search(self.rhs, global_search=True)
         author = self.caller.roster
-        name = "PLACEHOLDER by %s: %s" % (author, self.lhs)
-        gm_notes = self.rhs if self.rhs else ""
-        clue = Clue.objects.create(name=name, gm_notes=gm_notes, author=author)
-        msg = "Created placeholder for '%s' (clue #%s)." % (self.lhs, clue.id)
+        name = "PLACEHOLDER by %s: %s" % (author, topic)
+        clue = Clue.objects.create(name=name, gm_notes=gm_notes, author=author, tangible_object=targ)
+        msg = "Created placeholder for '%s' (clue #%s)." % (topic, clue.id)
         if gm_notes:
             msg += " GM Notes: %s" % gm_notes
         self.msg(msg)
@@ -1292,7 +1305,8 @@ class CmdGMNotes(ArxPlayerCommand):
         plot.inform(msg_for_plot)
 
     def view_character_gmnotes(self):
-        pc = self.character_search(self.lhs)
+        """View notes for a character or object"""
+        pc = self.search(self.lhs, global_search=True)
         msg = "{wGM Notes for {c%s:{n\n\n" % pc.key
         msg += "\n".join(ob.gm_notes for ob in pc.clues.all())
         self.msg(msg)
@@ -1814,7 +1828,7 @@ class CmdSetServerConfig(ArxPlayerCommand):
         except (TypeError, ValueError):
             if not quiet:
                 self.msg("Cannot convert to number. Using Default income value.")
-            from world.dominion.models import DEFAULT_GLOBAL_INCOME_MOD
+            from world.dominion.domain.models import DEFAULT_GLOBAL_INCOME_MOD
             return DEFAULT_GLOBAL_INCOME_MOD
 
     def list_config_values(self):
@@ -1932,8 +1946,8 @@ class CmdAdjustFame(ArxPlayerCommand):
     Adjusts the fame or legend of players
 
     Usage:
-        adjustfame <character1>[,<char2>,...]=<amount>[/category[/reason]]
-        adjustlegend <char1>[,<char2>,...]=<amount>[/category[/reason]]
+        adjustfame <character1>[,<char2>,...]=<amount>[/category[/reason[/longreason]]]
+        adjustlegend <char1>[,<char2>,...]=<amount>[/category[/reason[/longreason]]]
     """
     key = "adjustfame"
     aliases = ["adjustlegend"]
@@ -1966,14 +1980,20 @@ class CmdAdjustFame(ArxPlayerCommand):
                         raise CommandError("That is not a valid prestige category.")
 
             reason = None
-            if len(rhs_items) == 3:
+            if len(rhs_items) >= 3:
                 reason = rhs_items[2]
+                if len(reason) == 0:
+                    reason = None
+
+            long_reason = None
+            if len(rhs_items) >= 4:
+                long_reason = "/".join(rhs_items[3:])
 
             for targ in targets:
                 if attr == "fame":
-                    targ.adjust_prestige(amount, category=adjust_category, reason=reason)
+                    targ.adjust_prestige(amount, category=adjust_category, reason=reason, long_reason=long_reason)
                 else:
-                    targ.adjust_legend(amount, category=adjust_category, reason=reason)
+                    targ.adjust_legend(amount, category=adjust_category, reason=reason, long_reason=long_reason)
                 targ.save()
             names = ", ".join(str(ob) for ob in targets)
             msg = "Adjusted %s for %s by %s" % (attr, names, amount)

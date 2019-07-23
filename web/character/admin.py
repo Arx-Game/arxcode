@@ -4,7 +4,7 @@ Admin models for Character app
 from django.contrib import admin
 from django.forms import ModelForm
 from .models import (Roster, RosterEntry, Photo, SearchTag, FlashbackPost, Flashback,
-                     Story, Chapter, Episode, StoryEmit,
+                     FlashbackInvolvement, Story, Chapter, Episode, StoryEmit,
                      Milestone, FirstContact, CluePlotInvolvement, RevelationPlotInvolvement,
                      PlayerAccount, AccountHistory, InvestigationAssistant,
                      Mystery, Revelation, Clue, Investigation,
@@ -118,7 +118,6 @@ class ClueForRevInline(admin.TabularInline):
     model = ClueForRevelation
     extra = 0
     raw_id_fields = ('clue', 'revelation',)
-    classes = ['collapse']
 
 
 class RevDiscoInline(admin.TabularInline):
@@ -169,7 +168,7 @@ class RevelationAdmin(BaseCharAdmin):
     """Admin for revelations"""
     list_display = ('id', 'name', 'known_by', 'requires')
     inlines = [ClueForRevInline, RevDiscoInline, RevPlotInvolvementInline]
-    search_fields = ('id', 'name', 'characters__character__db_key', 'mysteries__name')
+    search_fields = ('=id', 'name', 'mysteries__name', '=search_tags__name')
     list_filter = (RevelationListFilter, 'mysteries')
     filter_horizontal = ('search_tags', 'mysteries')
     raw_id_fields = ('author',)
@@ -198,7 +197,7 @@ class CluePlotInvolvementInline(admin.TabularInline):
 class ClueAdmin(BaseCharAdmin):
     """Admin for Clues"""
     list_display = ('id', 'name', 'rating', 'used_for')
-    search_fields = ('id', 'name', '=search_tags__name')
+    search_fields = ('=id', 'name', '=search_tags__name')
     inlines = (ClueForRevInline, CluePlotInvolvementInline)
     filter_horizontal = ('search_tags',)
     raw_id_fields = ('author', 'tangible_object',)
@@ -221,7 +220,7 @@ class ClueAdmin(BaseCharAdmin):
 class ClueDiscoveryAdmin(BaseCharAdmin):
     """Admin for ClueDiscoveries"""
     list_display = ('id', 'clue', 'character', 'discovery_method', 'revealed_by', 'investigation')
-    search_fields = ('id', 'clue__name', 'character__character__db_key')
+    search_fields = ('id', 'clue__name', '=character__character__db_key')
     raw_id_fields = ('clue', 'character', 'investigation', 'revealed_by')
 
 
@@ -253,7 +252,6 @@ class InvestigationAssistantInline(admin.TabularInline):
     model = InvestigationAssistant
     extra = 0
     raw_id_fields = ("investigation", "char",)
-    classes = ['collapse']
 
 
 class InvestigationListFilter(admin.SimpleListFilter):
@@ -294,7 +292,7 @@ class InvestigationAdmin(BaseCharAdmin):
     list_display = ('id', 'character', 'topic', 'clue_target', 'active',
                     'ongoing', 'automate_result')
     list_filter = ('active', 'ongoing', 'automate_result', InvestigationListFilter)
-    search_fields = ('character__character__db_key', 'topic', 'clue_target__name')
+    search_fields = ('=character__character__db_key', 'topic', 'clue_target__name', '=id')
     inlines = [RevDiscoInline, ClueDiscoInline, InvestigationAssistantInline]
     raw_id_fields = ('clue_target', 'character',)
 
@@ -408,20 +406,38 @@ class PostInline(admin.StackedInline):
     """Inline for Flashback Posts"""
     model = FlashbackPost
     extra = 0
-    exclude = ('read_by', 'db_date_created')
+    exclude = ('readable_by', 'db_date_created')
     raw_id_fields = ('poster',)
-    fieldsets = [(None, {'fields': ['poster']}),
-                 ('Story', {'fields': ['actions'], 'classes': ['collapse']}),
-                 ]
+    fieldsets = [(None, {'fields': []}),
+                 ('Posts', {'fields': ['poster', 'actions'], 'classes': ['collapse']})]
+    classes = ['collapse']
+
+
+class FBParticipantsInline(admin.TabularInline):
+    """Inline for Flashback Participants"""
+    model = FlashbackInvolvement
+    extra = 0
+    exclude = ('roll',)
+    readonly_fields = ('num_posts',)
+    raw_id_fields = ('participant',)
+    classes = ['collapse']
+
+    @staticmethod
+    def num_posts(obj):
+        return obj.contributions.count()
 
 
 class FlashbackAdmin(BaseCharAdmin):
     """Admin for Flashbacks"""
     list_display = ('id', 'title', 'owner',)
-    search_fields = ('id', 'title', 'owner__player__username')
-    raw_id_fields = ('owner',)
-    inlines = [PostInline]
-    fieldsets = [(None, {'fields': [('owner', 'title'), 'summary']})]
+    search_fields = ('id', 'title', 'participants__player__username')
+    inlines = [FBParticipantsInline, PostInline]
+    fieldsets = [(None, {'fields': ['title', 'summary']})]
+
+    @staticmethod
+    def owner(obj):
+        """List names of our characters for list display"""
+        return str(obj.owner).capitalize()
 
 
 class GoalUpdateInline(admin.StackedInline):

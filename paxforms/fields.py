@@ -2,6 +2,8 @@ import string
 import re
 import django
 
+from server.utils.arx_utils import commafy
+
 
 class Paxfield(object):
     """
@@ -255,3 +257,88 @@ class ChoiceField(Paxfield):
         return django.forms.ChoiceField(**options)
 
 
+class CharacterListField(Paxfield):
+    """
+    This field contains a list of character objects.
+    """
+
+    def __init__(self, required=False, allow_npc=False, **kwargs):
+        super(CharacterListField, self).__init__(**kwargs)
+        self._required = required
+        self._value = None
+        self._allow_npc = allow_npc
+
+    def _get_character(self, args):
+        from typeclasses.characters import Character
+        try:
+            if self._allow_npc:
+                return Character.objects.get(db_key__iexact=args)
+            else:
+                return Character.objects.get(db_key__iexact=args, roster__isnull=False)
+        except Character.DoesNotExist:
+            return self._get_character_by_id(args)
+
+    def _get_character_by_id(self, args):
+        from typeclasses.characters import Character
+        try:
+            key = int(args)
+            if self._allow_npc:
+                return Character.objects.get(pk=key)
+            else:
+                return Character.objects.get(pk=key, roster__isnull=False)
+        except (Character.DoesNotExist, ValueError):
+            return None
+
+    def set(self, value, caller=None):
+
+        if value is None:
+            self._value = None
+            return True, None
+
+        if hasattr(value, 'split'):
+            value_list = value.split(",")
+        else:
+            value_list = value
+
+        chars = []
+        for char_name in value_list:
+            char_obj = self._get_character(char_name.strip())
+            if not char_obj:
+                return False, "Could not find a character named %s." % char_name
+            chars.append(char_obj.key)
+
+        self._value = chars
+        return self.validate(caller=caller)
+
+    def get(self):
+        if self._value:
+            return self._value
+        else:
+            return self.default
+
+    def get_display(self):
+        values = self.get()
+        if not values or len(values) == 0:
+            return "None"
+
+        results = []
+        for value in values:
+            char_obj = self._get_character(value)
+            results.append(char_obj.key)
+
+        return commafy(results)
+
+    def get_display_params(self):
+        return "<character1>[,character2...]"
+
+    def validate(self, caller=None):
+        if self.required and not self.get():
+            return False, "Required field {} was not provided.  {}".format(self.full_name, self.help_text or "")
+
+        return True, None
+
+    def webform_field(self, caller=None):
+        options = {'label': self.full_name}
+        if self.required is not None:
+            options['required'] = self.required
+        return django.forms.CharField(**options)

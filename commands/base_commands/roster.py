@@ -9,7 +9,7 @@ players to peruse characters while OOC if they wish.
 """
 from evennia.utils import utils
 from server.utils import prettytable
-from server.utils.arx_utils import inform_staff
+from server.utils.arx_utils import inform_staff, list_to_string
 from commands.base import ArxCommand, ArxPlayerCommand
 from datetime import datetime
 from commands.base_commands.jobs import get_apps_manager
@@ -946,43 +946,88 @@ class CmdPropriety(ArxPlayerCommand):
 
     Propriety in Arx is a measure of whether a character conflicts or adheres to the societal norms expected of them by all of Arvani society, in ways that change how they are viewed. This could be appealing to societal biases and being viewed more positively than they otherwise would, or being viewed more negatively because they grow to represent aspects of Arvani culture that are condemned. Propriety modifiers are percentage modifiers on the fame value a character has, so a character with positive propriety finds their fame amplified, while a character with negative propriety finds their fame reduced. This does mean that the more famous a character is, the more benefit or penalty they receive by adhering to or conflicting with thematic social mores. Propriety mods are only reflective of near universal social mores, and regional specific principles are not included, and will be reflected in the respect scores from those great houses. Some regional principles will conflict with the rest of Arvani standards of propriety.
 
-    If a propriety mod would be appropriate to a character, it can be +requested with a justification, if it is reflective of current or past RP and is not in dispute whether it happened, such as a white journal or public statement that represents a societal stance that's listed. Characters wishing to overturn propriety mods can pursue @actions such as social campaigns to try to reverse public opinion.
+class CmdPropriety(ArxPlayerCommand):
+    """
+    Usage:
+        @Proprieties
+        @Proprieties[/all] <propriety title>
+
+    Propriety in Arx is a measure of whether a character conflicts or adheres
+    to the societal norms expected of them by all of Arvani society, in ways
+    that change how they are viewed. This could be appealing to societal
+    biases and being viewed more positively than they otherwise would, or
+    being viewed more negatively because they grow to represent aspects of
+    Arvani culture that are condemned. Propriety modifiers are percentage
+    modifiers on the fame value a character has, so a character with positive
+    propriety finds their fame amplified, while a character with negative
+    propriety finds their fame reduced. This does mean that the more famous
+    a character is, the more benefit or penalty they receive by adhering to
+    or conflicting with thematic social mores. Propriety mods are only
+    reflective of near universal social mores, and regional specific
+    principles are not included, and will be reflected in the respect scores
+    from those great houses. Some regional principles will conflict with the
+    rest of Arvani standards of propriety.
+
+    If a propriety mod would be appropriate to a character, it can be
+    +requested with a justification, if it is reflective of current or past
+    RP and is not in dispute whether it happened, such as a white journal or
+    public statement that represents a societal stance that's listed.
+    Characters wishing to overturn propriety mods can pursue @actions such as
+    social campaigns to try to reverse public opinion.
     """
     key = "@Proprieties"
     aliases = []
-    help_category = "General"
+    help_category = "Social"
+    help_entry_tags = ["propriety"]
     locks = "cmd:all()"
-    def func(self):
-        string=""
-        ending=""
-        if self.lhs:
-            try:
-                propriety=Propriety.objects.get(name__iexact=self.lhs)
-            except (Propriety.DoesNotExist,AttributeError):
-                    self.msg("There's no propriety known as %s" % self.lhs)
-                    return
-            if self.lhs.endswith("y") or self.lhs.endswith("d") or self.lhs.endswith("s"):
-                pass
-            elif self.lhs.endswith("h"):
-                ending+="es"
-            else: 
-                ending+="s"
-            string="These are known to be {}{}".format(self.lhs,ending)
-            for owner in propriety.owners.all():
+
+    def list_propriety_owners(self):
+        """Returns a string listing characters and orgs who carry the given propriety/reputation."""
+        string = ""
+        try:
+            propriety = Propriety.objects.get(name__iexact=self.lhs)
+        except (Propriety.DoesNotExist, AttributeError):
+                return "There's no propriety known as '%s'." % self.lhs
+        reputation = " with the '{}' reputation".format(str(propriety).title())
+        owners = propriety.owners.all()
+        if not owners:
+            string = "No one is currently spoken of{}.".format(reputation)
+        orgs = (owners.filter(organization_owner__isnull=False)
+                      .exclude(organization_owner__secret=True).order_by('organization_owner__name'))
+        ppl = owners.filter(player__isnull=False).order_by('player__player__username')
+        if not self.check_switches(["all"]):  # only get active ppl
+            ppl = ppl.filter(player__player__roster__roster__name="Active")
+        if ppl:
+            def find_longname(owner):
+
                 longname = owner.player.player.char_ob.db.longname
                 if not longname:
                     longname = owner.player.player.char_ob.key
                 if not longname:
                     longname = "Unknown"
-                string+="\n"+longname
+
+                return longname
+
+            string += "|wIndividuals{}:|n ".format(reputation)
+            string += list_to_string([find_longname(person) for person in ppl])
+            string += "\n"
+        if orgs:
+            string += "|wOrganizations{}:|n ".format(reputation)
+            string += list_to_string(list(orgs))
+        return string
+
+    def func(self):
+        if self.lhs:
+            string = self.list_propriety_owners()
         else:
-            proprieties=Propriety.objects.all()
-            string+="{:20} {}".format("Title","Propriety")
+            proprieties = Propriety.objects.all()
+            string = "{:25} {}".format("Title", "Propriety")
             for propriety in proprieties:
-                string+="\n{:20} {:>9}".format(propriety.name,propriety.percentage)
+                string += "\n{:25} {:>9}".format(propriety.name, propriety.percentage)
         self.msg(string)
         return
-            
+
+
 class CmdSheet(ArxPlayerCommand):
     """
     @sheet - Displays a character's sheet.
@@ -1001,6 +1046,7 @@ class CmdSheet(ArxPlayerCommand):
         @sheet/background <character>
         @sheet/personality <character>
         @sheet/recognition <character>
+        @sheet/knacks <character>
         @sheet/desc
         @sheet/stats
         @sheet/all
@@ -1022,7 +1068,7 @@ class CmdSheet(ArxPlayerCommand):
     aliases = ["+sheet", "sheet"]
     help_category = "General"
     locks = "cmd:all()"
-    private_switches = ("secrets", "secret", "visions", "vision", "actions", "plots", "goals")
+    private_switches = ("secrets", "secret", "visions", "vision", "actions", "plots", "goals", "knacks")
     public_switches = ('social', 'background', 'info', 'personality', 'recognition')
 
     def func(self):
@@ -1082,6 +1128,8 @@ class CmdSheet(ArxPlayerCommand):
                 return self.display_plots(charob)
             if 'goals' in switches:
                 return self.display_goals(charob)
+            if 'knacks' in switches:
+                return self.msg(charob.mods.display_knacks())
         if self.check_switches(self.public_switches):
             charob, show_hidden = self.get_character()
             if not charob:
@@ -1210,7 +1258,7 @@ class CmdSheet(ArxPlayerCommand):
             self.msg("%s" % table)
             return
         # have self.rhs: get storyrequest, print its display().
-        from world.dominion.models import PlotAction
+        from world.dominion.plots.models import PlotAction
         try:
             action = actions.get(id=action_num)
         except (PlotAction.DoesNotExist, ValueError):
@@ -1220,9 +1268,10 @@ class CmdSheet(ArxPlayerCommand):
 
     def display_plots(self, charob):
         """Displays a list of plots or specific plot"""
-        from world.dominion.models import PCPlotInvolvement, Plot
+        from world.dominion.plots.models import PCPlotInvolvement, Plot
         plots = charob.dompc.active_plots
-        recruiter = PCPlotInvolvement.objects.exclude(recruiter_story="").filter(admin_status__gte=PCPlotInvolvement.RECRUITER)
+        recruiter = (PCPlotInvolvement.objects.exclude(recruiter_story="")
+                                              .filter(admin_status__gte=PCPlotInvolvement.RECRUITER))
         recruiting = (plots.filter(dompc_involvement__in=recruiter).distinct())
         plot_num = self.get_num_from_args()
         if not plot_num:

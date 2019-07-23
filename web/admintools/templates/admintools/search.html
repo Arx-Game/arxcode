@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
     <div class="container">
-        <p>This page will allow an admin to search the Lore Entries database, the Clues database, and the
-            Crisis Actions database for a single search term.  Results will be presented
-            on a single page.  (That part might eventually need a redesign.)</p>
+        <p>This tool will allow admin to search the Revelation database, the Clues database, the
+            Crisis Actions database, and Lore entries for a single search term. Results will be presented
+            on a single page. (That part might eventually need a redesign.)</p>
         <form action="." method="GET">
             <input type="text" class="input-medium search-query" name="search_term" placeholder="Search Term"/>
             <input type="submit" class="btn" value="Search" >
         </form>
+        <p class="dividingBorderAbove">This tool allows editing of Shardhaven dungeons.</p>
+        <p><strong><a href="{% url 'exploration:shardhaven_editor' %}">Shardhaven Editor</a></strong></p>
     </div>
 {% endblock %}

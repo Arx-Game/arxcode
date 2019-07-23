@@ -3,7 +3,7 @@ from django.db.models import Q
 from evennia.utils.evtable import EvTable
 
 from commands.base import ArxPlayerCommand
-from world.dominion.models import Plot, PlotAction, PlotActionAssistant
+from world.dominion.plots.models import Plot, PlotAction, PlotActionAssistant
 
 
 # noinspection PyUnresolvedReferences

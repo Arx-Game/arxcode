@@ -11,6 +11,7 @@ from typeclasses.mixins import ObjectMixins, NameMixins, LockMixins, BaseObjectM
 from evennia.commands import command, cmdset
 from world.exploration.models import ShardhavenLayoutExit, ShardhavenObstacle, Monster
 from server.utils.arx_utils import commafy, a_or_an
+from commands.mixins import RewardRPToolUseMixin
 
 
 class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
@@ -138,10 +139,13 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
                     self.obj.at_traverse(self.caller, self.obj.destination)
 
         # noinspection PyUnresolvedReferences
-        class KnockExit(command.Command):
+        class KnockExit(RewardRPToolUseMixin, command.Command):
+            simplified_key = "knock"
+
             def func(self):
                 self.caller.msg("You knocked on the door.")
                 self.obj.destination.msg_contents("{wThere is a knock coming from %s." % self.obj.reverse_exit)
+                self.mark_command_used()
 
         # create an exit command. We give the properties here,
         # to always trigger metaclass preparations

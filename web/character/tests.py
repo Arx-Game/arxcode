@@ -64,6 +64,7 @@ class InvestigationTests(ArxCommandTest):
         self.caller = self.account2
         self.call_cmd("2", ("[test clue2] (50 Rating)\ntest clue2 desc\n{} This clue was shared with you by Char,"
                             " who noted: {}\n").format(now.strftime("%x %X"), "Love Tehom"*8))
+        self.call_cmd("222", ("No clue found by this ID: 222."))
 
     def test_cmd_helpinvestigate(self):
         self.roster_entry2.investigations.create()
@@ -80,6 +81,15 @@ class InvestigationTests(ArxCommandTest):
         with patch.object(self.cmd_class, 'check_enough_time_left') as fake_method:
             fake_method.return_value = True
             self.call_cmd("/finish", "Char is now helping Char2's investigation on .")
+
+    def test_cmd_theories(self):
+        self.account2.inform = Mock()
+        self.setup_cmd(investigation.CmdTheories, self.account)
+        self.call_cmd("/create gravity=Things fall.", "You have created a new theory.")
+        self.call_cmd("/share 1=TestAccount2", "Theory 1 added to Testaccount2.")
+        self.account2.inform.assert_called_with(
+            "Testaccount has shared theory {w'gravity'{n with you. Use {w@theories 1{n to view it.",
+            category='Theories')
 
     def test_cmd_investigate(self):
         tag1 = SearchTag.objects.create(name="foo")
@@ -178,34 +188,71 @@ class InvestigationTests(ArxCommandTest):
 
 
 class SceneCommandTests(ArxCommandTest):
-    def test_cmd_flashback(self):
+
+    @patch('world.roll.Roll.build_msg')
+    def test_cmd_flashback(self, mock_build_msg):
         from web.character.models import Flashback
         self.setup_cmd(scene_commands.CmdFlashback, self.account)
         self.call_cmd("/create testing", "You have created a new flashback with the ID of #1.")
         self.call_cmd("/create testing", "There is already a flashback with that title. Please choose another.")
-        self.call_cmd("1", "(#1) testing\nOwner: Char\nSummary: \nPosts: ")
-        self.call_cmd("/catchup 1", "No new posts for #1.")
-        self.account2.inform = Mock()
-        self.call_cmd("/invite 1=Testaccount2", "You have invited Testaccount2 to participate in this flashback.")
-        self.account2.inform.assert_called_with("You have been invited by Testaccount to participate in flashback #1:"
-                                                " 'testing'.", category="Flashbacks")
+        fb1 = Flashback.objects.get(id=1)
+        self.call_cmd("1", "[testing] - (#1) work in progress!\nOwners and authors: Testaccount\nSummary: ")
         self.call_cmd("/post 1", "You must include a message.")
         self.assertEqual(self.char1.messages.num_flashbacks, 0)
-        self.call_cmd("/post 1=A new testpost", "You have posted a new message to testing: A new testpost")
+        self.call_cmd("/post 1=A new testpost", "You have posted to testing: A new testpost")
         self.assertEqual(self.char1.messages.num_flashbacks, 1)
-        self.account2.inform.assert_called_with("There is a new post on flashback #1 by Char.",
-                                                category="Flashbacks")
+        self.account.inform = Mock()
+        self.account2.inform = Mock()
+        self.call_cmd("/invite/retro 1=Testaccount2", "You have invited Testaccount2 to participate in "
+                                                      "flashback #1 with all previous posts visible.")
+        self.account2.inform.assert_called_with("You have been invited to participate in flashback #1:"
+                                                " 'testing'.", category="Flashbacks")
+        mock_build_msg.return_value = "Galvanion checked willpower at difficulty 9001, rolling 9000 lower."
+        self.char.db.willpower = 1
+        self.char.msg = Mock()
+        self.call_cmd("/check 1=willpower", "Your next post in flashback #1 will use this roll.")
+        self.char.msg.assert_called_with("|w[Private Roll]|n %s (Shared with: self-only)" % mock_build_msg.return_value,
+                                         options={'roll': True})
+        self.call_cmd("/check 1=pleading", "Your next post in flashback #1 will use this roll: "
+                                           "%s" %  mock_build_msg.return_value)
+        self.call_cmd("/post 1=boop.", "This roll will accompany the new post: %s\nPlease repeat command to "
+                                       "confirm and continue." % mock_build_msg.return_value)
+        self.call_cmd("/post 1=boop.", "You have posted to testing: boop.")
+        self.account2.inform.assert_called_with("New post by Char on 'testing' (flashback #1)!", category="Flashbacks")
         self.caller = self.account2
-        self.call_cmd("/catchup 1", "New posts for #1\nChar wrote: A new testpost\n")
+        div = "\n"
+        self.call_cmd("/catchup 1", "testing (#1) - New Posts!"
+                                    "{0}\n[By Char] A new testpost"
+                                    "{0}\n[By Char] {1}\nboop.".format(div, mock_build_msg.return_value))
+        self.call_cmd("/catchup 1", "No new posts for #1.")
         self.call_cmd("/summary 1=test", "Only the flashback's owner may use that switch.")
+        self.call_cmd("/invite 1=Testaccount", "Only the flashback's owner may use that switch.")
+        self.call_cmd("/conclude 1", "Only the flashback's owner may use that switch.")
+        self.call_cmd("/uninvite 1", "You have uninvited Testaccount2 from flashback #1.")
+        self.assertEqual(list(fb1.participants.all()), [self.roster_entry])
         self.caller = self.account
-        self.call_cmd("/uninvite 1=Testaccount2", "You have uninvited Testaccount2 from this flashback.")
-        self.account2.inform.assert_called_with("You have been removed from flashback #1.", category="Flashbacks")
-        self.call_cmd("/summary 1=test summary", "summary set to: test summary.")
-        Flashback.objects.get(id=1).posts.create(poster=self.roster_entry, actions="Foo")
-        self.call_cmd("1=foo", '(#1) testing\nOwner: Char\nSummary: test summary\nPosts:\n'
-                               'Char wrote: A new testpost\nChar wrote: Foo')
-        self.call_cmd("1=1", '(#1) testing\nOwner: Char\nSummary: test summary\nPosts:\nChar wrote: Foo')
+        self.call_cmd("/invite 1=Testaccount2", "You have invited Testaccount2 to participate in flashback #1.")
+        self.call_cmd("/invite 1",
+                      "(#1) testing - Owners and post authors: Testaccount\nCharacters invited to post: Testaccount, Testaccount2")
+        self.call_cmd("/uninvite 1=Testaccount2", "You have uninvited Testaccount2 from flashback #1.")
+        self.account2.inform.assert_called_with("You have been retired from flashback #1.", category="Flashbacks")
+        self.call_cmd("/summary 1=test summary", "Summary set to: test summary.")
+        fb1.posts.create(poster=self.roster_entry, actions="Foo.")
+        self.call_cmd("1=foo", "[testing] - (#1) work in progress!\nOwners and authors: Testaccount\nSummary: test summary"
+                               "{0}\n[By Char] A new testpost"
+                               "{0}\n[By Char] {1}\nboop."
+                               "{0}\n[By Char] Foo.".format(div, mock_build_msg.return_value))
+        self.call_cmd("1=1", "[testing] - (#1) work in progress!\nOwners and authors: Testaccount\nSummary: test summary"
+                             "{0}\n[By Char] Foo.".format(div))
+        self.call_cmd("/conclude 1", "Flashback #1 is concluding.")
+        self.account.inform.assert_called_with("Flashback #1 'testing' has reached its conclusion.", category="Flashbacks")
+        self.call_cmd("/conclude 1", "No ongoing flashback by that ID number.|\n"
+                                     "| ID              | Flashback         | Owner            | New Posts        "
+                                     " ~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~+\n"
+                                     "| 1               | testing           | Char             | 0")
+        self.call_cmd("/create test2", "You have created a new flashback with the ID of #2.")
+        self.call_cmd("/conclude 2", "Flashback #2 is concluding.")
+        self.account.inform.assert_called_with("With no posts, 'test2' (flashback #2) was deleted.", category="Flashbacks")
 
 
 class ViewTests(ArxTest):
@@ -226,10 +273,22 @@ class ViewTests(ArxTest):
 
     def test_view_flashbacks(self):
         response = self.client.get(reverse('character:list_flashbacks', kwargs={'object_id': self.char2.id}))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(self.client.login(username='TestAccount2', password='testpassword'), True)
         response = self.client.get(reverse('character:list_flashbacks', kwargs={'object_id': self.char2.id}))
         self.assertEqual(response.status_code, 200)
+
+    def test_view_tagged_clues(self):
+        """tags are rendered with clues"""
+        tag1 = SearchTag.objects.create(name="foo")
+        tag2 = SearchTag.objects.create(name="bar")
+        tag3 = SearchTag.objects.create(name="zep")
+        clue = Clue.objects.create(name="test clue", rating=10, desc="test clue desc")
+        clue.search_tags.add(tag1, tag2, tag3)
+        self.roster_entry2.clue_discoveries.create(clue=clue, message="additional text test")
+        self.assertEqual(self.client.login(username='TestAccount2', password='testpassword'), True)
+        response = self.client.get(reverse('character:list_clues', kwargs={'object_id': self.char2.id}))
+        self.assertContains(response, "foo, bar, zep")
 
 
 class PRPClueTests(ArxCommandTest):

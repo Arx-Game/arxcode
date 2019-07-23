@@ -15,10 +15,9 @@ for example, will throw errors from its middleware whenever an in-game script ru
 
 Evennia resources:
 
-From here on you might want to look at one of the beginner tutorials:
-http://github.com/evennia/evennia/wiki/Tutorials.
+From here on you might want to look at one of the [beginner tutorials](https://github.com/evennia/evennia/wiki/Tutorials).
 
-Evennia's documentation is here:
-https://github.com/evennia/evennia/wiki.
+Evennia's documentation is [here](https://github.com/evennia/evennia/wiki).
 
+Griatch wrote a great guide to installing arx [here](https://github.com/evennia/evennia/wiki/Arxcode-installing-help).
 Enjoy!

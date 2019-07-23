@@ -8,7 +8,7 @@ from django.db.models import Q
 
 from .models import Photo, Flashback, RosterEntry, Clue, Revelation, SearchTag
 from server.utils.arx_utils import inform_staff
-from world.dominion.models import Plot
+from world.dominion.plots.models import Plot
 
 
 class PhotoModelChoiceField(forms.ModelChoiceField):
@@ -97,28 +97,34 @@ class FlashbackPostForm(forms.Form):
 
 class FlashbackCreateForm(forms.ModelForm):
     """Simple ModelForm for creating a new Flashback. We add the owner automatically."""
+    invites = forms.ModelMultipleChoiceField(queryset=RosterEntry.objects.all(), required=False)
+
     class Meta:
         """Set our model and fields"""
         model = Flashback
-        fields = ['title', 'summary', 'allowed']
+        fields = ['title', 'summary']
 
     def __init__(self, *args, **kwargs):
         self.owner = kwargs.pop('owner')
         super(FlashbackCreateForm, self).__init__(*args, **kwargs)
-        self.fields['allowed'].queryset = RosterEntry.objects.filter(Q(roster__name="Active") |
-                                                                     Q(roster__name="Available") |
-                                                                     Q(roster__name="Gone") |
-                                                                     Q(roster__name="Inactive") |
-                                                                     Q(roster__name="Unavailable")
-                                                                     ).order_by('character__db_key')
+        self.fields['invites'].queryset = (RosterEntry.objects.filter(Q(roster__name="Active") |
+                                                                      Q(roster__name="Available") |
+                                                                      Q(roster__name="Gone") |
+                                                                      Q(roster__name="Inactive") |
+                                                                      Q(roster__name="Unavailable"))
+                                                              .exclude(roster__id=self.owner.id)
+                                                              .order_by('character__db_key'))
 
     def save(self, commit=True):
         """Saves the form as a new Flashback and adds our owner/date created fields"""
         from datetime import datetime
         obj = super(FlashbackCreateForm, self).save(commit=False)
-        obj.owner = self.owner
         obj.db_date_created = datetime.now()
         obj.save()
+        invites = self.cleaned_data.get('invites', [])
+        obj.invite_roster(self.owner, owner=True)
+        for friend in invites:
+            obj.invite_roster(friend)
         return obj
 
 

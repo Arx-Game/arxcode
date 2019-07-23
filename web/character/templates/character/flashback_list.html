@@ -2,13 +2,19 @@
 {% load app_filters %}
 {% block content %}
     <div class="container">
- <a class="btn btn-primary" href="{% url "character:sheet" character.id %}">Back to {{ character.key }}</a>
-    <h1 class="text-center">Flashbacks</h1>
-    <hr />
-    {% for flashback in object_list %}
-        <h2><a href="{% url 'character:flashback_post' object_id=character.id flashback_id=flashback.id %}">{{ flashback }}</a></h2>
-        <div>{{ flashback.summary }}</div>
-    {% endfor %}
-    <div><a class="btn btn-success" href="{% url "character:create_flashback" character.id %}">Create New Flashback</a></div>
+        <a href="{% url "character:sheet" character.id %}">&laquo;&nbsp;Back to {{ character.key }}</a>
+        <h2 class="text-center">Flashbacks</h2>
+        <hr />
+        {% for flashback in object_list %}
+            <div>
+            <a href="{% url 'character:flashback_post' object_id=character.id flashback_id=flashback.id %}" class="newsHeading">{{ flashback }}
+            {% if not flashback.concluded %}
+            &nbsp;-&nbsp;In Progress!
+            {% endif %}
+            </a>
+            <p class="newsSummary">{{ flashback.summary }}</p>
+            </div>
+        {% endfor %}
+        <p><a class="btn btn-primary" href="{% url "character:create_flashback" character.id %}">Create New Flashback</a></p>
     </div>
 {% endblock %}

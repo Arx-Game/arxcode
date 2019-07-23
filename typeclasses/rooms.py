@@ -716,7 +716,7 @@ class CmdGameTime(ArxCommand):
 
     Usage:
       time
-      time <YYYY-mm-dd[ HH:MM]>
+      time <YYYY/mm/dd[ HH:MM]>
 
     Shows the current in-game time, season, and the last weather emit, in case you
     missed it or have emits turned off.  (To turn off weather emits, use the

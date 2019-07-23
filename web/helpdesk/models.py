@@ -10,6 +10,7 @@ models.py - Model (and hence database) definitions. This is the core of the
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _, ugettext
 from django import VERSION
 from evennia.typeclasses.models import SharedMemoryModel
@@ -18,6 +19,7 @@ try:
     from django.utils import timezone
 except ImportError:
     from datetime import datetime as timezone
+
 
 class Queue(models.Model):
     """
@@ -297,6 +299,7 @@ class Ticket(SharedMemoryModel):
     plot = models.ForeignKey('dominion.Plot', blank=True, null=True, related_name="tickets")
     beat = models.ForeignKey('dominion.PlotUpdate', blank=True, null=True, related_name="tickets")
     goal_update = models.ForeignKey('character.GoalUpdate', blank=True, null=True, related_name="tickets")
+    kb_category = models.ForeignKey('KBCategory', blank=True, null=True)
     status = models.IntegerField(_('Status'), choices=STATUS_CHOICES, default=OPEN_STATUS)
     on_hold = models.BooleanField(_('On Hold'), blank=True, default=False, help_text=_(
         'If a ticket is on hold, it will not automatically be escalated.'))
@@ -438,8 +441,7 @@ class Ticket(SharedMemoryModel):
         return u'%s %s' % (self.id, self.title)
 
     def get_absolute_url(self):
-        return ('helpdesk_view', (self.id,))
-    get_absolute_url = models.permalink(get_absolute_url)
+        return reverse('helpdesk_view', args=(self.id,))
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -581,7 +583,7 @@ class FollowUp(models.Model):
         return u'%s' % self.title
 
     def get_absolute_url(self):
-        return u"%s#followup%s" % (self.ticket.get_absolute_url(), self.id)
+        return reverse(u"%s#followup%s" % (self.ticket.get_absolute_url(), self.id))
 
     def save(self, *args, **kwargs):
         t = self.ticket
@@ -846,22 +848,28 @@ class KBCategory(models.Model):
     Lets help users help themselves: the Knowledge Base is a categorised
     listing of questions & answers.
     """
+    title = models.CharField(_('Title'), max_length=100, unique=True)
+    slug = models.SlugField(_('Slug'), unique=True)
+    description = models.TextField(_('Description'), blank=True)
+    parent = models.ForeignKey('self', null=True, blank=True, related_name="subcategories")
+    search_tags = models.ManyToManyField('character.SearchTag', blank=True, related_name="kb_categories")
 
-    title = models.CharField(
-        _('Title'),
-        max_length=100,
-        )
+    def display(self):
+        """In-game text display of a KBCategory"""
+        msg = "|c%s|n\n" % self.title
+        msg += "|wDescription:|n %s\n" % self.description
+        if self.parent:
+            msg += "|wParent Category:|n %s\n" % self.parent
+        subs = self.subcategories.all()
+        if subs:
+            msg += "|wSubcategories:|n %s\n" % ", ".join(str(ob) for ob in subs)
+        items = self.kb_items.all()
+        if items:
+            msg += "|wEntries:|n %s\n" % ", ".join(str(ob) for ob in items)
+        return msg
 
-    slug = models.SlugField(
-        _('Slug'),
-        )
-
-    description = models.TextField(
-        _('Description'),
-        )
-
-    def __unicode__(self):
-        return u'%s' % self.title
+    def __str__(self):
+        return str(self.title)
 
     class Meta:
         ordering = ['title',]
@@ -869,75 +877,48 @@ class KBCategory(models.Model):
         verbose_name_plural = _('Knowledge base categories')
 
     def get_absolute_url(self):
-        return ('helpdesk_kb_category', (), {'slug': self.slug})
-    get_absolute_url = models.permalink(get_absolute_url)
+        return reverse('helpdesk_kb_category', kwargs={'slug': self.slug})
 
 
 class KBItem(models.Model):
     """
-    An item within the knowledgebase. Very straightforward question/answer
+    An item within the knowledge base. Very straightforward question/answer
     style system.
     """
-    category = models.ForeignKey(
-        KBCategory,
-        verbose_name=_('Category'),
-        )
+    category = models.ForeignKey(KBCategory, verbose_name=_('Category'), blank=True, null=True,
+                                 on_delete=models.SET_NULL, related_name="kb_items")
+    title = models.CharField(_('Title'), max_length=100, unique=True)
+    question = models.TextField(_('Question'), blank=True)
+    answer = models.TextField(_('Answer'), blank=True)
+    search_tags = models.ManyToManyField('character.SearchTag', blank=True, related_name="kb_items")
+    last_updated = models.DateTimeField(_('Last Updated'), blank=True,
+                                        help_text=_('The date on which this question was most recently changed.'))
 
-    title = models.CharField(
-        _('Title'),
-        max_length=100,
-        )
-
-    question = models.TextField(
-        _('Question'),
-        )
-
-    answer = models.TextField(
-        _('Answer'),
-        )
-
-    votes = models.IntegerField(
-        _('Votes'),
-        help_text=_('Total number of votes cast for this item'),
-        default=0,
-        )
-
-    recommendations = models.IntegerField(
-        _('Positive Votes'),
-        help_text=_('Number of votes for this item which were POSITIVE.'),
-        default=0,
-        )
-
-    last_updated = models.DateTimeField(
-        _('Last Updated'),
-        help_text=_('The date on which this question was most recently '
-            'changed.'),
-        blank=True,
-        )
+    def display(self):
+        """In-game text display of an item"""
+        msg = "|c%s|n\n" % self.title
+        msg += "|wCategory|n: %s\n" % self.category
+        if self.question:
+            msg += "|wQuestion:|n %s\n" % self.question
+        if self.answer:
+            msg += "|wAnswer:|n %s\n" % self.answer
+        return msg
 
     def save(self, *args, **kwargs):
         if not self.last_updated:
             self.last_updated = timezone.now()
         return super(KBItem, self).save(*args, **kwargs)
 
-    def _score(self):
-        if self.votes > 0:
-            return int(self.recommendations / self.votes)
-        else:
-            return _('Unrated')
-    score = property(_score)
-
-    def __unicode__(self):
-        return u'%s' % self.title
+    def __str__(self):
+        return str(self.title)
 
     class Meta:
-        ordering = ['title',]
+        ordering = ['title']
         verbose_name = _('Knowledge base item')
         verbose_name_plural = _('Knowledge base items')
 
     def get_absolute_url(self):
-        return ('helpdesk_kb_item', (self.id,))
-    get_absolute_url = models.permalink(get_absolute_url)
+        return reverse('helpdesk_kb_item', args=[self.id])
 
 
 class SavedSearch(models.Model):

@@ -2,7 +2,7 @@
 A Roll class is all the information about a roll that is made. Crits,
 karma spent, or any number of other modifiers is saved to decide what
 message will be sent, if any. While it could be a simulated roll made
-by a GM, a character's roll will be stored in character.ndb.last_roll 
+by a GM, a character's roll will be stored in character.ndb.last_roll
 attribute.
 """
 from collections import defaultdict
@@ -18,7 +18,7 @@ DEFAULT_KEEP = 2
 class Roll(object):
     # This is the number that the roll needs to be >= for an extra die
     EXPLODE_VAL = 10
-    
+
     def __init__(self, caller=None, stat=None, skill=None, difficulty=15, stat_list=None,
                  skill_list=None, skill_keep=True, stat_keep=False, quiet=True, announce_room=None,
                  keep_override=None, bonus_dice=0, divisor=1, average_lists=False, can_crit=True,
@@ -118,6 +118,7 @@ class Roll(object):
         result = sum(rolls)
         divisor = self.divisor or 1
         result /= divisor
+        result += self.get_roll_modifiers()
         # crit chance is determined here. If we can't crit, we just set the multiplier to be 1
         crit_mult = self.check_crit_mult()
         self.crit_mult = crit_mult
@@ -146,7 +147,7 @@ class Roll(object):
         # end result is the sum of our kept dice minus the difficulty of what we were
         # attempting. Positive number is a success, negative is a failure.
         return self.result
-        
+
     def explode_check(self, num):
         """
         Recursively call itself and return the sum for exploding rolls.
@@ -154,12 +155,12 @@ class Roll(object):
         if num < self.EXPLODE_VAL:
             return num
         return num + self.explode_check(randint(1, 10))
-    
+
     def check_crit_mult(self):
         try:
             if not self.can_crit:
                 return 1
-            bonus_crit_chance = self.bonus_crit_chance
+            bonus_crit_chance = self.bonus_crit_chance + self.get_crit_chance_modifiers()
             bonus_crit_mult = self.bonus_crit_mult
             roll = randint(1, 100)
             if roll > (5 + bonus_crit_chance):
@@ -177,12 +178,8 @@ class Roll(object):
             return 1
 
     def build_msg(self):
+        white_col, red_col, cyan_col, green_col, no_col = "|w", "|r", "|c", "|g", "|n"
         name = self.character_name
-        if self.result + self.difficulty >= self.difficulty:
-            resultstr = "rolling {w%s higher{n" % self.result
-        else:
-            resultstr = "rolling {r%s lower{n" % -self.result
-        msg = ""
         if self.stats:
             stat_str = ", ".join(self.stats.keys())
             if self.announce_values:
@@ -196,13 +193,28 @@ class Roll(object):
         else:
             skill_str = ""
         if not stat_str or not skill_str:
-            roll_msg = "{c%s{n checked %s at difficulty %s, %s." % (name, stat_str or skill_str, self.difficulty,
-                                                                    resultstr)
+            roll_msg = stat_str or skill_str
         else:
-            roll_msg = "{c%s{n checked %s + %s at difficulty %s, %s." % (name, stat_str, skill_str, self.difficulty,
-                                                                         resultstr)
+            roll_msg = "%s + %s" % (stat_str, skill_str)
+        if self.result + self.difficulty >= self.difficulty:
+            resultstr = "%s%s higher" % (white_col, self.result)
+        else:
+            resultstr = "%s%s lower" % (red_col, -self.result)
+        msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg,
+                                                                     self.difficulty, resultstr, no_col)
         if self.crit_mult > 1 and self.result >= 0:
-            msg += "{y%s has rolled a critical success!\n{n" % name
-        msg += roll_msg
+            msg = "%s %s%s rolled a critical!%s" % (msg, green_col, name, no_col)
         self.msg = msg
         return msg
+
+    def get_roll_modifiers(self):
+        try:
+            return self.character.mods.get_total_roll_modifiers(self.stats, self.skills)
+        except AttributeError:
+            return 0
+
+    def get_crit_chance_modifiers(self):
+        try:
+            return self.character.mods.get_total_crit_chance_modifiers(self.stats, self.skills)
+        except AttributeError:
+            return 0

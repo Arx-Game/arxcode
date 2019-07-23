@@ -396,14 +396,13 @@ class PublicTicketForm(CustomFieldMixin, forms.Form):
         q = Queue.objects.get(id=int(self.cleaned_data['queue']))
 
         t = Ticket(
-            title = self.cleaned_data['title'],
-            submitter_email = self.cleaned_data['submitter_email'],
-            created = timezone.now(),
-            status = Ticket.OPEN_STATUS,
-            queue = q,
-            description = self.cleaned_data['body'],
-            priority = self.cleaned_data['priority'],
-            due_date = self.cleaned_data['due_date'],
+            title=self.cleaned_data['title'],
+            submitter_email=self.cleaned_data['submitter_email'],
+            status=Ticket.OPEN_STATUS,
+            queue=q,
+            description=self.cleaned_data['body'],
+            priority=self.cleaned_data['priority'],
+            due_date=self.cleaned_data['due_date'],
             )
         
         if user: t.submitting_player = user

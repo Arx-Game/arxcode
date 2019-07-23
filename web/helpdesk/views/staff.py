@@ -337,13 +337,13 @@ def update_ticket(request, ticket_id, public=False):
 
     # We need to allow the 'ticket' and 'queue' contexts to be applied to the
     # comment.
-    from django.template import engines, Context
+    from django.template import engines
     context = safe_template_context(ticket)
     # this line sometimes creates problems if code is sent as a comment.
     # if comment contains some django code, like "why does {% if bla %} crash",
     # then the following line will give us a crash, since django expects {% if %}
     # to be closed with an {% endif %} tag.
-    comment = engines['django'].from_string(comment).render(Context(context))
+    comment = engines['django'].from_string(comment).render(context)
 
     if owner is -1 and ticket.assigned_to:
         owner = ticket.assigned_to.id
@@ -541,10 +541,10 @@ def update_ticket(request, ticket_id, public=False):
     return return_to_ticket(request.user, helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE, ticket)
 
 
-def return_to_ticket(user, helpdesk_settings, ticket):
+def return_to_ticket(user, allow_non_staff_update, ticket):
     ''' Helpder function for update_ticket '''
 
-    if user.is_staff or helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE:
+    if user.is_staff or allow_non_staff_update:
         return HttpResponseRedirect(ticket.get_absolute_url())
     else:
         return HttpResponseRedirect(ticket.ticket_url)
@@ -700,7 +700,7 @@ def ticket_list(request):
             return HttpResponseRedirect(reverse('helpdesk_list'))
 
         import cPickle
-        from helpdesk.lib import b64decode
+        from web.helpdesk.lib import b64decode
         query_params = cPickle.loads(b64decode(str(saved_query.query)))
     elif not (  request.GET.has_key('queue')
             or  request.GET.has_key('assigned_to')
@@ -961,7 +961,7 @@ def run_report(request, report):
             return HttpResponseRedirect(reverse('helpdesk_report_index'))
 
         import cPickle
-        from helpdesk.lib import b64decode
+        from web.helpdesk.lib import b64decode
         query_params = cPickle.loads(b64decode(str(saved_query.query)))
         report_queryset = apply_query(report_queryset, query_params)
 

@@ -6,16 +6,19 @@ from django.db.models import Q
 from django.shortcuts import reverse
 from django.utils.html import escape
 
-from .models import (PlayerOrNpc, Organization, Domain, Agent, AgentOb, Minister, MapLocation,
-                     AssetOwner, Region, Land, Castle, WorkSetting, PraiseOrCondemn,
-                     Ruler, Army, Orders, MilitaryUnit, Member, Task, OrgUnitModifiers,
-                     CraftingRecipe, CraftingMaterialType, CraftingMaterials, PlotActionAssistant,
-                     RPEvent, AccountTransaction, AssignedTask, Plot, PlotAction, PlotUpdate,
+from .models import (PlayerOrNpc, Organization, Agent, AgentOb, MapLocation,
+                     AssetOwner, Region, Land, WorkSetting, PraiseOrCondemn,
+                     Member, Task, CraftingRecipe, CraftingMaterialType, CraftingMaterials,
+                     RPEvent, AccountTransaction, AssignedTask,
                      OrgRelationship, Reputation, TaskSupporter, InfluenceCategory,
-                     Renown, SphereOfInfluence, TaskRequirement, ClueForOrg, ActionOOCQuestion,
+                     Renown, SphereOfInfluence, TaskRequirement, ClueForOrg,
                      PlotRoom, Landmark, PrestigeTier, PrestigeCategory, PrestigeAdjustment,
-                     Honorific, Propriety, PCEventParticipation, OrgEventParticipation, Fealty,
-                     OrgPlotInvolvement, PCPlotInvolvement)
+                     Honorific, Propriety, PCEventParticipation, OrgEventParticipation, Fealty)
+
+from world.dominion.plots.models import (Plot, PlotAction, PlotUpdate, ActionOOCQuestion,
+                                         PCPlotInvolvement, OrgPlotInvolvement, PlotActionAssistant)
+
+from world.dominion.domain.models import (Army, Orders, MilitaryUnit, OrgUnitModifiers, Domain, Castle, Ruler, Minister)
 
 from web.help_topics.templatetags.app_filters import mush_to_html
 from world.exploration.models import Shardhaven, ShardhavenType
@@ -42,7 +45,7 @@ class ReputationInline(admin.TabularInline):
 
 class PCAdmin(DomAdmin):
     """Admin for main model of dominion, PlayerOrNpc, an extension of AUTH_USER_MODEL"""
-    search_fields = ['player__username', 'npc_name']
+    search_fields = ['=player__username', 'npc_name']
     filter_horizontal = ['parents', 'spouses']
     raw_id_fields = ('player', 'patron')
     list_select_related = (
@@ -105,7 +108,7 @@ class OrgAdmin(DomAdmin):
     """Admin for organizations"""
     list_display = ('id', 'name', 'category', 'fealty', 'org_board', 'org_channel')
     ordering = ['name']
-    search_fields = ['name', 'category', 'members__player__player__username', 'fealty__name']
+    search_fields = ['name', 'category', '=members__player__player__username', 'fealty__name']
     list_filter = (OrgListFilter,)
     filter_horizontal = ("theories",)
     # omit unused fields for now
@@ -228,7 +231,7 @@ class OrgEventParticipantInline(admin.TabularInline):
 class EventAdmin(DomAdmin):
     """Admin for RP Events/PRPs/GM Events"""
     list_display = ('id', 'name', 'date')
-    search_fields = ['name', 'dompcs__player__username', 'orgs__name']
+    search_fields = ['name', '=dompcs__player__username', 'orgs__name', '=id']
     ordering = ['date']
     raw_id_fields = ('location', 'beat', 'plotroom')
     filter_horizontal = ('search_tags',)
@@ -266,7 +269,7 @@ class MaterialsInline(admin.TabularInline):
 class AssetAdmin(DomAdmin):
     """Admin for the assets of a player or organization"""
     list_display = ('id', 'ownername', 'vault', 'prestige', 'economic', 'military', 'social')
-    search_fields = ['player__npc_name', 'player__player__username', 'organization_owner__name']
+    search_fields = ['player__npc_name', '=player__player__username', 'organization_owner__name']
     inlines = [SendTransactionInline, ReceiveTransactionInline, MaterialsInline]
     raw_id_fields = ('player', 'organization_owner')
 
@@ -396,7 +399,7 @@ class PlotAdmin(DomAdmin):
     list_display = ('id', 'name', 'desc', 'end_date', 'parent_plot')
     filter_horizontal = ['orgs', 'search_tags']
     raw_id_fields = ('required_clue', 'parent_plot')
-    search_fields = ('name', 'desc', 'dompcs__player__username')
+    search_fields = ('name', 'desc', '=dompcs__player__username', '=id')
     list_filter = ('resolved', 'usage', PlotRecruiterListFilter)
     inlines = (PlotUpdateInline, PlotOrgInvolvementInline, PCPlotInvolvementInline)
 
@@ -457,7 +460,7 @@ class ActionOOCQuestionInline(admin.StackedInline):
 class PlotActionAdmin(DomAdmin):
     """Admin for @actions that players are taking, one of their primary ways of participating in the game's plot."""
     list_display = ('id', 'dompc', 'plot', 'player_action', 'week', 'status')
-    search_fields = ('plot__name', 'dompc__player__username')
+    search_fields = ('plot__name', '=dompc__player__username', '=id')
     list_filter = ('plot', 'status')
     raw_id_fields = ('dompc', 'gemit', 'gm', 'plot', 'beat')
     readonly_fields = ('ooc_intent',)
@@ -468,7 +471,7 @@ class PlotActionAdmin(DomAdmin):
                                         ('plot', 'beat', 'gemit'), ('week', 'date_submitted')],
                              'classes': ['collapse'], 'description': 'Current ooc status of the action'}),
                  ('Story', {'fields': [('topic', 'category'), 'actions', 'secret_actions', 'story', 'secret_story',
-                                       'ooc_intent'],
+                                       'gm_notes', 'ooc_intent'],
                             'description': "The player's story, and GM response to it.",
                             'classes': ['collapse']}),
                  ('Roll', {'fields': [('stat_used', 'skill_used', 'roll', 'difficulty'), 'outcome_value'],
@@ -493,7 +496,7 @@ class ReputationAdmin(DomAdmin):
     """Admin for reputation players have with organizations."""
     list_display = ('player', 'organization', 'affection', 'respect')
     raw_id_fields = ('player', 'organization')
-    search_fields = ('player__player__username', 'organization__name')
+    search_fields = ('=player__player__username', 'organization__name')
 
 
 class SpheresInline(admin.TabularInline):
@@ -538,7 +541,7 @@ class AgentAdmin(DomAdmin):
     """Admin for agents, npcs owned by players or orgs"""
     list_display = ('id', 'name', 'quantity', 'quality', 'owner')
     raw_id_fields = ('owner',)
-    search_fields = ('name', 'owner__player__player__username', 'owner__organization_owner__name')
+    search_fields = ('name', '=owner__player__player__username', 'owner__organization_owner__name')
     inlines = [AgentObInline]
 
 
@@ -563,7 +566,7 @@ class ArmyAdmin(DomAdmin):
     """Admin for armies owned by organizations or players"""
     list_display = ('id', 'name', 'owner', 'domain')
     raw_id_fields = ('owner', 'domain', 'land', 'castle', 'general', 'temp_owner', 'group')
-    search_fields = ('name', 'domain__name', 'owner__player__player__username', 'owner__organization_owner__name')
+    search_fields = ('name', 'domain__name', '=owner__player__player__username', 'owner__organization_owner__name')
     inlines = (MilitaryUnitInline,)
     list_filter = (ArmyListFilter,)
 
@@ -722,20 +725,20 @@ class WorkSettingAdmin(DomAdmin):
 class PraiseAdmin(DomAdmin):
     """Admin for PraiseOrCondemn"""
     list_display = ('praiser', 'target', 'message', 'week', 'value')
-    search_fields = ('praiser__player__username', 'target__player__username')
+    search_fields = ('=praiser__player__username', '=target__player__username')
 
 
 class ProprietyAdmin(DomAdmin):
     """Admin for Propriety"""
     list_display = ('name', 'percentage')
-    search_fields = ('name', 'owners__organization_owner__name', 'owners__player__player__username')
+    search_fields = ('name', 'owners__organization_owner__name', '=owners__player__player__username')
     filter_horizontal = ('owners',)
 
 
 class HonorificAdmin(DomAdmin):
     """Admin for Honorifics"""
     list_display = ('owner', 'title', 'amount')
-    search_fields = ('owner__player__player__username', 'owner__organization_owner__name', 'title')
+    search_fields = ('=owner__player__player__username', 'owner__organization_owner__name', 'title')
     raw_id_fields = ('owner',)
 
 
@@ -759,7 +762,7 @@ class PrestigeCategoryAdmin(DomAdmin):
 class PrestigeAdjustmentAdmin(DomAdmin):
     """Admin for Prestige Adjustments"""
     list_display = ('id', 'asset_owner', 'category', 'adjusted_on', 'adjusted_by', 'adjustment_type')
-    search_fields = ('asset_owner__player__player__username', 'asset_owner__organization_owner__name')
+    search_fields = ('=asset_owner__player__player__username', 'asset_owner__organization_owner__name')
     raw_id_fields = ('asset_owner',)
     list_filter = ('category', 'adjustment_type')
     readonly_fields = ('adjusted_by', 'effective_value')

@@ -3,11 +3,11 @@ Default Typeclass for Bulletin Boards, based loosely on bboards.
 
 See objects.objects for more information on Typeclassing.
 """
+from server.utils.arx_utils import get_full_url
 from typeclasses.objects import Object
 from world.msgs.models import Post
 from world.msgs.managers import POST_TAG, TAG_CATEGORY
 
-PAGEROOT = "http://play.arxgame.org"
 
 class BBoard(Object):
     """
@@ -21,12 +21,13 @@ class BBoard(Object):
         category = TAG_CATEGORY
         post.tags.add(tagkey, category=category)
         return post
-    
+
     def bb_post(self, poster_obj, msg, subject="No Subject", poster_name=None,
                 event=None, announce=True):
         """
         Post the message to the board.
         """
+        # noinspection PyArgumentList
         post = Post(db_message=msg, db_header=subject)
         post.save()
         posted_by = "Unknown"
@@ -52,7 +53,7 @@ class BBoard(Object):
         if announce:
             post_num = self.posts.count()
             from django.core.urlresolvers import reverse
-            post_url = PAGEROOT + reverse('msgs:post_view', kwargs={'board_id': self.id, 'post_id': post.id})
+            post_url = get_full_url(reverse('msgs:post_view', kwargs={'board_id': self.id, 'post_id': post.id}))
 
             notify = "\n{{wNew post on {0} by {1}:{{n {2}".format(self.key, posted_by, subject)
             notify += "\nUse {w@bbread %s/%s {nor {w%s{n to read this message." % (self.key, post_num, post_url)
@@ -66,7 +67,7 @@ class BBoard(Object):
         return self.db.max_posts or 100
 
     def notify_subs(self, notification):
-        subs = [ob for ob in self.db.subscriber_list if self.access(ob, "read")
+        subs = [ob for ob in self.subscriber_list if self.access(ob, "read")
                 and "no_post_notifications" not in ob.tags.all() and (not hasattr(ob, 'is_guest') or not ob.is_guest())]
         for sub in subs:
             sub.msg(notification)
@@ -74,41 +75,45 @@ class BBoard(Object):
     def bb_orgstance(self, poster_obj, org, msg, postnum):
         """
         Post teeny commentary as addendum to board message.
-        
+
         Args:
-            poster_obj: Character
+            poster_obj: Player (account)
             org: Organization
             msg: str
             postnum: int
         """
+        category = "org_comment"
         tagname = "%s_comment" % org
         # I love you so much <3 Do not let orange text bother you!
         # I love you too <3 Because board is calling this, board is now self.
         post = self.get_post(poster_obj, postnum)
         if not post:
             return
-        if post.tags.get(tagname, category="org_comment"):
-            poster_obj.msg("{w%s{n has already declared a position on this matter." % org)
+        if post.tags.get(tagname, category=category):
+            poster_obj.msg("|w%s|n has already declared a position on this matter." % org)
             return
         if not org.access(poster_obj, "declarations"):
-            poster_obj.msg("Your {w%s{n rank isn't yet high enough to make declarations on their behalf." % org)
+            poster_obj.msg("Your |w%s|n rank is not set to make declarations on their behalf." % org)
             return
         if len(msg) > 280:
             poster_obj.msg("That message is too long for a brief declaration.")
             return
-        if org.secret:
-            post.db_message += "\n\n--- {w%s{n Stance ---\n%s" % (org, msg)
-        else:
-            post.db_message += "\n\n--- {w%s{n Stance (from %s) ---\n%s" % (org, poster_obj, msg)
-        post.tags.add("%s_comment" % org, category="org_comment")
+        secret = org.secret
+        poster_obj_str = "" if secret else (" via |c%s|n" % poster_obj)
+        post.db_message += "\n\n--- |w%s|n Stance%s ---\n%s" % (org, poster_obj_str, msg)
+        post.tags.add(tagname, category=category)
         post.save()
-        poster_obj.msg("{w%s{n successfully declared a stance on '%s'." % (org, post.db_header))
-        self.notify_subs("{w%s has commented upon proclamation %s.{n" % (org, postnum))
+        success_msg = "|w%s|n%s declared a stance on '%s' (proclamation %s)." % (org, poster_obj_str, post.db_header,
+                                                                                 postnum)
+        poster_obj.msg(success_msg)
+        self.notify_subs(success_msg)
         from server.utils.arx_utils import inform_staff
-        inform_staff("{c%s {whas posted an org stance for %s." % (poster_obj, org))
+        if secret:
+            success_msg = "(By |c%s|n) %s" % (poster_obj.key, success_msg)
+        inform_staff(success_msg)
 
     def has_subscriber(self, pobj):
-        if pobj in self.db.subscriber_list:
+        if pobj in self.subscriber_list:
             return True
         else:
             return False
@@ -158,20 +163,20 @@ class BBoard(Object):
         if not old:
             return self.posts
         return self.archived_posts
-        
-    def at_object_creation(self):
-        """
-        Run at bboard creation.
-        """
-        self.db.subscriber_list = []
+
+    @property
+    def subscriber_list(self):
+        if self.db.subscriber_list is None:
+            self.db.subscriber_list = []
+        return self.db.subscriber_list
 
     def subscribe_bboard(self, joiner):
         """
         Run right before a bboard is joined. If this returns a false value,
         bboard joining is aborted.
         """
-        if joiner not in self.db.subscriber_list:
-            self.db.subscriber_list.append(joiner)
+        if joiner not in self.subscriber_list:
+            self.subscriber_list.append(joiner)
             return True
         else:
             return False
@@ -181,8 +186,8 @@ class BBoard(Object):
         Run right before a user leaves a bboard. If this returns a false
         value, leaving the bboard will be aborted.
         """
-        if leaver in self.db.subscriber_list:
-            self.db.subscriber_list.remove(leaver)
+        if leaver in self.subscriber_list:
+            self.subscriber_list.remove(leaver)
             return True
         else:
             return False
@@ -191,6 +196,7 @@ class BBoard(Object):
         """
         Remove post if it's inside the bulletin board.
         """
+        retval = False
         if post in self.posts:
             post.delete()
             retval = True
@@ -213,7 +219,7 @@ class BBoard(Object):
         post.db_message = msg
         post.save()
         return True
-    
+
     @property
     def posts(self):
         return Post.objects.for_board(self).exclude(db_tags__db_key="archived")
@@ -283,7 +289,7 @@ class BBoard(Object):
 
             except AttributeError:
                 pass
-            
+
     @property
     def num_unread_cache(self):
         if self.ndb.num_unread_cache is None:
