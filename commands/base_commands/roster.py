@@ -938,13 +938,6 @@ def display_recognition(caller, charob):
         msg += "\n\n{wModifiers from Organization that hold them in favor/disfavor{n:\n%s" % favor
     caller.msg(msg)
 
-class CmdPropriety(ArxPlayerCommand):
-    """
-    Usage:
-        @Proprieties
-        @Proprieties <propriety title>
-
-    Propriety in Arx is a measure of whether a character conflicts or adheres to the societal norms expected of them by all of Arvani society, in ways that change how they are viewed. This could be appealing to societal biases and being viewed more positively than they otherwise would, or being viewed more negatively because they grow to represent aspects of Arvani culture that are condemned. Propriety modifiers are percentage modifiers on the fame value a character has, so a character with positive propriety finds their fame amplified, while a character with negative propriety finds their fame reduced. This does mean that the more famous a character is, the more benefit or penalty they receive by adhering to or conflicting with thematic social mores. Propriety mods are only reflective of near universal social mores, and regional specific principles are not included, and will be reflected in the respect scores from those great houses. Some regional principles will conflict with the rest of Arvani standards of propriety.
 
 class CmdPropriety(ArxPlayerCommand):
     """
