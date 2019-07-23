@@ -101,7 +101,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
 
     def __unicode__(self):
         return self.name
-    
+
     def at_account_creation(self):
         """
         This is called once, the very first time
@@ -175,6 +175,14 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         except AttributeError:
             pass
 
+    def at_post_disconnect(self):
+        """After disconnection is complete, delete NAttributes."""
+        try:
+            self.char_ob.nattributes.clear()
+        except AttributeError:
+            pass
+        self.nattributes.clear()
+
     # noinspection PyBroadException
     def announce_informs(self):
         """Lets us know if we have unread informs"""
@@ -199,7 +207,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         Overload in guest object to return True
         """
         return False
-    
+
     def at_first_login(self):
         """
         Only called once, the very first
@@ -462,7 +470,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         if self.db.allow_list is None:
             self.db.allow_list = []
         return self.db.allow_list
-    
+
     @property
     def block_list(self):
         """List of players who should not be allowed to interact with us"""
@@ -534,7 +542,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         """Theories we have permission to edit"""
         ids = [ob.theory.id for ob in self.theory_permissions.filter(can_edit=True)]
         return self.known_theories.filter(id__in=ids)
-        
+
     @property
     def past_actions(self):
         """Actions we created that have been finished in the past"""

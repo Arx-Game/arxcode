@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
     <div class="container">
-        <h2>Lore Topics</h2>
+        <h2>Revelation Topics</h2>
         <table class="table table-hover">
             <tr>
                 <th>ID</th>
                 <th>Title</th>
             </tr>
-            {% for entry in lore %}
+            {% for entry in revelations %}
             <tr>
                 <td><a href="/admin/character/revelation/{{ entry.id }}/change">{{ entry.id }}</a></td>
                 <td>{{ entry.name }}</td>
@@ -43,6 +43,22 @@
                 <td>{{ action.commafied_participants }}</td>
                 <td>{{ action.get_status_display }}</td>
                 <td>{{ action.date_submitted }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <h2>Lore Categories</h2>
+        <table class="table table-hover">
+            {% for category in categories %}
+            <tr>
+                <td><strong>{{ category.title}}</strong><br>{{ category.description }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <h2>Lore Entries</h2>
+        <table class="table table-hover">
+            {% for entry in entries %}
+            <tr>
+                <td><strong>{{ entry.title }}</strong><br>Question: {{ entry.question }}<p>Answer: {{ entry.answer }}</p></td>
             </tr>
             {% endfor %}
         </table>

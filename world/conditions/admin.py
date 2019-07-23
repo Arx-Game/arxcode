@@ -11,9 +11,9 @@ from .models import RollModifier, EffectTrigger
 
 class RollModifierAdmin(admin.ModelAdmin):
     """Admin class for RollModifier"""
-    list_display = ('id', 'object', 'check', 'value')
+    list_display = ('id', 'object', 'name', 'stat', 'skill', 'value', 'check')
     search_fields = ('id', 'object__db_key')
-    list_filter = ('check',)
+    list_filter = ('check', 'modifier_type')
     save_as = True
     raw_id_fields = ('object',)
 

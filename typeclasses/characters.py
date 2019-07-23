@@ -8,6 +8,8 @@ creation commands.
 
 """
 from evennia.objects.objects import DefaultCharacter
+
+from server.utils.exceptions import PayError
 from typeclasses.mixins import MsgMixins, ObjectMixins, NameMixins
 from typeclasses.wearable.mixins import UseEquipmentMixins
 from world.msgs.messagehandler import MessageHandler
@@ -477,7 +479,9 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
 
     @property
     def xp(self):
-        return self.db.xp or 0
+        if self.db.xp is None:
+            self.db.xp = 0
+        return self.db.xp
 
     @xp.setter
     def xp(self, value):
@@ -492,19 +496,24 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         """
         if not self.db.total_xp:
             self.db.total_xp = 0
-        if not self.xp:
-            self.xp = 0
         if value > 0:
             self.db.total_xp += value
             try:
                 self.roster.adjust_xp(value)
             except (AttributeError, ValueError, TypeError):
                 pass
+            self.xp += value
         else:
-            if self.xp < abs(value):
-                raise ValueError("Bad value passed to adjust_xp -" +
-                                 " character did not have enough xp to pay for the value.")
-        self.xp += value
+            self.pay_xp(abs(value))
+
+    def pay_xp(self, value):
+        """Attempts to spend xp"""
+        if value < 0:
+            raise ValueError("Attempted to spend negative xp.")
+        if self.xp < value:
+            raise PayError("You tried to spend %s xp, but only have %s available." % (value, self.xp))
+        self.xp -= value
+        self.msg("You spend %s xp and have %s remaining." % (value, self.xp))
 
     def follow(self, targ):
         if not targ.ndb.followers:

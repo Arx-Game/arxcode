@@ -40,7 +40,7 @@ class TestPetitionCommands(ArxCommandTest):
         self.roster_entry.save()
         self.call_cmd("/buy ap=1,100", "You cannot afford to pay 100 when you only have 0.0 silver.")
         self.char1.currency += 20000
-        self.assertEqual(self.char1.currency, 20000) 
+        self.assertEqual(self.char1.currency, 20000)
         self.call_cmd("/buy ap=5,100", "You have bought 5 Action Points from Testaccount2 for 25 silver.")
         self.call_cmd("", 'ID Seller       Type          Price Amount \n1  Testaccount2 Action Points 5     45     |'
                           '\nID Buyer Type Price Amount')
@@ -53,7 +53,7 @@ class TestPetitionCommands(ArxCommandTest):
                       "You have bought 30 Action Points from Testaccount2 for 150 silver.|"
                       "You have placed an order for 95 Action Points for 10 silver each and 950 total.")
         self.assertEqual(self.roster_entry.action_points, 150)
-        self.assertEqual(sale.amount, 0)
+        self.assertEqual(sale.pk, None)
         self.call_cmd("/cancel 5", "You have cancelled the purchase.")
         self.char1.currency += 250
         sale2 = BrokeredSale.objects.create(owner=self.dompc2, sale_type=BrokeredSale.ECONOMIC, amount=50, price=5)
@@ -92,7 +92,7 @@ class TestPetitionCommands(ArxCommandTest):
         mat.save()
         self.call_cmd("/sell testium=2,500", "You can't put contraband on the broker! "
                                              "Seriously, how are you still alive?")
-        self.call_cmd("/cancel 1", "You can only cancel your own sales.")
+        self.call_cmd("/cancel 6", "You can only cancel your own sales.")
         self.assertEqual(self.assetowner.economic, 2)
         self.call_cmd("", 'ID Seller       Type               Price Amount \n'
                           '6  Testaccount2 Economic Resources 5     45     '
@@ -145,7 +145,7 @@ class TestPetitionCommands(ArxCommandTest):
                           '15 Testaccount2 Social Resources 300   45')
         self.call_cmd("/reprice 17=300", 'You have sold 45 Social Resources to Testaccount2 for 13500 silver.|'
                                          'You have changed the price to 300.')
-        self.assertEqual(sale15.amount, 0)
+        self.assertEqual(sale15.pk, None)
         self.assertEqual(self.assetowner2.social, 50)
         self.assertEqual(self.char1.currency, 34925)
         self.call_cmd("/buy military=10,500",

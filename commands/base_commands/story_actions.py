@@ -10,7 +10,7 @@ from server.utils.exceptions import ActionSubmissionError
 from server.utils.arx_utils import dict_from_choices_field
 from commands.base import ArxPlayerCommand
 from server.utils import arx_more
-from world.dominion.models import Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion
+from world.dominion.plots.models import Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion
 
 
 # noinspection PyUnresolvedReferences
@@ -371,7 +371,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         if my_draft:
             self.msg("You have drafted an action which needs to be submitted or canceled: %s" % my_draft.id)
             return False
-        if not self.caller.pay_action_points(50):
+        if not self.caller.pay_action_points(PlotAction.BASE_AP_COST):
             self.msg("You do not have enough action points.")
             return False
         return True

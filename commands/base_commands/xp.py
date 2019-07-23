@@ -74,7 +74,7 @@ class CmdUseXP(ArxCommand):
             amt = int(self.rhs)
             if amt <= 0:
                 raise ValueError
-        except ValueError:
+        except (ValueError, TypeError):
             self.msg("Amount must be a positive number.")
             return
         history = self.caller.roster.accounthistory_set.filter(account=account).last()
@@ -216,8 +216,7 @@ class CmdUseXP(ArxCommand):
             if stype == "stat":
                 caller.adjust_xp(-cost)
                 stats_and_skills.adjust_stat(caller, args)
-                caller.msg("You have increased your %s for a cost of %s xp. " % (args, cost) +
-                           "XP remaining: %s" % caller.db.xp)
+                caller.msg("You have increased your %s to %s." % (cost, current + 1))
                 return
             if stype == "skill":
                 caller.adjust_xp(-cost)
@@ -227,8 +226,7 @@ class CmdUseXP(ArxCommand):
                 spent_list.append(cost)
                 skill_history[args] = spent_list
                 caller.db.skill_history = skill_history
-                caller.msg("You have increased your %s for a cost of %s xp. " % (args, cost) +
-                           "XP remaining: %s" % caller.db.xp)
+                caller.msg("You have increased your %s to %s." % (args, current + 1))
                 if current + 1 == 6:  # legendary rating
                     inform_staff("%s has bought a rank 6 of %s." % (caller, args))
                 return
@@ -244,7 +242,7 @@ class CmdUseXP(ArxCommand):
                 spent_list.append(cost)
                 ability_history[args] = spent_list
                 caller.db.ability_history = ability_history
-                caller.msg("You have increased your %s for a cost of %s xp." % (args, cost))
+                caller.msg("You have increased your %s to %s." % (args, current + 1))
                 return
             if stype == "dom":
                 # charge them influence
@@ -454,7 +452,7 @@ class CmdAwardXP(ArxPlayerCommand):
     @awardxp
 
     Usage:
-        @awardxp  <character>=<value>
+        @awardxp  <character>=<value>[/<inform message>]
 
     Gives some of that sweet, sweet xp to a character.
     """
@@ -466,20 +464,30 @@ class CmdAwardXP(ArxPlayerCommand):
         """Execute command."""
         caller = self.caller
         targ = caller.search(self.lhs)
-        val = self.rhs
-        if not val or not val.isdigit():
-            caller.msg("Invalid syntax.")
-            return
         if not targ:
-            caller.msg("No player found by that name.")
+            return
+        inform_msg = ""
+        try:
+            rhs = self.rhs.split("/", 1)
+            val = int(rhs[0])
+            if len(rhs) > 1:
+                inform_msg = rhs[1]
+            if not val:
+                raise ValueError
+        except (TypeError, ValueError, AttributeError):
+            self.msg("Invalid syntax: Must have an xp amount.")
             return
         char = targ.char_ob
         if not char:
             caller.msg("No active character found for that player.")
             return
-        char.adjust_xp(int(val))
-        caller.msg("Giving %s xp to %s." % (val, char))
-        inform_staff("%s has adjusted %s's xp by %s." % (caller, char, val))
+        char.adjust_xp(val)
+        if inform_msg:
+            msg = "You have been awarded %d xp: %s" % (val, inform_msg)
+            targ.inform(msg, category="XP")
+            inform_msg = " Message sent to player: %s" % inform_msg
+        caller.msg("Giving %s xp to %s.%s" % (val, char, inform_msg))
+        inform_staff("%s has adjusted %s's xp by %s.%s" % (caller, char, val, inform_msg))
 
 
 class CmdAdjustSkill(ArxPlayerCommand):

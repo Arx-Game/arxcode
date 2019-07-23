@@ -103,6 +103,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         self.add_investigation_commands()
         self.add_scene_commands()
         self.add_gming_actions_commands()
+        self.add_lore_commands()
 
     @check_errors
     def add_default_commands(self):
@@ -272,6 +273,12 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         self.add(crisis_commands.CmdGMCrisis())
         from .base_commands import story_actions
         self.add(story_actions.CmdGMAction)
+
+    @check_errors
+    def add_lore_commands(self):
+        """Add commands for using lore knowledge base"""
+        from web.helpdesk import lore_commands
+        self.add(lore_commands.CmdLoreSearch())
 
 
 class UnloggedinCmdSet(cmdset_unloggedin.UnloggedinCmdSet):

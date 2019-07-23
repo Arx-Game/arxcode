@@ -11,4 +11,5 @@ urlpatterns = [
     url(r'^api/haven/room/edit', views.save_room, name="save_room"),
     url(r'^api/haven/puzzles', views.get_puzzle_list, name='get_puzzles'),
     url(r'^api/haven/monsters', views.get_monster_list, name='get_monsters'),
+    url(r'^shardhaven_editor', views.shardhaven_editor_view, name='shardhaven_editor'),
 ]

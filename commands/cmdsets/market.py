@@ -15,6 +15,7 @@ creative process.
 from random import randint
 
 from evennia import CmdSet
+from evennia.utils.logger import log_info
 from commands.base import ArxCommand
 from server.utils import prettytable
 from evennia.utils.create import create_object
@@ -439,7 +440,7 @@ class HaggledDeal(object):
         self.caller.pay_money(-silver)
         self.caller.msg("You have sold %s %s and gained %s silver." % (self.amount, self.material_display, silver))
         log_msg = "%s has sold %s %s and gained %s silver." % (self.caller, self.amount, self.material_display, silver)
-        print("Haggle Log: %s" % log_msg)
+        log_info("Haggle Log: %s" % log_msg)
 
     def buy_materials(self):
         """Attempt to buy the materials we made the deal for"""
@@ -459,7 +460,7 @@ class HaggledDeal(object):
         self.caller.pay_money(cost)
         self.caller.msg("You have bought %s %s for %s silver." % (self.amount, self.material_display, cost))
         log_msg = "%s has bought %s %s for %s silver." % (self.caller, self.amount, self.material_display, cost)
-        print("Haggle Log: %s" % log_msg)
+        log_info("Haggle Log: %s" % log_msg)
 
 
 class CmdHaggle(ArxCommand):
