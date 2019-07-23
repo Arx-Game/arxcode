@@ -13,7 +13,7 @@ from world.petitions.models import BrokeredSale, Petition, PetitionSettings
 from world.dominion.models import Organization
 from datetime import date
 
-class CmdPetition(RewardRPToolUseMixin, ArxCommand)::
+class CmdPetition(RewardRPToolUseMixin, ArxCommand):
     """
     Creates a petition to an org or the market as a whole
 
