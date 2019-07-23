@@ -8,8 +8,9 @@ from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
 from world.petitions.forms import PetitionForm
 from world.petitions.exceptions import PetitionError
-from world.petitions.models import BrokeredSale, Petition
-
+from world.petitions.models import BrokeredSale, Petition, PetitionSettings
+from world.dominion.models import Organization
+from datetime import date
 
 class CmdPetition(ArxCommand):
     """
@@ -40,6 +41,7 @@ class CmdPetition(ArxCommand):
         petition/leave <#>
         petition/ic_note <#>=<ic note>
         petition/ooc_note <#>=<ooc note>
+        petition/ignore <organization/general/all>
 
     Create a petition that is either submitted to an organization or
     posted in the market for signups.
@@ -53,6 +55,7 @@ class CmdPetition(ArxCommand):
     admin_switches = org_admin_switches + ("close", "reopen")
     creation_switches = ("create", "topic", "desc", "org", "submit", "cancel")
     owner_switches = ("editdesc", "edittopic")
+    ignore_switches= ("ignore")
 
     class PetitionCommandError(CommandError):
         """Exception class for Petition Command"""
@@ -60,6 +63,7 @@ class CmdPetition(ArxCommand):
 
     def func(self):
         """Executes petition command"""
+        settings=self.caller.dompc.petition_settings.get_or_create()
         try:
             if self.check_switches(self.list_switches) or (not self.switches and not self.args.isdigit()):
                 return self.list_petitions()
@@ -73,9 +77,24 @@ class CmdPetition(ArxCommand):
                 return self.do_creation_switches()
             elif self.check_switches(self.owner_switches):
                 return self.do_owner_switches()
+            elif self.check_switches(ignore_switches):
+                return self.do_ignore_switches()
             raise self.PetitionCommandError("Invalid switch.")
         except (self.PetitionCommandError, PetitionError) as err:
             self.msg(err)
+
+            
+    def color_coder(self,petition,dompc):
+        if petition.waiting and (date.today()-petition.date_created).days>7:
+            return "|550"
+        elif petition.waiting:
+            return "|500"
+        elif (date_updated-petition.date_created).days>7:
+            return "|530"
+        elif petition.petitionparticipation_set.filter(dompc=dompc).unread_posts:
+            return "|253"
+        else:
+            return ""
 
     def list_petitions(self):
         """Lists petitions for org/player"""
@@ -88,13 +107,13 @@ class CmdPetition(ArxCommand):
                 raise self.PetitionCommandError("You do not have access to view petitions for %s." % org)
             qs = org.petitions.all()
         else:
-            from world.dominion.models import Organization
+            
             orgs = Organization.objects.filter(members__deguilded=False).filter(members__player=self.caller.dompc)
             orgs = [org for org in orgs if org.access(self.caller, "view_petition")]
             query = Q(organization__in=orgs)
             if "onlyorgs" not in self.switches:
                 query = query | Q(organization__isnull=True) | Q(dompcs=self.caller.dompc)
-            qs = Petition.objects.filter(query)
+            qs = Petition.objects.filter(query).order_by('-date_updated')
         if "old" in self.switches:
             qs = qs.filter(closed=True)
         else:
@@ -102,10 +121,10 @@ class CmdPetition(ArxCommand):
         if "search" in self.switches:
             qs = qs.filter(Q(topic__icontains=self.lhs) | Q(description__icontains=self.lhs))
         signed_up = list(self.caller.dompc.petitions.filter(petitionparticipation__signed_up=True))
-        table = PrettyTable(["ID", "Owner", "Topic", "Org", "On"])
+        table = PrettyTable(["Updated","ID", "Owner", "Topic", "Org", "On"])
         for ob in qs.distinct():
             signed_str = "X" if ob in signed_up else ""
-            table.add_row([ob.id, str(ob.owner), ob.topic[:30], str(ob.organization), signed_str])
+            table.add_row([self.color_coder(ob,self.caller.dompc)+ob.date_updated.strftime("%m/%d/%y"),ob.id, str(ob.owner), ob.topic[:30], str(ob.organization), signed_str])
         self.msg(str(table))
         self.display_petition_form()
 
@@ -135,6 +154,7 @@ class CmdPetition(ArxCommand):
                 msg = "You made an ooc note to the petition."
             petition.add_post(self.caller.dompc, self.rhs, in_character)
             self.msg(msg)
+        petition.mark_posts_unread(self.caller.dompc)
 
     def do_admin_switches(self):
         """Assign/remove petition from the petition, open or close it"""
@@ -161,6 +181,7 @@ class CmdPetition(ArxCommand):
             else:  # remove them
                 petition.leave(target, first_person=first_person)
                 self.msg("You have removed %s from the petition." % target)
+            petition.mark_posts_unread(self.caller.dompc)
             return
         if self.caller.dompc != petition.owner and not petition.check_org_access(self.caller.player, "admin_petition"):
             raise self.PetitionCommandError("You are not allowed to do that.")
@@ -188,6 +209,16 @@ class CmdPetition(ArxCommand):
             petition = form.save()
             self.msg("Successfully created petition %s." % petition.id)
             self.caller.attributes.remove("petition_form")
+            if petition.organization is not None:
+                targets=PetitionSettings.objects.all().exclude(ignored_organizations=petition.organization).exclude(inform=False)
+                for target in targets:
+                    target.owner.player.msg("{wA new petition was posted by %s to %s.{n" % (petition.owner,petition.organization))
+                    target.owner.player.inform("{wA new petition was posted by %s to %s.{n|/|/%s" % (petition.owner,petition.organization,petition.display()),category="Petition", append=True)
+            else:
+                targets=PetitionSettings.objects.all().exclude(inform=False).exclude(ignore_general=True)
+                for target in targets:
+                    target.owner.player.msg("{wA new petition was posted by %s{n" % (petition.owner))
+                    target.owner.player.inform("{wA new petition was posted by %s{n|/|/%s" % (petition.owner,petition.display()),category="Petition", append=True)
         else:
             if "create" in self.switches:
                 if form:
@@ -230,7 +261,21 @@ class CmdPetition(ArxCommand):
             petition.topic = self.rhs
             self.msg("New topic: %s" % self.rhs)
         petition.save()
+        petition.mark_posts_unread(self.caller.dompc)
 
+    def do_ignore_switches(self):
+        settings=self.caller.dompc.petition_settings.get_or_create()
+        if self.lhs=="all":
+            settings.inform^=True
+            self.msg("You are now %s informed of new petitions") %("" if settings.inform == True else "not")
+        elif self.lhs=="general":
+            settings.ignore_general^=True
+            self.msg("You are now %s informed of new general petitions") %("" if settings.inform == True else "not")
+        else:
+            org=self.get_org_from_args(self.lhs)
+            settings.ignored_organizations.add(org)
+            self.msg("You are now %s informed of new "+self.lhs+" petitions") %("" if settings.inform == True else "not")
+        
     def get_org_from_args(self, args):
         """Gets an organization"""
         from world.dominion.models import Organization
