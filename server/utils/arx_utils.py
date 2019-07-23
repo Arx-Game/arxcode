@@ -770,8 +770,7 @@ class classproperty(object):
         """
         return self.getter(owner)
 
-
-    def get_full_url(url):
+def get_full_url(url):
     """
     Gets the full url when given a partial, used for formatting links. For this to work
     properly, you should define your Site's url under the 'Sites' app in django's admin
