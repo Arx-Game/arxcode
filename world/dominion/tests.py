@@ -7,11 +7,9 @@ from server.utils.test_utils import ArxCommandTest, TestTicketMixins
 
 from . import crisis_commands, general_dominion_commands
 from world.dominion.plots import plot_commands
-
 from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions, SearchTag
 from world.dominion.models import RPEvent, Organization, CraftingMaterialType, ClueForOrg
 from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement, PlotUpdate
-
 
 
 class TestCraftingCommands(ArxCommandTest):
@@ -164,9 +162,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
                       'You use 5 action points and have 50 remaining this week.|'
                       'Your social clout combined with that of your protege reduces difficulty by 22.\n'
                       'Char rolling intellect and economics. \n'
-
                       'You and Orgtest both gain 12,000 prestige.\n'
-
                       'You have increased the economic influence of Orgtest by 25.\n'
                       'Current modifier is 0, progress to next is 1/100.')
         self.call_cmd("/score orgtest2", "No match for an org by the name: orgtest2.")
@@ -183,9 +179,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
         self.caller = self.account
         self.call_cmd("Orgtest","Name: Orgtest\n"
                       "Desc: None\n\nLeaders of Orgtest:\n"
-
                       "\nWebpage: http://example.com/topics/org/1/\nMembers of Orgtest:\nSerf (Rank 10): Testaccount\n"
-
                       "\nMoney:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%\nResources: Economic: 0, Military: 0, Social: 0\n"
                       "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\nWork Settings: None found.\n\n"
                       "Member stats for Testaccount\n\nRank: 10\nSupport Pool Share: 0/0\nTotal Work: 0\nTasks Completed: 0, Total Rating: 0")
@@ -195,13 +189,11 @@ class TestGeneralDominionCommands(ArxCommandTest):
         ClueForOrg.objects.create(clue=clue, org=org, revealed_by=self.roster_entry)
         ClueForOrg.objects.create(clue=clue2, org=org, revealed_by=self.roster_entry)
         self.call_cmd("Orgtest","Name: Orgtest\nDesc: None\n\nLeaders of Orgtest:\n\n"
-
                       "Webpage: http://example.com/topics/org/1/\nMembers of Orgtest:\nSerf (Rank 10): Testaccount\n\n"
                       "Money:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%\nResources: Economic: 0, Military: 0, Social: 0\n"
                       "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\nWork Settings: None found.\n"
                       "\nClues Known: Org test clue 1; Org test clue 2;\n\n"
                       "Member stats for Testaccount\n\nRank: 10\nSupport Pool Share: 0/0\nTotal Work: 0\nTasks Completed: 0, Total Rating: 0")
-
 
 
 

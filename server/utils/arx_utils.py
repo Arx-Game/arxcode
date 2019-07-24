@@ -770,6 +770,7 @@ class classproperty(object):
         """
         return self.getter(owner)
 
+
 def get_full_url(url):
     """
     Gets the full url when given a partial, used for formatting links. For this to work
@@ -777,6 +778,7 @@ def get_full_url(url):
     site.
     Args:
         url: A partial url from a few, like '/namespace/view/'
+        
     Returns:
         A full url, like "http://www.example.com/namespace/view/"
     """

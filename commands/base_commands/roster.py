@@ -992,15 +992,12 @@ class CmdPropriety(ArxPlayerCommand):
             ppl = ppl.filter(player__player__roster__roster__name="Active")
         if ppl:
             def find_longname(owner):
-
                 longname = owner.player.player.char_ob.db.longname
                 if not longname:
                     longname = owner.player.player.char_ob.key
                 if not longname:
                     longname = "Unknown"
-
                 return longname
-
             string += "|wIndividuals{}:|n ".format(reputation)
             string += list_to_string([find_longname(person) for person in ppl])
             string += "\n"

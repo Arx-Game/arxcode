@@ -1952,12 +1952,10 @@ class Organization(InformMixin, SharedMemoryModel):
         clues = self.clues.all()
         if display_clues:
             if viewing_member:
-
                 entry = viewing_member.player.player.roster
                 discovered_clues = entry.clues.all()
             else:
                 discovered_clues = []
-
             if clues:
                 msg += "\n{wClues Known:"
                 for clue in clues:
@@ -1967,7 +1965,6 @@ class Organization(InformMixin, SharedMemoryModel):
                     else:
                         msg += "{w %s{n;" % clue
                 msg += "\n"
-
             theories = self.theories.all()
             if theories:
                 msg += "\n{wTheories Known:{n %s\n" % "; ".join("%s (#%s)" % (ob, ob.id) for ob in theories)
@@ -2678,10 +2675,8 @@ class Member(SharedMemoryModel):
         msg += "\nYou and {} both gain {:,} prestige.".format(self.organization, prestige)
         self.player.assets.adjust_prestige(prestige, PrestigeCategory.INVESTMENT)
         self.organization.assets.adjust_prestige(prestige)
-
         msg += "\nYou have increased the {} influence of {} by {:,}.".format(resource_type, self.organization,
                                                                              org_amount)
-
         mod = getattr(self.organization, "%s_modifier" % resource_type)
         progress = self.organization.get_progress_to_next_modifier(resource_type)
         msg += "\nCurrent modifier is %s, progress to next is %d/100." % (mod, progress)

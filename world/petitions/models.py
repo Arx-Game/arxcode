@@ -183,17 +183,15 @@ class PetitionSettings(SharedMemoryModel):
         self.ignore_general=False
         self.inform=True
         self.ignored_organizations.clear()
-        try:
-            participations=self.owner.petitionparticipation_set.all()
-            for petition_participation in participations:
-                petition_participation.subscribed=False
-                petition_participation.unread_posts=True
-                petition_participation.signed_up=False
-                if (petition_participation.is_owner):
-                    petition_participation.petition.closed=True
-                petition_participation.save()
-        except:
-            pass
+        participations=self.owner.petitionparticipation_set.all()
+        for petition_participation in participations:
+            petition_participation.subscribed=False
+            petition_participation.unread_posts=True
+            petition_participation.signed_up=False
+            if (petition_participation.is_owner):
+                petition_participation.petition.closed=True
+            petition_participation.save()
+
     
 
     
@@ -303,13 +301,10 @@ class Petition(SharedMemoryModel):
             pass
     def mark_posts_unread(self, dompc):
         """If dompc is a participant, mark their posts read"""
-        try:
-            participants = self.petitionparticipation_set.all().exclude(dompc=dompc)
-            for participant in participants:
-                    participant.unread_posts = True
-                    participant.save()
-        except PetitionParticipation.DoesNotExist:
-            pass
+        participants = self.petitionparticipation_set.all().exclude(dompc=dompc)
+        for participant in participants:
+                participant.unread_posts = True
+                participant.save()
 
 
 class PetitionParticipation(SharedMemoryModel):
