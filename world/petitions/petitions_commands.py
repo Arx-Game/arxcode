@@ -82,7 +82,7 @@ class CmdMatchmaker(ArxCommand):
         clues = []
         args = self.args.split("/")
         message="You're now matching: "
-        if args<1:
+        if not args:
             ad.clues.clear()
             self.msg("You're now matching no clues")
             return
