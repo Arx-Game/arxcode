@@ -468,20 +468,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/resource economic,50 to TestAccount2", "You give 50 economic resources to Char2.")
         self.assertEqual(self.assetowner2.economic, 50)
         self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
-    def test_cmd_inventory(self):
-        self.setup_cmd(overrides.CmdInventory, self.char1)
-        self.char1.currency = 125446
-        self.assetowner.economic = 5446
-        self.call_cmd("","You currently have 0 xp and 100 ap.\n"
-                      "Maximum AP: 300  Weekly AP Gain: 150\n"
-                      "You are carrying (Volume: 0/100):\n"
-                      "Money: coins worth a total of 125,446.00 silver pieces\n"
-                      "Bank Account:           0 silver coins\n"
-                      "Prestige:               0  Resources         Social Clout: 0\n"
-                      "|__ Legend:             0  Economic: 5,446\n"
-                      "|__ Fame:               0  Military:     0\n"
-                      "|__ Grandeur:           0  Social:       0\n"
-                      "|__ Propriety:          0\nMaterials:")
+
 
     
 
