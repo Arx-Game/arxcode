@@ -106,7 +106,7 @@ class CmdMatchmaker(ArxCommand):
         ad = self.caller.dompc.wanted_ad
         tags = []
         message="You're now matching: "
-        if self.lhslist<1:
+        if not self.lhslist:
             ad.searchtags.clear()
             self.msg("You're now matching no tags")
             return
