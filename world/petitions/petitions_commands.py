@@ -108,12 +108,12 @@ class CmdMatchmaker(ArxCommand):
             for entry in args:
                 try:
                     clue = self.get_by_name_or_id(Clue, entry)
-                except Clue.DoesNotExist:
+                    ad.clues.add(clue)
+                    for tag in clue.search_tags.all():
+                        ad.searchtags.add(tag)
+                    message += "{}; ".format(clue.name)
+                except (Clue.DoesNotExist,CommandError) as e:
                     self.msg("There's no clue called {}".format(entry))
-                ad.clues.add(clue)
-                for tag in clue.search_tags.all():
-                    ad.searchtags.add(tag)
-                message += "{}; ".format(clue.name)
         self.msg(message)
         return
 
@@ -130,10 +130,10 @@ class CmdMatchmaker(ArxCommand):
             for entry in self.lhslist:
                 try:
                     tag = self.get_by_name_or_id(SearchTag, entry)
-                except SearchTag.DoesNotExist:
+                    ad.searchtags.add(tag)
+                    message += "{}; ".format(tag.name)
+                except (SearchTag.DoesNotExist,CommandError) as e:
                     self.msg("There's no tag called {}".format(entry))
-                ad.searchtags.add(tag)
-                message += "{}; ".format(tag.name)
         self.msg(message)
         return
 

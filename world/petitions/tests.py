@@ -60,7 +60,7 @@ class TestPetitionCommands(ArxCommandTest):
             "There's no clue called fosozep|You're now matching:")
         self.call_cmd(
             "/tags zsep,zep",
-            "There's no tag called zsep|You're now matching:")
+            "There's no tag called zsep|You're now matching: zep;")
         self.call_cmd("/tags zep", "You're now matching: zep;")
         self.char2.db.social_rank = 1
         self.char1.db.social_rank = 10
