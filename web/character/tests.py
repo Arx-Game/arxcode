@@ -290,6 +290,17 @@ class ViewTests(ArxTest):
         response = self.client.get(reverse('character:list_clues', kwargs={'object_id': self.char2.id}))
         self.assertContains(response, "foo, bar, zep")
 
+    def test_view_totals_in_actions(self):
+        """totals are shown for contributions"""
+        from world.dominion.plots.models import PlotAction, PlotActionAssistant
+        action = PlotAction.objects.create(dompc=self.dompc, social=200)
+        action_assistant = PlotActionAssistant.objects.create(dompc=self.dompc2, plot_action=action, social=100)
+        action.save()
+        self.assertEqual(self.client.login(username='TestAccount2', password='testpassword'), True)
+        action_url = reverse("character:view_action", kwargs={"object_id": self.char2.id, "action_id": action.id})
+        response = self.client.get(action_url)
+        self.assertContains(response, "Social Resources:</b> 300")
+
 
 class PRPClueTests(ArxCommandTest):
     def setUp(self):
