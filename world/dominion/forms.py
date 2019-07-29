@@ -125,10 +125,10 @@ class RPEventCreateForm(forms.ModelForm):
         gms = self.cleaned_data.get('gms', [])
         for gm in gms:
             event.add_gm(gm)
-        invites = self.cleaned_data.get('invites', [])
-        for pc_invite in invites:
-            if pc_invite not in hosts and pc_invite not in gms:
-                event.add_guest(pc_invite)
+        for guest in self.cleaned_data.get('invites', []):
+            if guest in hosts or guest in gms or guest == self.owner:
+                continue
+            event.add_guest(guest)
         for org in self.cleaned_data.get('org_invites', []):
             event.invite_org(org)
         plot = self.cleaned_data.get('plot', None)
