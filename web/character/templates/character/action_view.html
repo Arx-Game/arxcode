@@ -40,20 +40,20 @@
             <tr>
                 <td colspan="4">
                     <br/>
-                    {% if action.silver > 0 %}
-                    <b>Silver:</b> {{ action.silver }}<br/>
+                    {% if action.total_silver > 0 %}
+                    <b>Silver:</b> {{ action.total_silver }}<br/>
                     {% endif %}
-                    {% if action.economic > 0 %}
-                    <b>Economic Resources:</b> {{ action.economic }}<br/>
+                    {% if action.total_economic > 0 %}
+                    <b>Economic Resources:</b> {{ action.total_economic }}<br/>
                     {% endif %}
-                    {% if action.military > 0 %}
-                    <b>Military Resources:</b> {{ action.military }}<br/>
+                    {% if action.total_military > 0 %}
+                    <b>Military Resources:</b> {{ action.total_military }}<br/>
                     {% endif %}
-                    {% if action.social > 0 %}
-                    <b>Social Resources:</b> {{ action.social }}<br/>
+                    {% if action.total_social > 0 %}
+                    <b>Social Resources:</b> {{ action.total_social }}<br/>
                     {% endif %}
-                    {% if action.action_points > 0 %}
-                    <b>Action Points:</b> {{ action.action_points }}<br/>
+                    {% if action.total_action_points > 0 %}
+                    <b>Action Points:</b> {{ action.total_action_points }}<br/>
                     {% endif %}
                 </td>
             </tr>
