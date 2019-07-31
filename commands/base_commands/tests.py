@@ -469,10 +469,6 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.assetowner2.economic, 50)
         self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
 
-
-    
-
-
     def test_cmd_inventory(self):
         self.setup_cmd(overrides.CmdInventory, self.char1)
         self.char1.currency = 125446

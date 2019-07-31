@@ -27,8 +27,7 @@ class WantedAd(SharedMemoryModel):
     PROTEGE = 2
     PLOT = 3
     TIME = 4
-    MATCH_TYPES = ((MARRIAGE, "Marriage"), (SPONSOR, "Sponsor"),
-                   (PROTEGE, "Protege"), (PLOT, "Plot"), (TIME, "Time"))
+    MATCH_TYPES = ((MARRIAGE, "Marriage"), (SPONSOR, "Sponsor"), (PROTEGE, "Protege"), (PLOT, "Plot"), (TIME, "Time"))
     playtime_start = models.PositiveIntegerField(default=0)
     playtime_end = models.PositiveIntegerField(default=0)
     prefer_weekend = models.BooleanField(default=False)
@@ -118,38 +117,19 @@ class BrokeredSale(SharedMemoryModel):
     CRAFTING_MATERIALS = 4
     SALE = 0
     PURCHASE = 1
-    OFFERING_TYPES = (
-        (ACTION_POINTS,
-         "Action Points"),
-        (ECONOMIC,
-         "Economic Resources"),
-        (SOCIAL,
-         "Social Resources"),
-        (MILITARY,
-         "Military Resources"),
-        (CRAFTING_MATERIALS,
-         "Crafting Materials"))
-    RESOURCE_TYPES = ((ECONOMIC, "economic"),
-                      (SOCIAL, "social"), (MILITARY, "military"))
+    OFFERING_TYPES = ((ACTION_POINTS, "Action Points"), (ECONOMIC, "Economic Resources"), (SOCIAL, "Social Resources"),
+                      (MILITARY, "Military Resources"), (CRAFTING_MATERIALS, "Crafting Materials"))
+    RESOURCE_TYPES = ((ECONOMIC, "economic"), (SOCIAL, "social"), (MILITARY, "military"))
     BROKER_TYPES = ((PURCHASE, "Purchase"), (SALE, "Sale"))
-    owner = models.ForeignKey(
-        "dominion.PlayerOrNpc",
-        related_name="brokered_sales")
-    sale_type = models.PositiveSmallIntegerField(
-        default=ACTION_POINTS, choices=OFFERING_TYPES)
+    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="brokered_sales")
+    sale_type = models.PositiveSmallIntegerField(default=ACTION_POINTS, choices=OFFERING_TYPES)
     amount = models.PositiveIntegerField(default=0)
     price = models.PositiveIntegerField(default=0)
-    buyers = models.ManyToManyField(
-        "dominion.PlayerOrNpc",
-        related_name="brokered_purchases",
-        through="PurchasedAmount")
-    crafting_material_type = models.ForeignKey(
-        "dominion.CraftingMaterialType",
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE)
-    broker_type = models.PositiveSmallIntegerField(
-        default=SALE, choices=BROKER_TYPES)
+    buyers = models.ManyToManyField("dominion.PlayerOrNpc", related_name="brokered_purchases",
+                                    through="PurchasedAmount")
+    crafting_material_type = models.ForeignKey("dominion.CraftingMaterialType", null=True, blank=True,
+                                               on_delete=models.CASCADE)
+    broker_type = models.PositiveSmallIntegerField(default=SALE, choices=BROKER_TYPES)
 
     @property
     def material_name(self):
@@ -307,17 +287,11 @@ class PurchasedAmount(SharedMemoryModel):
 
 class Petition(SharedMemoryModel):
     """A request for assistance made openly or to an organization"""
-    dompcs = models.ManyToManyField(
-        'dominion.PlayerOrNpc',
-        related_name="petitions",
-        through="PetitionParticipation")
-    organization = models.ForeignKey(
-        'dominion.Organization',
-        related_name="petitions",
-        blank=True,
-        null=True,
-        on_delete=models.CASCADE)
+    dompcs = models.ManyToManyField('dominion.PlayerOrNpc', related_name="petitions", through="PetitionParticipation")
+    organization = models.ForeignKey('dominion.Organization', related_name="petitions", blank=True, null=True,
+                                     on_delete=models.CASCADE)
     closed = models.BooleanField(default=False)
+    waiting = models.BooleanField(default=True)
     topic = models.CharField("Short summary of the petition", max_length=120)
     description = models.TextField("Description of the petition.")
 

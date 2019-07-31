@@ -2213,16 +2213,12 @@ class CmdSocialNotable(ArxCommand):
     key = "notable"
     locks = "cmd:all()"
 
-
     def show_rankings(self, title, asset_owners, adjust_type, show_percent=False):
         counter = 1
         table = EvTable()
         table.add_column(width=8)
         table.add_column()
-
-
         median = AssetOwner.MEDIAN_PRESTIGE * 1.
-
         for owner in asset_owners:
             if show_percent:
                 percentage = round((owner.prestige / median) * 100)
@@ -2237,24 +2233,18 @@ class CmdSocialNotable(ArxCommand):
 
     def func(self):
         adjust_type = None
-
         if self.args:
             try:
                 target = self.character_search(self.args)
                 asset = AssetOwner.objects.get(player=target.dompc)
-
                 percentage = round((asset.prestige / (AssetOwner.MEDIAN_PRESTIGE * 1.)) * 100)
                 percentage -= percentage % 10
                 descriptor = asset.prestige_descriptor(None, include_reason=False, wants_long_reason=True)
                 best_adjust = asset.most_notable_adjustment(adjust_type=None)
-
                 result = "%s, is roughly %d%% as notable as the average citizen." % (descriptor, percentage)
-
                 if best_adjust and best_adjust.long_reason:
                     result = "%s %s" % (result, best_adjust.long_reason)
-
                 self.msg(result)
-
             except CommandError as ce:
                 self.msg(ce)
             except (AssetOwner.DoesNotExist, AssetOwner.MultipleObjectsReturned):
@@ -2262,7 +2252,6 @@ class CmdSocialNotable(ArxCommand):
             except ValueError:
                 self.msg("That character doesn't seem to be on the list!")
             return
-
         if "orgs" in self.switches:
             title = "Organizations Currently in the Public Eye"
             assets = AssetOwner.objects.filter(organization_owner__secret=False).filter(
@@ -2271,7 +2260,6 @@ class CmdSocialNotable(ArxCommand):
         else:
             assets = list(
                 AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
-
             if "buzz" in self.switches:
                 title = "Who's Momentarily in the News"
                 adjust_type = PrestigeAdjustment.FAME
@@ -2290,7 +2278,6 @@ class CmdSocialNotable(ArxCommand):
             else:
                 title = "Who's Being Talked About Right Now"
                 assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
-
         assets = assets[:20]
         self.show_rankings(title, assets, adjust_type, show_percent=self.caller.check_permstring("builders"))
 
