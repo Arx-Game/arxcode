@@ -14,6 +14,7 @@ from web.character.models import (Clue, SearchTag)
 from world.dominion.models import PlayerOrNpc
 from world.dominion.general_dominion_commands import CmdPatronage
 
+
 class Interest(SharedMemoryModel):
     name = models.CharField(max_length=30)
     wantedads = models.ManyToManyField("WantedAd", related_name="wanted_ads")
@@ -26,7 +27,8 @@ class WantedAd(SharedMemoryModel):
     PROTEGE = 2
     PLOT = 3
     TIME = 4
-    MATCH_TYPES = ((MARRIAGE, "Marriage"),(SPONSOR,"Sponsor"),(PROTEGE,"Protege"),(PLOT,"Plot"),(TIME,"Time"))
+    MATCH_TYPES = ((MARRIAGE, "Marriage"), (SPONSOR, "Sponsor"),
+                   (PROTEGE, "Protege"), (PLOT, "Plot"), (TIME, "Time"))
     playtime_start = models.PositiveIntegerField(default=0)
     playtime_end = models.PositiveIntegerField(default=0)
     prefer_weekend = models.BooleanField(default=False)
@@ -39,61 +41,65 @@ class WantedAd(SharedMemoryModel):
     protege = models.BooleanField(default=False)
     plot = models.BooleanField(default=False)
     active = models.BooleanField(default=False)
-    owner = models.OneToOneField(PlayerOrNpc, related_name="wanted_ad", on_delete=models.CASCADE)
+    owner = models.OneToOneField(
+        PlayerOrNpc,
+        related_name="wanted_ad",
+        on_delete=models.CASCADE)
 
     def cleanup():
-        playtime_start=0
-        playtime_end=0
-        prefer_weekend=False
+        playtime_start = 0
+        playtime_end = 0
+        prefer_weekend = False
         interests.clear()
         clues.clear()
         searchtags.clear()
-        blurb=""
-        marriage=False
-        sponsor=False
-        protege=False
-        plot=False
-        active=False
+        blurb = ""
+        marriage = False
+        sponsor = False
+        protege = False
+        plot = False
+        active = False
 
-    def match(self, dompc,plot_matches):
-        matches =[]
-
+    def match(self, dompc, plot_matches):
+        matches = []
         overlap = 0
         try:
             seeker_ad = dompc.wanted_ad
         except AttributeError:
             return matches
-        my_end =int(self.playtime_end)
-        their_end =int(seeker_ad.playtime_end)
-        my_start =int(self.playtime_start)
+        my_end = int(self.playtime_end)
+        their_end = int(seeker_ad.playtime_end)
+        my_start = int(self.playtime_start)
         their_start = int(seeker_ad.playtime_start)
 
-        if dompc==self.owner:
+        if dompc == self.owner:
             return matches
         if my_start >= my_end:
-            my_end+=24
+            my_end += 24
         if their_start >= their_end:
-            their_end+=24
+            their_end += 24
 
         if their_end > my_end:
-            overlap=my_end
+            overlap = my_end
         else:
-            overlap=their_end
+            overlap = their_end
 
         if their_start > my_start:
-            overlap-=their_start
+            overlap -= their_start
         else:
-            overlap-=my_start
+            overlap -= my_start
 
-        if overlap >2:
+        if overlap > 2:
             matches.append(self.TIME)
         if self.sponsor and seeker_ad.protege:
-            
-            rankcheck, diff=CmdPatronage().check_social_rank_difference(self.owner.player.char_ob,dompc.player.char_ob)
+
+            rankcheck, diff = CmdPatronage().check_social_rank_difference(
+                self.owner.player.char_ob, dompc.player.char_ob)
             if rankcheck:
                 matches.append(self.PROTEGE)
         if self.protege and seeker_ad.sponsor:
-            rankcheck, diff=CmdPatronage().check_social_rank_difference(dompc.player.char_ob,self.owner.player.char_ob)
+            rankcheck, diff = CmdPatronage().check_social_rank_difference(
+                dompc.player.char_ob, self.owner.player.char_ob)
             if rankcheck:
                 matches.append(self.SPONSOR)
         if self.marriage and seeker_ad.marriage:
@@ -101,7 +107,7 @@ class WantedAd(SharedMemoryModel):
         if self in plot_matches:
             matches.append(self.PLOT)
         return matches
-                
+
 
 class BrokeredSale(SharedMemoryModel):
     """A sale sitting on the broker, waiting for someone to buy it"""
@@ -112,19 +118,38 @@ class BrokeredSale(SharedMemoryModel):
     CRAFTING_MATERIALS = 4
     SALE = 0
     PURCHASE = 1
-    OFFERING_TYPES = ((ACTION_POINTS, "Action Points"), (ECONOMIC, "Economic Resources"), (SOCIAL, "Social Resources"),
-                      (MILITARY, "Military Resources"), (CRAFTING_MATERIALS, "Crafting Materials"))
-    RESOURCE_TYPES = ((ECONOMIC, "economic"), (SOCIAL, "social"), (MILITARY, "military"))
+    OFFERING_TYPES = (
+        (ACTION_POINTS,
+         "Action Points"),
+        (ECONOMIC,
+         "Economic Resources"),
+        (SOCIAL,
+         "Social Resources"),
+        (MILITARY,
+         "Military Resources"),
+        (CRAFTING_MATERIALS,
+         "Crafting Materials"))
+    RESOURCE_TYPES = ((ECONOMIC, "economic"),
+                      (SOCIAL, "social"), (MILITARY, "military"))
     BROKER_TYPES = ((PURCHASE, "Purchase"), (SALE, "Sale"))
-    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="brokered_sales")
-    sale_type = models.PositiveSmallIntegerField(default=ACTION_POINTS, choices=OFFERING_TYPES)
+    owner = models.ForeignKey(
+        "dominion.PlayerOrNpc",
+        related_name="brokered_sales")
+    sale_type = models.PositiveSmallIntegerField(
+        default=ACTION_POINTS, choices=OFFERING_TYPES)
     amount = models.PositiveIntegerField(default=0)
     price = models.PositiveIntegerField(default=0)
-    buyers = models.ManyToManyField("dominion.PlayerOrNpc", related_name="brokered_purchases",
-                                    through="PurchasedAmount")
-    crafting_material_type = models.ForeignKey("dominion.CraftingMaterialType", null=True, blank=True,
-                                               on_delete=models.CASCADE)
-    broker_type = models.PositiveSmallIntegerField(default=SALE, choices=BROKER_TYPES)
+    buyers = models.ManyToManyField(
+        "dominion.PlayerOrNpc",
+        related_name="brokered_purchases",
+        through="PurchasedAmount")
+    crafting_material_type = models.ForeignKey(
+        "dominion.CraftingMaterialType",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE)
+    broker_type = models.PositiveSmallIntegerField(
+        default=SALE, choices=BROKER_TYPES)
 
     @property
     def material_name(self):
@@ -148,7 +173,8 @@ class BrokeredSale(SharedMemoryModel):
             string display of the sale
         """
         msg = "{wID{n: %s\n" % self.id
-        msg += "{wMaterial{n: %s {wAmount{n: %s {wPrice{n: %s\n" % (self.material_name, self.amount, self.price)
+        msg += "{wMaterial{n: %s {wAmount{n: %s {wPrice{n: %s\n" % (
+            self.material_name, self.amount, self.price)
         amounts = self.purchased_amounts.all()
         if caller == self.owner_character and amounts:
             msg += "{wPurchase History:{n\n"
@@ -169,7 +195,9 @@ class BrokeredSale(SharedMemoryModel):
             PayError if they can't afford stuff
         """
         if amount > self.amount:
-            raise PayError("You want to buy %s, but there is only %s for sale." % (amount, self.amount))
+            raise PayError(
+                "You want to buy %s, but there is only %s for sale." %
+                (amount, self.amount))
         cost = self.price * amount
         self.amount -= amount
         if self.broker_type == self.SALE:
@@ -210,18 +238,30 @@ class BrokeredSale(SharedMemoryModel):
     def pay_owner(self, buyer, quantity, cost):
         """Pays our owner"""
         self.owner_character.pay_money(-cost)
-        self.owner.player.inform("%s has bought %s %s for %s silver." % (buyer, quantity, self.material_name, cost),
-                                 category="Broker Sale", append=True)
+        self.owner.player.inform(
+            "%s has bought %s %s for %s silver." %
+            (buyer,
+             quantity,
+             self.material_name,
+             cost),
+            category="Broker Sale",
+            append=True)
 
     def pay_seller(self, seller, quantity, cost):
         seller.player.char_ob.pay_money(-cost)
-        self.owner.player.inform("%s has sold %s %s for %s silver." % (seller, quantity, self.material_name, cost),
-                                 category="Broker Sale", append=True)
+        self.owner.player.inform(
+            "%s has sold %s %s for %s silver." %
+            (seller,
+             quantity,
+             self.material_name,
+             cost),
+            category="Broker Sale",
+            append=True)
 
     def cancel(self):
         """Refund our owner and delete ourselves"""
         if self.broker_type == self.PURCHASE:
-            self.owner_character.pay_money(-self.amount*self.price)
+            self.owner_character.pay_money(-self.amount * self.price)
         else:
             self.send_goods(self.owner, self.amount)
         self.delete()
@@ -230,16 +270,20 @@ class BrokeredSale(SharedMemoryModel):
         """Changes the price to new_price. If we have an existing sale by that price, merge with it."""
         if self.broker_type == self.PURCHASE:
             buyer = self.owner_character
-            original_cost = new_price*self.amount
-            new_cost = self.price*self.amount
-            to_pay = original_cost-new_cost
+            original_cost = new_price * self.amount
+            new_cost = self.price * self.amount
+            to_pay = original_cost - new_cost
             if to_pay > buyer.currency:
-                raise PayError("You cannot afford to pay {:,} when you only have {:,} silver.".format(to_pay, buyer.currency))
+                raise PayError(
+                    "You cannot afford to pay {:,} when you only have {:,} silver.".format(
+                        to_pay, buyer.currency))
             self.owner_character.pay_money(to_pay)
         try:
-            other_sale = self.owner.brokered_sales.get(sale_type=self.sale_type, price=new_price,
-                                                       crafting_material_type=self.crafting_material_type,
-                                                       broker_type=self.broker_type)
+            other_sale = self.owner.brokered_sales.get(
+                sale_type=self.sale_type,
+                price=new_price,
+                crafting_material_type=self.crafting_material_type,
+                broker_type=self.broker_type)
             other_sale.amount += self.amount
             other_sale.save()
             self.delete()
@@ -251,7 +295,9 @@ class BrokeredSale(SharedMemoryModel):
 class PurchasedAmount(SharedMemoryModel):
     """Details of a purchase by a player"""
     deal = models.ForeignKey('BrokeredSale', related_name="purchased_amounts")
-    buyer = models.ForeignKey('dominion.PlayerOrNpc', related_name="purchased_amounts")
+    buyer = models.ForeignKey(
+        'dominion.PlayerOrNpc',
+        related_name="purchased_amounts")
     amount = models.PositiveIntegerField(default=0)
 
     def display(self):
@@ -261,9 +307,16 @@ class PurchasedAmount(SharedMemoryModel):
 
 class Petition(SharedMemoryModel):
     """A request for assistance made openly or to an organization"""
-    dompcs = models.ManyToManyField('dominion.PlayerOrNpc', related_name="petitions", through="PetitionParticipation")
-    organization = models.ForeignKey('dominion.Organization', related_name="petitions", blank=True, null=True,
-                                     on_delete=models.CASCADE)
+    dompcs = models.ManyToManyField(
+        'dominion.PlayerOrNpc',
+        related_name="petitions",
+        through="PetitionParticipation")
+    organization = models.ForeignKey(
+        'dominion.Organization',
+        related_name="petitions",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE)
     closed = models.BooleanField(default=False)
     topic = models.CharField("Short summary of the petition", max_length=120)
     description = models.TextField("Description of the petition.")
@@ -272,7 +325,8 @@ class Petition(SharedMemoryModel):
     def owner(self):
         """Gets first owner, if any"""
         try:
-            return self.petitionparticipation_set.filter(is_owner=True).first().dompc
+            return self.petitionparticipation_set.filter(
+                is_owner=True).first().dompc
         except AttributeError:
             pass
 
@@ -318,11 +372,14 @@ class Petition(SharedMemoryModel):
 
     def signup(self, dompc, first_person=True):
         """Signs up a dompc for this"""
-        if self.petitionparticipation_set.filter(dompc=dompc, signed_up=True).exists():
+        if self.petitionparticipation_set.filter(
+                dompc=dompc, signed_up=True).exists():
             if first_person:
                 raise PetitionError("You have already signed up for this.")
             else:
-                raise PetitionError("%s has already signed up for this." % dompc)
+                raise PetitionError(
+                    "%s has already signed up for this." %
+                    dompc)
         part, _ = self.petitionparticipation_set.get_or_create(dompc=dompc)
         part.signed_up = True
         part.save()
@@ -330,22 +387,28 @@ class Petition(SharedMemoryModel):
     def leave(self, dompc, first_person=True):
         """Leaves a petition"""
         try:
-            part = self.petitionparticipation_set.get(dompc=dompc, signed_up=True)
+            part = self.petitionparticipation_set.get(
+                dompc=dompc, signed_up=True)
         except PetitionParticipation.DoesNotExist:
             if first_person:
                 raise PetitionError("You are not signed up for that petition.")
             else:
-                raise PetitionError("%s is not signed up for that petition." % dompc)
+                raise PetitionError(
+                    "%s is not signed up for that petition." %
+                    dompc)
         part.signed_up = False
         part.save()
 
     def add_post(self, dompc, text, in_character):
         """Make a new post"""
         self.posts.create(in_character=in_character, dompc=dompc, text=text)
-        for participant in self.petitionparticipation_set.filter(unread_posts=False).exclude(dompc=dompc):
+        for participant in self.petitionparticipation_set.filter(
+                unread_posts=False).exclude(dompc=dompc):
             participant.unread_posts = True
             participant.save()
-            participant.player.msg("{wA new message has been posted to petition %s.{n" % self.id)
+            participant.player.msg(
+                "{wA new message has been posted to petition %s.{n" %
+                self.id)
 
     def mark_posts_read(self, dompc):
         """If dompc is a participant, mark their posts read"""
