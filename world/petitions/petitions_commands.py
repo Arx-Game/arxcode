@@ -13,6 +13,7 @@ from world.petitions.models import BrokeredSale, Petition, PetitionSettings
 from world.dominion.models import Organization
 from datetime import date
 
+
 class CmdPetition(RewardRPToolUseMixin, ArxCommand):
     """
     Creates a petition to an org or the market as a whole
@@ -56,7 +57,7 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
     admin_switches = org_admin_switches + ("close", "reopen")
     creation_switches = ("create", "topic", "desc", "org", "submit", "cancel")
     owner_switches = ("editdesc", "edittopic")
-    ignore_switches= ("ignore")
+    ignore_switches = ("ignore")
 
     class PetitionCommandError(CommandError):
         """Exception class for Petition Command"""
@@ -64,7 +65,7 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
 
     def func(self):
         """Executes petition command"""
-        settings,created=self.caller.dompc.petition_settings.get_or_create()
+        settings, created = self.caller.dompc.petition_settings.get_or_create()
         self.mark_command_used()
         try:
             if self.check_switches(self.list_switches) or (not self.switches and not self.args.isdigit()):
@@ -85,13 +86,12 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         except (self.PetitionCommandError, PetitionError) as err:
             self.msg(err)
 
-            
-    def color_coder(self,petition,dompc):
-        if petition.waiting and (date.today()-petition.date_created).days>7:
+    def color_coder(self, petition, dompc):
+        if petition.waiting and (date.today() - petition.date_created).days > 7:
             return "|550"
         elif petition.waiting:
             return "|500"
-        elif (date_updated-petition.date_created).days>7:
+        elif (date_updated - petition.date_created).days > 7:
             return "|530"
         elif petition.petitionparticipation_set.filter(dompc=dompc).unread_posts:
             return "|253"
@@ -109,7 +109,7 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
                 raise self.PetitionCommandError("You do not have access to view petitions for %s." % org)
             qs = org.petitions.all()
         else:
-            
+
             orgs = Organization.objects.filter(members__deguilded=False).filter(members__player=self.caller.dompc)
             orgs = [org for org in orgs if org.access(self.caller, "view_petition")]
             query = Q(organization__in=orgs)
@@ -123,10 +123,11 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         if "search" in self.switches:
             qs = qs.filter(Q(topic__icontains=self.lhs) | Q(description__icontains=self.lhs))
         signed_up = list(self.caller.dompc.petitions.filter(petitionparticipation__signed_up=True))
-        table = PrettyTable(["Updated","ID", "Owner", "Topic", "Org", "On"])
+        table = PrettyTable(["Updated", "ID", "Owner", "Topic", "Org", "On"])
         for ob in qs.distinct():
             signed_str = "X" if ob in signed_up else ""
-            table.add_row([self.color_coder(ob,self.caller.dompc)+ob.date_updated.strftime("%m/%d/%y"),ob.id, str(ob.owner), ob.topic[:30], str(ob.organization), signed_str])
+            table.add_row([self.color_coder(ob, self.caller.dompc) + ob.date_updated.strftime("%m/%d/%y"),
+                           ob.id, str(ob.owner), ob.topic[:30], str(ob.organization), signed_str])
         self.msg(str(table))
         self.display_petition_form()
 
@@ -212,15 +213,17 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
             self.msg("Successfully created petition %s." % petition.id)
             self.caller.attributes.remove("petition_form")
             if petition.organization is not None:
-                targets=PetitionSettings.objects.all().exclude(ignored_organizations=petition.organization).exclude(inform=False)
+                targets = PetitionSettings.objects.all().exclude(ignored_organizations=petition.organization).exclude(inform=False)
                 for target in targets:
-                    target.owner.player.msg("{wA new petition was posted by %s to %s.{n" % (petition.owner,petition.organization))
-                    target.owner.player.inform("{wA new petition was posted by %s to %s.{n|/|/%s" % (petition.owner,petition.organization,petition.display()),category="Petition", append=True)
+                    target.owner.player.msg("{wA new petition was posted by %s to %s.{n" % (petition.owner, petition.organization))
+                    target.owner.player.inform("{wA new petition was posted by %s to %s.{n|/|/%s" %
+                                               (petition.owner, petition.organization, petition.display()), category="Petition", append=True)
             else:
-                targets=PetitionSettings.objects.all().exclude(inform=False).exclude(ignore_general=True)
+                targets = PetitionSettings.objects.all().exclude(inform=False).exclude(ignore_general=True)
                 for target in targets:
                     target.owner.player.msg("{wA new petition was posted by %s{n" % (petition.owner))
-                    target.owner.player.inform("{wA new petition was posted by %s{n|/|/%s" % (petition.owner,petition.display()),category="Petition", append=True)
+                    target.owner.player.inform("{wA new petition was posted by %s{n|/|/%s" %
+                                               (petition.owner, petition.display()), category="Petition", append=True)
         else:
             if "create" in self.switches:
                 if form:
@@ -266,18 +269,18 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         petition.mark_posts_unread(self.caller.dompc)
 
     def do_ignore_switches(self):
-        settings,created=self.caller.dompc.petition_settings.get_or_create()
-        if self.lhs=="all":
-            settings.inform^=True
-            self.msg("You are now %s informed of new petitions") %("" if settings.inform == True else "not")
-        elif self.lhs=="general":
-            settings.ignore_general^=True
-            self.msg("You are now %s informed of new general petitions") %("" if settings.inform == True else "not")
+        settings, created = self.caller.dompc.petition_settings.get_or_create()
+        if self.lhs == "all":
+            settings.inform ^= True
+            self.msg("You are now %s informed of new petitions") % ("" if settings.inform == True else "not")
+        elif self.lhs == "general":
+            settings.ignore_general ^= True
+            self.msg("You are now %s informed of new general petitions") % ("" if settings.inform == True else "not")
         else:
-            org=self.get_org_from_args(self.lhs)
+            org = self.get_org_from_args(self.lhs)
             settings.ignored_organizations.add(org)
-            self.msg("You are now %s informed of new "+self.lhs+" petitions") %("" if settings.inform == True else "not")
-        
+            self.msg("You are now %s informed of new " + self.lhs + " petitions") % ("" if settings.inform == True else "not")
+
     def get_org_from_args(self, args):
         """Gets an organization"""
         from world.dominion.models import Organization
@@ -430,7 +433,7 @@ class CmdBroker(ArxCommand):
         amount = self.get_amount(self.rhslist[0])
         price = self.get_amount(self.rhslist[1], "price")
         character = self.caller.player.char_ob
-        cost = price*amount
+        cost = price * amount
         if cost > character.currency:
             raise PayError("You cannot afford to pay %s when you only have %s silver." % (cost, character.currency))
         material_type = None
@@ -469,10 +472,10 @@ class CmdBroker(ArxCommand):
                         buyamount = amount
                     order.make_purchase(dompc, buyamount)
                     self.msg("You have bought %s %s from %s for %s silver." % (buyamount, order.material_name, seller,
-                                                                               order.price*buyamount))
+                                                                               order.price * buyamount))
                     amount -= buyamount
                     if order.price < price:
-                        character.pay_money(-(price-order.price)*buyamount)
+                        character.pay_money(-(price - order.price) * buyamount)
 
         purchase.amount = amount
         purchase.save()
@@ -481,11 +484,11 @@ class CmdBroker(ArxCommand):
             created = None
         if created:
             self.msg("You have placed an order for %s %s for %s silver each and %s total." %
-                     (amount, purchase.material_name, price, purchase.amount*price))
+                     (amount, purchase.material_name, price, purchase.amount * price))
         else:
             if amount > 0:
                 self.msg("Added %s to the existing order of %s for %s silver each and %s total." %
-                         (original, purchase.material_name, price, purchase.amount*price))
+                         (original, purchase.material_name, price, purchase.amount * price))
 
     def get_amount(self, args, noun="amount"):
         """Gets a positive number to use for a transaction, or raises a BrokerError"""
@@ -545,11 +548,11 @@ class CmdBroker(ArxCommand):
             created = None
         if created:
             self.msg("Created a new sale of %s %s for %s silver each and %s total." %
-                     (amount, sale.material_name, price, sale.amount*price))
+                     (amount, sale.material_name, price, sale.amount * price))
         else:
             if amount > 0:
                 self.msg("Added %s to the existing sale of %s for %s silver each and %s total." %
-                         (original, sale.material_name, price, sale.amount*price))
+                         (original, sale.material_name, price, sale.amount * price))
 
     def check_for_buyers(self, sale):
         dompc = self.caller.dompc
