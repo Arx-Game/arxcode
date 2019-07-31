@@ -291,7 +291,6 @@ class Petition(SharedMemoryModel):
     organization = models.ForeignKey('dominion.Organization', related_name="petitions", blank=True, null=True,
                                      on_delete=models.CASCADE)
     closed = models.BooleanField(default=False)
-    waiting = models.BooleanField(default=True)
     topic = models.CharField("Short summary of the petition", max_length=120)
     description = models.TextField("Description of the petition.")
 
