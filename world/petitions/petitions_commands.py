@@ -101,7 +101,6 @@ class CmdMatchmaker(ArxCommand):
 
     def clues(self):
         ad = self.caller.dompc.wanted_ad
-        clues = []
         args = self.args.split("/")
         message = "You're now matching: "
         if not args:
@@ -113,11 +112,12 @@ class CmdMatchmaker(ArxCommand):
                 try:
                     clue = self.get_by_name_or_id(Clue, entry)
                     ad.clues.add(clue)
-                    for tag in clue.search_tags.all():
-                        ad.searchtags.add(tag)
                     message += "{}; ".format(clue.name)
                 except (Clue.DoesNotExist, CommandError) as e:
                     self.msg("There's no clue called {}".format(entry))
+            tags = SearchTag.objects.filter(id__in=[ob.id for ob in ad.clues])
+            for tag in tags:
+                ad.searchtags.add(tag)
         self.msg(message)
         return
 
