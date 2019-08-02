@@ -1960,6 +1960,7 @@ class Organization(InformMixin, SharedMemoryModel):
                 msg += "\n{wClues Known:"
                 for clue in clues:
                     if clue in discovered_clues:
+
                         msg += "{n %s;" % clue
                     else:
                         msg += "{w %s{n;" % clue

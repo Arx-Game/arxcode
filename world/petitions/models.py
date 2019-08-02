@@ -10,6 +10,7 @@ from evennia.utils.idmapper.models import SharedMemoryModel
 
 from server.utils.exceptions import PayError
 from .exceptions import PetitionError
+from world.dominion.models import Organization
 
 
 class BrokeredSale(SharedMemoryModel):
@@ -130,7 +131,7 @@ class BrokeredSale(SharedMemoryModel):
     def cancel(self):
         """Refund our owner and delete ourselves"""
         if self.broker_type == self.PURCHASE:
-            self.owner_character.pay_money(-self.amount*self.price)
+            self.owner_character.pay_money(-self.amount * self.price)
         else:
             self.send_goods(self.owner, self.amount)
         self.delete()
@@ -139,9 +140,9 @@ class BrokeredSale(SharedMemoryModel):
         """Changes the price to new_price. If we have an existing sale by that price, merge with it."""
         if self.broker_type == self.PURCHASE:
             buyer = self.owner_character
-            original_cost = new_price*self.amount
-            new_cost = self.price*self.amount
-            to_pay = original_cost-new_cost
+            original_cost = new_price * self.amount
+            new_cost = self.price * self.amount
+            to_pay = original_cost - new_cost
             if to_pay > buyer.currency:
                 raise PayError("You cannot afford to pay %s when you only have %s silver." % (to_pay, buyer.currency))
             self.owner_character.pay_money(to_pay)
@@ -168,14 +169,37 @@ class PurchasedAmount(SharedMemoryModel):
         return "{} bought {}".format(self.buyer, self.amount)
 
 
+class PetitionSettings(SharedMemoryModel):
+    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="petition_settings")
+    inform = models.BooleanField(default=True)
+    ignore_general = models.BooleanField(default=False)
+    ignored_organizations = models.ManyToManyField(Organization)
+
+    def cleanup(self):
+        self.ignore_general = False
+        self.inform = True
+        self.ignored_organizations.clear()
+        participations = self.owner.petitionparticipation_set.all()
+        for petition_participation in participations:
+            petition_participation.subscribed = False
+            petition_participation.unread_posts = True
+            petition_participation.signed_up = False
+            if (petition_participation.is_owner):
+                petition_participation.petition.closed = True
+            petition_participation.save()
+
+
 class Petition(SharedMemoryModel):
     """A request for assistance made openly or to an organization"""
     dompcs = models.ManyToManyField('dominion.PlayerOrNpc', related_name="petitions", through="PetitionParticipation")
     organization = models.ForeignKey('dominion.Organization', related_name="petitions", blank=True, null=True,
                                      on_delete=models.CASCADE)
     closed = models.BooleanField(default=False)
+    waiting = models.BooleanField(default=True)
     topic = models.CharField("Short summary of the petition", max_length=120)
     description = models.TextField("Description of the petition.")
+    date_created = models.DateField(auto_now_add=True)
+    date_updated = models.DateField(auto_now=True)
 
     @property
     def owner(self):
@@ -234,6 +258,7 @@ class Petition(SharedMemoryModel):
                 raise PetitionError("%s has already signed up for this." % dompc)
         part, _ = self.petitionparticipation_set.get_or_create(dompc=dompc)
         part.signed_up = True
+        part.subscribed = True
         part.save()
 
     def leave(self, dompc, first_person=True):
@@ -251,10 +276,15 @@ class Petition(SharedMemoryModel):
     def add_post(self, dompc, text, in_character):
         """Make a new post"""
         self.posts.create(in_character=in_character, dompc=dompc, text=text)
+        part = self.petitionparticipation_set.get(dompc=dompc)
+        part.subscribed = True
         for participant in self.petitionparticipation_set.filter(unread_posts=False).exclude(dompc=dompc):
             participant.unread_posts = True
             participant.save()
-            participant.player.msg("{wA new message has been posted to petition %s.{n" % self.id)
+            if participant.subscribed:
+                participant.player.msg("{wA new message has been posted to petition %s.{n" % self.id)
+                participant.player.inform("{wA new message has been posted to petition %s:{n|/|/%s" %
+                                          (self.id, text), category="Petition", append=True)
 
     def mark_posts_read(self, dompc):
         """If dompc is a participant, mark their posts read"""
@@ -265,6 +295,13 @@ class Petition(SharedMemoryModel):
         except PetitionParticipation.DoesNotExist:
             pass
 
+    def mark_posts_unread(self, dompc):
+        """If dompc is a participant, mark their posts read"""
+        participants = self.petitionparticipation_set.all().exclude(dompc=dompc)
+        for participant in participants:
+            participant.unread_posts = True
+            participant.save()
+
 
 class PetitionParticipation(SharedMemoryModel):
     """A model showing how someone participated in a petition"""
@@ -273,6 +310,7 @@ class PetitionParticipation(SharedMemoryModel):
     is_owner = models.BooleanField(default=False)
     signed_up = models.BooleanField(default=False)
     unread_posts = models.BooleanField(default=False)
+    subscribed = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('petition', 'dompc')

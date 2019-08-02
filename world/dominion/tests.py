@@ -4,9 +4,9 @@ Tests for dominion stuff. Crisis commands, etc.
 from mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
+
 from . import crisis_commands, general_dominion_commands
 from world.dominion.plots import plot_commands
-
 from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions, SearchTag
 from world.dominion.models import RPEvent, Organization, CraftingMaterialType, ClueForOrg
 from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement, PlotUpdate

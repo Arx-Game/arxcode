@@ -469,6 +469,10 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.assetowner2.economic, 50)
         self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
 
+
+    
+
+
     def test_cmd_inventory(self):
         self.setup_cmd(overrides.CmdInventory, self.char1)
         self.char1.currency = 125446
@@ -543,6 +547,7 @@ class RosterTests(ArxCommandTest):
         self.assertEqual(self.member.rank, 3)
         self.assertEqual(self.dompc2.patron, None)
 
+
     def test_cmd_propriety(self):
         self.setup_cmd(roster.CmdPropriety, self.account)
         self.call_cmd(" nonsense", "There's no propriety known as 'nonsense'.")
@@ -555,6 +560,7 @@ class RosterTests(ArxCommandTest):
         self.caller.execute_cmd("admin_propriety/remove Tester=testaccount")
         self.caller.execute_cmd("admin_propriety/create Vixen=-3")
         self.call_cmd("vixen", "No one is currently spoken of with the 'Vixen' reputation.")
+
 
 
 # noinspection PyUnresolvedReferences

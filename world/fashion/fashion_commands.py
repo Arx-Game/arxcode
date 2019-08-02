@@ -272,7 +272,6 @@ class CmdFashionModel(ArxCommand):
             # for lowercase names, we'll capitalize them
             if q[0] == q[0].lower():
                 q[0] = q[0].capitalize()
-
             table.add_row(q)
         self.msg(str(table))
 

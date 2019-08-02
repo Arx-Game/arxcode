@@ -54,11 +54,9 @@ def inform_staff(message, post=False, subject=None, quiet=settings.DEBUG):
         if not quiet:
             print("ERROR when attempting utils.inform_staff() : %s" % err)
 
-
 def inform_guides(message, post=False, subject=None, quiet=settings.DEBUG):
     """
     Sends a message to the 'Guides' channel for guide announcements.
-
         Args:
             message: text message to broadcast
             post: If True, we post message. If a truthy value other than True, that's the body of the post.
@@ -80,6 +78,8 @@ def inform_guides(message, post=False, subject=None, quiet=settings.DEBUG):
     except Exception as err:
         if not quiet:
             print("ERROR when attempting utils.inform_guides() : %s" % err)
+
+
 
 
 def setup_log(logfile):
@@ -372,6 +372,8 @@ def post_roster_dompc_cleanup(player):
         dompc = player.Dominion
     except AttributeError:
         return
+    settings,created=dompc.petition_settings.get_or_create()
+    settings.cleanup()
     dompc.proteges.clear()
     dompc.patron = None
     dompc.save()
@@ -640,7 +642,6 @@ def list_to_string(inlist, endsep="and", addquote=False):
             return str(inlist[0])
         return ", ".join(str(v) for v in inlist[:-1]) + "%s %s" % (endsep, inlist[-1])
 
-
 def queryset_to_string(qset):
     """
     Gets a string representation of the queryset. We check plural class name for each object in the
@@ -685,6 +686,7 @@ def qslist_to_string(qslist):
         for qset in qslist:
             message += queryset_to_string(qset)
     return message
+
 
 
 class CachedProperty(object):
@@ -776,7 +778,7 @@ def get_full_url(url):
     site.
     Args:
         url: A partial url from a few, like '/namespace/view/'
-
+        
     Returns:
         A full url, like "http://www.example.com/namespace/view/"
     """

@@ -17,7 +17,8 @@ from django.db.models import Q
 from web.character.models import Roster
 from server.utils import arx_more
 from typeclasses.bulletin_board.bboard import BBoard
-from world.dominion.models import Propriety
+from world.dominion.models import Organization, Propriety, AssetOwner
+from django.template.defaultfilters import pluralize
 
 # limit symbol import for API
 __all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships",
@@ -997,7 +998,6 @@ class CmdPropriety(ArxPlayerCommand):
                 if not longname:
                     longname = "Unknown"
                 return longname
-
             string += "|wIndividuals{}:|n ".format(reputation)
             string += list_to_string([find_longname(person) for person in ppl])
             string += "\n"

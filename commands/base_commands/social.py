@@ -2218,9 +2218,7 @@ class CmdSocialNotable(ArxCommand):
         table = EvTable()
         table.add_column(width=8)
         table.add_column()
-
         median = AssetOwner.MEDIAN_PRESTIGE * 1.
-
         for owner in asset_owners:
             if show_percent:
                 percentage = round((owner.prestige / median) * 100)
@@ -2235,7 +2233,6 @@ class CmdSocialNotable(ArxCommand):
 
     def func(self):
         adjust_type = None
-
         if self.args:
             try:
                 target = self.character_search(self.args)

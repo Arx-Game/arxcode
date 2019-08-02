@@ -4,9 +4,12 @@ from mock import Mock
 
 from server.utils.test_utils import ArxCommandTest
 from world.petitions import petitions_commands
+from datetime import date
 
 
 class TestPetitionCommands(ArxCommandTest):
+
+
     def test_cmd_broker(self):
         from world.petitions.models import BrokeredSale
         from world.dominion.models import CraftingMaterialType
@@ -154,10 +157,11 @@ class TestPetitionCommands(ArxCommandTest):
         self.assertEqual(self.char1.currency, 31925)
 
     def test_cmd_petition(self):
+        
         from world.petitions.models import Petition, PetitionParticipation
         from world.dominion.models import Organization
         self.setup_cmd(petitions_commands.CmdPetition, self.char1)
-        self.call_cmd("", 'ID Owner Topic Org On')
+        self.call_cmd("", 'Updated ID Owner Topic Org On')
         self.call_cmd("asdf", "No organization by the name asdf.")
         self.call_cmd("1", "No petition by that ID number.")
         pet = Petition.objects.create(topic="test", description="testing")
@@ -174,8 +178,8 @@ class TestPetitionCommands(ArxCommandTest):
         self.call_cmd("/assign 1=testaccount", "You are not allowed to access that petition.")
         org.members.create(player=self.dompc, rank=1)
         org.locks.add("admin_petition:rank(2);view_petition:rank(10)")
-        self.call_cmd("test org", 'ID Owner        Topic Org      On \n1  Testaccount2 test  test org')
-        self.call_cmd("", 'ID Owner        Topic Org      On \n1  Testaccount2 test  test org')
+        self.call_cmd("test org", '\x1b[0mUpdated\x1b[0m  \x1b[0mID\x1b[0m \x1b[0mOwner\x1b[0m        \x1b[0mTopic\x1b[0m \x1b[0mOrg\x1b[0m      \x1b[0mOn\x1b[0m \n\x1b[0m\x1b[38;5;196m'+date.today().strftime("%m/%d/%y")+'\x1b[0m 1  \x1b[0mTestaccount2\x1b[0m \x1b[0mtest\x1b[0m  \x1b[0mtest org\x1b[0m \x1b[0m\x1b[0m',noansi=False)
+        self.call_cmd("", 'Updated  ID Owner        Topic Org      On \n'+date.today().strftime("%m/%d/%y")+' 1  Testaccount2 test  test org')
         self.call_cmd("/assign 1=testaccount2", 'You can only assign members of your organization.')
         self.call_cmd("/assign 1=testaccount", "You have assigned Testaccount to the petition.")
         self.call_cmd("/assign 1=testaccount", 'You have already signed up for this.')
@@ -204,7 +208,7 @@ class TestPetitionCommands(ArxCommandTest):
         self.char.db.petition_form = {'topic': 'test2', 'description': 'testing2', 'organization': org.id}
         org.inform = Mock()
         self.call_cmd("/submit", "Successfully created petition 3.")
-        self.call_cmd("/search testing2=test org", 'ID Owner       Topic Org      On \n3  Testaccount test2 test org')
-        self.call_cmd("/search test2", 'ID Owner       Topic Org      On \n3  Testaccount test2 test org')
-        self.call_cmd("/search asdfadsf", "ID Owner Topic Org On")
+        self.call_cmd("/search testing2=test org", 'Updated  ID Owner       Topic Org      On \n'+date.today().strftime("%m/%d/%y")+' 3  Testaccount test2 test org')
+        self.call_cmd("/search test2", 'Updated  ID Owner       Topic Org      On \n'+date.today().strftime("%m/%d/%y")+' 3  Testaccount test2 test org')
+        self.call_cmd("/search asdfadsf", "Updated ID Owner Topic Org On")
         org.inform.assert_called_with('A new petition has been made by Testaccount.', category='Petitions')
