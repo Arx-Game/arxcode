@@ -217,3 +217,5 @@ class TestPetitionCommands(ArxCommandTest):
         self.call_cmd("/search test2", 'Updated  ID Owner       Topic Org      On \n'+date.today().strftime("%m/%d/%y")+' 3  Testaccount test2 test org')
         self.call_cmd("/search asdfadsf", "Updated ID Owner Topic Org On")
         org.inform.assert_called_with('A new petition has been made by Testaccount.', category='Petitions')
+        self.call_cmd("/ignore all", "You are now not informed of new petitions.")
+        self.call_cmd("/ignore all", "You are now informed of new petitions.")

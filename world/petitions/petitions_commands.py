@@ -230,8 +230,11 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
             self.msg("Successfully created petition %s." % petition.id)
             self.caller.attributes.remove("petition_form")
             if petition.organization is not None:
-                targets = PetitionSettings.objects.all().exclude(
-                    ignored_organizations=petition.organization).exclude(inform=False)
+                targets = (PetitionSettings.objects.all().exclude(ignored_organizations=petition.organization)
+                                                         .exclude(inform=False)
+                                                         .filter(owner__memberships__organization=petition.organization)
+                           )
+                targets = [ob for ob in targets if petition.organization.access(petition.owner, "view_petition")]
                 for target in targets:
                     target.owner.player.msg("{wA new petition was posted by %s to %s.{n" % (petition.owner,
                                                                                             petition.organization))
@@ -292,14 +295,15 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         settings, created = self.caller.dompc.petition_settings.get_or_create()
         if self.lhs == "all":
             settings.inform ^= True
-            self.msg("You are now %s informed of new petitions") % ("" if settings.inform else "not")
+            self.msg("You are now %sinformed of new petitions." % ("" if settings.inform else "not "))
         elif self.lhs == "general":
             settings.ignore_general ^= True
-            self.msg("You are now %s informed of new general petitions") % ("" if settings.inform else "not")
+            self.msg("You are now %sinformed of new general petitions." % ("" if settings.inform else "not "))
         else:
             org = self.get_org_from_args(self.lhs)
             settings.ignored_organizations.add(org)
-            self.msg("You are now %s informed of new " + self.lhs + " petitions") % ("" if settings.inform else "not")
+            msg = "You are now %sinformed of new " % ("" if settings.inform else "not ")
+            self.msg(msg + self.lhs + " petitions.")
 
     def get_org_from_args(self, args):
         """Gets an organization"""

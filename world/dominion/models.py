@@ -129,6 +129,10 @@ class PlayerOrNpc(SharedMemoryModel):
             name += "(RIP)"
         return name
 
+    @property
+    def player_ob(self):
+        return self.player
+
     def _get_siblings(self):
         return PlayerOrNpc.objects.filter(Q(parents__in=self.all_parents) &
                                           ~Q(id=self.id)).distinct()
