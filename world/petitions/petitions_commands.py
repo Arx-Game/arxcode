@@ -57,7 +57,7 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
     admin_switches = org_admin_switches + ("close", "reopen")
     creation_switches = ("create", "topic", "desc", "org", "submit", "cancel")
     owner_switches = ("editdesc", "edittopic")
-    ignore_switches = ("ignore")
+    ignore_switches = ("ignore",)
 
     class PetitionCommandError(CommandError):
         """Exception class for Petition Command"""
@@ -65,7 +65,7 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
 
     def func(self):
         """Executes petition command"""
-        settings, created = self.caller.dompc.petition_settings.get_or_create()
+        self.caller.dompc.petition_settings.get_or_create()
         self.mark_command_used()
         try:
             if self.check_switches(self.list_switches) or (not self.switches and not self.args.isdigit()):
@@ -80,13 +80,14 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
                 return self.do_creation_switches()
             elif self.check_switches(self.owner_switches):
                 return self.do_owner_switches()
-            elif self.check_switches(ignore_switches):
+            elif self.check_switches(self.ignore_switches):
                 return self.do_ignore_switches()
             raise self.PetitionCommandError("Invalid switch.")
         except (self.PetitionCommandError, PetitionError) as err:
             self.msg(err)
 
-    def color_coder(self, petition, dompc):
+    @staticmethod
+    def color_coder(petition, dompc):
         try:
             unread = petition.petitionparticipation_set.get(dompc=dompc).unread_posts
         except PetitionParticipation.DoesNotExist:
@@ -94,25 +95,25 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         if petition.waiting:
             if unread:
                 if (date.today() - petition.date_created).days > 7:
-                    return "U|500"  #Bright red
+                    return "U|500"  # Bright red
                 else:
-                    return "U|520" #Dark Orange
+                    return "U|520"  # Dark Orange
             else:
                 if (date.today() - petition.date_created).days > 7:
-                    return "|540" #Light orange
+                    return "|540"  # Light orange
                 else:
-                    return "|550" #Yellow
+                    return "|550"  # Yellow
         else:
             if unread:
                 if (date.today() - petition.date_updated).days > 7:
-                    return "U|543" #Off white
+                    return "U|543"  # Off white
                 else:
-                    return "U|225" #blue
+                    return "U|225"  # blue
             else:
                 if (date.today() - petition.date_updated).days > 7:
-                    return "|555" #white
+                    return "|555"  # white
                 else:
-                    return "|250" #Green
+                    return "|250"  # Green
 
     def list_petitions(self):
         """Lists petitions for org/player"""
@@ -229,15 +230,18 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
             self.msg("Successfully created petition %s." % petition.id)
             self.caller.attributes.remove("petition_form")
             if petition.organization is not None:
-                targets = PetitionSettings.objects.all().exclude(ignored_organizations=petition.organization).exclude(inform=False)
+                targets = PetitionSettings.objects.all().exclude(
+                    ignored_organizations=petition.organization).exclude(inform=False)
                 for target in targets:
-                    target.owner.player.msg("{wA new petition was posted by %s to %s.{n" % (petition.owner, petition.organization))
+                    target.owner.player.msg("{wA new petition was posted by %s to %s.{n" % (petition.owner,
+                                                                                            petition.organization))
                     target.owner.player.inform("{wA new petition was posted by %s to %s.{n|/|/%s" %
-                                               (petition.owner, petition.organization, petition.display()), category="Petition", append=True)
+                                               (petition.owner, petition.organization, petition.display()),
+                                               category="Petition", append=True)
             else:
                 targets = PetitionSettings.objects.all().exclude(inform=False).exclude(ignore_general=True)
                 for target in targets:
-                    target.owner.player.msg("{wA new petition was posted by %s{n" % (petition.owner))
+                    target.owner.player.msg("{wA new petition was posted by %s{n" % petition.owner)
                     target.owner.player.inform("{wA new petition was posted by %s{n|/|/%s" %
                                                (petition.owner, petition.display()), category="Petition", append=True)
         else:
@@ -288,14 +292,14 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         settings, created = self.caller.dompc.petition_settings.get_or_create()
         if self.lhs == "all":
             settings.inform ^= True
-            self.msg("You are now %s informed of new petitions") % ("" if settings.inform == True else "not")
+            self.msg("You are now %s informed of new petitions") % ("" if settings.inform else "not")
         elif self.lhs == "general":
             settings.ignore_general ^= True
-            self.msg("You are now %s informed of new general petitions") % ("" if settings.inform == True else "not")
+            self.msg("You are now %s informed of new general petitions") % ("" if settings.inform else "not")
         else:
             org = self.get_org_from_args(self.lhs)
             settings.ignored_organizations.add(org)
-            self.msg("You are now %s informed of new " + self.lhs + " petitions") % ("" if settings.inform == True else "not")
+            self.msg("You are now %s informed of new " + self.lhs + " petitions") % ("" if settings.inform else "not")
 
     def get_org_from_args(self, args):
         """Gets an organization"""
@@ -611,7 +615,7 @@ class CmdBroker(ArxCommand):
         if sale.owner != self.caller.player_ob.Dominion:
             raise self.BrokerError("You can only cancel your own %ss." % display)
         sale.cancel()
-        self.msg("You have cancelled the %s." % (display))
+        self.msg("You have cancelled the %s." % display)
 
     def change_sale_price(self):
         """Changes the price of a sale"""

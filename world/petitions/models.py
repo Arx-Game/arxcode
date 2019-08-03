@@ -184,7 +184,7 @@ class PetitionSettings(SharedMemoryModel):
             petition_participation.subscribed = False
             petition_participation.unread_posts = True
             petition_participation.signed_up = False
-            if (petition_participation.is_owner):
+            if petition_participation.is_owner:
                 petition_participation.petition.closed = True
             petition_participation.save()
 
@@ -288,12 +288,9 @@ class Petition(SharedMemoryModel):
 
     def mark_posts_read(self, dompc):
         """If dompc is a participant, mark their posts read"""
-        try:
-            participant = self.petitionparticipation_set.get(dompc=dompc)
-            participant.unread_posts = False
-            participant.save()
-        except PetitionParticipation.DoesNotExist:
-            pass
+        participant, _ = self.petitionparticipation_set.get_or_create(dompc=dompc)
+        participant.unread_posts = False
+        participant.save()
 
     def mark_posts_unread(self, dompc):
         """If dompc is a participant, mark their posts read"""
