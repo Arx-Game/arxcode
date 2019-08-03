@@ -94,9 +94,9 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         if petition.waiting:
             if unread:
                 if (date.today() - petition.date_created).days > 7:
-                    return "|500"  #Bright red
+                    return "U|500"  #Bright red
                 else:
-                    return "|520" #Dark Orange
+                    return "U|520" #Dark Orange
             else:
                 if (date.today() - petition.date_created).days > 7:
                     return "|540" #Light orange
@@ -105,9 +105,9 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         else:
             if unread:
                 if (date.today() - petition.date_updated).days > 7:
-                    return "|543" #Off white
+                    return "U|543" #Off white
                 else:
-                    return "|225" #blue
+                    return "U|225" #blue
             else:
                 if (date.today() - petition.date_updated).days > 7:
                     return "|555" #white

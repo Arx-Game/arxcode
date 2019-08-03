@@ -180,11 +180,11 @@ class TestPetitionCommands(ArxCommandTest):
         org.locks.add("admin_petition:rank(2);view_petition:rank(10)")
         self.call_cmd(
             "test org",
-            '\x1b[0mUpdated\x1b[0m  \x1b[0mID\x1b[0m \x1b[0mOwner\x1b[0m        \x1b[0mTopic\x1b[0m \x1b[0mOrg\x1b[0m      \x1b[0mOn\x1b[0m \n\x1b[0m\x1b[38;5;208m' +
+            '\x1b[0mUpdated\x1b[0m   \x1b[0mID\x1b[0m \x1b[0mOwner\x1b[0m        \x1b[0mTopic\x1b[0m \x1b[0mOrg\x1b[0m      \x1b[0mOn\x1b[0m \n\x1b[0mU\x1b[38;5;208m' +
             date.today().strftime("%m/%d/%y") +
             '\x1b[0m 1  \x1b[0mTestaccount2\x1b[0m \x1b[0mtest\x1b[0m  \x1b[0mtest org\x1b[0m \x1b[0m\x1b[0m',
             noansi=False)
-        self.call_cmd("", 'Updated  ID Owner        Topic Org      On \n'+date.today().strftime("%m/%d/%y")+' 1  Testaccount2 test  test org')
+        self.call_cmd("", 'Updated   ID Owner        Topic Org      On \nU'+date.today().strftime("%m/%d/%y")+' 1  Testaccount2 test  test org')
         self.call_cmd("/assign 1=testaccount2", 'You can only assign members of your organization.')
         self.call_cmd("/assign 1=testaccount", "You have assigned Testaccount to the petition.")
         self.call_cmd("/assign 1=testaccount", 'You have already signed up for this.')
