@@ -9,7 +9,7 @@ from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
 from world.petitions.forms import PetitionForm
 from world.petitions.exceptions import PetitionError
-from world.petitions.models import BrokeredSale, Petition, PetitionSettings
+from world.petitions.models import BrokeredSale, Petition, PetitionSettings, PetitionParticipation
 from world.dominion.models import Organization
 from datetime import date
 
@@ -87,16 +87,32 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
             self.msg(err)
 
     def color_coder(self, petition, dompc):
-        if petition.waiting and (date.today() - petition.date_created).days > 7:
-            return "|550"
-        elif petition.waiting:
-            return "|500"
-        elif (date_updated - petition.date_created).days > 7:
-            return "|530"
-        elif petition.petitionparticipation_set.filter(dompc=dompc).unread_posts:
-            return "|253"
+        try:
+            unread = petition.petitionparticipation_set.get(dompc=dompc).unread_posts
+        except PetitionParticipation.DoesNotExist:
+            unread = True
+        if petition.waiting:
+            if unread:
+                if (date.today() - petition.date_created).days > 7:
+                    return "U|500"  #Bright red
+                else:
+                    return "U|520" #Dark Orange
+            else:
+                if (date.today() - petition.date_created).days > 7:
+                    return "|540" #Light orange
+                else:
+                    return "|550" #Yellow
         else:
-            return ""
+            if unread:
+                if (date.today() - petition.date_updated).days > 7:
+                    return "U|543" #Off white
+                else:
+                    return "U|225" #blue
+            else:
+                if (date.today() - petition.date_updated).days > 7:
+                    return "|555" #white
+                else:
+                    return "|250" #Green
 
     def list_petitions(self):
         """Lists petitions for org/player"""
