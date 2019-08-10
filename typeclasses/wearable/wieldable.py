@@ -22,6 +22,7 @@ class Wieldable(Wearable):
     'stealth' determines if the weapon will give an echo to the room when it is
     wielded. Poisons, magic, stealthy daggers, etc, fall into this category.
     """
+    default_desc = "A weapon of some kind."
     SHEATHED_LIMIT = 6
 
     def at_object_creation(self):
@@ -32,7 +33,6 @@ class Wieldable(Wearable):
         self.is_worn = False
         self.db.is_wieldable = True
         self.is_wielded = False
-        self.db.desc = "A weapon of some kind."
         self.db.armor_class = 0
         # phrase that is seen when we equip it
         self.db.stealth = False  # whether it can be seen in character desc

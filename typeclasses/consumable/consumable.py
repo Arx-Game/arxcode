@@ -11,12 +11,7 @@ class Consumable(Object):
     Consumable object. We will use the quality level in order to determine
     the number of uses we have remaining.
     """
-
-    def at_object_creation(self):
-        """
-        Run at Usable creation.
-        """
-        self.desc = "A consumable object"
+    default_desc = "A consumable object"
 
     def consume(self):
         """

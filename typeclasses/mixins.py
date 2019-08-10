@@ -7,6 +7,7 @@ from world.conditions.triggerhandler import TriggerHandler
 from world.templates.models import Template
 from world.templates.mixins import TemplateMixins
 
+
 class DescMixins(object):
     """
     Handles descriptions for objects, which is controlled by three
@@ -32,14 +33,22 @@ class DescMixins(object):
     that won't override any current disguise, use .perm_desc. For a change
     that will change everything right now, disguise or not, use .desc.
     """
-    def _desc_get(self):
+    default_desc = ""
+
+    @property
+    def base_desc(self):
+        return self.db.desc or self.db.raw_desc or self.db.general_desc or self.default_desc
+
+    @property
+    def desc(self):
         """
         :type self: evennia.objects.models.ObjectDB
         :return:
         """
-        return (self.db.desc or self.db.raw_desc or self.db.general_desc or "") + self.additional_desc
+        return self.base_desc + self.additional_desc
 
-    def _desc_set(self, val):
+    @desc.setter
+    def desc(self, val):
         """
         :type self: ObjectDB
         """
@@ -51,13 +60,12 @@ class DescMixins(object):
             # general desc is our fallback
             self.db.general_desc = val
         self.ndb.cached_template_desc = None
-    desc = property(_desc_get, _desc_set)
 
     def __temp_desc_get(self):
         """
         :type self: ObjectDB
         """
-        return self.db.desc or self.db.raw_desc or self.db.general_desc
+        return self.base_desc
 
     def __temp_desc_set(self, val):
         """

@@ -12,20 +12,15 @@ class Perfume(Consumable):
     """
     Perfume.
     """
-
-    def at_object_creation(self):
-        """
-        Run at Usable creation.
-        """
-        self.desc = "This is a pleasant, lingering scent."
+    default_desc = "This is a pleasant, lingering scent."
 
     @property
     def scent_desc(self):
-        return Consumable._desc_get(self)
+        return super(Perfume, self).desc
 
-    @Consumable.desc.getter
+    @property
     def desc(self):
-        return "A bottle that contains the following scent: %s" % Consumable._desc_get(self)
+        return "A bottle that contains the following scent: %s" % self.scent_desc
 
     @property
     def quality_prefix(self):

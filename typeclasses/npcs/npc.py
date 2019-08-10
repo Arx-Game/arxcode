@@ -287,8 +287,13 @@ class Npc(Character):
     def set_npc_new_name(self, sing_name=None, plural_name=None):
         self.name = sing_name or plural_name or "#%s" % self.id
 
+    @property
+    def default_desc(self):
+        return get_npc_desc(self.db.npc_type or 0)
+
     def set_npc_new_desc(self, desc=None):
-        self.desc = desc or get_npc_desc(self.db.npc_type or 0)
+        if desc:
+            self.desc = desc
 
 
 class MultiNpc(Npc):
@@ -383,7 +388,7 @@ class MultiNpc(Npc):
             self.db.npc_type = ntype
             self.db.singular_name = sing_name
             self.db.plural_name = plural_name
-            self.desc = desc or get_npc_desc(ntype)
+            self.set_npc_new_desc(desc)
         self.setup_stats(ntype, threat)
         self.setup_name()
 
@@ -417,7 +422,6 @@ class AgentMixin(object):
 
     @property
     def desc(self):
-        self.agent.refresh_from_db(fields=('desc',))
         return self.agent.desc
 
     @desc.setter

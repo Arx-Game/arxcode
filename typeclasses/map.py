@@ -7,9 +7,12 @@ _CALLER_ICON = '{gXX{n'
 _BLANK_SQUARE = '  '
 _DEST_ICON = '{rXX{n'
 
+
 class Map(Object):
     """
+    A map. Redo this as a table later
     """
+    default_desc = "A map that holds data about a particular grid area."
     def at_object_creation(self):
         """
         Run at Map creation.
@@ -19,7 +22,6 @@ class Map(Object):
         self.db.max_y = 0
         self.db.min_y = 0
         self.db.rooms = {}
-        self.desc = "A map that holds data about a particular grid area."
         # locks so characters cannot 'get' it
         self.locks.add("get:perm(Builders);delete:false()")
         self.at_init()

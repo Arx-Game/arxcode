@@ -557,7 +557,7 @@ class CmdBBCreate(ArxCommand):
             self.msg("Usage @bbcreate <boardname> = description")
             return
 
-        description = "A bulletin board"
+        description = None
 
         if self.rhs:
             description = self.rhs
@@ -571,7 +571,8 @@ class CmdBBCreate(ArxCommand):
                                          home="#4", permissions=None,
                                          locks=lockstring, aliases=None, destination=None,
                                          report_to=None, nohome=False)
-        new_board.desc = description
+        if description:
+            new_board.desc = description
         self.msg("Created bboard %s." % new_board.key)
         new_board.subscribe_bboard(caller)
         new_board.save()

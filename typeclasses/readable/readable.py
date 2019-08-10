@@ -13,13 +13,13 @@ class Readable(Object):
     """
     Class for objects that can be written/named
     """
+    default_desc = "Nothing has been written on this yet. '{whelp write{n'"
 
     def at_object_creation(self):
         """
         Run at Place creation.
         """
         self.db.written = False
-        self.desc = "Nothing has been written on this yet. '{whelp write{n'"
         self.db.num_instances = 1
         self.db.can_stack = True
         self.db.do_not_format_desc = True

@@ -14,6 +14,8 @@ class BBoard(Object):
     This is the base class for all Bulletin Boards. Inherit from this to create different
     types of communication bboards.
     """
+    default_desc = "A bulletin board"
+
     @staticmethod
     def tag_obj(post):
         """Tags an object to show it as being a bulletin board post"""

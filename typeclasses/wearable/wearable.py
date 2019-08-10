@@ -17,12 +17,12 @@ class Wearable(FashionableMixins, Object):
     """
     Class for wearable objects
     """
+    default_desc = "A piece of clothing or armor."
     def at_object_creation(self):
         """
         Run at Wearable creation.
         """
         self.is_worn = False
-        self.db.desc = "A piece of clothing or armor."
         self.db.armor_class = 0
         self.at_init()
 
