@@ -1683,7 +1683,8 @@ def get_random_clue(roster, search_tags, omit_tags=None, source_clue=None):
     Finds a target clue based on our topic and our investigation history.
     We'll choose the lowest rating out of 3 random choices.
     """
-    exact = Clue.objects.filter(Q(allow_investigation=True) & ~Q(characters=roster))
+    exact = Clue.objects.filter(Q(allow_investigation=True) & ~Q(characters=roster)
+                                ).exclude(name__icontains="placeholder")
     if source_clue:
         by_revelation = exact.filter(revelations__in=source_clue.revelations.all()).annotate(cnt=Count('discoveries'))
         tags = source_clue.search_tags.all()

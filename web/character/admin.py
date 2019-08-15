@@ -223,7 +223,7 @@ class ClueAdmin(BaseCharAdmin):
     filter_horizontal = ('search_tags',)
     raw_id_fields = ('author', 'tangible_object',)
     list_filter = ('clue_type', 'allow_investigation', ClueListTagFilter)
-    readonly_fields = ('discovered_by',)
+    readonly_fields = ('discovered_by', 'current_investigations')
 
     def used_for(self, obj):
         return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_revelation_change", args=[rev.id]),
@@ -236,6 +236,12 @@ class ClueAdmin(BaseCharAdmin):
                                                   escape(str(ros)))
                          for ros in obj.characters.all())
     discovered_by.allow_tags = True
+
+    def current_investigations(self, obj):
+        return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_investigation_change", args=[inv.id]),
+                                                  escape(str(inv)))
+                         for inv in obj.investigation_set.filter(ongoing=True))
+    current_investigations.allow_tags = True
 
 
 class ClueDiscoveryAdmin(BaseCharAdmin):
