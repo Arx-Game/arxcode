@@ -7,6 +7,7 @@ from datetime import datetime
 from django.db.models import Q
 
 from evennia.utils.evtable import EvTable
+from evennia.server.models import ServerConfig
 from server.utils.arx_utils import inform_staff, check_break, list_to_string
 from commands.base import ArxCommand, ArxPlayerCommand
 from commands.mixins import FormCommandMixin
@@ -28,7 +29,11 @@ class InvestigationFormCommand(ArxCommand):
     form_verb = "Creating"
     form_switches = ("topic", "target", "tag", "tags", "story", "stat", "skill", "cancel", "finish")
     ap_cost = 10
-    new_clue_cost = 100
+
+    @property
+    def new_clue_cost(self):
+        """Fetch server config cost of investigating an unwritten clue."""
+        return ServerConfig.objects.conf(key="NEW_CLUE_AP_COST") or 0
 
     def check_ap_cost(self, cost=None):
         if not cost:
@@ -77,16 +82,20 @@ class InvestigationFormCommand(ArxCommand):
 
     def topic_string(self, color=False):
         """Joins tag-requirements and tag-omissions into a string"""
-        def colorize(val, col="|r"):
-            col = (col + "-") if col == "|r" else col
-            val = ("%s%s|n" % (col, val)) if color else str(val)
-            return val
         source_clue = self.investigation_form[6]
         if source_clue:
             return str(source_clue)
         tags_list = self.investigation_form[5]
         if not tags_list:
             return ""
+
+        def colorize(val, col=None):
+            if not color:
+                return str(val)
+            if not col:
+                col = "|r-"
+            return "%s%s|n" % (col, val)
+
         topic = "; ".join(colorize(ob, col="|235") for ob in tags_list[0])
         if tags_list[1]:
             topic += "; "

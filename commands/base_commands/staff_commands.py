@@ -1800,8 +1800,9 @@ class CmdSetServerConfig(ArxPlayerCommand):
     shorthand_to_real_keys = {"motd": "MESSAGE_OF_THE_DAY",
                               "income": "GLOBAL_INCOME_MOD",
                               "ap transfers disabled": "DISABLE_AP_TRANSFER",
-                              "cg bonus skill points": "CHARGEN_BONUS_SKILL_POINTS"}
-    valid_keys = shorthand_to_real_keys.keys()
+                              "cg bonus skill points": "CHARGEN_BONUS_SKILL_POINTS",
+                              "new clue ap cost": "NEW_CLUE_AP_COST"}
+    valid_keys = sorted(shorthand_to_real_keys.keys())
 
     def get_help(self, caller, cmdset):
         """Modifies help string"""
@@ -1857,9 +1858,9 @@ class CmdSetServerConfig(ArxPlayerCommand):
                     broadcast("|yServer Message of the Day:|n %s" % val)
                 elif key == "ap transfers disabled":
                     val = bool(self.rhs)
-                elif key == "cg bonus skill points":
+                elif key in ("cg bonus skill points", "new clue ap cost"):
                     if not val.isdigit():
-                        return self.msg("Chargen bonus skill points must be a number.")
+                        return self.msg("This must be a number.")
                     val = int(val)
                 ServerConfig.objects.conf(key=real_key, value=val)
             self.list_config_values()

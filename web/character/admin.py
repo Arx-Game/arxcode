@@ -194,6 +194,27 @@ class CluePlotInvolvementInline(admin.TabularInline):
     classes = ['collapse']
 
 
+class ClueListTagFilter(admin.SimpleListFilter):
+    """List filter for clues with or without search tags"""
+    title = "Search Tags"
+    parameter_name = "search tags"
+
+    def lookups(self, request, model_admin):
+        """Values for the GET request and how they display"""
+        return (
+            ('have_tags', 'Have Tags'),
+            ('no_tags', "No Tags")
+        )
+
+    def queryset(self, request, queryset):
+        """Modifies the queryset of Clues to filter those with, or without, search_tags"""
+        qs = queryset
+        if self.value() == 'have_tags':
+            return qs.filter(search_tags__isnull=False)
+        elif self.value() == 'no_tags':
+            return qs.filter(search_tags__isnull=True)
+
+
 class ClueAdmin(BaseCharAdmin):
     """Admin for Clues"""
     list_display = ('id', 'name', 'rating', 'used_for')
@@ -201,7 +222,7 @@ class ClueAdmin(BaseCharAdmin):
     inlines = (ClueForRevInline, CluePlotInvolvementInline)
     filter_horizontal = ('search_tags',)
     raw_id_fields = ('author', 'tangible_object',)
-    list_filter = ('clue_type', 'allow_investigation')
+    list_filter = ('clue_type', 'allow_investigation', ClueListTagFilter)
     readonly_fields = ('discovered_by',)
 
     def used_for(self, obj):
