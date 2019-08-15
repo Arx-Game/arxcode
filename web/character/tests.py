@@ -7,6 +7,7 @@ from django.test import Client
 from django.urls import reverse
 
 from server.utils.test_utils import ArxCommandTest, ArxTest
+from evennia.server.models import ServerConfig
 from web.character import investigation, scene_commands, goal_commands
 from web.character.models import Clue, Revelation, SearchTag, Goal
 
@@ -14,6 +15,7 @@ from web.character.models import Clue, Revelation, SearchTag, Goal
 class InvestigationTests(ArxCommandTest):
     def setUp(self):
         super(InvestigationTests, self).setUp()
+        ServerConfig.objects.conf(key='NEW_CLUE_AP_COST', value=100)
         self.clue = Clue.objects.create(name="test clue", rating=10, desc="test clue desc")
         self.clue2 = Clue.objects.create(name="test clue2", rating=50, desc="test clue2 desc")
         self.revelation = Revelation.objects.create(name="test revelation", desc="test rev desc",
