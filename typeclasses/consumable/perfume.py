@@ -22,6 +22,10 @@ class Perfume(Consumable):
     def desc(self):
         return "A bottle that contains the following scent: %s" % self.scent_desc
 
+    @desc.setter
+    def desc(self, value):
+        self.db.desc = value
+
     @property
     def quality_prefix(self):
         recipe_id = self.db.recipe
