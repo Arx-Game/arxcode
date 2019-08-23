@@ -1898,15 +1898,17 @@ class Flashback(SharedMemoryModel):
             roster_entry (RosterEntry): the reader
             amount (int): number of backposts. None defaults to 'all'.
         """
-        posts = self.posts.all().prefetch_related('readable_by')
+        posts = self.posts.all()
+        readable = posts.filter(Q(readable_by=roster_entry) | Q(poster=roster_entry))
         if amount != None:
             start = len(posts) - amount
             if start > 0:
                 posts = posts[start:amount+start]
         bulk_list = []
         for post in posts:
-            if not roster_entry in post.readable_by.all() and roster_entry != post.poster:
-                bulk_list.append(FlashbackPostPermission(post=post, reader=roster_entry))
+            if post in readable:
+                continue
+            bulk_list.append(FlashbackPostPermission(post=post, reader=roster_entry))
         FlashbackPostPermission.objects.bulk_create(bulk_list)
 
     def add_post(self, actions, poster=None):
