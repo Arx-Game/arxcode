@@ -232,20 +232,37 @@ class SceneCommandTests(ArxCommandTest):
         self.call_cmd("/conclude 1", "Only the flashback's owner may use that switch.")
         self.call_cmd("/uninvite 1", "You have uninvited Testaccount2 from flashback #1.")
         self.assertEqual(list(fb1.participants.all()), [self.roster_entry])
+        post3 = fb1.posts.create(poster=self.roster_entry, actions="Third Testpost")
+        post4 = fb1.posts.create(poster=self.roster_entry, actions="Fourth Testpost")
         self.caller = self.account
         self.call_cmd("/invite 1=Testaccount2", "You have invited Testaccount2 to participate in flashback #1.")
-        self.call_cmd("/invite 1",
-                      "(#1) testing - Owners and post authors: Testaccount\nCharacters invited to post: Testaccount, Testaccount2")
+        self.call_cmd("/invite 1", "(#1) testing - Owners and post authors: Testaccount\n"
+                                   "Characters invited to post: Testaccount, Testaccount2")
+        self.call_cmd("/allow 1=Testaccount2,1", "Testaccount2 can see 1 previous post(s) in flashback #1.")
+        self.assertEqual(list(post3.flashback_post_permissions.all()), [])
+        post4_perm = post4.flashback_post_permissions.first()
+        self.assertEqual(post4_perm.reader, self.roster_entry2)
+        self.caller = self.account2
+        self.call_cmd("1=foo",
+                      "[testing] - (#1) work in progress!\nOwners and authors: Testaccount\nSummary: "
+                      "{0}\nPart of this tale resides in the memory of someone else."
+                      "{0}\n[By Char] Fourth Testpost".format(div, mock_build_msg.return_value))
+        self.caller = self.account
+        self.call_cmd("/allow 1=Testaccount2", "Testaccount2 can see all previous post(s) in flashback #1.")
+        self.caller = self.account2
+        self.call_cmd("1=foo",
+                      "[testing] - (#1) work in progress!\nOwners and authors: Testaccount\nSummary: "
+                      "{0}\n[By Char] A new testpost"
+                      "{0}\n[By Char] {1}\nboop."
+                      "{0}\n[By Char] Third Testpost"
+                      "{0}\n[By Char] Fourth Testpost".format(div, mock_build_msg.return_value))
+        self.caller = self.account
+        self.call_cmd("/summary 1=test summary", "Summary set to: test summary")
         self.call_cmd("/uninvite 1=Testaccount2", "You have uninvited Testaccount2 from flashback #1.")
         self.account2.inform.assert_called_with("You have been retired from flashback #1.", category="Flashbacks")
-        self.call_cmd("/summary 1=test summary", "Summary set to: test summary.")
-        fb1.posts.create(poster=self.roster_entry, actions="Foo.")
-        self.call_cmd("1=foo", "[testing] - (#1) work in progress!\nOwners and authors: Testaccount\nSummary: test summary"
-                               "{0}\n[By Char] A new testpost"
-                               "{0}\n[By Char] {1}\nboop."
-                               "{0}\n[By Char] Foo.".format(div, mock_build_msg.return_value))
+        self.assertEqual(list(post4.flashback_post_permissions.all()), [])
         self.call_cmd("1=1", "[testing] - (#1) work in progress!\nOwners and authors: Testaccount\nSummary: test summary"
-                             "{0}\n[By Char] Foo.".format(div))
+                             "{0}\n[By Char] Fourth Testpost".format(div))
         self.call_cmd("/conclude 1", "Flashback #1 is concluding.")
         self.account.inform.assert_called_with("Flashback #1 'testing' has reached its conclusion.", category="Flashbacks")
         self.call_cmd("/conclude 1", "No ongoing flashback by that ID number.|\n"

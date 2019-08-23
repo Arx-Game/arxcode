@@ -197,14 +197,16 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.msg("%s needs to be invited to that flashback first." % target)
             return
         amount = None
-        if len(self.rhslist) > 1 and self.rhslist[1] != "all":
+        if len(self.rhslist) < 2:
+            self.rhslist.append("all")
+        if self.rhslist[1] != "all":
             try:
                 amount = int(self.rhslist[1].strip('-'))
             except (TypeError, ValueError):
-                self.msg("To allow a number of visible back-posts, specify a <number>.")
+                self.msg("Specify a number to allow a number of visible back-posts, or 'all'.")
                 return
         flashback.allow_back_read(target.roster, amount=amount)
-        self.msg("%s can see %s previous posts in flashback #%s." % (target, self.rhslist[1], flashback.id))
+        self.msg("%s can see %s previous post(s) in flashback #%s." % (target, self.rhslist[1], flashback.id))
 
     def post_message(self, flashback):
         """Add a new post. Requires confirmation if this will 'consume' a waiting dice roll."""
@@ -240,7 +242,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             field = "summary"
         setattr(flashback, field, self.rhs)
         flashback.save()
-        self.msg("%s set to: %s." % (field.capitalize(), self.rhs))
+        self.msg("%s set to: %s" % (field.capitalize(), self.rhs))
 
     def make_flashback_roll(self, flashback):
         """Prints reminder of participant's existing dice result, or saves new one."""
