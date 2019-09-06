@@ -1307,14 +1307,13 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         mssg += "{wFood Production{n: %s {wFood Consumption{n: %s {wStored Food{n: %s\n" % (self.food_production,
                                                                                             self.food_consumption,
                                                                                             self.stored_food)
-        mssg += "\n{wCastles:{n\n"
-        mssg += "{w================================={n\n"
+        frame = ("=" * 15)
+        mssg += "\n|w{0} Castles {0}|n".format(frame)
         for castle in self.castles.all():
-            mssg += castle.display()
-        mssg += "\n{wArmies:{n\n"
-        mssg += "{w================================={n\n"
+            mssg += ("\n" + castle.display())
+        mssg += "\n|w{0} Armies {0}|n".format(frame)
         for army in self.armies.all():
-            mssg += army.display()
+            mssg += ("\n" + army.display())
         return mssg
 
     def clear_cached_properties(self):

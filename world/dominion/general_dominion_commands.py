@@ -1260,18 +1260,16 @@ class CmdSetRoom(ArxCommand):
 # Player/OOC commands for dominion---------------------
 class CmdDomain(ArxPlayerCommand):
     """
-    @domain
+    @domain - Commands to view and control your domain.
     Usage:
-        @domain
+        @domain [<domain ID>]
         @domain/castellan <domain ID>=<player>
         @domain/minister <domain ID>=<player>,<category>
         @domain/resign <domain ID>
         @domain/strip <domain ID>=<player>
         @domain/title <domain ID>=<minister>,<title>
 
-    Commands to view and control your domain.
-
-    Unfinished
+    Minister categories: {}
     """
     key = "@domain"
     locks = "cmd:all()"
@@ -1279,6 +1277,9 @@ class CmdDomain(ArxPlayerCommand):
     aliases = ["@domains"]
     valid_categories = ("farming", "income", "loyalty", "population", "productivity", "upkeep", "warfare")
     minister_dict = dict((key.lower(), value) for (value, key) in Minister.MINISTER_TYPES)
+
+    def get_help(self, caller, cmdset):
+        return self.__doc__.format(", ".join(self.valid_categories))
 
     @property
     def orgs(self):
