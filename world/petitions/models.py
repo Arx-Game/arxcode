@@ -201,6 +201,9 @@ class Petition(SharedMemoryModel):
     date_created = models.DateField(auto_now_add=True)
     date_updated = models.DateField(auto_now=True)
 
+    class Meta:
+        ordering = ('-date_updated',)
+
     @property
     def owner(self):
         """Gets first owner, if any"""
