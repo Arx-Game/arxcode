@@ -1,5 +1,5 @@
 cloudinary==1.5.0
-Django==1.11.20
+Django==1.11.23
 django-bootstrap-form==3.2.1
 django-classy-tags==0.8.0
 django-crispy-forms==1.7.0
@@ -20,4 +20,3 @@ sqlparse==0.2.2
 Twisted==16.0.0
 Unidecode==0.4.19
 zope.interface==4.4.2
-graphviz==0.8.2
