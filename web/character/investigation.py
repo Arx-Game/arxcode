@@ -204,7 +204,8 @@ class InvestigationFormCommand(ArxCommand):
             else:
                 search_tags, omit_tags = form[5]
                 gm_notes = "Added tags: %s\n" % list_to_string(search_tags)
-                gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
+                if omit_tags:
+                    gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
             clue = Clue.objects.create(name=clue_name, gm_notes=gm_notes, allow_investigation=True, rating=30)
             for tag in search_tags:
                 clue.search_tags.add(tag)
@@ -296,6 +297,12 @@ class InvestigationFormCommand(ArxCommand):
             self.msg("It is too close to the end of the week to do that.")
             return False
         return True
+
+    def check_is_ongoing(self, investigation):
+        if not investigation.ongoing:
+            self.msg("That investigation is not ongoing.")
+        else:
+            return True
 
 
 class CmdAssistInvestigation(InvestigationFormCommand):
@@ -654,6 +661,8 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                 investigation_id = self.lhs
             try:
                 ob = char.assisted_investigations.get(investigation__id=investigation_id)
+                if not self.check_is_ongoing(ob):
+                    return
                 if not self.check_enough_time_left():
                     return
                 if "changestory" in self.switches:
@@ -816,6 +825,8 @@ class CmdInvestigate(InvestigationFormCommand):
     base_cost = 25
     model_switches = ("view", "active", "silver", "resource", "pause", "actionpoints",
                       "changestory", "abandon", "resume", "requesthelp", "changestat", "changeskill")
+    needs_ongoing = ("active", "silver", "resource", "pause", "actionpoints", "abandon",
+                      "requesthelp", "changestat", "changeskill", "changestory")
 
     # noinspection PyAttributeOutsideInit
     def get_help(self, caller, cmdset):
@@ -974,6 +985,8 @@ class CmdInvestigate(InvestigationFormCommand):
                 return
             except Investigation.DoesNotExist:
                 caller.msg("Investigation not found.")
+                return
+            if self.check_switches(self.needs_ongoing) and not self.check_is_ongoing(ob):
                 return
             if "resume" in self.switches:
                 msg = "To mark an investigation as active, use /active."
