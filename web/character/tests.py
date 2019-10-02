@@ -69,7 +69,7 @@ class InvestigationTests(ArxCommandTest):
         self.call_cmd("222", ("No clue found by this ID: 222."))
 
     def test_cmd_helpinvestigate(self):
-        self.roster_entry2.investigations.create()
+        inv1 = self.roster_entry2.investigations.create()
         self.setup_cmd(investigation.CmdAssistInvestigation, self.char1)
         self.char1.db.investigation_invitations = [1]
         self.call_cmd("/new", 'Helping an investigation: \nInvestigation: \nStory unfinished.\n'
@@ -83,6 +83,9 @@ class InvestigationTests(ArxCommandTest):
         with patch.object(self.cmd_class, 'check_enough_time_left') as fake_method:
             fake_method.return_value = True
             self.call_cmd("/finish", "Char is now helping Char2's investigation on .")
+        inv1.ongoing = False
+        inv1.save()
+        self.call_cmd("/silver 1=10", "That investigation is not ongoing.")
 
     def test_cmd_theories(self):
         self.account2.inform = Mock()
@@ -157,8 +160,8 @@ class InvestigationTests(ArxCommandTest):
             clue3 = Clue.objects.create(name="another test clue")
             clue3.search_tags.add(tag3)
             clue3.discoveries.create(character=self.roster_entry2)
-            self.call_cmd("/topic clue: another test clue", 'Creating an investigation: another test clue\nstory\nS'
-                                                            'tat: ??? - Skill: ???')
+            self.call_cmd("/topic clue: another test clue", 'Creating an investigation: another test clue\nstory\n'
+                                                            'Stat: ??? - Skill: ???')
             self.call_cmd("/finish", 'You spend 25 social resources to start a new investigation.|'
                                      'New investigation created. You already are participating in an active '
                                      'investigation for this week, but may still add resources/silver to increase its '
@@ -187,6 +190,9 @@ class InvestigationTests(ArxCommandTest):
             self.assertEqual(self.roster_entry2.action_points, 50)
             self.call_cmd("/requesthelp 4=bob, charlie","No active player found named bob|No active player found named charlie")
             self.call_cmd("/requesthelp 4=Char2","You cannot invite yourself.")
+            invest3.ongoing = False
+            invest3.save()
+            self.call_cmd("/silver 4=10", "That investigation is not ongoing.")
 
 
 class SceneCommandTests(ArxCommandTest):
