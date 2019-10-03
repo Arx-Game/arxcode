@@ -204,7 +204,8 @@ class InvestigationFormCommand(ArxCommand):
             else:
                 search_tags, omit_tags = form[5]
                 gm_notes = "Added tags: %s\n" % list_to_string(search_tags)
-                gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
+                if omit_tags:
+                    gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
             clue = Clue.objects.create(name=clue_name, gm_notes=gm_notes, allow_investigation=True, rating=30)
             for tag in search_tags:
                 clue.search_tags.add(tag)
@@ -296,6 +297,15 @@ class InvestigationFormCommand(ArxCommand):
             self.msg("It is too close to the end of the week to do that.")
             return False
         return True
+
+    def check_is_ongoing(self, investigation):
+        if not investigation.ongoing:
+            self.msg("That investigation is not ongoing.")
+        else:
+            return True
+
+    def caller_cannot_afford(self):
+        self.msg("You must specify a positive amount that you can afford.")
 
 
 class CmdAssistInvestigation(InvestigationFormCommand):
@@ -654,6 +664,8 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                 investigation_id = self.lhs
             try:
                 ob = char.assisted_investigations.get(investigation__id=investigation_id)
+                if not self.check_is_ongoing(ob.investigation):
+                    return
                 if not self.check_enough_time_left():
                     return
                 if "changestory" in self.switches:
@@ -682,11 +694,10 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                         if amt < 0 or val <= 0:
                             raise ValueError
                         if val % 5000 or (ob.silver + val) > 50000:
-                            self.msg("Silver must be a multiple of 5000, 50000 max.")
-                            self.msg("Current silver: %s" % ob.silver)
+                            self.msg("Silver must be a multiple of 5000, 50000 max.\nCurrent silver: %s" % ob.silver)
                             return
                     except (TypeError, ValueError):
-                        self.msg("You must specify a positive amount that is less than your money on hand.")
+                        self.caller_cannot_afford()
                         return
                     self.caller.pay_money(val)
                     ob.silver += val
@@ -740,7 +751,7 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                         if not self.check_ap_cost(amt):
                             return
                     except (TypeError, ValueError):
-                        self.msg("Amount of action points must be a positive number you can afford.")
+                        self.caller_cannot_afford()
                         return
                     # add action points and save
                     ob.action_points += amt
@@ -816,6 +827,8 @@ class CmdInvestigate(InvestigationFormCommand):
     base_cost = 25
     model_switches = ("view", "active", "silver", "resource", "pause", "actionpoints",
                       "changestory", "abandon", "resume", "requesthelp", "changestat", "changeskill")
+    needs_ongoing = ("active", "silver", "resource", "pause", "actionpoints", "abandon",
+                      "requesthelp", "changestat", "changeskill", "changestory")
 
     # noinspection PyAttributeOutsideInit
     def get_help(self, caller, cmdset):
@@ -975,6 +988,8 @@ class CmdInvestigate(InvestigationFormCommand):
             except Investigation.DoesNotExist:
                 caller.msg("Investigation not found.")
                 return
+            if self.check_switches(self.needs_ongoing) and not self.check_is_ongoing(ob):
+                return
             if "resume" in self.switches:
                 msg = "To mark an investigation as active, use /active."
                 if ob.ongoing:
@@ -1021,9 +1036,6 @@ class CmdInvestigate(InvestigationFormCommand):
                 if ob.active:
                     self.msg("It is already active.")
                     return
-                if not ob.ongoing:
-                    self.msg("That investigation is finished.")
-                    return
                 try:
                     current_active = entry.investigations.get(active=True)
                 except Investigation.DoesNotExist:
@@ -1066,11 +1078,10 @@ class CmdInvestigate(InvestigationFormCommand):
                     if amt < 0 or val <= 0:
                         raise ValueError
                     if val % 5000 or (ob.silver + val) > 50000:
-                        caller.msg("Silver must be a multiple of 5000, 50000 max.")
-                        caller.msg("Current silver: %s" % ob.silver)
+                        caller.msg("Silver must be a multiple of 5000, 50000 max.\nCurrent silver: %s" % ob.silver)
                         return
                 except (TypeError, ValueError):
-                    caller.msg("You must specify a positive amount that is less than your money on hand.")
+                    self.caller_cannot_afford()
                     return
                 caller.pay_money(val)
                 ob.silver += val
@@ -1083,7 +1094,7 @@ class CmdInvestigate(InvestigationFormCommand):
                 if not self.check_enough_time_left():
                     return
                 if not ob.active:
-                    self.msg("The investigation must be marked active to invest AP in it.")
+                    self.msg("The investigation must be marked active to invest time in it.")
                     return
                 try:
                     val = int(self.rhs)
@@ -1096,7 +1107,7 @@ class CmdInvestigate(InvestigationFormCommand):
                     if not self.check_ap_cost(val):
                         return
                 except (TypeError, ValueError):
-                    caller.msg("You must specify a positive amount that you can afford.")
+                    self.caller_cannot_afford()
                     return
                 ob.action_points += val
                 ob.save()
