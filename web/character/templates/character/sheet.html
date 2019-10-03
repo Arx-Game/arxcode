@@ -48,7 +48,11 @@
 	{% else %}{{ character.db.family}}
 	{% endif %}
 	<br>
-    <b>Gender:</b> {{ character.db.gender }}<br><b>Age:</b> {{ character.db.age }}<br>
+    <b>Gender:</b> {{ character.db.gender }}<br><b>Marital Status:</b> {{character.db.marital_status }}<br>
+    <b>Age:</b> {{ character.db.age }}<br>
+    {% if character.db.birthday %}
+      <b>Birthday:</b> {{ character.db.birthday }}<br>
+    {% endif %}
     <b>Religion:</b> {{ character.db.religion }}<br><b>Vocation:</b> {{character.db.vocation|capfirst }}<br>
 	<b>Height:</b> {{ character.db.height}}<br><b>Hair Color:</b> {{character.db.haircolor}}<br>
 	<b>Eye Color:</b> {{ character.db.eyecolor}}<br><b>Skintone:</b> {{character.db.skintone}}</p>
