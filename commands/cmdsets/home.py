@@ -78,7 +78,7 @@ class CmdManageHome(ArxCommand):
                 num += '{w*{n'
             table.add_row([num, LIFESTYLES[rating][0], LIFESTYLES[rating][1]])
         caller.msg(str(table), options={'box': True})
-    
+
     def func(self):
         """Execute command."""
         caller = self.caller
@@ -152,7 +152,7 @@ class CmdManageHome(ArxCommand):
             caller.msg("No character found.")
             return
         keys = char.db.keylist or []
-        if "key" in self.switches:          
+        if "key" in self.switches:
             if loc in keys and char in keylist:
                 caller.msg("They already have a key to here.")
                 return
@@ -435,7 +435,7 @@ class CmdManageRoom(ArxCommand):
 
     Owners can appoint characters to be decorators or bouncers, to allow them to
     use commands while not owners.
-    
+
     The ban switch prevents characters from being able to enter the room. The boot
     switch removes characters from the room. Bouncers are able to use ban and boot.
     Decorators are permitted to use the desc switches.
@@ -447,7 +447,7 @@ class CmdManageRoom(ArxCommand):
     bouncer_switches = ("ban", "unban", "boot")
     personnel_switches = ("addbouncer", "rmbouncer", "adddecorator", "rmdecorator")
     help_entry_tags = ["housing"]
-    
+
     def check_perms(self):
         """Checks the permissions for the room"""
         caller = self.caller
@@ -662,7 +662,7 @@ class CmdManageRoom(ArxCommand):
             caller.msg("No char.")
             return
         if "addhome" in self.switches or "addshop" in self.switches:
-            noun = "home" if "addhome" in self.switches else "shop" 
+            noun = "home" if "addhome" in self.switches else "shop"
             if noun == "home":
                 char.db.homeproposal = loc
             else:
@@ -995,11 +995,11 @@ class CmdBuyFromShop(CmdCraft):
         +shop/addadorn <object>=<material type>,<amount>
         +shop/craft
 
-    Allows you to buy objects from a shop. +shop/craft allows you to use a 
-    crafter's skill to create an item. Similarly, +shop/refine lets you use a 
-    crafter's skill to attempt to improve a crafted object. Check 'help craft' 
-    for an explanation of switches, all of which can be used with +shop. Costs 
-    and materials are covered by you. +shop/viewdesigns lets you see the 
+    Allows you to buy objects from a shop. +shop/craft allows you to use a
+    crafter's skill to create an item. Similarly, +shop/refine lets you use a
+    crafter's skill to attempt to improve a crafted object. Check 'help craft'
+    for an explanation of switches, all of which can be used with +shop. Costs
+    and materials are covered by you. +shop/viewdesigns lets you see the
     crafter's pre-made descriptions that you can copy for items you create.
     """
     key = "+shop"
@@ -1067,7 +1067,7 @@ class CmdBuyFromShop(CmdCraft):
         table = PrettyTable(["{wName{n", "{wCraft Price{n", "{wRefine Price{n"])
         recipes = loc.db.shopowner.player_ob.Dominion.assets.recipes.all().order_by('name')
         # This try/except block corrects 'removed' lists that are corrupted by
-        # non-integers, because that was a thing once upon a time. 
+        # non-integers, because that was a thing once upon a time.
         try:
             removed = prices.get("removed", [])
             recipes = recipes.exclude(id__in=removed)
@@ -1091,7 +1091,9 @@ class CmdBuyFromShop(CmdCraft):
         sale_items = ObjectDB.objects.filter(id__in=prices.keys())
         sale_items = self.filter_shop_qs(sale_items, "db_key")
         for item in sale_items:
-            table.add_row(item.id, item.name, prices[item.id])
+            price = prices[item.id]
+            price -= (price * self.get_discount() / 100.0)
+            table.add_row(item.id, item.name, price)
         if sale_items:
             msg += str(table)
         designs = self.filter_shop_dict(loc.db.template_designs or {})
@@ -1100,14 +1102,14 @@ class CmdBuyFromShop(CmdCraft):
         if not recipes and not sale_items and not designs:
             msg = "Nothing found."
         return msg
-        
+
     def filter_shop_qs(self, shop_qs, field_name):
         """Returns filtered queryset if a filter word exists"""
         if "filter" in self.switches and self.args:
             filter_query = {"%s__icontains" % field_name: self.args}
             shop_qs = shop_qs.filter(**filter_query)
         return shop_qs
-    
+
     def filter_shop_dict(self, shop_dict):
         """Returns filtered dict if a filter word exists"""
         if "filter" in self.switches and self.args:
@@ -1129,6 +1131,7 @@ class CmdBuyFromShop(CmdCraft):
         price -= price * (self.get_discount() / 100.0)
         self.caller.pay_money(price)
         self.pay_owner(price, "%s has bought %s for %s." % (self.caller, item, price))
+        self.caller.msg("You paid %s for %s." % (price, item))
         item.move_to(self.caller)
         item.tags.remove("for_sale")
         item.attributes.remove("sale_location")
