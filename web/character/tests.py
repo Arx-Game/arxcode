@@ -50,6 +50,7 @@ class InvestigationTests(ArxCommandTest):
                                                     "You have shared the clue(s) 'test clue' with Char2.\n"
                                                     "Your note: {}".format("x"*80))
         self.assertEqual(self.roster_entry.action_points, 101)
+        inv1 = self.roster_entry2.investigations.create(clue_target=self.clue2, active=True)
         self.call_cmd("/share 2=Testaccount2", "No clue found by this ID: 2. ")
         self.clue_disco2 = self.roster_entry.clue_discoveries.create(clue=self.clue2, message="additional text test2")
         self.assertFalse(bool(self.roster_entry2.revelations.all()))
@@ -59,6 +60,11 @@ class InvestigationTests(ArxCommandTest):
         self.node.discovered_by_revelations.add(self.revelation)
         self.call_cmd(template.format("2", "Love Tehom"*8), "You use 101 action points and have 0 remaining this week.|"
                       "You have shared the clue(s) 'test clue2' with Char2.\nYour note: {}".format("Love Tehom"*8))
+        self.assertTrue(self.account2.informs.filter(message="After a recent clue discovery, "
+                                                             "%s is no longer active." % inv1).exists())
+        self.assertFalse(inv1.active)
+        self.assertEqual(inv1.clue_target, None)
+        self.assertEqual(self.roster_entry2.action_points, 50)
         pract = self.char2.practitioner
         self.assertEqual(pract.spells.first(), self.spell)
         self.assertEqual(pract.nodes.first(), self.node)
