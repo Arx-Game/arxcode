@@ -841,13 +841,7 @@ class CmdInvestigate(InvestigationFormCommand):
 
     @property
     def ap_cost(self):
-        try:
-            cost = 50 - (self.caller.db.skills.get('investigation', 0) * 5)
-            if cost < 0:
-                cost = 0
-            return cost
-        except AttributeError:
-            return 50
+        return Investigation.ap_cost(self.caller)
 
     def list_ongoing_investigations(self):
         qs = self.related_manager.filter(ongoing=True)

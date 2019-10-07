@@ -1134,6 +1134,11 @@ class ClueDiscovery(SharedMemoryModel):
             qs = qs.exclude(id=investigation.id)
         for snoopery in qs:
             snoopery.clue_target = None
+            if snoopery.active:
+                inactive_msg = "After a recent clue discovery, %s is no longer active." % snoopery
+                snoopery.active = False
+                snoopery.refund_ap()
+                self.character.player.inform(inactive_msg, category="Inactive Investigation", append=False)
             snoopery.save()
 
     def share(self, entry, investigation=None, note=None, inform_creator=None):
@@ -1297,6 +1302,16 @@ class Investigation(AbstractPlayerAllocations):
         msg += "{wAction Points Used{n: %s\n" % self.action_points
         return msg
 
+    @classmethod
+    def ap_cost(cls, character):
+        try:
+            cost = 50 - (character.db.skills.get('investigation', 0) * 5)
+            if cost < 0:
+                cost = 0
+            return cost
+        except AttributeError:
+            return 50
+
     @property
     def char(self):
         """Character object of the RosterEntry running the investigation"""
@@ -1321,6 +1336,10 @@ class Investigation(AbstractPlayerAllocations):
         roll = do_dice_check(obj.char, stat_list=[stat, "perception", "intellect"], skill_list=[skill, "investigation"],
                              difficulty=diff, average_skill_list=True)
         return roll
+
+    def refund_ap(self):
+        ap_cost = self.ap_cost(self.char)
+        self.char.player_ob.pay_action_points(ap_cost)
 
     def do_roll(self, mod=0, diff=None):
         """
