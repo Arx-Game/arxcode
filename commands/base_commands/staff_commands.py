@@ -1133,8 +1133,8 @@ class CmdGMNotes(ArxCommand):
         (or removes tag from) an object of that class.
         """
         if len(self.switches) < 2 or not self.lhs or not self.rhs or not self.check_switches(self.taggables):
-            usage = "Usage: @gmnotes/tag/<class type> <ID or name>=<tag name>\n"
-            usage += "Class types: clue, revelation, plot, action, gemit, rpevent, flashback, objectdb."
+            usage = ("Usage: @gmnotes/tag/<class type> <ID or name>=<tag name>\n"
+                     "Class types: clue, revelation, plot, action, gemit, rpevent, flashback, objectdb.")
             raise CommandError(usage)
         tag = self.get_tag(self.rhs)
         # don't like that thing. No sir.
@@ -1164,7 +1164,7 @@ class CmdGMNotes(ArxCommand):
         def get_gmnote(thing):
             gm_notes = thing.gm_notes or ""
             if gm_notes and len(gm_notes) > 20:
-                gm_notes = "%s..." % gm_notes[:20]
+                gm_notes = "%s+" % gm_notes[:20]
             return gm_notes
 
         if self.args:
@@ -1234,9 +1234,16 @@ class CmdGMNotes(ArxCommand):
     def write_clue_quick(self):
         """Creates clue with title prefixed by "PLACEHOLDER" so you know for sure."""
         try:
-            topic, gm_notes = self.lhs.split("/", 1)
+            topic, gm_notes = self.lhs, ""
+            lhslist = self.lhs.split("/")
+            if len(lhslist) > 1:
+                gm_notes = lhslist[-1]
+                topic = topic.split("/%s" % gm_notes)[0]
+            else:
+                raise ValueError
         except ValueError:
-            raise CommandError("Please include a name/identifier and notes for your quick clue.")
+            raise CommandError("Please include Topic and GM notes for your quick clue: "
+                               "<topic>/<GMnotes>[=<target>]")
         targ = None
         if self.rhs:
             targ = self.search(self.rhs, global_search=True)
@@ -1257,9 +1264,11 @@ class CmdGMNotes(ArxCommand):
             raise CommandError("Usage: <character>,<revelation name or #>=<IC message>/<GMnote>")
         character = self.character_search(self.lhslist[0])
         revelation = self.get_taggable_thing(self.lhslist[1], "revelation")
+        desc, gm_notes = self.rhs, ""
         rhslist = self.rhs.split("/")
-        gm_notes = rhslist[1] if rhslist[1] else ""
-        desc = rhslist[0]
+        if len(rhslist) > 1:
+            gm_notes = rhslist[-1]
+            desc = desc.split("/%s" % gm_notes)[0]
         num_secrets = character.clues.filter(clue_type=Clue.CHARACTER_SECRET).count()
         name = "Secret #%s of %s" % (num_secrets + 1, character.db_key)
         cloo = Clue.objects.create(name=name, tangible_object=character, author=self.caller.roster, desc=desc,

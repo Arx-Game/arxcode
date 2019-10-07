@@ -1045,12 +1045,12 @@ class StaffCommandTestsPlus(ArxCommandTest):
         bishirev1 = Revelation.objects.create(name="Bishis Are Hot", gm_notes="Also bishis are easy for smirkity glee.")
         self.call_cmd("/rev Bishis Are Hot", "No clues exist for Bishis Are Hot.")
         bishirev1.clues_used.create(clue=galvcloo1, required_for_revelation=False)
-        self.call_cmd("/rev", "# Revelation      Clu Secrt GM Notes                \n"
-                              "1 Vixens Are Evil 2   1     Hss ss ss               "
-                              "2 Bishis Are Hot  1   1     Also bishis are easy...")
-        self.call_cmd("/rev Vixens", "Vixens Are Evil     About Disco GM Notes                \n"
-                                     "Glyphed Catsuit     lore  1     Chath pets a slypose... "
-                                     "Secret #1 of Slyyyy Char2 0     Sly is incredibly ho...")
+        self.call_cmd("/rev", "# Revelation      Clu Secrt GM Notes              \n"
+                              "1 Vixens Are Evil 2   1     Hss ss ss             "
+                              "2 Bishis Are Hot  1   1     Also bishis are easy+")
+        self.call_cmd("/rev Vixens", "Vixens Are Evil     About Disco GM Notes              \n"
+                                     "Glyphed Catsuit     lore  1     Chath pets a slypose+ "
+                                     "Secret #1 of Slyyyy Char2 0     Sly is incredibly ho+")
         slyplot1.revelation_involvement.create(revelation=vixenrev1, gm_notes="Naturally this applies to Slyyyy.")
         slyplot1.revelation_involvement.create(revelation=bishirev1, gm_notes="Poor bishis do not stand a chance.")
         slyplot1.clue_involvement.create(clue=slycloo1, access=2,
@@ -1070,13 +1070,14 @@ class StaffCommandTestsPlus(ArxCommandTest):
                                '~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
                                '| 1   | Slypose (Testaccount2) | Sly as a fox.')
         self.call_cmd("/quick Send Help/test", "Created placeholder for 'Send Help' (clue #5). GM Notes: test")
-        self.call_cmd("/quick Please=She's evil", 'Please include a name/identifier and notes for your quick clue.')
+        self.call_cmd("/quick Please=She's evil", "Please include Topic and GM notes for your quick clue: "
+                                                  "<topic>/<GMnotes>[=<target>]")
         self.call_cmd("/quick Please/She's evil=here",
                       "Created placeholder for 'Please' (clue #6). GM Notes: She's evil")
         self.assertEqual([str(ob) for ob in self.roster_entry.clues_written.all()],
                          ["PLACEHOLDER by Char: Send Help", "PLACEHOLDER by Char: Please"])
-        self.call_cmd("/secret Char2,1=Sly you are evil. Srsly./Do not trust.",
-                      "[Clue #7] Secret #3 of Char2: Sly you are evil. Srsly.\nGM Notes: Do not trust.\n"
+        self.call_cmd("/secret Char2,1=Sly you are evil/hot. Srsly./Do not trust.",
+                      "[Clue #7] Secret #3 of Char2: Sly you are evil/hot. Srsly.\nGM Notes: Do not trust.\n"
                       "Created a secret for Char2 related to revelation #1 'Vixens Are Evil'.")
         slyplot1.resolved = True
         slyplot1.save()
@@ -1108,6 +1109,9 @@ class StaffCommandTestsPlus(ArxCommandTest):
         self.call_cmd("/delete bishi", "Deleting the 'bishi' tag. Poof.")
         self.call_cmd("/viewnotes char2", 'GM Notes for Char2:\n\nSly is incredibly hot and smirkity.\n\nDo not trust.')
         self.call_cmd("/viewnotes here", "GM Notes for Room:\n\nShe's evil")
+        self.call_cmd("/secret Char2,1=Secret without gmnote",
+                      "[Clue #8] Secret #4 of Char2: Secret without gmnote\n"
+                      "Created a secret for Char2 related to revelation #1 'Vixens Are Evil'.")
 
 
 class JobCommandTests(TestTicketMixins, ArxCommandTest):
