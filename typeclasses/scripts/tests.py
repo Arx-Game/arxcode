@@ -36,6 +36,7 @@ class TestWeeklyEventScript(ArxCommandTest):
         pl4 = self.add_factors(self.assetowner4, vault4, 4, command=3, skills={'diplomacy': 3, 'etiquette': 4})
         pl5 = self.add_factors(self.assetowner5, vault5, composure=4, skills={'manipulation': 3, 'intimidation': 5})
         # post-lifestyle (pl) vaults: pl2=900, pl3=1800, pl4=2500, pl5=10
+        # TODO: test prestige changes
         new_tran = AccountTransaction.objects.create
         tran1 = new_tran(receiver=self.assetowner3, sender=self.assetowner2,  # 3 gets paid
                          category="Blackmail", weekly_amount=10)
@@ -53,6 +54,6 @@ class TestWeeklyEventScript(ArxCommandTest):
         self.assertTrue(
             "Failed payments to you: %s -> %s. Amount: %s" % (self.assetowner5, self.assetowner3, tran2.weekly_amount)
             in self.account3.informs.last().message)
-        self.assertEqual(self.assetowner5.vault, pl5)  # Same because transaction failed
+        self.assertEqual(self.assetowner5.vault, pl5)  # Same because tran2 failed
         self.assert_tran_success(tran3, pl2 - tran1.weekly_amount, receiver_vault=None)
         self.assert_tran_success(tran4, pl4, pl3 + tran1.weekly_amount)
