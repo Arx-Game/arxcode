@@ -1,4 +1,4 @@
-from typeclasses.scripts import Script
+from typeclasses.scripts.scripts import Script
 from . import utils
 from evennia.utils import create
 
