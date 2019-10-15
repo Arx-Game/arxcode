@@ -79,6 +79,7 @@
       <p>Description: {{ domain.desc|mush_to_html}}</p>
       {% if show_secret < 11  %}
           <ul class="list-inline text-left">
+          <li>Area: {{domain.area}}</li>
           <li>Mines: {{domain.num_mines}}</li>
           <li>Lumber: {{domain.num_lumber_yards}}</li>
           <li>Mills: {{domain.num_mills}}</li>
