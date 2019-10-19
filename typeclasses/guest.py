@@ -3,6 +3,10 @@
 Guest is a child of default Player class.
 
 """
+from django.conf import settings
+
+from evennia.utils import create
+
 from .accounts import Account
 
 CMDSET_GUEST = "commands.cmdsets.cmdset_guest.GuestCmdSet"
@@ -98,11 +102,19 @@ class Guest(Account):
         try:
             from evennia.comms.models import ChannelDB
             from django.utils import timezone
-            chan = ChannelDB.objects.get(db_key__iexact="guest")
+            try:
+                chan = ChannelDB.objects.get(db_key=settings.GUEST_CHANNEL_NAME)
+            except ChannelDB.DoesNotExist:
+                chan_dict = [d for d in settings.DEFAULT_CHANNELS if d['key'] == settings.GUEST_CHANNEL_NAME][0]
+                chan = create.create_channel(**chan_dict)
             now = timezone.now()
             now = "%02i:%02i" % (now.hour, now.minute)
             chan.tempmsg("[%s]: %s" % (now, message))
-            gm_chan = ChannelDB.objects.get(db_key__iexact="staffinfo")
+            try:
+                gm_chan = ChannelDB.objects.get(db_key=settings.STAFF_INFO_CHANNEL_NAME)
+            except ChannelDB.DoesNotExist:
+                chan_dict = [d for d in settings.DEFAULT_CHANNELS if d['key'] == settings.STAFF_INFO_CHANNEL_NAME][0]
+                gm_chan = create.create_channel(**chan_dict)
             addr = self.sessions.all()[0].address
             message += " from %s" % addr
             gm_chan.msg(message)
