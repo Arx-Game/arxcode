@@ -13,22 +13,27 @@ class ArxRosterManager(models.Manager):
     @property
     def active(self):
         """Gets our Active roster"""
-        return self.get(name="Active")
+        return self.get_or_create(name="Active")[0]
     
     @property
     def available(self):
         """Gets our Available roster"""
-        return self.get(name="Available")
+        return self.get_or_create(name="Available")[0]
     
     @property
     def unavailable(self):
         """Gets our Unavailable roster"""
-        return self.get(name="Unavailable")
+        return self.get_or_create(name="Unavailable")[0]
     
     @property
     def incomplete(self):
         """Gets our Incomplete roster"""
-        return self.get(name="Incomplete")
+        return self.get_or_create(name="Incomplete")[0]
+
+    @property
+    def gone(self):
+        """Gets our Gone roster, for dead/removed characters"""
+        return self.get_or_create(name="Gone")[0]
 
     def get_all_active_characters(self):
         """Gets a queryset of all character objects in our Active roster"""

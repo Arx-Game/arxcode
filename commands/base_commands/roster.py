@@ -455,11 +455,11 @@ class CmdAdminRoster(ArxPlayerCommand):
                 caller.msg("Move failed: %s" % err)
                 return
         if 'retire' in switches or 'gone' in self.switches:
-            active = Roster.objects.get(name__iexact="active")
+            active = Roster.objects.active
             if 'retire' in self.switches:
-                new_roster = Roster.objects.get(name__iexact="available")
+                new_roster = Roster.objects.available
             else:  # character is dead/gone
-                new_roster = Roster.objects.get(name__iexact="gone")
+                new_roster = Roster.objects.gone
             try:
                 entry = active.entries.get(character__db_key__iexact=self.lhs)
             except RosterEntry.DoesNotExist:
