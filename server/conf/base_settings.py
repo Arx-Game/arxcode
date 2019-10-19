@@ -2,8 +2,8 @@
 Base settings that we'll inherit from
 """
 from evennia.settings_default import *
-# see documentation on python-decouple. tldr: create a config.env file at repo root, config() draws from that.
-from decouple import config
+# see documentation on python-decouple. tldr: create a settings.ini file at repo root, config() draws from that.
+from decouple import config, Csv
 
 ######################################################################
 # Evennia base server config
@@ -31,33 +31,54 @@ PERMISSION_HIERARCHY = ["Guest",  # note-only used if GUEST_ENABLED=True
                         ]
 SERVERNAME = config("SERVERNAME", default="Arx")
 GAME_SLOGAN = config("GAME_SLOGAN", default="Season Two: Heroes and Other Fables")
-TIME_ZONE = 'America/New_York'
-USE_TZ = False
-TELNET_PORTS = [3000]
-IDMAPPER_CACHE_MAXSIZE = 2000
-EVENNIA_ADMIN = False
-EMAIL_USE_TLS = True
-IN_GAME_ERRORS = False
-IDLE_TIMEOUT = -1
-MAX_CHAR_LIMIT = 8000
-DEBUG = False
+TIME_ZONE = config('TIME_ZONE', default='America/New_York')
+USE_TZ = config('USE_TZ', default=False, cast=bool)
+TELNET_PORTS = config('TELNET_PORTS', default='3000', cast=Csv(cast=int))
+IDMAPPER_CACHE_MAXSIZE = config('IDMAPPER_CACHE_MAXSIZE', default=4000, cast=int)
+EVENNIA_ADMIN = config('EVENNIA_ADMIN', default=False, cast=bool)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+IN_GAME_ERRORS = config('IN_GAME_ERRORS', default=False, cast=bool)
+IDLE_TIMEOUT = config('IDLE_TIMEOUT', default=-1, cast=int)
+MAX_CHAR_LIMIT = config('MAX_CHAR_LIMIT', default=8000, cast=int)
+DEBUG = config('DEBUG', default=False, cast=bool)
 CHANNEL_COMMAND_CLASS = "commands.base_commands.channels.ArxChannelCommand"
 BASE_ROOM_TYPECLASS = "typeclasses.rooms.ArxRoom"
-DEFAULT_HOME = "#13"
+# Important: set this to the ID of whatever room you want to have as a default for things to show up in
+DEFAULT_HOME = config('DEFAULT_HOME', default="#13")
 MULTISESSION_MODE = 1
 COMMAND_DEFAULT_MSG_ALL_SESSIONS = True
 ADDITIONAL_ANSI_MAPPINGS = [(r'%r', "\r\n"),]
 COMMAND_DEFAULT_ARG_REGEX = r'^[ /]+.*$|$'
 LOCKWARNING_LOG_FILE = ""
+PUBLIC_CHANNEL_NAME = config("PUBLIC_CHANNEL_NAME", default="Public")
+GUEST_CHANNEL_NAME = config("GUEST_CHANNEL_NAME", default="Guest")
+STAFF_INFO_CHANNEL_NAME = config("STAFF_INFO_CHANNEL_NAME", default="staffinfo")
+PLAYER_HELPER_CHANNEL_NAME = config("PLAYER_HELPER_CHANNEL_NAME", default="Guides")
 DEFAULT_CHANNELS = [
-    {"key": "Public",
+    {"key": PUBLIC_CHANNEL_NAME,
      "aliases": "pub",
      "desc": "Public discussion",
      "locks": "control: perm(Wizards);listen:all();send:all()"},
     {"key": "MUDinfo",
      "aliases": "",
      "desc": "Connection log",
-     "locks": "control:perm(Immortals);listen:perm(Wizards);send:false()"}
+     "locks": "control:perm(Immortals);listen:perm(Wizards);send:false()"},
+    {"key": GUEST_CHANNEL_NAME,
+     "aliases": "",
+     "desc": "Guest channel",
+     "locks": "control:perm(Immortals);listen:all();send:all()"},
+    {"key": "Staff",
+     "aliases": "",
+     "desc": "Staff channel",
+     "locks": "control:perm(Immortals);listen:perm(Builder);send:perm(Builder)"},
+    {"key": STAFF_INFO_CHANNEL_NAME,
+     "aliases": "",
+     "desc": "Messages for staff",
+     "locks": "control:perm(Immortals);listen:perm(Builder);send:perm(Builder)"},
+    {"key": PLAYER_HELPER_CHANNEL_NAME,
+     "aliases": "",
+     "desc": "Channel for player volunteers",
+     "locks": "control:perm(Immortals);listen:perm(helper);send:perm(helper)"}
     ]
 
 DATABASES = {
@@ -103,9 +124,9 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
 ######################################################################
 # Game Time setup
 ######################################################################
-TIME_FACTOR = 2.0
+TIME_FACTOR = config("TIME_FACTOR", cast=float, default=2.0)
 INVESTIGATION_PROGRESS_RATE = config("INVESTIGATION_PROGRESS_RATE", cast=float, default=1.0)
-INVESTIGATION_DIFFICULTY_MOD = 5
+INVESTIGATION_DIFFICULTY_MOD = config('INVESTIGATION_DIFFICULTY_MOD', default=5, cast=int)
 
 ######################################################################
 # Magic setup
@@ -115,11 +136,11 @@ MAGIC_CONDITION_MODULES = ("world.magic.conditionals",)
 ######################################################################
 # Helpdesk settings
 ######################################################################
-HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO = True
+HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO = config("HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO", default=True, cast=bool)
 
 # Queue.id for our Requests. Should normally be 1, but can be changed if you move queues around
-REQUEST_QUEUE_SLUG = "Request"
-BUG_QUEUE_SLUG = "Bugs"
+REQUEST_QUEUE_SLUG = config("REQUEST_QUEUE_SLUG", default="Request")
+BUG_QUEUE_SLUG = config("BUG_QUEUE_SLUG", default="Bugs")
 
 ######################################################################
 # Dominion settings
@@ -128,7 +149,7 @@ BATTLE_LOG = os.path.join(LOG_DIR, 'battle.log')
 DOMINION_LOG = os.path.join(LOG_DIR, 'dominion.log')
 LOG_FORMAT = "%(asctime)s: %(message)s"
 DATE_FORMAT = "%m/%d/%Y %I:%M:%S"
-GLOBAL_DOMAIN_INCOME_MOD = 0.75
+GLOBAL_DOMAIN_INCOME_MOD = config("GLOBAL_DOMAIN_INCOME_MOD", cast=float, default=0.75)
 
 SECRET_KEY = config('SECRET_KEY', default="PLEASEREPLACEME12345")
 HOST_BLOCKER_API_KEY = config('HOST_BLOCKER_API_KEY', default="SOME_KEY")
@@ -137,7 +158,7 @@ cloudinary.config(cloud_name=config('CLOUDINARY_NAME', default="SOME_NAME"),
                   api_key=config('CLOUDINARY_API_KEY', default="SOME_KEY"), api_secret=config('CLOUDINARY_API_SECRET',
                                                                                               default="SOME_KEY"))
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = config("EMAIL_BACKEND", default='django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='localhost')
 EMAIL_PORT = config('EMAIL_PORT', cast=int, default=25)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
