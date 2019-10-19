@@ -164,6 +164,11 @@ EMAIL_PORT = config('EMAIL_PORT', cast=int, default=25)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='')
-ADMINS = (config('ADMIN_NAME', default=''), config('ADMIN_EMAIL', default=''))
+ADMIN_NAME = config('ADMIN_NAME', default='')
+ADMIN_EMAIL = config('ADMIN_EMAIL', default='')
+if ADMIN_NAME and ADMIN_EMAIL:
+    ADMINS = (ADMIN_NAME, ADMIN_EMAIL)
+else:
+    ADMINS = []
 SEND_GAME_INDEX = config('SEND_GAME_INDEX', cast=bool, default=False)
 ISSUES_URL = config('ISSUES_URL', default='')
