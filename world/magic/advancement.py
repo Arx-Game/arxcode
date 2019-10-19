@@ -2,7 +2,7 @@ from world.magic.models import Practitioner, SkillNodeResonance
 from evennia.utils import logger
 from evennia.utils.evtable import EvTable
 from server.utils.arx_utils import inform_staff, commafy
-from typeclasses.scripts import Script
+from typeclasses.scripts.scripts import Script
 from evennia.scripts.models import ScriptDB
 from datetime import timedelta
 from django.utils import timezone
