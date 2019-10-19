@@ -40,5 +40,5 @@ if SEND_GAME_INDEX:
         'telnet_hostname': config("INDEX_TELNET_HOSTNAME", default='play.arxgame.org'),
         'telnet_port': TELNET_PORTS[0],
         # At minimum, specify this or the telnet_* options. Both is fine, too.
-        'web_client_url': 'https://play.arxgame.org/webclient',
+        'web_client_url': config("INDEX_WEB_CLIENT_URL", default='https://play.arxgame.org/webclient'),
     }
