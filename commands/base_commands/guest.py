@@ -592,7 +592,7 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                 new_character.save()
                 try:
                     from web.character.models import Roster
-                    incom = Roster.objects.get(name="Incomplete")
+                    incom = Roster.objects.incomplete
                     incom.entries.create(character=new_character, player=new_player)
                 except Exception as err:
                     print("Error in adding character to roster for guest: %s" % err)
