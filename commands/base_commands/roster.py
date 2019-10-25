@@ -293,7 +293,7 @@ class CmdRosterList(ArxPlayerCommand):
                            " why you want to play the character, how you intend to roleplay them, etc.{n")
                 return
             char_name = char_name.lower()
-            apps = get_apps_manager(caller)
+            apps = get_apps_manager()
             if not apps:
                 caller.msg("Application manager not found! Please inform the admins.")
                 return
@@ -406,7 +406,7 @@ class CmdAdminRoster(ArxPlayerCommand):
                 self.msg("Could not find a character by that name.")
             # try to delete any apps
             from .jobs import get_apps_manager
-            apps = get_apps_manager(caller)
+            apps = get_apps_manager()
             if not apps:
                 return
             apps_for_char = apps.view_all_apps_for_char(args)
