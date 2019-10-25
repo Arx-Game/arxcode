@@ -9,6 +9,8 @@ database migration to add in their functionality.
 
 """
 from django.conf import settings
+
+from evennia.utils.create import create_object
 from server.utils import prettytable, helpdesk_api
 from web.helpdesk.models import Ticket, Queue
 
@@ -19,34 +21,19 @@ from evennia.objects.models import ObjectDB
 import traceback
 from web.character.models import Roster, RosterEntry, PlayerAccount, AccountHistory
 from typeclasses.bulletin_board.bboard import BBoard
-
-
-def get_jobs_manager(caller):
-    """
-    returns jobs manager object
-    """
-    jobs_manager = ObjectDB.objects.get_objs_with_attr("jobs_manager")
-    jobs_manager = [ob for ob in jobs_manager if hasattr(ob, 'is_jobs_manager') and ob.is_jobs_manager()]
-    if not jobs_manager:
-        caller.msg("Jobs Manager object not found.")
-        return
-    if len(jobs_manager) > 1:
-        caller.msg("Warning. More than one Jobs Manager object found.")
-    return jobs_manager[0]
+from typeclasses.managers.apps_manager import AppsManager
 
 
 def get_apps_manager(caller):
     """
     returns apps manager object
     """
-    apps_manager = ObjectDB.objects.get_objs_with_attr("apps_manager")
-    apps_manager = [ob for ob in apps_manager if hasattr(ob, 'is_apps_manager') and ob.is_apps_manager()]
-    if not apps_manager:
-        caller.msg("Apps Manager object not found.")
-        return
-    if len(apps_manager) > 1:
-        caller.msg("Warning. More than one Apps Manager object found.")
-    return apps_manager[0]
+    try:
+        return AppsManager.objects.get()
+    except AppsManager.DoesNotExist:
+        return create_object(AppsManager, key="Apps Manager", home=caller, location=caller)
+    except AppsManager.MultipleObjectsReturned:
+        return AppsManager.objects.first()
 
 
 class CmdJob(ArxPlayerCommand):
@@ -87,7 +74,7 @@ class CmdJob(ArxPlayerCommand):
     def queues_from_args(self):
         """Get queue based on cmdstring"""
         if self.cmdstring == "@code":
-                queues = Queue.objects.filter(slug="Code")
+            queues = Queue.objects.filter(slug="Code")
         elif self.cmdstring == "@bug":
             queues = Queue.objects.filter(slug="Bugs")
         elif self.cmdstring == "@typo":
