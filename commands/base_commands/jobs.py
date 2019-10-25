@@ -24,14 +24,14 @@ from typeclasses.bulletin_board.bboard import BBoard
 from typeclasses.managers.apps_manager import AppsManager
 
 
-def get_apps_manager(caller):
+def get_apps_manager():
     """
     returns apps manager object
     """
     try:
         return AppsManager.objects.get()
     except AppsManager.DoesNotExist:
-        return create_object(AppsManager, key="Apps Manager", home=caller, location=caller)
+        return create_object(AppsManager, key="Apps Manager", home=None, location=None)
     except AppsManager.MultipleObjectsReturned:
         return AppsManager.objects.first()
 
@@ -409,7 +409,7 @@ class CmdApp(ArxPlayerCommand):
         caller = self.caller
         args = self.args
         switches = self.switches
-        apps = get_apps_manager(caller)
+        apps = get_apps_manager()
         if not apps:
             caller.msg("Apps manager not found! Please inform the administrators.")
             return

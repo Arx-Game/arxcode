@@ -962,7 +962,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             caller.msg("You still must define the following fields: %s" % unfinished_values)
             return
         # finish up
-        apps = get_apps_manager(caller)
+        apps = get_apps_manager()
         if not apps:
             caller.msg("Failed to find application manager. Please inform admins.")
             return
