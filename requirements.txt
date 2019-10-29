@@ -17,6 +17,6 @@ pytz==2018.5
 singledispatch==3.4.0.3
 six==1.10.0
 sqlparse==0.2.2
-Twisted==16.0.0
+Twisted==19.7.0
 Unidecode==0.4.19
 zope.interface==4.4.2
