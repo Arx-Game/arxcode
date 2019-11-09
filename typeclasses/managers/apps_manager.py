@@ -79,17 +79,17 @@ class AppsManager(Object):
             caller.msg("AppManager error: No email found for player application. Approval cancelled.")
             return False
         if approve:
-            #send approval email
+            # send approval email
             player = found_app[1].player_ob
             if not player:
                 caller.msg("AppManager error: No player object found for character application.")
                 return False
-            message = "Thank you for applying to play a character on ArxMUSH. This email is to "
+            message = "Thank you for applying to play a character on %s. This email is to " % settings.SERVERNAME
             message += "inform you that your application to play %s has been approved.\n\n" % found_app[1].key.capitalize()
             if gm_notes:
                 message += "GM Notes: %s\n" % gm_notes
             newpass = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-            #remove password set while testing
+            # remove password set while testing
             if not player.is_superuser:
                 player.set_password(newpass) 
                 try:
@@ -97,7 +97,7 @@ class AppsManager(Object):
                     change_email(found_app[1].key, email, caller)
                     caller.msg("Updated email of %s in roster to be %s." % (player, email))
                     add_note(found_app[1].key, "Application approved by %s" % caller, caller)
-                except:
+                except Exception:
                     traceback.print_exc()
                     player.email = email
                     caller.msg("Failed to update email in roster. Please change manually with @chroster.")

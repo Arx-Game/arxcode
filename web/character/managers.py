@@ -35,6 +35,11 @@ class ArxRosterManager(models.Manager):
         """Gets our Gone roster, for dead/removed characters"""
         return self.get_or_create(name="Gone")[0]
 
+    @property
+    def deleted(self):
+        """Gets our Deleted roster, for characters slated for removal"""
+        return self.get_or_create(name="Deleted")[0]
+
     def get_all_active_characters(self):
         """Gets a queryset of all character objects in our Active roster"""
         from evennia.objects.models import ObjectDB

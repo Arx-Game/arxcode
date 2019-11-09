@@ -7,22 +7,23 @@ exist in the game. All commands using it should be player commands, to allow
 players to peruse characters while OOC if they wish.
 
 """
+from datetime import datetime
+
+from django.db.models import Q
+
+from commands.base import ArxCommand, ArxPlayerCommand
+from commands.base_commands.jobs import get_apps_manager
 from evennia.utils import utils
+from server.utils import arx_more
 from server.utils import prettytable
 from server.utils.arx_utils import inform_staff, list_to_string
-from commands.base import ArxCommand, ArxPlayerCommand
-from datetime import datetime
-from commands.base_commands.jobs import get_apps_manager
-from django.db.models import Q
-from web.character.models import Roster
-from server.utils import arx_more
 from typeclasses.bulletin_board.bboard import BBoard
-from world.dominion.models import Organization, Propriety, AssetOwner
-from django.template.defaultfilters import pluralize
+from web.character.models import Roster
+from world.dominion.models import Propriety
 
 # limit symbol import for API
 __all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships",
-           "format_header")
+           "format_header", "change_email", "add_note")
 
 
 def get_roster_manager():
@@ -390,7 +391,7 @@ class CmdAdminRoster(ArxPlayerCommand):
                 if entry.roster.name == "Active":
                     self.msg("They are currently played. Use /retire instead.")
                     return
-                roster = Roster.objects.get(name__iexact="Available")
+                roster = Roster.objects.available
                 entry.roster = roster
                 entry.save()
                 try:
@@ -433,7 +434,7 @@ class CmdAdminRoster(ArxPlayerCommand):
                 caller.msg("Character already is in the roster.")
                 return
             except RosterEntry.DoesNotExist:
-                active, _ = Roster.objects.get_or_create(name__iexact="active")
+                active = Roster.objects.active
                 targ = caller.search(self.lhs)
                 if not targ:
                     return
@@ -980,7 +981,7 @@ class CmdPropriety(ArxPlayerCommand):
         try:
             propriety = Propriety.objects.get(name__iexact=self.lhs)
         except (Propriety.DoesNotExist, AttributeError):
-                return "There's no propriety known as '%s'." % self.lhs
+            return "There's no propriety known as '%s'." % self.lhs
         reputation = " with the '{}' reputation".format(str(propriety).title())
         owners = propriety.owners.all()
         if not owners:

@@ -132,24 +132,14 @@ class RosterEntry(SharedMemoryModel):
 
     def fake_delete(self):
         """We don't really want to delete RosterEntries for reals. So we fake it."""
-        try:
-            del_roster = Roster.objects.get(name__iexact="Deleted")
-        except Roster.DoesNotExist:
-            print("Could not find Deleted Roster!")
-            return
-        self.roster = del_roster
+        self.roster = Roster.objects.deleted
         self.inactive = True
         self.frozen = True
         self.save()
 
-    def undelete(self, r_name="Active"):
+    def undelete(self):
         """Restores a fake-deleted entry."""
-        try:
-            roster = Roster.objects.get(name__iexact=r_name)
-        except Roster.DoesNotExist:
-            print("Could not find %s roster!" % r_name)
-            return
-        self.roster = roster
+        self.roster = Roster.objects.active
         self.inactive = False
         self.frozen = False
         self.save()

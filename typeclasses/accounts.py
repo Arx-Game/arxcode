@@ -161,7 +161,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             if self.roster.roster.name == "Inactive":
                 from web.character.models import Roster
                 try:
-                    active = Roster.objects.get(name="Active")
+                    active = Roster.objects.active
                     self.roster.roster = active
                     self.roster.save()
                 except Roster.DoesNotExist:

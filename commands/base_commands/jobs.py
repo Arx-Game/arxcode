@@ -496,7 +496,7 @@ class CmdApp(ArxPlayerCommand):
 
                     entry = RosterEntry.objects.get(character__id=app[1].id,
                                                     player__id=app[1].player_ob.id)
-                    active_roster = Roster.objects.get(name="Active")
+                    active_roster = Roster.objects.active
                     entry.roster = active_roster
                     try:
                         account = PlayerAccount.objects.get(email=app[2])
