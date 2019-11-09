@@ -30,6 +30,7 @@ PERMISSION_HIERARCHY = ["Guest",  # note-only used if GUEST_ENABLED=True
                         "Developer",
                         ]
 SERVERNAME = config("SERVERNAME", default="Arx")
+VERBOSE_GAME_NAME = config("VERBOSE_GAME_NAME", default="") or SERVERNAME
 GAME_SLOGAN = config("GAME_SLOGAN", default="Season Two: Heroes and Other Fables")
 TIME_ZONE = config('TIME_ZONE', default='America/New_York')
 USE_TZ = config('USE_TZ', default=False, cast=bool)
