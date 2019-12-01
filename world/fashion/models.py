@@ -445,11 +445,12 @@ class FashionSnapshot(FashionCommonMixins):
         from world.stats_and_skills import do_dice_check
         char = self.fashion_model.player.char_ob
         roll = do_dice_check(caller=char, stat="composure", skill="performance", difficulty=30)
-        roll = pow(max((roll + char.social_clout * 3), 1), 1.5)
+        roll = pow(max((roll + char.social_clout * 5), 1), 1.5)
         percentage = max(roll/100.0, 0.01)
         level_mod = self.fashion_item.recipe.level/6.0
         percentage *= max(level_mod, 0.01)
         percentage *= max((self.fashion_item.quality_level/40.0), 0.01)
+        percentage = max(percentage, 0.2)
         # they get either their percentage of the item's worth, their modified roll, or 4, whichever is highest
         self.fame = min(max(int(self.fashion_item.item_worth * percentage), max(int(roll), 4)), self.FAME_CAP)
         self.save()

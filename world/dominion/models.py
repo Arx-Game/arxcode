@@ -83,7 +83,7 @@ LIFESTYLES = {
     5: (1500, 7000),
     6: (5000, 10000),
     }
-PRESTIGE_DECAY_AMOUNT = 0.35
+PRESTIGE_DECAY_AMOUNT = 0.50
 MAX_PRESTIGE_HISTORY = 10
 
 
@@ -1337,7 +1337,7 @@ class CharitableDonation(SharedMemoryModel):
         roll += caller.social_clout
         if roll <= 1:
             roll = 1
-        roll /= 20.0
+        roll /= 4.0
         roll *= value/2.0
         prest = int(roll)
         self.giver.adjust_prestige(prest, category=PrestigeCategory.CHARITY)
@@ -2668,7 +2668,7 @@ class Member(SharedMemoryModel):
         percent = (clout + 100) / 100.0
         outcome = int(outcome * percent)
         org_amount = outcome + resources
-        prestige = ((clout * 5) + 50) * org_amount * 3
+        prestige = ((clout * 5) + 50) * org_amount * 2
         if org_amount:
             self.investment_this_week += org_amount
             self.investment_total += org_amount
