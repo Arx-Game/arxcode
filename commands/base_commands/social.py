@@ -2618,7 +2618,7 @@ class CmdDonate(ArxCommand):
         +donate/score [<group>]
 
     Donates money to some group of npcs in exchange for prestige.
-    +donate/score lists donation amounts. Costs 5 AP.
+    +donate/score lists donation amounts. Costs 1 AP.
     """
     key = "+donate"
     locks = "cmd:all()"
