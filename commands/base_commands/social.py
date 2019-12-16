@@ -2618,19 +2618,12 @@ class CmdDonate(ArxCommand):
         +donate/score [<group>]
 
     Donates money to some group of npcs in exchange for prestige.
+    +donate/score lists donation amounts. Costs 1 AP.
     """
     key = "+donate"
     locks = "cmd:all()"
     help_category = "Social"
     action_point_cost = 1
-
-    def get_help(self, caller, cmdset):
-        msg = self.__doc__ + """
-
-   +donate/score lists donation amounts. Costs {w%s{n AP.
-
-    """ % (action_point_cost)
-        return msg
 
     @property
     def donations(self):
