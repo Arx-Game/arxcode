@@ -1121,7 +1121,7 @@ class CmdBuyFromShop(CmdCraft):
         loc = self.caller.location
         loc.db.shopowner.pay_money(-price)
         assets = loc.db.shopowner.player_ob.assets
-        if price >= assets.min_silver_for_inform:
+        if price - (price * (self.get_discount() / 100.0)) >= assets.min_silver_for_inform:
             assets.inform(msg, category="shop", append=True)
 
     def buy_item(self, item):
