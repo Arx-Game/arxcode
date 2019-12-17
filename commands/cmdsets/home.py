@@ -1151,7 +1151,7 @@ class CmdBuyFromShop(CmdCraft):
         if caller in blacklist:
             return True
         for org in caller.player_ob.Dominion.current_orgs:
-            if org.name in blacklist and caller in org.name = [ob.player.player for ob in org.active_members if not ob.secret]:
+            if org.name in blacklist:
                 return True
         return False
 
