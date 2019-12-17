@@ -1196,7 +1196,7 @@ class CmdBuyFromShop(CmdCraft):
             except (TypeError, ValueError, KeyError):
                 caller.msg("You must supply the ID number of an item being sold.")
                 return
-            if price > caller.db.currency:
+            if price - (price * (self.get_discount() / 100.0)) > caller.db.currency:
                 caller.msg("You cannot afford it.")
                 return
             self.buy_item(obj)
