@@ -2625,7 +2625,6 @@ class CmdDonate(ArxCommand):
     action_point_cost = 1
 
     def get_help(self, caller, cmdset):
-        caller = caller.player_ob
         msg = self.__doc__ + """
     +donate/score lists donation amounts. Costs {w%s{n AP.
     """ % (action_point_cost)
