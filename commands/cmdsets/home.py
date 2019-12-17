@@ -1121,7 +1121,7 @@ class CmdBuyFromShop(CmdCraft):
         loc = self.caller.location
         loc.db.shopowner.pay_money(-price)
         assets = loc.db.shopowner.player_ob.assets
-        if price - (price * (self.get_discount() / 100.0)) >= assets.min_silver_for_inform:
+        if price >= assets.min_silver_for_inform:
             assets.inform(msg, category="shop", append=True)
 
     def buy_item(self, item):
@@ -1151,7 +1151,7 @@ class CmdBuyFromShop(CmdCraft):
         if caller in blacklist:
             return True
         for org in caller.player_ob.Dominion.current_orgs:
-            if org.name in blacklist:
+            if org.name in blacklist and caller in org.name = [ob.player.player for ob in org.active_members if not ob.secret]:
                 return True
         return False
 
@@ -1196,7 +1196,7 @@ class CmdBuyFromShop(CmdCraft):
             except (TypeError, ValueError, KeyError):
                 caller.msg("You must supply the ID number of an item being sold.")
                 return
-            if price > caller.db.currency:
+            if price - (price * (self.get_discount() / 100.0)) > caller.db.currency:
                 caller.msg("You cannot afford it.")
                 return
             self.buy_item(obj)
