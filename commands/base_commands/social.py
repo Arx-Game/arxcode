@@ -2627,7 +2627,7 @@ class CmdDonate(ArxCommand):
     def get_help(self, caller, cmdset):
         msg = self.__doc__ + """
     +donate/score lists donation amounts. Costs {w%s{n AP.
-    """ % (action_point_cost)
+    """ % (self.action_point_cost)
         return msg
 
     @property
