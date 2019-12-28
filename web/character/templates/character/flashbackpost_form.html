@@ -2,7 +2,7 @@
 {% load app_filters %}
 {% block content %}
     <div class="container">
-        <a href="{% url "character:sheet" character.id %}">&laquo;&nbsp;Back to {{ character.key }}</a>
+        <a href="{% url "character:list_flashbacks" character.id %}">&laquo;&nbsp;Back to flashbacks</a>
         <h2 class="text-center">{{ flashback }}</h2>
         <div class="well text-center">
             {{ flashback.summary|mush_to_html }}
@@ -25,7 +25,7 @@
         </div>
         {% endfor %}
 
-        <a href="{% url "character:sheet" character.id %}">&laquo;&nbsp;Back to {{ character.key }}</a>
+        <a href="{% url "character:list_flashbacks" character.id %}">&laquo;&nbsp;Back to flashbacks</a>
 
         {% if allow_add_post %}
         <div id="add_post" class="dividingBorderAbove">
