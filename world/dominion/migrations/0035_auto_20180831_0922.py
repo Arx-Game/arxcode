@@ -31,6 +31,7 @@ def convert_actions_for_events_into_beats(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    atomic = False
 
     dependencies = [
         ('dominion', '0034_auto_20181105_1756'),
