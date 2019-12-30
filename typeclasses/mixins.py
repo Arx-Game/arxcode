@@ -235,9 +235,6 @@ class NameMixins(object):
     def __str__(self):
         return self.name
 
-    def __unicode__(self):
-        return self.name
-
 
 # noinspection PyAttributeOutsideInit
 class BaseObjectMixins(object):
@@ -436,7 +433,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
             if users or npcs:
                 string += "\n{wCharacters:{n " + ", ".join(users + [get_key(ob) for ob in npcs])
             if things:
-                things = sorted(things, key=lambda x: x.db.put_time)
+                things = sorted(things, key=lambda x: x.db.put_time or 0.0)
                 string += "\n{wObjects:{n " + sep.join([get_key(ob) for ob in things])
             if currency:
                 string += "\n{wMoney:{n %s" % currency
@@ -877,8 +874,11 @@ class MsgMixins(object):
         if not self.sessions.all():
             return
         # compatibility change for Evennia changing text to be either str or tuple
-        if hasattr(text, '__iter__'):
-            text = text[0]
+        if not isinstance(text, str):
+            try:
+                text = text[0]
+            except TypeError:
+                pass
         options = options or {}
         options.update(kwargs.get('options', {}))
         try:

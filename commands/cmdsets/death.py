@@ -70,7 +70,7 @@ class DeathCommand(ArxCommand):
 
     def func(self):
         """Let the player know they can't do anything."""
-        self.caller.msg("You are dead. You cannot do that.")
+        self.msg("You are dead. You cannot do that.")
         return
 
 

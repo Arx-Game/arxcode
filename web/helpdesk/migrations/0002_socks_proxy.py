@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='queue',
             name='socks_proxy_type',
-            field=models.CharField(choices=[(b'socks4', 'SOCKS4'), (b'socks5', 'SOCKS5')], max_length=8, blank=True, help_text='SOCKS4 or SOCKS5 allows you to proxy your connections through a SOCKS server.', null=True, verbose_name='Socks Proxy Type'),
+            field=models.CharField(choices=[('socks4', 'SOCKS4'), ('socks5', 'SOCKS5')], max_length=8, blank=True, help_text='SOCKS4 or SOCKS5 allows you to proxy your connections through a SOCKS server.', null=True, verbose_name='Socks Proxy Type'),
             preserve_default=True,
         ),
     ]

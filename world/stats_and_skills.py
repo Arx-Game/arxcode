@@ -12,6 +12,7 @@ char.db.strength, you would have to access
 a skill by char.db.skills.get('brawl', 0), for example.
 """
 from .roll import Roll
+from math import ceil
 
 
 # tuples of allowed stats and skills
@@ -106,7 +107,7 @@ def cost_at_rank(skill, current_rating, new_rating):
                 mult = NON_COMBAT_SKILL_COST_MULT
             if current_rating >= 6 and skill in VALID_SKILLS:
                 base = LEGENDARY_COST
-                mult /= 10
+                mult //= 10
             else:
                 base = current_rating
             cost += base * mult
@@ -170,7 +171,7 @@ def get_skill_cost(caller, skill, adjust_value=None, check_teacher=True, unmodif
     if check_teacher:
         if check_training(caller, skill, stype="skill"):
             cost = discounted_cost(caller, base_cost)
-    cost += int(cost * tax)
+    cost += ceil(cost * tax)
     return cost
 
 
@@ -218,7 +219,7 @@ def discounted_cost(caller, cost):
     discount -= 0.05 * teaching
     if 0 > discount > 1:
         raise ValueError("Error: Training Discount outside valid ranges")
-    return int(round(cost * discount))
+    return ceil(cost * discount)
 
 
 def check_training(caller, field, stype):

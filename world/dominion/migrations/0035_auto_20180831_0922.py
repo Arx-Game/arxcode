@@ -66,14 +66,14 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('cast_status', models.PositiveSmallIntegerField(
-                    choices=[(0, b'Required Cast'), (1, b'Main Cast'), (2, b'Supporting Cast'), (3, b'Extra'),
-                             (4, b'Tangential')], default=1)),
+                    choices=[(0, 'Required Cast'), (1, 'Main Cast'), (2, 'Supporting Cast'), (3, 'Extra'),
+                             (4, 'Tangential')], default=1)),
                 ('activity_status', models.PositiveSmallIntegerField(
-                    choices=[(0, b'Active'), (1, b'Inactive'), (2, b'Invited'), (3, b'Has RP Hook'), (4, b'Left'),
-                             (5, b'Not Added')],
+                    choices=[(0, 'Active'), (1, 'Inactive'), (2, 'Invited'), (3, 'Has RP Hook'), (4, 'Left'),
+                             (5, 'Not Added')],
                     default=0)),
                 ('admin_status', models.PositiveSmallIntegerField(
-                    choices=[(4, b'Owner'), (3, b'GM'), (2, b'Recruiter'), (1, b'Player'), (0, b'Submitting Player')],
+                    choices=[(4, 'Owner'), (3, 'GM'), (2, 'Recruiter'), (1, 'Player'), (0, 'Submitting Player')],
                     default=1)),
                 ('recruiter_story', models.TextField(blank=True)),
                 ('gm_notes', models.TextField(blank=True)),
@@ -93,8 +93,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='plot',
             name='usage',
-            field=models.SmallIntegerField(choices=[(0, b'Crisis'), (1, b'GM Plot'), (2, b'Player-Run Plot'),
-                                                    (3, b'Pitch')],
+            field=models.SmallIntegerField(choices=[(0, 'Crisis'), (1, 'GM Plot'), (2, 'Player-Run Plot'),
+                                                    (3, 'Pitch')],
                                            default=0),
         ),
         migrations.AddField(

@@ -151,7 +151,7 @@ class Monster(SharedMemoryModel):
 
         if result:
             final_loot = None
-            if isinstance(result, basestring):
+            if isinstance(result, str):
                 from .loot import LootGenerator
                 if result == "weapon":
                     final_loot = LootGenerator.create_weapon(haven)
@@ -170,8 +170,8 @@ class Monster(SharedMemoryModel):
 
 class MonsterAlchemicalDrop(SharedMemoryModel):
 
-    monster = models.ForeignKey(Monster, related_name='drops')
-    material = models.ForeignKey('magic.AlchemicalMaterial', related_name='monsters')
+    monster = models.ForeignKey(Monster, related_name='drops', on_delete=models.CASCADE)
+    material = models.ForeignKey('magic.AlchemicalMaterial', related_name='monsters', on_delete=models.CASCADE)
     weight = models.PositiveSmallIntegerField(default=10, blank=False, null=False)
     min_quantity = models.PositiveSmallIntegerField(default=1)
     max_quantity = models.PositiveSmallIntegerField(default=1)
@@ -179,8 +179,8 @@ class MonsterAlchemicalDrop(SharedMemoryModel):
 
 class MonsterCraftingDrop(SharedMemoryModel):
 
-    monster = models.ForeignKey(Monster, related_name='crafting_drops')
-    material = models.ForeignKey('dominion.CraftingMaterialType', related_name='monsters')
+    monster = models.ForeignKey(Monster, related_name='crafting_drops', on_delete=models.CASCADE)
+    material = models.ForeignKey('dominion.CraftingMaterialType', related_name='monsters', on_delete=models.CASCADE)
     weight = models.PositiveSmallIntegerField(default=10, blank=False, null=False)
     min_quantity = models.PositiveSmallIntegerField(default=1)
     max_quantity = models.PositiveSmallIntegerField(default=1)
@@ -291,8 +291,10 @@ class Shardhaven(SharedMemoryModel):
 
     name = models.CharField(blank=False, null=False, max_length=78, db_index=True)
     description = models.TextField(max_length=4096)
-    location = models.ForeignKey('dominion.MapLocation', related_name='shardhavens', blank=True, null=True)
-    haven_type = models.ForeignKey('ShardhavenType', related_name='havens', blank=False, null=False)
+    location = models.ForeignKey('dominion.MapLocation', related_name='shardhavens', blank=True, null=True,
+                                 on_delete=models.SET_NULL)
+    haven_type = models.ForeignKey('ShardhavenType', related_name='havens', blank=False, null=False,
+                                   on_delete=models.CASCADE)
     required_clue_value = models.IntegerField(default=0)
     discovered_by = models.ManyToManyField('dominion.PlayerOrNpc', blank=True, related_name="discovered_shardhavens",
                                            through="ShardhavenDiscovery")
@@ -326,8 +328,8 @@ class Shardhaven(SharedMemoryModel):
 
 class ShardhavenAlignmentChance(SharedMemoryModel):
 
-    haven = models.ForeignKey(Shardhaven, related_name='alignment_chances')
-    alignment = models.ForeignKey('magic.Alignment', related_name='+')
+    haven = models.ForeignKey(Shardhaven, related_name='alignment_chances', on_delete=models.CASCADE)
+    alignment = models.ForeignKey('magic.Alignment', related_name='+', on_delete=models.CASCADE)
     weight = models.PositiveSmallIntegerField(default=10)
 
     class Meta:
@@ -335,8 +337,8 @@ class ShardhavenAlignmentChance(SharedMemoryModel):
 
 
 class ShardhavenAffinityChance(SharedMemoryModel):
-    haven = models.ForeignKey(Shardhaven, related_name='affinity_chances')
-    affinity = models.ForeignKey('magic.Affinity', related_name='+')
+    haven = models.ForeignKey(Shardhaven, related_name='affinity_chances', on_delete=models.CASCADE)
+    affinity = models.ForeignKey('magic.Affinity', related_name='+', on_delete=models.CASCADE)
     weight = models.PositiveSmallIntegerField(default=10)
 
     class Meta:
@@ -362,8 +364,9 @@ class ShardhavenDiscovery(SharedMemoryModel):
         (TYPE_STAFF, 'Staff Ex Machina')
     )
 
-    player = models.ForeignKey('dominion.PlayerOrNpc', related_name='shardhaven_discoveries')
-    shardhaven = models.ForeignKey(Shardhaven, related_name='+')
+    player = models.ForeignKey('dominion.PlayerOrNpc', related_name='shardhaven_discoveries',
+                               on_delete=models.CASCADE)
+    shardhaven = models.ForeignKey(Shardhaven, related_name='+', on_delete=models.CASCADE)
     discovered_on = models.DateTimeField(blank=True, null=True)
     discovery_method = models.PositiveSmallIntegerField(choices=CHOICES_TYPES, default=TYPE_UNKNOWN)
 
@@ -373,14 +376,14 @@ class ShardhavenClue(SharedMemoryModel):
     This model shows clues that might be used for a shardhaven,
     knowledge about it or hints that it exists.
     """
-    shardhaven = models.ForeignKey(Shardhaven, related_name='related_clues')
-    clue = models.ForeignKey("character.Clue", related_name='related_shardhavens')
+    shardhaven = models.ForeignKey(Shardhaven, related_name='related_clues', on_delete=models.CASCADE)
+    clue = models.ForeignKey("character.Clue", related_name='related_shardhavens', on_delete=models.CASCADE)
     required = models.BooleanField(default=False)
 
 
 class ShardhavenMoodFragment(SharedMemoryModel):
 
-    shardhaven_type = models.ForeignKey(ShardhavenType, related_name='+')
+    shardhaven_type = models.ForeignKey(ShardhavenType, related_name='+', on_delete=models.CASCADE)
     text = models.TextField(blank=False, null=False)
     taint_level = models.PositiveSmallIntegerField(default=1, help_text='This mood fragment will only appear in '
                                                                         'shardhavens with this much or more abyssal '
@@ -442,9 +445,6 @@ class ShardhavenObstacle(SharedMemoryModel):
 
     def __repr__(self):
         return str(self)
-
-    def __unicode__(self):
-        return unicode(str(self))
 
     def options_description(self, exit_obj):
         direction = "south"
@@ -625,7 +625,8 @@ class ShardhavenObstacle(SharedMemoryModel):
 
 class ShardhavenObstacleRoll(SharedMemoryModel):
 
-    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='rolls', blank=True, null=True)
+    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='rolls', blank=True, null=True,
+                                 on_delete=models.CASCADE)
 
     stat = models.CharField(max_length=40, blank=False, null=False)
     skill = models.CharField(max_length=40, blank=False, null=False)
@@ -652,15 +653,17 @@ class ShardhavenObstacleRoll(SharedMemoryModel):
 
 class ShardhavenObstacleClue(SharedMemoryModel):
 
-    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='clues', blank=False, null=False)
-    clue = models.ForeignKey('character.Clue', blank=False, null=False)
+    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='clues', blank=False, null=False,
+                                 on_delete=models.CASCADE)
+    clue = models.ForeignKey('character.Clue', blank=False, null=False, on_delete=models.CASCADE)
 
 
 class ShardhavenPuzzle(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=True, null=True)
     haven_types = models.ManyToManyField('ShardhavenType', related_name='puzzles')
-    obstacle = models.ForeignKey(ShardhavenObstacle, blank=False, null=False, related_name='puzzles')
+    obstacle = models.ForeignKey(ShardhavenObstacle, blank=False, null=False, related_name='puzzles',
+                                 on_delete=models.CASCADE)
     num_drops = models.PositiveSmallIntegerField(default=1, help_text="How many treasures should this puzzle drop?")
     weight_trinket = models.SmallIntegerField(default=0,
                                               help_text="A weight chance that this puzzle will drop a trinket.")
@@ -712,7 +715,7 @@ class ShardhavenPuzzle(SharedMemoryModel):
 
             if result:
                 final_loot = None
-                if isinstance(result, basestring):
+                if isinstance(result, str):
                     from .loot import LootGenerator
                     if result == "weapon":
                         final_loot = LootGenerator.create_weapon(haven)
@@ -740,27 +743,33 @@ class ShardhavenPuzzle(SharedMemoryModel):
 
 class ShardhavenPuzzleMaterial(SharedMemoryModel):
 
-    puzzle = models.ForeignKey(ShardhavenPuzzle, blank=False, null=False, related_name='alchemical_materials')
+    puzzle = models.ForeignKey(ShardhavenPuzzle, blank=False, null=False, related_name='alchemical_materials',
+                               on_delete=models.CASCADE)
     weight = models.SmallIntegerField(default=10, help_text="A weight chance that this puzzle will drop this material.")
-    material = models.ForeignKey('magic.AlchemicalMaterial', blank=False, null=False)
+    material = models.ForeignKey('magic.AlchemicalMaterial', blank=False, null=False,
+                                 on_delete=models.CASCADE)
     minimum_quantity = models.PositiveSmallIntegerField(default=1)
     maximum_quantity = models.PositiveSmallIntegerField(default=1)
 
 
 class ShardhavenPuzzleCraftingMaterial(SharedMemoryModel):
 
-    puzzle = models.ForeignKey(ShardhavenPuzzle, blank=False, null=False, related_name='crafting_materials')
+    puzzle = models.ForeignKey(ShardhavenPuzzle, blank=False, null=False, related_name='crafting_materials',
+                               on_delete=models.CASCADE)
     weight = models.SmallIntegerField(default=10, help_text="A weight chance that this puzzle will drop this material.")
-    material = models.ForeignKey('dominion.CraftingMaterialType', blank=False, null=False)
+    material = models.ForeignKey('dominion.CraftingMaterialType', blank=False, null=False,
+                                 on_delete=models.CASCADE)
     minimum_quantity = models.PositiveSmallIntegerField(default=1)
     maximum_quantity = models.PositiveSmallIntegerField(default=1)
 
 
 class ShardhavenPuzzleObjectLoot(SharedMemoryModel):
 
-    puzzle = models.ForeignKey(ShardhavenPuzzle, blank=False, null=False, related_name='object_drops')
+    puzzle = models.ForeignKey(ShardhavenPuzzle, blank=False, null=False, related_name='object_drops',
+                               on_delete=models.CASCADE)
     weight = models.SmallIntegerField(default=10, help_text="A weight chance that this puzzle will drop this object.")
-    object = models.ForeignKey('objects.ObjectDB', blank=False, null=False)
+    object = models.ForeignKey('objects.ObjectDB', blank=False, null=False,
+                               on_delete=models.CASCADE)
     duplicate = models.BooleanField(default=False, help_text="Do we create a duplicate copy of this object to drop?")
     guaranteed = models.BooleanField(default=False, help_text="Is this object a guaranteed drop?")
 
@@ -778,14 +787,20 @@ class ShardhavenLayoutExit(SharedMemoryModel):
     This class represents a single exit between two ShardhavenLayoutSquares
     """
 
-    layout = models.ForeignKey('ShardhavenLayout', related_name='exits')
+    layout = models.ForeignKey('ShardhavenLayout', related_name='exits',
+                               on_delete=models.CASCADE)
 
-    room_west = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_east', null=True, blank=True)
-    room_east = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_west', null=True, blank=True)
-    room_north = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_south', null=True, blank=True)
-    room_south = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_north', null=True, blank=True)
+    room_west = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_east', null=True, blank=True,
+                                  on_delete=models.CASCADE)
+    room_east = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_west', null=True, blank=True,
+                                  on_delete=models.CASCADE)
+    room_north = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_south', null=True, blank=True,
+                                   on_delete=models.CASCADE)
+    room_south = models.ForeignKey('ShardhavenLayoutSquare', related_name='exit_north', null=True, blank=True,
+                                   on_delete=models.CASCADE)
 
-    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='+', null=True, blank=True)
+    obstacle = models.ForeignKey(ShardhavenObstacle, related_name='+', null=True, blank=True,
+                                 on_delete=models.CASCADE)
     passed_by = models.ManyToManyField('objects.ObjectDB', blank=True)
     override = models.BooleanField(default=False)
 
@@ -804,12 +819,6 @@ class ShardhavenLayoutExit(SharedMemoryModel):
         if self.room_south is not None:
             string += "(%d,%d)" % (self.room_south.x_coord, self.room_south.y_coord)
         return string
-
-    def __repr__(self):
-        return str(self)
-
-    def __unicode__(self):
-        return unicode(str(self))
 
     @property
     def obstacle_name(self):
@@ -899,15 +908,18 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
     This class represents a single 'tile' of a ShardhavenLayout.  When the ShardhavenLayout is
     no longer in use, all these tiles should be removed.
     """
-    layout = models.ForeignKey('ShardhavenLayout', related_name='rooms')
+    layout = models.ForeignKey('ShardhavenLayout', related_name='rooms',
+                               on_delete=models.CASCADE)
     x_coord = models.PositiveSmallIntegerField()
     y_coord = models.PositiveSmallIntegerField()
 
     # We use '+' for the related name because Django will then not create a reverse relationship.
     # We don't need such, and it would just be excessive.
-    tile = models.ForeignKey('dominion.PlotRoom', related_name='+')
+    tile = models.ForeignKey('dominion.PlotRoom', related_name='+',
+                             on_delete=models.CASCADE)
 
-    room = models.OneToOneField('objects.ObjectDB', related_name='shardhaven_room', blank=True, null=True)
+    room = models.OneToOneField('objects.ObjectDB', related_name='shardhaven_room', blank=True, null=True,
+                                on_delete=models.CASCADE)
 
     name = models.CharField(blank=True, null=True, max_length=30,
                             help_text='A name to use for this square instead of the tile name.')
@@ -917,20 +929,16 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
     visitors = models.ManyToManyField('objects.ObjectDB', related_name='+')
     last_visited = models.DateTimeField(blank=True, null=True)
 
-    puzzle = models.ForeignKey(ShardhavenPuzzle, blank=True, null=True, related_name='+')
+    puzzle = models.ForeignKey(ShardhavenPuzzle, blank=True, null=True, related_name='+',
+                               on_delete=models.CASCADE)
     puzzle_solved = models.BooleanField(default=False)
 
-    monster = models.ForeignKey(Monster, blank=True, null=True, related_name='+')
+    monster = models.ForeignKey(Monster, blank=True, null=True, related_name='+',
+                                on_delete=models.CASCADE)
     monster_defeated = models.BooleanField(default=False)
 
     def __str__(self):
         return "{} ({},{})".format(self.layout, self.x_coord, self.y_coord)
-
-    def __repr__(self):
-        return str(self)
-
-    def __unicode__(self):
-        return unicode(str(self))
 
     def visit(self, character):
         if character not in self.visitors.all():
@@ -980,7 +988,7 @@ class ShardhavenLayoutSquare(SharedMemoryModel):
         room.db.raw_desc = final_description
         room.db.desc = final_description
 
-        from exploration_commands import CmdExplorationRoomCommands
+        from world.exploration.exploration_commands import CmdExplorationRoomCommands
         room.cmdset.add(CmdExplorationRoomCommands())
 
         self.room = room
@@ -998,22 +1006,17 @@ class ShardhavenLayout(SharedMemoryModel):
 
     width = models.PositiveSmallIntegerField(default=5)
     height = models.PositiveSmallIntegerField(default=4)
-    haven = models.OneToOneField(Shardhaven, related_name='layout', null=True, blank=True)
-    haven_type = models.ForeignKey(ShardhavenType, related_name='+')
+    haven = models.OneToOneField(Shardhaven, related_name='layout', null=True, blank=True,
+                                 on_delete=models.CASCADE)
+    haven_type = models.ForeignKey(ShardhavenType, related_name='+', on_delete=models.CASCADE)
 
     entrance_x = models.PositiveSmallIntegerField(default=0)
     entrance_y = models.PositiveSmallIntegerField(default=0)
 
     matrix = None
 
-    def __repr__(self):
-        return self.haven.name + " Layout"
-
     def __str__(self):
-        return self.__repr__()
-
-    def __unicode__(self):
-        return unicode(str(self))
+        return self.haven.name + " Layout"
 
     @property
     def entrance(self):

@@ -22,7 +22,7 @@ class CrisisManager(Manager):
     """Methods for accessing different Plot collections or viewing groups of Plots."""
 
     def viewable_by_player(self, player):
-        if not player or not player.is_authenticated():
+        if not player or not player.is_authenticated:
             return self.filter(public=True)
         if player.check_permstring("builders") or player.is_staff:
             qs = self.all()

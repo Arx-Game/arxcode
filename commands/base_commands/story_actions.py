@@ -394,7 +394,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return self.send_no_args_msg("a category")
         category_names = self.action_categories.keys()
         if self.rhs not in category_names:
-            category_names = set(ob.lower() for ob in category_names)
+            category_names = sorted(set(ob.lower() for ob in category_names))
             self.send_no_args_msg("one of these categories: %s" % ", ".join(category_names))
             return
         self.set_action_field(action, "category", self.action_categories[self.rhs])

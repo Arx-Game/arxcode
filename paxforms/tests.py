@@ -35,6 +35,7 @@ class CmdTestForm(paxform_commands.PaxformCommand):
 
 
 class TestFormCommand(CommandTest):
+    maxDiff = None
 
     def test_form_command(self):
         self.call(CmdTestForm(), "", "No form in progress.  Please use @testform/create first!")
@@ -52,8 +53,8 @@ class TestFormCommand(CommandTest):
         self.call(CmdTestForm(), "/four yes", "four set to: True")
         self.call(CmdTestForm(), "/submit", "Submitted successfully!")
         cmd = CmdTestForm()
-        docstring = cmd.__doc__
-        assert (docstring == '''
+        docstring = str(cmd.__doc__)
+        self.assertEqual(docstring, '''
     To test Paxforms.
 
     Usage:

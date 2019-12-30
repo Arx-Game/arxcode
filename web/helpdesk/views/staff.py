@@ -18,7 +18,7 @@ except ImportError:
     from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.files.base import ContentFile
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.core import paginator
 from django.db import connection
@@ -43,12 +43,12 @@ from web.helpdesk import settings as helpdesk_settings
 
 if helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE:
     # treat 'normal' users like 'staff'
-    staff_member_required = user_passes_test(lambda u: u.is_authenticated() and u.is_active)
+    staff_member_required = user_passes_test(lambda u: u.is_authenticated and u.is_active)
 else:
-    staff_member_required = user_passes_test(lambda u: u.is_authenticated() and u.is_active and u.is_staff)
+    staff_member_required = user_passes_test(lambda u: u.is_authenticated and u.is_active and u.is_staff)
 
 
-superuser_required = user_passes_test(lambda u: u.is_authenticated() and u.is_active and u.is_superuser)
+superuser_required = user_passes_test(lambda u: u.is_authenticated and u.is_active and u.is_superuser)
 
 
 def dashboard(request):
@@ -299,7 +299,7 @@ def subscribe_staff_member_to_ticket(ticket, user):
 
 
 def update_ticket(request, ticket_id, public=False):
-    if not (public or (request.user.is_authenticated() and request.user.is_active and (request.user.is_staff or helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE))):
+    if not (public or (request.user.is_authenticated and request.user.is_active and (request.user.is_staff or helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE))):
         return HttpResponseRedirect('%s?next=%s' % (reverse('login'), request.path))
 
     ticket = get_object_or_404(Ticket, id=ticket_id)
@@ -345,7 +345,7 @@ def update_ticket(request, ticket_id, public=False):
     # to be closed with an {% endif %} tag.
     comment = engines['django'].from_string(comment).render(context)
 
-    if owner is -1 and ticket.assigned_to:
+    if owner == -1 and ticket.assigned_to:
         owner = ticket.assigned_to.id
 
     f = FollowUp(ticket=ticket, date=timezone.now(), comment=comment)
@@ -357,7 +357,7 @@ def update_ticket(request, ticket_id, public=False):
 
     reassigned = False
 
-    if owner is not -1:
+    if owner != -1:
         if owner != 0 and ((ticket.assigned_to and owner != ticket.assigned_to.id) or not ticket.assigned_to):
             new_user = User.objects.get(id=owner)
             f.title = _('Assigned to %(username)s') % {
@@ -533,7 +533,7 @@ def update_ticket(request, ticket_id, public=False):
     ticket.save()
 
     # auto subscribe user if enabled
-    if helpdesk_settings.HELPDESK_AUTO_SUBSCRIBE_ON_TICKET_RESPONSE and request.user.is_authenticated():
+    if helpdesk_settings.HELPDESK_AUTO_SUBSCRIBE_ON_TICKET_RESPONSE and request.user.is_authenticated:
         ticketcc_string, SHOW_SUBSCRIBE = return_ticketccstring_and_show_subscribe(request.user, ticket)
         if SHOW_SUBSCRIBE:
             subscribe_staff_member_to_ticket(ticket, request.user)
@@ -801,9 +801,9 @@ def ticket_list(request):
         search_message = _('<p><strong>Note:</strong> Your keyword search is case sensitive because of your database. This means the search will <strong>not</strong> be accurate. By switching to a different database system you will gain better searching! For more information, read the <a href="http://docs.djangoproject.com/en/dev/ref/databases/#sqlite-string-matching">Django Documentation on string matching in SQLite</a>.')
 
 
-    import cPickle
-    from web.helpdesk.lib import b64encode
-    urlsafe_query = b64encode(cPickle.dumps(query_params))
+    import pickle
+    from base64 import encodebytes
+    urlsafe_query = encodebytes(pickle.dumps(query_params))
 
     user_saved_queries = SavedSearch.objects.filter(Q(user=request.user) | Q(shared__exact=True))
 
@@ -997,7 +997,7 @@ def run_report(request, report):
     if report == 'userpriority':
         title = _('User by Priority')
         col1heading = _('User')
-        possible_options = [t[1].__unicode__() for t in Ticket.PRIORITY_CHOICES]
+        possible_options = [t[1].__str__() for t in Ticket.PRIORITY_CHOICES]
         charttype = 'bar'
 
     elif report == 'userqueue':
@@ -1009,7 +1009,7 @@ def run_report(request, report):
     elif report == 'userstatus':
         title = _('User by Status')
         col1heading = _('User')
-        possible_options = [s[1].__unicode__() for s in Ticket.STATUS_CHOICES]
+        possible_options = [s[1].__str__() for s in Ticket.STATUS_CHOICES]
         charttype = 'bar'
 
     elif report == 'usermonth':
@@ -1021,13 +1021,13 @@ def run_report(request, report):
     elif report == 'queuepriority':
         title = _('Queue by Priority')
         col1heading = _('Queue')
-        possible_options = [t[1].__unicode__() for t in Ticket.PRIORITY_CHOICES]
+        possible_options = [t[1].__str__() for t in Ticket.PRIORITY_CHOICES]
         charttype = 'bar'
 
     elif report == 'queuestatus':
         title = _('Queue by Status')
         col1heading = _('Queue')
-        possible_options = [s[1].__unicode__() for s in Ticket.STATUS_CHOICES]
+        possible_options = [s[1].__str__() for s in Ticket.STATUS_CHOICES]
         charttype = 'bar'
 
     elif report == 'queuemonth':
@@ -1045,7 +1045,7 @@ def run_report(request, report):
     metric3 = False
     for ticket in report_queryset:
         if report == 'userpriority':
-            metric1 = u'%s' % ticket.get_assigned_to
+            metric1 = '%s' % ticket.get_assigned_to
             metric2 = u'%s' % ticket.get_priority_display()
 
         elif report == 'userqueue':
@@ -1235,7 +1235,7 @@ def ticket_dependency_add(request, ticket_id):
         if form.is_valid():
             ticketdependency = form.save(commit=False)
             ticketdependency.ticket = ticket
-            if ticketdependency.ticket <> ticketdependency.depends_on:
+            if ticketdependency.ticket != ticketdependency.depends_on:
                 ticketdependency.save()
             return HttpResponseRedirect(reverse('helpdesk_view', args=[ticket.id]))
     else:

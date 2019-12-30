@@ -8,7 +8,7 @@ class Paxform(object):
         if self.__class__.form_key is None:
             raise ValueError
 
-        for k, v in self.__class__.__dict__.iteritems():
+        for k, v in self.__class__.__dict__.items():
             if isinstance(v, Paxfield):
                 v.set_key(k)
                 setattr(self, k, v)
@@ -20,7 +20,7 @@ class Paxform(object):
     @property
     def fields(self):
         result = []
-        for k, v in self.__dict__.iteritems():
+        for k, v in self.__dict__.items():
             if isinstance(v, Paxfield):
                 result.append(v)
 
@@ -33,7 +33,7 @@ class Paxform(object):
         return [f.key for f in fields]
 
     def field_for_key(self, key):
-        for k, v in self.__dict__.iteritems():
+        for k, v in self.__dict__.items():
             if isinstance(v, Paxfield):
                 if v.key == key:
                     return v
@@ -52,7 +52,7 @@ class Paxform(object):
 
     def serialize(self):
         serialized = {}
-        for k, v in self.__dict__.iteritems():
+        for k, v in self.__dict__.items():
             if isinstance(v, Paxfield):
                 v.serialize(serialized)
 
@@ -65,7 +65,7 @@ class Paxform(object):
         extras = {}
         if serialized:
             extras = dict(serialized)
-            for k, v in serialized.iteritems():
+            for k, v in serialized.items():
                 f = self.field_for_key(k)
                 if f is not None:
                     f.set(v, caller=caller)

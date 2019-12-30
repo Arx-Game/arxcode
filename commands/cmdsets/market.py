@@ -391,12 +391,12 @@ class HaggledDeal(object):
         if discount <= 40:
             return discount + base_value
         if discount <= 60:
-            return (41 + (discount - 40)/2) + base_value
+            return (41 + (discount - 40)//2) + base_value
         if discount <= 100:
-            return (51 + (discount - 60)/4) + base_value
+            return (51 + (discount - 60)//4) + base_value
         if discount <= 160:
-            return (61 + (discount - 100)/5) + base_value
-        discount = 73 + (discount - 160)/6  # roll of 262 to cap
+            return (61 + (discount - 100)//5) + base_value
+        discount = 73 + (discount - 160)//6  # roll of 262 to cap
         if discount > 90:
             discount = 90
         return discount + base_value

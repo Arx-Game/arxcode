@@ -6,8 +6,8 @@ is_wieldable boolean is the check to see if we're a wieldable
 object. is_wielded is a boolean saying our wielded state
 """
 from typeclasses.exceptions import EquipError
-from cmdset_wieldable import WeaponCmdSet
-from wearable import Wearable
+from typeclasses.wearable.cmdset_wieldable import WeaponCmdSet
+from typeclasses.wearable.wearable import Wearable
 
 
 # noinspection PyMethodMayBeStatic
@@ -212,7 +212,7 @@ class Wieldable(Wearable):
             diffmod -= int(round(0.2 * quality))
             flat_damage_bonus += (quality - 2) * 2
         except (TypeError, ValueError):
-            print "Error setting up weapon ID: %s" % self.id
+            print("Error setting up weapon ID: %s" % self.id)
             damage = 0
         self.ndb.cached_damage_bonus = damage
         self.ndb.cached_difficulty_mod = diffmod

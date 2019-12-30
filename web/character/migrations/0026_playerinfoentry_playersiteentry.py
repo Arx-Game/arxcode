@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
             name='PlayerInfoEntry',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('entry_type', models.PositiveSmallIntegerField(choices=[(0, b'Info'), (1, b'Ruling'), (2, b'Praise'), (3, b'Criticism')], default=0)),
+                ('entry_type', models.PositiveSmallIntegerField(choices=[(0, 'Info'), (1, 'Ruling'), (2, 'Praise'), (3, 'Criticism')], default=0)),
                 ('text', models.TextField(blank=True)),
                 ('account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='entries', to='character.PlayerAccount')),
             ],

@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=255, unique=True)),
-                ('desc', models.TextField(blank=True, verbose_name=b'GM Notes about this Lore Topic')),
+                ('desc', models.TextField(blank=True, verbose_name='GM Notes about this Lore Topic')),
             ],
             options={
                 'abstract': False,
@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='clue',
             name='allow_sharing',
-            field=models.BooleanField(default=True, help_text=b'Can be shared'),
+            field=models.BooleanField(default=True, help_text='Can be shared'),
         ),
         migrations.AddField(
             model_name='clue',
@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='cluediscovery',
             name='discovery_method',
-            field=models.CharField(blank=True, help_text=b'How this was discovered - exploration, trauma, etc', max_length=255),
+            field=models.CharField(blank=True, help_text='How this was discovered - exploration, trauma, etc', max_length=255),
         ),
         migrations.AddField(
             model_name='clue',

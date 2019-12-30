@@ -468,9 +468,8 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
                 return
 
         if not self.args or 'list' in self.switches:
-            from past.builtins import cmp
             pages = list(pages_we_sent) + list(pages_we_got)
-            pages.sort(lambda x, y: cmp(x.date_created, y.date_created))
+            pages.sort(key=lambda x: x.date_created)
 
             number = 5
             if self.args:
@@ -1291,7 +1290,7 @@ class CmdPut(ArxCommand):
             self.msg("You do not have enough money.")
             return
         self.caller.pay_money(val, destination)
-        self.caller.msg("You put %s silver in %s." % (val, destination))
+        self.msg("You put %s silver in %s." % (val, destination))
 
     def get_oblist_from_outfit(self, args):
         """Creates a list of objects or raises FashionError if no outfit found."""
@@ -1452,7 +1451,7 @@ class CmdInform(ArxPlayerCommand):
         for attr, res, purp in attrs:
             val = getattr(asset_owner, attr)
             table.add_row(purp, res, "{:,}".format(val))
-        self.caller.msg(table)
+        self.msg(str(table))
 
     def func(self):
         """Executes inform command"""

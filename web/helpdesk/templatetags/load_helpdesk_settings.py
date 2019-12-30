@@ -11,10 +11,10 @@ from web.helpdesk import settings as helpdesk_settings_config
 def load_helpdesk_settings(request):
     try:
         return helpdesk_settings_config
-    except Exception, e:
+    except Exception as e:
         import sys
-        print >> sys.stderr,  "'load_helpdesk_settings' template tag (django-helpdesk) crashed with following error:"
-        print >> sys.stderr,  e
+        print("'load_helpdesk_settings' template tag (django-helpdesk) crashed with following error:")
+        print(sys.stderr,  e)
         return ''
 
 register = Library()

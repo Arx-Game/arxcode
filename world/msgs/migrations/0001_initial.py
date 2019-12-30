@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
             name='Inform',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('message', models.TextField(verbose_name=b'Information sent to players')),
+                ('message', models.TextField(verbose_name='Information sent to players')),
                 ('date_sent', models.DateTimeField(auto_now_add=True, db_index=True)),
                 ('week', models.PositiveSmallIntegerField(blank=0, db_index=True, default=0)),
                 ('is_unread', models.BooleanField(default=True)),

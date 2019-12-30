@@ -579,12 +579,12 @@ class TestMarketCommands(ArxCommandTest):
                       'Engaging in crass mercantile haggling is considered beneath those of high social rank. '
                       'Fortunately, no one noticed this time.|You failed to find a better deal.\n'
                       'Attempting to sell: 30 testium.\nCurrent Markup Bonus: 89\n'
-                      'Silver Value: 56951.1 (Base Cost Per Unit: 2133.0)\nRoll Modifier: 25')
+                      'Silver Value: 56951.1 (Base Cost Per Unit: 2133)\nRoll Modifier: 25')
         mock_dice_check.return_value = -5
         self.call_cmd("/roll", 'Engaging in crass mercantile haggling is considered beneath those of high social rank. '
                                'Unfortunately, you were noticed and lose 5 fame.|You failed to find a better deal.\n'
                                'Attempting to sell: 30 testium.\nCurrent Markup Bonus: 89\n'
-                               'Silver Value: 56951.1 (Base Cost Per Unit: 2133.0)'
+                               'Silver Value: 56951.1 (Base Cost Per Unit: 2133)'
                                '\nRoll Modifier: 25')
         self.call_cmd("/accept", 'You have sold 30 testium and gained 56951.1 silver.')
         self.assertEqual(self.assetowner.fame, 495)

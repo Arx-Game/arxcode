@@ -23,7 +23,8 @@ from world.dominion.models import Propriety
 
 # limit symbol import for API
 __all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships",
-           "format_header", "change_email", "add_note")
+           "format_header", "change_email", "add_note", "display_abilities", "display_header", "display_skills",
+           "display_stats")
 
 
 def get_roster_manager():

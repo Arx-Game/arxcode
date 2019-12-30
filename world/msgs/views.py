@@ -4,7 +4,7 @@ Views for msg app - Msg proxy models, boards, etc
 from collections import defaultdict
 import json
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse, Http404
@@ -63,7 +63,7 @@ class JournalListView(LimitPageMixin, ListView):
         text = get.get('search_text', None)
         if text:
             queryset = queryset.filter(db_message__icontains=text)
-        if self.request.user and self.request.user.is_authenticated():
+        if self.request.user and self.request.user.is_authenticated:
             favtag = "pid_%s_favorite" % self.request.user.id
             favorites = get.get('favorites', None)
             if favorites:
@@ -73,7 +73,7 @@ class JournalListView(LimitPageMixin, ListView):
     def get_queryset(self):
         """Gets our queryset based on user privileges"""
         user = self.request.user
-        if not user or not user.is_authenticated() or not user.char_ob:
+        if not user or not user.is_authenticated or not user.char_ob:
             qs = Journal.white_journals.order_by('-db_date_created')
         else:
             qs = Journal.objects.all_permitted_journals(user).all_unread_by(user).order_by('-db_date_created')
@@ -99,7 +99,7 @@ class JournalListView(LimitPageMixin, ListView):
         context['search_tags'] = search_tags
         context['write_journal_form'] = JournalWriteForm()
         context['page_title'] = 'Journals'
-        if self.request.user and self.request.user.is_authenticated():
+        if self.request.user and self.request.user.is_authenticated:
             context['fav_tag'] = "pid_%s_favorite" % self.request.user.id
         else:
             context['fav_tag'] = None
@@ -147,7 +147,7 @@ class JournalListReadView(JournalListView):
     def get_queryset(self):
         """Get queryset based on permissions. Reject outright if they're not logged in."""
         user = self.request.user
-        if not user or not user.is_authenticated() or not user.char_ob:
+        if not user or not user.is_authenticated or not user.char_ob:
             raise PermissionDenied("You must be logged in.")
         qs = Journal.objects.all_permitted_journals(user).all_read_by(user).order_by('-db_date_created')
         return self.search_filters(qs)
@@ -225,7 +225,7 @@ def board_list(request):
         if last_post:
             last_date = last_post.db_date_created.strftime("%x")
 
-        if request.user.is_authenticated():
+        if request.user.is_authenticated:
             unread = board.num_of_unread_posts(user, old=False)
         else:
             unread = board.posts.count()
@@ -241,7 +241,7 @@ def board_list(request):
 
     save_unread = request.GET.get("save_unread")
     if save_unread is None:
-        if not request.user or not request.user.is_authenticated():
+        if not request.user or not request.user.is_authenticated:
             unread_only = False
         else:
             unread_only = request.user.tags.get('web_boards_only_unread', category='boards')
@@ -257,14 +257,14 @@ def board_list(request):
         else:
             unread_only = False
 
-    if save_unread and request.user.is_authenticated():
+    if save_unread and request.user.is_authenticated:
         if unread_only:
             request.user.tags.add('web_boards_only_unread', category='boards')
         else:
             request.user.tags.remove('web_boards_only_unread', category='boards')
 
     user = request.user
-    if not user or not user.is_authenticated():
+    if not user or not user.is_authenticated:
         Account = get_user_model()
         try:
             user = Account.objects.get(username__iexact="Guest1")
@@ -349,7 +349,7 @@ def post_list(request, board_id):
         raw_posts = posts_for_request_all(board)
 
     # force list so it's not generating a query in each map run
-    if not request.user or not request.user.is_authenticated():
+    if not request.user or not request.user.is_authenticated:
         read_posts = []
     else:
         read_posts = list(Post.objects.all_read_by(request.user))
@@ -371,7 +371,7 @@ def post_list_global_search(request):
         }
 
     user = request.user
-    if not user or not user.is_authenticated():
+    if not user or not user.is_authenticated:
         read_posts = []
         Account = get_user_model()
         try:
@@ -406,12 +406,12 @@ def post_view_all(request, board_id):
 
     board = board_for_request(request, board_id)
     raw_posts = posts_for_request(board)
-    if not request.user or not request.user.is_authenticated():
+    if not request.user or not request.user.is_authenticated:
         read_posts = []
     else:
         read_posts = list(Post.objects.all_read_by(request.user))
 
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         alts = []
         if request.user.db.bbaltread:
             try:
@@ -450,7 +450,7 @@ def post_view_unread_board(request, board_id):
     board = board_for_request(request, board_id)
     unread_posts = []
 
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         unread_posts = Post.objects.all_unread_by(request.user).filter(db_receivers_objects=board)
         alts = []
         if request.user.db.bbaltread:
@@ -491,7 +491,7 @@ def post_view_unread(request):
 
     raw_boards = get_boards(request.user)
 
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         alts = []
         alt_unread_posts = []
         unread_posts = Post.objects.all_unread_by(request.user).filter(db_receivers_objects__in=raw_boards
@@ -540,7 +540,7 @@ def post_view(request, board_id, post_id):
         except (Post.DoesNotExist, ValueError):
             raise Http404
 
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         board.mark_read(request.user, post)
 
     context = {

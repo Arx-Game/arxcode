@@ -15,21 +15,21 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='shardhaven',
             name='taint_level',
-            field=models.PositiveSmallIntegerField(default=1, help_text=b'How much abyssal taint does this shardhaven have, on a scale of 1 to 10.'),
+            field=models.PositiveSmallIntegerField(default=1, help_text='How much abyssal taint does this shardhaven have, on a scale of 1 to 10.'),
         ),
         migrations.AddField(
             model_name='shardhavenlayoutsquare',
             name='description',
-            field=models.TextField(blank=True, help_text=b'A description to use for this square instead of the generated one.', null=True),
+            field=models.TextField(blank=True, help_text='A description to use for this square instead of the generated one.', null=True),
         ),
         migrations.AddField(
             model_name='shardhavenlayoutsquare',
             name='name',
-            field=models.CharField(blank=True, help_text=b'A name to use for this square instead of the tile name.', max_length=30, null=True),
+            field=models.CharField(blank=True, help_text='A name to use for this square instead of the tile name.', max_length=30, null=True),
         ),
         migrations.AddField(
             model_name='shardhavenmoodfragment',
             name='taint_level',
-            field=models.PositiveSmallIntegerField(default=1, help_text=b'This mood fragment will only appear in shardhavens with this much or more abyssal taint.'),
+            field=models.PositiveSmallIntegerField(default=1, help_text='This mood fragment will only appear in shardhavens with this much or more abyssal taint.'),
         ),
     ]

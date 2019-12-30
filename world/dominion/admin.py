@@ -470,7 +470,7 @@ class PlotActionAdmin(DomAdmin):
                                         ('status', 'public', 'editable', 'free_action'),
                                         ('plot', 'beat', 'gemit'), ('week', 'date_submitted')],
                              'classes': ['collapse'], 'description': 'Current ooc status of the action'}),
-                 ('Story', {'fields': [('topic', 'category'), 'actions', 'secret_actions', 'story', 'secret_story',
+                 ('Story', {'fields': ['category', 'actions', 'secret_actions', 'story', 'secret_story',
                                        'gm_notes', 'ooc_intent'],
                             'description': "The player's story, and GM response to it.",
                             'classes': ['collapse']}),

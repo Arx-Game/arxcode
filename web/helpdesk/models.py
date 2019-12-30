@@ -6,11 +6,13 @@ django-helpdesk - A Django powered ticket tracker for small enterprise.
 models.py - Model (and hence database) definitions. This is the core of the
             helpdesk structure.
 """
+import pickle
+from base64 import decodebytes, encodebytes
 
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _, ugettext
 from django import VERSION
 from evennia.typeclasses.models import SharedMemoryModel
@@ -205,8 +207,8 @@ class Queue(models.Model):
         help_text=_('Socks proxy port number. Default: 9150 (default TOR port)'),
     )
 
-    def __unicode__(self):
-        return u"%s" % self.title
+    def __str__(self):
+        return self.title
 
     class Meta:
         ordering = ('title',)
@@ -220,9 +222,9 @@ class Queue(models.Model):
         in the sender name field, so hopefully the admin can see and fix it.
         """
         if not self.email_address:
-            return u'NO QUEUE EMAIL ADDRESS DEFINED <%s>' % settings.DEFAULT_FROM_EMAIL
+            return 'NO QUEUE EMAIL ADDRESS DEFINED <%s>' % settings.DEFAULT_FROM_EMAIL
         else:
-            return u'%s <%s>' % (self.title, self.email_address)
+            return '%s <%s>' % (self.title, self.email_address)
     from_address = property(_from_address)
 
     def save(self, *args, **kwargs):
@@ -284,22 +286,24 @@ class Ticket(SharedMemoryModel):
         (6, _('6. Super Low')),
     )
     title = models.CharField( _('Title'), max_length=200,)
-    queue = models.ForeignKey(Queue, verbose_name=_('Queue'),)
+    queue = models.ForeignKey(Queue, verbose_name=_('Queue'), on_delete=models.CASCADE)
     db_date_created = models.DateTimeField(_('Created'), blank=True, help_text=_('Date this ticket was first created'),)
     modified = models.DateTimeField(_('Modified'), blank=True,
                                     help_text=_('Date this ticket was most recently changed.'))
     submitter_email = models.EmailField(_('Submitter E-Mail'), blank=True, null=True, help_text=_(
         'The submitter will receive an email for all public follow-ups left for this task.'))
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='assigned_to', blank=True, null=True,
-                                    verbose_name=_('Assigned to'))
+                                    verbose_name=_('Assigned to'), on_delete=models.CASCADE)
     submitting_player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='tickets', blank=True, null=True,
-                                          verbose_name=_('Player who opened this ticket'))
+                                          verbose_name=_('Player who opened this ticket'), on_delete=models.CASCADE)
     submitting_room = models.ForeignKey('objects.ObjectDB', blank=True, null=True,
                                         verbose_name=_('Room where this was submitted'), on_delete=models.SET_NULL)
-    plot = models.ForeignKey('dominion.Plot', blank=True, null=True, related_name="tickets")
-    beat = models.ForeignKey('dominion.PlotUpdate', blank=True, null=True, related_name="tickets")
-    goal_update = models.ForeignKey('character.GoalUpdate', blank=True, null=True, related_name="tickets")
-    kb_category = models.ForeignKey('KBCategory', blank=True, null=True)
+    plot = models.ForeignKey('dominion.Plot', blank=True, null=True, related_name="tickets", on_delete=models.CASCADE)
+    beat = models.ForeignKey('dominion.PlotUpdate', blank=True, null=True, related_name="tickets",
+                             on_delete=models.CASCADE)
+    goal_update = models.ForeignKey('character.GoalUpdate', blank=True, null=True, related_name="tickets",
+                                    on_delete=models.CASCADE)
+    kb_category = models.ForeignKey('KBCategory', blank=True, null=True, on_delete=models.CASCADE)
     status = models.IntegerField(_('Status'), choices=STATUS_CHOICES, default=OPEN_STATUS)
     on_hold = models.BooleanField(_('On Hold'), blank=True, default=False, help_text=_(
         'If a ticket is on hold, it will not automatically be escalated.'))
@@ -381,7 +385,7 @@ class Ticket(SharedMemoryModel):
         if self.on_hold: held_msg = _(' - On Hold')
         dep_msg = ''
         if self.can_be_resolved == False: dep_msg = _(' - Open dependencies')
-        return u'%s%s%s' % (self.get_status_display(), held_msg, dep_msg)
+        return '%s%s%s' % (self.get_status_display(), held_msg, dep_msg)
     get_status = property(_get_status)
 
     def _get_ticket_url(self):
@@ -390,7 +394,6 @@ class Ticket(SharedMemoryModel):
         a URL to the submitter of a ticket.
         """
         from django.contrib.sites.models import Site
-        from django.core.urlresolvers import reverse
         try:
             site = Site.objects.get_current()
         except:
@@ -409,7 +412,6 @@ class Ticket(SharedMemoryModel):
         a staff member (in emails etc)
         """
         from django.contrib.sites.models import Site
-        from django.core.urlresolvers import reverse
         try:
             site = Site.objects.get_current()
         except:
@@ -437,8 +439,8 @@ class Ticket(SharedMemoryModel):
         verbose_name = _('Ticket')
         verbose_name_plural = _('Tickets')
 
-    def __unicode__(self):
-        return u'%s %s' % (self.id, self.title)
+    def __str__(self):
+        return '%s %s' % (self.id, self.title)
 
     def get_absolute_url(self):
         return reverse('helpdesk_view', args=(self.id,))
@@ -529,11 +531,12 @@ class FollowUp(models.Model):
     ticket = models.ForeignKey(
         Ticket,
         verbose_name=_('Ticket'),
+        on_delete=models.CASCADE
         )
 
     date = models.DateTimeField(
         _('Date'),
-        default = timezone.now
+        default=timezone.now,
         )
 
     title = models.CharField(
@@ -562,6 +565,7 @@ class FollowUp(models.Model):
         blank=True,
         null=True,
         verbose_name=_('User'),
+        on_delete=models.CASCADE
         )
 
     new_status = models.IntegerField(
@@ -579,8 +583,8 @@ class FollowUp(models.Model):
         verbose_name = _('Follow-up')
         verbose_name_plural = _('Follow-ups')
 
-    def __unicode__(self):
-        return u'%s' % self.title
+    def __str__(self):
+        return str(self.title)
 
     def get_absolute_url(self):
         return reverse(u"%s#followup%s" % (self.ticket.get_absolute_url(), self.id))
@@ -601,6 +605,7 @@ class TicketChange(models.Model):
     followup = models.ForeignKey(
         FollowUp,
         verbose_name=_('Follow-up'),
+        on_delete=models.CASCADE
         )
 
     field = models.CharField(
@@ -620,8 +625,8 @@ class TicketChange(models.Model):
         null=True,
         )
 
-    def __unicode__(self):
-        str = u'%s ' % self.field
+    def __str__(self):
+        str = '%s ' % self.field
         if not self.new_value:
             str += ugettext('removed')
         elif not self.old_value:
@@ -650,7 +655,7 @@ def attachment_path(instance, filename):
     att_path = os.path.join(settings.MEDIA_ROOT, path)
     if settings.DEFAULT_FILE_STORAGE == "django.core.files.storage.FileSystemStorage":
         if not os.path.exists(att_path):
-            os.makedirs(att_path, 0777)
+            os.makedirs(att_path, 0o777)
     return os.path.join(path, filename)
 
 
@@ -663,6 +668,7 @@ class Attachment(models.Model):
     followup = models.ForeignKey(
         FollowUp,
         verbose_name=_('Follow-up'),
+        on_delete=models.CASCADE
         )
 
     file = models.FileField(
@@ -689,14 +695,14 @@ class Attachment(models.Model):
     def get_upload_to(self, field_attname):
         """ Get upload_to path specific to this item """
         if not self.id:
-            return u''
-        return u'helpdesk/attachments/%s/%s' % (
+            return ''
+        return 'helpdesk/attachments/%s/%s' % (
             self.followup.ticket.ticket_for_url,
             self.followup.id
             )
 
-    def __unicode__(self):
-        return u'%s' % self.filename
+    def __str__(self):
+        return '%s' % self.filename
 
     class Meta:
         ordering = ['filename',]
@@ -742,8 +748,8 @@ class PreSetReply(models.Model):
         verbose_name = _('Pre-set reply')
         verbose_name_plural = _('Pre-set replies')
 
-    def __unicode__(self):
-        return u'%s' % self.name
+    def __str__(self):
+        return '%s' % self.name
 
 
 class EscalationExclusion(models.Model):
@@ -775,8 +781,8 @@ class EscalationExclusion(models.Model):
         help_text=_('Date on which escalation should not happen'),
         )
 
-    def __unicode__(self):
-        return u'%s' % self.name
+    def __str__(self):
+        return '%s' % self.name
 
     class Meta:
         verbose_name = _('Escalation exclusion')
@@ -834,8 +840,8 @@ class EmailTemplate(models.Model):
         help_text=_('Locale of this template.'),
         )
 
-    def __unicode__(self):
-        return u'%s' % self.template_name
+    def __str__(self):
+        return '%s' % self.template_name
 
     class Meta:
         ordering = ['template_name', 'locale']
@@ -851,7 +857,7 @@ class KBCategory(models.Model):
     title = models.CharField(_('Title'), max_length=100, unique=True)
     slug = models.SlugField(_('Slug'), unique=True)
     description = models.TextField(_('Description'), blank=True)
-    parent = models.ForeignKey('self', null=True, blank=True, related_name="subcategories")
+    parent = models.ForeignKey('self', null=True, blank=True, related_name="subcategories", on_delete=models.SET_NULL)
     search_tags = models.ManyToManyField('character.SearchTag', blank=True, related_name="kb_categories")
 
     def display(self):
@@ -935,6 +941,7 @@ class SavedSearch(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_('User'),
+        on_delete=models.CASCADE
         )
 
     title = models.CharField(
@@ -955,11 +962,11 @@ class SavedSearch(models.Model):
         help_text=_('Pickled query object. Be wary changing this.'),
         )
 
-    def __unicode__(self):
+    def __str__(self):
         if self.shared:
-            return u'%s (*)' % self.title
+            return '%s (*)' % self.title
         else:
-            return u'%s' % self.title
+            return '%s' % self.title
 
     class Meta:
         verbose_name = _('Saved search')
@@ -975,7 +982,7 @@ class UserSettings(models.Model):
     We should always refer to user.usersettings.settings['setting_name'].
     """
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     settings_pickled = models.TextField(
         _('Settings Dictionary'),
@@ -986,23 +993,19 @@ class UserSettings(models.Model):
 
     def _set_settings(self, data):
         # data should always be a Python dictionary.
-        import cPickle
-        from .lib import b64encode
-        self.settings_pickled = b64encode(cPickle.dumps(data))
+        self.settings_pickled = encodebytes(pickle.dumps(data))
 
     def _get_settings(self):
         # return a python dictionary representing the pickled data.
-        import cPickle
-        from .lib import b64decode
         try:
-            return cPickle.loads(b64decode(str(self.settings_pickled)))
-        except cPickle.UnpicklingError:
+            return pickle.loads(decodebytes(str(self.settings_pickled)))
+        except pickle.UnpicklingError:
             return {}
 
     settings = property(_get_settings, _set_settings)
 
-    def __unicode__(self):
-        return u'Preferences for %s' % self.user
+    def __str__(self):
+        return 'Preferences for %s' % self.user
 
     class Meta:
         verbose_name = _('User Setting')
@@ -1075,8 +1078,8 @@ class IgnoreEmail(models.Model):
             'be deleted.'),
         )
 
-    def __unicode__(self):
-        return u'%s' % self.name
+    def __str__(self):
+        return '%s' % self.name
 
     def save(self, *args, **kwargs):
         if not self.date:
@@ -1124,6 +1127,7 @@ class TicketCC(models.Model):
     ticket = models.ForeignKey(
         Ticket,
         verbose_name=_('Ticket'),
+        on_delete=models.CASCADE
         )
 
     user = models.ForeignKey(
@@ -1132,6 +1136,7 @@ class TicketCC(models.Model):
         null=True,
         help_text=_('User who wishes to receive updates for this ticket.'),
         verbose_name=_('User'),
+        on_delete=models.CASCADE
         )
 
     email = models.EmailField(
@@ -1169,8 +1174,8 @@ class TicketCC(models.Model):
             return self.email
     display = property(_display)
 
-    def __unicode__(self):
-        return u'%s for %s' % (self.display, self.ticket.title)
+    def __str__(self):
+        return '%s for %s' % (self.display, self.ticket.title)
 
 class CustomFieldManager(models.Manager):
     def get_queryset(self):
@@ -1258,7 +1263,7 @@ class CustomField(models.Model):
         )
 
     def _choices_as_array(self):
-        from StringIO import StringIO
+        from io import StringIO
         valuebuffer = StringIO(self.list_values)
         choices = [[item.strip(), item.strip()] for item in valuebuffer.readlines()]
         valuebuffer.close()
@@ -1279,7 +1284,7 @@ class CustomField(models.Model):
 
     objects = CustomFieldManager()
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s' % (self.name)
 
     class Meta:
@@ -1291,16 +1296,18 @@ class TicketCustomFieldValue(models.Model):
     ticket = models.ForeignKey(
         Ticket,
         verbose_name=_('Ticket'),
+        on_delete=models.CASCADE
         )
 
     field = models.ForeignKey(
         CustomField,
         verbose_name=_('Field'),
+        on_delete=models.CASCADE
         )
 
     value = models.TextField(blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s / %s' % (self.ticket, self.field)
 
     class Meta:
@@ -1321,15 +1328,17 @@ class TicketDependency(models.Model):
         Ticket,
         verbose_name=_('Ticket'),
         related_name='ticketdependency',
+        on_delete=models.CASCADE
         )
 
     depends_on = models.ForeignKey(
         Ticket,
         verbose_name=_('Depends On Ticket'),
         related_name='depends_on',
+        on_delete=models.CASCADE
         )
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s / %s' % (self.ticket, self.depends_on)
 
     class Meta:

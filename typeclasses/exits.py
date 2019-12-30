@@ -98,7 +98,7 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
                         msg = "Attempting this password AGAIN would result in Privacy Disturbance "
                         msg += "Citation 47c, as per Decree 332 Appendix M of Queen Alaricetta the "
                         msg += "Prudent. Best not to try it."
-                        self.caller.msg(msg)
+                        self.msg(msg)
                         return
                     attempt = yield self.obj.password_question
                     if attempt != self.obj.password:
@@ -258,7 +258,7 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
             other_options = options.copy()
             from_dir = options.get('from_dir', 'from nearby')
             new_from_dir = "from the %s" % str(self.reverse_exit)
-            if hasattr(text, '__iter__'):
+            if not isinstance(text, str):
                 text = text[0]
             text = text.replace(from_dir, new_from_dir)
             del other_options['shout']
@@ -392,7 +392,7 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             other_options = options.copy()
             from_dir = options.get('from_dir', 'from nearby')
             new_from_dir = "from the %s" % str(self.reverse_exit)
-            if hasattr(text, '__iter__'):
+            if not isinstance(text, str):
                 text = text[0]
             text = text.replace(from_dir, new_from_dir)
             del other_options['shout']
@@ -406,7 +406,7 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
 
         try:
             haven_exit = ShardhavenLayoutExit.objects.get(id=self.db.haven_exit_id)
-        except ShardhavenLayoutExit.DoesNotExist, ShardhavenLayoutExit.MultipleObjectsReturned:
+        except (ShardhavenLayoutExit.DoesNotExist, ShardhavenLayoutExit.MultipleObjectsReturned):
             return None
 
         return haven_exit

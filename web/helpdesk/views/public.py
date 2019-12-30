@@ -7,7 +7,7 @@ views/public.py - All public facing views, eg non-staff (no authentication
                   required) views.
 """
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.translation import ugettext as _
@@ -19,10 +19,10 @@ from web.helpdesk.models import Ticket, Queue, UserSettings, KBCategory
 
 
 def homepage(request):
-    if not request.user.is_authenticated() and helpdesk_settings.HELPDESK_REDIRECT_TO_LOGIN_BY_DEFAULT:
+    if not request.user.is_authenticated and helpdesk_settings.HELPDESK_REDIRECT_TO_LOGIN_BY_DEFAULT:
         return HttpResponseRedirect(reverse('login'))
 
-    if (request.user.is_staff or (request.user.is_authenticated() and helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE)):
+    if (request.user.is_staff or (request.user.is_authenticated and helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE)):
         try:
             if getattr(request.user.usersettings.settings, 'login_view_ticketlist', False):
                 return HttpResponseRedirect(reverse('helpdesk_list'))
@@ -39,7 +39,7 @@ def homepage(request):
                 # This submission is spam. Let's not save it.
                 return render(request, 'helpdesk/public_spam.html', {})
             else:
-                if request.user.is_authenticated():
+                if request.user.is_authenticated:
                     ticket = form.save(user=request.user)
                 else:
                     ticket = form.save()
@@ -57,7 +57,7 @@ def homepage(request):
         if queue:
             initial_data['queue'] = queue.id
 
-        if request.user.is_authenticated() and request.user.email:
+        if request.user.is_authenticated and request.user.email:
             initial_data['submitter_email'] = request.user.email
 
         form = PublicTicketForm(initial=initial_data)
@@ -90,11 +90,11 @@ def view_ticket(request):
 
             if request.user.is_staff:
                 redirect_url = reverse('helpdesk_view', args=[ticket_id])
-                if request.GET.has_key('close'):
+                if "close" in request.GET:
                     redirect_url += '?close'
                 return HttpResponseRedirect(redirect_url)
 
-            if request.GET.has_key('close') and ticket.status == Ticket.RESOLVED_STATUS:
+            if "close" in request.GET and ticket.status == Ticket.RESOLVED_STATUS:
                 from web.helpdesk.views.staff import update_ticket
                 # Trick the update_ticket() view into thinking it's being called with
                 # a valid POST.

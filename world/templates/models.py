@@ -36,7 +36,8 @@ class Template(SharedMemoryModel):
         (OPEN, 'OPEN')
     )
 
-    owner = models.ForeignKey('character.PlayerAccount', related_name='templates', db_index=True)
+    owner = models.ForeignKey('character.PlayerAccount', related_name='templates', db_index=True,
+                              on_delete=models.CASCADE)
     desc = models.TextField()
 
     access_level = models.CharField(max_length=2, choices=ACCESS_LEVELS, default=PRIVATE)
@@ -57,7 +58,7 @@ class Template(SharedMemoryModel):
         for obj in self.applied_to.all():
             obj.ndb.cached_template_desc = None
 
-    def __unicode__(self):
+    def __str__(self):
         return self.title
 
     def is_accessible_by(self, char):
@@ -87,8 +88,8 @@ class TemplateGrantee(SharedMemoryModel):
     additional metadata about the grantee status, as the feature
     expands.
     """
-    template = models.ForeignKey('Template')
-    grantee = models.ForeignKey('character.RosterEntry')
+    template = models.ForeignKey('Template', on_delete=models.CASCADE)
+    grantee = models.ForeignKey('character.RosterEntry', on_delete=models.CASCADE)
 
 
 

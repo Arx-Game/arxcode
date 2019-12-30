@@ -1,12 +1,12 @@
 import calendar
 import pytz
 from django.utils.timezone import get_default_timezone
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from evennia.utils.ansi import strip_ansi
 
 
 def localize_datetime(timestamp, tz=None):
-    if tz is not None and isinstance(tz, basestring):
+    if tz is not None and isinstance(tz, str):
         tz = pytz.timezone(tz)
 
     if not tz:

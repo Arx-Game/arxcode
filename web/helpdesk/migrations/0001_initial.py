@@ -35,9 +35,9 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.SlugField(help_text='As used in the database and behind the scenes. Must be unique and consist of only lowercase letters with no punctuation.', unique=True, verbose_name='Field Name')),
-                ('label', models.CharField(help_text='The display label for this field', max_length=b'30', verbose_name='Label')),
+                ('label', models.CharField(help_text='The display label for this field', max_length=30, verbose_name='Label')),
                 ('help_text', models.TextField(help_text='Shown to the user when editing the ticket', null=True, verbose_name='Help Text', blank=True)),
-                ('data_type', models.CharField(help_text='Allows you to restrict the data entered into this field', max_length=100, verbose_name='Data Type', choices=[(b'varchar', 'Character (single line)'), (b'text', 'Text (multi-line)'), (b'integer', 'Integer'), (b'decimal', 'Decimal'), (b'list', 'List'), (b'boolean', 'Boolean (checkbox yes/no)'), (b'date', 'Date'), (b'time', 'Time'), (b'datetime', 'Date & Time'), (b'email', 'E-Mail Address'), (b'url', 'URL'), (b'ipaddress', 'IP Address'), (b'slug', 'Slug')])),
+                ('data_type', models.CharField(help_text='Allows you to restrict the data entered into this field', max_length=100, verbose_name='Data Type', choices=[('varchar', 'Character (single line)'), ('text', 'Text (multi-line)'), ('integer', 'Integer'), ('decimal', 'Decimal'), ('list', 'List'), ('boolean', 'Boolean (checkbox yes/no)'), ('date', 'Date'), ('time', 'Time'), ('datetime', 'Date & Time'), ('email', 'E-Mail Address'), ('url', 'URL'), ('ipaddress', 'IP Address'), ('slug', 'Slug')])),
                 ('max_length', models.IntegerField(null=True, verbose_name='Maximum Length (characters)', blank=True)),
                 ('decimal_places', models.IntegerField(help_text='Only used for decimal fields', null=True, verbose_name='Decimal Places', blank=True)),
                 ('empty_selection_list', models.BooleanField(default=False, help_text='Only for List: adds an empty first entry to the choices list, which enforces that the user makes an active choice.', verbose_name='Add empty first choice to List?')),
@@ -140,7 +140,7 @@ class Migration(migrations.Migration):
                 ('votes', models.IntegerField(default=0, help_text='Total number of votes cast for this item', verbose_name='Votes')),
                 ('recommendations', models.IntegerField(default=0, help_text='Number of votes for this item which were POSITIVE.', verbose_name='Positive Votes')),
                 ('last_updated', models.DateTimeField(help_text='The date on which this question was most recently changed.', verbose_name='Last Updated', blank=True)),
-                ('category', models.ForeignKey(verbose_name='Category', to='helpdesk.KBCategory')),
+                ('category', models.ForeignKey(verbose_name='Category', to='helpdesk.KBCategory', on_delete=models.CASCADE)),
             ],
             options={
                 'ordering': ['title'],
@@ -176,14 +176,14 @@ class Migration(migrations.Migration):
                 ('escalate_days', models.IntegerField(help_text='For tickets which are not held, how often do you wish to increase their priority? Set to 0 for no escalation.', null=True, verbose_name='Escalation Days', blank=True)),
                 ('new_ticket_cc', models.CharField(help_text='If an e-mail address is entered here, then it will receive notification of all new tickets created for this queue. Enter a comma between multiple e-mail addresses.', max_length=200, null=True, verbose_name='New Ticket CC Address', blank=True)),
                 ('updated_ticket_cc', models.CharField(help_text='If an e-mail address is entered here, then it will receive notification of all activity (new tickets, closed tickets, updates, reassignments, etc) for this queue. Separate multiple addresses with a comma.', max_length=200, null=True, verbose_name='Updated Ticket CC Address', blank=True)),
-                ('email_box_type', models.CharField(choices=[(b'pop3', 'POP 3'), (b'imap', 'IMAP')], max_length=5, blank=True, help_text='E-Mail server type for creating tickets automatically from a mailbox - both POP3 and IMAP are supported.', null=True, verbose_name='E-Mail Box Type')),
+                ('email_box_type', models.CharField(choices=[('pop3', 'POP 3'), ('imap', 'IMAP')], max_length=5, blank=True, help_text='E-Mail server type for creating tickets automatically from a mailbox - both POP3 and IMAP are supported.', null=True, verbose_name='E-Mail Box Type')),
                 ('email_box_host', models.CharField(help_text='Your e-mail server address - either the domain name or IP address. May be "localhost".', max_length=200, null=True, verbose_name='E-Mail Hostname', blank=True)),
                 ('email_box_port', models.IntegerField(help_text='Port number to use for accessing e-mail. Default for POP3 is "110", and for IMAP is "143". This may differ on some servers. Leave it blank to use the defaults.', null=True, verbose_name='E-Mail Port', blank=True)),
                 ('email_box_ssl', models.BooleanField(default=False, help_text='Whether to use SSL for IMAP or POP3 - the default ports when using SSL are 993 for IMAP and 995 for POP3.', verbose_name='Use SSL for E-Mail?')),
                 ('email_box_user', models.CharField(help_text='Username for accessing this mailbox.', max_length=200, null=True, verbose_name='E-Mail Username', blank=True)),
                 ('email_box_pass', models.CharField(help_text='Password for the above username', max_length=200, null=True, verbose_name='E-Mail Password', blank=True)),
                 ('email_box_imap_folder', models.CharField(help_text='If using IMAP, what folder do you wish to fetch messages from? This allows you to use one IMAP account for multiple queues, by filtering messages on your IMAP server into separate folders. Default: INBOX.', max_length=100, null=True, verbose_name='IMAP Folder', blank=True)),
-                ('email_box_interval', models.IntegerField(default=b'5', help_text='How often do you wish to check this mailbox? (in Minutes)', null=True, verbose_name='E-Mail Check Interval', blank=True)),
+                ('email_box_interval', models.IntegerField(default='5', help_text='How often do you wish to check this mailbox? (in Minutes)', null=True, verbose_name='E-Mail Check Interval', blank=True)),
                 ('email_box_last_check', models.DateTimeField(null=True, editable=False, blank=True)),
             ],
             options={
@@ -200,7 +200,7 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(help_text='User-provided name for this query', max_length=100, verbose_name='Query Name')),
                 ('shared', models.BooleanField(default=False, help_text='Should other users see this query?', verbose_name='Shared With Other Users?')),
                 ('query', models.TextField(help_text='Pickled query object. Be wary changing this.', verbose_name='Search Query')),
-                ('user', models.ForeignKey(verbose_name='User', to=settings.AUTH_USER_MODEL)),
+                ('user', models.ForeignKey(verbose_name='User', to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'Saved search',
@@ -223,8 +223,8 @@ class Migration(migrations.Migration):
                 ('priority', models.IntegerField(default=3, help_text='1 = Highest Priority, 5 = Low Priority', blank=3, verbose_name='Priority', choices=[(1, '1. Critical'), (2, '2. High'), (3, '3. Normal'), (4, '4. Low'), (5, '5. Very Low')])),
                 ('due_date', models.DateTimeField(null=True, verbose_name='Due on', blank=True)),
                 ('last_escalation', models.DateTimeField(help_text='The date this ticket was last escalated - updated automatically by management/commands/escalate_tickets.py.', null=True, editable=False, blank=True)),
-                ('assigned_to', models.ForeignKey(related_name=b'assigned_to', verbose_name='Assigned to', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
-                ('queue', models.ForeignKey(verbose_name='Queue', to='helpdesk.Queue')),
+                ('assigned_to', models.ForeignKey(related_name='assigned_to', verbose_name='Assigned to', blank=True, to=settings.AUTH_USER_MODEL, null=True, on_delete=models.CASCADE)),
+                ('queue', models.ForeignKey(verbose_name='Queue', to='helpdesk.Queue', on_delete=models.CASCADE)),
             ],
             options={
                 'ordering': ('id',),
@@ -241,8 +241,8 @@ class Migration(migrations.Migration):
                 ('email', models.EmailField(help_text='For non-user followers, enter their e-mail address', max_length=75, null=True, verbose_name='E-Mail Address', blank=True)),
                 ('can_view', models.BooleanField(default=False, help_text='Can this CC login to view the ticket details?', verbose_name='Can View Ticket?')),
                 ('can_update', models.BooleanField(default=False, help_text='Can this CC login and update the ticket?', verbose_name='Can Update Ticket?')),
-                ('ticket', models.ForeignKey(verbose_name='Ticket', to='helpdesk.Ticket')),
-                ('user', models.ForeignKey(blank=True, to=settings.AUTH_USER_MODEL, help_text='User who wishes to receive updates for this ticket.', null=True, verbose_name='User')),
+                ('ticket', models.ForeignKey(verbose_name='Ticket', to='helpdesk.Ticket', on_delete=models.CASCADE)),
+                ('user', models.ForeignKey(blank=True, to=settings.AUTH_USER_MODEL, help_text='User who wishes to receive updates for this ticket.', null=True, verbose_name='User', on_delete=models.CASCADE)),
             ],
             options={
             },
@@ -255,7 +255,7 @@ class Migration(migrations.Migration):
                 ('field', models.CharField(max_length=100, verbose_name='Field')),
                 ('old_value', models.TextField(null=True, verbose_name='Old Value', blank=True)),
                 ('new_value', models.TextField(null=True, verbose_name='New Value', blank=True)),
-                ('followup', models.ForeignKey(verbose_name='Follow-up', to='helpdesk.FollowUp')),
+                ('followup', models.ForeignKey(verbose_name='Follow-up', to='helpdesk.FollowUp', on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'Ticket change',
@@ -268,8 +268,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('value', models.TextField(null=True, blank=True)),
-                ('field', models.ForeignKey(verbose_name='Field', to='helpdesk.CustomField')),
-                ('ticket', models.ForeignKey(verbose_name='Ticket', to='helpdesk.Ticket')),
+                ('field', models.ForeignKey(verbose_name='Field', to='helpdesk.CustomField', on_delete=models.CASCADE)),
+                ('ticket', models.ForeignKey(verbose_name='Ticket', to='helpdesk.Ticket', on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'Ticket custom field value',
@@ -281,8 +281,8 @@ class Migration(migrations.Migration):
             name='TicketDependency',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('depends_on', models.ForeignKey(related_name=b'depends_on', verbose_name='Depends On Ticket', to='helpdesk.Ticket')),
-                ('ticket', models.ForeignKey(related_name=b'ticketdependency', verbose_name='Ticket', to='helpdesk.Ticket')),
+                ('depends_on', models.ForeignKey(related_name='depends_on', verbose_name='Depends On Ticket', to='helpdesk.Ticket', on_delete=models.CASCADE)),
+                ('ticket', models.ForeignKey(related_name='ticketdependency', verbose_name='Ticket', to='helpdesk.Ticket', on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'Ticket dependency',
@@ -295,7 +295,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('settings_pickled', models.TextField(help_text='This is a base64-encoded representation of a pickled Python dictionary. Do not change this field via the admin.', null=True, verbose_name='Settings Dictionary', blank=True)),
-                ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL)),
+                ('user', models.OneToOneField(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'User Setting',
@@ -322,13 +322,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='followup',
             name='ticket',
-            field=models.ForeignKey(verbose_name='Ticket', to='helpdesk.Ticket'),
+            field=models.ForeignKey(verbose_name='Ticket', to='helpdesk.Ticket', on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
             model_name='followup',
             name='user',
-            field=models.ForeignKey(verbose_name='User', blank=True, to=settings.AUTH_USER_MODEL, null=True),
+            field=models.ForeignKey(verbose_name='User', blank=True, to=settings.AUTH_USER_MODEL, null=True, on_delete=models.CASCADE),
             preserve_default=True,
         ),
         migrations.AddField(
@@ -340,7 +340,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='attachment',
             name='followup',
-            field=models.ForeignKey(verbose_name='Follow-up', to='helpdesk.FollowUp'),
+            field=models.ForeignKey(verbose_name='Follow-up', to='helpdesk.FollowUp', on_delete=models.CASCADE),
             preserve_default=True,
         ),
     ]

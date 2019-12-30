@@ -12,7 +12,7 @@ from cloudinary.forms import cl_init_js_callbacks
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import Q
 from django import forms
 from django.http import Http404, HttpResponseRedirect, HttpResponse
@@ -63,7 +63,7 @@ def sheet(request, object_id):
     can_comment = False
     # we allow only staff or the player to see secret information
     # but only other characters can leave IC comments.
-    if user.is_authenticated():
+    if user.is_authenticated:
         try:
             if user.char_ob.id == character.id or user.check_permstring("builders"):
                 show_hidden = True
@@ -108,7 +108,7 @@ def journals(request, object_id):
     character = get_character_from_ob(object_id)
     user = request.user
     show_hidden = False
-    if user.is_authenticated():
+    if user.is_authenticated:
         if user.char_ob.id == character.id or user.check_permstring("builders"):
             show_hidden = True
     if not show_hidden and (hasattr(character, 'roster') and
@@ -219,7 +219,7 @@ class RosterListView(ListView):
         user = self.request.user
         show_hidden = False
         try:
-            if user.is_authenticated() and user.check_permstring("builders"):
+            if user.is_authenticated and user.check_permstring("builders"):
                 show_hidden = True
         except Exception:
             import traceback
@@ -252,7 +252,7 @@ class IncompleteRosterListView(RosterListView):
     def get_queryset(self):
         """Only grant permission to see for staff"""
         user = self.request.user
-        if not (user.is_authenticated() and user.check_permstring("builders")):
+        if not (user.is_authenticated and user.check_permstring("builders")):
             raise Http404("Not staff")
         return super(IncompleteRosterListView, self).get_queryset()
 
@@ -272,7 +272,7 @@ def gallery(request, object_id):
     character = get_character_from_ob(object_id)
     user = request.user
     can_upload = False
-    if user.is_authenticated() and (user.char_ob == character or user.is_staff):
+    if user.is_authenticated and (user.char_ob == character or user.is_staff):
         can_upload = True
     photos = Photo.objects.filter(owner__id=object_id)
     portrait_form = PortraitSelectForm(object_id)
@@ -352,7 +352,7 @@ def upload(request, object_id):
     """View for uploading new photo resource to cloudinary and creating model"""
     user = request.user
     character = get_character_from_ob(object_id)
-    if not user.is_authenticated() or (user.char_ob != character and not user.is_staff):
+    if not user.is_authenticated or (user.char_ob != character and not user.is_staff):
         raise Http404("You are not permitted to upload to this gallery.")
     unsigned = request.GET.get("unsigned") == "true"
 
@@ -386,7 +386,7 @@ def upload(request, object_id):
         context['posted'] = False
         if form.is_valid():
             # Uploads image and creates a model instance for it
-            if user.is_authenticated() and user.check_permstring("builders"):
+            if user.is_authenticated and user.check_permstring("builders"):
                 context['show_hidden'] = True
             context['posted'] = form.instance
             form.save()
@@ -470,7 +470,7 @@ class ActionListView(ListView):
         """Display only public actions if we're not staff or a participant"""
         qs = self.character.past_participated_actions.order_by('-date_submitted')
         user = self.request.user
-        if not user or not user.is_authenticated():
+        if not user or not user.is_authenticated:
             return qs.filter(public=True)
         if user.is_staff or user.check_permstring("builders") or user.char_ob == self.character:
             return qs
@@ -498,7 +498,7 @@ class NewActionListView(ListView, LimitPageMixin):
         """Display only public actions if we're not staff or a participant"""
         qs = self.character.valid_actions.order_by('-id')
         user = self.request.user
-        if not user or not user.is_authenticated():
+        if not user or not user.is_authenticated:
             return qs.filter(public=True).filter(status=PlotAction.PUBLISHED)
         if user.is_staff or user.check_permstring("builders") or user.char_ob == self.character:
             return qs
@@ -523,7 +523,7 @@ def new_action_view(request, object_id, action_id):
         except (PlotAction.DoesNotExist, PlotAction.MultipleObjectsReturned):
             raise Http404
 
-    if not request.user or not request.user.is_authenticated():
+    if not request.user or not request.user.is_authenticated:
         require_public = True
     elif request.user.is_staff or request.user.check_permstring("builders") or request.user.char_ob == character():
         require_public = False
@@ -736,7 +736,7 @@ class FlashbackListView(LoginRequiredMixin, CharacterMixin, ListView):
     def get_queryset(self):
         """Ensure flashbacks are private to participants/staff"""
         user = self.request.user
-        if not user or not user.is_authenticated():
+        if not user or not user.is_authenticated:
             raise PermissionDenied
         if user.char_ob != self.character and not (user.is_staff or user.check_permstring("builders")):
             raise Http404
@@ -840,7 +840,7 @@ class KnownCluesView(CharacterMixin, LimitPageMixin, ListView):
     def get_queryset(self):
         """Ensure flashbacks are private to participants/staff"""
         user = self.request.user
-        if not user or not user.is_authenticated():
+        if not user or not user.is_authenticated:
             raise PermissionDenied
         if user.char_ob != self.character and not (user.is_staff or user.check_permstring("builders")):
             raise PermissionDenied

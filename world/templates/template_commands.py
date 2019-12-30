@@ -94,11 +94,11 @@ class CmdTemplateForm(PaxformCommand):
                     template = Template.objects.filter(id=args)[:1].get()
 
                     if template.is_accessible_by(self.caller):
-                        self.caller.msg(self.display(template))
+                        self.msg(self.display(template))
                     else:
-                        self.caller.msg("You do not have access to a template with that id.")
+                        self.msg("You do not have access to a template with that id.")
                 except (Template.DoesNotExist, ValueError):
-                    self.caller.msg("You do not have access to a template with that id.")
+                    self.msg("You do not have access to a template with that id.")
         elif "list" in self.switches:
             self.list(self.caller)
         elif "delete" in self.switches:
@@ -107,11 +107,11 @@ class CmdTemplateForm(PaxformCommand):
             if not template:
                 return
             elif template.in_use():
-                self.caller.msg("You cannot delete a template that is in use!")
+                self.msg("You cannot delete a template that is in use!")
             else:
                 id = template.id
                 template.delete()
-                self.caller.msg("Deleted template {}".format(id))
+                self.msg("Deleted template {}".format(id))
         elif "grant" in self.switches:
             template, char = self.char_and_template_for_access()
 
@@ -119,16 +119,16 @@ class CmdTemplateForm(PaxformCommand):
                 return
 
             if char == self.caller:
-                self.caller.msg("You cannot grant yourself access to a template.")
+                self.msg("You cannot grant yourself access to a template.")
                 return
 
             grantees = TemplateGrantee.objects.filter(grantee=char.roster, template=template)
 
             if grantees.exists():
-                self.caller.msg("{} already has access to {}.".format(char.name, template.markup()))
+                self.msg("{} already has access to {}.".format(char.name, template.markup()))
             else:
                 TemplateGrantee(grantee=char.roster, template=template).save()
-                self.caller.msg("You have granted {} access to {}.".format(char.name, template.markup()))
+                self.msg("You have granted {} access to {}.".format(char.name, template.markup()))
         elif "revoke" in self.switches:
             template, char = self.char_and_template_for_access()
 
@@ -139,14 +139,14 @@ class CmdTemplateForm(PaxformCommand):
 
             if grantees.exists():
                 grantees.first().delete()
-                self.caller.msg("You have revoked {}'s access to {}.".format(char.name, template.markup()))
+                self.msg("You have revoked {}'s access to {}.".format(char.name, template.markup()))
             else:
-                self.caller.msg("{} does not have access to {}.".format(char.name, template.markup()))
+                self.msg("{} does not have access to {}.".format(char.name, template.markup()))
         elif "change_access" in self.switches:
             access_level = self.parse_access_levels(self.rhs)
 
             if not access_level:
-                self.caller.msg("{} is not a valid access level.".format(self.rhs))
+                self.msg("{} is not a valid access level.".format(self.rhs))
                 return
 
             template = self.find_template(self.lhs)
@@ -154,7 +154,7 @@ class CmdTemplateForm(PaxformCommand):
             if not template:
                 return
             elif template.access_level == access_level:
-                self.caller.msg("The template already has that access level.")
+                self.msg("The template already has that access level.")
                 return
             elif template.access_level == 'RS':
                 template.grantees.clear()
@@ -162,35 +162,35 @@ class CmdTemplateForm(PaxformCommand):
             template.access_level = access_level
             template.save()
 
-            self.caller.msg("You have changed the access level to {}.".format(self.rhs))
+            self.msg("You have changed the access level to {}.".format(self.rhs))
         elif "markup" in self.switches:
             if not args:
-                self.caller.msg("Which template do you want markup for?")
+                self.msg("Which template do you want markup for?")
             else:
                 templates = Template.objects.accessible_by(self.caller).filter(id=args)
                 if templates.exists():
-                    self.caller.msg(templates.first().markup())
+                    self.msg(templates.first().markup())
                 else:
-                    self.caller.msg("You do not have access to a template with that id.")
+                    self.msg("You do not have access to a template with that id.")
         elif "grantees" in self.switches:
             if not args:
-                self.caller.msg("Which template do you want to get the list of grantees for?")
+                self.msg("Which template do you want to get the list of grantees for?")
             else:
                 template = self.find_template(args)
                 if not template:
                     return
                 if template.access_level == 'OP':
-                    self.caller.msg("Everyone has access to this template. It has an OPEN access level.")
+                    self.msg("Everyone has access to this template. It has an OPEN access level.")
                 elif template.access_level == 'PR':
-                    self.caller.msg("No one but you has access to this template. It has a PRIVATE access level.")
+                    self.msg("No one but you has access to this template. It has a PRIVATE access level.")
                 else:
-                    self.caller.msg("Current grantees: {}".format(
+                    self.msg("Current grantees: {}".format(
                        ", ".join([entry.character.name for entry in template.grantees.all()])
                     ))
 
         elif "desc" in self.switches:
             if "[[TEMPLATE_" in args:
-                self.caller.msg("Templates cannot be nested.")
+                self.msg("Templates cannot be nested.")
                 return
             super(CmdTemplateForm, self).func()
         else:
@@ -200,14 +200,14 @@ class CmdTemplateForm(PaxformCommand):
         try:
             char = Character.objects.filter(db_key=self.lhs)[:1].get()
         except Character.DoesNotExist:
-            self.caller.msg(self.lhs + " does not exist.")
+            self.msg(self.lhs + " does not exist.")
             return [None, None]
 
         template = self.find_template(self.rhs)
 
         if template and template.access_level != 'RS':
             template = None
-            self.caller.msg("Template must have access level of RESTRICTED to modify grantees.")
+            self.msg("Template must have access level of RESTRICTED to modify grantees.")
 
         return [template, char]
 
@@ -215,7 +215,7 @@ class CmdTemplateForm(PaxformCommand):
         try:
             template = Template.objects.filter(id=id, owner=self.caller.roster.current_account)[:1].get()
         except (Template.DoesNotExist, ValueError):
-            self.caller.msg("You do not own a template with that id.")
+            self.msg("You do not own a template with that id.")
             template = None
         return template
 

@@ -29,10 +29,10 @@ class NewsEntry(models.Model):
     """
     An individual news entry.
     """
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='author')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='author', on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     body = models.TextField()
-    topic = models.ForeignKey(NewsTopic, related_name='newstopic')
+    topic = models.ForeignKey(NewsTopic, related_name='newstopic', on_delete=models.CASCADE)
     date_posted = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
