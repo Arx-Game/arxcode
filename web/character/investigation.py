@@ -1350,7 +1350,7 @@ class CmdListClues(ArxPlayerCommand):
 
     Displays the clues that your character has discovered in game,
     or shares them with others. /search returns the clues that
-    contain the text specified. /tagsearch returns the clus that have the
+    contain the text specified. /tagsearch returns the clues that have the
     tag specified. /addnote allows you to add more text to your discovery of 
     the clue.
 
