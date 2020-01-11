@@ -92,6 +92,8 @@ def fix_broken_fks():
             cursor.execute("DROP TABLE %s;" % temp_name)
             print(name, " fixed.")
         cursor.execute("PRAGMA foreign_keys = ON;")
+        # also change from WAL mode, write permission errors in new version
+        cursor.execute("PRAGMA journal_mode = DELETE;")
 
 
 class Command(BaseCommand):

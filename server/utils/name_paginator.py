@@ -19,24 +19,24 @@ class NamePaginator(object):
         # we sort them by the first model ordering key
         for obj in self.object_list:
             if queryset and obj._meta.ordering:
-                obj_str = unicode(getattr(obj, obj._meta.ordering[0]))
+                obj_str = str(getattr(obj, obj._meta.ordering[0]))
             else:
                 if hasattr(obj, 'key'):
-                    obj_str = unicode(obj.key)
+                    obj_str = str(obj.key)
                 else:
-                    obj_str = unicode(obj)
+                    obj_str = str(obj)
 
             # some of my models had "first_name" "last_name" sorting, and some first_names
             # were empty so if it fails you can try sorting by the second ordering key
             # which worked for me but do your own thing
             try:
-                letter = unicode.upper(obj_str[0])
+                letter = str.upper(obj_str[0])
             except (AttributeError, IndexError):
                 if obj._meta.ordering:
-                    obj_str = unicode(getattr(obj, obj._meta.ordering[1]))
+                    obj_str = str(getattr(obj, obj._meta.ordering[1]))
                 else:
-                    obj_str = unicode(obj)
-                letter = unicode.upper(obj_str[1])
+                    obj_str = str(obj)
+                letter = str.upper(obj_str[1])
 
             if letter not in chunks:
                 chunks[letter] = []

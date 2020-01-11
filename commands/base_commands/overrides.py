@@ -817,6 +817,8 @@ class CmdWho(ArxPlayerCommand):
     @staticmethod
     def get_idlestr(idle_time):
         """Returns a string that vaguely says how idle someone is"""
+        if idle_time is None:
+            return "N/A"
         if idle_time < 1200:
             return "No"
         if idle_time < 3600:
