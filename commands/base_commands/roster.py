@@ -127,7 +127,7 @@ def list_characters(caller, character_list, roster_type="Active Characters", ros
                 if not titles or hide:
                     name = "{c" + name + "{n"
                 if display_afk:
-                    afk = utils.time_format(charob.idle_time)
+                    afk = utils.time_format(charob.idle_time or 0)
             if display_afk:
                 table.add_row([name, sex, age, house, concept[:25], srank, afk])
             else:
