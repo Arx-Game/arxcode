@@ -789,7 +789,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
                 AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
             assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
 
-            median = assets[len(assets) / 2].prestige
+            median = assets[len(assets) // 2].prestige
 
             cls._MEDIAN_PRESTIGE['last_value'] = median
 
