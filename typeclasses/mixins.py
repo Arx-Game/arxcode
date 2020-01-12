@@ -298,14 +298,6 @@ class BaseObjectMixins(object):
             pass
 
     @property
-    def has_player(self):
-        """
-        :type self: ObjectDB
-        :return: AccountDB
-        """
-        return self.has_account
-
-    @property
     def char_ob(self):
         return None
 
@@ -345,6 +337,15 @@ class BaseObjectMixins(object):
 
 
 class AppearanceMixins(BaseObjectMixins, TemplateMixins):
+    def get_numbered_name(self, count, looker, **kwargs):
+        """
+        Evennia's default get_numbered_name method uses the Inflect library, which is
+        unreliable and doesn't fit the naming scheme of objects in Arx's database, so
+        we won't use it.
+        """
+        key = kwargs.get("key", "")
+        return key, key
+
     def return_contents(self, pobject, detailed=True, show_ids=False,
                         strip_ansi=False, show_places=True, sep=", "):
         """
@@ -399,7 +400,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 elif hasattr(pobject, 'sensing_check') and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0:
                     key += "|w (hidden)|n"
                     wielded.append(key)
-            elif con.has_player:
+            elif con.has_account:
                 # we might have either a permapose or a fake name
                 lname = con.name
                 if con.db.room_title:
@@ -627,9 +628,7 @@ class TriggersMixin(object):
 
 
 class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
-    @property
-    def has_player(self):
-        return self.has_account
+    pass
 
 
 class CraftingMixins(object):

@@ -535,7 +535,7 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
                 self.msg("Who do you want to whisper?")
                 return
             if pobj:
-                if hasattr(pobj, 'has_player') and not pobj.has_player:
+                if hasattr(pobj, 'has_account') and not pobj.has_account:
                     self.msg("You may only send whispers to online characters.")
                 elif not pobj.location or pobj.location != caller.location:
                     self.msg("You may only whisper characters in the same room as you.")
@@ -585,7 +585,7 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
             if not pobj.ndb.whispers_received:
                 pobj.ndb.whispers_received = []
             pobj.ndb.whispers_received.append(temp_message)
-            if hasattr(pobj, 'has_player') and not pobj.has_player:
+            if hasattr(pobj, 'has_account') and not pobj.has_account:
                 received.append("{C%s{n" % pobj.name)
                 rstrings.append("%s is offline. They will see your message if they list their pages later." %
                                 received[-1])
@@ -881,7 +881,7 @@ class CmdPage(ArxPlayerCommand):
             if not pobj.ndb.pages_received:
                 pobj.ndb.pages_received = []
             pobj.ndb.pages_received.append(temp_message)
-            if hasattr(pobj, 'has_player') and not pobj.has_player:
+            if hasattr(pobj, 'has_account') and not pobj.has_account:
                 received.append("{C%s{n" % pobj.name)
                 r_strings.append("%s is offline. They will see your message if they list their pages later." %
                                  received[-1])

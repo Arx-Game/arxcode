@@ -52,7 +52,7 @@ class Object(CraftingMixins, MsgMixins, ObjectMixins, NameMixins, DefaultObject,
      home (Object) - safety start-location
      sessions (list of Sessions, read-only) - returns all sessions connected
                        to this object
-     has_player (bool, read-only)- will only return *connected* players
+     has_account (bool, read-only)- will only return *connected* accounts
      contents (list of Objects, read-only) - returns all objects inside this
                        object (including exits)
      exits (list of Objects, read-only) - returns all exits from this

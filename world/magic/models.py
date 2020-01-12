@@ -250,7 +250,7 @@ class Effect(SharedMemoryModel):
                                                     location=practitioner.character.location)
             final_results = []
             for obj in results:
-                is_character = obj.has_player or (hasattr(obj, 'is_character') and obj.is_character)
+                is_character = obj.has_account or (hasattr(obj, 'is_character') and obj.is_character)
                 if self.target_type == Effect.TARGET_TYPE_OBJECT:
                     if not is_character:
                         final_results.append(obj)

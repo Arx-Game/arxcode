@@ -844,7 +844,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             destination: the location of the object after moving.
 
         """
-        if not source_location and self.location.has_player:
+        if not source_location and self.location.has_account:
             # This was created from nowhere and added to a player's
             # inventory; it's probably the result of a create command.
             string = "You now have %s in your possession." % self.get_display_name(self.location)

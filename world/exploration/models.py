@@ -100,7 +100,7 @@ class Monster(SharedMemoryModel):
         if self.mirror:
             characters = []
             for testobj in location.contents:
-                if testobj.has_player or ((hasattr(testobj, 'is_character') and testobj.is_character)
+                if testobj.has_account or ((hasattr(testobj, 'is_character') and testobj.is_character)
                                           and not (testobj.is_typeclass(Monster.MOOK_TYPECLASS)
                                                    or testobj.is_typeclass(Monster.BOSS_TYPECLASS))) \
                         and not testobj.check_permstring("builders"):
@@ -514,7 +514,7 @@ class ShardhavenObstacle(SharedMemoryModel):
                 # Note that this will also catch monsters potentially, which is by design.
                 if roll.damage_splash:
                     for testobj in calling_object.location.contents:
-                        if testobj != calling_object and (testobj.has_player or
+                        if testobj != calling_object and (testobj.has_account or
                                                           (hasattr(testobj, 'is_character') and testobj.is_character))\
                                 and not testobj.check_permstring("builders"):
                             targets.append(testobj)

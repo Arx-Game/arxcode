@@ -837,12 +837,12 @@ class TempRoom(ArxRoom):
         :return: True if the room has no characters or NPCs in it, False if someone is present.
         """
         for con in self.contents:
-            if con is not obj and (con.has_player or (hasattr(con, 'is_character') and con.is_character)):
+            if con is not obj and (con.has_account or (hasattr(con, 'is_character') and con.is_character)):
                 return False
         return True
 
     def at_object_leave(self, obj, target_location):
         """Override of at_object_leave hook for soft-deleting this room once it's empty"""
-        if obj.has_player or (hasattr(obj, 'is_character') and obj.is_character):
+        if obj.has_account or (hasattr(obj, 'is_character') and obj.is_character):
             if self.is_empty_except(obj):
                 self.softdelete()

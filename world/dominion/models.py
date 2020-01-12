@@ -579,7 +579,7 @@ class PrestigeTier(SharedMemoryModel):
             return "shameful"
 
         results = cls.objects.order_by('-minimum_prestige')
-        percentage = round((value / (max_value * 1.)) * 100)
+        percentage = round((value / (max_value or 1)) * 100)
         for result in results.all():
             if percentage >= result.minimum_prestige:
                 return result.rank_name

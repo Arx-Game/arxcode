@@ -1,6 +1,5 @@
-from typeclasses.scripts import Script
+from typeclasses.scripts.scripts import Script
 from .models import Monster, Shardhaven
-import random
 from server.utils.picker import WeightedPicker
 
 
@@ -18,14 +17,14 @@ class SpawnMobScript(Script):
     def at_repeat(self):
         try:
             haven = Shardhaven.objects.get(pk=self.obj.db.haven_id)
-        except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+        except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
             self.stop()
             return
 
         if self.obj.db.last_monster:
             try:
                 monster = Monster.objects.get(id=self.obj.db.last_monster)
-            except Monster.DoesNotExist, Monster.MultipleObjectsReturned:
+            except (Monster.DoesNotExist, Monster.MultipleObjectsReturned):
                 self.stop()
                 return
         else:
@@ -57,7 +56,7 @@ class SpawnMobScript(Script):
         if haven.auto_combat:
             cscript = self.obj.ndb.combat_manager
             for testobj in self.obj.contents:
-                if (testobj.has_player or (hasattr(testobj, 'is_character') and testobj.is_character)) \
+                if (testobj.has_account or (hasattr(testobj, 'is_character') and testobj.is_character)) \
                         and not testobj.check_permstring("builders"):
                     if not cscript.check_character_is_combatant(testobj):
                         testobj.msg(cscript.add_combatant(testobj, testobj))

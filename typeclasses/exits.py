@@ -422,7 +422,7 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
         character_string = None
 
         for testobj in other_room.contents:
-            if testobj.has_player or (hasattr(testobj, 'is_character') and testobj.is_character):
+            if testobj.has_account or (hasattr(testobj, 'is_character') and testobj.is_character):
                 characters.append(testobj.name)
 
         if len(characters):

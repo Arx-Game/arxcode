@@ -22,7 +22,7 @@ class ShardhavenRoom(ArxRoom):
         try:
             haven = Shardhaven.objects.get(pk=self.db.haven_id)
             return haven
-        except Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned:
+        except (Shardhaven.DoesNotExist, Shardhaven.MultipleObjectsReturned):
             return None
         
     @property
@@ -30,11 +30,11 @@ class ShardhavenRoom(ArxRoom):
         try:
             haven_square = ShardhavenLayoutSquare.objects.get(pk=self.db.haven_square_id)
             return haven_square
-        except ShardhavenLayoutSquare.DoesNotExist, ShardhavenLayoutSquare.MultipleObjectsReturned:
+        except (ShardhavenLayoutSquare.DoesNotExist, ShardhavenLayoutSquare.MultipleObjectsReturned):
             return None
 
     def at_init(self):
-        from exploration_commands import CmdExplorationRoomCommands
+        from world.exploration.exploration_commands import CmdExplorationRoomCommands
         self.cmdset.add(CmdExplorationRoomCommands())
 
         super(ShardhavenRoom, self).at_init()
@@ -51,7 +51,7 @@ class ShardhavenRoom(ArxRoom):
         if entrance_square is not None and entrance_square.room == self:
             return
 
-        if not obj.has_player or not (hasattr(obj, 'is_character') and obj.is_character):
+        if not obj.has_account or not (hasattr(obj, 'is_character') and obj.is_character):
             return
 
         if obj.is_typeclass("world.exploration.npcs.BossMonsterNpc")\
@@ -69,7 +69,7 @@ class ShardhavenRoom(ArxRoom):
 
         characters = []
         for testobj in self.contents:
-            if testobj != obj and (testobj.has_player or (hasattr(testobj, 'is_character') and testobj.is_character)) \
+            if testobj != obj and (testobj.has_account or (hasattr(testobj, 'is_character') and testobj.is_character)) \
                     and not testobj.check_permstring("builders"):
                 characters.append(testobj)
 
@@ -178,13 +178,13 @@ class ShardhavenRoom(ArxRoom):
                     mob.combat.state.add_foe(obj)
 
     def at_object_leave(self, obj, target_location):
-        if (obj.has_player or (hasattr(obj, 'is_character') and obj.is_character)) \
+        if (obj.has_account or (hasattr(obj, 'is_character') and obj.is_character)) \
                 and not obj.check_permstring("builders"):
             mobs = []
             characters = []
 
             for testobj in self.contents:
-                if testobj.has_player or (hasattr(testobj, 'is_character') and testobj.is_character):
+                if testobj.has_account or (hasattr(testobj, 'is_character') and testobj.is_character):
                     if testobj.is_typeclass('world.exploration.npcs.BossMonsterNpc') \
                             or testobj.is_typeclass('world.exploration.npcs.MookMonsterNpc'):
                         mobs.append(testobj)
@@ -205,11 +205,11 @@ class ShardhavenRoom(ArxRoom):
     def reset(self):
         try:
             city_center = ArxRoom.objects.get(id=13)
-        except ArxRoom.DoesNotExist, ArxRoom.MultipleObjectsReturned:
+        except (ArxRoom.DoesNotExist, ArxRoom.MultipleObjectsReturned):
             city_center = None
 
         for testobj in self.contents:
-            if testobj.has_player or (hasattr(testobj, 'is_character') and testobj.is_character):
+            if testobj.has_account or (hasattr(testobj, 'is_character') and testobj.is_character):
                 if testobj.is_typeclass('world.exploration.npcs.BossMonsterNpc') \
                         or testobj.is_typeclass('world.exploration.npcs.MookMonsterNpc'):
                     testobj.location = None
