@@ -1633,7 +1633,7 @@ class CmdArxDestroy(CmdDestroy):
             obj_name = obj.name
             if not (obj.access(caller, "control") or obj.access(caller, 'delete')):
                 return "\nYou don't have permission to delete %s." % obj_name
-            if obj.player and 'override' not in self.switches:
+            if obj.account and 'override' not in self.switches:
                 return "\nObject %s is controlled by an active player. Use /override to delete anyway." % obj_name
             if obj.dbid == int(settings.DEFAULT_HOME.lstrip("#")):
                 return "\nYou are trying to delete |c%s|n, which is set as DEFAULT_HOME. " \

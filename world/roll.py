@@ -7,6 +7,7 @@ attribute.
 """
 from collections import defaultdict
 from random import randint
+from world.conditions.modifiers_handlers import ModifierHandler
 
 
 # The number of 'keep dice' all rolls have as a default. The higher
@@ -209,12 +210,14 @@ class Roll(object):
 
     def get_roll_modifiers(self):
         try:
-            return self.character.mods.get_total_roll_modifiers(self.stats, self.skills)
+            mods: ModifierHandler = self.character.mods
+            return mods.get_total_roll_modifiers(self.stats, self.skills)
         except AttributeError:
             return 0
 
     def get_crit_chance_modifiers(self):
         try:
-            return self.character.mods.get_total_crit_chance_modifiers(self.stats, self.skills)
+            mods: ModifierHandler = self.character.mods
+            return mods.get_crit_modifiers(self.stats, self.skills)
         except AttributeError:
             return 0
