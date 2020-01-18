@@ -196,7 +196,7 @@ def character_list(request):
     if not API_CACHE:
         ret = map(get_dict, Character.objects.filter(Q(roster__roster__name="Active") |
                                                      Q(roster__roster__name="Available")))
-        API_CACHE = json.dumps(ret)
+        API_CACHE = json.dumps(list(ret))
     return HttpResponse(API_CACHE, content_type='application/json')
 
 

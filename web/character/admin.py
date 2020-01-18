@@ -3,6 +3,7 @@ Admin models for Character app
 """
 from django.contrib import admin
 from django.forms import ModelForm
+from django.utils.safestring import mark_safe
 from .models import (Roster, RosterEntry, Photo, SearchTag, FlashbackPost, Flashback,
                      FlashbackInvolvement, Story, Chapter, Episode, StoryEmit,
                      Milestone, FirstContact, CluePlotInvolvement, RevelationPlotInvolvement,
@@ -106,6 +107,7 @@ class MysteryAdmin(BaseCharAdmin):
     list_filter = ('category',)
     readonly_fields = ('used_for',)
 
+    @mark_safe
     def used_for(self, obj):
         return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_revelation_change", args=[rev.id]),
                                                   escape(rev.name))
@@ -225,18 +227,21 @@ class ClueAdmin(BaseCharAdmin):
     list_filter = ('clue_type', 'allow_investigation', ClueListTagFilter)
     readonly_fields = ('discovered_by', 'current_investigations')
 
+    @mark_safe
     def used_for(self, obj):
         return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_revelation_change", args=[rev.id]),
                                                   escape(rev.name))
                          for rev in obj.revelations.all())
     used_for.allow_tags = True
 
+    @mark_safe
     def discovered_by(self, obj):
         return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_rosterentry_change", args=[ros.id]),
                                                   escape(str(ros)))
                          for ros in obj.characters.all())
     discovered_by.allow_tags = True
 
+    @mark_safe
     def current_investigations(self, obj):
         return ", ".join('<a href="%s">%s</a>' % (reverse("admin:character_investigation_change", args=[inv.id]),
                                                   escape(str(inv)))
@@ -342,6 +347,7 @@ class TheoryAdmin(BaseCharAdmin):
         """Who knows the theory"""
         return ", ".join(str(ob) for ob in obj.known_by.all())
 
+    @mark_safe
     def description(self, obj):
         """Formatted description"""
         from web.help_topics.templatetags.app_filters import mush_to_html
@@ -363,48 +369,56 @@ class SearchTagAdmin(BaseCharAdmin):
                        'tagged_actions', 'tagged_story_emits', 'tagged_objects', 'tagged_events')
     raw_id_fields = ("game_objects",)
 
+    @mark_safe
     def tagged_revelations(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_revelation_change", args=[rev.id]),
                                                     escape(rev.name))
                            for rev in obj.revelations.all())
     tagged_revelations.allow_tags = True
 
+    @mark_safe
     def tagged_clues(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_clue_change", args=[clue.id]),
                                                     escape(clue.name))
                            for clue in obj.clues.all())
     tagged_clues.allow_tags = True
 
+    @mark_safe
     def tagged_plots(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_plot_change", args=[plot.id]),
                                                     escape(plot.name))
                            for plot in obj.plots.all())
     tagged_plots.allow_tags = True
 
+    @mark_safe
     def tagged_plot_updates(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_plotupdate_change", args=[update.id]),
                                                     escape(str(update)))
                            for update in obj.plot_updates.all())
     tagged_plot_updates.allow_tags = True
 
+    @mark_safe
     def tagged_actions(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_plotaction_change", args=[action.id]),
                                                     escape(str(action)))
                            for action in obj.actions.all())
     tagged_actions.allow_tags = True
 
+    @mark_safe
     def tagged_story_emits(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_storyemit_change", args=[emit.id]),
                                                     escape(emit.id))
                            for emit in obj.emits.all())
     tagged_story_emits.allow_tags = True
 
+    @mark_safe
     def tagged_objects(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:objects_objectdb_change", args=[objdb.id]),
                                                     escape(objdb.db_key))
                            for objdb in obj.game_objects.all())
     tagged_objects.allow_tags = True
 
+    @mark_safe
     def tagged_events(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_rpevent_change", args=[ev.id]),
                                                     escape(ev.name))

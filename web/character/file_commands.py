@@ -162,7 +162,10 @@ class CmdAdminFile(ArxCommand):
                 entries = AccountHistory.objects.filter(account=account, entry__character__db_key__iexact=self.args).order_by('start_date')
                 played_periods = []
                 for entry in entries:
-                    played_string = "from {} to ".format(entry.start_date.strftime("%Y/%m/%d"))
+                    if not entry.start_date:
+                        played_string = "from ??? to "
+                    else:
+                        played_string = "from {} to ".format(entry.start_date.strftime("%Y/%m/%d"))
                     if not entry.end_date:
                         played_string += "now"
                     else:
@@ -188,11 +191,11 @@ class CmdAdminFile(ArxCommand):
             account_entries = {}
             for entry in entries:
                 account = entry.account
-                sites = account_entries[account.email] if account_entries.has_key(account.email) else []
+                sites = account_entries[account.email] if account.email in account_entries else []
                 sites.append(entry.address)
                 account_entries[account.email] = sites
 
-            for email, sites in account_entries.iteritems():
+            for email, sites in account_entries.items():
                 self.msg("|w{}|n has connected from: {}".format(email, ", ".join(sites)))
 
             return

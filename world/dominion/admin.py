@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.db.models import Q
 from django.shortcuts import reverse
 from django.utils.html import escape
+from django.utils.safestring import mark_safe
 
 from .models import (PlayerOrNpc, Organization, Agent, AgentOb, MapLocation,
                      AssetOwner, Region, Land, WorkSetting, PraiseOrCondemn,
@@ -324,24 +325,28 @@ class TaskAdmin(DomAdmin):
 class PlotUpdateTagMixin(object):
     readonly_fields = ('tagged_actions', 'tagged_story_emits', 'tagged_events', 'tagged_flashbacks')
 
+    @mark_safe
     def tagged_actions(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_plotaction_change", args=[action.id]),
                                                     escape(str(action)))
                            for action in obj.actions.all())
     tagged_actions.allow_tags = True
 
+    @mark_safe
     def tagged_story_emits(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_storyemit_change", args=[emit.id]),
                                                     escape(emit.id))
                            for emit in obj.emits.all())
     tagged_story_emits.allow_tags = True
 
+    @mark_safe
     def tagged_events(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:dominion_rpevent_change", args=[ev.id]),
                                                     escape(ev.name))
                            for ev in obj.events.all())
     tagged_events.allow_tags = True
 
+    @mark_safe
     def tagged_flashbacks(self, obj):
         return "<br>".join('<a href="%s">%s</a>' % (reverse("admin:character_flashback_change", args=[fb.id]),
                                                     escape(fb.title))

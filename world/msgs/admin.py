@@ -4,6 +4,7 @@
 #
 
 from django.contrib import admin
+from django.utils.safestring import mark_safe
 from evennia.comms.models import Msg
 from evennia.typeclasses.admin import TagInline
 from evennia.objects.models import ObjectDB
@@ -95,6 +96,7 @@ class MsgAdmin(admin.ModelAdmin):
     def msg_receivers(obj):
         return ", ".join([p.key for p in obj.db_receivers_objects.all()])
 
+    @mark_safe
     def message(self, obj):
         from web.help_topics.templatetags.app_filters import mush_to_html
         return mush_to_html(obj.db_message)
