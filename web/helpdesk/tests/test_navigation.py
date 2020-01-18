@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from django.core.urlresolvers import reverse
+from django.urls import reverse, NoReverseMatch
 from django.test import TestCase
 
 from web.helpdesk.tests.helpers import get_staff_user, reload_urlconf
@@ -23,13 +23,11 @@ class TestKBDisabled(TestCase):
 
     def test_navigation(self):
         """Test proper rendering of navigation.html by accessing the dashboard"""
-        from django.core.urlresolvers import NoReverseMatch
-
         self.client.login(username=get_staff_user().get_username(), password='password')
         try:
             response = self.client.get(reverse('helpdesk_dashboard'))
         except NoReverseMatch as e:
-            if 'helpdesk_kb_index' in e.message:
+            if 'helpdesk_kb_index' in str(e):
                 self.fail("Please verify any unchecked references to helpdesk_kb_index (start with navigation.html)")
             else:
                 raise

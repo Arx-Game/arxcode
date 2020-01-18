@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
             name='FlashbackInvolvement',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.PositiveSmallIntegerField(blank=True, choices=[(0, b'Retired'), (1, b'Contributor'), (2, b'Owner')], default=1)),
+                ('status', models.PositiveSmallIntegerField(blank=True, choices=[(0, 'Retired'), (1, 'Contributor'), (2, 'Owner')], default=1)),
                 ('roll', models.CharField(blank=True, max_length=250)),
             ],
         ),

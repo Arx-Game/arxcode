@@ -429,7 +429,7 @@ class CmdAdmDomain(ArxPlayerCommand):
                 caller_change_field(caller, dom, switch, val)
             dom.save()
         except self.error_class as err:
-            self.caller.msg(err)
+            self.msg(err)
 
 
 class CmdAdmCastle(ArxPlayerCommand):
@@ -972,10 +972,10 @@ class CmdAdmFamily(ArxPlayerCommand):
         npcs = PlayerOrNpc.objects.filter(npc_name__iexact=args)
         matches = list(set(list(pcs) + list(npcs)))
         if not matches:
-            self.caller.msg("No matches found for %s. They may not be added to Dominion." % args)
+            self.msg("No matches found for %s. They may not be added to Dominion." % args)
             return
         if len(matches) > 1:
-            self.caller.msg("Too many matches for %s: %s." % (args, ", ".join(str(ob) for ob in matches)))
+            self.msg("Too many matches for %s: %s." % (args, ", ".join(str(ob) for ob in matches)))
             return
         return matches[0]
 

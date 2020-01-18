@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(model_name="revelation", name="mysteries_added",
                             field=models.ManyToManyField(blank=True,
-                                                         help_text=b'Categories of revelations with summaries',
+                                                         help_text='Categories of revelations with summaries',
                                                          related_name='revelations', to='character.Mystery')),
         migrations.RunPython(replace_mysteries_without_through_model),
         migrations.RemoveField(
@@ -47,12 +47,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='clue',
             name='clue_type',
-            field=models.PositiveSmallIntegerField(choices=[(0, b'Game Lore'), (1, b'Vision'), (2, b'Character Secret')], default=0),
+            field=models.PositiveSmallIntegerField(choices=[(0, 'Game Lore'), (1, 'Vision'), (2, 'Character Secret')], default=0),
         ),
         migrations.AlterField(
             model_name='mystery',
             name='desc',
-            field=models.TextField(blank=True, help_text=b'A summary of the lore of revelations for this category', verbose_name=b'Description'),
+            field=models.TextField(blank=True, help_text='A summary of the lore of revelations for this category', verbose_name='Description'),
         ),
         migrations.RemoveField(
             model_name='revelation',

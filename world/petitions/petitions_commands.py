@@ -542,7 +542,7 @@ class CmdBroker(ArxCommand):
                 raise self.BrokerError("Action Points must be a factor of 3, since it's divided by 3 when put on sale.")
             if not self.caller.player_ob.pay_action_points(amount):
                 raise self.BrokerError("You do not have enough action points to put on sale.")
-            amount /= 3
+            amount //= 3
         elif sale_type in resource_types:
             resource = resource_types[sale_type]
             if not self.caller.player_ob.pay_resources(resource, amount):

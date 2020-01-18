@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='clue',
             name='gm_notes',
-            field=models.TextField(blank=True, help_text=b'Notes visible only to staff/GMs about this clue', verbose_name=b'GM Notes'),
+            field=models.TextField(blank=True, help_text='Notes visible only to staff/GMs about this clue', verbose_name='GM Notes'),
         ),
     ]

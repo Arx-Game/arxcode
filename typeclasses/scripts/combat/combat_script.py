@@ -431,7 +431,7 @@ class CombatManager(BaseScript):
                               "except for %s must vote for their removal." % char_to_check.name)
             return
         votes.append(checking_char)
-        if votes >= len(self.ndb.combatants) - 1:
+        if len(votes) >= len(self.ndb.combatants) - 1:
             self.msg("Removing %s from combat due to inactivity." % char_to_check.name)
             self.move_to_observer(char_to_check)
             return

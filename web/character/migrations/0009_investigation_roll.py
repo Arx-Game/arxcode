@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='investigation',
             name='roll',
-            field=models.SmallIntegerField(blank=True, default=-9999, help_text=b'Current roll for investigation.'),
+            field=models.SmallIntegerField(blank=True, default=-9999, help_text='Current roll for investigation.'),
         ),
     ]

@@ -15,11 +15,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='investigation',
             name='roll',
-            field=models.SmallIntegerField(blank=True, default=-9999, help_text=b'Current dice roll'),
+            field=models.SmallIntegerField(blank=True, default=-9999, help_text='Current dice roll'),
         ),
         migrations.AlterField(
             model_name='investigation',
             name='topic',
-            field=models.CharField(blank=True, help_text=b'Keywords or tldr or title', max_length=255),
+            field=models.CharField(blank=True, help_text='Keywords or tldr or title', max_length=255),
         ),
     ]

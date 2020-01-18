@@ -3,8 +3,9 @@ Forms for Dominion
 """
 from django import forms
 from django.db.models import Q
-
-from typeclasses.rooms import ArxRoom
+from django.conf import settings
+# importing proxy models causes import-time problems, go with parent here
+from evennia.objects.models import ObjectDB
 from world.dominion.models import RPEvent, Organization, PlayerOrNpc, PlotRoom
 from world.dominion.plots.models import Plot
 
@@ -31,7 +32,8 @@ class RPEventCreateForm(forms.ModelForm):
     invites = forms.ModelMultipleChoiceField(queryset=player_queryset, required=False)
     gms = forms.ModelMultipleChoiceField(queryset=player_queryset, required=False)
     org_invites = forms.ModelMultipleChoiceField(queryset=org_queryset, required=False)
-    location = forms.ModelChoiceField(queryset=ArxRoom.objects.all(), widget=forms.HiddenInput(), required=False)
+    location = forms.ModelChoiceField(queryset=ObjectDB.objects.filter(db_typeclass_path=settings.BASE_ROOM_TYPECLASS),
+                                      widget=forms.HiddenInput(), required=False)
     plot = forms.ModelChoiceField(queryset=Plot.objects.none(), required=False)
 
     class Meta:
@@ -76,6 +78,7 @@ class RPEventCreateForm(forms.ModelForm):
 
     def clean_location(self):
         """Use room name if we don't have a location defined"""
+        from typeclasses.rooms import ArxRoom
         location = self.cleaned_data.get('location')
         if location:
             return location
@@ -170,6 +173,7 @@ class RPEventCreateForm(forms.ModelForm):
         msg += "{wDate:{n %s\n" % self.data.get('date')
         location = self.data.get('location')
         if location:
+            from typeclasses.rooms import ArxRoom
             try:
                 location = ArxRoom.objects.get(id=location)
             except ArxRoom.DoesNotExist:

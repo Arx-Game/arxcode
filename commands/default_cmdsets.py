@@ -123,8 +123,9 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         self.add(system.CmdReset())
         self.add(system.CmdShutdown())
         self.add(system.CmdPy())
+        self.add(system.CmdAccounts())
+        self.add(system.CmdAbout())
         # Admin commands
-        self.add(admin.CmdDelAccount())
         self.add(admin.CmdNewPassword())
         # Comm commands
         self.add(comms.CmdAddCom())

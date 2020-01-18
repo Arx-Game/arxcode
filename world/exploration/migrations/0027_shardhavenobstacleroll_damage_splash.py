@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='shardhavenobstacleroll',
             name='damage_splash',
-            field=models.BooleanField(default=False, verbose_name=b'Should damage hit others in the party too?'),
+            field=models.BooleanField(default=False, verbose_name='Should damage hit others in the party too?'),
         ),
     ]

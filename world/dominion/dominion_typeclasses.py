@@ -11,7 +11,7 @@ class CraftingMaterialObject(DefaultObject):
         try:
             material = CraftingMaterialType.objects.get(id=self.db.material_type)
             return material
-        except CraftingMaterialType.DoesNotExist, CraftingMaterialType.MultipleObjectsReturned:
+        except (CraftingMaterialType.DoesNotExist, CraftingMaterialType.MultipleObjectsReturned):
             return None
 
     @property
@@ -40,5 +40,3 @@ class CraftingMaterialObject(DefaultObject):
             record.save()
 
         self.softdelete()
-
-

@@ -1,7 +1,7 @@
 from commands.base import ArxCommand
 from . import builder
 from .loot import LootGenerator
-from models import Shardhaven, ShardhavenLayout, GeneratedLootFragment, Monster
+from world.exploration.models import Shardhaven, ShardhavenLayout, GeneratedLootFragment, Monster
 from evennia.commands.cmdset import CmdSet
 from evennia.utils import create
 from server.conf import settings
@@ -31,7 +31,7 @@ class CmdTestMonsterBuild(ArxCommand):
             except ValueError:
                 self.msg("You need to provide an integer value!")
                 return
-            except Monster.DoesNotExist, Monster.MultipleObjectsReturned:
+            except (Monster.DoesNotExist, Monster.MultipleObjectsReturned):
                 self.msg("That doesn't appear to be a valid monster!")
                 return
 
@@ -325,8 +325,8 @@ class CmdExplorationHome(ArxCommand):
     help_category = "Shardhavens"
 
     def func(self):
-        self.caller.msg("|/|wYou are far from home, and do not know the way back!|n")
-        self.caller.msg("(You cannot use the 'home' command while in a shardhaven.)|/")
+        self.msg("|/|wYou are far from home, and do not know the way back!|n")
+        self.msg("(You cannot use the 'home' command while in a shardhaven.)|/")
 
 
 class CmdExplorationMap(ArxCommand):

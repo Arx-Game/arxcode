@@ -548,7 +548,7 @@ class CombatantStateHandler(object):
         penalty += self.num_actions + 25
         keep = self.fatigue_soak
         penalty = int(penalty)
-        penalty = penalty/2 + randint(0, penalty/2)
+        penalty = penalty//2 + randint(0, penalty//2)
         myroll = do_dice_check(self.character, stat_list=["strength", "stamina", "dexterity", "willpower"],
                                skill="athletics", keep_override=keep, difficulty=int(penalty), divisor=2)
         myroll += randint(0, 25)

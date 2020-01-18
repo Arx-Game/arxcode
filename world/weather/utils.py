@@ -207,7 +207,7 @@ def random_weather(season='fall'):
 
     # Create our picker list
     picker = WeightedPicker()
-    for k, v in weathers.iteritems():
+    for k, v in weathers.items():
         picker.add_option(k, v)
 
     result = picker.pick()

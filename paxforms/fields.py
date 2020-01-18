@@ -1,4 +1,3 @@
-import string
 import re
 import django
 
@@ -226,8 +225,8 @@ class ChoiceField(Paxfield):
                 self._value = p[0]
                 return True, None
 
-        choices = [c[1] for c in self._choices]
-        choice_list = string.join(choices, ", ")
+        choices = [str(c[1]) for c in self._choices]
+        choice_list = ", ".join(choices)
         return False, "{} must be one of the following values: {}.  {}".format(self.full_name, choice_list, self.help_text or "")
 
     def get_display(self):
@@ -241,7 +240,8 @@ class ChoiceField(Paxfield):
         return "None"
 
     def get_display_params(self):
-        return "[" + string.join([p[1] for p in self._choices], "||") + "]"
+        choices = "||".join(str(p[1]) for p in self._choices)
+        return "[" + choices + "]"
 
     def validate(self, caller=None):
         if self.required and self.get() is None:

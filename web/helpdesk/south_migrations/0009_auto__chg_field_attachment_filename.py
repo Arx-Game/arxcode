@@ -10,66 +10,66 @@ class Migration(SchemaMigration):
     def forwards(self, orm):
 
         # Changing field 'Attachment.filename'
-        db.alter_column(u'helpdesk_attachment', 'filename', self.gf('django.db.models.fields.CharField')(max_length=1000))
+        db.alter_column('helpdesk_attachment', 'filename', self.gf('django.db.models.fields.CharField')(max_length=1000))
 
     def backwards(self, orm):
 
         # Changing field 'Attachment.filename'
-        db.alter_column(u'helpdesk_attachment', 'filename', self.gf('django.db.models.fields.CharField')(max_length=100))
+        db.alter_column('helpdesk_attachment', 'filename', self.gf('django.db.models.fields.CharField')(max_length=100))
 
     models = {
-        u'auth.group': {
+        'auth.group': {
             'Meta': {'object_name': 'Group'},
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '80'}),
             'permissions': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['auth.Permission']", 'symmetrical': 'False', 'blank': 'True'})
         },
-        u'auth.permission': {
-            'Meta': {'ordering': "(u'content_type__app_label', u'content_type__model', u'codename')", 'unique_together': "((u'content_type', u'codename'),)", 'object_name': 'Permission'},
+        'auth.permission': {
+            'Meta': {'ordering': "('content_type__app_label', 'content_type__model', 'codename')", 'unique_together': "(('content_type', 'codename'),)", 'object_name': 'Permission'},
             'codename': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'content_type': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['contenttypes.ContentType']"}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '50'})
         },
-        u'auth.user': {
+        'auth.user': {
             'Meta': {'object_name': 'User'},
             'date_joined': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
             'email': ('django.db.models.fields.EmailField', [], {'max_length': '75', 'blank': 'True'}),
             'first_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
-            'groups': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "u'user_set'", 'blank': 'True', 'to': u"orm['auth.Group']"}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'groups': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "'user_set'", 'blank': 'True', 'to': u"orm['auth.Group']"}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'is_active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'is_staff': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'is_superuser': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'last_login': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
             'last_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
             'password': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
-            'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "u'user_set'", 'blank': 'True', 'to': u"orm['auth.Permission']"}),
+            'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "'user_set'", 'blank': 'True', 'to': u"orm['auth.Permission']"}),
             'username': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '30'})
         },
-        u'contenttypes.contenttype': {
+        'contenttypes.contenttype': {
             'Meta': {'ordering': "('name',)", 'unique_together': "(('app_label', 'model'),)", 'object_name': 'ContentType', 'db_table': "'django_content_type'"},
             'app_label': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        u'helpdesk.attachment': {
+        'helpdesk.attachment': {
             'Meta': {'ordering': "['filename']", 'object_name': 'Attachment'},
             'file': ('django.db.models.fields.files.FileField', [], {'max_length': '1000'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '1000'}),
             'followup': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['helpdesk.FollowUp']"}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'mime_type': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'size': ('django.db.models.fields.IntegerField', [], {})
         },
-        u'helpdesk.customfield': {
+        'helpdesk.customfield': {
             'Meta': {'object_name': 'CustomField'},
             'data_type': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'decimal_places': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
             'empty_selection_list': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'help_text': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'label': ('django.db.models.fields.CharField', [], {'max_length': "'30'"}),
             'list_values': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             'max_length': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
@@ -78,17 +78,17 @@ class Migration(SchemaMigration):
             'required': ('django.db.models.fields.BooleanField', [], {}),
             'staff_only': ('django.db.models.fields.BooleanField', [], {})
         },
-        u'helpdesk.emailtemplate': {
+        'helpdesk.emailtemplate': {
             'Meta': {'ordering': "['template_name', 'locale']", 'object_name': 'EmailTemplate'},
             'heading': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'html': ('django.db.models.fields.TextField', [], {}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'locale': ('django.db.models.fields.CharField', [], {'max_length': '10', 'null': 'True', 'blank': 'True'}),
             'plain_text': ('django.db.models.fields.TextField', [], {}),
             'subject': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'template_name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        u'helpdesk.escalationexclusion': {
+        'helpdesk.escalationexclusion': {
             'Meta': {'object_name': 'EscalationExclusion'},
             'date': ('django.db.models.fields.DateField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),

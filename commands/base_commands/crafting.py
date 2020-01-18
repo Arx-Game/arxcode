@@ -182,7 +182,7 @@ def do_crafting_roll(char, recipe, diffmod=0, diffmult=1.0, room=None):
     skill = recipe.skill
     if skill in ("all", "any"):
         skill = get_highest_crafting_skill(char)
-    stat = "luck" if char.db.luck > char.db.dexterity else "dexterity"
+    stat = "luck" if (char.db.luck or 0) > (char.db.dexterity or 0) else "dexterity"
     can_crit = False
     try:
         if char.roster.roster.name == "Active":
@@ -810,7 +810,7 @@ class CmdRecipes(ArxCommand):
     def display_recipes(self, recipes):
         from server.utils import arx_more
         if not recipes:
-            self.caller.msg("(No recipes qualify.)")
+            self.msg("(No recipes qualify.)")
             return
         known_list = CraftingRecipe.objects.filter(known_by__player__player=self.caller.player)
         table = PrettyTable(["{wKnown{n", "{wName{n", "{wAbility{n", "{wLvl{n", "{wCost{n"])

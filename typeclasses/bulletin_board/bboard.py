@@ -54,7 +54,7 @@ class BBoard(Object):
             self.flush_unread_cache()
         if announce:
             post_num = self.posts.count()
-            from django.core.urlresolvers import reverse
+            from django.urls import reverse
             post_url = get_full_url(reverse('msgs:post_view', kwargs={'board_id': self.id, 'post_id': post.id}))
 
             notify = "\n{{wNew post on {0} by {1}:{{n {2}".format(self.key, posted_by, subject)

@@ -74,7 +74,7 @@ class SleepCommand(ArxCommand):
 
     def func(self):
         """Let the player know they can't do anything."""
-        self.caller.msg("You can't do that while sleeping. To wake up, use the {wwake{n command.")
+        self.msg("You can't do that while sleeping. To wake up, use the {wwake{n command.")
         return
 
 

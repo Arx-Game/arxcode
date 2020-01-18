@@ -16,27 +16,27 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='crisisaction',
             name='economic',
-            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text=b'Additional economic resources added by the player'),
+            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text='Additional economic resources added by the player'),
         ),
         migrations.AddField(
             model_name='crisisaction',
             name='military',
-            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text=b'Additional military resources added by the player'),
+            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text='Additional military resources added by the player'),
         ),
         migrations.AddField(
             model_name='crisisaction',
             name='secret_action',
-            field=models.TextField(blank=True, verbose_name=b'Secret actions the player is taking'),
+            field=models.TextField(blank=True, verbose_name='Secret actions the player is taking'),
         ),
         migrations.AddField(
             model_name='crisisaction',
             name='silver',
-            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text=b'Additional silver added by the player'),
+            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text='Additional silver added by the player'),
         ),
         migrations.AddField(
             model_name='crisisaction',
             name='social',
-            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text=b'Additional social resources added by the player'),
+            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text='Additional social resources added by the player'),
         ),
         migrations.AddField(
             model_name='crisisactionassistant',
@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='crisisactionassistant',
             name='secret_action',
-            field=models.TextField(blank=True, verbose_name=b'Secret action the assistant is taking'),
+            field=models.TextField(blank=True, verbose_name='Secret action the assistant is taking'),
         ),
         migrations.AddField(
             model_name='crisisactionassistant',
@@ -71,6 +71,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='orders',
             name='type',
-            field=models.PositiveSmallIntegerField(choices=[(1, b'Troop Training'), (2, b'Explore territory'), (3, b'Raid Domain'), (4, b'Conquer Domain'), (5, b'Enforce Order'), (6, b'Besiege Castle'), (7, b'March'), (8, b'Defend'), (9, b'Patrol'), (10, b'Assist')], default=1),
+            field=models.PositiveSmallIntegerField(choices=[(1, 'Troop Training'), (2, 'Explore territory'), (3, 'Raid Domain'), (4, 'Conquer Domain'), (5, 'Enforce Order'), (6, 'Besiege Castle'), (7, 'March'), (8, 'Defend'), (9, 'Patrol'), (10, 'Assist')], default=1),
         ),
     ]

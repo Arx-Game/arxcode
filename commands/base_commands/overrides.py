@@ -137,7 +137,7 @@ class CmdInventory(ArxCommand):
                 return
             char = player.char_ob
             if not char:
-                self.caller.msg("No character found.")
+                self.msg("No character found.")
                 return
             basemsg = "%s is" % char.key
         items = char.return_contents(self.caller, detailed=True, show_ids=show_other)
@@ -212,7 +212,7 @@ class CmdGet(ArxCommand):
                 if self.caller == obj:
                     continue
                 if self.caller == obj.location:
-                    self.caller.msg("You already hold {}.".format(obj))
+                    self.msg("You already hold {}.".format(obj))
                     continue
                 if not obj.at_before_move(destination=self.caller, caller=self.caller):
                     continue
@@ -224,7 +224,7 @@ class CmdGet(ArxCommand):
                 raise CommandError("You didn't get anything.")
             self.print_success_message(fromobj, moved)
         except CommandError as err:
-            self.caller.msg(err)
+            self.msg(err)
 
     def get_location_from_args(self):
         """
@@ -300,7 +300,7 @@ class CmdGet(ArxCommand):
             moved_names += " from {}".format(fromobj.name)
         caller_msg = "You {} {}.".format(self.cmdstring, moved_names)
         loc_msg = "{} {}s {}.".format(self.caller.name, self.cmdstring, moved_names)
-        self.caller.msg(caller_msg)
+        self.msg(caller_msg)
         self.caller.location.msg_contents(loc_msg, exclude=self.caller)
 
 
@@ -711,7 +711,7 @@ class CmdPose(ArxCommand):
                 msg = "|wNo recent poses found%s.|n" % topic
             self.msg(msg)
         elif not self.args:
-            self.caller.msg("What do you want to do?")
+            self.msg("What do you want to do?")
         else:
             self.caller.location.msg_action(self.caller, self.args, options={'is_pose': True})
             self.caller.posecount += 1
@@ -744,7 +744,7 @@ class CmdArxSay(CmdSay):
         if current and current.lower() != "arvani":
             langstring = " in %s" % current.capitalize()
             options.update({'language': current, 'msg_content': speech})
-        self.caller.msg('You say%s, "%s{n"' % (langstring, speech), from_obj=self.caller, options=options)
+        self.msg('You say%s, "%s{n"' % (langstring, speech), from_obj=self.caller, options=options)
         # Build the string to emit to neighbors.
         pre_name_emit_string = ' says%s, "%s{n"' % (langstring, speech)
         self.caller.location.msg_action(self.caller, pre_name_emit_string, exclude=[self.caller], options=options)
@@ -817,6 +817,8 @@ class CmdWho(ArxPlayerCommand):
     @staticmethod
     def get_idlestr(idle_time):
         """Returns a string that vaguely says how idle someone is"""
+        if idle_time is None:
+            return "N/A"
         if idle_time < 1200:
             return "No"
         if idle_time < 3600:
@@ -1015,7 +1017,7 @@ class CmdArxSetAttribute(CmdSetAttribute):
                         continue
                     result.append(self.view_attr(obj, attr))
                 # we view it without parsing markup.
-                self.caller.msg("".join(result).strip(), options={"raw": True})
+                self.msg("".join(result).strip(), options={"raw": True})
                 return
             else:
                 # deleting the attribute(s)
@@ -1626,12 +1628,12 @@ class CmdArxDestroy(CmdDestroy):
             ret_string = ""
             obj = caller.search(obj_name)
             if not obj:
-                self.caller.msg(" (Objects to destroy must either be local or specified with a unique #dbref.)")
+                self.msg(" (Objects to destroy must either be local or specified with a unique #dbref.)")
                 return ""
             obj_name = obj.name
             if not (obj.access(caller, "control") or obj.access(caller, 'delete')):
                 return "\nYou don't have permission to delete %s." % obj_name
-            if obj.player and 'override' not in self.switches:
+            if obj.account and 'override' not in self.switches:
                 return "\nObject %s is controlled by an active player. Use /override to delete anyway." % obj_name
             if obj.dbid == int(settings.DEFAULT_HOME.lstrip("#")):
                 return "\nYou are trying to delete |c%s|n, which is set as DEFAULT_HOME. " \

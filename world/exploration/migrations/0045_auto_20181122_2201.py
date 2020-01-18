@@ -6,6 +6,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+    atomic = False
 
     dependencies = [
         ('exploration', '0044_auto_20181122_2135'),

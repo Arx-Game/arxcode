@@ -138,7 +138,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/cost Bag", "It will cost nothing for you to learn Bag.")
         self.add_recipe_additional_costs(10)
         self.char2.currency = 1
-        self.call_cmd("/learn Mask", "You have 1.0 silver. It will cost 10 for you to learn Mask.")
+        self.call_cmd("/learn Mask", "You have 1 silver. It will cost 10 for you to learn Mask.")
         self.char2.currency = 100
         self.call_cmd("/learn Mask", "You have learned Mask for 10 silver.")
         self.assertEqual(list(self.char2.dompc.assets.recipes.all()), [self.recipe6])
@@ -190,8 +190,8 @@ class StoryActionTests(ArxCommandTest):
                                                         "action once it is submitted.")
         action = self.dompc.actions.last()
         self.call_cmd("/submit 1", "Incomplete fields: ooc intent, tldr, roll, category")
-        self.call_cmd("/category 1=foo", "You need to include one of these categories: scouting, combat, diplomacy, "
-                                         "unknown, support, research, sabotage.")
+        self.call_cmd("/category 1=foo", 'You need to include one of these categories: combat, '
+                                         'diplomacy, research, sabotage, scouting, support, unknown.')
         self.call_cmd("/category 1=Research", "category set to Research.")
         self.call_cmd("/category 1=combat", "category set to Combat.")
         self.call_cmd("/ooc_intent 1=testooc", "You have set your ooc intent to be: testooc")
@@ -1238,17 +1238,17 @@ class XPCommandTests(ArxCommandTest):
         self.call_cmd("/spend Seduction", 'You spend 10 xp and have 0 remaining.|'
                                           'You have increased your seduction to 5.')
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 32)
-        self.char2.adjust_xp(1062)
+        self.char2.adjust_xp(1063)
         self.call_cmd("/spend Seduction", 'You cannot buy a legendary skill while you still have catchup xp remaining.')
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 5)
-        self.call_cmd("/spend Seduction", 'You spend 1039 xp and have 23 remaining.|'
+        self.call_cmd("/spend Seduction", 'You spend 1039 xp and have 24 remaining.|'
                                           'You have increased your seduction to 6.')
         self.assertEqual(self.char2.db.skills.get("seduction"), 6)
-        self.assertEqual(stats_and_skills.get_skill_cost(self.char2, "dodge"), 42)
-        self.assertEqual(stats_and_skills.get_skill_cost_increase(self.char2), 1.078)
+        self.assertEqual(stats_and_skills.get_skill_cost(self.char2, "dodge"), 43)
+        self.assertEqual(stats_and_skills.get_skill_cost_increase(self.char2), 1.0775)
         self.char2.db.trainer = self.char1
         self.char1.db.skills = {"teaching": 5, "dodge": 2}
-        self.call_cmd("/spend dodge", 'You spend 23 xp and have 0 remaining.|You have increased your dodge to 1.')
+        self.call_cmd("/spend dodge", 'You spend 24 xp and have 0 remaining.|You have increased your dodge to 1.')
         # TODO: other switches
 
     def test_award_xp(self):
@@ -1275,5 +1275,5 @@ class HelpCommandTests(ArxCommandTest):
         expected_return = "Help topic for +plots (aliases: +plot)\n"
         expected_return += dedent(CmdPlots.__doc__.rstrip())
         expected_return += "\n\nRelated help entries: test entry\n\n"
-        expected_return += "Suggested: +plots, +plot, @gmplots, support, @globalscript"
+        expected_return += "Suggested: +plots, +plot, @gmplots, support, globalscript"
         self.call_cmd("plots", expected_return, cmdset=CharacterCmdSet())

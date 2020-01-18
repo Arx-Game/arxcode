@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=75, unique=True)),
                 ('description', models.TextField(blank=True)),
-                ('icon', models.ImageField(blank=True, default=b'newstopic_icons/default.png', help_text=b'Image for the news topic.', upload_to=b'newstopic_icons')),
+                ('icon', models.ImageField(blank=True, default='newstopic_icons/default.png', help_text='Image for the news topic.', upload_to='newstopic_icons')),
             ],
             options={
                 'ordering': ['name'],

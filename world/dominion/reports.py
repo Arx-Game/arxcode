@@ -61,7 +61,7 @@ class BattleReport(Report):
             txt = self.text_from_battle()
             self.owner.informs.create(week=self.week, message=txt, category="battle")
         except Exception:
-            print "ERROR: Could not generate battle report."
+            print("ERROR: Could not generate battle report.")
             traceback.print_exc()
                    
     def text_from_battle(self):
@@ -97,7 +97,7 @@ class ExplorationReport(Report):
             txt = self.text_from_explore()
             self.owner.informs.create(week=self.week, message=txt, category="explore")
         except Exception:
-            print "ERROR: Could not generate battle report."
+            print("ERROR: Could not generate battle report.")
             traceback.print_exc()
 
     def text_from_explore(self):

@@ -91,7 +91,7 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
     ''' keep new lines in html emails '''
     from django.utils.safestring import mark_safe
 
-    if context.has_key('comment'):
+    if "comment" in context:
         html_txt = context['comment']
         html_txt = html_txt.replace('\r\n', '<br>')
         context['comment'] = mark_safe(html_txt)
@@ -105,7 +105,7 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
             "subject": t.subject,
         }).render(context)
 
-    if isinstance(recipients,(str,unicode)):
+    if isinstance(recipients, str):
         if recipients.find(','):
             recipients = recipients.split(',')
     elif type(recipients) != list:

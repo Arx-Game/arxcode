@@ -63,7 +63,7 @@ class CmdBank(ArxCommand):
         name = name.lower()
         matches = [ob for ob in all_accounts if str(ob.owner).lower() == name]
         if not matches:
-            self.caller.msg("No matches. Choose one of the following: %s" % ", ".join(str(ob.owner) for ob in
+            self.msg("No matches. Choose one of the following: %s" % ", ".join(str(ob.owner) for ob in
                                                                                       all_accounts))
             return
         return matches[0]

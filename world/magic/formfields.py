@@ -316,7 +316,7 @@ class FamiliarField(PractitionerDependentField):
             else:
                 attune = FamiliarAttunement.objects.get(familiar__name__icontains=name, practitioner=caller.practitioner)
             return attune.familiar
-        except FamiliarAttunement.DoesNotExist, FamiliarAttunement.MultipleObjectsReturned:
+        except (FamiliarAttunement.DoesNotExist, FamiliarAttunement.MultipleObjectsReturned):
             return None
 
     def webform_field(self, caller=None):

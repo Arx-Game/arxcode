@@ -135,7 +135,7 @@ class WorkingForm(forms.Paxform):
             else:
                 attune = FamiliarAttunement.objects.get(familiar__name__icontains=name, practitioner=caller.practitioner)
             return attune
-        except FamiliarAttunement.DoesNotExist, FamiliarAttunement.MultipleObjectsReturned:
+        except (FamiliarAttunement.DoesNotExist, FamiliarAttunement.MultipleObjectsReturned):
             return None
 
     # noinspection PyMethodMayBeStatic

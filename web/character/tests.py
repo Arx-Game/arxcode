@@ -347,9 +347,9 @@ class PRPClueTests(ArxCommandTest):
         self.call_cmd("/finish", "Use /create to start a new form.")
         self.call_cmd("/create", 'Name: None\nDesc: None\nRevelation: None\nRating: None\nTags: None\nReal: True\n'
                                  'Can Investigate: True\nCan Share: True')
-        self.call_cmd("/finish", 'Please correct the following errors:\nRating: This field is required.\n'
-                                 'Name: This field is required.\nRevelation: This field is required.\n'
-                                 'Desc: This field is required.')
+        self.call_cmd("/finish", 'Please correct the following errors:\nName: This field is required.\n'
+                                 'Desc: This field is required.\nRating: This field is required.\n'
+                                 'Revelation: This field is required.')
         self.call_cmd("/name testclue", 'Name: testclue\nDesc: None\nRevelation: None\nRating: None\nTags: None\n'
                                         'Real: True\nCan Investigate: True\nCan Share: True')
         self.call_cmd("/desc testdesc", 'Name: testclue\nDesc: testdesc\nRevelation: None\nRating: None\nTags: None\n'
@@ -389,9 +389,9 @@ class PRPClueTests(ArxCommandTest):
         self.call_cmd("/finish", "Use /create to start a new form.")
         self.call_cmd("/create", 'Name: None\nDesc: None\nPlot: None\nRequired Clue Value: None\n'
                                  'Tags: None\nReal: True')
-        self.call_cmd("/finish", 'Please correct the following errors:\nRequired_clue_value: This field is required.\n'
-                                 'Plot: This field is required.\nName: This field is required.\n'
-                                 'Desc: This field is required.')
+        self.call_cmd("/finish", 'Please correct the following errors:\nName: This field is required.\n'
+                                 'Desc: This field is required.\nRequired_clue_value: This field is required.\n'
+                                 'Plot: This field is required.')
         self.call_cmd("/name testrev", 'Name: testrev\nDesc: None\nPlot: None\nRequired Clue Value: None\n'
                                        'Tags: None\nReal: True')
         self.call_cmd("/desc testdesc", 'Name: testrev\nDesc: testdesc\nPlot: None\nRequired Clue Value: None\n'
