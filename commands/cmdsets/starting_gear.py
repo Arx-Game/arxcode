@@ -17,8 +17,9 @@ from evennia import CmdSet
 from evennia.utils.logger import log_info
 from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils import arx_utils
-from world.dominion.models import (CraftingMaterialType, PlayerOrNpc,
-                                   CraftingRecipe, AssetOwner)
+from world.dominion.models import (PlayerOrNpc,
+                                   AssetOwner)
+from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from commands.base_commands.crafting import (create_decorative_weapon, create_wearable, create_weapon,
                                              create_place, create_book, create_container,
                                              create_wearable_container, create_generic, PERFUME, create_mask,

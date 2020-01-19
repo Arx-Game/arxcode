@@ -10,6 +10,7 @@ from __future__ import unicode_literals
 from django.db import models
 
 from evennia.utils.idmapper.models import SharedMemoryModel
+from world.crafting.constants import INNER, OUTER, WIELDED
 from world.fashion.exceptions import FashionError
 from typeclasses.exceptions import EquipError
 from typeclasses.scripts.combat.combat_settings import CombatError
@@ -380,13 +381,47 @@ class FashionOutfit(FashionCommonMixins):
         return self.owner.player.char_ob
 
 
-class ModusOrnamenta(SharedMemoryModel):
+class WornSlotAndLayerMixin(SharedMemoryModel):
     """
-    The method of wearing an item in an outfit.
+    Mixin for describing how items can be equipped. An item that's equipped is a combination of a slot and a layer.
+    A slot describes where it's equipped, while layer describes how: innerwear, outerwear, or held. Every item
+    also has a 'slot_volume' to describe the percentage of space it takes up when worn in that layer, setting a limit
+    to how many can be equipped. For example, a two handed weapon would have 'wielded' as its layer when equipped,
+    with its slot being 'held', and taking up 100% of the volume for 'held'.
+    """
+    INNER, OUTER, WIELDED = INNER, OUTER, WIELDED
+    LAYER_CHOICES = ((INNER, "Inner"), (OUTER, "Outer"), (WIELDED, "Wielded"))
+    slot = models.CharField(max_length=80, blank=True, null=True)
+    layer = models.PositiveSmallIntegerField("Whether this item must be worn as inner or outerwear", default=INNER,
+                                             choices=LAYER_CHOICES)
+
+    class Meta:
+        abstract = True
+
+    @property
+    def is_worn(self):
+        """Whether the item is being worn rather than held"""
+        return self.layer in (INNER, OUTER)
+
+
+class ModusOrnamenta(WornSlotAndLayerMixin):
+    """
+    The method of wearing an item in an outfit: this is a snapshot of every object equipped in the outfit
+    and how they're worn.
     """
     fashion_outfit = models.ForeignKey('FashionOutfit', on_delete=models.CASCADE)
     fashion_item = models.ForeignKey('objects.ObjectDB', on_delete=models.CASCADE)
-    slot = models.CharField(max_length=80, blank=True, null=True)
+
+
+class EquippedItemDetails(WornSlotAndLayerMixin):
+    """
+    Record of a currently equipped object on a character, storing the details of how it's currently being
+    worn. We don't actually have a FK to the character because it's unnecessary: the wearer will always be
+    the item's location. This does mean we need to be careful to delete this whenever the item is moved to
+    prevent erroneously equipped objects.
+    """
+    item = models.OneToOneField('objects.ObjectDB', on_delete=models.CASCADE, related_name="equipped_details")
+    date_equipped = models.DateTimeField(auto_now_add=True)
 
 
 class FashionSnapshot(FashionCommonMixins):

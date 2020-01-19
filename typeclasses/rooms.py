@@ -103,15 +103,13 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
     time. It also allows for "details", together with a slightly modified
     look command.
     """
+    is_room = True
+
     def get_time_and_season(self):
         """
         Calculate the current time and season ids.
         """
         return gametime.get_time_and_season()
-
-    @property
-    def is_room(self):
-        return True
 
     def softdelete(self):
         for entrance in self.entrances:

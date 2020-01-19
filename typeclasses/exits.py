@@ -39,6 +39,8 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
                                         not be called if the attribute `err_traverse` is
                                         defined, in which case that will simply be echoed.
     """
+    is_exit = True
+
     def can_traverse(self, character):
         if character.db.mask and "private" not in self.destination.tags.all():
             msg = "The guards of %s inform you that such masks are forbidden in public, " % self.destination
@@ -266,10 +268,6 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
             self.destination.msg_contents(text, exclude=None, from_obj=from_obj, options=other_options, **kwargs)
 
     @property
-    def is_exit(self):
-        return True
-
-    @property
     def reverse_exit(self):
         entrances = [ob for ob in self.destination.exits if ob.destination == self.location]
         if not entrances:
@@ -370,14 +368,8 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
     """
     Class to hold obstacles and other data for an exit in a Shardhaven instance.
     """
-
-    @property
-    def is_exit(self):
-        return True
-
-    @property
-    def is_character(self):
-        return False
+    is_exit = True
+    is_character = False
 
     @property
     def reverse_exit(self):

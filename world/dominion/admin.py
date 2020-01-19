@@ -9,12 +9,12 @@ from django.utils.safestring import mark_safe
 
 from .models import (PlayerOrNpc, Organization, Agent, AgentOb, MapLocation,
                      AssetOwner, Region, Land, WorkSetting, PraiseOrCondemn,
-                     Member, Task, CraftingRecipe, CraftingMaterialType, CraftingMaterials,
-                     RPEvent, AccountTransaction, AssignedTask,
+                     Member, Task, RPEvent, AccountTransaction, AssignedTask,
                      OrgRelationship, Reputation, TaskSupporter, InfluenceCategory,
                      Renown, SphereOfInfluence, TaskRequirement, ClueForOrg,
                      PlotRoom, Landmark, PrestigeTier, PrestigeCategory, PrestigeAdjustment,
                      Honorific, Propriety, PCEventParticipation, OrgEventParticipation, Fealty)
+from world.crafting.models import CraftingRecipe, CraftingMaterialType, OwnedMaterial
 
 from world.dominion.plots.models import (Plot, PlotAction, PlotUpdate, ActionOOCQuestion,
                                          PCPlotInvolvement, OrgPlotInvolvement, PlotActionAssistant)
@@ -206,13 +206,13 @@ class MaterialTypeAdmin(DomAdmin):
     list_filter = ('category',)
 
 
-class RecipeAdmin(DomAdmin):
-    """Admin for crafting recipes"""
-    list_display = ('id', 'name', 'result', 'skill', 'ability', 'level', 'difficulty')
-    ordering = ['ability', 'level', 'name']
-    search_fields = ['name', 'ability', 'skill', 'result']
-    list_filter = ('ability',)
-    filter_horizontal = ['known_by', 'primary_materials', 'secondary_materials', 'tertiary_materials']
+# class RecipeAdmin(DomAdmin):
+#     """Admin for crafting recipes"""
+#     list_display = ('id', 'name', 'result', 'skill', 'ability', 'level', 'difficulty')
+#     ordering = ['ability', 'level', 'name']
+#     search_fields = ['name', 'ability', 'skill', 'result']
+#     list_filter = ('ability',)
+#     filter_horizontal = ['known_by', 'primary_materials', 'secondary_materials', 'tertiary_materials']
 
 
 class PCEventParticipantInline(admin.TabularInline):
@@ -257,7 +257,7 @@ class ReceiveTransactionInline(admin.TabularInline):
 
 class MaterialsInline(admin.TabularInline):
     """Inline for amounts of materials an assetowner has"""
-    model = CraftingMaterials
+    model = OwnedMaterial
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -791,7 +791,7 @@ admin.site.register(Region, DomAdmin)
 admin.site.register(Land, LandAdmin)
 admin.site.register(Task, TaskAdmin)
 admin.site.register(Ruler, RulerAdmin)
-admin.site.register(CraftingRecipe, RecipeAdmin)
+# admin.site.register(CraftingRecipe, RecipeAdmin)
 admin.site.register(CraftingMaterialType, MaterialTypeAdmin)
 admin.site.register(RPEvent, EventAdmin)
 admin.site.register(Plot, PlotAdmin)

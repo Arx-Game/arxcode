@@ -1248,7 +1248,7 @@ class CmdPut(ArxCommand):
             if obj == dest:
                 caller.msg("You can't put an object inside itself.")
                 continue
-            if not dest.db.container:
+            if not dest.is_container:
                 caller.msg("That is not a container.")
                 return
             if dest.db.locked and not self.caller.check_permstring("builders"):
@@ -1257,9 +1257,9 @@ class CmdPut(ArxCommand):
             if dest in obj.contents:
                 caller.msg("You can't place an object in something it contains.")
                 continue
-            max_volume = dest.db.max_volume or 0
-            volume = obj.db.volume or 0
-            if dest.volume + volume > max_volume:
+            max_volume = dest.max_volume
+            volume = obj.volume
+            if dest.used_volume + volume > max_volume:
                 caller.msg("No more room; {} won't fit.".format(obj))
                 continue
             if not obj.access(caller, 'get'):
@@ -1675,7 +1675,7 @@ class CmdDump(ArxCommand):
         loc = obj.location
 
         # If the object being dumped is not a container or is not dead and therefore lootable then bail out
-        if not (obj.db.container or obj.dead):
+        if not obj.is_container:
             caller.msg("You cannot dump %s as it is not a valid container." % obj)
             return
 

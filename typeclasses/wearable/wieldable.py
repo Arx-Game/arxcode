@@ -24,49 +24,31 @@ class Wieldable(Wearable):
     """
     default_desc = "A weapon of some kind."
     SHEATHED_LIMIT = 6
+    is_wieldable = True
+    attack_skill = "medium wpn"
+    attack_stat = "dexterity"
+    damage_stat = "strength"
+    attack_type = "melee"
+    can_be_parried = True
+    can_be_blocked = True
+    can_be_countered = True
+    can_be_dodged = True
+    can_parry = True
+    can_riposte = True
+    base_difficulty_mod = 0
+    slot = "sheathed"
 
     def at_object_creation(self):
         """
         Run at wieldable creation. The defaults are for a generic melee
         weapon.
         """
-        self.is_worn = False
-        self.db.is_wieldable = True
-        self.is_wielded = False
-        self.db.armor_class = 0
-        # phrase that is seen when we equip it
-        self.db.stealth = False  # whether it can be seen in character desc
-        self.db.sense_difficulty = 15  # default if stealth is set to true
-        self.db.attack_skill = "medium wpn"
-        self.db.attack_stat = "dexterity"
-        self.db.damage_stat = "strength"
-        self.db.damage_bonus = 1
-        self.db.attack_type = "melee"
-        self.db.can_be_parried = True
-        self.db.can_be_blocked = True
-        self.db.can_be_dodged = True
-        self.db.can_be_countered = True
-        self.db.can_parry = True
-        self.db.can_riposte = True
-        self.db.difficulty_mod = 0
         self.cmdset.add_default(WeaponCmdSet, permanent=True)
         self.at_init()
 
     def softdelete(self):
         self.cease_wield()
         super(Wieldable, self).softdelete()
-
-    def ranged_mode(self):
-        self.db.can_be_parried = False
-        self.db.can_parry = False
-        self.db.can_riposte = False
-        self.db.attack_type = "ranged"
-
-    def melee_mode(self):
-        self.db.can_be_parried = True
-        self.db.can_parry = True
-        self.db.can_parry = True
-        self.db.attack_type = "melee"
 
     def at_before_move(self, destination, **kwargs):
         """Checks if the object can be moved"""
@@ -93,20 +75,20 @@ class Wieldable(Wearable):
         """Hook called after removing succeeds."""
         return True
 
-    def wear(self, wearer):
+    def wear(self, wearer, layer=None):
         """
         Puts item on the wearer.
         """
         super(Wieldable, self).wear(wearer)
 
-    def at_pre_wear(self, wearer):
+    def at_pre_wear(self, wearer, layer=None):
         """Hook called before wearing to cease wielding and perform checks."""
         self.cease_wield()
-        super(Wieldable, self).at_pre_wear(wearer)
+        super(Wieldable, self).at_pre_wear(wearer, layer=layer)
 
-    def slot_check(self, wearer):
+    def slot_check(self, wearer, layer):
         if self.decorative:
-            super(Wieldable, self).slot_check(wearer)
+            super(Wieldable, self).slot_check(wearer, layer)
         else:
             sheathed = wearer.sheathed
             if len(sheathed) >= self.SHEATHED_LIMIT:
@@ -157,7 +139,6 @@ class Wieldable(Wearable):
 
     def at_post_wield(self, wielder):
         """Hook called after wielding succeeds."""
-        self.calc_weapon()
         if wielder:
             wielder.combat.setup_weapon(wielder.weapondata)
         self.announce_wield(wielder)
@@ -174,50 +155,11 @@ class Wieldable(Wearable):
             for char in chars:
                 if char.sensing_check(self, diff=self.db.sensing_difficulty) < 1:
                     exclude.append(char)
-        msg = self.db.ready_phrase or "wields %s" % self.name
-        wielder.location.msg_contents("%s %s." % (wielder.name, msg), exclude=exclude)
+        wielder.location.msg_contents("%s %s." % (wielder.name, self.ready_phrase), exclude=exclude)
 
-    def calc_weapon(self):
-        """
-        If we have crafted armor, return the value from the recipe and
-        quality.
-        """
-        quality = self.quality_level
-        recipe = self.recipe
-        diffmod = self.db.difficulty_mod or 0
-        flat_damage_bonus = self.db.flat_damage_bonus or 0
-        if self.db.attack_skill == "huge wpn":
-            diffmod += 1
-        elif self.db.attack_skill == "archery":
-            self.ranged_mode()
-            diffmod -= 10
-        elif self.db.attack_skill == "small wpn":
-            diffmod -= 1
-        if not recipe:
-            return self.db.damage_bonus or 0, diffmod, flat_damage_bonus
-        base = float(recipe.resultsdict.get("baseval", 0))
-        if quality >= 10:
-            crafter = self.db.crafted_by
-            if (recipe.level > 3) or not crafter or crafter.check_permstring("builders"):
-                base += 1
-        scaling = float(recipe.resultsdict.get("scaling", (base/20) or 0.2))
-        if not base and not scaling:
-            self.ndb.cached_damage_bonus = 0
-            self.ndb.cached_difficulty_mod = diffmod
-            self.ndb.cached_flat_damage_bonus = flat_damage_bonus
-            return (self.ndb.cached_damage_bonus, self.ndb.cached_difficulty_mod,
-                    self.ndb.cached_flat_damage_bonus)
-        try:
-            damage = int(round(base + (scaling * quality)))
-            diffmod -= int(round(0.2 * quality))
-            flat_damage_bonus += (quality - 2) * 2
-        except (TypeError, ValueError):
-            print("Error setting up weapon ID: %s" % self.id)
-            damage = 0
-        self.ndb.cached_damage_bonus = damage
-        self.ndb.cached_difficulty_mod = diffmod
-        self.ndb.cached_flat_damage_bonus = flat_damage_bonus
-        return damage, diffmod, flat_damage_bonus
+    @property
+    def ready_phrase(self):
+        return self.db.ready_phrase or "wields %s" % self.name
 
     def calc_armor(self):
         """Sheathed/worn weapons have no armor value or other modifiers"""
@@ -233,53 +175,45 @@ class Wieldable(Wearable):
         return True
 
     @property
-    def damage_bonus(self):
-        if not self.recipe or self.db.ignore_crafted:
-            return self.db.damage_bonus
-        if self.ndb.cached_damage_bonus is not None:
-            return self.ndb.cached_damage_bonus
-        return self.calc_weapon()[0]
+    def base_damage(self):
+        if not self.recipe or self.ignore_crafted:
+            return self.db.base_damage or 0
+        return int(round(self.baseval + (self.scaling * self.quality_level)))
 
-    @damage_bonus.setter
-    def damage_bonus(self, value):
+    @base_damage.setter
+    def base_damage(self, value):
         """
         Manually sets the value of our weapon, ignoring any crafting recipe we have.
         """
-        self.db.damage_bonus = value
-        self.db.ignore_crafted = True
-        self.ndb.cached_damage_bonus = value
-
-    @property
-    def difficulty_mod(self):
-        if not self.db.recipe or self.db.ignore_crafted:
-            return self.db.difficulty_mod or 0
-        if self.ndb.cached_difficulty_mod is not None:
-            return self.ndb.cached_difficulty_mod
-        return self.calc_weapon()[1]
+        self.db.base_damage = value
+        self.tags.add("ignore_crafted")
 
     @property
     def flat_damage(self):
-        if not self.db.recipe or self.db.ignore_crafted:
-            return self.db.flat_damage_bonus or 0
-        if self.ndb.cached_flat_damage_bonus is not None:
-            return self.ndb.cached_flat_damage_bonus
-        return self.calc_weapon()[2]
+        flat = self.db.flat_damage_bonus or 0
+        if not self.recipe or self.ignore_crafted:
+            return flat
+        flat += (self.quality_level - 2) * 2
+        return flat
+
+    @property
+    def difficulty_mod(self):
+        return self.base_difficulty_mod - int(round(0.2 * self.quality_level))
 
     @property
     def armor(self):
         return 0
 
     @property
-    def is_wieldable(self):
-        return True
-
-    @property
     def is_wielded(self):
-        return self.db.currently_wielded
+        return bool(self.tags.get("currently_wielded"))
 
     @is_wielded.setter
     def is_wielded(self, bull):
-        self.db.currently_wielded = bull
+        if bull:
+            self.tags.add("currently_wielded")
+        else:
+            self.tags.remove("currently_wielded")
 
     @property
     def is_equipped(self):
@@ -290,3 +224,19 @@ class Wieldable(Wearable):
     def decorative(self):
         """Weapons are not decorative. Unless they are."""
         return False
+
+
+class RangedWeapon(Wieldable):
+    can_be_parried = False
+    can_parry = False
+    can_riposte = False
+    attack_type = "ranged"
+    base_difficulty_mod = -10
+
+
+class HugeWeapon(Wieldable):
+    base_difficulty_mod = 1
+
+
+class SmallWeapon(Wieldable):
+    base_difficulty_mod = -1

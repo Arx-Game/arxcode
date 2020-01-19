@@ -19,7 +19,8 @@ from evennia.utils.logger import log_info
 from commands.base import ArxCommand
 from server.utils import prettytable
 from evennia.utils.create import create_object
-from world.dominion.models import (CraftingMaterialType, PlayerOrNpc, CraftingMaterials)
+from world.dominion.models import (PlayerOrNpc)
+from world.crafting.models import CraftingMaterialType, OwnedMaterial
 from world.dominion import setup_utils
 from world.stats_and_skills import do_dice_check
 
@@ -135,7 +136,7 @@ class CmdMarket(ArxCommand):
             for mat in other_items:
                 mtable.add_row([mat, other_items[mat][1], other_items[mat][0]])
             caller.msg("\n{w" + "="*60 + "{n\n%s" % mtable)
-            pmats = CraftingMaterials.objects.filter(owner__player__player=caller.player)
+            pmats = OwnedMaterial.objects.filter(owner__player__player=caller.player)
             if pmats:
                 caller.msg("\n{wYour materials:{n %s" % ", ".join(str(ob) for ob in pmats))
             return
@@ -202,7 +203,7 @@ class CmdMarket(ArxCommand):
                     mat = dompc.assets.materials.get(type=material)
                     mat.amount += amt
                     mat.save()
-                except CraftingMaterials.DoesNotExist:
+                except OwnedMaterial.DoesNotExist:
                     dompc.assets.materials.create(type=material, amount=amt)
             else:
                 material.create(caller)
@@ -226,7 +227,7 @@ class CmdMarket(ArxCommand):
                 dompc = setup_utils.setup_dom_for_char(caller)
             try:
                 mat = dompc.assets.materials.get(type=material)
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 caller.msg("You don't have any of %s." % material.name)
                 return
             if mat.amount < amt:
@@ -434,7 +435,7 @@ class HaggledDeal(object):
                     raise HaggleError(err)
                 mats.amount -= self.amount
                 mats.save()
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 raise HaggleError(err)
         silver = self.silver_value
         self.caller.pay_money(-silver)

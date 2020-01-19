@@ -4,6 +4,7 @@ General Character commands usually available to all characters
 import time
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 
 from evennia.server.sessionhandler import SESSIONS
 from evennia.commands.default.account import CmdOOC
@@ -24,8 +25,6 @@ from evennia.utils.utils import (make_iter, crop, time_format, variable_from_mod
 from server.utils import arx_utils, prettytable
 from server.utils.exceptions import CommandError
 from commands.base import ArxCommand, ArxPlayerCommand
-from world.dominion.models import CraftingMaterials
-
 
 AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
 _DEFAULT_WIDTH = settings.CLIENT_DEFAULT_WIDTH
@@ -84,11 +83,11 @@ def money_from_args(args, fromobj):
 
 def check_volume(obj, char, quiet=False):
     """Helper function to check if a character has enough volune to carry an item"""
-    vol = obj.db.volume or 1
-    v_max = char.db.max_volume or 100
-    if char.volume + vol > v_max:
+    vol = obj.volume
+    free = char.max_volume - char.used_volume
+    if vol > free:
         if not quiet:
-            char.msg("You can't carry %s." % obj)
+            char.msg("%s would take up %s and you can only carry %s." % (obj, vol, free))
         return False
     return True
 
@@ -243,7 +242,7 @@ class CmdGet(ArxCommand):
             # noinspection PyAttributeOutsideInit
             if not container_obj:
                 raise CommandError("Could not get anything.")
-            elif not (container_obj.db.container or container_obj.dead):
+            elif not container_obj.is_container:
                 raise CommandError("That is not a container.")
             elif container_obj.db.locked and not self.caller.check_permstring("builders"):
                 raise CommandError("You'll have to unlock {} first.".format(container_obj))
@@ -431,16 +430,13 @@ class CmdGive(ArxCommand):
             except (IndexError, ValueError):
                 caller.msg("Invalid syntax.")
                 return
-            except CraftingMaterials.DoesNotExist:
+            except ObjectDoesNotExist:
                 caller.msg("No materials by that name.")
                 return
             if mat.amount < amount:
                 caller.msg("Not enough materials.")
                 return
-            try:
-                tmat = target.player_ob.Dominion.assets.materials.get(type=mat.type)
-            except CraftingMaterials.DoesNotExist:
-                tmat = target.player_ob.Dominion.assets.materials.create(type=mat.type)
+            tmat, _ = target.player_ob.Dominion.assets.materials.get_or_create(type=mat.type)
             mat.amount -= amount
             tmat.amount += amount
             mat.save()

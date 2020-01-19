@@ -13,3 +13,11 @@ class DecorativeWieldable(Wieldable):
     def decorative(self):
         """We decorate. AND we murder."""
         return True
+
+    @property
+    def slot(self):
+        """slot the armor is worn on"""
+        recipe = self.recipe
+        if not recipe:
+            return self.db.slot
+        return recipe.wearable_stats.slot

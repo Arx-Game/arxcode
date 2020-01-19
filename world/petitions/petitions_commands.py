@@ -467,7 +467,7 @@ class CmdBroker(ArxCommand):
             if disabled:
                 raise self.BrokerError("Action Point sales are temporarily disabled.")
         elif sale_type == BrokeredSale.CRAFTING_MATERIALS:
-            from world.dominion.models import CraftingMaterialType
+            from world.crafting.models import CraftingMaterialType
             try:
                 material_type = CraftingMaterialType.objects.get(name__iexact=self.lhs)
             except CraftingMaterialType.DoesNotExist:
@@ -548,7 +548,7 @@ class CmdBroker(ArxCommand):
             if not self.caller.player_ob.pay_resources(resource, amount):
                 raise self.BrokerError("You do not have enough %s resources to put on sale." % resource)
         else:
-            from world.dominion.models import CraftingMaterialType
+            from world.crafting.models import CraftingMaterialType
             try:
                 material_type = CraftingMaterialType.objects.get(name__iexact=self.lhs)
             except CraftingMaterialType.DoesNotExist:

@@ -15,7 +15,7 @@ from world.dominion.plots.models import PlotAction, Plot
 from world.templates.models import Template
 from web.character.models import PlayerAccount
 
-from world.dominion.models import CraftingRecipe
+from world.crafting.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
 from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general
@@ -59,7 +59,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
     def test_craft_with_templates(self):
         self.setup()
 
-        recipe = CraftingRecipe.objects.create(name="Thing", ability="all", result="")
+        recipe = CraftingRecipe.objects.create(name="Thing", ability="all")
 
         self.char1.dompc.assets.recipes.add(recipe)
         self.char2.dompc.assets.recipes.add(recipe)
@@ -141,34 +141,32 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/learn Mask", "You have 1 silver. It will cost 10 for you to learn Mask.")
         self.char2.currency = 100
         self.call_cmd("/learn Mask", "You have learned Mask for 10 silver.")
-        self.assertEqual(list(self.char2.dompc.assets.recipes.all()), [self.recipe6])
+        self.assertEqual(list(self.char2.dompc.assets.recipes.all()), [self.mask_recipe])
         self.assertEqual(self.char2.currency, 90.0)
-        self.call_cmd("/info Mask", "Name: Mask\nDescription: None\nSilver: 10\nPrimary Materials:\n"
-                                    "Mat1: 4 (0/4)")
+        self.call_cmd("/info Mask", "Name: Mask\nDescription: \nSilver: 10\nMaterials: Mat1: (0/4)")
         self.call_cmd("/learn", "Recipes you can learn:")
-        rtable.assert_called_with([self.recipe1, self.recipe2, self.recipe3, self.recipe4,
-                                  self.recipe5, self.recipe7])
+        rtable.assert_called_with([self.top1_recipe, self.top2_recipe, self.purse_recipe, self.small_weapon_recipe,
+                                   self.hairpin_recipe, self.medium_weapon_recipe])
         self.call_cmd("tailor", "")
-        rtable.assert_called_with([self.recipe1])
+        rtable.assert_called_with([self.top1_recipe])
         self.call_cmd("/known", "")
-        rtable.assert_called_with([self.recipe6])
-        self.match_recipe_locks_to_level()  # recipe locks become level-appropriate
+        rtable.assert_called_with([self.mask_recipe])
         self.call_cmd("", "")
-        rtable.assert_called_with([self.recipe6])
+        rtable.assert_called_with([self.mask_recipe])
         self.call_cmd("/learn Bag", "You cannot learn 'Bag'. Recipes you can learn:")
         rtable.assert_called_with([])
         self.call_cmd("/teach Char=Mask", "You cannot teach 'Mask'. Recipes you can teach:")
         rtable.assert_called_with([])
-        self.recipe6.locks.replace("teach:all();learn: ability(4)")
-        self.recipe6.save()
+        self.mask_recipe.locks.replace("teach:all();learn: ability(4)")
+        self.mask_recipe.save()
         self.call_cmd("/teach Char=Mask", "They cannot learn Mask.")
-        self.recipe6.locks.replace("teach:all();learn:all()")
-        self.recipe6.save()
+        self.mask_recipe.locks.replace("teach:all();learn:all()")
+        self.mask_recipe.save()
         self.call_cmd("/teach Char=Mask", "Taught Char Mask.")
-        self.assertEqual(list(self.char.dompc.assets.recipes.all()), [self.recipe6])
+        self.assertEqual(list(self.char.dompc.assets.recipes.all()), [self.mask_recipe])
         self.call_cmd("/teach Char=Mask", "They already know Mask.")
-        self.recipe5.locks.replace("teach:all();learn:all()")
-        self.recipe5.save()
+        self.hairpin_recipe.locks.replace("teach:all();learn:all()")
+        self.hairpin_recipe.save()
         self.caller = self.char  # Char is staff
         self.call_cmd("/cost Hairpins", "It will cost nothing for you to learn Hairpins.")
 

@@ -1,6 +1,8 @@
 """
 Crafting commands. BEHOLD THE MINIGAME.
 """
+from collections import defaultdict
+
 from django.conf import settings
 from django.db.models import Q, Prefetch
 
@@ -10,7 +12,8 @@ from evennia.utils.create import create_object
 from evennia.utils.utils import make_iter
 from server.utils.arx_utils import validate_name, inform_staff
 from server.utils.prettytable import PrettyTable
-from world.dominion.models import (AssetOwner, PlayerOrNpc, CraftingRecipe, CraftingMaterials, CraftingMaterialType)
+from world.dominion.models import (AssetOwner, PlayerOrNpc)
+from world.crafting.models import CraftingRecipe, CraftingMaterialType, OwnedMaterial, QUALITY_LEVELS
 from world.dominion.setup_utils import setup_dom_for_char
 from world.stats_and_skills import do_dice_check
 from world.templates.mixins import TemplateMixins
@@ -27,21 +30,6 @@ WEARABLE_CONTAINER = "typeclasses.wearable.wearable.WearableContainer"
 BAUBLE = "typeclasses.bauble.Bauble"
 PERFUME = "typeclasses.consumable.perfume.Perfume"
 MASK = "typeclasses.disguises.disguises.Mask"
-
-QUALITY_LEVELS = {
-    0: '{rawful{n',
-    1: '{mmediocre{n',
-    2: '{caverage{n',
-    3: '{cabove average{n',
-    4: '{ygood{n',
-    5: '{yvery good{n',
-    6: '{gexcellent{n',
-    7: '{gexceptional{n',
-    8: '{gsuperb{n',
-    9: '{454perfect{n',
-    10: '{553divine{n',
-    11: '|355transcendent|n'
-    }
 
 
 def create_weapon(recipe, roll, proj, caller):
@@ -446,7 +434,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                         if pmat.amount < amt:
                             caller.msg("You need %s of %s, and only have %s." % (amt, mat.name, pmat.amount))
                             return
-                    except CraftingMaterials.DoesNotExist:
+                    except OwnedMaterial.DoesNotExist:
                         caller.msg("You do not have any of the material %s." % mat.name)
                         return
                     pmat.amount -= amt
@@ -650,7 +638,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                     caller.msg("Silver/Action Points cannot be a negative number.")
                     return
             # first, check if we have all the materials required
-            mats = {}
+            mats = defaultdict(int)
             try:
                 recipe = recipes.get(id=proj[0])
             except CraftingRecipe.DoesNotExist:
@@ -662,10 +650,13 @@ class CmdCraft(ArxCommand, TemplateMixins):
                 if not proj[6]:
                     caller.msg("This kind of item requires craft/altdesc before it can be finished.")
                     return
-            for mat in recipe.materials.all():
-                mats[mat.id] = mats.get(mat.id, 0) + mat.amount
+            adornment_map = defaultdict(int)
+            for mat in recipe.materials_counter:
+                mats[mat] += mat.amount
             for adorn in proj[3]:
-                mats[adorn] = mats.get(adorn, 0) + proj[3][adorn]
+                mat = CraftingMaterialType.objects.get(id=adorn)
+                mats[mat] += proj[3][adorn]
+                adornment_map[mat] += proj[3][adorn]
             # replace with forgeries
             for rep in proj[4].keys():
                 # rep is ID to replace
@@ -709,7 +700,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                             caller.msg("You need %s of %s, and only have %s." % (mats[mat], c_mat.name, pmat.amount))
                             return
                         realvalue += c_mat.value * mats[mat]
-                    except CraftingMaterials.DoesNotExist:
+                    except OwnedMaterial.DoesNotExist:
                         caller.msg("You do not have any of the material %s." % c_mat.name)
                         return
                 # check if they have enough action points
@@ -731,48 +722,15 @@ class CmdCraft(ArxCommand, TemplateMixins):
             diffmod = get_difficulty_mod(recipe, invest, action_points, ability)
             # do crafting roll
             roll = do_crafting_roll(crafter, recipe, diffmod, room=caller.location)
-            # get type from recipe
-            otype = recipe.type
-            # create object
-            if otype == "wieldable":
-                obj, quality = create_weapon(recipe, roll, proj, caller)
-            elif otype == "wearable":
-                obj, quality = create_wearable(recipe, roll, proj, caller)
-            elif otype == "place":
-                obj, quality = create_place(recipe, roll, proj, caller)
-            elif otype == "book":
-                obj, quality = create_book(recipe, roll, proj, caller)
-            elif otype == "container":
-                obj, quality = create_container(recipe, roll, proj, caller)
-            elif otype == "decorative_weapon":
-                obj, quality = create_decorative_weapon(recipe, roll, proj, caller)
-            elif otype == "wearable_container":
-                obj, quality = create_wearable_container(recipe, roll, proj, caller)
-            elif otype == "perfume":
-                obj, quality = create_consumable(recipe, roll, proj, caller, PERFUME)
-            elif otype == "disguise":
-                obj, quality = create_mask(recipe, roll, proj, caller, proj[6])
-            else:
-                obj, quality = create_generic(recipe, roll, proj, caller)
             # finish stuff universal to all crafted objects
+            obj = recipe.create_object(roll=roll, crafter=caller, key=proj[1], adornment_map=adornment_map,
+                                       location=caller)
             obj.desc = proj[2]
-            obj.save()
 
             self.apply_templates_to(obj)
-
-            obj.db.materials = mats
-            obj.db.recipe = recipe.id
-            obj.db.adorns = proj[3]
-            obj.db.crafted_by = crafter
-            obj.db.volume = int(recipe.resultsdict.get('volume', 0))
             self.pay_owner(price, "%s has crafted '%s', a %s, at your shop and you earn %s silver." % (caller, obj,
                                                                                                        recipe.name,
                                                                                                        price))
-            if proj[4]:
-                obj.db.forgeries = proj[4]
-                obj.db.forgery_roll = do_crafting_roll(caller, recipe, room=caller.location)
-                # forgery penalty will be used to degrade weapons/armor
-                obj.db.forgery_penalty = (recipe.value/realvalue) + 1
             try:
                 if proj[5]:
                     obj.db.translation = proj[5]
@@ -780,10 +738,8 @@ class CmdCraft(ArxCommand, TemplateMixins):
                 pass
             cnoun = "You" if caller == crafter else crafter
             caller.msg("%s created %s." % (cnoun, obj.name))
-            quality = QUALITY_LEVELS[quality]
-            caller.msg("It is of %s quality." % quality)
+            caller.msg("It is of %s quality." % obj.crafting_record.display_quality())
             caller.db.crafting_project = None
-            return
 
 
 class CmdRecipes(ArxCommand):

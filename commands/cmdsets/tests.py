@@ -504,7 +504,7 @@ class CombatCommandsTests(ArxCommandTest):
 class TestMarketCommands(ArxCommandTest):
     @patch.object(market, "do_dice_check")
     def test_cmd_haggle(self, mock_dice_check):
-        from world.dominion.models import CraftingMaterialType
+        from world.crafting.models import CraftingMaterialType
         self.setup_cmd(market.CmdHaggle, self.char1)
         self.call_cmd("", "You currently haven't found a deal to negotiate. Use haggle/findbuyer"
                           " or haggle/findseller first.")

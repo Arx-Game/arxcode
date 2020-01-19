@@ -16,7 +16,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         mock_get_week.return_value = 1
         fake_dt = self.fake_datetime
         self.mask1.db.quality_level = 11
-        to_be_worn = [self.top2, self.catsuit1, self.purse1, self.sword1, self.hairpins1, self.mask1]
+        to_be_worn = [self.top_with_crafter, self.catsuit1, self.purse1, self.sword1, self.hairpins1, self.mask1]
         self.setup_cmd(fashion_commands.CmdFashionOutfit, self.char2)
         self.call_cmd("", "No outfits to display! Try creating one, or 'outfits/archives' instead.")
         self.call_cmd("Friendly Shadows", "'Friendly Shadows' not found in your collection of outfits.")
@@ -51,7 +51,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         with patch('django.utils.timezone.now', Mock(return_value=fake_dt)):
             mock_dice_check.return_value = 0
             outfit2.model_outfit_for_fashion(self.org)
-        self.assertTrue(self.top2.modeled_by)
+        self.assertTrue(self.top_with_crafter.modeled_by)
         self.call_cmd("", "Created    Outfit             Appraisal/Buzz \n"
                           "1978/08/27 Friendly Shadows   26,790         "
                           "1978/08/27 Unfriendly Shadows little")
@@ -60,12 +60,12 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
                                             "\nModeled by Testaccount2 for Orgtest, generating little buzz on "
                                             "1978/08/27.")
         self.call_cmd("/delete", "Requires an outfit's name.")
-        top2_snapshot = self.top2.fashion_snapshots.first()
-        self.assertEqual(self.top2.ndb.snapshots_cache, [top2_snapshot])
+        top2_snapshot = self.top_with_crafter.fashion_snapshots.first()
+        self.assertEqual(self.top_with_crafter.ndb.snapshots_cache, [top2_snapshot])
         self.call_cmd("/delete Friendly shadows", "Deleting Friendly Shadows.")  # :'(
-        self.assertEqual(self.top2.ndb.snapshots_cache, None)
+        self.assertEqual(self.top_with_crafter.ndb.snapshots_cache, None)
         outfit2.owner_character.msg = Mock()
-        self.top2.softdelete()
+        self.top_with_crafter.softdelete()
         outfit2.owner_character.msg.assert_called_with("Nothing remains of the outfit formerly known as "
                                                        "'Unfriendly Shadows'.")
         self.assertFalse(self.char2.dompc.fashion_outfits.all().exists())
@@ -75,9 +75,9 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
     def test_model_cmd(self, mock_dice_check, mock_get_week):
         mock_get_week.return_value = 1
         fake_dt = self.fake_datetime
-        self.obj1.location, self.top1.location = self.char1, self.char1
+        self.obj1.location, self.top_no_crafter.location = self.char1, self.char1
         self.mask1.db.quality_level = 11
-        ap_cost = self.top1.fashion_ap_cost
+        ap_cost = self.top_no_crafter.fashion_ap_cost
         self.setup_cmd(fashion_commands.CmdFashionModel, self.char1)
         self.call_cmd("catsuit", "Please specify <item>=<organization>")
         self.call_cmd("catsuit=Shadow Striders",
@@ -85,13 +85,13 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("Obj=Orgtest", "Obj is not an item you can model for fashion.")
         self.call_cmd("Top1=Orgtest", "Top1 was wrought by no mortal hand, and from it no mortal fame can be "
                                       "earned.")
-        self.top1.db.recipe = 1
-        self.top1.db.crafted_by = self.char1
+        self.top_no_crafter.db.recipe = 1
+        self.top_no_crafter.db.crafted_by = self.char1
         self.call_cmd("Top1=Orgtest", "Top1 was wrought by no mortal hand, and from it no mortal fame can be "
                                       "earned.")
-        self.top1.db.crafted_by = self.char2
+        self.top_no_crafter.db.crafted_by = self.char2
         self.call_cmd("Top1=Orgtest", "Please wear Top1 before trying to model it as fashion.")
-        self.top1.wear(self.char1)
+        self.top_no_crafter.wear(self.char1)
         self.roster_entry.action_points = 0
         self.call_cmd("Top1=Orgtest", "It costs %s AP to model Top1; you do not have enough energy." % ap_cost)
         self.roster_entry.action_points = 100
@@ -107,14 +107,14 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
                                                         append=True, category='fashion')
         self.account2.assets.inform_owner.assert_called_with("{315250{n fame awarded from Testaccount modeling "
                                                              "Top1.", append=True, category='fashion')
-        self.assertEqual(self.top1.modeled_by, "Modeled by {315Testaccount{n for {125Orgtest{n, generating "
+        self.assertEqual(self.top_no_crafter.modeled_by, "Modeled by {315Testaccount{n for {125Orgtest{n, generating "
                                                "{355modest{n buzz on 1978/08/27.")
         # test "model/outfit":
-        self.top1.remove(self.char1)
-        self.top1.location = self.char2
+        self.top_no_crafter.remove(self.char1)
+        self.top_no_crafter.location = self.char2
         self.roster_entry2.action_points = 0
         self.caller = self.char2
-        to_be_worn = [self.top1, self.catsuit1, self.purse1, self.sword1, self.hairpins1, self.mask1]
+        to_be_worn = [self.top_no_crafter, self.catsuit1, self.purse1, self.sword1, self.hairpins1, self.mask1]
         self.knife1.wield(self.char2)
         for item in to_be_worn:
             item.wear(self.char2)
@@ -189,7 +189,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         from world.fashion.models import FashionSnapshot
         self.setup_cmd(fashion_commands.CmdAdminFashion, self.char1)
         snapshot = FashionSnapshot.objects.create(fashion_model=self.dompc2, designer=self.dompc2, fame=50000,
-                                                  org=self.org, fashion_item=self.top1)
+                                                  org=self.org, fashion_item=self.top_no_crafter)
         snapshot.apply_fame()
         self.assertEqual(self.dompc2.assets.fame, 62500)
         self.call_cmd("/delete 1", 'Snapshot #1 fame/ap has been reversed. Deleting it.')

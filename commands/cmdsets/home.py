@@ -8,7 +8,8 @@ from django.conf import settings
 from world.dominion.models import LIFESTYLES
 from django.db.models import Q
 from evennia.objects.models import ObjectDB
-from world.dominion.models import AssetOwner, Organization, CraftingRecipe
+from world.dominion.models import AssetOwner, Organization
+from world.crafting.models import CraftingRecipe
 from commands.base_commands.crafting import CmdCraft
 from commands.base_commands.overrides import CmdDig
 from server.utils.prettytable import PrettyTable

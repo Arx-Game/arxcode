@@ -73,7 +73,7 @@ class FashionableMixins(object):
         overrides with "fashion_mult" in the recipe's 'result' field.
         """
         if self.fashion_mult_override is not None:
-            return float(self.fashion_mult_override)
+            return self.fashion_mult_override / 100.0
         recipe_base = self.recipe.baseval
         if not recipe_base:
             return 3.0
@@ -89,7 +89,7 @@ class FashionableMixins(object):
     @property
     def fashion_mult_override(self):
         """Returns a recipe's overriding fashion multiplier, or None."""
-        return self.recipe.resultsdict.get("fashion_mult", None)
+        return self.recipe.wearable_stats.fashion_mult
 
     @property
     def modeled_by(self):
@@ -108,9 +108,9 @@ class FashionableMixins(object):
     @property
     def designer(self):
         """Returns the item's creator player"""
-        creator = self.db.crafted_by
+        creator = self.crafted_by
         if creator and hasattr(creator, 'player_ob'):
-            return self.db.crafted_by.player_ob
+            return self.crafted_by.player_ob
 
     @property
     def crafted_by_mortals(self):

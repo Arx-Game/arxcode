@@ -6,7 +6,8 @@ from evennia.commands.cmdset import CmdSet
 from evennia.utils import evtable
 from commands.base import ArxCommand
 from world.dominion import setup_utils
-from world.dominion.models import CraftingMaterials, AccountTransaction, AssetOwner
+from world.dominion.models import AccountTransaction, AssetOwner
+from world.crafting.models import OwnedMaterial
 
 
 class BankCmdSet(CmdSet):
@@ -250,7 +251,7 @@ class CmdBank(ArxCommand):
                         return
                     try:
                         targ = receiver.materials.get(type__name__iexact=matname)
-                    except CraftingMaterials.DoesNotExist:
+                    except OwnedMaterial.DoesNotExist:
                         targ = receiver.materials.create(type=source.type, amount=0)
                     source.amount -= val
                     targ.amount += val
@@ -283,7 +284,7 @@ class CmdBank(ArxCommand):
                 else:
                     caller.msg("Transaction successful.")
                 self.inform_owner(account, verb, val, attr_type, matname)
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 caller.msg("No match for that material. Valid materials: %s" % ", ".join(
                     str(mat) for mat in sender.materials.all()))
                 return

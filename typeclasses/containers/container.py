@@ -90,7 +90,7 @@ class CmdRoot(ArxCommand):
             caller.msg("That object does not exist.")
             return
 
-        if not obj.db.container:
+        if not obj.is_container:
             caller.msg("Can only target containers!")
             return
 
@@ -125,6 +125,9 @@ class Container(LockMixins, DefaultObject):
     Containers - bags, chests, etc. Players can have keys and can
     lock/unlock containers.
     """
+    display_by_line = False
+    is_container = True
+
     # noinspection PyMethodMayBeStatic
     def create_container_cmdset(self, contdbobj):
         """
@@ -159,19 +162,21 @@ class Container(LockMixins, DefaultObject):
             self.cmdset.add_default(self.create_container_cmdset(self), permanent=False)
             self.ndb.container_reset = False
 
-    def at_after_move(self, source_location):
+    def at_after_move(self, source_location, **kwargs):
         if self.tags.get("rooted"):
             self.locks.remove("get")
             self.tags.remove("rooted")
             self.locks.add("get:all()")
 
-
     def at_object_creation(self):
         """Called once, when object is first created (after basetype_setup)."""
         self.locks.add("usekey: chestkey(%s)" % self.id)
-        self.db.container = True
         self.db.max_volume = 1
         self.at_init()
+
+    @property
+    def max_volume(self):
+        return self.baseval + int(self.scaling * self.quality_level)
 
     def grantkey(self, char):
         """Grants a key to this chest for char."""
@@ -193,7 +198,20 @@ class Container(LockMixins, DefaultObject):
 
     def return_contents(self, pobject, detailed=True, show_ids=False,
                         strip_ansi=False, show_places=True, sep=", "):
-        if self.tags.get("display_by_line"):
+        if self.display_by_line:
             return super(Container, self).return_contents(pobject, detailed, show_ids, strip_ansi, show_places,
                                                           sep="\n         ")
         return super(Container, self).return_contents(pobject, detailed, show_ids, strip_ansi, show_places, sep)
+
+
+class DisplayableContainer(Container):
+    display_when_closed = True
+
+
+class Bookcase(Container):
+    display_by_line = True
+
+
+class DisplayableBookcase(Container):
+    display_when_closed = True
+    display_by_line = True

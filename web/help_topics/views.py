@@ -4,8 +4,8 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import render, get_object_or_404
 from evennia.help.models import HelpEntry
-from world.dominion.models import (CraftingRecipe, CraftingMaterialType,
-                                   Organization, Member)
+from world.dominion.models import (Organization, Member)
+from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from web.helpdesk.models import KBCategory
 
 

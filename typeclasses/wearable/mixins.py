@@ -61,9 +61,15 @@ class UseEquipmentMixins(object):
         if verb == "wear":
             equipment = [ob for ob in self.equipment if not ob.is_equipped]
             from operator import attrgetter
-            return sorted(equipment, key=attrgetter('slot_limit', 'db_key'))
+            return sorted(equipment, key=attrgetter('slot', 'db_key'))
         else:  # Equipment to be removed
             return [ob for ob in self.equipment if ob.is_equipped]
+
+    def get_items_in_slot_and_layer(self, slot, layer):
+        return [item for item in self.equipment if item.slot == slot and item.layer == layer]
+
+    def get_total_volume_for_slot_and_layer(self, slot, layer):
+        return sum([item.slot_volume for item in self.get_items_in_slot_and_layer(slot, layer)])
 
     def undress(self):
         """A character method to take it aaaaall off. Does not handle exceptions!"""
@@ -135,29 +141,18 @@ class UseEquipmentMixins(object):
         wpndict = dict(self.get_fakeweapon() or {})
         wpn = self.weapon
         if wpn:
-            wpndict['attack_skill'] = wpn.db.attack_skill or 'crushing melee'
-            wpndict['attack_stat'] = wpn.db.attack_stat or 'dexterity'
-            wpndict['damage_stat'] = wpn.db.damage_stat or 'strength'
-            try:
-                wpndict['weapon_damage'] = wpn.damage_bonus or 0
-            except AttributeError:
-                wpndict['weapon_damage'] = wpn.db.damage_bonus or 0
-            wpndict['attack_type'] = wpn.db.attack_type or 'melee'
-            wpndict['can_be_parried'] = wpn.db.can_be_parried
-            wpndict['can_be_blocked'] = wpn.db.can_be_blocked
-            wpndict['can_be_dodged'] = wpn.db.can_be_dodged
-            wpndict['can_parry'] = wpn.db.can_parry or False
-            wpndict['can_riposte'] = wpn.db.can_parry or wpn.db.can_riposte or False
-            wpndict['reach'] = wpn.db.weapon_reach or 1
-            wpndict['minimum_range'] = wpn.db.minimum_range or 0
-            try:
-                wpndict['difficulty_mod'] = wpn.difficulty_mod or 0
-            except AttributeError:
-                wpndict['difficulty_mod'] = wpn.db.difficulty_mod or 0
-            try:
-                wpndict['flat_damage'] = wpn.flat_damage or 0
-            except AttributeError:
-                wpndict['flat_damage'] = wpn.db.flat_damage_bonus or 0
+            wpndict['attack_skill'] = wpn.attack_skill
+            wpndict['attack_stat'] = wpn.attack_stat
+            wpndict['damage_stat'] = wpn.damage_stat
+            wpndict['weapon_damage'] = wpn.base_damage
+            wpndict['attack_type'] = wpn.attack_type
+            wpndict['can_be_parried'] = wpn.can_be_parried
+            wpndict['can_be_blocked'] = wpn.can_be_blocked
+            wpndict['can_be_dodged'] = wpn.can_be_dodged
+            wpndict['can_parry'] = wpn.can_parry
+            wpndict['can_riposte'] = wpn.can_parry or wpn.can_riposte
+            wpndict['difficulty_mod'] = wpn.difficulty_mod
+            wpndict['flat_damage'] = wpn.flat_damage
             wpndict['modifier_tags'] = wpn.modifier_tags
         boss_rating = self.boss_rating
         if boss_rating:
@@ -207,3 +202,10 @@ class UseEquipmentMixins(object):
     def is_naked(self):
         """Confirms a character has no worn, sheathed, or wielded items."""
         return not any([self.worn, self.sheathed, self.wielded])
+
+    @property
+    def used_volume(self):
+        """The idea here is the only objects that take up carrying space are things which we aren't worn -
+        it's just objects that the character is physically holding. So weapons count, but worn clothes do not.
+        """
+        return sum(ob.volume for ob in self.contents if not ob.is_worn)

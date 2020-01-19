@@ -40,17 +40,17 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
     def test_wear_cmd(self):
         self.setup_cmd(CmdWear, self.char2)
         self.char2.additional_desc = "Also Sly is super hot."
-        self.top1.db.recipe = 1
-        self.top1.db.crafted_by = self.char1
+        self.top_no_crafter.db.recipe = 1
+        self.top_no_crafter.db.crafted_by = self.char1
         self.call_cmd("", "What are you trying to wear?")
         self.obj1.location = self.char2
         self.call_cmd("obj", "Could not put on Obj (wrong item type).")
         self.call_cmd("top1", "You don't carry 'top1'.")
-        self.top1.location = self.char2
+        self.top_no_crafter.location = self.char2
         self.call_cmd("top1", "You put on Top1.")
         self.call_cmd("top2", "Could not put on Top2 (chest slot full).")
         self.call_cmd("slinkity1", "You put on Slinkity1.")
-        self.assertTrue(self.top1.is_worn)
+        self.assertTrue(self.top_no_crafter.is_worn)
         self.assertTrue(self.catsuit1.is_worn)
         self.call_cmd("a fox mask", "Could not put on A Fox Mask (needs repair).")
         self.mask1.db.quality_level = 8

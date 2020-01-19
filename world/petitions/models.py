@@ -33,7 +33,7 @@ class BrokeredSale(SharedMemoryModel):
     price = models.PositiveIntegerField(default=0)
     buyers = models.ManyToManyField("dominion.PlayerOrNpc", related_name="brokered_purchases",
                                     through="PurchasedAmount")
-    crafting_material_type = models.ForeignKey("dominion.CraftingMaterialType", null=True, blank=True,
+    crafting_material_type = models.ForeignKey("crafting.CraftingMaterialType", null=True, blank=True,
                                                on_delete=models.CASCADE)
     broker_type = models.PositiveSmallIntegerField(default=SALE, choices=BROKER_TYPES)
 

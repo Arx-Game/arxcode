@@ -180,7 +180,7 @@ class MonsterAlchemicalDrop(SharedMemoryModel):
 class MonsterCraftingDrop(SharedMemoryModel):
 
     monster = models.ForeignKey(Monster, related_name='crafting_drops', on_delete=models.CASCADE)
-    material = models.ForeignKey('dominion.CraftingMaterialType', related_name='monsters', on_delete=models.CASCADE)
+    material = models.ForeignKey('crafting.CraftingMaterialType', related_name='monsters', on_delete=models.CASCADE)
     weight = models.PositiveSmallIntegerField(default=10, blank=False, null=False)
     min_quantity = models.PositiveSmallIntegerField(default=1)
     max_quantity = models.PositiveSmallIntegerField(default=1)
@@ -757,7 +757,8 @@ class ShardhavenPuzzleCraftingMaterial(SharedMemoryModel):
     puzzle = models.ForeignKey(ShardhavenPuzzle, blank=False, null=False, related_name='crafting_materials',
                                on_delete=models.CASCADE)
     weight = models.SmallIntegerField(default=10, help_text="A weight chance that this puzzle will drop this material.")
-    material = models.ForeignKey('dominion.CraftingMaterialType', blank=False, null=False,
+
+    material = models.ForeignKey('crafting.CraftingMaterialType', blank=False, null=False,
                                  on_delete=models.CASCADE)
     minimum_quantity = models.PositiveSmallIntegerField(default=1)
     maximum_quantity = models.PositiveSmallIntegerField(default=1)

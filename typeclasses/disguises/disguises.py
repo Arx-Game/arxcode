@@ -10,20 +10,14 @@ class Mask(Wearable):
     Wearable mask that replaces name with 'Someone wearing <short desc> mask'.
     Also grants a temp_desc. Charges equal to quality, loses a charge when worn.
     """
-    def at_object_creation(self):
-        """
-        Run at Wearable creation.
-        """
-        self.is_worn = False
-
     def at_post_remove(self, wearer):
         """Hook called after removing succeeds."""
         self.remove_mask(wearer)
         super(Mask, self).at_post_remove(wearer)
 
-    def at_pre_wear(self, wearer):
+    def at_pre_wear(self, wearer, layer=None):
         """Hook called before wearing for any checks."""
-        super(Mask, self).at_pre_wear(wearer)
+        super(Mask, self).at_pre_wear(wearer, layer)
         if self.db.quality_level == 0:
             raise EquipError("needs repair")
 

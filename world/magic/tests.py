@@ -1,6 +1,6 @@
 from world.magic.models import *
 from .conditional_parser import ConditionalHandler
-from world.dominion.models import CraftingRecipe
+from world.crafting.models import CraftingRecipe
 from world.weather.models import WeatherType, WeatherEmit
 from evennia.server.models import ServerConfig
 from .test_utils import ArxMagicTest, pending_magic_text

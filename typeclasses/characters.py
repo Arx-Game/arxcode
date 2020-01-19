@@ -41,6 +41,9 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     at_post_puppet - Echoes "PlayerName has entered the game" to the room.
 
     """
+    is_character = True
+    volume = 100  # TODO: turn this into property based on character's size
+
     def at_object_creation(self):
         """
         Called once, when this object is first created.
@@ -61,10 +64,6 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         self.db.abilities = {}
         self.at_init()
         self.locks.add("delete:perm(Immortals);tell:all()")
-
-    @property
-    def is_character(self):
-        return True
 
     @lazy_property
     def messages(self):
@@ -213,6 +212,10 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
 """ % ({'species': species, 'hair': hair, 'eyes': eyes, 'height': height, 'gender': gender, 'age': age, 'skin': skin})
         return string
 
+    @property
+    def is_container(self):
+        return self.dead
+
     def death_process(self, *args, **kwargs):
         """
         This object dying. Set its state to dead, send out
@@ -221,7 +224,6 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         if self.db.health_status == "dead":
             return
         self.db.health_status = "dead"
-        self.db.container = True
         if self.location:
             self.location.msg_contents("{r%s has died.{n" % self.name)
         try:
@@ -240,7 +242,6 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         Cue 'Bring Me Back to Life' by Evanessence.
         """
         self.db.health_status = "alive"
-        self.db.container = False
         if self.location:
             self.location.msg_contents("{w%s has returned to life.{n" % self.name)
         try:

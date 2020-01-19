@@ -1,11 +1,13 @@
-from server.utils.arx_utils import sub_old_ansi, text_box, lowercase_kwargs
 import re
-from evennia.utils.utils import lazy_property
-from evennia.utils.ansi import parse_ansi
+from random import randint
 
+from evennia.utils.ansi import parse_ansi
+from evennia.utils.utils import lazy_property
+from server.utils.arx_utils import sub_old_ansi, text_box, lowercase_kwargs, list_to_string
 from world.conditions.triggerhandler import TriggerHandler
-from world.templates.models import Template
+from world.stats_and_skills import do_dice_check
 from world.templates.mixins import TemplateMixins
+from world.templates.models import Template
 
 
 class DescMixins(object):
@@ -107,18 +109,6 @@ class DescMixins(object):
         self.db.raw_desc = val
         self.ndb.cached_template_desc = None
     perm_desc = property(__perm_desc_get, __perm_desc_set)
-
-    def __get_volume(self):
-        """
-        :type self: ObjectDB
-        """
-        total = 0
-        for obj in self.contents:
-            if not obj.db.currently_worn and obj.db.sheathed_by != self:
-                vol = obj.db.volume or 1
-                total += vol
-        return total
-    volume = property(__get_volume)
 
     @property
     def health_status(self):
@@ -238,17 +228,12 @@ class NameMixins(object):
 
 # noinspection PyAttributeOutsideInit
 class BaseObjectMixins(object):
-    @property
-    def is_room(self):
-        return False
-
-    @property
-    def is_exit(self):
-        return False
-
-    @property
-    def is_character(self):
-        return False
+    is_room = False
+    is_exit = False
+    is_character = False
+    is_container = False
+    max_volume = 0  # carrying capacity
+    volume = 1  # space something takes up
 
     @property
     def player(self):
@@ -257,6 +242,11 @@ class BaseObjectMixins(object):
     @player.setter
     def player(self, value):
         self.account = value
+
+    @property
+    def used_volume(self):
+        """How much of our volume is currently filled with other objects"""
+        return sum(ob.volume for ob in self.contents)
 
     def softdelete(self):
         """
@@ -337,6 +327,8 @@ class BaseObjectMixins(object):
 
 
 class AppearanceMixins(BaseObjectMixins, TemplateMixins):
+    do_not_format_desc = False
+
     def get_numbered_name(self, count, looker, **kwargs):
         """
         Evennia's default get_numbered_name method uses the Inflect library, which is
@@ -516,7 +508,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 desc = parse_ansi(desc, strip_ansi=True)
             except (AttributeError, ValueError, TypeError):
                 pass
-        if desc and not self.db.recipe and not self.db.do_not_format_desc and "player_made_room" not in self.tags.all():
+        if desc and not self.do_not_format_desc and "player_made_room" not in self.tags.all():
             if format_desc:
                 string += "\n\n%s{n\n" % desc
             else:
@@ -630,8 +622,21 @@ class TriggersMixin(object):
 class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
     pass
 
+    def at_object_creation(self):
+        """
+        Run at Wearable creation.
+        """
+        self.at_init()
+
 
 class CraftingMixins(object):
+    do_not_format_desc = True
+
+    def add_adornment(self, material, amount):
+        adorn, _ = self.adornments.get_or_create(type=material)
+        adorn.amount += amount
+        adorn.save()
+
     def return_appearance(self, pobject, detailed=False, format_desc=False,
                           show_contents=True):
         """
@@ -661,17 +666,10 @@ class CraftingMixins(object):
 
     def do_junkout(self, caller):
         """Attempts to salvage materials from crafted item, then junks it."""
-        from world.dominion.models import (CraftingMaterials, CraftingMaterialType)
-
-        def get_refund_chance():
-            """Gets our chance of material refund based on a skill check"""
-            from world.stats_and_skills import do_dice_check
-            roll = do_dice_check(caller, stat="dexterity", skill="legerdemain", quiet=False)
-            return max(roll, 1)
 
         def randomize_amount(amt):
             """Helper function to determine amount kept when junking"""
-            from random import randint
+
             num_kept = 0
             for _ in range(amt):
                 if randint(0, 100) <= roll:
@@ -679,37 +677,22 @@ class CraftingMixins(object):
             return num_kept
 
         pmats = caller.player.Dominion.assets.materials
-        mats = self.db.materials or {}
-        adorns = self.db.adorns or {}
+        mats = self.recipe.materials_counter
+        for adorn in self.adornments.all():
+            mats.update({adorn.type: adorn.amount})
+
         refunded = []
-        roll = get_refund_chance()
-        for mat in adorns:
-            cmat = CraftingMaterialType.objects.get(id=mat)
-            amount = adorns[mat]
-            amount = randomize_amount(amount)
-            if amount:
-                try:
-                    pmat = pmats.get(type=cmat)
-                except CraftingMaterials.DoesNotExist:
-                    pmat = pmats.create(type=cmat)
-                pmat.amount += amount
-                pmat.save()
-                refunded.append("%s %s" % (amount, cmat.name))
+        roll = max(do_dice_check(caller, stat="dexterity", skill="legerdemain", quiet=False), 1)
+
         for mat in mats:
             amount = mats[mat]
-            if mat in adorns:
-                amount -= adorns[mat]
             amount = randomize_amount(amount)
             if amount <= 0:
                 continue
-            cmat = CraftingMaterialType.objects.get(id=mat)
-            try:
-                pmat = pmats.get(type=cmat)
-            except CraftingMaterials.DoesNotExist:
-                pmat = pmats.create(type=cmat)
+            pmat, _ = pmats.get_or_create(type=mat)
             pmat.amount += amount
             pmat.save()
-            refunded.append("%s %s" % (amount, cmat.name))
+            refunded.append("%s %s" % (amount, mat))
         destroy_msg = "You destroy %s." % self
         if refunded:
             destroy_msg += " Salvaged materials: %s" % ", ".join(refunded)
@@ -725,48 +708,30 @@ class CraftingMixins(object):
         Returns:
             The crafting recipe used to create this object.
         """
-        if self.db.recipe:
-            from world.dominion.models import CraftingRecipe
-            try:
-                recipe = CraftingRecipe.objects.get(id=self.db.recipe)
-                return recipe
-            except CraftingRecipe.DoesNotExist:
-                pass
+        try:
+            return self.crafting_record.recipe
+        except AttributeError:
+            return None
 
     @property
+    def crafted_by(self):
+        try:
+            return self.crafting_record.crafted_by
+        except AttributeError:
+            return None
+
+    @lazy_property
     def adorns(self):
-        """
-        Returns a dict of crafting materials we have.
-
-        :type self: ObjectDB
-            Returns:
-                ret (dict): dict of crafting materials as keys to amt
-
-        SharedMemoryModel causes all .get by ID to be cached inside the class,
-        so these queries will only hit the database once. After that, we're just
-        building a dict so it'll be insignificant.
-        """
-        from world.dominion.models import CraftingMaterialType
-        ret = {}
-        adorns = self.db.adorns or {}
-        for adorn_id in adorns:
-            try:
-                mat = CraftingMaterialType.objects.get(id=adorn_id)
-            except CraftingMaterialType.DoesNotExist:
-                continue
-            ret[mat] = adorns[adorn_id]
-        return ret
+        return list(self.adornments.all())
 
     def return_crafting_desc(self):
         """
         :type self: ObjectDB
         """
         string = ""
-        adorns = self.adorns
         # adorns are a dict of the ID of the crafting material type to amount
-        if adorns:
-            adorn_strs = ["%s %s" % (amt, mat.name) for mat, amt in adorns.items()]
-            string += "\nAdornments: %s" % ", ".join(adorn_strs)
+        if self.adorns:
+            string += "\nAdornments: %s" % list_to_string(self.adorns)
         # recipe is an integer matching the CraftingRecipe ID
         if hasattr(self, 'type_description') and self.type_description:
             from server.utils.arx_utils import a_or_an
@@ -791,7 +756,6 @@ class CraftingMixins(object):
     def type_description(self):
         if self.recipe:
             return self.recipe.name
-
         return None
 
     @property
@@ -802,7 +766,37 @@ class CraftingMixins(object):
 
     @property
     def quality_level(self):
-        return self.db.quality_level or 0
+        try:
+            return self.crafting_record.quality_level
+        except AttributeError:
+            return self.db.quality_level or 0
+
+    @property
+    def baseval(self):
+        try:
+            base = self.recipe.baseval
+            crafter = self.crafted_by
+            if (self.recipe.level > 3) or not crafter or crafter.check_permstring("builders"):
+                base += 1
+            return base
+        except AttributeError:
+            return self.db.baseval or 0
+
+    @property
+    def scaling(self):
+        try:
+            val = self.recipe.scaling
+            if val is None:
+                val = 0.2
+            else:
+                val = self.baseval / 20.0
+            return val
+        except AttributeError:
+            return self.db.scaling or 0.2
+
+    @property
+    def ignore_crafted(self):
+        return self.tags.get("ignore_crafted")
 
     def get_quality_appearance(self):
         """
@@ -987,6 +981,8 @@ class MsgMixins(object):
 
 
 class LockMixins(object):
+    display_when_closed = False
+
     def has_lock_permission(self, caller):
         """
         Checks if a caller has permission to open this object - assume we're a locked door or chest.
@@ -1059,7 +1055,7 @@ class LockMixins(object):
         :return: str
         """
         currently_open = not self.db.locked
-        show_contents = (currently_open or self.tags.get("displayable")) and show_contents
+        show_contents = (currently_open or self.display_when_closed) and show_contents
         base = super(LockMixins, self).return_appearance(pobject, detailed=detailed,
                                                          format_desc=format_desc, show_contents=show_contents)
         return base + "\nIt is currently %s." % ("locked" if self.db.locked else "unlocked")

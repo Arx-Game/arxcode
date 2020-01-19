@@ -12,7 +12,7 @@ class TestPetitionCommands(ArxCommandTest):
 
     def test_cmd_broker(self):
         from world.petitions.models import BrokeredSale
-        from world.dominion.models import CraftingMaterialType
+        from world.crafting.models import CraftingMaterialType
         from web.character.models import PlayerAccount
         from evennia.server.models import ServerConfig
         mat = CraftingMaterialType.objects.create(name="testium", value=5000)

@@ -27,10 +27,10 @@ from typeclasses.characters import Character
 from typeclasses.rooms import ArxRoom
 from web.character.models import AccountHistory, FirstContact
 from world.dominion.forms import RPEventCreateForm
-from world.dominion.models import (RPEvent, Agent, CraftingMaterialType, CraftingMaterials,
-                                   AssetOwner, Reputation, Member, PlotRoom,
+from world.dominion.models import (RPEvent, Agent, AssetOwner, Reputation, Member, PlotRoom,
                                    Organization, InfluenceCategory, PlotAction, PrestigeAdjustment,
                                    PrestigeCategory, PrestigeNomination)
+from world.crafting.models import CraftingMaterialType, OwnedMaterial
 from world.msgs.models import Journal, Messenger
 from world.msgs.managers import reload_model_as_proxy
 from world.stats_and_skills import do_dice_check
@@ -880,7 +880,7 @@ class CmdMessenger(ArxCommand):
             self.msg("You must specify materials to send.")
         except CraftingMaterialType.DoesNotExist:
             self.msg("That is not a valid material type.")
-        except CraftingMaterials.DoesNotExist:
+        except OwnedMaterial.DoesNotExist:
             self.msg("You don't have any of that material.")
         except ValueError as err:
             self.msg(err)
@@ -1166,7 +1166,7 @@ class CmdMessenger(ArxCommand):
             try:
                 pmats = self.caller.player.Dominion.assets.materials
                 pmat = pmats.get(type=mats[0])
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 self.msg("You don't have any of that type of material.")
                 return
             if pmat.amount < amt:
