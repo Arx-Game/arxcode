@@ -210,6 +210,7 @@ class StateIndependentCmdSet(CmdSet):
         self.add(overrides.CmdPose())
         # emit was originally an admin command. Replaced those with gemit
         self.add(overrides.CmdEmit())
+        self.add(overrides.CmdArxTime())
         self.add(general.CmdOOCSay())
         self.add(general.CmdDirections())
         self.add(general.CmdKeyring())
@@ -307,7 +308,6 @@ class StaffCmdSet(CmdSet):
         self.add(system.CmdAccounts())
         self.add(system.CmdService())
         self.add(system.CmdAbout())
-        self.add(system.CmdTime())
         self.add(system.CmdServerLoad())
         # Admin commands
         self.add(admin.CmdBoot())

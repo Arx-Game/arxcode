@@ -6,11 +6,12 @@ import time
 from django.conf import settings
 
 from evennia.server.sessionhandler import SESSIONS
+from evennia.commands.default.account import CmdOOC
 from evennia.commands.default.comms import (CmdCdestroy, CmdChannelCreate, CmdChannels, find_channel,
                                             CmdClock, CmdCBoot, CmdCdesc, CmdAllCom, CmdCWho)
 from evennia.commands.default.general import CmdSay
 from evennia.comms.models import ChannelDB
-from evennia.commands.default.system import CmdReload, CmdScripts
+from evennia.commands.default.system import CmdReload, CmdScripts, CmdTime
 from evennia.commands.cmdhandler import get_and_merge_cmdsets
 # noinspection PyProtectedMember
 from evennia.commands.default.building import (CmdExamine, CmdLock, CmdDestroy, ObjManipCommand, CmdTag,
@@ -1472,7 +1473,8 @@ class CmdArxCWho(CmdCWho):
 class CmdArxLock(CmdLock):
     """Override of Evennia's lock command. Different default lock."""
     __doc__ = CmdLock.__doc__
-    aliases = ["@locks", "locks"]
+    key = "@lock"
+    aliases = ["@locks"]
 
 
 class CmdArxTag(CmdTag):
@@ -1744,6 +1746,16 @@ class CmdArxScripts(CmdScripts):
             super(CmdArxScripts, self).func()
             return
         self.list_scripts()
+
+
+class CmdArxTime(CmdTime):
+    __doc__ = CmdTime.__doc__
+    key = "@time"
+
+
+class CmdArxOOC(CmdOOC):
+    __doc__ = CmdOOC.__doc__
+    key = "@ooc"
 
 
 class SystemNoMatch(ArxCommand):
