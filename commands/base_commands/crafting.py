@@ -204,8 +204,8 @@ def get_difficulty_mod(recipe, money=0, action_points=0, ability=0):
     # for every 10% of the value of recipe we invest, we knock 1 off difficulty
     val = int(val/0.10) + 1
     if action_points:
-        base = action_points / (14 - (2*ability))
-        val += randint(base, action_points)
+        base = action_points // (14 - (2*ability))
+        val += randint(int(base), int(action_points))
     return val
 
 

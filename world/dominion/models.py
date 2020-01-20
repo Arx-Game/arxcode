@@ -963,7 +963,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         mod = self.prestige_mod
         bonus = (mod * base_amount)/100.0
         if random_percentage is not None:
-            bonus = (bonus * randint(50, random_percentage))/100.0
+            bonus = (bonus * randint(50, int(random_percentage)))/100.0
         return int(bonus)
 
     def get_bonus_income(self, base_amount):
