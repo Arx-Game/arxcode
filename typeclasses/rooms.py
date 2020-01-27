@@ -87,11 +87,11 @@ from world.weather import utils as weather_utils
 _AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
 
 # room cmdsets
-MARKETCMD = "cmdsets.market.MarketCmdSet"
-BANKCMD = "cmdsets.bank.BankCmdSet"
-RUMORCMD = "cmdsets.rumor.RumorCmdSet"
-HOMECMD = "cmdsets.home.HomeCmdSet"
-SHOPCMD = "cmdsets.home.ShopCmdSet"
+MARKETCMD = "commands.cmdsets.market.MarketCmdSet"
+BANKCMD = "commands.cmdsets.bank.BankCmdSet"
+RUMORCMD = "commands.cmdsets.rumor.RumorCmdSet"
+HOMECMD = "commanmds.cmdsets.home.HomeCmdSet"
+SHOPCMD = "commands.cmdsets.home.ShopCmdSet"
 
 
 # implements the Extended Room

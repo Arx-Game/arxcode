@@ -1350,7 +1350,7 @@ class Investigation(AbstractPlayerAllocations):
 
     def refund_ap(self):
         ap_cost = self.ap_cost(self.char)
-        self.char.player_ob.pay_action_points(ap_cost)
+        self.char.player_ob.pay_action_points(-ap_cost)
 
     def do_roll(self, mod=0, diff=None):
         """

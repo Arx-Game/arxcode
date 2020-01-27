@@ -324,7 +324,7 @@ class CmdTrain(ArxCommand):
 
     def action_point_cost(self, character):
         """Redundant attribute to try to resolve sync/caching errors."""
-        num_trained = character.db.num_trained
+        num_trained = character.db.num_trained or 0
         if num_trained < len(self.currently_training(character)):
             num_trained = len(self.currently_training(character))
         if num_trained < self.max_trainees(character):

@@ -175,3 +175,5 @@ else:
     ADMINS = []
 SEND_GAME_INDEX = config('SEND_GAME_INDEX', cast=bool, default=False)
 ISSUES_URL = config('ISSUES_URL', default='')
+# Evennia's base settings screw up current account creation
+AUTH_PASSWORD_VALIDATORS = []
