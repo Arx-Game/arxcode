@@ -1224,7 +1224,7 @@ class CmdMessenger(ArxCommand):
             saved = "{w*{n" if mess.preserved else ""
             msgtable.add_row([mess_num, name, date, ooc_date, saved])
             mess_num += 1
-        caller.msg(msgtable)
+        self.msg(msgtable)
 
     def display_sent_table(self, num_disp, old):
         """Displays table of messengers we've sent to caller"""

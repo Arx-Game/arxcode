@@ -1865,7 +1865,7 @@ class CmdOrganization(ArxPlayerCommand):
             else:
                 olock = "rank(%s)" % org.default_access_rank
             table.add_row([lock, olock])
-        caller.msg(table, options={'box': True})
+        caller.msg(str(table), options={'box': True})
 
     def display_permtypes(self):
         self.msg("Type must be one of the following: %s" % ", ".join(self.org_locks))

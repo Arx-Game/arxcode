@@ -128,7 +128,7 @@ def list_messages(caller, board, board_num, old=False):
         if unread:
             poster = "{0}".format(poster) + "{n"
         msgtable.add_row([bbmsgnum, subject, date, poster])
-    caller.msg(msgtable)
+    caller.msg(str(msgtable))
     pass
 
 
