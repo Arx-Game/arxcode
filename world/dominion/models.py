@@ -2461,7 +2461,7 @@ class WorkSetting(SharedMemoryModel):
     message = models.TextField(blank=True)
 
     def __str__(self):
-        return "%s-%s for %s" % (self.get_resource_display(), self.skill.capitalize(), self.organization)
+        return "%s-%s for %s" % (self.get_resource_display(), str(self.skill).capitalize(), self.organization)
 
     @classmethod
     def get_choice_from_string(cls, string):
