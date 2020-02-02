@@ -552,7 +552,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
             if not ability:
                 skill_history = char.db.skill_history or {}
                 try:
-                    current = char.db.skill_history[self.rhs]
+                    current = len(char.db.skill_history[self.rhs])
                     skill_list = skill_history[self.rhs]
                     cost = skill_list.pop()
                     skill_history[self.rhs] = skill_list

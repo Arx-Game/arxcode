@@ -90,7 +90,7 @@ _AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit
 MARKETCMD = "commands.cmdsets.market.MarketCmdSet"
 BANKCMD = "commands.cmdsets.bank.BankCmdSet"
 RUMORCMD = "commands.cmdsets.rumor.RumorCmdSet"
-HOMECMD = "commanmds.cmdsets.home.HomeCmdSet"
+HOMECMD = "commands.cmdsets.home.HomeCmdSet"
 SHOPCMD = "commands.cmdsets.home.ShopCmdSet"
 
 
