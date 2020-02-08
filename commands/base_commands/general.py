@@ -1378,8 +1378,8 @@ class CmdGradient(ArxPlayerCommand):
         if not reverse:
             caller.msg(self.color_string(start, end, text))
             return
-        caller.msg(self.color_string(start, end, text[:len(text)/2]))
-        caller.msg(self.color_string(end, start, text[len(text)/2:]))
+        caller.msg(self.color_string(start, end, text[:len(text)//2]))
+        caller.msg(self.color_string(end, start, text[len(text)//2:]))
 
 
 class CmdInform(ArxPlayerCommand):
