@@ -227,7 +227,7 @@ class MessengerHandler(MsgHandlerBase):
 
     def get_packed_messenger(self):
         pending = self.pending_messengers
-        if isinstance(pending, basestring):
+        if isinstance(pending, str):
             self.msg("Your pending_messengers attribute was corrupted in the database conversion. "
                      "Sorry! Ask a GM to see if they can find which messages were yours.")
             self.obj.db.pending_messengers = []

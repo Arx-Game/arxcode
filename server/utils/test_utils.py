@@ -131,7 +131,7 @@ class ArxCommandTest(ArxTestConfigMixin, CommandTest):
 
     # noinspection PyBroadException
     def call(self, cmdobj, args, msg=None, cmdset=None, noansi=True, caller=None, receiver=None, cmdstring=None,
-             obj=None):
+             obj=None, inputs=None, raw_string=None):
         """
         Test a command by assigning all the needed
         properties to cmdobj and  running
@@ -170,10 +170,11 @@ class ArxCommandTest(ArxTestConfigMixin, CommandTest):
             receiver.msg(traceback.format_exc())
         finally:
             # clean out prettytable sugar. We only operate on text-type
-            stored_msg = [args[0] if args and args[0] else kwargs.get("text", utils.to_str(kwargs, force_string=True))
+            stored_msg = [args[0] if args and args[0] else kwargs.get("text", utils.to_str(kwargs))
                           for name, args, kwargs in receiver.msg.mock_calls]
             # Get the first element of a tuple if msg received a tuple instead of a string
-            stored_msg = [smsg[0] if hasattr(smsg, '__iter__') else smsg for smsg in stored_msg]
+            stored_msg = [smsg[0] if not isinstance(smsg, str) and hasattr(smsg, '__iter__')
+                          else str(smsg) for smsg in stored_msg]
             if msg is not None:
                 returned_msg = self.format_returned_msg(stored_msg, noansi)
                 if msg == "" and returned_msg or returned_msg != msg.strip():

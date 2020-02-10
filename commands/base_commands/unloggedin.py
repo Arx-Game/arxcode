@@ -1,6 +1,8 @@
 """
 Commands that are available from the connect screen.
 """
+import requests
+
 from django.conf import settings
 from evennia.accounts.models import AccountDB
 from evennia.server.models import ServerConfig
@@ -73,13 +75,12 @@ class CmdGuestConnect(ArxCommand):
                 except NXDOMAIN:
                     # not inside TOR
                     pass
-                import json
-                from urllib2 import urlopen
                 api_key = getattr(settings, 'HOST_BLOCKER_API_KEY', "")
-                request = "http://tools.xioax.com/networking/v2/json/%s/%s" % (addr, api_key)
+                url = "http://tools.xioax.com/networking/v2/json/%s/%s" % (addr, api_key)
                 try:
-                    data = json.load(urlopen(request))
-                    print "Returned from xiaox: %s" % str(data)
+                    response = requests.get(url=url)
+                    data = response.json()
+                    print("Returned from xiaox: %s" % str(data))
                     if data['host-ip']:
                         self.dc_session("Guest connections from VPNs are not permitted, sorry.")
                         return
@@ -89,7 +90,7 @@ class CmdGuestConnect(ArxCommand):
                 except Exception as err:
                     import traceback
                     traceback.print_exc()
-                    print 'Error code on trying to check VPN:', err
+                    print('Error code on trying to check VPN:', err)
         for pc in playerlist:
             if pc.is_guest():
                 # add session check just to be absolutely sure we don't connect to a guest in-use
@@ -160,4 +161,4 @@ To login to the system, you need to do one of the following:
 
 You can use the {wlook{n command if you want to see the connect screen again.
 """
-        self.caller.msg(string)
+        self.msg(string)

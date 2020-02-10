@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
             model_name='crisisaction',
             name='status',
             field=models.PositiveSmallIntegerField(choices=[
-                (0, b'Draft'), (1, b'Needs Player Input'), (2, b'Needs GM Input'), (3, b'Cancelled'),
-                (4, b'Pending Resolution'), (5, b'Resolved')], default=0),
+                (0, 'Draft'), (1, 'Needs Player Input'), (2, 'Needs GM Input'), (3, 'Cancelled'),
+                (4, 'Pending Resolution'), (5, 'Resolved')], default=0),
         ),
     ]

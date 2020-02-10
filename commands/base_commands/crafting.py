@@ -182,7 +182,7 @@ def do_crafting_roll(char, recipe, diffmod=0, diffmult=1.0, room=None):
     skill = recipe.skill
     if skill in ("all", "any"):
         skill = get_highest_crafting_skill(char)
-    stat = "luck" if char.db.luck > char.db.dexterity else "dexterity"
+    stat = "luck" if (char.db.luck or 0) > (char.db.dexterity or 0) else "dexterity"
     can_crit = False
     try:
         if char.roster.roster.name == "Active":
@@ -204,8 +204,8 @@ def get_difficulty_mod(recipe, money=0, action_points=0, ability=0):
     # for every 10% of the value of recipe we invest, we knock 1 off difficulty
     val = int(val/0.10) + 1
     if action_points:
-        base = action_points / (14 - (2*ability))
-        val += randint(base, action_points)
+        base = action_points // (14 - (2*ability))
+        val += randint(int(base), int(action_points))
     return val
 
 
@@ -810,12 +810,14 @@ class CmdRecipes(ArxCommand):
     def display_recipes(self, recipes):
         from server.utils import arx_more
         if not recipes:
-            self.caller.msg("(No recipes qualify.)")
+            self.msg("(No recipes qualify.)")
             return
         known_list = CraftingRecipe.objects.filter(known_by__player__player=self.caller.player)
         table = PrettyTable(["{wKnown{n", "{wName{n", "{wAbility{n", "{wLvl{n", "{wCost{n"])
-        from operator import attrgetter
-        recipes = sorted(recipes, key=attrgetter('ability', 'difficulty', 'name'))
+
+        def getter(a):
+            return a.ability or ""
+        recipes = sorted(recipes, key=getter)
         for recipe in recipes:
             known = "{wX{n" if recipe in known_list else ""
             table.add_row([known, str(recipe), recipe.ability, recipe.difficulty, recipe.additional_cost])

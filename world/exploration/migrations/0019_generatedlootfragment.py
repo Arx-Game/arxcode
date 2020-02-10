@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             name='GeneratedLootFragment',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('fragment_type', models.PositiveSmallIntegerField(choices=[(0, b'Adjective'), (1, b'Bauble Material'), (2, b'Type of Item'), (3, b'Name fragment (first)'), (4, b'Name fragment (second)'), (5, b'Name fragment (prefix)'), (6, b'Small Weapon Type'), (7, b'Medium Weapon Type'), (8, b'Huge Weapon Type')], default=0)),
+                ('fragment_type', models.PositiveSmallIntegerField(choices=[(0, 'Adjective'), (1, 'Bauble Material'), (2, 'Type of Item'), (3, 'Name fragment (first)'), (4, 'Name fragment (second)'), (5, 'Name fragment (prefix)'), (6, 'Small Weapon Type'), (7, 'Medium Weapon Type'), (8, 'Huge Weapon Type')], default=0)),
                 ('text', models.CharField(max_length=25)),
             ],
             options={

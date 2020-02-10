@@ -109,10 +109,11 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_default_commands(self):
         """Add selected Evennia built-in commands"""
         from evennia.commands.default import (account, building, system, admin, comms)
+        from commands.base_commands import overrides
         # Player-specific commands
         self.add(account.CmdOOCLook())
         self.add(account.CmdIC())
-        self.add(account.CmdOOC())
+        self.add(overrides.CmdArxOOC())
         self.add(account.CmdOption())
         self.add(account.CmdQuit())
         self.add(account.CmdPassword())
@@ -123,8 +124,9 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         self.add(system.CmdReset())
         self.add(system.CmdShutdown())
         self.add(system.CmdPy())
+        self.add(system.CmdAccounts())
+        self.add(system.CmdAbout())
         # Admin commands
-        self.add(admin.CmdDelAccount())
         self.add(admin.CmdNewPassword())
         # Comm commands
         self.add(comms.CmdAddCom())

@@ -15,7 +15,7 @@ from typeclasses.bulletin_board.bboard import BBoard
 
 # limit symbol import for API
 __all__ = ("CmdBBReadOrPost", "CmdBBSub", "CmdBBUnsub",
-           "CmdBBCreate", "get_boards")
+           "CmdBBCreate", "get_boards", "get_unread_posts")
 BOARD_TYPECLASS = "typeclasses.bulletin_board.bboard.BBoard"
 
 
@@ -128,7 +128,7 @@ def list_messages(caller, board, board_num, old=False):
         if unread:
             poster = "{0}".format(poster) + "{n"
         msgtable.add_row([bbmsgnum, subject, date, poster])
-    caller.msg(msgtable)
+    caller.msg(str(msgtable))
     pass
 
 

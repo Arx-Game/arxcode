@@ -135,7 +135,7 @@ class CmdGemit(ArxPlayerCommand):
                     msg = self.lhs
                 create_gemit_and_post(msg, self.caller, orgs_list=orgs_list)
         except CommandError as err:
-            self.caller.msg(err)
+            self.msg(err)
 
 
 class CmdWall(ArxCommand):
@@ -156,7 +156,7 @@ class CmdWall(ArxCommand):
     def func(self):
         """Implements command"""
         if not self.args:
-            self.caller.msg("Usage: @wall <message>")
+            self.msg("Usage: @wall <message>")
             return
         message = "%s shouts \"%s\"" % (self.caller.name, self.args)
         self.msg("Announcing to all connected players ...")
@@ -258,7 +258,7 @@ class CmdForce(ArxCommand):
         """Implements command"""
         caller = self.caller
         if not self.lhs or not self.rhs:
-            self.caller.msg("Usage: @force <character>=<command>")
+            self.msg("Usage: @force <character>=<command>")
             return
         if "char" in self.switches:
             player = self.caller.player.search(self.lhs)

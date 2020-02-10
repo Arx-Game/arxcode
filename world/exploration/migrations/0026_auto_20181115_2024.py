@@ -15,11 +15,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='monster',
             name='weight_trinket',
-            field=models.PositiveSmallIntegerField(default=1, help_text=b'The weight value to use for Trinkets'),
+            field=models.PositiveSmallIntegerField(default=1, help_text='The weight value to use for Trinkets'),
         ),
         migrations.AddField(
             model_name='monster',
             name='weight_weapon',
-            field=models.PositiveSmallIntegerField(default=1, help_text=b'The weight value to use for Weapons'),
+            field=models.PositiveSmallIntegerField(default=1, help_text='The weight value to use for Weapons'),
         ),
     ]

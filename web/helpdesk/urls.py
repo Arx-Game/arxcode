@@ -194,7 +194,7 @@ urlpatterns += [
     #     name='login'),
 
     url(r'^logout/$',
-        django.contrib.auth.views.logout,
+        django.contrib.auth.views.LogoutView,
         {'template_name': 'helpdesk/registration/login.html', 'next_page': '../'},
         name='logout'),
 ]

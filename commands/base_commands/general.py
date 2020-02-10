@@ -468,9 +468,8 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
                 return
 
         if not self.args or 'list' in self.switches:
-            from past.builtins import cmp
             pages = list(pages_we_sent) + list(pages_we_got)
-            pages.sort(lambda x, y: cmp(x.date_created, y.date_created))
+            pages.sort(key=lambda x: x.date_created)
 
             number = 5
             if self.args:
@@ -536,7 +535,7 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
                 self.msg("Who do you want to whisper?")
                 return
             if pobj:
-                if hasattr(pobj, 'has_player') and not pobj.has_player:
+                if hasattr(pobj, 'has_account') and not pobj.has_account:
                     self.msg("You may only send whispers to online characters.")
                 elif not pobj.location or pobj.location != caller.location:
                     self.msg("You may only whisper characters in the same room as you.")
@@ -586,7 +585,7 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
             if not pobj.ndb.whispers_received:
                 pobj.ndb.whispers_received = []
             pobj.ndb.whispers_received.append(temp_message)
-            if hasattr(pobj, 'has_player') and not pobj.has_player:
+            if hasattr(pobj, 'has_account') and not pobj.has_account:
                 received.append("{C%s{n" % pobj.name)
                 rstrings.append("%s is offline. They will see your message if they list their pages later." %
                                 received[-1])
@@ -882,7 +881,7 @@ class CmdPage(ArxPlayerCommand):
             if not pobj.ndb.pages_received:
                 pobj.ndb.pages_received = []
             pobj.ndb.pages_received.append(temp_message)
-            if hasattr(pobj, 'has_player') and not pobj.has_player:
+            if hasattr(pobj, 'has_account') and not pobj.has_account:
                 received.append("{C%s{n" % pobj.name)
                 r_strings.append("%s is offline. They will see your message if they list their pages later." %
                                  received[-1])
@@ -1291,7 +1290,7 @@ class CmdPut(ArxCommand):
             self.msg("You do not have enough money.")
             return
         self.caller.pay_money(val, destination)
-        self.caller.msg("You put %s silver in %s." % (val, destination))
+        self.msg("You put %s silver in %s." % (val, destination))
 
     def get_oblist_from_outfit(self, args):
         """Creates a list of objects or raises FashionError if no outfit found."""
@@ -1379,8 +1378,8 @@ class CmdGradient(ArxPlayerCommand):
         if not reverse:
             caller.msg(self.color_string(start, end, text))
             return
-        caller.msg(self.color_string(start, end, text[:len(text)/2]))
-        caller.msg(self.color_string(end, start, text[len(text)/2:]))
+        caller.msg(self.color_string(start, end, text[:len(text)//2]))
+        caller.msg(self.color_string(end, start, text[len(text)//2:]))
 
 
 class CmdInform(ArxPlayerCommand):
@@ -1452,7 +1451,7 @@ class CmdInform(ArxPlayerCommand):
         for attr, res, purp in attrs:
             val = getattr(asset_owner, attr)
             table.add_row(purp, res, "{:,}".format(val))
-        self.caller.msg(table)
+        self.msg(str(table))
 
     def func(self):
         """Executes inform command"""

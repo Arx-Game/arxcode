@@ -7,6 +7,7 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
+from django.urls import reverse
 from evennia.objects.objects import DefaultCharacter
 
 from server.utils.exceptions import PayError
@@ -666,7 +667,8 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             # inserts the NE/SE/SW/NW direction at 0 to be highest priority
             check_exits.insert(0, dest)
             for dirname in check_exits:
-                if loc.locations_set.filter(db_key__iexact=dirname).exclude(db_destination__in=self.ndb.traversed or []):
+                if loc.locations_set.filter(db_key__iexact=dirname
+                                            ).exclude(db_destination__in=self.ndb.traversed or []):
                     return "{c" + dirname + "{n"
             dest = "{c" + dest + "{n roughly. Please use '{w@map{n' to determine an exact route"
         except (AttributeError, TypeError, ValueError):
@@ -760,7 +762,6 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             return None
 
     def get_absolute_url(self):
-        from django.core.urlresolvers import reverse
         return reverse('character:sheet', kwargs={'object_id': self.id})
 
     @lazy_property
@@ -843,7 +844,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             destination: the location of the object after moving.
 
         """
-        if not source_location and self.location.has_player:
+        if not source_location and self.location.has_account:
             # This was created from nowhere and added to a player's
             # inventory; it's probably the result of a create command.
             string = "You now have %s in your possession." % self.get_display_name(self.location)
@@ -1005,7 +1006,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             trainer.msg(trainer_msg)
         if targ_msg:
             self.msg(targ_msg)
-        print "Character.post_training call: %s" % trainer_diagnostics(trainer)
+        print("Character.post_training call: %s" % trainer_diagnostics(trainer))
         return True
 
     def show_online(self, caller, check_puppet=True):

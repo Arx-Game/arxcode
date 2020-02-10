@@ -1224,7 +1224,7 @@ class CmdMessenger(ArxCommand):
             saved = "{w*{n" if mess.preserved else ""
             msgtable.add_row([mess_num, name, date, ooc_date, saved])
             mess_num += 1
-        caller.msg(msgtable)
+        self.msg(msgtable)
 
     def display_sent_table(self, num_disp, old):
         """Displays table of messengers we've sent to caller"""
@@ -1655,7 +1655,7 @@ class CmdCalendar(ArxPlayerCommand):
             cost = new_cost - event.cost
         currency = self.caller.char_ob.currency
         if currency < cost:
-            self.caller.msg("That requires %s to buy. You have %s." % (cost, currency))
+            self.msg("That requires %s to buy. You have %s." % (cost, currency))
             return
         self.set_form_or_event_attribute("celebration_tier", cel_tier, event)
         self.msg("Largesse level set to %s for %s." % (lhs, cost))
@@ -2031,7 +2031,7 @@ class CmdPraise(ArxPlayerCommand):
         char = self.caller.char_ob
         clout = char.social_clout
         s_rank = char.db.social_rank or 10
-        return clout + ((8 - s_rank) / 2)
+        return clout + ((8 - s_rank) // 2)
 
     @property
     def current_used(self):
@@ -3254,7 +3254,7 @@ class CmdIAmHelping(ArxPlayerCommand):
                 raise CommandError("AP needs to be a number.")
             if self.caller.roster.current_account == targ.roster.current_account:
                 raise CommandError("You cannot give AP to an alt.")
-            receive_amt = val/self.ap_conversion
+            receive_amt = val//self.ap_conversion
             if receive_amt < 1:
                 raise CommandError("Must transfer at least %s AP." % self.ap_conversion)
             max_ap = targ.roster.max_action_points
@@ -3924,7 +3924,7 @@ class CmdFavor(RewardRPToolUseMixin, ArxPlayerCommand):
             query = Q(favor__lt=0)
         else:
             query = Q(favor__gt=0)
-        total = abs(org.reputations.filter(query).aggregate(Sum('favor')).values()[0] or 0) + abs(amount)
+        total = abs(org.reputations.filter(query).aggregate(sum=Sum('favor'))["sum"] or 0) + abs(amount)
         mod = org.social_modifier * 5
         if total > mod:
             noun = "favor" if amount > 0 else "disfavor"

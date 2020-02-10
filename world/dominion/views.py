@@ -10,7 +10,7 @@ from .view_utils import EventHTMLCalendar
 from django.http import HttpResponseRedirect, HttpResponse
 from django.http import Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
@@ -53,7 +53,7 @@ class RPEventListView(LimitPageMixin, ListView):
                 return self.search_filter(RPEvent.objects.filter(finished=False).distinct().order_by('-date'))
         except AttributeError:
             pass
-        if not user.is_authenticated():
+        if not user.is_authenticated:
             return self.search_filter(
                 RPEvent.objects.filter(finished=False, public_event=True).distinct().order_by('-date'))
         else:
@@ -71,7 +71,7 @@ class RPEventListView(LimitPageMixin, ListView):
                     RPEvent.objects.filter(finished=True, dompcs__isnull=False).distinct().order_by('-date'))
         except AttributeError:
             pass
-        if not user.is_authenticated():
+        if not user.is_authenticated:
             return self.search_filter(RPEvent.objects.filter(finished=True, dompcs__isnull=False,
                                                              public_event=True).distinct().order_by('-date'))
         else:
@@ -109,7 +109,7 @@ class RPEventDetailView(DetailView):
         can_view = False
         user = self.request.user
         private = not self.get_object().public_event
-        if user.is_authenticated():
+        if user.is_authenticated:
             if user.is_staff:
                 can_view = True
             else:
@@ -178,7 +178,7 @@ def event_calendar(request):
             events = RPEvent.objects.filter(dompcs__isnull=False).distinct().order_by('-date')
         except AttributeError:
             pass
-    elif not user.is_authenticated():
+    elif not user.is_authenticated:
         events = RPEvent.objects.filter(dompcs__isnull=False,
                                         public_event=True).distinct().order_by('-date')
     else:
@@ -294,7 +294,7 @@ def map_image(request):
     regen = False
     overlay = None
 
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         overlay = request.GET.get("overlay")
         regen = request.GET.get("regenerate")
 
@@ -389,7 +389,7 @@ def map_wrapper(request):
     """Gets the map, whether an existing pre-generated version, or generates a new one."""
     regen = False
 
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         regen = request.GET.get("regenerate")
 
     if not os.path.exists("world/dominion/map/arxmap_generated.png"):
@@ -527,7 +527,7 @@ def generate_fealty_chart(request, filename, include_npcs=False):
 
     def add_vassals(G, org):
         if not org:
-            print "Something has gone horribly wrong!"
+            print("Something has gone horribly wrong!")
         else:
             org_name = org.name
             org_rank_1 = org.living_members.filter(rank=1).first()
@@ -551,7 +551,7 @@ def generate_fealty_chart(request, filename, include_npcs=False):
 
     regen = False
 
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         regen = request.GET.get("regenerate")
 
     if not os.path.exists(filename + ".png"):
@@ -577,7 +577,7 @@ def generate_fealty_chart(request, filename, include_npcs=False):
         return response
 
     except Exception as e:
-        print e
+        print(e)
         raise Http404
 
 

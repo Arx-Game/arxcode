@@ -36,14 +36,14 @@ class Photo(SharedMemoryModel):
     create_time = models.DateTimeField(auto_now_add=True)
     title = models.CharField("Name or description of the picture (optional)", max_length=200, blank=True)
     owner = models.ForeignKey("objects.ObjectDB", blank=True, null=True, verbose_name='owner',
-                              help_text='a Character owner of this image, if any.')
+                              help_text='a Character owner of this image, if any.', on_delete=models.SET_NULL)
     alt_text = models.CharField("Optional 'alt' text when mousing over your image", max_length=200, blank=True)
 
     # Points to a Cloudinary image
     image = CloudinaryField('image')
 
     """ Informative name for mode """
-    def __unicode__(self):
+    def __str__(self):
         try:
             public_id = self.image.public_id
         except AttributeError:
@@ -75,7 +75,7 @@ class Roster(SharedMemoryModel):
         """
         return self.locks.check(accessing_obj, access_type=access_type, default=default)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name or 'Unnamed Roster'
 
 
@@ -89,8 +89,10 @@ class RosterEntry(SharedMemoryModel):
     """
     roster = models.ForeignKey('Roster', related_name='entries',
                                on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
-    player = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='roster', blank=True, null=True, unique=True)
-    character = models.OneToOneField('objects.ObjectDB', related_name='roster', blank=True, null=True, unique=True)
+    player = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='roster', blank=True, null=True, unique=True,
+                                  on_delete=models.CASCADE)
+    character = models.OneToOneField('objects.ObjectDB', related_name='roster', blank=True, null=True, unique=True,
+                                     on_delete=models.CASCADE)
     current_account = models.ForeignKey('PlayerAccount', related_name='characters', db_index=True,
                                         on_delete=models.SET_NULL, blank=True, null=True)
     previous_accounts = models.ManyToManyField('PlayerAccount', through='AccountHistory', blank=True)
@@ -114,7 +116,7 @@ class RosterEntry(SharedMemoryModel):
         verbose_name_plural = "Roster Entries"
         unique_together = ('player', 'character')
 
-    def __unicode__(self):
+    def __str__(self):
         if self.character:
             return self.character.key
         if self.player:
@@ -396,7 +398,7 @@ class Chapter(SharedMemoryModel):
 
     def crises_viewable_by_user(self, user):
         """Returns crises that aren't public that user can see."""
-        if not user or not user.is_authenticated():
+        if not user or not user.is_authenticated:
             return self.public_crises
         if user.is_staff or user.check_permstring("builders"):
             return self.crises.all()
@@ -430,7 +432,7 @@ class Episode(SharedMemoryModel):
     def get_viewable_crisis_updates_for_player(self, player):
         """Returns non-public crisis updates that the player can see."""
         from world.dominion.models import Plot
-        if not player or not player.is_authenticated():
+        if not player or not player.is_authenticated:
             return self.public_crisis_updates
         if player.is_staff or player.check_permstring("builders"):
             return self.plot_updates.all()
@@ -439,7 +441,7 @@ class Episode(SharedMemoryModel):
 
     def get_viewable_emits_for_player(self, player):
         """Returns emits viewable for a given player"""
-        if not player or not player.is_authenticated():
+        if not player or not player.is_authenticated:
             return self.emits.filter(orgs__isnull=True).distinct()
         elif player.is_staff or player.check_permstring("builders"):
             return self.emits.all()
@@ -485,7 +487,7 @@ class Milestone(SharedMemoryModel):
     Major events in a character's life. Not used that much yet, GMs have set a few by hand. We'll expand this
     later in order to create a more robust/detailed timeline for a character's story arc.
     """
-    protagonist = models.ForeignKey('RosterEntry', related_name='milestones')
+    protagonist = models.ForeignKey('RosterEntry', related_name='milestones', on_delete=models.CASCADE)
     name = models.CharField(blank=True, null=True, max_length=255)
     synopsis = models.TextField(blank=True, null=True)
     chapter = models.ForeignKey('Chapter', blank=True, null=True,
@@ -514,13 +516,14 @@ class Participant(SharedMemoryModel):
 
 class Comment(SharedMemoryModel):
     """Comment upon a milestone, written by someone involved."""
-    poster = models.ForeignKey('RosterEntry', related_name='comments')
-    target = models.ForeignKey('RosterEntry', related_name='comments_upon', blank=True, null=True)
+    poster = models.ForeignKey('RosterEntry', related_name='comments', on_delete=models.CASCADE)
+    target = models.ForeignKey('RosterEntry', related_name='comments_upon', blank=True, null=True,
+                               on_delete=models.CASCADE)
     text = models.TextField(blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
     gamedate = models.CharField(blank=True, null=True, max_length=80)
-    reply_to = models.ForeignKey('self', blank=True, null=True)
-    milestone = models.ForeignKey('Milestone', blank=True, null=True, related_name='comments')
+    reply_to = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
+    milestone = models.ForeignKey('Milestone', blank=True, null=True, related_name='comments', on_delete=models.CASCADE)
 
 
 class PlayerAccount(SharedMemoryModel):
@@ -532,7 +535,7 @@ class PlayerAccount(SharedMemoryModel):
     karma = models.PositiveSmallIntegerField(default=0, blank=0)
     gm_notes = models.TextField(blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return str(self.email)
 
     @property
@@ -544,7 +547,7 @@ class PlayerAccount(SharedMemoryModel):
 
 class PlayerSiteEntry(SharedMemoryModel):
 
-    account = models.ForeignKey(PlayerAccount, related_name='addresses')
+    account = models.ForeignKey(PlayerAccount, related_name='addresses', on_delete=models.CASCADE)
     address = models.CharField(blank=True, null=True, max_length=255)
     last_seen = models.DateTimeField(blank=True, null=True)
 
@@ -586,11 +589,12 @@ class PlayerInfoEntry(SharedMemoryModel):
         (CRITICISM, 'Criticism'),
     )
 
-    account = models.ForeignKey(PlayerAccount, related_name='entries')
+    account = models.ForeignKey(PlayerAccount, related_name='entries', on_delete=models.CASCADE)
     entry_type = models.PositiveSmallIntegerField(choices=entry_types, default=INFO)
     entry_date = models.DateTimeField(blank=True, null=True)
     text = models.TextField(blank=True)
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+', blank=True, null=True)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+', blank=True, null=True,
+                               on_delete=models.CASCADE)
 
     class Meta:
         verbose_name_plural = "Info Entries"
@@ -619,8 +623,8 @@ class PlayerInfoEntry(SharedMemoryModel):
 
 class AccountHistory(SharedMemoryModel):
     """Record of a PlayerAccount playing an individual character."""
-    account = models.ForeignKey('PlayerAccount', db_index=True)
-    entry = models.ForeignKey('RosterEntry', db_index=True)
+    account = models.ForeignKey('PlayerAccount', db_index=True, on_delete=models.CASCADE)
+    entry = models.ForeignKey('RosterEntry', db_index=True, on_delete=models.CASCADE)
     xp_earned = models.SmallIntegerField(default=0, blank=0)
     gm_notes = models.TextField(blank=True, null=True)
     start_date = models.DateTimeField(blank=True, null=True, db_index=True)
@@ -649,8 +653,10 @@ class FirstContact(SharedMemoryModel):
     AccountHistory objects rather than RosterEntries, to let people set their impression of a player's take on
     the character.
     """
-    from_account = models.ForeignKey('AccountHistory', related_name='initiated_contacts', db_index=True)
-    to_account = models.ForeignKey('AccountHistory', related_name='received_contacts', db_index=True)
+    from_account = models.ForeignKey('AccountHistory', related_name='initiated_contacts', db_index=True,
+                                     on_delete=models.CASCADE)
+    to_account = models.ForeignKey('AccountHistory', related_name='received_contacts', db_index=True,
+                                   on_delete=models.CASCADE)
     summary = models.TextField(blank=True)
     private = models.BooleanField(default=False)
     writer_share = models.BooleanField(default=False)
@@ -687,7 +693,7 @@ class RPScene(SharedMemoryModel):
     Log is saved in just a textfield rather than going through the trouble
     of sanitizing an uploaded and stored text file.
     """
-    character = models.ForeignKey('RosterEntry', related_name='logs')
+    character = models.ForeignKey('RosterEntry', related_name='logs', on_delete=models.CASCADE)
     title = models.CharField("title of the scene", max_length=80)
     synopsis = models.TextField("Description of the scene written by player")
     date = models.DateTimeField(blank=True, null=True)
@@ -704,7 +710,7 @@ class RPScene(SharedMemoryModel):
         """Define Django meta options"""
         verbose_name_plural = "RP Scenes"
 
-    def __unicode__(self):
+    def __str__(self):
         return self.title
 
     def access(self, accessing_obj, access_type='show_hidden', default=False):
@@ -788,7 +794,8 @@ class Revelation(SharedMemoryModel):
     characters = models.ManyToManyField('RosterEntry', blank=True, through='RevelationDiscovery',
                                         through_fields=('revelation', 'character'), db_index=True,
                                         related_name="revelations")
-    author = models.ForeignKey("RosterEntry", blank=True, null=True, related_name="revelations_written")
+    author = models.ForeignKey("RosterEntry", blank=True, null=True, related_name="revelations_written",
+                               on_delete=models.CASCADE)
     plots = models.ManyToManyField("dominion.Plot", blank=True, through="RevelationPlotInvolvement",
                                    related_name="revelations")
     search_tags = models.ManyToManyField("SearchTag", blank=True, related_name="revelations")
@@ -832,8 +839,8 @@ class Revelation(SharedMemoryModel):
 
 class RevelationPlotInvolvement(SharedMemoryModel):
     """How a revelation is related to a plot"""
-    revelation = models.ForeignKey("Revelation", related_name="plot_involvement")
-    plot = models.ForeignKey("dominion.Plot", related_name="revelation_involvement")
+    revelation = models.ForeignKey("Revelation", related_name="plot_involvement", on_delete=models.CASCADE)
+    plot = models.ForeignKey("dominion.Plot", related_name="revelation_involvement", on_delete=models.CASCADE)
     gm_notes = models.TextField(blank=True)
 
     class Meta:
@@ -865,7 +872,8 @@ class Clue(SharedMemoryModel):
     allow_trauma = models.BooleanField(default=False, help_text="Can be gained through combat rolls")
     allow_sharing = models.BooleanField(default=True, help_text="Can be shared")
     search_tags = models.ManyToManyField('SearchTag', blank=True, db_index=True, related_name="clues")
-    author = models.ForeignKey("RosterEntry", blank=True, null=True, related_name="clues_written")
+    author = models.ForeignKey("RosterEntry", blank=True, null=True, related_name="clues_written",
+                               on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -899,9 +907,9 @@ class Clue(SharedMemoryModel):
 
     def determine_discovery_multiplier(self):
         """Calculates a multiplier for investigations' completion_value based on number of discoveries"""
-        avg = Clue.objects.filter(allow_investigation=True).annotate(cnt=Count('discoveries')).aggregate(Avg('cnt'))
+        avg = Clue.objects.filter(allow_investigation=True).annotate(cnt=Count('discoveries')).aggregate(avg=Avg('cnt'))
         discos = self.discoveries.count() + 0.5
-        return avg.values()[0] / discos
+        return avg["avg"] / discos
 
     def get_completion_value(self):
         """Gets the default/suggested completion value for an investigation into this clue."""
@@ -925,8 +933,8 @@ class Clue(SharedMemoryModel):
 
 class CluePlotInvolvement(SharedMemoryModel):
     """How a clue is related to a plot"""
-    clue = models.ForeignKey("Clue", related_name="plot_involvement")
-    plot = models.ForeignKey("dominion.Plot", related_name="clue_involvement")
+    clue = models.ForeignKey("Clue", related_name="plot_involvement", on_delete=models.CASCADE)
+    plot = models.ForeignKey("dominion.Plot", related_name="clue_involvement", on_delete=models.CASCADE)
     gm_notes = models.TextField(blank=True)
     NEUTRAL, HOOKED, GRANTED = range(3)
     ACCESS_CHOICES = ((NEUTRAL, "Neutral"), (HOOKED, "Hooked"), (GRANTED, "Granted"))
@@ -984,14 +992,19 @@ class SearchTag(SharedMemoryModel):
 
 class RevelationDiscovery(SharedMemoryModel):
     """Through model used to record when a character discovers a revelation."""
-    character = models.ForeignKey('RosterEntry', related_name="revelation_discoveries", db_index=True)
-    revelation = models.ForeignKey('Revelation', related_name="discoveries", db_index=True)
-    investigation = models.ForeignKey('Investigation', blank=True, null=True, related_name="revelations")
+    character = models.ForeignKey('RosterEntry', related_name="revelation_discoveries", db_index=True,
+                                  on_delete=models.CASCADE)
+    revelation = models.ForeignKey('Revelation', related_name="discoveries", db_index=True,
+                                   on_delete=models.CASCADE)
+    investigation = models.ForeignKey('Investigation', blank=True, null=True, related_name="revelations",
+                                      on_delete=models.CASCADE)
     message = models.TextField(blank=True, help_text="Message for the player's records about how they discovered this.")
     date = models.DateTimeField(blank=True, null=True)
-    milestone = models.OneToOneField('Milestone', related_name="revelation", blank=True, null=True)
+    milestone = models.OneToOneField('Milestone', related_name="revelation", blank=True, null=True,
+                                     on_delete=models.CASCADE)
     discovery_method = models.CharField(help_text="How this was discovered - exploration, trauma, etc", max_length=255)
-    revealed_by = models.ForeignKey('RosterEntry', related_name="revelations_spoiled", blank=True, null=True)
+    revealed_by = models.ForeignKey('RosterEntry', related_name="revelations_spoiled", blank=True, null=True,
+                                    on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ('character', 'revelation')
@@ -1023,16 +1036,19 @@ class RevelationDiscovery(SharedMemoryModel):
 
 class ClueDiscovery(SharedMemoryModel):
     """Through model that represents knowing/progress towards discovering a clue."""
-    clue = models.ForeignKey('Clue', related_name="discoveries", db_index=True)
-    character = models.ForeignKey('RosterEntry', related_name="clue_discoveries", db_index=True)
+    clue = models.ForeignKey('Clue', related_name="discoveries", db_index=True,
+                             on_delete=models.CASCADE)
+    character = models.ForeignKey('RosterEntry', related_name="clue_discoveries", db_index=True,
+                                  on_delete=models.CASCADE)
     investigation = models.ForeignKey('Investigation', blank=True, null=True, related_name="clue_discoveries",
-                                      db_index=True)
+                                      db_index=True, on_delete=models.CASCADE)
     message = models.TextField(blank=True, help_text="Message for the player's records about how they discovered this.")
     date = models.DateTimeField(blank=True, null=True)
-    milestone = models.OneToOneField('Milestone', related_name="clue", blank=True, null=True)
+    milestone = models.OneToOneField('Milestone', related_name="clue", blank=True, null=True, on_delete=models.CASCADE)
     discovery_method = models.CharField(help_text="How this was discovered - exploration, trauma, etc",
                                         blank=True, max_length=255)
-    revealed_by = models.ForeignKey('RosterEntry', related_name="clues_spoiled", blank=True, null=True, db_index=True)
+    revealed_by = models.ForeignKey('RosterEntry', related_name="clues_spoiled", blank=True, null=True, db_index=True,
+                                    on_delete=models.CASCADE)
 
     class Meta:
         verbose_name_plural = "Clue Discoveries"
@@ -1175,8 +1191,9 @@ class ClueDiscovery(SharedMemoryModel):
 
 class ClueForRevelation(SharedMemoryModel):
     """Through model that shows which clues are required for a revelation"""
-    clue = models.ForeignKey('Clue', related_name="usage", db_index=True)
-    revelation = models.ForeignKey('Revelation', related_name="clues_used", db_index=True)
+    clue = models.ForeignKey('Clue', related_name="usage", db_index=True, on_delete=models.CASCADE)
+    revelation = models.ForeignKey('Revelation', related_name="clues_used", db_index=True,
+                                   on_delete=models.CASCADE)
     required_for_revelation = models.BooleanField(default=True, help_text="Whether this must be discovered for " +
                                                                           "the revelation to finish")
     tier = models.PositiveSmallIntegerField(default=0, blank=0,
@@ -1190,8 +1207,10 @@ class ClueForRevelation(SharedMemoryModel):
 class InvestigationAssistant(SharedMemoryModel):
     """Someone who is helping an investigation out. Note that char is an ObjectDB, not RosterEntry."""
     currently_helping = models.BooleanField(default=False, help_text="Whether they're currently helping out")
-    investigation = models.ForeignKey('Investigation', related_name="assistants", db_index=True)
-    char = models.ForeignKey('objects.ObjectDB', related_name="assisted_investigations", db_index=True)
+    investigation = models.ForeignKey('Investigation', related_name="assistants", db_index=True,
+                                      on_delete=models.CASCADE)
+    char = models.ForeignKey('objects.ObjectDB', related_name="assisted_investigations", db_index=True,
+                             on_delete=models.CASCADE)
     stat_used = models.CharField(blank=True, max_length=80, default="perception",
                                  help_text="The stat the player chose to use")
     skill_used = models.CharField(blank=True, max_length=80, default="investigation",
@@ -1243,7 +1262,8 @@ class Investigation(AbstractPlayerAllocations):
     An investigation by a character or group of characters into a given topic. Typically used for discovering clues,
     but can be set to return just a message by turning automate_result to False and writing self.results manually.
     """
-    character = models.ForeignKey('RosterEntry', related_name="investigations", db_index=True)
+    character = models.ForeignKey('RosterEntry', related_name="investigations", db_index=True,
+                                  on_delete=models.CASCADE)
     ongoing = models.BooleanField(default=True, help_text="Whether this investigation is finished or not",
                                   db_index=True)
     active = models.BooleanField(default=False, db_index=True, help_text="Whether this is the investigation for the" +
@@ -1253,7 +1273,8 @@ class Investigation(AbstractPlayerAllocations):
     results = models.TextField(default="You didn't find anything.", blank=True,
                                help_text="The text to send the player, either set by GM or generated automatically " +
                                "by script if automate_result is set.")
-    clue_target = models.ForeignKey('Clue', blank=True, null=True)
+    clue_target = models.ForeignKey('Clue', blank=True, null=True,
+                                    on_delete=models.CASCADE)
     progress = models.IntegerField(default=0, help_text="Progress made towards a discovery.")
     completion_value = models.IntegerField(default=300, help_text="Total progress needed to make a discovery.")
 
@@ -1329,7 +1350,7 @@ class Investigation(AbstractPlayerAllocations):
 
     def refund_ap(self):
         ap_cost = self.ap_cost(self.char)
-        self.char.player_ob.pay_action_points(ap_cost)
+        self.char.player_ob.pay_action_points(-ap_cost)
 
     def do_roll(self, mod=0, diff=None):
         """
@@ -1617,7 +1638,7 @@ class Theory(SharedMemoryModel):
     stored and can be shared with others.
     """
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="created_theories", blank=True, null=True,
-                                db_index=True)
+                                db_index=True, on_delete=models.CASCADE)
     known_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="known_theories", blank=True,
                                       through="TheoryPermissions")
     topic = models.CharField(max_length=255, blank=True, null=True)
@@ -1682,8 +1703,8 @@ class Theory(SharedMemoryModel):
 
 class TheoryPermissions(SharedMemoryModel):
     """Through model that shows who knows the theory and whether they can edit it."""
-    player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="theory_permissions")
-    theory = models.ForeignKey("Theory", related_name="theory_permissions")
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="theory_permissions", on_delete=models.CASCADE)
+    theory = models.ForeignKey("Theory", related_name="theory_permissions", on_delete=models.CASCADE)
     can_edit = models.BooleanField(default=False)
 
 
@@ -2017,8 +2038,10 @@ class FlashbackInvolvement(SharedMemoryModel):
 class FlashbackPost(SharedMemoryModel):
     """A post for a flashback."""
     flashback = models.ForeignKey('Flashback', related_name="posts", on_delete=models.CASCADE)
-    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts", on_delete=models.SET_NULL)
-    readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts", through='FlashbackPostPermission')
+    poster = models.ForeignKey('RosterEntry', blank=True, null=True, related_name="flashback_posts",
+                               on_delete=models.SET_NULL)
+    readable_by = models.ManyToManyField('RosterEntry', blank=True, related_name="readable_flashback_posts",
+                                         through='FlashbackPostPermission')
     actions = models.TextField("The body of the post for your character's actions", blank=True)
     db_date_created = models.DateTimeField(blank=True, null=True)
     roll = models.CharField(max_length=250, blank=True)
@@ -2066,7 +2089,7 @@ class Goal(SharedMemoryModel):
     SUCCEEDED, FAILED, ABANDONED, DORMANT, ACTIVE = range(0, 5)
     STATUS_CHOICES = ((SUCCEEDED, "Succeeded"), (FAILED, "Failed"),
                       (ABANDONED, "Abandoned"), (DORMANT, "Dormant"), (ACTIVE, "Active"))
-    entry = models.ForeignKey('RosterEntry', related_name="goals")
+    entry = models.ForeignKey('RosterEntry', related_name="goals", on_delete=models.CASCADE)
     scope = models.PositiveSmallIntegerField(choices=SCOPE_CHOICES, default=REASONABLE)
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=ACTIVE)
     summary = models.CharField("Summary of the goal", max_length=80)
@@ -2096,7 +2119,7 @@ class Goal(SharedMemoryModel):
 
 class GoalUpdate(SharedMemoryModel):
     """Updates for goals"""
-    goal = models.ForeignKey("Goal", related_name="updates")
+    goal = models.ForeignKey("Goal", related_name="updates", on_delete=models.CASCADE)
     beat = models.ForeignKey("dominion.PlotUpdate", related_name="goal_updates", blank=True, null=True,
                              on_delete=models.SET_NULL)
     player_summary = models.TextField(blank=True)

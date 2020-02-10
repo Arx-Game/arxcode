@@ -44,6 +44,8 @@ MAX_CHAR_LIMIT = config('MAX_CHAR_LIMIT', default=8000, cast=int)
 DEBUG = config('DEBUG', default=False, cast=bool)
 CHANNEL_COMMAND_CLASS = "commands.base_commands.channels.ArxChannelCommand"
 BASE_ROOM_TYPECLASS = "typeclasses.rooms.ArxRoom"
+BASE_SCRIPT_TYPECLASS = "typeclasses.scripts.scripts.Script"
+BASE_GUEST_TYPECLASS = "typeclasses.guest.Guest"
 # Important: set this to the ID of whatever room you want to have as a default for things to show up in
 DEFAULT_HOME = config('DEFAULT_HOME', default="#13")
 MULTISESSION_MODE = 1
@@ -173,3 +175,5 @@ else:
     ADMINS = []
 SEND_GAME_INDEX = config('SEND_GAME_INDEX', cast=bool, default=False)
 ISSUES_URL = config('ISSUES_URL', default='')
+# Evennia's base settings screw up current account creation
+AUTH_PASSWORD_VALIDATORS = []

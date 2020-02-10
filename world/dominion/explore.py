@@ -153,4 +153,4 @@ class Exploration(object):
         try:
             ExplorationReport(self.player, self)
         except Exception:
-            print "Could not generate exploration report for player %s." % str(self.player)
+            print("Could not generate exploration report for player %s." % str(self.player))

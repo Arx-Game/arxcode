@@ -58,6 +58,8 @@ class InvestigationTests(ArxCommandTest):
         self.spell = Spell.objects.create(name="test spell", node=self.node)
         self.spell.discovered_by_clues.add(self.clue2)
         self.node.discovered_by_revelations.add(self.revelation)
+        self.roster_entry2.action_points = 0
+        self.roster_entry2.save()
         self.call_cmd(template.format("2", "Love Tehom"*8), "You use 101 action points and have 0 remaining this week.|"
                       "You have shared the clue(s) 'test clue2' with Char2.\nYour note: {}".format("Love Tehom"*8))
         self.assertTrue(self.account2.informs.filter(message="After a recent clue discovery, "
@@ -347,9 +349,9 @@ class PRPClueTests(ArxCommandTest):
         self.call_cmd("/finish", "Use /create to start a new form.")
         self.call_cmd("/create", 'Name: None\nDesc: None\nRevelation: None\nRating: None\nTags: None\nReal: True\n'
                                  'Can Investigate: True\nCan Share: True')
-        self.call_cmd("/finish", 'Please correct the following errors:\nRating: This field is required.\n'
-                                 'Name: This field is required.\nRevelation: This field is required.\n'
-                                 'Desc: This field is required.')
+        self.call_cmd("/finish", 'Please correct the following errors:\nName: This field is required.\n'
+                                 'Desc: This field is required.\nRating: This field is required.\n'
+                                 'Revelation: This field is required.')
         self.call_cmd("/name testclue", 'Name: testclue\nDesc: None\nRevelation: None\nRating: None\nTags: None\n'
                                         'Real: True\nCan Investigate: True\nCan Share: True')
         self.call_cmd("/desc testdesc", 'Name: testclue\nDesc: testdesc\nRevelation: None\nRating: None\nTags: None\n'
@@ -389,9 +391,9 @@ class PRPClueTests(ArxCommandTest):
         self.call_cmd("/finish", "Use /create to start a new form.")
         self.call_cmd("/create", 'Name: None\nDesc: None\nPlot: None\nRequired Clue Value: None\n'
                                  'Tags: None\nReal: True')
-        self.call_cmd("/finish", 'Please correct the following errors:\nRequired_clue_value: This field is required.\n'
-                                 'Plot: This field is required.\nName: This field is required.\n'
-                                 'Desc: This field is required.')
+        self.call_cmd("/finish", 'Please correct the following errors:\nName: This field is required.\n'
+                                 'Desc: This field is required.\nRequired_clue_value: This field is required.\n'
+                                 'Plot: This field is required.')
         self.call_cmd("/name testrev", 'Name: testrev\nDesc: None\nPlot: None\nRequired Clue Value: None\n'
                                        'Tags: None\nReal: True')
         self.call_cmd("/desc testdesc", 'Name: testrev\nDesc: testdesc\nPlot: None\nRequired Clue Value: None\n'

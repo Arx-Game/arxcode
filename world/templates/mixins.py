@@ -30,7 +30,7 @@ class TemplateMixins(object):
             templates = Template.objects.in_list(self.find_template_ids(desc))
 
             unusable_templates = filter(lambda t: not t.is_accessible_by(caller), templates)
-            unusable_templates = map(lambda t: t.markup(), unusable_templates)
+            unusable_templates = list(map(lambda t: t.markup(), unusable_templates))
 
             if unusable_templates:
                 err_msg = "You attempted to add the following templates that you do not have access to: "

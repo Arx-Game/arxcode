@@ -66,6 +66,7 @@ Installation/testing:
 3) Use @desc and @detail to customize the room, then play around!
 
 """
+import time
 from django.conf import settings
 
 from evennia.contrib.extended_room import ExtendedRoom
@@ -86,11 +87,11 @@ from world.weather import utils as weather_utils
 _AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
 
 # room cmdsets
-MARKETCMD = "cmdsets.market.MarketCmdSet"
-BANKCMD = "cmdsets.bank.BankCmdSet"
-RUMORCMD = "cmdsets.rumor.RumorCmdSet"
-HOMECMD = "cmdsets.home.HomeCmdSet"
-SHOPCMD = "cmdsets.home.ShopCmdSet"
+MARKETCMD = "commands.cmdsets.market.MarketCmdSet"
+BANKCMD = "commands.cmdsets.bank.BankCmdSet"
+RUMORCMD = "commands.cmdsets.rumor.RumorCmdSet"
+HOMECMD = "commands.cmdsets.home.HomeCmdSet"
+SHOPCMD = "commands.cmdsets.home.ShopCmdSet"
 
 
 # implements the Extended Room
@@ -221,7 +222,6 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
 
     @property
     def mood_string(self):
-        import time
         msg = ""
         mood = self.db.room_mood
         try:
@@ -333,7 +333,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         exclude is a list of objects not to send to. See self.msg() for
                 more info.
         """
-        if hasattr(text, '__iter__'):
+        if not isinstance(text, str):
             try:
                 message = text[0]
             except IndexError:
@@ -740,7 +740,6 @@ class CmdGameTime(ArxCommand):
             parsed = None
             to_parse = self.args.strip()
             try:
-                import time
                 parsed = time.strptime(to_parse, "%Y/%m/%d %H:%M")
             except ValueError:
                 try:
@@ -749,33 +748,33 @@ class CmdGameTime(ArxCommand):
                     pass
 
             if not parsed:
-                self.caller.msg("Unable to understand that date!  It must be in the format "
+                self.msg("Unable to understand that date!  It must be in the format "
                                 "|wYYYY/mm/dd|n or |wYYYY/mm/dd HH:MM|n to be understood.")
                 return
 
             parsed = time.mktime(parsed)
             game_time = gametime.realtime_to_gametime(parsed)
             if game_time is None:
-                self.caller.msg("Real date |w{}|n was before the game started!".format(to_parse))
+                self.msg("Real date |w{}|n was before the game started!".format(to_parse))
                 return
             from server.utils.arx_utils import get_date
-            self.caller.msg("Real date |w{}|n was about |w{}|n in game time.".format(to_parse, get_date(game_time)))
+            self.msg("Real date |w{}|n was about |w{}|n in game time.".format(to_parse, get_date(game_time)))
             return
 
         location = self.caller.location
         if not location or not hasattr(location, "get_time_and_season"):
-            self.caller.msg("No location available - you are outside time.")
+            self.msg("No location available - you are outside time.")
         else:
             season, timeslot = location.get_time_and_season()
             prep = "a"
             if season == "autumn":
                 prep = "an"
             weather = weather_utils.get_last_emit()
-            self.caller.msg("It's %s %s day, in the %s.  %s" % (prep, season, timeslot, weather))
-            time = gametime.gametime(format=True)
-            hour, minute = time[4], time[5]
+            self.msg("It's %s %s day, in the %s.  %s" % (prep, season, timeslot, weather))
+            time_tuple = gametime.gametime(format=True)
+            hour, minute = time_tuple[4], time_tuple[5]
             from server.utils.arx_utils import get_date
-            self.caller.msg("Today's date: %s. Current time: %s:%02d" % (get_date(), hour, minute))
+            self.msg("Today's date: %s. Current time: %s:%02d" % (get_date(), hour, minute))
 
 
 class CmdSetGameTimescale(ArxCommand):
@@ -838,12 +837,12 @@ class TempRoom(ArxRoom):
         :return: True if the room has no characters or NPCs in it, False if someone is present.
         """
         for con in self.contents:
-            if con is not obj and (con.has_player or (hasattr(con, 'is_character') and con.is_character)):
+            if con is not obj and (con.has_account or (hasattr(con, 'is_character') and con.is_character)):
                 return False
         return True
 
     def at_object_leave(self, obj, target_location):
         """Override of at_object_leave hook for soft-deleting this room once it's empty"""
-        if obj.has_player or (hasattr(obj, 'is_character') and obj.is_character):
+        if obj.has_account or (hasattr(obj, 'is_character') and obj.is_character):
             if self.is_empty_except(obj):
                 self.softdelete()

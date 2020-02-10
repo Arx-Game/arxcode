@@ -1,10 +1,9 @@
 language: python
 python:
-  - "2.7"
+  - "3.8"
 install:
   - git clone https://github.com/TehomCD/evennia.git
   - cd evennia
-  - git checkout attr_set_changes
   - pip install -e .
   - cd $TRAVIS_BUILD_DIR
   - mkdir server/logs

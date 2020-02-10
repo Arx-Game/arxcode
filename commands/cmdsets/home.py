@@ -750,8 +750,8 @@ class CmdManageShop(ArxCommand):
             return
         if not self.args:
             caller.msg(self.list_prices())
-            org_discounts = (loc.db.discounts or {}).items()
-            char_discounts = (loc.db.char_discounts or {}).items()
+            org_discounts = list((loc.db.discounts or {}).items())
+            char_discounts = list((loc.db.char_discounts or {}).items())
             # replace char with char.key in char_discounts list
             char_discounts = [(ob[0].key, ob[1]) for ob in char_discounts]
             discounts = ", ".join(("%s: %s%%" % (ob, val) for ob, val in (org_discounts + char_discounts)))
@@ -1131,7 +1131,7 @@ class CmdBuyFromShop(CmdCraft):
         price -= price * (self.get_discount() / 100.0)
         self.caller.pay_money(price)
         self.pay_owner(price, "%s has bought %s for %s." % (self.caller, item, price))
-        self.caller.msg("You paid %s for %s." % (price, item))
+        self.msg("You paid %s for %s." % (price, item))
         item.move_to(self.caller)
         item.tags.remove("for_sale")
         item.attributes.remove("sale_location")
@@ -1139,9 +1139,9 @@ class CmdBuyFromShop(CmdCraft):
         if hasattr(item, "rmkey"):
             if item.rmkey(loc.db.shopowner):
                 item.grantkey(self.caller)
-                self.caller.msg("Good deal! The owner gave you a key for %s." % item)
+                self.msg("Good deal! The owner gave you a key for %s." % item)
                 return
-            self.caller.msg("Shady deal? The owner didn't have a key for %s to give you." % item)
+            self.msg("Shady deal? The owner didn't have a key for %s to give you." % item)
 
     def check_blacklist(self):
         """See if we're allowed to buy"""

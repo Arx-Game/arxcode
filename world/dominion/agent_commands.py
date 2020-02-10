@@ -797,7 +797,7 @@ class CmdRetainers(ArxPlayerCommand):
             self.msg("That is not a valid name.")
             return
         agent.set_name(name)
-        self.caller.msg("Name changed from %s to %s." % (old, self.rhs))
+        self.msg("Name changed from %s to %s." % (old, self.rhs))
         return
 
     def customize(self, agent):

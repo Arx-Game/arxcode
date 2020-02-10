@@ -37,10 +37,11 @@ class FashionCommonMixins(SharedMemoryModel):
         "Across Arvum and beyond, all the world hears about %s modeling %s. History will remember the abstruse " +
         "impact that %s had upon fashion itself, on this %s occasion."
         )
-    BUZZIES = zip(BUZZ_TYPES, COLOR_TYPES, EMIT_TYPES)
+    BUZZIES = list(zip(BUZZ_TYPES, COLOR_TYPES, EMIT_TYPES))
 
     @staticmethod
     def granulate_fame(fame):
+        fame = fame or 0
         buzz_level = 0
         if fame <= 100:
             pass

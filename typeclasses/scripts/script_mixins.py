@@ -14,6 +14,8 @@ class RunDateMixin(object):
             Returns:
                 remaining (Timedelta): remaining time before weekly update will process
         """
+        if not isinstance(self.db.run_date, datetime):
+            self.db.run_date = datetime.now() + timedelta(days=7)
         # self.db.run_date is the date we're scheduled to run the weekly update on
         remaining = self.db.run_date - datetime.now()
         return remaining

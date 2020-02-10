@@ -1250,7 +1250,7 @@ class CmdAdminInvestigations(ArxPlayerCommand):
                 target = "{rNone{n" if not ob.targeted_clue else str(ob.targeted_clue)[:30]
                 character = "{c%s{n" % ob.character
                 table.add_row([ob.id, character, str(ob.topic)[:15], target, roll])
-        self.caller.msg(str(table))
+        self.msg(str(table))
 
     def set_roll(self, ob, roll, mod=0, diff=None):
         ob.roll = roll
@@ -1395,7 +1395,7 @@ class CmdListClues(ArxPlayerCommand):
                 if not self.switches and self.caller.check_permstring("builders"):
                     try:
                         discovery = Clue.objects.get(id=self.lhs)
-                    except Clue.DoesNotExist:
+                    except (Clue.DoesNotExist, ValueError):
                         pass
                 if not discovery:
                     self.msg("No clue found by this ID: {w%s{n." % self.lhs)
@@ -1557,7 +1557,7 @@ class CmdListRevelations(ArxPlayerCommand):
                 self.disp_rev_table()
                 return
         self.msg(rev.display())
-        clues = self.caller.roster.clues.filter(revelations=rev.revelation)
+        clues = self.caller.roster.clues.filter(revelations__id=int(self.args))
         self.msg("Related Clues: %s" % "; ".join(str(clue) for clue in clues))
 
 

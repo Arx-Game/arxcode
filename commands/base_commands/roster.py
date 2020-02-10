@@ -23,7 +23,8 @@ from world.dominion.models import Propriety
 
 # limit symbol import for API
 __all__ = ("CmdRosterList", "CmdAdminRoster", "CmdSheet", "CmdRelationship", "display_relationships",
-           "format_header", "change_email", "add_note")
+           "format_header", "change_email", "add_note", "display_abilities", "display_header", "display_skills",
+           "display_stats")
 
 
 def get_roster_manager():
@@ -126,7 +127,7 @@ def list_characters(caller, character_list, roster_type="Active Characters", ros
                 if not titles or hide:
                     name = "{c" + name + "{n"
                 if display_afk:
-                    afk = utils.time_format(charob.idle_time)
+                    afk = utils.time_format(charob.idle_time or 0)
             if display_afk:
                 table.add_row([name, sex, age, house, concept[:25], srank, afk])
             else:
@@ -1428,7 +1429,8 @@ class CmdRelationship(ArxPlayerCommand):
                 if old == charob:
                     show_hidden = True
             if show_hidden:
-                rels = dict(charob.messages.white_relationships.items() + charob.messages.black_relationships.items())
+                rels = dict(list(charob.messages.white_relationships.items()
+                                 ) + list(charob.messages.black_relationships.items()))
             else:
                 rels = dict(charob.messages.white_relationships.items())
             # display list of relationships
@@ -1461,7 +1463,7 @@ class CmdRelationship(ArxPlayerCommand):
                 name = self.rhs.lower()
             white = char.messages.white_relationships
             black = char.messages.black_relationships
-            rels = {k: white.get(k, []) + black.get(k, []) for k in set(white.keys() + black.keys())}
+            rels = {k: white.get(k, []) + black.get(k, []) for k in set(list(white.keys()) + list(black.keys()))}
             if not rels:
                 caller.msg("No relationships found.")
                 return

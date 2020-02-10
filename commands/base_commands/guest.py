@@ -18,7 +18,6 @@ from django.conf import settings
 from evennia import syscmdkeys
 from evennia.accounts.models import AccountDB
 from evennia.utils import utils, create, search
-from six import string_types
 from unidecode import unidecode
 
 from commands.base import ArxPlayerCommand
@@ -164,7 +163,7 @@ def census_of_fealty():
 def award_bonus_by_fealty(fealty):
     """Awards bonus xp based on fealty population - less populated gets a bonus"""
     census = census_of_fealty()
-    max_pop = census[census.keys()[-1]]
+    max_pop = census[list(census.keys())[-1]]
     try:
         fealty = fealty.capitalize()
         bonus = XP_BONUS_BY_POP * (max_pop - census[fealty])
@@ -730,7 +729,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
                        "{w@add/social_rank{n, ex: {w@add/social_rank 8")
             return
         # if switches is a list, convert it to a string
-        if not isinstance(switches, string_types):
+        if not isinstance(switches, str):
             switches = switches[0]
         if switches not in list(_stage3_fields_) + list(_stage3_optional_):
             caller.msg("{w@add/<switch>{n must be one of the following: %s" % (list(_stage3_fields_) +

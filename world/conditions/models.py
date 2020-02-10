@@ -45,7 +45,8 @@ class RollModifier(SharedMemoryModel):
     )
     MODIFIER, KNACK = range(2)
     MOD_CHOICES = ((MODIFIER, "Modifier"), (KNACK, "Knack"))
-    object = models.ForeignKey("objects.ObjectDB", db_index=True, related_name="modifiers")
+    object = models.ForeignKey("objects.ObjectDB", db_index=True, related_name="modifiers",
+                               on_delete=models.CASCADE)
     value = models.IntegerField(default=0)
     # tag required by the user for this modifier to take effect. if '', then it's for any user
     user_tag = models.CharField(blank=True, max_length=80, help_text="Only applies if user has a tag by this name.")
@@ -165,9 +166,9 @@ class EffectTrigger(SharedMemoryModel):
         (NIGHT, "Only Night"),
         (DAY, "Only Day")
     )
-    object = models.ForeignKey("objects.ObjectDB", related_name="triggers", help_text="The object this trigger is on. "
-                                                                                      "For example, a room checking "
-                                                                                      "others entering it.")
+    object = models.ForeignKey("objects.ObjectDB", related_name="triggers", on_delete=models.CASCADE,
+                               help_text="The object this trigger is on. For example, a room checking "
+                                         "others entering it.")
     priority = models.PositiveSmallIntegerField(default=0, help_text="Only highest priority triggers are executed.")
     trigger_event = models.PositiveSmallIntegerField(choices=EVENT_CHOICES, default=ON_OTHER_ENTRY)
     conditional_check = models.PositiveSmallIntegerField(choices=CONDITIONAL_CHECK_CHOICES, default=PRESTIGE_RANK)

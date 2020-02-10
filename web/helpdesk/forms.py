@@ -7,10 +7,10 @@ forms.py - Definitions of newforms-based forms for creating and maintaining
            tickets.
 """
 
-from StringIO import StringIO
+from io import StringIO
 
 from django import forms
-from django.forms import extras
+from django.forms.widgets import SelectDateWidget
 from django.core.files.storage import default_storage
 from django.conf import settings
 from django.utils.translation import ugettext as _
@@ -169,7 +169,7 @@ class TicketForm(CustomFieldMixin, forms.Form):
         )
 
     due_date = forms.DateTimeField(
-        widget=extras.SelectDateWidget,
+        widget=SelectDateWidget,
         required=False,
         label=_('Due on'),
         )
@@ -362,7 +362,7 @@ class PublicTicketForm(CustomFieldMixin, forms.Form):
         )
 
     due_date = forms.DateTimeField(
-        widget=extras.SelectDateWidget,
+        widget=SelectDateWidget,
         required=False,
         label=_('Due on'),
         )

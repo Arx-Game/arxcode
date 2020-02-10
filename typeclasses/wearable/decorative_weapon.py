@@ -1,7 +1,7 @@
 """
 wearable weapons
 """
-from wieldable import Wieldable
+from typeclasses.wearable.wieldable import Wieldable
 
 
 class DecorativeWieldable(Wieldable):

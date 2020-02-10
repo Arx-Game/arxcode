@@ -109,7 +109,10 @@ class ArxCommmandMixin(object):
             self.caller.nattributes.remove(attr)
             return True
         self.caller.nattributes.add(attr, val)
-        self.caller.msg(prompt_msg)
+        self.msg(prompt_msg)
+
+    def msg(self, text=None, to_obj=None, from_obj=None, session=None, **kwargs):
+        return super().msg(text=str(text), to_obj=to_obj, from_obj=from_obj, session=session, **kwargs)
 
 
 class FormCommandMixin(object):

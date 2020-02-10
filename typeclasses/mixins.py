@@ -235,9 +235,6 @@ class NameMixins(object):
     def __str__(self):
         return self.name
 
-    def __unicode__(self):
-        return self.name
-
 
 # noinspection PyAttributeOutsideInit
 class BaseObjectMixins(object):
@@ -301,14 +298,6 @@ class BaseObjectMixins(object):
             pass
 
     @property
-    def has_player(self):
-        """
-        :type self: ObjectDB
-        :return: AccountDB
-        """
-        return self.has_account
-
-    @property
     def char_ob(self):
         return None
 
@@ -348,6 +337,15 @@ class BaseObjectMixins(object):
 
 
 class AppearanceMixins(BaseObjectMixins, TemplateMixins):
+    def get_numbered_name(self, count, looker, **kwargs):
+        """
+        Evennia's default get_numbered_name method uses the Inflect library, which is
+        unreliable and doesn't fit the naming scheme of objects in Arx's database, so
+        we won't use it.
+        """
+        key = kwargs.get("key", "")
+        return key, key
+
     def return_contents(self, pobject, detailed=True, show_ids=False,
                         strip_ansi=False, show_places=True, sep=", "):
         """
@@ -402,7 +400,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 elif hasattr(pobject, 'sensing_check') and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0:
                     key += "|w (hidden)|n"
                     wielded.append(key)
-            elif con.has_player:
+            elif con.has_account:
                 # we might have either a permapose or a fake name
                 lname = con.name
                 if con.db.room_title:
@@ -436,7 +434,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
             if users or npcs:
                 string += "\n{wCharacters:{n " + ", ".join(users + [get_key(ob) for ob in npcs])
             if things:
-                things = sorted(things, key=lambda x: x.db.put_time)
+                things = sorted(things, key=lambda x: x.db.put_time or 0.0)
                 string += "\n{wObjects:{n " + sep.join([get_key(ob) for ob in things])
             if currency:
                 string += "\n{wMoney:{n %s" % currency
@@ -630,9 +628,7 @@ class TriggersMixin(object):
 
 
 class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
-    @property
-    def has_player(self):
-        return self.has_account
+    pass
 
 
 class CraftingMixins(object):
@@ -877,8 +873,11 @@ class MsgMixins(object):
         if not self.sessions.all():
             return
         # compatibility change for Evennia changing text to be either str or tuple
-        if hasattr(text, '__iter__'):
-            text = text[0]
+        if not isinstance(text, str):
+            try:
+                text = text[0]
+            except TypeError:
+                pass
         options = options or {}
         options.update(kwargs.get('options', {}))
         try:

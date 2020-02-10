@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
             name='CrisisActionAssistant',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action', models.TextField(blank=True, verbose_name=b'What action the assistant is taking')),
+                ('action', models.TextField(blank=True, verbose_name='What action the assistant is taking')),
                 ('crisis_action', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assisting_actions', to='dominion.CrisisAction')),
                 ('dompc', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assisting_actions', to='dominion.PlayerOrNpc')),
             ],

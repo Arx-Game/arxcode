@@ -99,9 +99,6 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     def __str__(self):
         return self.name
 
-    def __unicode__(self):
-        return self.name
-
     def at_account_creation(self):
         """
         This is called once, the very first time
@@ -174,14 +171,6 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
                 self.db.afk = ""
         except AttributeError:
             pass
-
-    def at_post_disconnect(self):
-        """After disconnection is complete, delete NAttributes."""
-        try:
-            self.char_ob.nattributes.clear()
-        except AttributeError:
-            pass
-        self.nattributes.clear()
 
     # noinspection PyBroadException
     def announce_informs(self):
@@ -398,7 +387,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             pass
 
     def at_post_disconnect(self):
-        """Called after we disconnect"""
+        """After disconnection is complete, delete NAttributes."""
         if not self.sessions.all():
             watched_by = self.char_ob and self.char_ob.db.watched_by or []
             if watched_by and not self.db.hide_from_watch:
@@ -411,6 +400,11 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             for channel in temp_muted:
                 channel.unmute(self)
             self.attributes.remove('temp_mute_list')
+            try:
+                self.char_ob.nattributes.clear()
+            except AttributeError:
+                pass
+            self.nattributes.clear()
 
     def log_message(self, from_obj, text):
         """Logs messages if we're not in private for this session"""

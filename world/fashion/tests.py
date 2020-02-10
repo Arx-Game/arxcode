@@ -49,6 +49,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         # Modeling outfit2 means outfit1's appraisal goes down, since they have one item overlapping.
         self.roster_entry2.action_points = 200
         with patch('django.utils.timezone.now', Mock(return_value=fake_dt)):
+            mock_dice_check.return_value = 0
             outfit2.model_outfit_for_fashion(self.org)
         self.assertTrue(self.top2.modeled_by)
         self.call_cmd("", "Created    Outfit             Appraisal/Buzz \n"

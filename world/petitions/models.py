@@ -26,7 +26,8 @@ class BrokeredSale(SharedMemoryModel):
                       (MILITARY, "Military Resources"), (CRAFTING_MATERIALS, "Crafting Materials"))
     RESOURCE_TYPES = ((ECONOMIC, "economic"), (SOCIAL, "social"), (MILITARY, "military"))
     BROKER_TYPES = ((PURCHASE, "Purchase"), (SALE, "Sale"))
-    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="brokered_sales")
+    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="brokered_sales",
+                              on_delete=models.CASCADE)
     sale_type = models.PositiveSmallIntegerField(default=ACTION_POINTS, choices=OFFERING_TYPES)
     amount = models.PositiveIntegerField(default=0)
     price = models.PositiveIntegerField(default=0)
@@ -160,8 +161,10 @@ class BrokeredSale(SharedMemoryModel):
 
 class PurchasedAmount(SharedMemoryModel):
     """Details of a purchase by a player"""
-    deal = models.ForeignKey('BrokeredSale', related_name="purchased_amounts")
-    buyer = models.ForeignKey('dominion.PlayerOrNpc', related_name="purchased_amounts")
+    deal = models.ForeignKey('BrokeredSale', related_name="purchased_amounts",
+                             on_delete=models.CASCADE)
+    buyer = models.ForeignKey('dominion.PlayerOrNpc', related_name="purchased_amounts",
+                              on_delete=models.CASCADE)
     amount = models.PositiveIntegerField(default=0)
 
     def display(self):
@@ -170,7 +173,8 @@ class PurchasedAmount(SharedMemoryModel):
 
 
 class PetitionSettings(SharedMemoryModel):
-    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="petition_settings")
+    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="petition_settings",
+                              on_delete=models.CASCADE)
     inform = models.BooleanField(default=True)
     ignore_general = models.BooleanField(default=False)
     ignored_organizations = models.ManyToManyField(Organization)
@@ -305,8 +309,8 @@ class Petition(SharedMemoryModel):
 
 class PetitionParticipation(SharedMemoryModel):
     """A model showing how someone participated in a petition"""
-    petition = models.ForeignKey('Petition')
-    dompc = models.ForeignKey('dominion.PlayerOrNpc')
+    petition = models.ForeignKey('Petition', on_delete=models.CASCADE)
+    dompc = models.ForeignKey('dominion.PlayerOrNpc', on_delete=models.CASCADE)
     is_owner = models.BooleanField(default=False)
     signed_up = models.BooleanField(default=False)
     unread_posts = models.BooleanField(default=False)
@@ -325,8 +329,10 @@ class PetitionParticipation(SharedMemoryModel):
 
 class PetitionPost(SharedMemoryModel):
     """A model of a message attached to a given petition."""
-    petition = models.ForeignKey('petitions.Petition', related_name="posts")
-    dompc = models.ForeignKey('dominion.PlayerOrNpc', blank=True, null=True)
+    petition = models.ForeignKey('petitions.Petition', related_name="posts",
+                                 on_delete=models.CASCADE)
+    dompc = models.ForeignKey('dominion.PlayerOrNpc', blank=True, null=True,
+                              on_delete=models.CASCADE)
     in_character = models.BooleanField(default=True)
     text = models.TextField(blank=True)
 

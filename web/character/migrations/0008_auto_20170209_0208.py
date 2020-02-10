@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='investigation',
             name='action_points',
-            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text=b'How many action points spent by player/assistants.'),
+            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text='How many action points spent by player/assistants.'),
         ),
         migrations.AddField(
             model_name='rosterentry',
