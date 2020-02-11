@@ -1345,14 +1345,15 @@ class CmdListClues(ArxPlayerCommand):
         @clues <clue #>
         @clues/share <clue #>[,<clue2 #>...]=<target>[,<target2>...]/<note>
         @clues/search <text>
-        @clues/tagsearch <tag>
+        @clues/search/name <tag>
+        @clues/search/tag <tag>
         @clues/addnote <clue #>=[text to append]
 
     Displays the clues that your character has discovered in game,
     or shares them with others. /search returns the clues that
-    contain the text specified. /tagsearch returns the clues that have the
-    tag specified. /addnote allows you to add more text to your discovery of 
-    the clue.
+    contain the text specified. /search/name and /search/tag checks the
+    specific field for the text specified. /addnote allows you to add more 
+    text to your discovery of the clue.
 
     When sharing clues, please roleplay a bit about them first. Don't dump
     information on people without any context. You must also write a note
@@ -1383,7 +1384,7 @@ class CmdListClues(ArxPlayerCommand):
     def func(self):
         """Executes clues command"""
         try:
-            if not self.args or "search" in self.switches or "tagsearch" in self.switches:
+            if not self.args or "search" in self.switches or "search/tag" in self.switches or "search/name" in self.switches:
                 return self.disp_clue_table()
             if "share" in self.switches:
                 return self.share_clues()
@@ -1463,14 +1464,17 @@ class CmdListClues(ArxPlayerCommand):
     def disp_clue_table(self):
         table = PrettyTable(["{wClue #{n", "{wSubject{n", "{wType{n"])
         discoveries = self.clue_discoveries.select_related('clue').order_by('date')
-        if "tagsearch" in self.switches:
+        if "search/tag" in self.switches:
             msg = "{wMatching Clues{n\n"
-            discoveries = discoveries.filter(Q(clue__search_tags__name__iexact=self.args)).distinct()   
+            discoveries = discoveries.filter(Q(clue__search_tags__name__iexact=self.args)).distinct()
+        if "search/name" in self.switches:
+            msg = "{wMatching Clues{n\n"
+            discoveries = discoveries.filter(Q(clue__name__icontains=self.args)).distinct()
         if "search" in self.switches:
             msg = "{wMatching Clues{n\n"
             discoveries = discoveries.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
                                              Q(clue__name__icontains=self.args) |
-                                             Q(clue__search_tags__name__iexact=self.args)).distinct() 
+                                             Q(clue__search_tags__name__iexact=self.args)).distinct()
         else:
             msg = "{wDiscovered Clues{n\n"
         for discovery in discoveries:
