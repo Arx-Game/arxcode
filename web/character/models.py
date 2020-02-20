@@ -1392,7 +1392,7 @@ class Investigation(AbstractPlayerAllocations):
         return roll
 
     @property
-    def resource_mod(self):
+    def resource_mod(self) -> int:
         """Difficulty modifier as an integer from silver/resources"""
         mod = 0
         silver_mod = self.silver/2500
@@ -1406,7 +1406,7 @@ class Investigation(AbstractPlayerAllocations):
             res_mod = 60
         mod += res_mod
         mod += self.action_points/5
-        return mod
+        return int(mod)
 
     def get_roll(self):
         """Does a roll if we're currently not set, then returns our current roll."""

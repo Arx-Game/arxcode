@@ -1814,7 +1814,7 @@ class CmdOrganization(ArxPlayerCommand):
 
     Lists the houses/organizations your character is a member
     of. Give the name of an organization for more detailed information.
-    @org/accept will accept an invtation to join an organization, while
+    @org/accept will accept an invitation to join an organization, while
     @org/decline will decline the invitation.
 
     @org/perm sets permissions for the organization. Use @org/perm with
@@ -1962,7 +1962,7 @@ class CmdOrganization(ArxPlayerCommand):
                 clue = get_org_clue_or_theory("clue")
                 if not clue:
                     return
-                cost = (caller.clue_cost / (org.social_modifier + 4)) + 1
+                cost = (caller.clue_cost // (org.social_modifier + 4)) + 1
                 if not org.access(caller, 'briefing'):
                     self.msg("You do not have permissions to do a briefing.")
                     return
