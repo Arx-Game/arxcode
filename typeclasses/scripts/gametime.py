@@ -209,7 +209,7 @@ def _format(seconds, *divisors) :
     results = []
     seconds = int(seconds)
     for divisor in divisors:
-        results.append(seconds / divisor)
+        results.append(seconds // divisor)
         seconds %= divisor
     results.append(seconds)
     return tuple(results)
