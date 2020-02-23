@@ -963,7 +963,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         mod = self.prestige_mod
         bonus = (mod * base_amount)/100.0
         if random_percentage is not None:
-            bonus = (bonus * randint(50, random_percentage))/100.0
+            bonus = (bonus * randint(50, int(random_percentage)))/100.0
         return int(bonus)
 
     def get_bonus_income(self, base_amount):
@@ -2461,7 +2461,7 @@ class WorkSetting(SharedMemoryModel):
     message = models.TextField(blank=True)
 
     def __str__(self):
-        return "%s-%s for %s" % (self.get_resource_display(), self.skill.capitalize(), self.organization)
+        return "%s-%s for %s" % (self.get_resource_display(), str(self.skill).capitalize(), self.organization)
 
     @classmethod
     def get_choice_from_string(cls, string):
@@ -2783,7 +2783,7 @@ class Member(SharedMemoryModel):
         if not shares:
             return 0
         myshare = calc_share(self.rank)
-        myshare = (myshare*total)/shares
+        myshare = (myshare*total)//shares
         if total % shares:
             myshare += 1
         return myshare

@@ -414,7 +414,7 @@ class DamageEffect(CodedEffect):
         self.real_damage = self.real_damage and self.combat.ndb.affect_real_damage
         self.can_kill = self.can_kill and self.real_damage
         # big range. So very minor spell of strength 10 does between 2-44 damage.
-        self.damage = randint(self.strength/4, (self.strength + 1) * 4)
+        self.damage = randint(self.strength//4, (self.strength + 1) * 4)
         self.attack_tags = [str(ob) for ob in (self.alignment, self.affinity) if ob] + ["magic"]
 
     def finalize(self):

@@ -594,13 +594,13 @@ class ActionForm(AssistForm):
     CATEGORY_CHOICES = PlotAction.CATEGORY_CHOICES
 
     def __init__(self, caller, *args, **kwargs):
-        super(ActionForm,self).__init__(caller, *args, **kwargs)
+        super(ActionForm, self).__init__(caller, *args, **kwargs)
 
         # Do black magic to prepend the Category field
-        keys = self.fields.keys()
+        keys = list(self.fields.keys())
         self.fields['category'] = forms.ChoiceField(choices=self.CATEGORY_CHOICES, label='What type of action is this?')
         keys.insert(0, 'category')
-        new_fields = (OrderedDict)([k, self.fields[k]] for k in keys)
+        new_fields = OrderedDict([k, self.fields[k]] for k in keys)
         self.fields = new_fields
 
 

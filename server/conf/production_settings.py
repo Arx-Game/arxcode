@@ -24,21 +24,20 @@ MAX_CHAR_LIMIT = config('MAX_CHAR_LIMIT', default=8000, cast=int)
 ######################################################################
 # Contrib config
 ######################################################################
-if SEND_GAME_INDEX:
-    GAME_INDEX_LISTING = {
-        'game_status': config("INDEX_GAME_STATUS", default='beta'),
-        # Optional, comment out or remove if N/A
-        'game_website': config("INDEX_GAME_WEBSITE", default='http://play.arxgame.org'),
-        'short_description': config("INDEX_SHORT_DESC", default='MUX-style game in an original fantasy setting'),
-        # Optional but highly recommended. Markdown is supported.
-        'long_description': config("INDEX_LONG_DESC", default=(
-            "Arx is a MUX-style game in an original low-fantasy setting, "
-            "inspired by series such as Game of Thrones and The First Law. "
-        )),
-        'listing_contact': config("INDEX_CONTACT", default='brannigd@hotmail.com'),
-        # At minimum, specify this or the web_client_url options. Both is fine, too.
-        'telnet_hostname': config("INDEX_TELNET_HOSTNAME", default='play.arxgame.org'),
-        'telnet_port': TELNET_PORTS[0],
-        # At minimum, specify this or the telnet_* options. Both is fine, too.
-        'web_client_url': config("INDEX_WEB_CLIENT_URL", default='https://play.arxgame.org/webclient'),
-    }
+GAME_INDEX_LISTING = {
+    'game_status': config("INDEX_GAME_STATUS", default='beta'),
+    # Optional, comment out or remove if N/A
+    'game_website': config("INDEX_GAME_WEBSITE", default='http://play.arxgame.org'),
+    'short_description': config("INDEX_SHORT_DESC", default='MUX-style game in an original fantasy setting'),
+    # Optional but highly recommended. Markdown is supported.
+    'long_description': config("INDEX_LONG_DESC", default=(
+        "Arx is a MUX-style game in an original low-fantasy setting, "
+        "inspired by series such as Game of Thrones and The First Law. "
+    )),
+    'listing_contact': config("INDEX_CONTACT", default='brannigd@hotmail.com'),
+    # At minimum, specify this or the web_client_url options. Both is fine, too.
+    'telnet_hostname': config("INDEX_TELNET_HOSTNAME", default='play.arxgame.org'),
+    'telnet_port': TELNET_PORTS[0],
+    # At minimum, specify this or the telnet_* options. Both is fine, too.
+    'web_client_url': config("INDEX_WEB_CLIENT_URL", default='https://play.arxgame.org/webclient'),
+}

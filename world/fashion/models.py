@@ -42,6 +42,7 @@ class FashionCommonMixins(SharedMemoryModel):
 
     @staticmethod
     def granulate_fame(fame):
+        fame = fame or 0
         buzz_level = 0
         if fame <= 100:
             pass

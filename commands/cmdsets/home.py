@@ -751,8 +751,8 @@ class CmdManageShop(ArxCommand):
             return
         if not self.args:
             caller.msg(self.list_prices())
-            org_discounts = (loc.db.discounts or {}).items()
-            char_discounts = (loc.db.char_discounts or {}).items()
+            org_discounts = list((loc.db.discounts or {}).items())
+            char_discounts = list((loc.db.char_discounts or {}).items())
             # replace char with char.key in char_discounts list
             char_discounts = [(ob[0].key, ob[1]) for ob in char_discounts]
             discounts = ", ".join(("%s: %s%%" % (ob, val) for ob, val in (org_discounts + char_discounts)))

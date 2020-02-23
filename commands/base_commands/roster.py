@@ -1429,7 +1429,8 @@ class CmdRelationship(ArxPlayerCommand):
                 if old == charob:
                     show_hidden = True
             if show_hidden:
-                rels = dict(charob.messages.white_relationships.items() + charob.messages.black_relationships.items())
+                rels = dict(list(charob.messages.white_relationships.items()
+                                 ) + list(charob.messages.black_relationships.items()))
             else:
                 rels = dict(charob.messages.white_relationships.items())
             # display list of relationships
@@ -1462,7 +1463,7 @@ class CmdRelationship(ArxPlayerCommand):
                 name = self.rhs.lower()
             white = char.messages.white_relationships
             black = char.messages.black_relationships
-            rels = {k: white.get(k, []) + black.get(k, []) for k in set(white.keys() + black.keys())}
+            rels = {k: white.get(k, []) + black.get(k, []) for k in set(list(white.keys()) + list(black.keys()))}
             if not rels:
                 caller.msg("No relationships found.")
                 return

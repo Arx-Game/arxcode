@@ -58,6 +58,8 @@ class InvestigationTests(ArxCommandTest):
         self.spell = Spell.objects.create(name="test spell", node=self.node)
         self.spell.discovered_by_clues.add(self.clue2)
         self.node.discovered_by_revelations.add(self.revelation)
+        self.roster_entry2.action_points = 0
+        self.roster_entry2.save()
         self.call_cmd(template.format("2", "Love Tehom"*8), "You use 101 action points and have 0 remaining this week.|"
                       "You have shared the clue(s) 'test clue2' with Char2.\nYour note: {}".format("Love Tehom"*8))
         self.assertTrue(self.account2.informs.filter(message="After a recent clue discovery, "

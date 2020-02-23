@@ -324,7 +324,7 @@ class CmdTrain(ArxCommand):
 
     def action_point_cost(self, character):
         """Redundant attribute to try to resolve sync/caching errors."""
-        num_trained = character.db.num_trained
+        num_trained = character.db.num_trained or 0
         if num_trained < len(self.currently_training(character)):
             num_trained = len(self.currently_training(character))
         if num_trained < self.max_trainees(character):
@@ -552,7 +552,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
             if not ability:
                 skill_history = char.db.skill_history or {}
                 try:
-                    current = char.db.skill_history[self.rhs]
+                    current = len(char.db.skill_history[self.rhs])
                     skill_list = skill_history[self.rhs]
                     cost = skill_list.pop()
                     skill_history[self.rhs] = skill_list
