@@ -24,6 +24,7 @@ class CmdWear(ArxCommand):
 
     Usage:
         wear <item name or "all">
+        wear/unseen <item name>
         wear/outfit <outfit name>
         remove <item or "all">
         remove/outfit <outfit name>
@@ -32,6 +33,9 @@ class CmdWear(ArxCommand):
     Wears the item on your character. Typing "all" attempts to wear all gear
     in your inventory. If you have created an outfit (see 'help outfit') the
     /outfit switch will first undress you and then attempt to put it on.
+    Using wear/unseen will wear an item under other clothes, where it will
+    not be visible. You can have one seen and one unseen object per worn
+    location.
 
     'Remove' will take off specified worn items, with 'undress' being an
     alias for 'remove all'.
