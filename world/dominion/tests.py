@@ -170,6 +170,22 @@ class TestGeneralDominionCommands(ArxCommandTest):
         self.call_cmd("/score orgtest", "Member Total Work Total Invested Combined \n"
                                    "Testaccount          3             25       28")
 
+    def test_cmd_patronage(self):
+        self.cmd_class = general_dominion_commands.CmdPatronage
+        self.caller = self.account
+        self.char.db.family = "Pravus"
+        self.char2.db.family = "Pravus"
+        self.call_cmd("/addprotege testaccount2", "They must be online to add them as a protege.")
+        self.account2.is_connected = True
+        self.call_cmd("/addprotege testaccount2", "You already have the maximum number of "
+                                                  "proteges for your social rank.")
+        self.char.db.social_rank = 1
+        self.call_cmd("/addprotege testaccount2", "You cannot be in the same family as your protege.")
+        self.char2.db.family = "A Family Not As Cool As Pravus"
+        self.call_cmd("/addprotege testaccount2", "Your social rank must be at least 1 higher than your target.")
+        self.char2.db.social_rank = 2
+        self.call_cmd("/addprotege testaccount2", "You have extended the offer of patronage to Testaccount2.")
+
     def test_cmd_organization(self):
         from world.dominion.models import Organization, AssetOwner
         org = Organization.objects.create(name="Orgtest")
