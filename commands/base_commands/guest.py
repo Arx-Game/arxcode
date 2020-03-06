@@ -37,7 +37,7 @@ _vocations_ = ("noble", "courtier", "charlatan", "soldier", "knight", "priest", 
                "apothecary", "carpenter")
 _stage3_fields_ = ("concept", "gender", "age", "fealty", "family", "religion", "desc", "personality", "background",
                    "marital_status", "quote", "birthday", "social_rank", "skintone", "eyecolor", "haircolor", "height")
-_valid_fealty_ = ("Crownsworn", "Grayson", "Redrain", "Thrax", "Valardin", "Velenosa")
+_valid_fealty_ = ("Crownsworn", "Grayson", "Pravus", "Redrain", "Thrax", "Valardin", "Velenosa")
 _stage3_optional_ = ("real_concept", "real_age")
 # Minimum and maximum ages players can set for starting characters
 _min_age_ = 18
@@ -149,7 +149,7 @@ XP_BONUS_BY_POP = 1
 
 def census_of_fealty():
     """Returns dict of fealty name to number of active players"""
-    fealties = {"Valardin": 0, "Velenosa": 0, "Grayson": 0, "Crownsworn": 0, "Thrax": 0, "Redrain": 0}
+    fealties = {"Valardin": 0, "Velenosa": 0, "Grayson": 0, "Crownsworn": 0, "Thrax": 0, "Redrain": 0, "Pravus": 0}
     from typeclasses.characters import Character
     for char in Character.objects.filter(roster__roster__name="Active"):
         fealty = (char.db.fealty or "").capitalize()

@@ -422,7 +422,7 @@ class WeeklyEvents(RunDateMixin, Script):
             if stop and (bonus_votes > stop):
                 bonus_votes = stop
             bonus_xp = bonus_votes - start
-            bonus_xp /= div
+            bonus_xp //= div
             if (bonus_votes - start) % div:
                 bonus_xp += 1
             return bonus_xp

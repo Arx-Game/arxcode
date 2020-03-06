@@ -1814,7 +1814,7 @@ class CmdOrganization(ArxPlayerCommand):
 
     Lists the houses/organizations your character is a member
     of. Give the name of an organization for more detailed information.
-    @org/accept will accept an invtation to join an organization, while
+    @org/accept will accept an invitation to join an organization, while
     @org/decline will decline the invitation.
 
     @org/perm sets permissions for the organization. Use @org/perm with
@@ -1962,7 +1962,7 @@ class CmdOrganization(ArxPlayerCommand):
                 clue = get_org_clue_or_theory("clue")
                 if not clue:
                     return
-                cost = (caller.clue_cost / (org.social_modifier + 4)) + 1
+                cost = (caller.clue_cost // (org.social_modifier + 4)) + 1
                 if not org.access(caller, 'briefing'):
                     self.msg("You do not have permissions to do a briefing.")
                     return
@@ -2490,12 +2490,12 @@ class CmdPatronage(ArxPlayerCommand):
         """Determines if social rank is great enough"""
         our_rank = self.caller.char_ob.db.social_rank or 10
         targ_rank = target.db.social_rank or 0
-        if our_rank < 3:
-            diff = 3
-        elif our_rank < 6:
-            diff = 2
-        else:
-            diff = 1
+        target_family = (target.db.family or "").lower()
+        caller_family = (self.caller.char_ob.db.family or "").lower()
+        if target_family == caller_family:
+            self.msg("You cannot be in the same family as your protege.")
+            return False
+        diff = 1
         if our_rank + diff > targ_rank:
             self.msg("Your social rank must be at least %d higher than your target." % diff)
             return False
