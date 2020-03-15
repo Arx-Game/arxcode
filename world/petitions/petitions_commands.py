@@ -10,7 +10,7 @@ from server.utils.prettytable import PrettyTable
 from world.petitions.forms import PetitionForm
 from world.petitions.exceptions import PetitionError
 from world.petitions.models import BrokeredSale, Petition, PetitionSettings, PetitionParticipation
-from world.dominion.models import Organization
+from world.dominion.models import Organization, Member
 from datetime import date
 
 
@@ -230,9 +230,10 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
             self.msg("Successfully created petition %s." % petition.id)
             self.caller.attributes.remove("petition_form")
             if petition.organization is not None:
+                members = Member.objects.filter(organization=petition.organization, deguilded=False)
                 targets = (PetitionSettings.objects.all().exclude(ignored_organizations=petition.organization)
                                                          .exclude(inform=False)
-                                                         .filter(owner__memberships__organization=petition.organization)
+                                                         .filter(owner__memberships__in=members)
                            )
                 targets = [ob for ob in targets if petition.organization.access(petition.owner, "view_petition")]
                 for target in targets:

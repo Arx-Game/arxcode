@@ -9,7 +9,8 @@ class PaxformCommand(ArxCommand):
     def __init__(self):
         super(ArxCommand, self).__init__()
         self._form = self.__class__.form_class()
-        if not self.__doc__ or len(self.__doc__) == 0:
+        doc = self.__doc__
+        if not doc or len(doc) == 0 or doc == ArxCommand.__doc__:
             self.__doc__ = self.__docstring
         self._extras = None
 
