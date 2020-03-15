@@ -475,6 +475,7 @@ def setup_dom_for_char(character, create_dompc=True, create_assets=True,
     if create_assets:
         amt = starting_money(srank)
         setup_assets(dompc, amt)
+    dompc.petition_settings.get_or_create()
     # if region is provided, we will setup a domain unless explicitly told not to
     if create_domain and region:       
         if character.db.gender and character.db.gender.lower() == 'male':
