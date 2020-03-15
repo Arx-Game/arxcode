@@ -206,7 +206,10 @@ class Wieldable(Wearable):
 
     @property
     def is_wielded(self):
-        return bool(self.tags.get("currently_wielded"))
+        try:
+            return self.equipped_details.is_wielded
+        except AttributeError:
+            return False
 
     @is_wielded.setter
     def is_wielded(self, bull):

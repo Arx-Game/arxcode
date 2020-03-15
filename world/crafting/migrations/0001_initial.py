@@ -9,6 +9,8 @@ import server.utils.arx_utils
 tags_to_delete = [
     "display_by_line",
     "displayable",
+    "currently_wielded",
+    "currently_worn"
 ]
 attributes_to_delete = [
     "recipe",

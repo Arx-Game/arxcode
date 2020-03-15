@@ -9,6 +9,7 @@ from time import time
 from typeclasses.containers.container import Container
 from world.crafting.constants import DEFAULT_LAYER
 from world.fashion.mixins import FashionableMixins
+from world.fashion.models import EquippedItemDetails
 from typeclasses.exceptions import EquipError
 
 
@@ -50,16 +51,16 @@ class Wearable(FashionableMixins, Object):
             self.remove(source_location)
         super(Wearable, self).at_after_move(source_location, **kwargs)
 
-    def remove(self, wearer):
+    def remove(self):
         """
         Takes off the armor
         """
         if not self.is_worn:
             raise EquipError("not equipped")
         self.set_removed()
-        self.at_post_remove(wearer)
+        self.at_post_remove()
 
-    def at_post_remove(self, wearer):
+    def at_post_remove(self):
         """Hook called after removing succeeds."""
         return True
 
@@ -70,18 +71,17 @@ class Wearable(FashionableMixins, Object):
         """
         # Assume fail exceptions are raised at_pre_wear
         self.at_pre_wear(wearer, layer=layer)
-        self.set_worn()
+        self.set_equipped(layer)
         self.at_post_wear(wearer)
 
-    def set_worn(self):
-        self.tags.add("currently_worn")
-        if self.decorative:
-            self.db.worn_time = time()
+    def set_equipped(self, layer):
+        EquippedItemDetails.objects.create(item=self, layer=layer, slot=self.slot)
 
     def set_removed(self):
-        self.tags.remove("currently_worn")
-        if self.decorative:
-            self.attributes.remove("worn_time")
+        try:
+            self.equipped_details.delete()
+        except AttributeError:
+            pass
 
     def at_pre_wear(self, wearer, layer=None):
         """Hook called before wearing for any checks."""

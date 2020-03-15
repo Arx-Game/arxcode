@@ -382,6 +382,15 @@ class FashionOutfit(FashionCommonMixins):
         return self.owner.player.char_ob
 
 
+class ItemSlot(SharedMemoryModel):
+    """Lookup table for the different types of slots that can exist"""
+    slot_id = models.CharField(primary_key=True, max_length=255)
+    value = models.IntegerField("A multiplier for this slot so that chest is worth more than hands, etc", default=0)
+
+    def __str__(self):
+        return self.slot_id
+
+
 class WornSlotAndLayerMixin(SharedMemoryModel):
     """
     Mixin for describing how items can be equipped. An item that's equipped is a combination of a slot and a layer.
@@ -392,7 +401,7 @@ class WornSlotAndLayerMixin(SharedMemoryModel):
     """
     INNER, OUTER, WIELDED = INNER, OUTER, WIELDED
     LAYER_CHOICES = ((INNER, "Inner"), (OUTER, "Outer"), (WIELDED, "Wielded"))
-    slot = models.CharField(max_length=80, blank=True, null=True)
+    slot = models.ForeignKey("ItemSlot", on_delete=models.CASCADE)
     layer = models.PositiveSmallIntegerField("Whether this item must be worn as inner or outerwear", default=INNER,
                                              choices=LAYER_CHOICES)
 
@@ -403,6 +412,11 @@ class WornSlotAndLayerMixin(SharedMemoryModel):
     def is_worn(self):
         """Whether the item is being worn rather than held"""
         return self.layer in (INNER, OUTER)
+
+    @property
+    def is_wielded(self):
+        """Whether the item is held"""
+        return self.layer == WIELDED
 
 
 class ModusOrnamenta(WornSlotAndLayerMixin):
@@ -421,7 +435,8 @@ class EquippedItemDetails(WornSlotAndLayerMixin):
     the item's location. This does mean we need to be careful to delete this whenever the item is moved to
     prevent erroneously equipped objects.
     """
-    item = models.OneToOneField('objects.ObjectDB', on_delete=models.CASCADE, related_name="equipped_details")
+    item = models.OneToOneField('objects.ObjectDB', on_delete=models.CASCADE, related_name="equipped_details",
+                                primary_key=True)
     date_equipped = models.DateTimeField(auto_now_add=True)
 
 

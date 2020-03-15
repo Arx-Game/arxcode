@@ -1,12 +1,38 @@
 from server.utils.arx_utils import lowercase_kwargs, list_to_string
 from typeclasses.exceptions import EquipError
+from evennia.objects.objects import DefaultCharacter
+from typing import Union
+from typeclasses.mixins import ModifierMixin
 
 
 class UseEquipmentMixins(object):
     """
     Behaviors related to donning equipment.
     """
-    def equip_or_remove(self, verb, item_list=None):
+    def check_equipment_changes_permitted(self: Union[DefaultCharacter, 'UseEquipmentMixins']):
+        cscript = self.location.ndb.combat_manager
+        if cscript and cscript.ndb.phase != 1 and cscript.check_character_is_combatant(self):
+            from typeclasses.scripts.combat.combat_settings import CombatError
+            raise CombatError("Equipment changes are only allowed in combat's setup phase.")
+
+    def wield(self, obj):
+        self.check_equipment_changes_permitted()
+
+    def wear(self, obj, layer):
+        self.check_equipment_changes_permitted()
+
+    def remove(self, obj):
+        self.check_equipment_changes_permitted()
+        obj.remove()
+
+    def undress(self):
+        """A character method to take it aaaaall off. Does not handle exceptions!"""
+        self.equip_or_remove("remove")
+
+    def sheathe(self, obj):
+        self.check_equipment_changes_permitted()
+
+    def equip_or_remove(self: Union[DefaultCharacter, 'UseEquipmentMixins'], verb, item_list=None):
         """
         A list of items is worn, wielded, or removed from a character.
 
@@ -59,24 +85,21 @@ class UseEquipmentMixins(object):
     def get_item_list_to_equip(self, verb):
         """Builds a verb-appropriate list of items from our contents."""
         if verb == "wear":
-            equipment = [ob for ob in self.equipment if not ob.is_equipped]
+            equipment = [ob for ob in self.equipable_items if not ob.is_equipped]
             from operator import attrgetter
             return sorted(equipment, key=attrgetter('slot', 'db_key'))
         else:  # Equipment to be removed
-            return [ob for ob in self.equipment if ob.is_equipped]
+            return [ob for ob in self.equipable_items if ob.is_equipped]
 
     def get_items_in_slot_and_layer(self, slot, layer):
-        return [item for item in self.equipment if item.slot == slot and item.layer == layer]
+        return [item for item in self.equipable_items if item.slot == slot and item.layer == layer]
 
-    def get_total_volume_for_slot_and_layer(self, slot, layer):
+    def check_slot_and_layer_occupied(self, slot, layer):
         return sum([item.slot_volume for item in self.get_items_in_slot_and_layer(slot, layer)])
 
-    def undress(self):
-        """A character method to take it aaaaall off. Does not handle exceptions!"""
-        self.equip_or_remove("remove")
-
     @lowercase_kwargs("target_tags", "stat_list", "skill_list", "ability_list", default_append="")
-    def get_total_modifier(self, check_type, target_tags=None, stat_list=None, skill_list=None, ability_list=None):
+    def get_total_modifier(self: Union[DefaultCharacter, 'UseEquipmentMixins', ModifierMixin],
+                           check_type, target_tags=None, stat_list=None, skill_list=None, ability_list=None):
         """Gets all modifiers from their location and worn/wielded objects."""
         from django.db.models import Sum
         from world.conditions.models import RollModifier
@@ -97,7 +120,7 @@ class UseEquipmentMixins(object):
                                            ability__in=ability_list or []).aggregate(Sum('value'))['value__sum'] or 0
 
     @property
-    def armor_resilience(self):
+    def armor_resilience(self: Union[DefaultCharacter, 'UseEquipmentMixins']):
         """Determines how hard it is to penetrate our armor"""
         value = self.db.armor_resilience or 15
         for ob in self.worn:
@@ -105,7 +128,7 @@ class UseEquipmentMixins(object):
         return int(value)
 
     @property
-    def armor(self):
+    def armor(self: Union[DefaultCharacter, 'UseEquipmentMixins']):
         """
         Returns armor value of all items the character is wearing plus any
         armor in their attributes.
@@ -120,7 +143,7 @@ class UseEquipmentMixins(object):
         return int(round(armor))
 
     @armor.setter
-    def armor(self, value):
+    def armor(self: Union[DefaultCharacter, 'UseEquipmentMixins'], value):
         self.db.armor_class = value
 
     @property
@@ -133,11 +156,11 @@ class UseEquipmentMixins(object):
                 pass
         return penalty
 
-    def get_fakeweapon(self):
+    def get_fakeweapon(self: Union[DefaultCharacter, 'UseEquipmentMixins']):
         return self.db.fakeweapon
 
     @property
-    def weapondata(self):
+    def weapondata(self: Union['typeclasses.characters.Character', 'UseEquipmentMixins']):
         wpndict = dict(self.get_fakeweapon() or {})
         wpn = self.weapon
         if wpn:
@@ -161,11 +184,11 @@ class UseEquipmentMixins(object):
         return wpndict
 
     @property
-    def weapon(self):
+    def weapon(self: Union[DefaultCharacter, 'UseEquipmentMixins']):
         return self.db.weapon
 
     @weapon.setter
-    def weapon(self, value):
+    def weapon(self: Union[DefaultCharacter, 'UseEquipmentMixins'], value):
         self.db.weapon = value
 
     @property
@@ -175,28 +198,31 @@ class UseEquipmentMixins(object):
             return self.weapondata['hidden_weapon']
         except (AttributeError, KeyError):
             return False
-        return True
 
     @property
-    def equipment(self):
+    def equipable_items(self: Union[DefaultCharacter, 'UseEquipmentMixins']):
         """Returns list of items in inventory capable of being worn/wielded."""
         return [ob for ob in self.contents if hasattr(ob, 'wear')]
 
     @property
+    def equipped_items(self: Union[DefaultCharacter, 'UseEquipmentMixins']):
+        return [ob for ob in self.contents if hasattr()]
+
+    @property
     def worn(self):
         """Returns list of items worn as attire."""
-        worn = [ob for ob in self.equipment if ob.decorative and ob.is_worn]
+        worn = [ob for ob in self.equipable_items if ob.decorative and ob.is_worn]
         return sorted(worn, key=lambda x: x.db.worn_time)
 
     @property
     def sheathed(self):
         """Returns list of worn non-decorative weapons."""
-        return [ob for ob in self.equipment if not ob.decorative and ob.is_worn]
+        return [ob for ob in self.equipable_items if not ob.decorative and ob.is_worn]
 
     @property
     def wielded(self):
         """Returns list of weapons currently being wielded."""
-        return [ob for ob in self.equipment if hasattr(ob, 'wield') and ob.is_wielded]
+        return [ob for ob in self.equipable_items if hasattr(ob, 'wield') and ob.is_wielded]
 
     @property
     def is_naked(self):
@@ -204,7 +230,7 @@ class UseEquipmentMixins(object):
         return not any([self.worn, self.sheathed, self.wielded])
 
     @property
-    def used_volume(self):
+    def used_volume(self: Union[DefaultCharacter, 'UseEquipmentMixins']):
         """The idea here is the only objects that take up carrying space are things which we aren't worn -
         it's just objects that the character is physically holding. So weapons count, but worn clothes do not.
         """
