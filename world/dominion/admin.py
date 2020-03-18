@@ -65,6 +65,10 @@ class MemberInline(admin.StackedInline):
     show_change_link = True
 
 
+class MemberAdmin(DomAdmin):
+    raw_id_fields = ('commanding_officer', 'player', 'organization', 'object')
+
+
 class WorkSettingInline(admin.StackedInline):
     """Inline for displaying WorkSettings for an Org"""
     model = WorkSetting
@@ -812,4 +816,4 @@ admin.site.register(Fealty, FealtyAdmin)
 admin.site.register(PrestigeAdjustment, PrestigeAdjustmentAdmin)
 admin.site.register(PrestigeCategory, PrestigeCategoryAdmin)
 admin.site.register(PrestigeTier, PrestigeTierAdmin)
-admin.site.register(Member, DomAdmin)
+admin.site.register(Member, MemberAdmin)
