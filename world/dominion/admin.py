@@ -61,7 +61,8 @@ class MemberInline(admin.StackedInline):
     extra = 0
     raw_id_fields = ('commanding_officer', 'player', 'organization')
     exclude = ('object', 'pc_exists', 'salary', 'commanding_officer', 'public_notes', 'officer_notes')
-    readonly_fields = ('work_this_week', 'work_total',)
+    readonly_fields = ('work_this_week', 'work_total', 'investment_this_week', 'investment_total', 'has_seen_motd')
+    show_change_link = True
 
 
 class WorkSettingInline(admin.StackedInline):
@@ -811,3 +812,4 @@ admin.site.register(Fealty, FealtyAdmin)
 admin.site.register(PrestigeAdjustment, PrestigeAdjustmentAdmin)
 admin.site.register(PrestigeCategory, PrestigeCategoryAdmin)
 admin.site.register(PrestigeTier, PrestigeTierAdmin)
+admin.site.register(Member, DomAdmin)
