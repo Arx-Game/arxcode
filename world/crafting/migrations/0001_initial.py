@@ -42,11 +42,11 @@ attributes_to_delete = [
     "slot_limit",
     "penalty",
     "worn_time",  # if we come up with better way for displaying order
+    "weapon",
     # containers
     "container",
     "max_volume",
     "volume",
-
 ]
 
 

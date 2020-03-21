@@ -10,7 +10,7 @@ from __future__ import unicode_literals
 from django.db import models
 
 from evennia.utils.idmapper.models import SharedMemoryModel
-from world.crafting.constants import INNER, OUTER, WIELDED
+from world.crafting.constants import INNER, OUTER, WIELDED, WIELDED_BOTH_HANDS
 from world.fashion.exceptions import FashionError
 from typeclasses.exceptions import EquipError
 from typeclasses.scripts.combat.combat_settings import CombatError
@@ -391,19 +391,20 @@ class ItemSlot(SharedMemoryModel):
         return self.slot_id
 
 
-class WornSlotAndLayerMixin(SharedMemoryModel):
+class WornSlotAndMannerMixin(SharedMemoryModel):
     """
-    Mixin for describing how items can be equipped. An item that's equipped is a combination of a slot and a layer.
-    A slot describes where it's equipped, while layer describes how: innerwear, outerwear, or held. Every item
-    also has a 'slot_volume' to describe the percentage of space it takes up when worn in that layer, setting a limit
-    to how many can be equipped. For example, a two handed weapon would have 'wielded' as its layer when equipped,
-    with its slot being 'held', and taking up 100% of the volume for 'held'.
+    Mixin for describing how items can be equipped. An item that's equipped is a combination of a slot and a manner.
+    A slot describes where it's equipped, while manner describes how: innerwear, outerwear, or held.
+    For example, a shirt might have a chest as its slot, and would be chosen to be worn 'inner', selecting
+    to wear it under other clothes. Weapons are distinguished by having 'WIELDED' or 'WIELDED_BOTH_HANDS'
+    set as the manner. Generally their slot should be 'None' to shown that they're sheathed/worn on the back for
+    'Outer' or concealed away with 'Inner'.
     """
-    INNER, OUTER, WIELDED = INNER, OUTER, WIELDED
-    LAYER_CHOICES = ((INNER, "Inner"), (OUTER, "Outer"), (WIELDED, "Wielded"))
-    slot = models.ForeignKey("ItemSlot", on_delete=models.CASCADE)
-    layer = models.PositiveSmallIntegerField("Whether this item must be worn as inner or outerwear", default=INNER,
-                                             choices=LAYER_CHOICES)
+    INNER, OUTER, WIELDED, WIELDED_BOTH_HANDS = INNER, OUTER, WIELDED, WIELDED_BOTH_HANDS
+    MANNER_CHOICES = ((INNER, "Inner"), (OUTER, "Outer"), (WIELDED, "Wielded"))
+    slot = models.ForeignKey("ItemSlot", null=True, on_delete=models.PROTECT)
+    manner = models.PositiveSmallIntegerField("Whether this item must be worn as inner or outerwear", default=INNER,
+                                              choices=MANNER_CHOICES)
 
     class Meta:
         abstract = True
@@ -411,15 +412,15 @@ class WornSlotAndLayerMixin(SharedMemoryModel):
     @property
     def is_worn(self):
         """Whether the item is being worn rather than held"""
-        return self.layer in (INNER, OUTER)
+        return self.manner in (INNER, OUTER)
 
     @property
     def is_wielded(self):
         """Whether the item is held"""
-        return self.layer == WIELDED
+        return self.manner == WIELDED
 
 
-class ModusOrnamenta(WornSlotAndLayerMixin):
+class ModusOrnamenta(WornSlotAndMannerMixin):
     """
     The method of wearing an item in an outfit: this is a snapshot of every object equipped in the outfit
     and how they're worn.
@@ -428,7 +429,7 @@ class ModusOrnamenta(WornSlotAndLayerMixin):
     fashion_item = models.ForeignKey('objects.ObjectDB', on_delete=models.CASCADE)
 
 
-class EquippedItemDetails(WornSlotAndLayerMixin):
+class EquippedItemDetails(WornSlotAndMannerMixin):
     """
     Record of a currently equipped object on a character, storing the details of how it's currently being
     worn. We don't actually have a FK to the character because it's unnecessary: the wearer will always be

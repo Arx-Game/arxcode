@@ -15,7 +15,7 @@ class UseEquipmentMixins(object):
             from typeclasses.scripts.combat.combat_settings import CombatError
             raise CombatError("Equipment changes are only allowed in combat's setup phase.")
 
-    def wield(self, obj):
+    def wield(self, obj, style):
         self.check_equipment_changes_permitted()
 
     def wear(self, obj, layer):
@@ -95,7 +95,7 @@ class UseEquipmentMixins(object):
         return [item for item in self.equipable_items if item.slot == slot and item.layer == layer]
 
     def check_slot_and_layer_occupied(self, slot, layer):
-        return sum([item.slot_volume for item in self.get_items_in_slot_and_layer(slot, layer)])
+        return bool(self.get_items_in_slot_and_layer(slot, layer))
 
     @lowercase_kwargs("target_tags", "stat_list", "skill_list", "ability_list", default_append="")
     def get_total_modifier(self: Union[DefaultCharacter, 'UseEquipmentMixins', ModifierMixin],

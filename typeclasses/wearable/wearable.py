@@ -223,7 +223,7 @@ class Wearable(FashionableMixins, Object):
     def layer(self):
         """Returns tuple"""
         try:
-            return self.equipped_details.layer
+            return self.equipped_details.manner
         except AttributeError:
             return None
 
