@@ -123,7 +123,7 @@ INSTALLED_APPS += ('world.dominion',
                    )
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 3000
 
 ######################################################################
 # Game Time setup
