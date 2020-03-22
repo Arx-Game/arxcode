@@ -294,7 +294,7 @@ class Attack(object):
         """Who are we killing, again? Oh everyone? Fun! --Emerald"""
         attack_list = self.targets if self.cleaving and not self.free_attack else [self.target]
         if not self.free_attack and self.switch_chance and (self.remaining_attacks - 1) > 0:
-            from utils import npc_target_choice
+            from .utils import npc_target_choice
             for _ in range(self.remaining_attacks - 1):
                 attack_list.append(npc_target_choice(self.target, self.targets, self.prev_targ,
                                                      self.switch_chance))
