@@ -12,9 +12,10 @@ just overloads its hooks to have it perform its function.
 
 """
 
-from evennia.scripts.scripts import DefaultScript, ExtendedLoopingCall
-from evennia.scripts.models import ScriptDB
 from evennia.comms import channelhandler
+from evennia.scripts.models import ScriptDB
+from evennia.scripts.scripts import DefaultScript
+from evennia.utils import logger
 
 _SESSIONS = None
 
@@ -92,7 +93,13 @@ class Script(DefaultScript):
       at_server_shutdown() - called at a full server shutdown.
 
     """
-    pass
+    def _step_errback(self, e):
+        """
+        Override to keep the user from getting useless script error, plus grabs
+        real traceback for the log.
+        """
+        estring = e.getTraceback()
+        logger.log_err(estring)
 
 
 class CheckSessions(Script):
