@@ -391,18 +391,15 @@ class ItemSlot(SharedMemoryModel):
         return self.slot_id
 
 
-class WornSlotAndMannerMixin(SharedMemoryModel):
+class WornMannerMixin(SharedMemoryModel):
     """
     Mixin for describing how items can be equipped. An item that's equipped is a combination of a slot and a manner.
     A slot describes where it's equipped, while manner describes how: innerwear, outerwear, or held.
-    For example, a shirt might have a chest as its slot, and would be chosen to be worn 'inner', selecting
-    to wear it under other clothes. Weapons are distinguished by having 'WIELDED' or 'WIELDED_BOTH_HANDS'
-    set as the manner. Generally their slot should be 'None' to shown that they're sheathed/worn on the back for
-    'Outer' or concealed away with 'Inner'.
+    If an item is worn, the slot is derived from the recipe, while the manner shows whether it's worn an inner
+    or outer layer. Wielded items are in one hand or both hands.
     """
     INNER, OUTER, WIELDED, WIELDED_BOTH_HANDS = INNER, OUTER, WIELDED, WIELDED_BOTH_HANDS
     MANNER_CHOICES = ((INNER, "Inner"), (OUTER, "Outer"), (WIELDED, "Wielded"))
-    slot = models.ForeignKey("ItemSlot", null=True, on_delete=models.PROTECT)
     manner = models.PositiveSmallIntegerField("Whether this item must be worn as inner or outerwear", default=INNER,
                                               choices=MANNER_CHOICES)
 
@@ -417,24 +414,28 @@ class WornSlotAndMannerMixin(SharedMemoryModel):
     @property
     def is_wielded(self):
         """Whether the item is held"""
-        return self.manner == WIELDED
+        return self.manner in (WIELDED, WIELDED_BOTH_HANDS)
 
 
-class ModusOrnamenta(WornSlotAndMannerMixin):
+class ModusOrnamenta(WornMannerMixin):
     """
     The method of wearing an item in an outfit: this is a snapshot of every object equipped in the outfit
     and how they're worn.
     """
+    slot = models.ForeignKey("ItemSlot", null=True, on_delete=models.PROTECT)
     fashion_outfit = models.ForeignKey('FashionOutfit', on_delete=models.CASCADE)
     fashion_item = models.ForeignKey('objects.ObjectDB', on_delete=models.CASCADE)
 
 
-class EquippedItemDetails(WornSlotAndMannerMixin):
+class EquippedItemDetails(WornMannerMixin):
     """
     Record of a currently equipped object on a character, storing the details of how it's currently being
     worn. We don't actually have a FK to the character because it's unnecessary: the wearer will always be
     the item's location. This does mean we need to be careful to delete this whenever the item is moved to
-    prevent erroneously equipped objects.
+    prevent erroneously equipped objects. Similarly, we don't have a FK to slot because that can be
+    derived from the item's recipe, which details the slots it's worn on. If we eventually have items that
+    can be worn in multiple locations or varying slot/layer combinations, we'll have to make the relationship
+    much more complex.
     """
     item = models.OneToOneField('objects.ObjectDB', on_delete=models.CASCADE, related_name="equipped_details",
                                 primary_key=True)
