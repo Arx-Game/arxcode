@@ -592,7 +592,9 @@ class AbstractAction(AbstractPlayerAllocations):
     def check_plot_errors(self: Union["PlotAction", "PlotActionAssistant"]):
         """Raises ActionSubmissionErrors if anything should stop our submission"""
         if self.plot:
-            self.plot.raise_submission_errors()
+            # don't check submission date/resolved status if editing was mandated by GM
+            if self.status != PlotAction.NEEDS_PLAYER:
+                self.plot.raise_submission_errors()
             self.check_plot_omnipresence()
         self.check_plot_overcrowd()
 
