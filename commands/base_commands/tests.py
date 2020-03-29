@@ -10,10 +10,11 @@ from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTic
 from web.character.models import Revelation
 from world.dominion.domain.models import Army
 from world.dominion.models import RPEvent
-from world.dominion.plots.models import PlotAction, Plot
+from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
+from world.magic.models import SkillNode, Spell
 
 from world.templates.models import Template
-from web.character.models import PlayerAccount
+from web.character.models import PlayerAccount, Clue, Revelation
 
 from world.crafting.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
@@ -172,6 +173,9 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
 
 class StoryActionTests(ArxCommandTest):
+    def tearDown(self):
+        ActionRequirement.objects.all().delete()
+        super().tearDown()
 
     @patch("world.dominion.plots.models.inform_staff")
     @patch("world.dominion.plots.models.get_week")
@@ -207,13 +211,58 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/setaction 1=test assist",
                       "Action by Testaccount for Test Crisis now has your assistance: test assist")
         Army.objects.create(name="test army", owner=self.assetowner)
+        # check for adding things to meet requirements
+        self.call_cmd("/add 1=army,1", "There isn't an unmet requirement for army.")
+        action.requirements.create(requirement_type=ActionRequirement.FORCES, requirement_text="Add some doodz")
         self.call_cmd("/add 1=army,1", "You don't have access to that Army.|Failed to send orders to the army.")
         self.call_cmd("/readycheck 1", "Only the action leader can use that switch.")
         self.caller = self.account
+        # check adding resource-type requirements
         self.call_cmd("/add 1=foo,bar", "Invalid type of resource.")
-        self.call_cmd("/add 1=ap,50", "50 ap added. Action #1 Total resources: extra action points 50")
+        self.call_cmd("/add 1=ap,50", "There isn't an unmet requirement for ap.")
+        req = action.requirements.create(requirement_type=ActionRequirement.AP, max_rate=25, weekly_total=25,
+                                         total_required_amount=50)
+        self.call_cmd("/add 1=ap,25", "That would exceed the weekly maximum. Current Week: 25/25, Progress: 0/50")
+        req.weekly_total = 0
+        req.save()
+        action.action_points = 30
+        action.save()
+        old_inform = self.caller.inform
+        self.caller.inform = Mock()
+        self.call_cmd("/add 1=ap,25", "That would exceed the total required. Current Week: 0/25, Progress: 30/50")
+        self.call_cmd("/add 1=ap,20", "20 ap added. Action #1 Total requirements:\n"
+                                      "military forces: Add some doodz: Fulfilled by: No one yet\n"
+                                      "action points: 50(max per week: 25): Current Week: 20/25, Progress: 50/50")
+        self.assertEqual(req.weekly_total, 20)
+        self.caller.inform.assert_called_with(
+            "A requirement has been completed for Action #1: action points: 50(max per week: 25)",
+            append=False, category='Actions', week=1)
         self.char.pay_money = Mock(return_value=True)
-        self.call_cmd("/add 1=silver,50", "50 silver added. Action #1 Total resources: extra action points 50, silver 50")
+        # check to make sure unmet requirements block submission
+        action.requirements.create(requirement_type=ActionRequirement.SILVER, total_required_amount=50)
+        self.call_cmd("/submit 1", "You have Action Requirements that are not yet satisfied: "
+                                   "military forces: Add some doodz\nRequirement: silver: 50")
+        reqs_string = ("Action #1 Total requirements:\n"
+                       "military forces: Add some doodz: Fulfilled by: No one yet\n"
+                       "action points: 50(max per week: 25): Current Week: 20/25, Progress: 50/50\n"
+                       "silver: 50: Progress: 50/50")
+        self.call_cmd("/add 1=silver,50",
+                      "50 silver added. " + reqs_string)
+        self.call_cmd("/submit 1", "You have Action Requirements that are not yet satisfied: "
+                                   "military forces: Add some doodz")
+        # tests
+        self.account.pay_resources = Mock(return_value=True)
+        for name, rtype in [("military", ActionRequirement.MILITARY), ("social", ActionRequirement.SOCIAL),
+                            ("economic", ActionRequirement.ECONOMIC)]:
+            action.requirements.create(requirement_type=rtype, total_required_amount=50)
+            reqs_string += f"\n{name} resources: 50: Progress: 50/50"
+            self.call_cmd(f"/add 1={name},50", f"50 {name} added. {reqs_string}")
+        clue = Clue.objects.create(name="test")
+        action.requirements.create(requirement_type=ActionRequirement.CLUE, clue=clue)
+        self.call_cmd(f"/add 1=clue,{clue.id}", "No Clue found using '1'.")
+        clue.discoveries.create(character=self.roster_entry)
+        reqs_string += "\nclue: test: Fulfilled by: Testaccount"
+        self.call_cmd(f"/add 1=clue,{clue.id}", f"test clue added. {reqs_string}")
         self.call_cmd("/add 1=army,1", "You have successfully relayed new orders to that army.")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: True")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: False")
@@ -227,6 +276,7 @@ class StoryActionTests(ArxCommandTest):
                                    "who have incomplete actions will have their assists deleted.\nThe following "
                                    "assistants are not ready and will be deleted: Testaccount2\nWhen ready, /submit "
                                    "the action again.")
+        self.caller.inform = old_inform
         self.call_cmd("/submit 1", "You have new informs. Use @inform 1 to read them.|You have submitted your action.")
         mock_inform_staff.assert_called_with('Testaccount submitted action #1. {wSummary:{n summary')
         self.call_cmd("/makepublic 1", "The action must be finished before you can make details of it public.")
@@ -318,11 +368,41 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/invite 1=TestAccount2", "The owner of an action cannot be an assistant.")
         self.call_cmd("/invite 1=TestAccount", "You have new informs. Use @inform 1 to read them."
                                                "|You have invited Testaccount to join your action.")
-        self.account2.pay_resources = Mock()
-        self.call_cmd("/charge 1=economic,2000", "2000 economic added. Action #1 Total resources: economic 2000, silver 50")
-        self.account2.pay_resources.assert_called_with("economic", 2000)
+        # test adding requirements
         self.caller.inform = Mock()
         self.account2.inform = Mock()
+        self.call_cmd("/addrequirement/foo 1=bar", "That is not a recognized requirement type.")
+        self.call_cmd("/addrequirement/resources 1=silver,50000", "You have added a requirement: silver: 50000")
+        self.account2.inform.assert_called_with(
+            'A new requirement has been added to Action #1: silver: 50000\n'
+            'For resources, use action/add to contribute the required amounts. For\n'
+            'required clues, revelations, items, or magic, have a character who is on\n'
+            'the action and has the required entity add its ID as the value. For required\n'
+            'event prerequisites, add a plot RFR ID as the value, as well as an\n'
+            'explanation for how the plot satisfies the requirement.\n'
+            'Once all requirements have been met, the action can be resubmitted for\n'
+            'evaluation by GMs.', append=False, category='Actions', week=1)
+        self.call_cmd("/addrequirement/clue 1=test clue", "No Clue found using 'test clue'.")
+        Clue.objects.create(name="test clue")
+        Clue.objects.create(name="test clue 2")
+        self.call_cmd("/addrequirement/clue 1=test clue", "You have added a requirement: clue: test clue")
+        self.call_cmd("/addrequirement/clue 1=test clue 2", "You have added a requirement: clue: test clue 2")
+        self.call_cmd("/addrequirement/revelation 1=test rev", "No Revelation found using 'test rev'.")
+        Revelation.objects.create(name="test rev")
+        self.call_cmd("/addrequirement/revelation 1=test rev", "You have added a requirement: revelation: test rev")
+        self.call_cmd("/addrequirement/item 1=asdf", "No ObjectDB found using 'asdf'.")
+        self.call_cmd("/addrequirement/item 1=Obj2", "You have added a requirement: item: Obj2")
+        self.call_cmd("/addrequirement/skillnode 1=test node", "No SkillNode found using 'test node'.")
+        node = SkillNode.objects.create(name="test node")
+        self.call_cmd("/addrequirement/skillnode 1=test node",
+                      "You have added a requirement: magic skill node: test node")
+        self.call_cmd("/addrequirement/spell 1=test spell", "No Spell found using 'test spell'.")
+        Spell.objects.create(name="test spell", node=node)
+        self.call_cmd("/addrequirement/spell 1=test spell", "You have added a requirement: spell: test spell")
+        self.call_cmd("/addrequirement/event 1=test", "You have added a requirement: Other Requirement/Event: test")
+        self.call_cmd("/addrequirement/forces 1=test", "You have added a requirement: military forces: test")
+        self.assertEqual(action.status, action.NEEDS_PLAYER)
+        # test asking questions
         action.ask_question("foo inform")
         self.caller.inform.assert_called_with('{cTestaccount2{n added a comment/question about Action #1:\nfoo inform',
                                               category='Action questions')
@@ -334,6 +414,9 @@ class StoryActionTests(ArxCommandTest):
         self.account2.inform.assert_called_with('Your action is now a free action and will '
                                                 'not count towards your maximum.',
                                                 append=False, category='Actions', week=1)
+        # test refund
+        action.economic = 2000
+        action.save()
         self.account2.gain_resources = Mock()
         self.call_cmd("/cancel 1", "Action cancelled.")
         self.account2.gain_resources.assert_called_with("economic", 2000)
@@ -354,7 +437,17 @@ class StoryActionTests(ArxCommandTest):
                            "Testaccount2 OOC intentions: ooc intent test\n\nOOC Notes and GM responses\n"
                            "Testaccount2 OOC Question: foo inform\nReply by Testaccount: Sure go nuts\n"
                            "Testaccount2 OOC Question: another test question\nOutcome Value: 0\nStory Result: \n"
-                           "Secret Story sekritfoo\nTotal resources: economic 2000, silver 50\n[STATUS: Pending Resolution]")
+                           "Secret Story sekritfoo\nTotal requirements:\n"
+                           "silver: 50000: Progress: 50/50000\n"
+                           "clue: test clue: Fulfilled by: No one yet\n"
+                           "clue: test clue 2: Fulfilled by: No one yet\n"
+                           "revelation: test rev: Fulfilled by: No one yet\n"
+                           "item: Obj2: Fulfilled by: No one yet\n"
+                           "magic skill node: test node: Fulfilled by: No one yet\n"
+                           "spell: test spell: Fulfilled by: No one yet\n"
+                           "Other Requirement/Event: test: Fulfilled by: No one yet\n"
+                           "military forces: test: Fulfilled by: No one yet\n"
+                           "[STATUS: Pending Resolution]")
         self.call_cmd("/publish 1=story test", "You have published the action and sent the players informs.")
         self.assertEquals(action.status, PlotAction.PUBLISHED)
         self.account2.inform.assert_called_with('{wGM Response to story action of Testaccount2\n'

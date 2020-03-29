@@ -9,8 +9,12 @@ from evennia.utils.evtable import EvTable
 from server.utils.exceptions import ActionSubmissionError
 from server.utils.arx_utils import dict_from_choices_field
 from commands.base import ArxPlayerCommand
+from evennia.objects.models import ObjectDB
 from server.utils import arx_more
-from world.dominion.plots.models import Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion
+from web.character.models import Clue, Revelation
+from world.dominion.plots.models import Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion, ActionRequirement, PlotUpdate
+from world.dominion.plots.constants import REQUIREMENT_TYPES
+from world.magic.models import Spell, SkillNode
 
 
 # noinspection PyUnresolvedReferences
@@ -24,30 +28,6 @@ class ActionCommandMixin(object):
         if field_name in ("status", "category"):
             value = getattr(action, "get_%s_display" % field_name)()
         self.msg("%s set to %s." % (verbose_name, value))
-        
-    def add_resource(self, action):
-        """Adds a resource based on arguments"""
-        if len(self.rhslist) < 2:
-            self.send_no_args_msg("a resource type such as 'economic' or 'ap' and the amount."
-                                  " Or 'army' and an army ID#")
-            return
-        try:
-            r_type = self.rhslist[0].lower()
-            value = self.rhslist[1]
-        except (IndexError, ValueError, TypeError, AttributeError):
-            self.msg("Must have a resource type and value.")
-            return
-        try:
-            action.add_resource(r_type, value)
-        except ActionSubmissionError as err:
-            self.msg(err)
-        else:
-            if r_type == "army":
-                self.msg("You have successfully relayed new orders to that army.")
-                return
-            else:
-                totals = action.view_total_resources_msg()
-                self.msg("{c%s{n %s added. {wAction #%d %s" % (value, r_type, action.main_action.id, totals))
 
     def view_action(self, action, disp_old=False):
         """Views an action for caller"""
@@ -90,7 +70,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         @action/setaction <action #>=<action text>
         @action/setsecret[/traitor] <action #>=<secret action>
         @action/setcrisis <action #>=<crisis #>
-        @action/add <action#>=<resource or 'ap' or 'army'>,<amount or army ID#>
+        @action/add <action#>=<type>,<amount or object ID#>[,notes]
         @action/makepublic <action #>
         @action/toggletraitor <action #>
         @action/toggleattend <action #>
@@ -125,6 +105,13 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
 
     Actions are private by default, but there's a small xp reward for marking
     a completed action as public with the /makepublic switch.
+
+    The /add switch allows you to add something to an action to satisfy a
+    requirement that a GM has specified must be met before the action can
+    be resolved. The 'type' argument can be one of the following: silver,
+    economic, military, ap, clue, revelation, spell, skillnode, item, army,
+    or rfr. You then specify either the amount of resource to add or the ID
+    of the entity required which your character has access to.
     """
     key = "@action"
     locks = "cmd:all()"
@@ -167,30 +154,33 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     
     def func(self):
         """Executes @action command"""
-        if not self.args and not self.switches:
-            return self.list_actions()
-        if "newaction" in self.switches:
-            return self.new_action()
-        action = self.get_action(self.lhs)
-        if not action:
-            return
-        if not self.switches:
-            return self.view_action(action)
-        if not self.check_valid_switch_for_action_type(action):
-            return
-        if "makepublic" in self.switches:
-            return self.make_public(action)
-        if "question" in self.switches:
-            return self.ask_question(action)
-        if self.check_switches(self.requires_draft_switches):
-            return self.do_requires_draft_switches(action)
-        if self.check_switches(self.requires_editable_switches):
-            # PS - NV is fucking amazing
-            return self.do_requires_editable_switches(action)
-        if self.check_switches(self.requires_unpublished_switches):
-            return self.do_requires_unpublished_switches(action)
-        else:
-            self.msg("Invalid switch. See 'help @action'.")
+        try:
+            if not self.args and not self.switches:
+                return self.list_actions()
+            if "newaction" in self.switches:
+                return self.new_action()
+            action = self.get_action(self.lhs)
+            if not action:
+                return
+            if not self.switches:
+                return self.view_action(action)
+            if not self.check_valid_switch_for_action_type(action):
+                return
+            if "makepublic" in self.switches:
+                return self.make_public(action)
+            if "question" in self.switches:
+                return self.ask_question(action)
+            if self.check_switches(self.requires_draft_switches):
+                return self.do_requires_draft_switches(action)
+            if self.check_switches(self.requires_editable_switches):
+                # PS - NV is fucking amazing
+                return self.do_requires_editable_switches(action)
+            if self.check_switches(self.requires_unpublished_switches):
+                return self.do_requires_unpublished_switches(action)
+            else:
+                self.msg("Invalid switch. See 'help @action'.")
+        except self.error_class as err:
+            self.msg(err)
             
     def check_valid_switch_for_action_type(self, action):
         """
@@ -242,7 +232,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         elif "setaction" in self.switches:
             return self.set_action(action)
         elif "add" in self.switches:
-            return self.add_resource(action)
+            return self.add_required_value(action)
         elif "toggletraitor" in self.switches:
             return self.toggle_traitor(action)
         elif "toggleattend" in self.switches:
@@ -416,6 +406,50 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         self.set_action_field(action, field_name, stat, verbose_name="stat")
         field_name = "skill_used"
         return self.set_action_field(action, field_name, skill, verbose_name="skill")
+
+    def add_required_value(self, action):
+        """Adds a resource based on arguments"""
+        if len(self.rhslist) < 2:
+            self.send_no_args_msg("a resource type such as 'economic' or 'ap' and the amount."
+                                  " Or 'army' and an army ID#")
+            return
+        try:
+            r_type = self.rhslist[0].lower()
+            value = self.rhslist[1]
+        except (IndexError, ValueError, TypeError, AttributeError):
+            self.msg("Must have a resource type and value.")
+            return
+        explanation = ""
+        if r_type == "clue":
+            value = self.get_by_name_or_id(Clue, value, filter_kwargs={"characters": self.caller.roster})
+        if r_type == "revelation":
+            value = self.get_by_name_or_id(Revelation, value, filter_kwargs={"characters": self.caller.roster})
+        if r_type == "spell":
+            value = self.get_by_name_or_id(Spell, value, filter_kwargs={"practitioner__character": self.caller.char_ob})
+        if r_type == "skillnode":
+            value = self.get_by_name_or_id(SkillNode, value,
+                                           filter_kwargs={"known_by__practitioner__character": self.caller.char_ob})
+        if r_type == "item":
+            value = self.caller.char_ob.search(value)
+            if not value:
+                return
+        if r_type == "rfr":
+            value = self.get_by_name_or_id(PlotUpdate, value)
+            try:
+                explanation = self.rhslist[2]
+            except IndexError:
+                self.fail("You must provide an explanation of why the RFR is relevant for this requirement.")
+        try:
+            action.add_required_resource(r_type, value, explanation)
+        except ActionSubmissionError as err:
+            self.msg(err)
+        else:
+            if r_type == "army":
+                self.msg("You have successfully relayed new orders to that army.")
+                return
+            else:
+                totals = action.view_total_requirements_msg()
+                self.msg("{c%s{n %s added. {wAction #%d %s" % (value, r_type, action.main_action.id, totals))
         
     def set_topic(self, action):
         """Sets the topic for an action"""
@@ -570,7 +604,6 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         Commands for modifying an action stats or results:
         @gm/story <action #>=<the IC result of their action, told as a story>
         @gm/secretstory <action #>=<the IC result of their secret actions>
-        @gm/charge <action #>[,assistant name]=<resource type>,<value>
         @gm/check <action #>=<character>,<stat>/<skill> at <difficulty>
         @gm/checkall <action #>
         @gm/stat <action #>[,assistant name]=<stat>
@@ -590,6 +623,15 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         @gm/allowedit <action #>[,assistant name]
         @gm/togglefree <action #>[,assistant name]
         @gm/invite <action #>=<player to add as assistant>[,player2,...]
+        @gm/addrequirement
+           .../resources <action #>=<resource type>,<amount>[,max weekly rate]
+           .../clue <action #>=<clue ID>
+           .../revelation <action #>=<revelation ID>
+           .../skillnode <action #>=<skill node ID>
+           .../spell <action #>=<spell ID>
+           .../item <action #>=<item ID>
+           .../forces <action #>=<Description of required force>
+           .../event <action #>=<Text description of what needs to happen>
 
     Commands for GMing. @actions can be claimed/assigned to GMs with the /assign
     switch, and then viewed with @gm/mine. Actions are initially in a draft state
@@ -603,7 +645,12 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
     can change their action/assist, and then they can submit changes again when
     done. /check allows you to do a roll for an individual, which saves their
     most recent roll result, while /checkall will roll every character in the
-    action and total their rolls as the outcome value.
+    action and total their rolls as the outcome value. For adding a requirement
+    that must be satisfied before the action can be resolved, use the
+    /addrequirement switch. This allows you to specify needing some concrete
+    value or knowledge required for success, or you can specify an event
+    which can be anything that they submit is satisfied by an RPEvent,
+    Goal review, another action, etc.
 
     The result of the action is the /story and optional /secretstory. A
     response may only be written for the main action - players who want an
@@ -621,33 +668,36 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
     locks = "cmd:perm(builders)"
     help_category = "GMing"
     list_switches = ("old", "pending", "draft", "cancelled", "needgm", "needplayer", "search")
-    gming_switches = ("story", "secretstory", "charge", "check", "checkall", "stat", "skill", "diff")
+    gming_switches = ("story", "secretstory", "check", "checkall", "stat", "skill", "diff")
     followup_switches = ("ooc", "markanswered")
     admin_switches = ("publish", "markpending", "cancel", "assign", "gemit", "allowedit", "invite",
-                      "togglefree")
+                      "togglefree", "addrequirement")
     difficulties = {"easy": PlotAction.EASY_DIFFICULTY, "normal": PlotAction.NORMAL_DIFFICULTY,
                     "hard": PlotAction.HARD_DIFFICULTY}
     
     def func(self):
         """Executes the @gm command"""
-        if not self.args or ((not self.switches or self.check_switches(self.list_switches))
-                             and not self.args.isdigit()):
-            return self.list_actions()
         try:
-            action = PlotAction.objects.get(id=self.lhslist[0])
-        except (PlotAction.DoesNotExist, ValueError):
-            self.msg("No action by that ID #.")
-            return
-        if "tldr" in self.switches:
-            return self.msg(action.view_tldr())
-        if not self.switches or self.check_switches(self.list_switches):
-            return self.view_action(action, disp_old=True)
-        if self.check_switches(self.gming_switches):
-            return self.do_gming(action)
-        if self.check_switches(self.followup_switches):
-            return self.do_followup(action)
-        if self.check_switches(self.admin_switches):
-            return self.do_admin(action)
+            if not self.args or ((not self.switches or self.check_switches(self.list_switches))
+                                 and not self.args.isdigit()):
+                return self.list_actions()
+            try:
+                action = PlotAction.objects.get(id=self.lhslist[0])
+            except (PlotAction.DoesNotExist, ValueError):
+                self.msg("No action by that ID #.")
+                return
+            if "tldr" in self.switches:
+                return self.msg(action.view_tldr())
+            if not self.switches or self.check_switches(self.list_switches):
+                return self.view_action(action, disp_old=True)
+            if self.check_switches(self.gming_switches):
+                return self.do_gming(action)
+            if self.check_switches(self.followup_switches):
+                return self.do_followup(action)
+            if self.check_switches(self.admin_switches):
+                return self.do_admin(action)
+        except self.error_class as err:
+            return self.msg(err)
         self.msg("Invalid switch.")
             
     def list_actions(self):
@@ -717,8 +767,6 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             return self.set_action_field(action, "secret_story", self.rhs)
         if "check" in self.switches or "checkall" in self.switches:
             return self.do_checks(action)
-        if "charge"in self.switches:
-            return self.charge_additional_resources(action)
         if "diff" in self.switches:
             return self.set_difficulty(action)
         if len(self.lhslist) > 1:
@@ -755,13 +803,6 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
                     self.msg(err)
                     return
         self.msg("The new outcome value for the overall action is: %s" % outcome)
-    
-    def charge_additional_resources(self, action):
-        """Charge more stuff for the action"""
-        action = self.replace_action_with_assistant_if_provided(action)
-        if not action:
-            return
-        self.add_resource(action)
     
     def set_difficulty(self, action):
         """Sets difficulty of rolls forthe action"""
@@ -827,6 +868,8 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             return self.toggle_free(action)
         if "invite" in self.switches:
             return self.invite_assistant(action)
+        if "addrequirement" in self.switches:
+            return self.add_requirement(action)
         
     def publish_action(self, action):
         """Publishes an action, marking it as resolved and telling players the outcome"""
@@ -903,3 +946,51 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             self.msg("You have made their action free and the player has been informed.")
         else:
             self.msg("Their action is no longer free.")
+
+    def add_requirement(self, action: PlotAction):
+        """Adds a requirement to an action"""
+        if not self.rhs:
+            self.fail("Must specify an argument.")
+        max_rate = 0
+        value = self.rhs
+        if "resources" in self.switches:
+            if len(self.rhslist) < 2:
+                self.fail("Must specify at least a resource type and value.")
+            try:
+                r_type, value = self.rhslist[0], int(self.rhslist[1])
+                if value < 1:
+                    raise ValueError
+                if len(self.rhslist) > 2:
+                    max_rate = int(self.rhslist[2])
+                    if max_rate < 1:
+                        raise ValueError
+            except (TypeError, ValueError):
+                self.fail("Value must be a positive number.")
+            try:
+                requirement_type = ActionRequirement.get_choice_constant_from_string(r_type)
+            except KeyError:
+                self.fail("Must be a valid resource type")
+        elif "clue" in self.switches:
+            value = self.get_by_name_or_id(Clue, self.rhs)
+            requirement_type = ActionRequirement.CLUE
+        elif "revelation" in self.switches:
+            value = self.get_by_name_or_id(Revelation, self.rhs)
+            requirement_type = ActionRequirement.REVELATION
+        elif "item" in self.switches:
+            value = self.get_by_name_or_id(ObjectDB, self.rhs, field_name="db_key")
+            requirement_type = ActionRequirement.ITEM
+        elif "spell" in self.switches:
+            value = self.get_by_name_or_id(Spell, self.rhs)
+            requirement_type = ActionRequirement.SPELL
+        elif "skillnode" in self.switches or "skill_node" in self.switches:
+            value = self.get_by_name_or_id(SkillNode, self.rhs)
+            requirement_type = ActionRequirement.SKILL_NODE
+        elif "event" in self.switches:
+            requirement_type = ActionRequirement.EVENT
+        elif "forces" in self.switches or "army" in self.switches:
+            requirement_type = ActionRequirement.FORCES
+        else:
+            self.fail("That is not a recognized requirement type.")
+
+        req = action.add_action_requirement(requirement_type, value, max_rate)
+        self.msg(f"You have added a requirement: {req.display_action_requirement()}")

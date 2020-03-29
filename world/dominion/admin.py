@@ -17,7 +17,8 @@ from .models import (PlayerOrNpc, Organization, Agent, AgentOb, MapLocation,
 from world.crafting.models import CraftingRecipe, CraftingMaterialType, OwnedMaterial
 
 from world.dominion.plots.models import (Plot, PlotAction, PlotUpdate, ActionOOCQuestion,
-                                         PCPlotInvolvement, OrgPlotInvolvement, PlotActionAssistant)
+                                         PCPlotInvolvement, OrgPlotInvolvement, PlotActionAssistant,
+                                         ActionRequirement)
 
 from world.dominion.domain.models import (Army, Orders, MilitaryUnit, OrgUnitModifiers, Domain, Castle, Ruler, Minister)
 
@@ -404,6 +405,12 @@ class PlotRecruiterListFilter(OrgListFilter):
                                    & ~Q(dompc_involvement__recruiter_story="")).distinct()
 
 
+class ActionRequirementInline(admin.TabularInline):
+    model = ActionRequirement
+    extra = 0
+    raw_id_fields = ('item', 'spell', 'rfr', 'clue', 'revelation', 'skill_node', 'fulfilled_by')
+
+
 class PlotAdmin(DomAdmin):
     """Admin for Crises, macro-level events affecting the game/metaplot"""
     list_display = ('id', 'name', 'desc', 'end_date', 'parent_plot')
@@ -489,7 +496,7 @@ class PlotActionAdmin(DomAdmin):
                  ('Resources', {'fields': [('military', 'silver'), ('social', 'action_points'), 'economic'],
                                 'classes': ['collapse']})
                  ]
-    inlines = (PlotActionAssistantInline, CrisisArmyOrdersInline, ActionOOCQuestionInline)
+    inlines = (PlotActionAssistantInline, CrisisArmyOrdersInline, ActionOOCQuestionInline, ActionRequirementInline)
 
     @staticmethod
     def player_action(obj):

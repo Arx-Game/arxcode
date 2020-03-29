@@ -1,3 +1,5 @@
+from typing import Union, List
+
 from datetime import datetime
 
 from django.conf import settings
@@ -426,11 +428,11 @@ class AbstractAction(AbstractPlayerAllocations):
         """How much AP to refund"""
         return self.action_points + self.BASE_AP_COST
 
-    def pay_action_points(self, amount):
+    def pay_action_points(self: Union["PlotAction", "PlotActionAssistant"], amount):
         """Passthrough method to make the player pay action points"""
         return self.dompc.player.pay_action_points(amount)
 
-    def refund(self):
+    def refund(self: Union["PlotAction", "PlotActionAssistant"]):
         """Method for refunding a player's resources, AP, etc."""
         self.pay_action_points(-self.ap_refund_amount)
         for resource in ('military', 'economic', 'social'):
@@ -441,14 +443,14 @@ class AbstractAction(AbstractPlayerAllocations):
             self.dompc.assets.vault += self.silver
             self.dompc.assets.save()
 
-    def check_view_secret(self, caller):
+    def check_view_secret(self: Union["PlotAction", "PlotActionAssistant"], caller):
         """Whether caller can view the secret part of this action"""
         if not caller:
             return
         if caller.check_permstring("builders") or caller == self.dompc.player:
             return True
 
-    def get_action_text(self, secret=False, disp_summary=False):
+    def get_action_text(self: Union["PlotAction", "PlotActionAssistant"], secret=False, disp_summary=False):
         """Gets the text of their action"""
         noun = self.NOUN
         author = " by {c%s{w" % self.author
@@ -475,14 +477,14 @@ class AbstractAction(AbstractPlayerAllocations):
         return "{wSummary:{n %s" % self.topic
 
     @property
-    def ooc_intent(self):
+    def ooc_intent(self: Union["PlotAction", "PlotActionAssistant"]):
         """Returns the question that acts as this action's OOC intent - what the player wants"""
         try:
             return self.questions.get(is_intent=True)
         except ActionOOCQuestion.DoesNotExist:
             return None
 
-    def set_ooc_intent(self, text):
+    def set_ooc_intent(self: Union["PlotAction", "PlotActionAssistant"], text):
         """Sets the action's OOC intent"""
         ooc_intent = self.ooc_intent
         if not ooc_intent:
@@ -491,7 +493,7 @@ class AbstractAction(AbstractPlayerAllocations):
             ooc_intent.text = text
             ooc_intent.save()
 
-    def ask_question(self, text):
+    def ask_question(self: Union["PlotAction", "PlotActionAssistant"], text):
         """Adds an OOC question to GMs by the player"""
         msg = "{c%s{n added a comment/question about Action #%s:\n%s" % (self.author, self.main_id, text)
         inform_staff(msg)
@@ -505,11 +507,11 @@ class AbstractAction(AbstractPlayerAllocations):
         return self.NOUN == "Action"
 
     @property
-    def author(self):
+    def author(self: Union["PlotAction", "PlotActionAssistant"]):
         """The author of this action - the main originating character who others are assisting"""
         return self.dompc
 
-    def inform(self, text, category="Actions", append=False):
+    def inform(self: Union["PlotAction", "PlotActionAssistant"], text, category="Actions", append=False):
         """Passthrough method to send an inform to the player"""
         self.dompc.inform(text, category=category, append=append)
 
@@ -553,7 +555,7 @@ class AbstractAction(AbstractPlayerAllocations):
         pass
 
     @property
-    def plot_attendance(self):
+    def plot_attendance(self: Union["PlotAction", "PlotActionAssistant"]):
         """Returns list of actions we are attending - physically present for"""
         attended_actions = list(self.dompc.actions.filter(Q(beat__isnull=True)
                                                           & Q(attending=True)
@@ -567,7 +569,7 @@ class AbstractAction(AbstractPlayerAllocations):
                                                                      & Q(date_submitted__isnull=False)))
         return attended_actions
 
-    def check_plot_omnipresence(self):
+    def check_plot_omnipresence(self: Union["PlotAction", "PlotActionAssistant"]):
         """Raises an ActionSubmissionError if we are already attending for this crisis"""
         if self.attending:
             already_attending = [ob for ob in self.plot_attendance if ob.plot == self.plot]
@@ -576,7 +578,7 @@ class AbstractAction(AbstractPlayerAllocations):
                 raise ActionSubmissionError("You are marked as physically present at %s. Use @action/toggleattend"
                                             " and also ensure this story reads as a passive role." % already_attending)
 
-    def check_plot_overcrowd(self):
+    def check_plot_overcrowd(self: Union["PlotAction", "PlotActionAssistant"]):
         """Raises an ActionSubmissionError if too many people are attending"""
         attendees = self.attendees
         if len(attendees) > self.attending_limit and not self.prefer_offscreen:
@@ -587,10 +589,12 @@ class AbstractAction(AbstractPlayerAllocations):
                                         "Current attendees: %s" % (self.attending_limit, excess,
                                                                    ",".join(str(ob) for ob in attendees)))
 
-    def check_plot_errors(self):
+    def check_plot_errors(self: Union["PlotAction", "PlotActionAssistant"]):
         """Raises ActionSubmissionErrors if anything should stop our submission"""
         if self.plot:
-            self.plot.raise_submission_errors()
+            # don't check submission date/resolved status if editing was mandated by GM
+            if self.status != PlotAction.NEEDS_PLAYER:
+                self.plot.raise_submission_errors()
             self.check_plot_omnipresence()
         self.check_plot_overcrowd()
 
@@ -600,12 +604,13 @@ class AbstractAction(AbstractPlayerAllocations):
         self.attending = True
         self.save()
 
-    def add_resource(self, r_type, value):
+    def add_required_resource(self: Union["PlotAction", "PlotActionAssistant"], r_type, value, explanation=""):
         """
         Adds a resource to this action of the specified type and value
         Args:
-            r_type (str or unicode): The resource type
-            value (str or unicode): The value passed.
+            r_type (str): The resource type
+            value (str): The value passed.
+            explanation (str)
 
         Raises:
             ActionSubmissionError if we run into bad values passed or cannot otherwise submit an action, and ValueError
@@ -619,36 +624,69 @@ class AbstractAction(AbstractPlayerAllocations):
             except ActionSubmissionError as err:
                 raise ActionSubmissionError(err)
         r_type = r_type.lower()
-        if r_type not in self.resource_types:
+        try:
+            req_type = ActionRequirement.get_choice_constant_from_string(r_type)
+        except KeyError:
             raise ActionSubmissionError("Invalid type of resource.")
-        if r_type == "army":
+        requirements = self.main_action.requirements.filter(requirement_type=req_type)
+        if not requirements:
+            raise ActionSubmissionError(f"There isn't an unmet requirement for {r_type}.")
+        # check requirements that can be multiples
+        if req_type in ActionRequirement.FK_TYPES:
             try:
-                return self.add_army(value)
+                requirement = ActionRequirement.find_matching_fk_from_list(requirements, value, req_type)
+            except IndexError:
+                raise ActionSubmissionError(f"Could not find a matching requirement for that {r_type}.")
+        else:
+            requirement = requirements[0]
+        if requirement.check_requirement_met():
+            raise ActionSubmissionError(f"That requirement is already met.")
+
+        if requirement.requirement_type == requirement.FORCES:
+            try:
+                self.add_army(value)
+                requirement.fulfilled_by = self.dompc
+                requirement.explanation = explanation
             except ActionSubmissionError as err:
                 raise ActionSubmissionError(err)
-        try:
-            value = int(value)
-            if value <= 0:
-                raise ValueError
-        except ValueError:
-            raise ActionSubmissionError("Amount must be a positive number.")
-        if r_type == "silver":
+        if requirement.requirement_type in requirement.RESOURCE_TYPES:
             try:
-                self.dompc.player.char_ob.pay_money(value)
-            except PayError:
-                raise ActionSubmissionError("You cannot afford that.")
-        elif r_type == 'ap' or r_type == 'action points':
-            if not self.dompc.player.pay_action_points(value):
-                raise ActionSubmissionError("You do not have enough action points to exert that kind of effort.")
-            r_type = "action_points"
-        else:
-            if not self.dompc.player.pay_resources(r_type, value):
-                raise ActionSubmissionError("You cannot afford that.")
-        value += getattr(self, r_type)
-        setattr(self, r_type, value)
-        self.save()
+                value = int(value)
+                if value <= 0:
+                    raise ValueError
+            except ValueError:
+                raise ActionSubmissionError("Amount must be a positive number.")
+            if requirement.check_value_exceeds_weekly_rate(value):
+                raise ActionSubmissionError(f"That would exceed the weekly maximum. {requirement.display_progress()}")
+            if (value + requirement.total) > requirement.total_required_amount:
+                raise ActionSubmissionError(f"That would exceed the total required. {requirement.display_progress()}")
+            if r_type == "silver":
+                try:
+                    self.dompc.player.char_ob.pay_money(value)
+                except PayError:
+                    raise ActionSubmissionError("You cannot afford that.")
+            elif r_type == 'ap' or r_type == 'action points':
+                if not self.dompc.player.pay_action_points(value):
+                    raise ActionSubmissionError("You do not have enough action points to exert that kind of effort.")
+                r_type = "action_points"
+            else:
+                if not self.dompc.player.pay_resources(r_type, value):
+                    raise ActionSubmissionError("You cannot afford that.")
+            requirement.weekly_total += value
+            value += getattr(self, r_type)
+            setattr(self, r_type, value)
+            self.save()
+        if requirement.requirement_type in ActionRequirement.FK_TYPES:
+            requirement.fulfilled_by = self.dompc
+        if requirement.requirement_type == ActionRequirement.EVENT:
+            requirement.explanation = explanation
+            requirement.fulfilled_by = self.dompc
+            requirement.rfr = value
+        requirement.save()
+        if requirement.check_requirement_met():
+            requirement.inform_action_requirement_complete()
 
-    def add_army(self, name_or_id):
+    def add_army(self: Union["PlotAction", "PlotActionAssistant"], name_or_id):
         """Adds army orders to this action. Army can be specified by name or ID."""
         try:
             if name_or_id.isdigit():
@@ -668,7 +706,8 @@ class AbstractAction(AbstractPlayerAllocations):
         if not orders:
             raise ActionSubmissionError("Failed to send orders to the army.")
 
-    def do_roll(self, stat=None, skill=None, difficulty=None, reset_total=True):
+    def do_roll(self: Union["PlotAction", "PlotActionAssistant"],
+                stat=None, skill=None, difficulty=None, reset_total=True):
         """
         Does a roll for this action
         Args:
@@ -692,11 +731,11 @@ class AbstractAction(AbstractPlayerAllocations):
             self.calculate_outcome_value()
         return self.roll
 
-    def display_followups(self):
+    def display_followups(self: Union["PlotAction", "PlotActionAssistant"]):
         """Returns string of the display of all of our questions."""
         return "\n".join(question.display() for question in self.questions.all())
 
-    def add_answer(self, gm, text):
+    def add_answer(self: Union["PlotAction", "PlotActionAssistant"], gm, text):
         """Adds a GM's answer to an OOC question"""
         unanswered = self.unanswered_questions
         if unanswered:
@@ -712,12 +751,12 @@ class AbstractAction(AbstractPlayerAllocations):
         inform_staff("%s has marked action %s's questions as answered." % (gm, self.main_id))
 
     @property
-    def main_id(self):
+    def main_id(self: Union["PlotAction", "PlotActionAssistant"]):
         """ID of the main action"""
         return self.main_action.id
 
     @property
-    def unanswered_questions(self):
+    def unanswered_questions(self: Union["PlotAction", "PlotActionAssistant"]):
         """Returns queryset of an OOC questions without an answer"""
         return self.questions.filter(answers__isnull=True).exclude(Q(is_intent=True) | Q(mark_answered=True))
 
@@ -944,7 +983,7 @@ class PlotAction(AbstractAction):
             if self.secret_story and view_main_secrets:
                 msg += "\n{wSecret Story{n %s" % self.secret_story
         if disp_ooc:
-            msg += "\n" + self.view_total_resources_msg()
+            msg += "\n" + self.view_total_requirements_msg()
             orders = []
             for ob in all_actions:
                 orders += list(ob.orders.all())
@@ -954,7 +993,7 @@ class PlotAction(AbstractAction):
             needs_edits = ""
             if self.status == PlotAction.NEEDS_PLAYER:
                 needs_edits = " Awaiting edits to be submitted by: %s" % \
-                              ", ".join(ob.author for ob in self.all_editable)
+                              ", ".join(str(ob.author) for ob in self.all_editable)
             msg += "\n{w[STATUS: %s]{n%s" % (self.get_status_display(), needs_edits)
         return msg
 
@@ -970,17 +1009,13 @@ class PlotAction(AbstractAction):
             msg += "\n%s: %s\n" % (action.pretty_str, action.get_summary_text())
         return msg
 
-    def view_total_resources_msg(self):
+    def view_total_requirements_msg(self):
         """Returns string of all resources spent"""
         msg = ""
-        fields = {'extra action points': self.total_action_points,
-                  'silver': self.total_silver,
-                  'economic': self.total_economic,
-                  'military': self.total_military,
-                  'social': self.total_social}
-        totals = ", ".join("{c%s{n %s" % (key, value) for key, value in sorted(fields.items(), key=lambda x: x[0]) if value > 0)
+        totals = "\n".join(f"{requirement.display_action_requirement()}: {requirement.display_progress()}"
+                           for requirement in self.requirements.all())
         if totals:
-            msg = "{wTotal resources:{n %s" % totals
+            msg = "{wTotal requirements:{n\n%s" % totals
         return msg
 
     def cancel(self):
@@ -1005,6 +1040,7 @@ class PlotAction(AbstractAction):
         """Raises errors that prevent submission"""
         super(PlotAction, self).raise_submission_errors()
         self.check_plot_errors()
+        self.check_requirement_errors()
         self.check_draft_errors()
 
     def check_draft_errors(self):
@@ -1069,6 +1105,13 @@ class PlotAction(AbstractAction):
     def attendees(self):
         """Returns list of authors of all actions and assists if physically present"""
         return [ob.author for ob in self.action_and_assists if ob.attending]
+
+    def check_requirement_errors(self):
+        unmet = [req for req in self.requirements.all() if not req.check_requirement_met()]
+        if unmet:
+            msg = "You have Action Requirements that are not yet satisfied: "
+            msg += "\nRequirement: ".join(req.display_action_requirement() for req in unmet)
+            raise ActionSubmissionError(msg)
 
     def on_submit_success(self):
         """Announces us after successful submission. refunds any assistants who weren't ready"""
@@ -1161,6 +1204,188 @@ class PlotAction(AbstractAction):
         self.dompc.msg("You have gained %s xp for making your action public." % xp_value)
         inform_staff("Action %s has been made public." % self.id)
 
+    def add_action_requirement(self, requirement_type, value, max_rate=0):
+        if requirement_type in ActionRequirement.RESOURCE_TYPES:
+            req, created = self.requirements.get_or_create(requirement_type=requirement_type)
+            req.total_required_amount = value
+            req.max_rate = max_rate
+        elif requirement_type in ActionRequirement.DESCRIPTION_TYPES:
+            req, created = self.requirements.get_or_create(requirement_type=requirement_type)
+            req.requirement_text = value
+        elif requirement_type == ActionRequirement.CLUE:
+            req, created = self.requirements.get_or_create(requirement_type=requirement_type, clue=value)
+        elif requirement_type == ActionRequirement.REVELATION:
+            req, created = self.requirements.get_or_create(requirement_type=requirement_type, revelation=value)
+        elif requirement_type == ActionRequirement.ITEM:
+            req, created = self.requirements.get_or_create(requirement_type=requirement_type, item=value)
+        elif requirement_type == ActionRequirement.SPELL:
+            req, created = self.requirements.get_or_create(requirement_type=requirement_type, spell=value)
+        elif requirement_type == ActionRequirement.SKILL_NODE:
+            req, created = self.requirements.get_or_create(requirement_type=requirement_type, skill_node=value)
+        else:
+            raise ValueError(f"Unrecognized requirement type: {requirement_type}")
+        req.save()
+        if created:
+            req.inform_action_of_new_requirement()
+        self.status = self.NEEDS_PLAYER
+        self.editable = True
+        self.save()
+        return req
+
+
+class ActionRequirement(SharedMemoryModel):
+    """
+    A requirement that must be completed before the action will be resolved by GMs
+    """
+    SILVER, MILITARY, ECONOMIC, SOCIAL, AP, CLUE, REVELATION, SKILL_NODE, SPELL, FORCES, ITEM, EVENT = range(12)
+    TYPE_CHOICES = ((SILVER, "silver"), (MILITARY, "military resources"), (ECONOMIC, "economic resources"),
+                    (SOCIAL, "social resources"), (AP, "action points"), (CLUE, "clue"),
+                    (REVELATION, "revelation"), (SKILL_NODE, "magic skill node"), (SPELL, "spell"),
+                    (FORCES, "military forces"), (ITEM, "item"), (EVENT, "Other Requirement/Event"))
+    RESOURCE_TYPES = (SILVER, MILITARY, ECONOMIC, SOCIAL, AP)
+    DESCRIPTION_TYPES = (EVENT, FORCES)
+    FK_TYPES = (CLUE, REVELATION, SKILL_NODE, SPELL, ITEM)
+    action = models.ForeignKey("PlotAction", on_delete=models.CASCADE, related_name="requirements")
+    requirement_type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, default=SILVER)
+    total_required_amount = models.PositiveIntegerField("Amount for resources/AP", default=0)
+    max_rate = models.PositiveIntegerField("If greater than 0, max amount that can be added per week", default=0)
+    weekly_total = models.PositiveIntegerField("Amount added so far this week", default=0)
+    clue = models.ForeignKey("character.Clue", null=True, on_delete=models.CASCADE)
+    revelation = models.ForeignKey("character.Revelation", null=True, on_delete=models.CASCADE)
+    skill_node = models.ForeignKey("magic.SkillNode", null=True, on_delete=models.CASCADE)
+    spell = models.ForeignKey("magic.Spell", null=True, on_delete=models.CASCADE)
+    item = models.ForeignKey("objects.ObjectDB", null=True, on_delete=models.CASCADE)
+    fulfilled_by = models.ForeignKey("dominion.PlayerOrNpc", null=True, on_delete=models.PROTECT,
+                                     related_name="requirements_fulfilled",
+                                     help_text="For non-amount clues, who satisfied the requirement")
+    requirement_text = models.TextField("Specifies what you want the player to add for military "
+                                        "forces or an event", blank=True)
+    explanation = models.TextField("Explanation by fulfilling player of how the requirement is met",
+                                   blank=True)
+    rfr = models.ForeignKey("PlotUpdate", null=True, on_delete=models.PROTECT,
+                            help_text="PlotUpdate that player specified to fill this requirement")
+
+    @classmethod
+    def get_choice_constant_from_string(cls, name):
+        mapping = {value: key for key, value in cls.TYPE_CHOICES}
+        mapping["social"] = cls.SOCIAL
+        mapping["military"] = cls.MILITARY
+        mapping["economic"] = cls.ECONOMIC
+        mapping["army"] = cls.FORCES
+        mapping["forces"] = cls.FORCES
+        mapping["skillnode"] = cls.SKILL_NODE
+        mapping["skill_node"] = cls.SKILL_NODE
+        mapping["event"] = cls.EVENT
+        mapping["rfr"] = cls.EVENT
+        mapping["ap"] = cls.AP
+        mapping["action_points"] = cls.AP
+        return mapping[name]
+
+    def inform_action_of_new_requirement(self):
+        """Broadcast to the action the new requirement"""
+        msg = f"A new requirement has been added to Action #{self.action_id}: {self.display_action_requirement()}\n"
+        msg += "For resources, use action/add to contribute the required amounts. For\n"
+        msg += "required clues, revelations, items, or magic, have a character who is on\n"
+        msg += "the action and has the required entity add its ID as the value. For required\n"
+        msg += "event prerequisites, add a plot RFR ID as the value, as well as an\n"
+        msg += "explanation for how the plot satisfies the requirement.\n"
+        msg += "Once all requirements have been met, the action can be resubmitted for\n"
+        msg += "evaluation by GMs."
+        self.action.inform(msg)
+
+    def inform_action_requirement_complete(self):
+        self.action.inform(f"A requirement has been completed for Action #{self.action_id}: "
+                           f"{self.display_action_requirement()}")
+
+    def display_action_requirement(self):
+        msg = f"{self.get_requirement_type_display()}: "
+        if self.requirement_type in (self.SILVER, self.MILITARY, self.ECONOMIC, self.AP, self.SOCIAL):
+            msg += f"{self.total_required_amount}"
+            if self.max_rate:
+                msg += f"(max per week: {self.max_rate})"
+        if self.requirement_type in (self.EVENT, self.FORCES):
+            msg += self.requirement_text
+        if self.requirement_type == self.CLUE:
+            msg += self.clue.name
+        if self.requirement_type == self.REVELATION:
+            msg += self.revelation.name
+        if self.requirement_type == self.ITEM:
+            msg += self.item.db_key
+        if self.requirement_type == self.SPELL:
+            msg += self.spell.name
+        if self.requirement_type == self.SKILL_NODE:
+            msg += self.skill_node.name
+        return msg
+
+    @property
+    def total(self):
+        """Gets amount of total collected based on our type"""
+        if self.requirement_type == self.SILVER:
+            return self.action.total_silver
+        elif self.requirement_type == self.MILITARY:
+            return self.action.total_military
+        elif self.requirement_type == self.SOCIAL:
+            return self.action.total_social
+        elif self.requirement_type == self.ECONOMIC:
+            return self.action.total_economic
+        elif self.requirement_type == self.AP:
+            return self.action.total_action_points
+        return -1
+
+    def check_requirement_met(self) -> bool:
+        """Returns True if we have met this requirement, False otherwise"""
+        # if we asked for an entity, check if it was fulfilled by a player
+        if self.clue_id or self.spell_id or self.skill_node_id or self.revelation_id or self.item_id:
+            return bool(self.fulfilled_by_id)
+        # if we asked for an event, see if they attached an RFR to it
+        if self.requirement_type == self.EVENT:
+            return bool(self.rfr_id)
+        # check if we have an army if we're asking for forces
+        if self.requirement_type == self.FORCES:
+            from world.dominion.domain.models import Orders
+            return Orders.objects.filter(Q(action=self.action) | Q(assisting__action=self.action)).exists()
+        total = self.total
+        if total == -1:
+            raise ValueError(f"Unexpected requirement type: {self.requirement_type} "
+                             f"- {self.get_requirement_type_display()}")
+        return total >= self.total_required_amount
+
+    def display_progress(self):
+        if self.requirement_type in self.RESOURCE_TYPES:
+            total = self.total
+            if total < self.total_required_amount:
+                pretty_total = f"|r{total}|n"
+            else:
+                pretty_total = f"|w{total}|n"
+            if self.max_rate > 0:
+                pretty_week = f"Current Week: {self.weekly_total}/{self.max_rate}, "
+            else:
+                pretty_week = ""
+            return pretty_week + f"Progress: {pretty_total}/{self.total_required_amount}"
+        msg = "Fulfilled by: "
+        if self.fulfilled_by:
+            return msg + str(self.fulfilled_by)
+        return msg + "No one yet"
+
+    def check_value_exceeds_weekly_rate(self, value) -> bool:
+        if self.max_rate <= 0:
+            return False
+        return (self.weekly_total + value) > self.max_rate
+
+    @classmethod
+    def find_matching_fk_from_list(cls, requirements: List["ActionRequirement"], value, req_type):
+        if req_type == cls.CLUE:
+            matches = [ob for ob in requirements if ob.clue == value]
+        if req_type == cls.REVELATION:
+            matches = [ob for ob in requirements if ob.revelation == value]
+        if req_type == cls.ITEM:
+            matches = [ob for ob in requirements if ob.item == value]
+        if req_type == cls.SKILL_NODE:
+            matches = [ob for ob in requirements if ob.skill_node == value]
+        if req_type == cls.SPELL:
+            matches = [ob for ob in requirements if ob.spell == value]
+        return matches[0]
+
 
 NAMES_OF_PROPERTIES_TO_PASS_THROUGH = ['plot', 'action_and_assists', 'status', 'prefer_offscreen', 'attendees',
                                        'all_editable', 'outcome_value', 'difficulty', 'gm', 'attending_limit']
@@ -1194,9 +1419,9 @@ class PlotActionAssistant(AbstractAction):
             self.refund()
         self.delete()
 
-    def view_total_resources_msg(self):
+    def view_total_requirements_msg(self):
         """Passthrough method to return total resources msg"""
-        return self.plot_action.view_total_resources_msg()
+        return self.plot_action.view_total_requirements_msg()
 
     def calculate_outcome_value(self):
         """Passthrough method to calculate outcome value"""

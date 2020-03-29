@@ -15,6 +15,7 @@ from evennia.utils.evtable import EvTable
 
 from world.dominion.models import AssetOwner, Member, AccountTransaction
 from world.dominion.domain.models import Army, Orders
+from world.dominion.plots.models import ActionRequirement
 from world.msgs.models import Inform
 from typeclasses.bulletin_board.bboard import BBoard
 from typeclasses.accounts import Account
@@ -173,6 +174,9 @@ class WeeklyEvents(RunDateMixin, Script):
                 print("Error in %s's army orders: %s" % (army, err))
         old_orders = Orders.objects.filter(complete=True, week__lt=self.db.week - 4)
         old_orders.delete()
+        for requirement in ActionRequirement.objects.filter(weekly_total__gt=0):
+            requirement.weekly_total = 0
+            requirement.save()
         inform_staff("Dominion weekly events processed for week %s." % self.db.week)
 
     @staticmethod
