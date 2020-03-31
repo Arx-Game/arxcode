@@ -2762,7 +2762,7 @@ class Member(SharedMemoryModel):
         clipboard = [Assignment(ob, ob.stat, ob.skill) for ob in all_assignments]
         our_knacks = [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in self.char.mods.knacks]
         if protege:
-            protege = protege.player.char_ob  # TODO: Ask if proteges are always PCs
+            protege = protege.player.char_ob
             our_knacks += [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in protege.mods.knacks]
         if len(our_knacks) > 0:
             for job in clipboard:
