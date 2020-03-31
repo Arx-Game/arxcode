@@ -2481,7 +2481,7 @@ class WorkSetting(SharedMemoryModel):
         return cls.objects.create(organization=organization, stat=stat, skill=skill, resource=resource_key)
 
     def do_work(self, clout, roller):
-        """Does rolls for a given WorkSetting for Member/protege and returns roll and the msg"""
+        """Does rolls for a given WorkSetting for character/protege. Returns roll and msg."""
         msg_spacer = " " if self.message else ""
         difficulty = 15 - clout
         org_mod = getattr(self.organization, "%s_modifier" % self.get_resource_display().lower())
@@ -2723,25 +2723,26 @@ class Member(SharedMemoryModel):
 
     def get_assignment_and_roller(self, protege, all_assignments):
         """
-        Determines the assignment and who will attempt to complete it.
+        Determines the assignment and the character attempting it.
         Args:
             protege (PlayerOrNpc): Protege or None
             all_assignments (list): list of assignments
 
         Returns:
-            An assignment, and the character who will roll to attempt it.
+            An assignment, and the character who will roll its skill check.
         """
         Assignment = namedtuple("Assignment", ["obj", "stat", "skill"])
         Knack = namedtuple("Knack", ["roller", "stat", "skill", "value"])
         Match = namedtuple("Match", ["assignment", "roller"])
 
         def get_by_skill() -> Match:
+            """Choosing based on skills when nobody has knacks."""
             Skill = namedtuple("Skill", ["roller", "skill", "value"])
             skills_we_have = dict(self.char.db.skills)
             our_skills = [Skill(self.char, skill, value) for skill, value in skills_we_have.items()]
             if protege:
-                protege_skills = dict(protege.player.char_ob.db.skills)
-                our_skills += [Skill(self.char, skill, value) for skill, value in protege_skills.items()]
+                protege_skills = dict(protege.db.skills)
+                our_skills += [Skill(protege, skill, value) for skill, value in protege_skills.items()]
             our_skills.sort(key=lambda each: each.value, reverse=True)
             matches = []
             for job in clipboard:
@@ -2749,24 +2750,29 @@ class Member(SharedMemoryModel):
                     if job.skill == skillset.skill:
                         matches.append(Match(job.obj, skillset.roller))
             if len(matches) < 1:
-                matches.append(Match(random_choice(all_assignments), self.char))
-            match = matches[0]  # this may still be a little random IF several top skills have same value
+                assignment, roller = random_choice(clipboard), self.char
+                rollers = [ob for ob in our_skills if ob.skill == assignment.skill]
+                if protege and len(rollers) > 1:
+                    roller = rollers[0].roller
+                matches.append(Match(assignment.obj, roller))
+            match = matches[0]
             return match
 
         matches = []
         clipboard = [Assignment(ob, ob.stat, ob.skill) for ob in all_assignments]
         our_knacks = [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in self.char.mods.knacks]
         if protege:
-            our_knacks += [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in protege.player.char_ob.mods.knacks]
-        if len(our_knacks) > 1:
+            protege = protege.player.char_ob  # TODO: Ask if proteges are always PCs
+            our_knacks += [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in protege.mods.knacks]
+        if len(our_knacks) > 0:
             for job in clipboard:
                 for knack in our_knacks:
                     if job.stat == knack.stat and job.skill == knack.skill:
                         matches.append(Match(job.obj, knack.roller))
         if len(matches) < 1:
-            match = get_by_skill()  # Fall back to skills, since no knacks OR no matches.
+            match = get_by_skill()
         else:
-            match = random_choice(matches)  # pick a random knack; they're all probably high-value combos
+            match = random_choice(matches)
         return match.assignment, match.roller
 
     @property
