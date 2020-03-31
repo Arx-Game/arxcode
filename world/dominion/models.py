@@ -51,8 +51,9 @@ Every week, a script is called that will run execute_orders() on every
 Army, and then do weekly_adjustment() in every assetowner. So only domains
 that currently have a ruler designated will change on a weekly basis.
 """
+from collections import namedtuple
 from datetime import datetime, timedelta
-from random import randint
+from random import randint, choice as random_choice
 
 from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.locks.lockhandler import LockHandler
@@ -2479,16 +2480,11 @@ class WorkSetting(SharedMemoryModel):
         skill = default_settings[resource_key][1]
         return cls.objects.create(organization=organization, stat=stat, skill=skill, resource=resource_key)
 
-    def do_work(self, member, clout, protege=None):
-        """Does rolls for a given WorkSetting for Member/protege and returns roll and the msg"""
+    def do_work(self, clout, roller):
+        """Does rolls for a given WorkSetting for character/protege. Returns roll and msg."""
         msg_spacer = " " if self.message else ""
         difficulty = 15 - clout
         org_mod = getattr(self.organization, "%s_modifier" % self.get_resource_display().lower())
-        roller = member.char
-        if protege:
-            skill_val = member.char.db.skills.get(self.skill, 0)
-            if protege.player.char_ob.db.skills.get(self.skill, 0) > skill_val:
-                roller = protege.player.char_ob
         roll_msg = "\n%s%s%s rolling %s and %s. " % (self.message, msg_spacer, roller.key, self.stat, self.skill)
         outcome = do_dice_check(roller, stat=self.stat, skill=self.skill, difficulty=difficulty,
                                 bonus_dice=org_mod, bonus_keep=org_mod//2)
@@ -2718,33 +2714,66 @@ class Member(SharedMemoryModel):
                 ValueError if resource_type is invalid
         """
         resource_key = WorkSetting.get_choice_from_string(resource_type)
-        all_assignments = self.organization.work_settings.filter(resource=resource_key)
+        all_assignments = list(self.organization.work_settings.filter(resource=resource_key))
         if not all_assignments:
-            assignment = WorkSetting.create_work(self.organization, resource_key)
-        elif len(all_assignments) > 1:
-            from random import choice as random_choice
-            skills_we_have = dict(self.char.db.skills)
-            if protege:
-                protege_skills = dict(protege.player.char_ob.db.skills)
-                for skill, value in protege_skills.items():
-                    if skill not in skills_we_have or value > skills_we_have[skill]:
-                        skills_we_have[skill] = value
-            assignments = all_assignments.filter(skill__in=skills_we_have.keys())
-            if not assignments:
-                assignment = random_choice(all_assignments)
-            elif len(assignments) > 1:
-                valid_skills = [ob.skill for ob in assignments]
-                skill_list = [(value, skill) for (skill, value) in skills_we_have.items() if skill in valid_skills]
-                highest_num = sorted(skill_list, reverse=True)[0][0]
-                top_skills = [ob[1] for ob in skill_list if ob[0] >= highest_num]
-                assignments = assignments.filter(skill__in=top_skills)
-                assignment = random_choice(assignments)
-            else:
-                assignment = assignments[0]
-        else:
-            assignment = all_assignments[0]
-        outcome, roll_msg = assignment.do_work(self, clout, protege)
+            all_assignments.append(WorkSetting.create_work(self.organization, resource_key))
+        assignment, roller = self.get_assignment_and_roller(protege, all_assignments)
+        outcome, roll_msg = assignment.do_work(clout, roller)
         return outcome, roll_msg
+
+    def get_assignment_and_roller(self, protege, all_assignments):
+        """
+        Determines the assignment and the character attempting it.
+        Args:
+            protege (PlayerOrNpc): Protege or None
+            all_assignments (list): list of assignments
+
+        Returns:
+            An assignment, and the character who will roll its skill check.
+        """
+        Assignment = namedtuple("Assignment", ["obj", "stat", "skill"])
+        Knack = namedtuple("Knack", ["roller", "stat", "skill", "value"])
+        Match = namedtuple("Match", ["assignment", "roller"])
+
+        def get_by_skill() -> Match:
+            """Choosing based on skills when nobody has knacks."""
+            Skill = namedtuple("Skill", ["roller", "skill", "value"])
+            skills_we_have = dict(self.char.db.skills)
+            our_skills = [Skill(self.char, skill, value) for skill, value in skills_we_have.items()]
+            if protege:
+                protege_skills = dict(protege.db.skills)
+                our_skills += [Skill(protege, skill, value) for skill, value in protege_skills.items()]
+            our_skills.sort(key=lambda each: each.value, reverse=True)
+            matches = []
+            for job in clipboard:
+                for skillset in our_skills:
+                    if job.skill == skillset.skill:
+                        matches.append(Match(job.obj, skillset.roller))
+            if len(matches) < 1:
+                assignment, roller = random_choice(clipboard), self.char
+                rollers = [ob for ob in our_skills if ob.skill == assignment.skill]
+                if protege and len(rollers) > 1:
+                    roller = rollers[0].roller
+                matches.append(Match(assignment.obj, roller))
+            match = matches[0]
+            return match
+
+        matches = []
+        clipboard = [Assignment(ob, ob.stat, ob.skill) for ob in all_assignments]
+        our_knacks = [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in self.char.mods.knacks]
+        if protege:
+            protege = protege.player.char_ob
+            our_knacks += [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in protege.mods.knacks]
+        if len(our_knacks) > 0:
+            for job in clipboard:
+                for knack in our_knacks:
+                    if job.stat == knack.stat and job.skill == knack.skill:
+                        matches.append(Match(job.obj, knack.roller))
+        if len(matches) < 1:
+            match = get_by_skill()
+        else:
+            match = random_choice(matches)
+        return match.assignment, match.roller
 
     @property
     def pool_share(self):

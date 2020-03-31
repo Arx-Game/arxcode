@@ -131,6 +131,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
         mock_get_week.return_value = 0
         self.char1.db.intellect = 5
         self.char1.db.composure = 5
+        self.char1.db.skills = {'economics': 3}
         mock_randint.return_value = 5
         self.call_cmd("Orgtest, economic", 'You use 15 action points and have 85 remaining this week.|'
                                            'Your social clout reduces difficulty by 1.\n'
@@ -147,15 +148,17 @@ class TestGeneralDominionCommands(ArxCommandTest):
         self.char2.db.charm = 10
         self.char2.db.intellect = 5
         self.char2.db.composure = 5
+        self.char2.db.skills = {'economics': 4}
         self.call_cmd("Orgtest, economic=TestAccount2",
                       'You use 15 action points and have 55 remaining this week.|'
                       'Your social clout combined with that of your protege reduces difficulty by 22.\n'
-                      'Char rolling intellect and economics. You have gained 7 economic resources.'
+                      'Char2 rolling intellect and economics. You have gained 7 economic resources.'
                       '|Orgtest has new @informs. Use @informs/org Orgtest/1 to read them.')
         self.assertEqual(self.assetowner2.economic, 2)
         self.assertEqual(self.assetowner.economic, 18)
         self.assertEqual(org_owner.economic, 3)
         self.assertEqual(member.work_this_week, 3)
+        self.char2.db.skills = {'economics': 2}
         self.call_cmd("/invest orgtest,economic=testaccount2", "You must specify at least 10 resources to invest.")
         self.call_cmd("/invest orgtest,economic,20=testaccount2", "You cannot afford to pay 20 resources.")
         self.call_cmd("/invest orgtest,economic,18=testaccount2",
@@ -168,6 +171,12 @@ class TestGeneralDominionCommands(ArxCommandTest):
         self.call_cmd("/score orgtest2", "No match for an org by the name: orgtest2.")
         self.call_cmd("/score orgtest", "Member Total Work Total Invested Combined \n"
                                    "Testaccount          3             25       28")
+        self.char2.mods.create_knack("Thrifty", "intellect", "economics", desc="money smarts")
+        self.call_cmd("Orgtest, economic=TestAccount2",
+                      'You use 15 action points and have 35 remaining this week.|'
+                      'Your social clout combined with that of your protege reduces difficulty by 22.\n'
+                      'Char2 rolling intellect and economics. You have gained 7 economic resources.'
+                      '|Orgtest has new @informs. Use @informs/org Orgtest/1 to read them.')
 
     def test_cmd_patronage(self):
         self.cmd_class = general_dominion_commands.CmdPatronage
