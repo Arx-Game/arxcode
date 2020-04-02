@@ -2745,9 +2745,9 @@ class Member(SharedMemoryModel):
                 our_skills += [Skill(protege, skill, value) for skill, value in protege_skills.items()]
             our_skills.sort(key=lambda each: each.value, reverse=True)
             matches = []
-            for job in clipboard:
-                for skillset in our_skills:
-                    if job.skill == skillset.skill:
+            for skillset in our_skills:
+                for job in clipboard:
+                    if skillset.skill == job.skill:
                         matches.append(Match(job.obj, skillset.roller))
             if len(matches) < 1:
                 assignment, roller = random_choice(clipboard), self.char
