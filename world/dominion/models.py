@@ -54,6 +54,7 @@ that currently have a ruler designated will change on a weekly basis.
 from collections import namedtuple
 from datetime import datetime, timedelta
 from random import randint, choice as random_choice
+from typing import List
 
 from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.locks.lockhandler import LockHandler
@@ -2733,7 +2734,7 @@ class Member(SharedMemoryModel):
         """
         Assignment = namedtuple("Assignment", ["obj", "stat", "skill"])
         Knack = namedtuple("Knack", ["roller", "stat", "skill", "value"])
-        Match = namedtuple("Match", ["assignment", "roller"])
+        Match = namedtuple("Match", ["assignment", "roller", "value"])
 
         def get_by_skill() -> Match:
             """Choosing based on skills when nobody has knacks."""
@@ -2743,20 +2744,27 @@ class Member(SharedMemoryModel):
             if protege:
                 protege_skills = dict(protege.db.skills)
                 our_skills += [Skill(protege, skill, value) for skill, value in protege_skills.items()]
-            our_skills.sort(key=lambda each: each.value, reverse=True)
             matches = []
             for skillset in our_skills:
                 for job in clipboard:
                     if skillset.skill == job.skill:
-                        matches.append(Match(job.obj, skillset.roller))
+                        matches.append(Match(job.obj, skillset.roller, skillset.value))
             if len(matches) < 1:
                 assignment, roller = random_choice(clipboard), self.char
                 rollers = [ob for ob in our_skills if ob.skill == assignment.skill]
                 if protege and len(rollers) > 1:
                     roller = rollers[0].roller
-                matches.append(Match(assignment.obj, roller))
-            match = matches[0]
-            return match
+                matches.append(Match(assignment.obj, roller, roller.db.skills.get(assignment.skill, 0)))
+            return get_random_match_from_highest_values(matches)
+
+        def get_random_match_from_highest_values(matches_list: List[Match]) -> Match:
+            """
+            Given a list of matches, determines highest value then returns random choice from
+            any match that has that value.
+            """
+            high_value = max([ob.value for ob in matches_list])
+            matches_list = [ob for ob in matches_list if ob.value >= high_value]
+            return random_choice(matches_list)
 
         matches = []
         clipboard = [Assignment(ob, ob.stat, ob.skill) for ob in all_assignments]
@@ -2768,11 +2776,11 @@ class Member(SharedMemoryModel):
             for job in clipboard:
                 for knack in our_knacks:
                     if job.stat == knack.stat and job.skill == knack.skill:
-                        matches.append(Match(job.obj, knack.roller))
+                        matches.append(Match(job.obj, knack.roller, knack.value))
         if len(matches) < 1:
             match = get_by_skill()
         else:
-            match = random_choice(matches)
+            match = get_random_match_from_highest_values(matches)
         return match.assignment, match.roller
 
     @property
