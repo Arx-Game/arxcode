@@ -1214,19 +1214,20 @@ class CmdBuyFromShop(CmdCraft):
             caller.msg(obj.return_appearance(caller))
             return
         if set(self.switches) & set(self.crafting_switches + ("craft",)):
-            if not self.args:
-                caller.msg("Please provide a valid recipe name.")
-                return
-            try:
-                recipe = self.crafter.player_ob.Dominion.assets.recipes.all().get(name__iexact=self.args)
-            except CraftingRecipe.DoesNotExist:
-                caller.msg("No recipe found by the name %s." % self.args)
-                return
-            prices = loc.db.crafting_prices or {}
-            removed = prices.get("removed", [])
-            if recipe.id in removed:
-                caller.msg("Recipe by the name %s is not available." % self.args)
-                return
+            if "craft" in self.switches:
+                if not self.args:
+                    caller.msg("Please provide a valid recipe name.")
+                    return
+                try:
+                    recipe = self.crafter.player_ob.Dominion.assets.recipes.all().get(name__iexact=self.args)
+                except CraftingRecipe.DoesNotExist:
+                    caller.msg("No recipe found by the name %s." % self.args)
+                    return
+                prices = loc.db.crafting_prices or {}
+                removed = prices.get("removed", [])
+                if recipe.id in removed:
+                    caller.msg("Recipe by the name %s is not available." % self.args)
+                    return
             return CmdCraft.func(self)
         caller.msg("Invalid switch.")
 
