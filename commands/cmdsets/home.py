@@ -1214,8 +1214,11 @@ class CmdBuyFromShop(CmdCraft):
             caller.msg(obj.return_appearance(caller))
             return
         if set(self.switches) & set(self.crafting_switches + ("craft",)):
+            if not self.args:
+                caller.msg("Please provide a valid recipe name.")
+                return
             try:
-                recipe = caller.player_ob.Dominion.assets.recipes.all().get(name__iexact=self.args)
+                recipe = self.crafter.player_ob.Dominion.assets.recipes.all().get(name__iexact=self.args)
             except CraftingRecipe.DoesNotExist:
                 caller.msg("No recipe found by the name %s." % self.args)
                 return

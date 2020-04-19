@@ -613,18 +613,19 @@ class TestHomeCommands(ArxCommandTest):
         from world.dominion.models import CraftingRecipe
         recipes = {CraftingRecipe.objects.create(id=1, name="Item1", additional_cost=10),  
                    CraftingRecipe.objects.create(id=2, name="Item2")}
-        self.char.player_ob.Dominion.assets.recipes.set(recipes)
+        self.char2.player_ob.Dominion.assets.recipes.set(recipes)
         prices = self.room.db.crafting_prices or {}
         prices[1] = 10
         prices["removed"] = {2}
         self.room.db.crafting_prices = prices
-        self.room.db.shopowner = self.char
-        self.char.location = self.room
-        self.setup_cmd(home.CmdBuyFromShop, self.char)
+        self.room.db.shopowner = self.char2
+        self.char1.location = self.room
+        self.setup_cmd(home.CmdBuyFromShop, self.char1)
         self.call_cmd("/test", "Invalid switch.")
+        self.call_cmd("/craft", "Please provide a valid recipe name.")
         self.call_cmd("/craft Item2", "Recipe by the name Item2 is not available.")
         self.call_cmd("/craft Item3", "No recipe found by the name Item3.")
         self.call_cmd("", 'Crafting Prices\n\nName  Craft Price Refine Price \n'
                           'Item1 11.0        0            \nItem Prices')
-        self.call_cmd("/craft Item1", 'You have started to craft: Item1.|'
-                                      'To finish it, use /finish after you gather the following:|Silver: 10')                 
+        self.call_cmd("/craft Item1", 'Char2 has started to craft: Item1.|'
+                                      'To finish it, use /finish after you gather the following:|Silver: 10')              
