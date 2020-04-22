@@ -12,6 +12,7 @@ to be modified.
 
 """
 
+import string
 from evennia import DefaultChannel
 from evennia.utils.utils import lazy_property
 
@@ -202,6 +203,48 @@ class Channel(DefaultChannel):
             return '%s%s' % (sender_string, message)
         else:
             return '%s: %s' % (sender_string, message)
+
+    def __find_name_from_mention(self, mention, subs):
+        for sub in subs:
+            key = sub.char_ob.key
+            if mention.startswith(key) and all(c in string.punctuation for c in mention[len(key):]):
+                return key
+        return None
+
+    def __format_mentions(self, message):
+        """
+        Looks through a message for words starting with '@' and
+        mentioning a user's name. Highlights them if found.
+        """
+        subs = self.subscriptions.online()
+        words = message.split()
+        for word in words:
+            if not word.startswith("@"):
+                continue
+            start_length = len(word) - len(word.lstrip("@"))
+            name = self.__find_name_from_mention(word[start_length:], subs)
+            if not name:
+                continue
+            word = word[:start_length + len(name)]
+            message = message.replace(word, f"{{c{name}{{n")
+        return message
+
+    def format_message(self, msg, emit=False):
+        """
+        Formats a message body for display.
+        """
+        msg.message = self.__format_mentions(msg.message)
+
+        senders = [sender for sender in msg.senders if hasattr(sender, "key")]
+        if not senders:
+            emit = True
+        if emit:
+            return msg.message
+        else:
+            senders = [sender.key for sender in msg.senders]
+            senders = ", ".join(senders)
+            return self.pose_transform(msg, senders)
+
 
     def tempmsg(self, message, header=None, senders=None):
         """
