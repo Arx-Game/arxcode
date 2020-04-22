@@ -245,7 +245,6 @@ class Channel(DefaultChannel):
             senders = ", ".join(senders)
             return self.pose_transform(msg, senders)
 
-
     def tempmsg(self, message, header=None, senders=None):
         """
         A wrapper for sending non-persistent messages. Note that this will
