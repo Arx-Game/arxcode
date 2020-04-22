@@ -1810,7 +1810,8 @@ class CmdSetServerConfig(ArxPlayerCommand):
                               "income": "GLOBAL_INCOME_MOD",
                               "ap transfers disabled": "DISABLE_AP_TRANSFER",
                               "cg bonus skill points": "CHARGEN_BONUS_SKILL_POINTS",
-                              "new clue ap cost": "NEW_CLUE_AP_COST"}
+                              "new clue ap cost": "NEW_CLUE_AP_COST",
+                              "material cost multiplier": "MATERIAL_COST_MULTIPLIER"}
     valid_keys = sorted(shorthand_to_real_keys.keys())
 
     def get_help(self, caller, cmdset):
@@ -1871,6 +1872,13 @@ class CmdSetServerConfig(ArxPlayerCommand):
                     if not val.isdigit():
                         return self.msg("This must be a number.")
                     val = int(val)
+                elif key == "material cost multiplier":
+                    try:
+                        val = float(self.rhs)
+                        if val <= 0:
+                            raise ValueError
+                    except (TypeError, ValueError):
+                        return self.msg("You must give a positive real number.")
                 ServerConfig.objects.conf(key=real_key, value=val)
             self.list_config_values()
         except KeyError:

@@ -22,6 +22,7 @@ from evennia.utils.create import create_object
 from world.dominion.models import (CraftingMaterialType, PlayerOrNpc, CraftingMaterials)
 from world.dominion import setup_utils
 from world.stats_and_skills import do_dice_check
+from evennia.server.models import ServerConfig
 
 
 RESOURCE_VAL = 250
@@ -104,6 +105,13 @@ class CmdMarket(ArxCommand):
     locks = "cmd:all()"
     help_category = "Market"
 
+    @property
+    def cost_multiplier(self):
+        mult = ServerConfig.objects.conf("MATERIAL_COST_MULTIPLIER", default=1.0)
+        if mult <= 0:
+            return 1.0
+        return mult
+
     def func(self):
         """Execute command."""
         caller = self.caller
@@ -126,11 +134,12 @@ class CmdMarket(ArxCommand):
         if not caller.check_permstring("builders"):
             materials = materials.exclude(acquisition_modifiers__icontains="nosell")
         if not self.args:
+            mult = self.cost_multiplier
             mtable = prettytable.PrettyTable(["{wMaterial",
                                               "{wCategory",
                                               "{wCost"])
             for mat in materials:
-                mtable.add_row([mat.name, mat.category, str(mat.value)])
+                mtable.add_row([mat.name, mat.category, str(mat.value * mult)])
             # add other items by hand
             for mat in other_items:
                 mtable.add_row([mat, other_items[mat][1], other_items[mat][0]])
@@ -167,7 +176,7 @@ class CmdMarket(ArxCommand):
                 if amt < 1:
                     caller.msg("Amount must be a positive number")
                     return
-            cost = material.value * amt
+            cost = material.value * amt * self.cost_multiplier
             try:
                 dompc = caller.player_ob.Dominion
             except AttributeError:
@@ -242,7 +251,7 @@ class CmdMarket(ArxCommand):
             return
         if 'info' in self.switches:
             msg = "{wInformation on %s:{n %s\n" % (material.name, material.desc)
-            price = material.value
+            price = material.value * self.cost_multiplier
             msg += "{wPrice in silver: {c%s{n\n" % price
             cost = price/250
             if price % 250:
@@ -259,7 +268,7 @@ class CmdMarket(ArxCommand):
             except (TypeError, ValueError):
                 caller.msg("Must specify a positive number.")
                 return
-            cost = 500 * amt
+            cost = 500 * amt * self.cost_multiplier
             if cost > caller.db.currency:
                 caller.msg("That would cost %s and you have %s." % (cost, caller.db.currency))
                 return
