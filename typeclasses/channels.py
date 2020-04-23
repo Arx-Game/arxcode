@@ -272,9 +272,10 @@ class Channel(DefaultChannel):
         
         for entity in subs:
             if entity in msgobj.senders or entity.player_ob.db.highlight_all_mentions:
-                msgobj.message = self.__format_mentions(msgobj.message, [entity.char_ob.key for entity in subs])
+                names = [sub.char_ob.key for sub in subs]
             else:
-                msgobj.message = self.__format_mentions(msgobj.message, [entity.char_ob.key])
+                names = [entity.char_ob.key]
+            msgobj.message = self.__format_mentions(msgobj.message, names)
 
             self.send_msg(entity, msgobj)
 
