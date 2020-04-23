@@ -269,7 +269,7 @@ class Channel(DefaultChannel):
             subs = self.subscriptions.all()
         
         for entity in subs:
-            msgobj.message = self.__format_mentions(msgobj.message, entity.char_ob.name)
+            msgobj.message = self.__format_mentions(msgobj.message, entity.char_ob.key)
             self.send_msg(entity, msgobj)
 
         if msgobj.keep_log:
