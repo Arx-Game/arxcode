@@ -222,12 +222,14 @@ class Channel(DefaultChannel):
                 return mention
         return None
 
-    def __format_mentions(self, message, name):
+    def __format_mentions(self, message, names):
         """
         Looks through a message for words starting with '@' and
         mentioning a user's name. Highlights them if found.
         """
-        mentions = [mention for mention in self.mentions + [name] if mention in message]
+        if '@' not in message:
+            return message
+        mentions = [mention for mention in self.mentions + names if mention in message]
         if not mentions:
             return message
 
@@ -269,7 +271,11 @@ class Channel(DefaultChannel):
             subs = self.subscriptions.all()
         
         for entity in subs:
-            msgobj.message = self.__format_mentions(msgobj.message, entity.char_ob.key)
+            if entity in msgobj.senders or entity.player_ob.db.highlight_all_mentions:
+                msgobj.message = self.__format_mentions(msgobj.message, [entity.char_ob.key for entity in subs])
+            else:
+                msgobj.message = self.__format_mentions(msgobj.message, [entity.char_ob.key])
+
             self.send_msg(entity, msgobj)
 
         if msgobj.keep_log:
