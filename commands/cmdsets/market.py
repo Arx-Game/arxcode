@@ -81,6 +81,13 @@ class MarketCmdSet(CmdSet):
         self.add(CmdBroker())
 
 
+def get_cost_multipler():
+    mult = ServerConfig.objects.conf("MATERIAL_COST_MULTIPLIER", default=1.0)
+    if mult <= 0:
+        return 1.0
+    return mult
+
+
 # noinspection PyUnresolvedReferences
 class CmdMarket(ArxCommand):
     """
@@ -105,13 +112,6 @@ class CmdMarket(ArxCommand):
     locks = "cmd:all()"
     help_category = "Market"
 
-    @property
-    def cost_multiplier(self):
-        mult = ServerConfig.objects.conf("MATERIAL_COST_MULTIPLIER", default=1.0)
-        if mult <= 0:
-            return 1.0
-        return mult
-
     def func(self):
         """Execute command."""
         caller = self.caller
@@ -134,7 +134,7 @@ class CmdMarket(ArxCommand):
         if not caller.check_permstring("builders"):
             materials = materials.exclude(acquisition_modifiers__icontains="nosell")
         if not self.args:
-            mult = self.cost_multiplier
+            mult = get_cost_multipler()
             mtable = prettytable.PrettyTable(["{wMaterial",
                                               "{wCategory",
                                               "{wCost"])
@@ -176,7 +176,7 @@ class CmdMarket(ArxCommand):
                 if amt < 1:
                     caller.msg("Amount must be a positive number")
                     return
-            cost = material.value * amt * self.cost_multiplier
+            cost = material.value * amt * get_cost_multipler()
             try:
                 dompc = caller.player_ob.Dominion
             except AttributeError:
@@ -251,7 +251,7 @@ class CmdMarket(ArxCommand):
             return
         if 'info' in self.switches:
             msg = "{wInformation on %s:{n %s\n" % (material.name, material.desc)
-            price = material.value * self.cost_multiplier
+            price = material.value * get_cost_multipler()
             msg += "{wPrice in silver: {c%s{n\n" % price
             cost = price/250
             if price % 250:
@@ -268,7 +268,7 @@ class CmdMarket(ArxCommand):
             except (TypeError, ValueError):
                 caller.msg("Must specify a positive number.")
                 return
-            cost = 500 * amt * self.cost_multiplier
+            cost = 500 * amt * get_cost_multipler()
             if cost > caller.db.currency:
                 caller.msg("That would cost %s and you have %s." % (cost, caller.db.currency))
                 return
@@ -428,6 +428,8 @@ class HaggledDeal(object):
                 cost = self.material.value
             else:
                 cost = round(pow(self.material.value, 0.9))
+        if self.transaction_type == "buy":
+            cost *= get_cost_multipler()
         return cost
 
     def sell_materials(self):

@@ -561,7 +561,7 @@ class TestMarketCommands(ArxCommandTest):
                                                 ' a bonus of 25.|You found someone willing to sell 10 testium. You can '
                                                 'use /roll to try to negotiate the price.')
         self.call_cmd("/roll", 'You have found a better deal:\nAttempting to buy: 10 testium.\nCurrent Discount: 79\n'
-                               'Silver Cost: 10500.0 (Base Cost Per Unit: 5000)\nRoll Modifier: 25')
+                               'Silver Cost: 10500.0 (Base Cost Per Unit: 5000.0)\nRoll Modifier: 25')
         deal = list(self.char1.db.haggling_deal)
         self.call_cmd("/accept", "You have bought 10 testium for 10500.0 silver.")
         mats = self.assetowner.materials.get(type__name=material.name)
@@ -602,11 +602,12 @@ class TestMarketCommands(ArxCommandTest):
         self.assertEqual(self.char2.db.haggling_deal, ('buy', 1, 50, 0, 25))
         self.account2.inform.assert_called_with('You have been sent a deal that you can choose to haggle by Char.\n'
                                                 '{wAttempting to buy:{n 50 testium.\n{wCurrent Discount:{n 0\n'
-                                                '{wSilver Cost:{n 250000.0 (Base Cost Per Unit: 5000)\n'
+                                                '{wSilver Cost:{n 250000.0 (Base Cost Per Unit: 5000.0)\n'
                                                 '{wRoll Modifier:{n 25',
                                                 category='Deal Offer')
         self.call_cmd("/findseller testium,testaccount2=50,25",
                       "They already have a deal in progress. Ask them to decline it first.")
+
 
 class TestHomeCommands(ArxCommandTest):
     def test_cmd_shop(self):
