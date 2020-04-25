@@ -20,12 +20,13 @@ class Roll(object):
     # This is the number that the roll needs to be >= for an extra die
     EXPLODE_VAL = 10
 
-    def __init__(self, caller=None, stat=None, skill=None, difficulty=15, stat_list=None,
+    def __init__(self, caller=None, retainer=None, stat=None, skill=None, difficulty=15, stat_list=None,
                  skill_list=None, skill_keep=True, stat_keep=False, quiet=True, announce_room=None,
                  keep_override=None, bonus_dice=0, divisor=1, average_lists=False, can_crit=True,
                  average_stat_list=False, average_skill_list=False, announce_values=False, flub=False,
                  use_real_name=False, bonus_keep=0, flat_modifier=0):
         self.character = caller
+        self.retainer = retainer
         self.difficulty = difficulty
         self.skill_keep = skill_keep
         self.stat_keep = stat_keep

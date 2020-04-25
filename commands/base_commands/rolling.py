@@ -79,6 +79,7 @@ class CmdDiceCheck(ArxCommand):
             else:
                 caller.msg("Usage: @check <stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
                 return
+ 
         args = self.lhs if self.rhs else self.args
         args = args.lower()
         quiet = bool(self.rhs)
@@ -86,6 +87,7 @@ class CmdDiceCheck(ArxCommand):
         try:
             if is_retainer:
                 args, retainer_id = self._extract_retainer_id(args)
+                #TODO: get retainer object here
 
             args, difficulty = self._extract_difficulty(args)
             stat, skill = self._extract_stat_skill(args)
@@ -93,8 +95,8 @@ class CmdDiceCheck(ArxCommand):
             caller.msg(str(err))
             return
 
-        stats_and_skills.do_dice_check(caller, stat, skill, difficulty, quiet=quiet, flub=flub)
-
+        stats_and_skills.do_dice_check(caller, stat=stat, skill=skill, difficulty=difficulty, quiet=quiet, flub=flub)
+        
         if quiet:
             self._send_quiet_roll_msg()
 
@@ -149,14 +151,16 @@ class CmdDiceCheck(ArxCommand):
         stat, skill = None, None
 
         split_str = args.split("+")
+        stat = split_str[0].strip()
         if len(split_str) > 1:
             skill = split_str[1].strip()
-        stat = split_str[0].strip()
+
         matches = stats_and_skills.get_partial_match(stat, "stat")
         if not matches or len(matches) > 1:
             raise ValueError("There must be one unique match for a character stat. Please check spelling and try again.")
         # get unique string that matches stat
         stat = matches[0]
+
         if skill:
             matches = stats_and_skills.get_partial_match(skill, "skill")
             if not matches:
