@@ -356,7 +356,7 @@ class HaggledDeal(object):
         if not self.caller.player_ob.pay_action_points(5):
             return
         self.noble_discovery_check()
-        difficulty = randint(-15, 65) - self.roll_bonus
+        difficulty = randint(-25, 65) - self.roll_bonus
         clout = self.caller.social_clout
         if clout > 0:
             difficulty -= randint(0, clout)
@@ -396,18 +396,18 @@ class HaggledDeal(object):
     def discount(self):
         """Calculate some value from discount roll"""
         discount = self.discount_roll
-        base_value = 10 if self.transaction_type == "sell" else 0
-        if discount <= 40:
-            return discount + base_value
+        base_value = 20 if self.transaction_type == "buy" else 10
+        if discount <= 10:
+            return discount + base_value  # 0 to 30
         if discount <= 60:
-            return (41 + (discount - 40)//2) + base_value
+            return (11 + (discount - 40)//2) + base_value  # 31 to 41
         if discount <= 100:
-            return (51 + (discount - 60)//4) + base_value
+            return (21 + (discount - 60)//4) + base_value  # 41 to 51
         if discount <= 160:
-            return (61 + (discount - 100)//5) + base_value
-        discount = 73 + (discount - 160)//6  # roll of 262 to cap
-        if discount > 90:
-            discount = 90
+            return (31 + (discount - 100)//5) + base_value  # 51 to 63
+        discount = 43 + (discount - 160)//6  # roll of 262 to cap
+        if discount > 45:
+            discount = 45
         return discount + base_value
 
     @property
