@@ -22,6 +22,7 @@ from evennia.utils.create import create_object
 from world.dominion.models import (CraftingMaterialType, PlayerOrNpc, CraftingMaterials)
 from world.dominion import setup_utils
 from world.stats_and_skills import do_dice_check
+from evennia.server.models import ServerConfig
 
 
 RESOURCE_VAL = 250
@@ -80,6 +81,13 @@ class MarketCmdSet(CmdSet):
         self.add(CmdBroker())
 
 
+def get_cost_multipler():
+    mult = ServerConfig.objects.conf("MATERIAL_COST_MULTIPLIER", default=1.0)
+    if mult <= 0:
+        return 1.0
+    return mult
+
+
 # noinspection PyUnresolvedReferences
 class CmdMarket(ArxCommand):
     """
@@ -126,11 +134,12 @@ class CmdMarket(ArxCommand):
         if not caller.check_permstring("builders"):
             materials = materials.exclude(acquisition_modifiers__icontains="nosell")
         if not self.args:
+            mult = get_cost_multipler()
             mtable = prettytable.PrettyTable(["{wMaterial",
                                               "{wCategory",
                                               "{wCost"])
             for mat in materials:
-                mtable.add_row([mat.name, mat.category, str(mat.value)])
+                mtable.add_row([mat.name, mat.category, str(mat.value * mult)])
             # add other items by hand
             for mat in other_items:
                 mtable.add_row([mat, other_items[mat][1], other_items[mat][0]])
@@ -167,7 +176,7 @@ class CmdMarket(ArxCommand):
                 if amt < 1:
                     caller.msg("Amount must be a positive number")
                     return
-            cost = material.value * amt
+            cost = material.value * amt * get_cost_multipler()
             try:
                 dompc = caller.player_ob.Dominion
             except AttributeError:
@@ -242,7 +251,7 @@ class CmdMarket(ArxCommand):
             return
         if 'info' in self.switches:
             msg = "{wInformation on %s:{n %s\n" % (material.name, material.desc)
-            price = material.value
+            price = material.value * get_cost_multipler()
             msg += "{wPrice in silver: {c%s{n\n" % price
             cost = price/250
             if price % 250:
@@ -259,7 +268,7 @@ class CmdMarket(ArxCommand):
             except (TypeError, ValueError):
                 caller.msg("Must specify a positive number.")
                 return
-            cost = 500 * amt
+            cost = 500 * amt * get_cost_multipler()
             if cost > caller.db.currency:
                 caller.msg("That would cost %s and you have %s." % (cost, caller.db.currency))
                 return
@@ -347,7 +356,7 @@ class HaggledDeal(object):
         if not self.caller.player_ob.pay_action_points(5):
             return
         self.noble_discovery_check()
-        difficulty = randint(-15, 65) - self.roll_bonus
+        difficulty = randint(-25, 65) - self.roll_bonus
         clout = self.caller.social_clout
         if clout > 0:
             difficulty -= randint(0, clout)
@@ -387,18 +396,18 @@ class HaggledDeal(object):
     def discount(self):
         """Calculate some value from discount roll"""
         discount = self.discount_roll
-        base_value = 10 if self.transaction_type == "sell" else 0
-        if discount <= 40:
-            return discount + base_value
+        base_value = 20 if self.transaction_type == "buy" else 10
+        if discount <= 10:
+            return discount + base_value  # 0 to 30
         if discount <= 60:
-            return (41 + (discount - 40)//2) + base_value
+            return (11 + (discount - 40)//2) + base_value  # 31 to 41
         if discount <= 100:
-            return (51 + (discount - 60)//4) + base_value
+            return (21 + (discount - 60)//4) + base_value  # 41 to 51
         if discount <= 160:
-            return (61 + (discount - 100)//5) + base_value
-        discount = 73 + (discount - 160)//6  # roll of 262 to cap
-        if discount > 90:
-            discount = 90
+            return (31 + (discount - 100)//5) + base_value  # 51 to 63
+        discount = 43 + (discount - 160)//6  # roll of 262 to cap
+        if discount > 45:
+            discount = 45
         return discount + base_value
 
     @property
@@ -419,6 +428,8 @@ class HaggledDeal(object):
                 cost = self.material.value
             else:
                 cost = round(pow(self.material.value, 0.9))
+        if self.transaction_type == "buy":
+            cost *= get_cost_multipler()
         return cost
 
     def sell_materials(self):

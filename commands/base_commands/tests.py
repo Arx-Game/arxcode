@@ -1061,23 +1061,26 @@ class StaffCommandTests(ArxCommandTest):
 
     def test_cmd_config(self):
         self.setup_cmd(staff_commands.CmdSetServerConfig, self.account)
-        self.call_cmd("asdf", 'Not a valid key: ap transfers disabled, cg bonus skill points, income, motd, new clue ap cost')
+        self.call_cmd("asdf", 'Not a valid key: ap transfers disabled, cg bonus skill points, income, '
+                              'material cost multiplier, motd, new clue ap cost')
         self.call_cmd("income=5",
-                      '| key                                    | value                             '
-                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'                      
-                      '| ap transfers disabled                  | None                              '
-                      '| cg bonus skill points                  | None                              '
-                      '| income                                 | 5.0                               '                      
-                      '| motd                                   | None                              '
-                      '| new clue ap cost                       | None')
+                      '| key                                     | value                            '
+                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                      '| ap transfers disabled                   | None                             '
+                      '| cg bonus skill points                   | None                             '
+                      '| income                                  | 5.0                              '
+                      '| material cost multiplier                | None                             '
+                      '| motd                                    | None                             '
+                      '| new clue ap cost                        | None')
         self.call_cmd("cg bonus skill points=20",
-                      '| key                                    | value                             '
-                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
-                      '| ap transfers disabled                  | None                              '
-                      '| cg bonus skill points                  | 20                                '
-                      '| income                                 | 5.0                               '                      
-                      '| motd                                   | None                              '
-                      '| new clue ap cost                       | None')
+                      '| key                                     | value                            '
+                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                      '| ap transfers disabled                   | None                             '
+                      '| cg bonus skill points                   | 20                               '
+                      '| income                                  | 5.0                              '
+                      '| material cost multiplier                | None                             '
+                      '| motd                                    | None                             '
+                      '| new clue ap cost                        | None')
 
     def test_cmd_adjustfame(self):
         self.setup_cmd(staff_commands.CmdAdjustFame, self.account)
