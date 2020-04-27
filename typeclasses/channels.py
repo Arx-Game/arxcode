@@ -260,7 +260,7 @@ class Channel(DefaultChannel):
         except AttributeError as e:
             logger.log_trace("%s\nCannot send msg to '%s'." % (e, reciever))
 
-    def distribute_message(self, msgobj, online=False):
+    def distribute_message(self, msgobj, online=True):
         """
         Sends a message to all connected players on channel, optionally sending only
         to players that are currently online (optimized for very large sends)
