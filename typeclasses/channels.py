@@ -12,7 +12,9 @@ to be modified.
 
 """
 
+import string
 from evennia import DefaultChannel
+from evennia.utils import logger
 from evennia.utils.utils import lazy_property
 
 
@@ -60,6 +62,8 @@ class Channel(DefaultChannel):
         post_send_message(msg) - called just after message was sent to channel
 
     """
+    mentions = ["Everyone", "All"]
+
     @lazy_property
     def org_channel(self):
         from world.dominion.models import Organization
@@ -211,3 +215,72 @@ class Channel(DefaultChannel):
         should only happen by intent.
         """
         self.msg(message, senders=senders, header=header, keep_log=False)
+
+    def __word_contains_mention(self, word, mentions):
+        for mention in mentions:
+            if word.startswith(mention) and all(c in string.punctuation for c in word[len(mention):]):
+                return mention
+        return None
+
+    def __format_mentions(self, message, names):
+        """
+        Looks through a message for words starting with '@' and
+        mentioning a user's name. Highlights them if found.
+        """
+        if '@' not in message:
+            return message
+        mentions = [mention for mention in self.mentions + names if mention in message]
+        if not mentions:
+            return message
+
+        words = message.split()
+        for word in words:
+            if not word.startswith("@"):
+                continue
+            start_length = len(word) - len(word.lstrip("@"))
+            mention = self.__word_contains_mention(word[start_length:], mentions)
+            if not mention:
+                continue
+            message = message.replace(word[:start_length + len(mention)], f"{{c[{mention}]{{n")
+        return message
+
+    def send_msg(self, reciever, msgobj):
+        """
+        Sends a message to a particular reciever
+        """
+        # if the reciever is muted, we don't send them a message
+        if reciever in self.mutelist:
+            return
+        try:
+            # note our addition of the from_channel keyword here. This could be checked
+            # by a custom account.msg() to treat channel-receives differently.
+            reciever.msg(
+                msgobj.message, from_obj=msgobj.senders, options={"from_channel": self.id}
+            )
+        except AttributeError as e:
+            logger.log_trace("%s\nCannot send msg to '%s'." % (e, reciever))
+
+    def distribute_message(self, msgobj, online=False):
+        """
+        Sends a message to all connected players on channel, optionally sending only
+        to players that are currently online (optimized for very large sends)
+        """
+        if online:
+            subs = self.subscriptions.online()
+        else:
+            subs = self.subscriptions.all()
+        
+        for entity in subs:
+            if entity in msgobj.senders or entity.player_ob.db.highlight_all_mentions:
+                names = [sub.char_ob.key for sub in subs]
+            else:
+                names = [entity.char_ob.key]
+            msgobj.message = self.__format_mentions(msgobj.message, names)
+
+            self.send_msg(entity, msgobj)
+
+        if msgobj.keep_log:
+            # log to file
+            logger.log_file(
+                msgobj.message, self.attributes.get("log_file") or "channel_%s.log" % self.key
+            )
