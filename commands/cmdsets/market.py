@@ -190,7 +190,7 @@ class CmdMarket(ArxCommand):
                 paystr = "%s silver" % cost
             else:
                 # use economic resources
-                eamt = cost/RESOURCE_VAL
+                eamt = cost//RESOURCE_VAL
                 # round up if not exact
                 if cost % RESOURCE_VAL:
                     eamt += 1
@@ -202,7 +202,7 @@ class CmdMarket(ArxCommand):
                 assets.save()
                 paystr = "%s economic resources" % eamt
                 # check if they could have bought more than the amount they specified
-                optimal_amt = (eamt * RESOURCE_VAL)/(material.value or 1)
+                optimal_amt = (eamt * RESOURCE_VAL)//((material.value or 1) * get_cost_multipler())
                 if amt < optimal_amt:
                     caller.msg("You could get %s for the same price, so doing that instead." % optimal_amt)
                     amt = optimal_amt
