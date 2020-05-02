@@ -545,11 +545,11 @@ class TestMarketCommands(ArxCommandTest):
                                                  ' a bonus of 25.|You found someone willing to buy 100 economic. '
                                                  'You can use /roll to try to negotiate the price.')
         self.call_cmd("/roll", 'You have found a better deal:\nAttempting to sell: 100 economic resources.\n'
-                               'Current Markup Bonus: 55\nSilver Value: 27500.0 (Base Cost Per Unit: 500.0)\n'
+                               'Current Markup Bonus: 55\nSilver Value: 14771.9 (Base Cost Per Unit: 268.6)\n'
                                'Roll Modifier: 25')
-        self.call_cmd("/accept", 'You have sold 100 economic resources and gained 27500.0 silver.')
+        self.call_cmd("/accept", 'You have sold 100 economic resources and gained 14771.9 silver.')
         self.assertEqual(self.assetowner.economic, 0)
-        self.assertEqual(self.char1.currency, 32500.0)
+        self.assertEqual(self.char1.currency, 19771.9)
         material = CraftingMaterialType.objects.create(name="testium", value=50000000)
         self.call_cmd("/findseller testium=10", 'You had trouble finding a deal for such a valuable item. Haggling '
                                                 'rolls will have a penalty of -99.|You found someone willing to sell 1 '
@@ -579,17 +579,17 @@ class TestMarketCommands(ArxCommandTest):
                       'Engaging in crass mercantile haggling is considered beneath those of high social rank. '
                       'Fortunately, no one noticed this time.|You failed to find a better deal.\n'
                       'Attempting to sell: 30 testium.\nCurrent Markup Bonus: 55\n'
-                      'Silver Value: 35194.5 (Base Cost Per Unit: 2133)\nRoll Modifier: 25')
+                      'Silver Value: 35201.2 (Base Cost Per Unit: 2133.4)\nRoll Modifier: 25')
         mock_dice_check.return_value = -5
         self.call_cmd("/roll", 'Engaging in crass mercantile haggling is considered beneath those of high social rank. '
                                'Unfortunately, you were noticed and lose 5 fame.|You failed to find a better deal.\n'
                                'Attempting to sell: 30 testium.\nCurrent Markup Bonus: 55\n'
-                               'Silver Value: 35194.5 (Base Cost Per Unit: 2133)'
+                               'Silver Value: 35201.2 (Base Cost Per Unit: 2133.4)'
                                '\nRoll Modifier: 25')
-        self.call_cmd("/accept", 'You have sold 30 testium and gained 35194.5 silver.')
+        self.call_cmd("/accept", 'You have sold 30 testium and gained 35201.2 silver.')
         self.assertEqual(self.assetowner.fame, 495)
         self.assertEqual(mats.amount, 0)
-        self.assertEqual(self.char1.currency, 50194.5)
+        self.assertEqual(self.char1.currency, 37473.1)
         mock_dice_check.return_value = 10
         self.call_cmd("/findseller testium,testaccount2=50,bar", "The optional minimum bonus must be a number.")
         self.call_cmd("/findseller testium,testaccount2=50,500", 'The roll bonus of 0 was below the minimum of 25, '

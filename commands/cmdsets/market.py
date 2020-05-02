@@ -293,6 +293,8 @@ class HaggleError(Exception):
 
 class HaggledDeal(object):
     """Helper class for trying to haggle a deal"""
+    BUY = "buy"
+    SELL = "sell"
     VALID_RESOURCES = ('economic', 'military', 'social')
 
     def __init__(self, caller):
@@ -318,7 +320,7 @@ class HaggledDeal(object):
         """Accepts the deal"""
         if not self.discount_roll:
             raise HaggleError("You haven't struck a deal yet. You must negotiate the deal before you can accept it.")
-        if self.transaction_type == "sell":
+        if self.transaction_type == self.SELL:
             self.sell_materials()
         else:
             self.buy_materials()
@@ -337,10 +339,10 @@ class HaggledDeal(object):
     def display(self):
         """Returns a user-friendly string of the status of our deal"""
         msg = "{wAttempting to %s:{n %s %s.\n" % (self.transaction_type, self.amount, self.material_display)
-        noun = "Discount" if self.transaction_type == "buy" else "Markup Bonus"
+        noun = "Discount" if self.transaction_type == self.BUY else "Markup Bonus"
         msg += "{wCurrent %s:{n %s\n" % (noun, self.discount)
-        noun = "Value" if self.transaction_type == "sell" else "Cost"
-        msg += "{wSilver %s:{n %s (Base Cost Per Unit: %s)" % (noun, self.silver_value, self.base_cost)
+        noun = "Value" if self.transaction_type == self.SELL else "Cost"
+        msg += "{wSilver %s:{n %s (Base Cost Per Unit: %s)" % (noun, round(self.silver_value, 1), round(self.base_cost, 1))
         msg += "\n{wRoll Modifier:{n %s" % self.roll_bonus
         return msg
 
@@ -417,19 +419,17 @@ class HaggledDeal(object):
             discount = 100 - self.discount
         else:
             discount = self.discount
-        return (self.base_cost * discount/100.0) * self.amount
+        return round((self.base_cost * discount/100.0) * self.amount, 1)
 
     @property
     def base_cost(self):
         if self.resource_type:
             cost = 500.0
         else:
-            if self.transaction_type == "buy":
-                cost = self.material.value
-            else:
-                cost = round(pow(self.material.value, 0.9))
-        if self.transaction_type == "buy":
-            cost *= get_cost_multipler()
+            cost = self.material.value
+        cost *= get_cost_multipler()
+        if self.transaction_type == self.SELL:
+            cost = pow(cost, 0.9)
         return cost
 
     def sell_materials(self):
