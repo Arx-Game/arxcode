@@ -60,18 +60,16 @@ class Roll(object):
             stat_list = [ob.lower() for ob in stat_list]
             # look up each stat from supplied caller, adds to stats dict
             for somestat in stat_list:
-                self.stats[somestat] += self.character.attributes.get(somestat, 0)
+                self.stats[somestat] += self.character.traits.get_stat_value(somestat)
             # None isn't iterable so make an empty set of skills
             skill_list = skill_list or []
             # add individual skill to the list
             if skill and skill not in skill_list:
                 skill_list.append(skill)
             skill_list = [ob.lower() for ob in skill_list]
-            # grabs the caller's skills or makes blank dict
-            skills = caller.db.skills or {}
             # compares skills to dict we just made, adds to self.skills dict
             for someskill in skill_list:
-                self.skills[someskill] += skills.get(someskill, 0)
+                self.skills[someskill] += self.character.traits.get_skill_value(someskill)
             self.bonus_crit_chance = caller.db.bonus_crit_chance or 0
             self.bonus_crit_mult = caller.db.bonus_crit_mult or 0
             if use_real_name:

@@ -1316,7 +1316,7 @@ class Investigation(AbstractPlayerAllocations):
     @classmethod
     def ap_cost(cls, character):
         try:
-            cost = 50 - (character.db.skills.get('investigation', 0) * 5)
+            cost = 50 - (character.traits.get_skill_value('investigation') * 5)
             if cost < 0:
                 cost = 0
             return cost

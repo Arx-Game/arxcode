@@ -1413,11 +1413,7 @@ class CmdCreateAntagonist(ArxCommand):
         if not character:
             self.msg("No character found. Use #ID if they're not in the room.")
             return
-        for stat in ("strength", "stamina", "dexterity"):
-            val = character.attributes.get(stat, 0)
-            npc.attributes.add(stat, val)
-        skills = character.db.skills
-        npc.attributes.add("skills", dict(skills))
+        npc.traits.mirror_physical_stats_and_skills(character)
     
     def adjust_spawn_name(self, npc):
         oldname = str(npc)

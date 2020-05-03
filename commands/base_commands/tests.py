@@ -1328,7 +1328,7 @@ class XPCommandTests(ArxCommandTest):
         self.char2.db.xp = 0
         self.call_cmd("/spend Teasing", "'Teasing' wasn't identified as a stat, ability, or skill.")
         self.call_cmd("/spend Seduction", "Unable to raise seduction. The cost is 42, and you have 0 xp.")
-        stats_and_skills.adjust_skill(self.char2, "seduction")
+        self.char2.traits.adjust_skill("seduction")
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 8)
         self.char2.adjust_xp(10)
         self.call_cmd("/spend Seduction", 'You spend 10 xp and have 0 remaining.|'

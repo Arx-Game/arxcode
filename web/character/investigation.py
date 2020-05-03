@@ -236,7 +236,7 @@ class InvestigationFormCommand(ArxCommand):
         self.disp_investigation_form()
 
     def check_skill(self):
-        if self.args.lower() not in self.caller.db.skills:
+        if not self.caller.traits.get_skill_value(self.args.lower()):
             self.msg("You have no skill by the name of %s." % self.args)
             return
         return True
@@ -551,7 +551,7 @@ class CmdAssistInvestigation(InvestigationFormCommand):
         self.msg(table)
 
     def check_skill(self):
-        if self.args.lower() not in self.helper.db.skills:
+        if not self.helper.traits.get_skill_value(self.args.lower()):
             self.msg("%s has no skill by the name of %s." % (self.helper, self.args))
             return
         return True
@@ -861,7 +861,7 @@ class CmdInvestigate(InvestigationFormCommand):
     def start_cost(self):
         caller = self.caller
         try:
-            skill = caller.db.skills.get("investigation", 0)
+            skill = caller.traits.get_skill_value("investigation")
             cost = self.base_cost - (5 * skill)
             if cost < 0:
                 cost = 0

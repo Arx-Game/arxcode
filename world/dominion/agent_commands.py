@@ -588,15 +588,13 @@ class CmdRetainers(ArxPlayerCommand):
         elif category == "armor":
             current = agent.dbobj.db.armor_class
         elif category == "stat":
-            current = agent.dbobj.attributes.get(attr)
+            current = agent.dbobj.traits.get_stat_value(attr)
         elif category == "skill":
-            current = agent.dbobj.db.skills.get(attr, 0)
+            current = agent.dbobj.traits.get_skill_value(attr)
         elif category == "weapon":
             current = agent.dbobj.fakeweapon.get(attr, 0)
         elif category == "ability":
-            if agent.dbobj.db.abilities is None:
-                agent.dbobj.db.abilities = {}
-            current = agent.dbobj.db.abilities.get(attr, 0)
+            current = agent.dbobj.traits.get_ability_value(attr)
         else:
             raise ValueError("Undefined category")
         return current

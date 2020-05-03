@@ -25,7 +25,7 @@ class LanguageHandler(object):
 
     @property
     def max_languages(self):
-        val = self.obj.db.skills.get("linguistics", 0)
+        val = self.obj.traits.get_skill_value("linguistics")
         if val < 1:
             return 0
         if val == 1:

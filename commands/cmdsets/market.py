@@ -97,7 +97,6 @@ class CmdMarket(ArxCommand):
         market/buy <material>=<amount>
         market/sell <material>=<amount>
         market/info <material>
-        market/import <material>=<amount>
     Purchase with silver:
         market/economic <amount>
         market/social <amount>
@@ -164,7 +163,7 @@ class CmdMarket(ArxCommand):
                 except (CraftingMaterialType.DoesNotExist, CraftingMaterialType.MultipleObjectsReturned):
                     caller.msg("Unable to get a unique match for that.")
                     return
-        if 'buy' in self.switches or 'import' in self.switches:
+        if 'buy' in self.switches:
             if not usemats:
                 amt = 1
             else:
@@ -181,31 +180,12 @@ class CmdMarket(ArxCommand):
                 dompc = caller.player_ob.Dominion
             except AttributeError:
                 dompc = setup_utils.setup_dom_for_char(caller)
-            if "buy" in self.switches:
-                # use silver
-                if cost > caller.db.currency:
-                    caller.msg("That would cost %s silver coins, and you only have %s." % (cost, caller.db.currency))
-                    return
-                caller.pay_money(cost)
-                paystr = "%s silver" % cost
-            else:
-                # use economic resources
-                eamt = cost//RESOURCE_VAL
-                # round up if not exact
-                if cost % RESOURCE_VAL:
-                    eamt += 1
-                assets = dompc.assets
-                if assets.economic < eamt:
-                    caller.msg("That costs %s economic resources, and you have %s." % (eamt, assets.economic))
-                    return
-                assets.economic -= eamt
-                assets.save()
-                paystr = "%s economic resources" % eamt
-                # check if they could have bought more than the amount they specified
-                optimal_amt = (eamt * RESOURCE_VAL)//((material.value or 1) * get_cost_multipler())
-                if amt < optimal_amt:
-                    caller.msg("You could get %s for the same price, so doing that instead." % optimal_amt)
-                    amt = optimal_amt
+            # use silver
+            if cost > caller.db.currency:
+                caller.msg("That would cost %s silver coins, and you only have %s." % (cost, caller.db.currency))
+                return
+            caller.pay_money(cost)
+            paystr = "%s silver" % cost
             if usemats:
                 try:
                     mat = dompc.assets.materials.get(type=material)
@@ -401,8 +381,8 @@ class HaggledDeal(object):
         base_value = 20 if self.transaction_type == "buy" else 10
         if discount <= 10:
             return discount + base_value  # 0 to 30
-        if discount <= 60:
-            return (11 + (discount - 40)//2) + base_value  # 31 to 41
+        if discount <= 50:
+            return (11 + (discount - 10)//4) + base_value  # 31 to 41
         if discount <= 100:
             return (21 + (discount - 60)//4) + base_value  # 41 to 51
         if discount <= 160:
@@ -623,8 +603,7 @@ class CmdHaggle(ArxCommand):
                 HaggleError if they fail to find a deal.
         """
         from math import ceil
-        skill = "economics" if self.caller.db.skills.get("economics", 0) > self.caller.db.skills.get("streetwise", 0) \
-            else "streetwise"
+        skill = self.caller.traits.get_highest_skill(("economics", "streetwise")).name
         difficulty = 20
         bonus = 0
         roll = do_dice_check(self.caller, skill=skill, stat="perception", difficulty=difficulty, quiet=False)

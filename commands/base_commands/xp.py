@@ -122,9 +122,7 @@ class CmdUseXP(ArxCommand):
                 return
             stype = "stat"
         elif args in stats_and_skills.VALID_SKILLS:
-            if not caller.db.skills:
-                caller.db.skills = {}
-            current = caller.db.skills.get(args, 0)
+            current = caller.traits.get_skill_value(args)
             if current >= 6:
                 caller.msg("%s is already at its maximum." % args)
                 return
@@ -147,29 +145,27 @@ class CmdUseXP(ArxCommand):
                 caller.msg("Dominion object not found.")
                 return
         elif args in stats_and_skills.VALID_ABILITIES:
-            if not caller.db.abilities:
-                caller.db.abilities = {}
             # if we don't have it, determine if we can learn it
-            current = caller.db.abilities.get(args, 0)
+            current = caller.traits.get_ability_value(args)
             if not current:
                 if args in stats_and_skills.CRAFTING_ABILITIES:
                     # check if we have valid skill:
-                    if args == "tailor" and "sewing" not in caller.db.skills:
+                    if args == "tailor" and "sewing" not in caller.traits.skills:
                         caller.msg("You must have sewing to be a tailor.")
                         return
-                    if (args == "weaponsmith" or args == "armorsmith") and "smithing" not in caller.db.skills:
+                    if (args == "weaponsmith" or args == "armorsmith") and "smithing" not in caller.traits.skills:
                         caller.msg("You must have smithing to be a %s." % args)
                         return
-                    if args == "apothecary" and "alchemy" not in caller.db.skills:
+                    if args == "apothecary" and "alchemy" not in caller.traits.skills:
                         caller.msg("You must have alchemy to be an apothecary.")
                         return
-                    if args == "leatherworker" and "tanning" not in caller.db.skills:
+                    if args == "leatherworker" and "tanning" not in caller.traits.skills:
                         caller.msg("You must have tanning to be a leatherworker.")
                         return
-                    if args == "carpenter" and "woodworking" not in caller.db.skills:
+                    if args == "carpenter" and "woodworking" not in caller.traits.skills:
                         caller.msg("You must have woodworking to be a carpenter.")
                         return
-                    if args == "jeweler" and "smithing" not in caller.db.skills:
+                    if args == "jeweler" and "smithing" not in caller.traits.skills:
                         caller.msg("You must have smithing to be a jeweler.")
                         return
                     spec_warning = True
@@ -184,7 +180,7 @@ class CmdUseXP(ArxCommand):
             if args in stats_and_skills.CRAFTING_ABILITIES:
                 spec_warning = True
             if current == 5:
-                if any(key for key, value in caller.db.abilities.items()
+                if any(key for key, value in caller.traits.abilities
                        if key in stats_and_skills.CRAFTING_ABILITIES and value >= 6):
                     caller.msg("You have already chosen a crafting specialization.")
                     return
@@ -215,12 +211,12 @@ class CmdUseXP(ArxCommand):
                 return
             if stype == "stat":
                 caller.adjust_xp(-cost)
-                stats_and_skills.adjust_stat(caller, args)
+                caller.traits.adjust_stat(args)
                 caller.msg("You have increased your %s to %s." % (cost, current + 1))
                 return
             if stype == "skill":
                 caller.adjust_xp(-cost)
-                stats_and_skills.adjust_skill(caller, args)
+                caller.traits.adjust_skill(args)
                 skill_history = caller.db.skill_history or {}
                 spent_list = skill_history.get(args, [])
                 spent_list.append(cost)
@@ -236,7 +232,7 @@ class CmdUseXP(ArxCommand):
                 if spec_warning:
                     caller.msg("{wNote: The first crafting ability raised to 6 will be your specialization.{n")
                 caller.adjust_xp(-cost)
-                stats_and_skills.adjust_ability(caller, args)
+                caller.traits.adjust_ability(args)
                 ability_history = caller.db.ability_history or {}
                 spent_list = ability_history.get(args, [])
                 spent_list.append(cost)
@@ -247,11 +243,9 @@ class CmdUseXP(ArxCommand):
             if stype == "dom":
                 # charge them influence
                 setattr(dompc.assets, resource, getattr(dompc.assets, resource) - cost)
-                stats_and_skills.adjust_dom(caller, args)
+                caller.traits.adjust_dom(args)
                 caller.msg("You have increased your %s influence for a cost of %s %s resources." % (args, resource,
                                                                                                     cost))
-                dompc.assets.save()
-                dompc.save()
                 caller.refresh_from_db()
                 return
             return
@@ -317,7 +311,7 @@ class CmdTrain(ArxCommand):
         skills_to_check = ("animal ken", "teaching")
         max_skill = 0
         for skill in skills_to_check:
-            val = character.db.skills.get(skill, 0)
+            val = character.traits.get_skill_value(skill)
             if val > max_skill:
                 max_skill = val
         return max_skill
@@ -415,13 +409,14 @@ class CmdTrain(ArxCommand):
                 stat = self.rhs.lower()
                 if not self.check_attribute_name(stats_and_skills.VALID_STATS, "stat"):
                     return
-                if not self.check_attribute_value(caller.attributes.get(stat), targ.attributes.get(stat)):
+                if not self.check_attribute_value(caller.traits.get_stat_value(stat), targ.traits.get_stat_value(stat)):
                     return
             elif "skill" in switches:
                 skill = self.rhs.lower()
                 if not self.check_attribute_name(stats_and_skills.VALID_SKILLS, "skill"):
                     return
-                if not self.check_attribute_value(caller.db.skills.get(skill, 0), targ.db.skills.get(skill, 0)):
+                if not self.check_attribute_value(caller.traits.get_skill_value(skill),
+                                                  targ.traits.get_skill_value(skill)):
                     return
             elif "ability" in switches:
                 ability = self.rhs.lower()
@@ -431,8 +426,8 @@ class CmdTrain(ArxCommand):
                     caller.db.abilities = {}
                 if not targ.db.abilities:
                     targ.db.abilities = {}
-                if not self.check_attribute_value(caller.db.abilities.get(ability, 0),
-                                                  targ.db.abilities.get(ability, 0)):
+                if not self.check_attribute_value(caller.traits.get_ability_value(ability),
+                                                  targ.traits.get_ability_value(ability)):
                     return
             else:
                 caller.msg("Usage: train/[stat or skill] <character>=<stat or skill name>")
