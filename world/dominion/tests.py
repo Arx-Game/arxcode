@@ -129,15 +129,15 @@ class TestGeneralDominionCommands(ArxCommandTest):
         self.roster_entry.action_points = 100
         mock_dice_check.return_value = -5
         mock_get_week.return_value = 0
-        self.char1.db.intellect = 5
-        self.char1.db.composure = 5
+        self.char1.traits.set_stat_value("intellect", 5)
+        self.char1.traits.set_stat_value("composure", 5)
         mock_randint.return_value = 5
         self.call_cmd("Orgtest, economic", 'You use 15 action points and have 85 remaining this week.|'
                                            'Your social clout reduces difficulty by 1.\n'
                                            'Char rolling intellect and economics. You have gained 5 economic resources.'
                                            '|Orgtest has new @informs. Use @informs/org Orgtest/1 to read them.')
         WorkSetting.objects.create(organization=org, stat="intellect", skill="war", message="Test Msg.")
-        self.char1.db.skills = {'economics': 1, 'war': 4}
+        self.char1.traits.skills = {'economics': 1, 'war': 4}
         mock_dice_check.return_value = 20
         self.call_cmd("Orgtest, economic", 'You use 15 action points and have 70 remaining this week.|'
                                            'Your social clout reduces difficulty by 1.\nTest Msg. '
@@ -146,11 +146,11 @@ class TestGeneralDominionCommands(ArxCommandTest):
         self.call_cmd("Orgtest, economic=Char2", "No protege by that name.")
         self.dompc2.patron = self.dompc
         self.dompc2.save()
-        self.char2.db.charm = 10
-        self.char2.db.intellect = 5
-        self.char2.db.composure = 5
-        self.char2.db.skills = {'economics': 4}
-        self.char1.db.skills = {'economics': 3}
+        self.char2.traits.set_stat_value("charm", 10)
+        self.char2.traits.set_stat_value("intellect", 5)
+        self.char2.traits.set_stat_value("composure", 5)
+        self.char2.traits.skills = {'economics': 4}
+        self.char1.traits.skills = {'economics': 3}
         self.call_cmd("Orgtest, economic=TestAccount2",
                       'You use 15 action points and have 55 remaining this week.|'
                       'Your social clout combined with that of your protege reduces difficulty by 22.\n'
@@ -160,7 +160,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
         self.assertEqual(self.assetowner.economic, 18)
         self.assertEqual(org_owner.economic, 3)
         self.assertEqual(member.work_this_week, 3)
-        self.char2.db.skills = {'economics': 2}
+        self.char2.traits.skills = {'economics': 2}
         self.call_cmd("/invest orgtest,economic=testaccount2", "You must specify at least 10 resources to invest.")
         self.call_cmd("/invest orgtest,economic,20=testaccount2", "You cannot afford to pay 20 resources.")
         self.call_cmd("/invest orgtest,economic,18=testaccount2",

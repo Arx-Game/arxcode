@@ -779,12 +779,12 @@ def display_skills(caller, character):
         skstr = "%-22s" % skstr
         return skstr
     title = "Skills"
-    skills = character.db.skills
+    skills = character.traits.skills
     if not skills:
         skillstr = "No skills known."
     else:
         skillstr = ""
-        skills = character.db.skills.items()
+        skills = character.traits.skills.items()
         skills = sorted(skills)
         skills_count = 0
         for skill, value in skills:

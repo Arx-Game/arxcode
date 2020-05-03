@@ -218,7 +218,8 @@ class CombatHandler(object):
         if self.can_parry:
             dmsg += "\n{wParry Skill:{n %-19s {wParry Stat:{n %s" % (self.attack_skill, self.attack_stat)
         if self.can_dodge:
-            dmsg += "\n{wDodge Skill:{n %-19s {wDodge Stat:{n %s" % (self.char.db.skills.get("dodge"), "dexterity")
+            dmsg += "\n{wDodge Skill:{n %-19s {wDodge Stat:{n %s" % (self.char.traits.get_skill_value("dodge"),
+                                                                     "dexterity")
             dmsg += "\n{wDodge Penalty:{n %s" % self.dodge_penalty
         msg = smsg + omsg + dmsg
         return msg
@@ -327,10 +328,9 @@ class CombatHandler(object):
     @property
     def soak(self):
         """Natural damage absorption based on toughness"""
-        val = self.char.db.stamina or 0
-        val += self.char.db.willpower or 0
-        if self.char.db.skills:
-            val += self.char.db.skills.get("survival", 0)
+        val = self.char.traits.stamina
+        val += self.char.traits.willpower
+        val += self.char.traits.get_skill_value("survival")
         return val
 
     @property

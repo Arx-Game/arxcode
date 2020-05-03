@@ -11,6 +11,11 @@ from . import combat, market, home
 # noinspection PyUnusedLocal
 @patch.object(combat, "inform_staff")
 class CombatCommandsTests(ArxCommandTest):
+    def setUp(self):
+        super().setUp()
+        self.char1.traits.initialize_stats()
+        self.char2.traits.initialize_stats()
+
     def start_fight(self, *args):
         """Helper function for starting a fight in our test"""
         fight = combat.start_fight_at_room(self.room1)
@@ -254,6 +259,7 @@ class CombatCommandsTests(ArxCommandTest):
         self.char1.db.defenders = [self.char3]
         self.char3.db.guarding = self.char1
         self.char3.combat.autoattack = True
+        self.char3.traits.initialize_stats()
         fight = self.start_fight(self.char1)
         self.call_cmd("", "Could not find ''.|Attack who?")
         self.call_cmd("Emerald", "Could not find 'Emerald'.|Attack who?")

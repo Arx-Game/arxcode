@@ -153,10 +153,10 @@ def get_ability_val(char, recipe):
     recipe.
     """
     ability_list = (recipe.ability or "").split(",")
-    abilities = char.db.abilities or {}
-    skills = char.db.skills or {}
+    abilities = char.traits.abilities
+    skills = char.traits.skills
     if recipe.skill == "artwork":
-        return char.db.skills.get("artwork", 0)
+        return char.traits.get_skill_value("artwork")
     if ability_list == "all" or not ability_list:
         # get character's highest ability
         values = sorted(abilities.values() + [skills.get("artwork", 0)], reverse=True)
@@ -172,7 +172,7 @@ def get_ability_val(char, recipe):
 def get_highest_crafting_skill(character):
     """Returns the highest crafting skill for character"""
     from world.stats_and_skills import CRAFTING_SKILLS
-    skills = character.db.skills or {}
+    skills = character.traits.skills
     return max(CRAFTING_SKILLS + ("artwork",), key=lambda x: skills.get(x, 0))
 
 

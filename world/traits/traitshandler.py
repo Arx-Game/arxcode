@@ -37,8 +37,7 @@ class Traitshandler:
         self.character.attributes.add(name, value)
 
     def set_skill_value(self, name: str, value: int):
-        if self.character.db.skills is None:
-            self.character.db.skills = {}
+        self.initialize_skills()
         if value <= 0:
             self.character.db.skills.pop(name)
         self.character.db.skills[name] = value
@@ -47,8 +46,7 @@ class Traitshandler:
         return self.abilities.get(name, 0)
 
     def set_ability_value(self, name: str, value: int):
-        if self.character.db.abilities is None:
-            self.character.db.abilities = {}
+        self.initialize_abilities()
         if value <= 0:
             self.character.db.abilities.pop(name)
         self.character.db.abilities[name] = value
@@ -128,6 +126,29 @@ class Traitshandler:
     @property
     def abilities(self) -> Dict[str, int]:
         return dict(self.character.db.abilities or {})
+
+    @abilities.setter
+    def abilities(self, abilities_dict: Dict[str, int]):
+        self.character.db.abilities = abilities_dict
+
+    def initialize_skills(self):
+        if self.character.db.skills is None:
+            self.character.db.skills = {}
+
+    def initialize_abilities(self):
+        if self.character.db.abilities is None:
+            self.character.db.abilities = {}
+
+    def initialize_stats(self):
+        for stat in VALID_STATS:
+            if self.character.attributes.get(stat) is None:
+                self.character.attributes.add(stat, 0)
+
+    def wipe_all_skills(self):
+        self.skills = {}
+
+    def wipe_all_abilities(self):
+        self.abilities = {}
 
     def check_training(self, field, stype):
         trainer = self.character.db.trainer

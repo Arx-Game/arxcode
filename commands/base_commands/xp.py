@@ -554,7 +554,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
                     char.db.skill_history = skill_history
                 except (KeyError, IndexError, TypeError):
                     try:
-                        current = char.db.skills[self.rhs]
+                        current = char.traits.get_skill_value(self.rhs)
                     except KeyError:
                         caller.msg("No such skill.")
                         return
@@ -562,7 +562,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
                 if current <= 0:
                     caller.msg("That would give them a negative skill.")
                     return
-                char.db.skills[self.rhs] -= 1
+                char.traits.set_skill_value(self.rhs, current - 1)
                 char.db.xp += cost
             else:
                 ability_history = char.db.ability_history or {}
@@ -600,25 +600,16 @@ class CmdAdjustSkill(ArxPlayerCommand):
         if not char:
             caller.msg("No active character for %s." % targ)
             return
-        if rhs <= 0:
-            try:
-                if ability:
-
-                    if skill in char.db.abilities:
-                        del char.db.abilities[skill]
-                        caller.msg("Removed ability %s from %s." % (skill, char))
-                else:
-                    del char.db.skills[skill]
-                    caller.msg("Removed skill %s from %s." % (skill, char))
-            except KeyError:
-                caller.msg("%s did not have %s %s." % (char, skill,
-                                                       "ability" if ability else "skill"))
-                return
+        if ability:
+            char.traits.set_ability_value(skill, rhs)
         else:
+            char.traits.set_skill_value(skill, rhs)
+        if rhs <= 0:
             if ability:
-                char.db.abilities[skill.lower()] = rhs
+                caller.msg("Removed ability %s from %s." % (skill, char))
             else:
-                char.db.skills[skill.lower()] = rhs
+                caller.msg("Removed skill %s from %s." % (skill, char))
+        else:
             caller.msg("%s's %s set to %s." % (char, skill, rhs))
         if not caller.check_permstring("immortals"):
             inform_staff("%s set %s's %s skill to %s." % (caller, char, skill, rhs))

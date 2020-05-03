@@ -180,7 +180,7 @@ def skill(accessing_obj, accessed_obj, *args, **kwargs):
     for skill_name in skill_list:
         skill_name = skill_name.lower().strip()
         try:
-            pab = accessing_obj.db.skills.get(skill_name, 0)
+            pab = accessing_obj.traits.get_skill_value(skill_name)
             if pab >= val:
                 return True
         except AttributeError:

@@ -1339,11 +1339,11 @@ class XPCommandTests(ArxCommandTest):
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 5)
         self.call_cmd("/spend Seduction", 'You spend 1039 xp and have 24 remaining.|'
                                           'You have increased your seduction to 6.')
-        self.assertEqual(self.char2.db.skills.get("seduction"), 6)
+        self.assertEqual(self.char2.traits.get_skill_value("seduction"), 6)
         self.assertEqual(stats_and_skills.get_skill_cost(self.char2, "dodge"), 43)
         self.assertEqual(stats_and_skills.get_skill_cost_increase(self.char2), 1.0775)
         self.char2.db.trainer = self.char1
-        self.char1.db.skills = {"teaching": 5, "dodge": 2}
+        self.char1.traits.skills = {"teaching": 5, "dodge": 2}
         self.call_cmd("/spend dodge", 'You spend 24 xp and have 0 remaining.|You have increased your dodge to 1.')
         # TODO: other switches
 

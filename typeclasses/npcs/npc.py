@@ -258,7 +258,7 @@ class Npc(Character):
         skills = get_npc_skills(ntype)
         for skill in skills:
             skills[skill] += threat
-        self.db.skills = skills
+        self.traits.skills = skills
         self.db.fakeweapon = get_npc_weapon(ntype, threat)
         self.db.armor_class = get_armor_bonus(self._get_npc_type(), self._get_quality())
         self.db.bonus_max_hp = get_hp_bonus(self._get_npc_type(), self._get_quality())
@@ -815,7 +815,7 @@ class Retainer(AgentMixin, Npc):
         return cost, cost, res_type
 
     def can_be_trained_by(self, trainer):
-        skill = trainer.db.skills.get(self.training_skill, 0)
+        skill = trainer.traits.get_skill_value(self.training_skill)
         if not skill:
             trainer.msg("You must have %s skill to train them." % self.training_skill)
             return False

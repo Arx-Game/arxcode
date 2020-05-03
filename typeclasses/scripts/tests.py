@@ -11,15 +11,15 @@ class TestWeeklyEventScript(ArxCommandTest):
     num_additional_characters = 3
 
     def add_factors(self, owner, vault, lifestyle=1, charm=1, composure=1, command=1, skills=None):
-        "set values for vault, upkeep, and social_clout attributes."
+        """set values for vault, upkeep, and social_clout attributes."""
         owner.vault = vault
         owner.save()
         owner.player.lifestyle_rating = lifestyle
         owner.player.save()
-        owner.player.player.char_ob.db.charm = charm
-        owner.player.player.char_ob.db.composure = composure
-        owner.player.player.char_ob.db.command = command
-        owner.player.player.char_ob.db.skills = skills or {}
+        owner.player.player.char_ob.traits.set_stat_value("charm", charm)
+        owner.player.player.char_ob.traits.set_stat_value("composure", composure)
+        owner.player.player.char_ob.traits.set_stat_value("command", command)
+        owner.player.player.char_ob.traits.skills = (skills or {})
         cost = LIFESTYLES.get(lifestyle, (0, 0))[0]
         return vault - cost
 

@@ -670,12 +670,12 @@ class CmdRetainers(ArxPlayerCommand):
             return
         if not self.check_max_for_attr(agent, attr, category="skill"):
             return
-        current = agent.dbobj.db.skills.get(attr, 0)
+        current = agent.dbobj.traits.get_skill_value(attr)
         xp_cost, res_cost, res_type = self.get_attr_cost(agent, attr, "skill", current)
         if not self.pay_xp_and_resources(agent, xp_cost, res_cost, res_type):
             return
         newval = current + 1
-        agent.dbobj.db.skills[attr] = newval
+        agent.dbobj.traits.set_skill_value(attr, newval)
         self.msg("You have increased %s to %s." % (attr, newval))
 
     def buy_stat(self, agent):

@@ -2739,10 +2739,10 @@ class Member(SharedMemoryModel):
         def get_by_skill() -> Match:
             """Choosing based on skills when nobody has knacks."""
             Skill = namedtuple("Skill", ["roller", "skill", "value"])
-            skills_we_have = dict(self.char.db.skills)
+            skills_we_have = dict(self.char.traits.skills)
             our_skills = [Skill(self.char, skill, value) for skill, value in skills_we_have.items()]
             if protege:
-                protege_skills = dict(protege.db.skills)
+                protege_skills = dict(protege.traits.skills)
                 our_skills += [Skill(protege, skill, value) for skill, value in protege_skills.items()]
             matches = []
             for skillset in our_skills:
@@ -2754,7 +2754,7 @@ class Member(SharedMemoryModel):
                 rollers = [ob for ob in our_skills if ob.skill == assignment.skill]
                 if protege and len(rollers) > 1:
                     roller = rollers[0].roller
-                matches.append(Match(assignment.obj, roller, roller.db.skills.get(assignment.skill, 0)))
+                matches.append(Match(assignment.obj, roller, roller.traits.get_skill_value(assignment.skill)))
             return get_random_match_from_highest_values(matches)
 
         def get_random_match_from_highest_values(matches_list: List[Match]) -> Match:

@@ -1619,7 +1619,7 @@ class CmdHeal(ArxCommand):
                 caller.msg("{cYou feel Lagoma's favor upon you.{n")
             else:
                 blessed = 0
-            keep = blessed + caller.db.skills.get("medicine", 0) + 2
+            keep = blessed + caller.traits.get_skill_value("medicine") + 2
             modifier += 5 * blessed
             heal_roll = do_dice_check(caller, stat_list=["mana", "intellect"], skill="medicine",
                                       difficulty=15-modifier, keep_override=keep)
