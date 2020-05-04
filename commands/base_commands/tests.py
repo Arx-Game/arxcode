@@ -5,6 +5,7 @@ Tests for different general commands.
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 
+import commands.base_commands.exchanges
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
 
 from web.character.models import Revelation
@@ -542,7 +543,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
     def test_cmd_give(self):
         from typeclasses.wearable.wearable import Wearable
         from evennia.utils.create import create_object
-        self.setup_cmd(overrides.CmdGive, self.char1)
+        self.setup_cmd(commands.base_commands.exchanges.CmdGive, self.char1)
         self.call_cmd("obj to char2", "You are not holding Obj.")
         self.obj1.move_to(self.char1)
         self.call_cmd("obj to char2", "You give Obj to Char2.")

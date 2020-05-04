@@ -7,6 +7,9 @@ from them without explicitly calling individual commands.
 
 """
 import traceback
+
+import commands.base_commands.exchanges
+
 try:
     from evennia.commands.default import help, admin, system, building, batchprocess
 except Exception as err:
@@ -251,7 +254,7 @@ class MobileCmdSet(CmdSet):
     def at_cmdset_creation(self):
         self.add(overrides.CmdGet())
         self.add(overrides.CmdDrop())
-        self.add(overrides.CmdGive())
+        self.add(commands.base_commands.exchanges.CmdGive())
         self.add(overrides.CmdArxSay())
         self.add(general.CmdWhisper())
         self.add(general.CmdFollow())
