@@ -1367,7 +1367,7 @@ class Investigation(AbstractPlayerAllocations):
                 a_roll = 0
             if not player_character_mod:
                 try:
-                    ability_level = ass.char.db.abilities['investigation_assistant']
+                    ability_level = ass.char.traits.get_ability_value('investigation_assistant')
                 except (AttributeError, ValueError, KeyError, TypeError):
                     ability_level = 0
                 cap = ability_level * 10

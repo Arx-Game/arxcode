@@ -406,7 +406,7 @@ class CmdAssistInvestigation(InvestigationFormCommand):
             return
         try:
             helper = self.caller.player_ob.retainers.get(id=self.args).dbobj
-            if not helper.db.abilities or helper.db.abilities.get("investigation_assistant", 0) < 1:
+            if helper.traits.get_ability_value("investigation_assistant") < 1:
                 self.msg("%s is not able to assist investigations." % helper)
                 return
         except (AttributeError, ValueError, Agent.DoesNotExist):

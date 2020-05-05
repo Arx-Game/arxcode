@@ -54,7 +54,7 @@ class CmdUseXP(ArxCommand):
         caller.msg(", ".join(skill for skill in stats_and_skills.DOM_SKILLS))
         caller.msg("\n{wAbility names:{n")
         crafting = stats_and_skills.CRAFTING_ABILITIES
-        abilities = caller.db.abilities or {}
+        abilities = caller.traits.abilities
         abilities = set(abilities.keys()) | set(crafting)
         if caller.check_permstring("builder"):
             caller.msg(", ".join(ability for ability in stats_and_skills.VALID_ABILITIES))
@@ -422,10 +422,6 @@ class CmdTrain(ArxCommand):
                 ability = self.rhs.lower()
                 if not self.check_attribute_name(stats_and_skills.VALID_ABILITIES, "ability"):
                     return
-                if not caller.db.abilities:
-                    caller.db.abilities = {}
-                if not targ.db.abilities:
-                    targ.db.abilities = {}
                 if not self.check_attribute_value(caller.traits.get_ability_value(ability),
                                                   targ.traits.get_ability_value(ability)):
                     return
@@ -523,8 +519,6 @@ class CmdAdjustSkill(ArxPlayerCommand):
             except (AttributeError, ValueError, TypeError):
                 caller.msg("No player by that name.")
                 return
-            if char.db.abilities is None:
-                char.db.abilities = {}
             if char.db.xp is None:
                 char.db.xp = 0
             if "reset" in self.switches:
@@ -567,22 +561,21 @@ class CmdAdjustSkill(ArxPlayerCommand):
             else:
                 ability_history = char.db.ability_history or {}
                 try:
-                    current = char.db.abilities[self.rhs]
+                    current = char.traits.get_ability_value(self.rhs)
                     ability_list = ability_history[self.rhs]
                     cost = ability_list.pop()
                     ability_history[self.rhs] = ability_list
                     char.db.ability_history = ability_history
                 except (KeyError, IndexError, TypeError):
-                    try:
-                        current = char.db.abilities[self.rhs]
-                    except (KeyError, TypeError):
+                    current = char.traits.get_ability_value(self.rhs)
+                    if not current:
                         caller.msg("No such ability.")
                         return
                     cost = stats_and_skills.cost_at_rank(self.rhs, current - 1, current)
                 if current <= 0:
                     caller.msg("That would give them a negative rating.")
                     return
-                char.db.abilities[self.rhs] -= 1
+                char.traits.set_ability_value(self.rhs, current - 1)
                 char.db.xp += cost
             caller.msg("%s had %s reduced by 1 and was refunded %s xp." % (char, self.rhs, cost))
             return
