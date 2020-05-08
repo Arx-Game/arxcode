@@ -34,8 +34,8 @@ class PersonalTradeInProgress:
 
     def add_silver(self, trader, amount):
         if self.silver[trader]:
-            raise TradeError("Silver has already been specified. Cancel the transaction instead")
-        if amount < 1:
+            raise TradeError("Silver has already been specified. Cancel the exchange instead.")
+        if not amount.isdigit() or amount < 1:
             raise TradeError("Amount must be a positive number that you can afford.")
         self.silver[trader] = amount
         self.message_participants(f"{trader} adds |c{amount}|n silver to the trade.")
