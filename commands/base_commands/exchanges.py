@@ -15,6 +15,8 @@ class PersonalTradeInProgress:
         target.ndb.personal_trade_in_progress = self
         self.items = {caller: [], target: []}
         self.silver = {caller: 0, target: 0}
+        self.agreements = {caller: None, target: None}
+        self.fail_msg = "Could not finish the exchange."
 
     @classmethod
     def create_trade(cls, caller, target):
@@ -24,33 +26,44 @@ class PersonalTradeInProgress:
 
     def cancel_trade(self):
         self.clean_up()
-        self.message_participants("The exchange has been cancelled.")
+        self.message_participants("|yThe trade has been cancelled.|n")
 
     def add_item(self, trader, obj):
         if obj in self.items[trader]:
             raise TradeError(f"{obj} is already being traded.")
         self.items[trader].append(obj)
-        self.message_participants(f"{trader} adds {obj} to the trade.")
+        self.reset_agreements(f"{trader} offers {obj}.")
 
     def add_silver(self, trader, amount):
         if self.silver[trader]:
-            raise TradeError("Silver has already been specified. Cancel the exchange instead.")
+            raise TradeError("Silver has already been specified. Please cancel to change it.")
         if not amount.isdigit() or amount < 1:
             raise TradeError("Amount must be a positive number that you can afford.")
         self.silver[trader] = amount
-        self.message_participants(f"{trader} adds |c{amount}|n silver to the trade.")
+        self.reset_agreements(f"{trader} offers |c{amount}|n silver.")
 
-    def mark_acceptance(self, trader):
-        pass  # TODO
+    def mark_agreement(self, trader):
+        "Changes a trader's agreement to Truthy, then attempts to finish the exchange if all parties have agreed."
+        self.agreements[trader] = "agreed"
+        if all(self.agreements.values()):
+            self.finish()
+        else:
+            self.message_participants(f"{trader} has agreed to the trade.")
 
-    def check_acceptance(self):
-        pass  # TODO
-
-    def wipe_acceptance(self):
-        pass  # TODO
+    def reset_agreements(self, msg=""):
+        "Checks for trade agreements and nullifies them, giving feedback if any were reset."
+        message = msg
+        if any(self.agreements.values()):
+            self.agreements = {key: None for key in self.agreements.keys()}
+            sep = " " if message else ""
+            message += f"{sep}|wAgreements have been reset.|n"
+        if message:
+            self.message_participants(message)
 
     def finish(self):
+        "Runs checks before performing the exchange, then scrubs the instance from traders."
         self.check_can_pay()
+        self.check_can_trade()  # TODO: Do we need to find out if items are in their inventory? Other edges?
         for obj in self.items[self.caller]:
             obj.move_to(self.target)
         for obj in self.items[self.target]:
@@ -60,16 +73,29 @@ class PersonalTradeInProgress:
         if self.silver[self.target]:
             self.target.pay_money(self.silver[self.target], self.caller)
         self.clean_up()
-        self.message_participants("The exchange has been completed.")
+        self.message_participants("|351The exchange is complete!|n")
 
     def check_can_pay(self):
+        "Checks wallet and messages both traders if one of them can't afford the trade."
         for trader in (self.caller, self.target):
             if self.silver[trader] > trader.currency:
-                raise TradeError(f"{trader} does not have enough silver to complete the trade.")
+                self.message_participants(f"{trader} does not have enough silver to complete the trade.")
+                raise TradeError(self.fail_msg)
+
+    def check_can_trade(self):
+        "Checks items for permission to move them and messages both traders upon any failure."
+        for trader in (self.caller, self.target):
+            recipient = self.target if (trader == self.caller) else self.caller
+            for obj in self.items[trader]:
+                if not obj.at_before_move(recipient, caller=trader):
+                    self.message_participants(f"Cannot trade {obj} in its current state.")
+                    raise TradeError(self.fail_msg)
 
     def message_participants(self, msg):
-        self.caller.msg(msg)
-        self.target.msg(msg)
+        "Messages both traders with a small header attached."
+        message = f"|w[|nPersonal Trade|w]|n {msg}"
+        self.caller.msg(message)
+        self.target.msg(message)
 
     def clean_up(self):
         self.caller.ndb.personal_trade_in_progress = None
@@ -86,6 +112,11 @@ class CmdTrade(ArxCommand):
     trade/agree
     trade/cancel
     """
+    key = "trade"
+    locks = "cmd:all()"
+
+    def func(self):
+        pass
 
 
 class CmdGive(ArxCommand):
