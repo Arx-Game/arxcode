@@ -540,33 +540,6 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.caller = self.char1  # staff
         self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
 
-    def test_cmd_give(self):
-        from typeclasses.wearable.wearable import Wearable
-        from evennia.utils.create import create_object
-        self.setup_cmd(commands.base_commands.exchanges.CmdGive, self.char1)
-        self.call_cmd("obj to char2", "You are not holding Obj.")
-        self.obj1.move_to(self.char1)
-        self.call_cmd("obj to char2", "You give Obj to Char2.")
-        wearable = create_object(typeclass=Wearable, key="worn", location=self.char1)
-        wearable.wear(self.char1)
-        self.call_cmd("worn to char2", 'worn is currently worn and cannot be moved.')
-        wearable.remove(self.char1)
-        self.call_cmd("worn to char2", "You give worn to Char2.")
-        self.char1.currency = 50
-        self.call_cmd("-10 silver to char2", "Amount must be positive.")
-        self.call_cmd("75 silver to char2", "You do not have that much money to give.")
-        self.call_cmd("25 silver to char2", "You give coins worth 25.0 silver pieces to Char2.")
-        self.assetowner.economic = 50
-        self.call_cmd("/resource economic,60 to TestAccount2", "You do not have enough economic resources.")
-        self.account2.inform = Mock()
-        self.call_cmd("/resource economic,50 to TestAccount2", "You give 50 economic resources to Char2.")
-        self.assertEqual(self.assetowner2.economic, 50)
-        self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
-
-
-    
-
-
     def test_cmd_inventory(self):
         self.setup_cmd(overrides.CmdInventory, self.char1)
         self.char1.currency = 125446
@@ -608,6 +581,34 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("asdf", "Players:\n\nPlayer name Fealty Idle \n\nShowing 0 out of 1 unique account logged in.")
 
 
+class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
+    def test_cmd_trade(self):
+        pass  # TODO
+
+    def test_cmd_give(self):
+        from typeclasses.wearable.wearable import Wearable
+        from evennia.utils.create import create_object
+        self.setup_cmd(commands.base_commands.exchanges.CmdGive, self.char1)
+        self.call_cmd("obj to char2", "You are not holding Obj.")
+        self.obj1.move_to(self.char1)
+        self.call_cmd("obj to char2", "You give Obj to Char2.")
+        wearable = create_object(typeclass=Wearable, key="worn", location=self.char1)
+        wearable.wear(self.char1)
+        self.call_cmd("worn to char2", 'worn is currently worn and cannot be moved.')
+        wearable.remove(self.char1)
+        self.call_cmd("worn to char2", "You give worn to Char2.")
+        self.char1.currency = 50
+        self.call_cmd("-10 silver to char2", "Amount must be positive.")
+        self.call_cmd("75 silver to char2", "You do not have that much money to give.")
+        self.call_cmd("25 silver to char2", "You give coins worth 25.0 silver pieces to Char2.")
+        self.assetowner.economic = 50
+        self.call_cmd("/resource economic,60 to TestAccount2", "You do not have enough economic resources.")
+        self.account2.inform = Mock()
+        self.call_cmd("/resource economic,50 to TestAccount2", "You give 50 economic resources to Char2.")
+        self.assertEqual(self.assetowner2.economic, 50)
+        self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
+
+
 # noinspection PyUnresolvedReferences
 class RosterTests(ArxCommandTest):
     def setUp(self):
@@ -641,7 +642,6 @@ class RosterTests(ArxCommandTest):
         self.assertEqual(self.member.rank, 3)
         self.assertEqual(self.dompc2.patron, None)
 
-
     def test_cmd_propriety(self):
         self.setup_cmd(roster.CmdPropriety, self.account)
         self.call_cmd(" nonsense", "There's no propriety known as 'nonsense'.")
@@ -654,7 +654,6 @@ class RosterTests(ArxCommandTest):
         self.caller.execute_cmd("admin_propriety/remove Tester=testaccount")
         self.caller.execute_cmd("admin_propriety/create Vixen=-3")
         self.call_cmd("vixen", "No one is currently spoken of with the 'Vixen' reputation.")
-
 
 
 # noinspection PyUnresolvedReferences
@@ -677,7 +676,6 @@ class SocialTests(ArxCommandTest):
                           'and players who are on your watch list have a * by their name.\nRoom: Char')
         self.room1.tags.add("private")
         self.call_cmd("", "No visible characters found.")
-
 
     def test_cmd_watch(self):
         self.setup_cmd(social.CmdWatch, self.account)
