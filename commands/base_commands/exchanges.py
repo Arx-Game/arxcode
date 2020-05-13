@@ -11,6 +11,8 @@ class TradeError(Exception):
 
 
 class PersonalTradeInProgress:
+    HEADER_MSG = "|w[|nPersonal Trade|w]|n "
+    FAIL_MSG = "Could not finish the exchange."
     def __init__(self, caller, target):
         self.caller = caller
         self.target = target
@@ -20,20 +22,22 @@ class PersonalTradeInProgress:
         self.items = {caller: [], target: []}
         self.silver = {caller: 0, target: 0}
         self.agreements = {caller: False, target: False}
-        self.header = "|w[|nPersonal Trade|w]|n "
-        self.fail_msg = "Could not finish the exchange."
 
     @classmethod
     def create_trade(cls, caller, targ_name):
-        target = self.caller.search(targ_name)
+        target = caller.search(targ_name)
         if not target:
             return
-        if target == self.caller or not target.player_ob:
-            raise TradeError("This cannot be traded with.")
+        if target == caller or not target.player_ob:
+            raise TradeError(f"You cannot trade with {target}.")
         for trader in (caller, target):
             if trader.ndb.personal_trade_in_progress:
+                target.msg(f"{cls.HEADER_MSG}{caller} wants to trade, but you have one in progress.")
                 raise TradeError(f"{trader} has a trade already in progress.")
-        # TODO: Run init?
+        trade = cls(caller, target)
+        trade.message_participants(
+            f"{trade.caller} has initiated a trade with {trade.target}. (See |w/help trade|n)"
+        )
 
     def cancel_trade(self):
         "Scrubs this instance from traders and messages them."
@@ -61,13 +65,13 @@ class PersonalTradeInProgress:
 
         dbl = "\n\n"
         msg = "".join(
-            (self.header, print_manifest(self.caller), dbl, print_manifest(self.target),
+            (self.HEADER_MSG, print_manifest(self.caller), dbl, print_manifest(self.target),
              dbl, print_declaration(self.caller), print_declaration(self.target)))
         return text_box(msg)
 
     def add_item(self, trader, obj):
         "Locates item and adds it to the trade."
-        item = caller.search(obj)
+        item = trader.search(obj)
         if not item:
             return
         if item in self.items[trader]:
@@ -92,7 +96,7 @@ class PersonalTradeInProgress:
 
     def finish(self):
         "Runs checks before performing the exchange, then scrubs this instance from traders."
-        self.check_location()
+        self.check_trader_location()
         self.check_can_pay()
         self.check_items()
         for obj in self.items[self.caller]:
@@ -110,23 +114,25 @@ class PersonalTradeInProgress:
         "Ensures traders are in the same place and resets agreements if they are not."
         if self.caller.location != self.target.location:
             self.reset_agreements("Traders must be in the same location.")
-            raise TradeError(self.fail_msg)
+            raise TradeError(self.FAIL_MSG)
 
     def check_can_pay(self):
         "Checks wallet and resets agreements if one of them can't afford the trade."
         for trader in (self.caller, self.target):
             if self.silver[trader] > trader.currency:
                 self.reset_agreements(f"{self.names[trader]} does not have enough silver to complete the trade.")
-                raise TradeError(self.fail_msg)
+                raise TradeError(self.FAIL_MSG)
 
     def check_items(self):
         "Checks items for permission to move them and resets agreements upon any failure."
-        for trader in (self.caller, self.target):
-            recipient = self.target if (trader == self.caller) else self.caller
+        def check(trader, recipient):
             for obj in self.items[trader]:
                 if not obj.at_before_move(recipient, caller=trader):
                     self.reset_agreements(f"{self.names[trader]} cannot trade {obj}.")
-                    raise TradeError(self.fail_msg)
+                    raise TradeError(self.FAIL_MSG)
+
+        check(self.caller, self.target)
+        check(self.target, self.caller)
 
     def mark_agreement(self, trader):
         "Trader's agreement becomes Truthy, then trade attempts to finish if all parties have agreed."
@@ -148,7 +154,7 @@ class PersonalTradeInProgress:
 
     def message_participants(self, msg):
         "Sends a message to traders with a small header attached."
-        message = f"{self.header}{msg}"
+        message = f"{self.HEADER_MSG}{msg}"
         self.caller.msg(message)
         self.target.msg(message)
 

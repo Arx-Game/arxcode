@@ -583,7 +583,16 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
 
 class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
     def test_cmd_trade(self):
-        pass  # TODO
+        self.setup_cmd(commands.base_commands.exchanges.CmdTrade, self.char2)
+        self.char.msg = Mock()
+        self.call_cmd("", "You are not trading with anyone right now.")
+        self.call_cmd("Char2", "You cannot trade with Char2.")
+        self.call_cmd("top1", "You cannot trade with Top1.")
+        self.char1.ndb.personal_trade_in_progress = True
+        self.call_cmd("Char", "Char has a trade already in progress.")
+        self.char1.msg.assert_called_with("|w[|nPersonal Trade|w]|n Char2 wants to trade, but you have one in progress.")
+        self.char1.ndb.personal_trade_in_progress = False
+        # TODO
 
     def test_cmd_give(self):
         from typeclasses.wearable.wearable import Wearable
