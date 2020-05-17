@@ -84,7 +84,7 @@ class CmdDiceCheck(ArxCommand):
         args = args.lower()
         quiet = bool(self.rhs)
 
-        # NOTE: The order of calls here matters.
+        # NOTE: The order of calls here matters, due to str.split() usage.
         # Retainer ID -> Difficulty -> Stat/Skill.
         try:
             if is_retainer:
@@ -98,7 +98,7 @@ class CmdDiceCheck(ArxCommand):
             caller.msg(str(err))
             return
 
-        stats_and_skills.do_dice_check(caller, retainer=retainer, stat=stat, skill=skill, difficulty=difficulty, quiet=quiet, flub=flub)
+        stats_and_skills.do_dice_check(caller, stat=stat, skill=skill, difficulty=difficulty, quiet=quiet, flub=flub)
         
         if quiet:
             self._send_quiet_roll_msg()
