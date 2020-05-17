@@ -25,6 +25,12 @@ class PersonalTradeInProgress:
 
     @classmethod
     def create_trade(cls, caller, targ_name):
+        """
+        Creates instance and messages participants if it succeeds.
+        Args:
+            caller: character object
+            targ_name: string
+        """
         target = caller.search(targ_name)
         if not target:
             return
@@ -32,11 +38,12 @@ class PersonalTradeInProgress:
             raise TradeError(f"You cannot trade with {target}.")
         for trader in (caller, target):
             if trader.ndb.personal_trade_in_progress:
-                target.msg(f"{cls.HEADER_MSG}{caller} wants to trade, but you have one in progress.")
+                if trader != caller:
+                    target.msg(f"{cls.HEADER_MSG}{caller} wants to trade, but you have a trade in progress.")
                 raise TradeError(f"{trader} has a trade already in progress.")
         trade = cls(caller, target)
         trade.message_participants(
-            f"{trade.caller} has initiated a trade with {trade.target}. (See |w/help trade|n)"
+            f"{trade.caller} has initiated a trade with {trade.target}. (See |w/help trade|n.)"
         )
 
     def cancel_trade(self):
@@ -45,32 +52,35 @@ class PersonalTradeInProgress:
         self.message_participants("|yYour trade has been cancelled.|n")
 
     def display_trade(self):
-        "Creates a string about the state of the trade."
-        def print_manifest(trader):
-            txt = f"{self.names[trader]} offers"
-            if self.silver[trader]:
-                txt += f" |c{self.silver[trader]}|n silver and"
-            txt += ":"
-            if self.items[trader]:
-                txt += "\n" + "\n".join([str(ob) for ob in self.items[trader]])
-            else:
-                txt += " (no items)"
-            return txt
-
-        def print_declaration(trader):
-            bull = self.agreements[trader]  # :3 bool luv u
-            color = "|351" if bull else "|y"
-            adverb = "" if bull else "not yet "
-            return f"{self.names[trader]} has {color}{adverb}agreed|n. "
-
+        "Returns a string about the overall state of the trade."
         dbl = "\n\n"
         msg = "".join(
-            (self.HEADER_MSG, print_manifest(self.caller), dbl, print_manifest(self.target),
-             dbl, print_declaration(self.caller), print_declaration(self.target)))
+            (self.HEADER_MSG, self.assemble_manifest(self.caller), dbl, self.assemble_manifest(self.target),
+             dbl, self.assemble_statement(self.caller), self.assemble_statement(self.target)))
         return text_box(msg)
+
+    def assemble_manifest(self, trader):
+        "Returns a string about what this trader is offering."
+        money = f"|c{self.silver[trader]}|n silver" if self.silver[trader] else "no money"
+        txt = f"{self.names[trader]} offers {money} and"
+        items = [str(ob) for ob in self.items[trader]]
+        if items:
+            txt += ":\n + " + "\n + ".join(items)
+        else:
+            txt += " no items."
+        return txt
+
+    def assemble_statement(self, trader):
+        "Returns string about whether a trader has agreed."
+        bull = self.agreements[trader]  # :3 bool luv u
+        color = "|351" if bull else "|y"
+        adverb = "" if bull else "not yet "
+        return f"{self.names[trader]} has {color}{adverb}agreed|n. "
 
     def add_item(self, trader, obj):
         "Locates item and adds it to the trade."
+        if not obj:
+            raise TradeError("Trade what?")
         item = trader.search(obj)
         if not item:
             return
@@ -83,7 +93,7 @@ class PersonalTradeInProgress:
         "Verifies amount and adds silver to the trade."
         if self.silver[trader]:
             raise TradeError(
-                "Your silver is already specified. Cancel trade and restart if it is the wrong amount."
+                f"Already offered |c{self.silver[trader]}|n silver. Cancel trade if amount is incorrect."
             )
         try:
             amount = int(amount)
