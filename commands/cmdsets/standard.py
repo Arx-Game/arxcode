@@ -8,7 +8,7 @@ from them without explicitly calling individual commands.
 """
 import traceback
 
-import commands.base_commands.exchanges
+from commands.base_commands import exchanges
 
 try:
     from evennia.commands.default import help, admin, system, building, batchprocess
@@ -237,7 +237,7 @@ class StateIndependentCmdSet(CmdSet):
         self.add(plot_commands.CmdPlots())
         self.add(goal_commands.CmdGoals())
         self.add(combat.CmdHeal())
-        
+
         # Magic!
         self.add(magic_commands.MagicCmdSet())
 
@@ -254,7 +254,8 @@ class MobileCmdSet(CmdSet):
     def at_cmdset_creation(self):
         self.add(overrides.CmdGet())
         self.add(overrides.CmdDrop())
-        self.add(commands.base_commands.exchanges.CmdGive())
+        self.add(exchanges.CmdGive())
+        self.add(exchanges.CmdTrade())
         self.add(overrides.CmdArxSay())
         self.add(general.CmdWhisper())
         self.add(general.CmdFollow())

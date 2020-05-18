@@ -106,6 +106,7 @@ class PersonalTradeInProgress:
 
     def finish(self):
         "Runs checks before performing the exchange, then scrubs this instance from traders."
+        self.check_still_trading()
         self.check_trader_location()
         self.check_can_pay()
         self.check_items()
@@ -119,6 +120,13 @@ class PersonalTradeInProgress:
             self.target.pay_money(self.silver[self.target], self.caller)
         self.clean_up()
         self.message_participants("|351Your exchange is complete!|n")
+
+    def check_still_trading(self):
+        caller_trade = self.caller.ndb.personal_trade_in_progress
+        target_trade = self.target.ndb.personal_trade_in_progress
+        if caller_trade != target_trade:
+            self.clean_up()
+            raise TradeError("Invalid trade; cancelling it. Please restart.")
 
     def check_trader_location(self):
         "Ensures traders are in the same place and resets agreements if they are not."
@@ -169,8 +177,10 @@ class PersonalTradeInProgress:
         self.target.msg(message)
 
     def clean_up(self):
-        self.caller.ndb.personal_trade_in_progress = None
-        self.target.ndb.personal_trade_in_progress = None
+        if self.caller.ndb.personal_trade_in_progress == self:
+            self.caller.ndb.personal_trade_in_progress = None
+        if self.target.ndb.personal_trade_in_progress == self:
+            self.target.ndb.personal_trade_in_progress = None
 
 
 class CmdTrade(ArxCommand):

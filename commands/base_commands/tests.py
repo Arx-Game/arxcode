@@ -642,6 +642,10 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/agree", f"{head}Your exchange is complete!")
         self.assertEqual(self.char1.currency, 30)
         self.assertEqual(self.mask1.location, self.char1)
+        self.char2.ndb.personal_trade_in_progress = trade
+        self.char1.ndb.personal_trade_in_progress = "Pineapple"
+        self.call_cmd("/agree", "Invalid trade; cancelling it. Please restart.")
+        self.assertEqual(self.char1.ndb.personal_trade_in_progress, "Pineapple")
 
     def test_cmd_give(self):
         from typeclasses.wearable.wearable import Wearable
