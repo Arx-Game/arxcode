@@ -588,7 +588,8 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         head = "[Personal Trade] "
         head2 = "|w[|nPersonal Trade|w]|n "
         fail = "Could not finish the exchange."
-        self.call_cmd("Char2", "You cannot trade with Char2.")
+        self.call_cmd("", "You are not trading with anyone right now.")
+        self.call_cmd("char2", "You cannot trade with Char2.")
         self.call_cmd("top1", "You cannot trade with Top1.")
         self.char1.ndb.personal_trade_in_progress = True
         self.call_cmd("Char", "Char has a trade already in progress.")
@@ -617,7 +618,7 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("", ("**********************************************************************\n"
                            "[Personal Trade] Someone wearing A Fox Mask offers 30 silver and:\n"
                            " + A Fox Mask\n\n"
-                           "Char offers no money and no items.\n\n"                           
+                           "Char offers no money and no items.\n\n"
                            "Someone wearing A Fox Mask has not yet agreed. Char has agreed. \n"
                            "**********************************************************************"))
         self.call_cmd("/agree",
@@ -641,7 +642,6 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/agree", f"{head}Your exchange is complete!")
         self.assertEqual(self.char1.currency, 30)
         self.assertEqual(self.mask1.location, self.char1)
-        self.call_cmd("", "You are not trading with anyone right now.")
 
     def test_cmd_give(self):
         from typeclasses.wearable.wearable import Wearable
