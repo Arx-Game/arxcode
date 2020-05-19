@@ -592,14 +592,14 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.char1.msg.assert_called_with(
             f"{head2}Char2 wants to trade, but you have a trade in progress.")
         self.char1.ndb.personal_trade_in_progress = None
-        self.call_cmd("Char", f"{head}Char2 has initiated a trade with Char. (See /help trade.)")
+        self.call_cmd("Char", f"{head}Char2 has initiated a trade with Char. (See 'help trade'.)")
         self.call_cmd("/cancel", f"{head}Your trade has been cancelled.")
         self.assertEqual(self.char2.ndb.personal_trade_in_progress, None)
         self.top2.wear(self.char2)
         self.mask1.db.quality_level = 11
         self.mask1.wear(self.char2)
         self.call_cmd("Char",
-                      f"{head}Someone wearing A Fox Mask has initiated a trade with Char. (See /help trade.)")
+                      f"{head}Someone wearing A Fox Mask has initiated a trade with Char. (See 'help trade'.)")
         self.mask1.remove(self.char2)
         trade = self.char1.ndb.personal_trade_in_progress
         self.assertEqual(trade, self.char2.ndb.personal_trade_in_progress)

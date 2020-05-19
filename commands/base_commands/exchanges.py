@@ -43,7 +43,7 @@ class PersonalTradeInProgress:
                 raise TradeError(f"{trader} has a trade already in progress.")
         trade = cls(caller, target)
         trade.message_participants(
-            f"{caller} has initiated a trade with {target}. (See |w/help trade|n.)"
+            f"{caller} has initiated a trade with {target}. (See |w'help trade'|n.)"
         )
 
     def cancel_trade(self):
@@ -198,7 +198,7 @@ class CmdTrade(ArxCommand):
 
     After offering items and silver, both characters must agree in
     order to complete the exchange. Display the current offer by
-    using this command with no args or switches.
+    using 'trade' command with no args or switches.
     """
     key = "trade"
     locks = "cmd:all()"
@@ -227,7 +227,7 @@ class CmdTrade(ArxCommand):
             elif self.check_switches(("silver", "money")):
                 trade.add_silver(self.caller, self.args)
                 return
-            raise TradeError("Incorrect switch. See |w/help trade|n.")
+            raise TradeError("Incorrect switch. See |w'help trade'|n.")
         except TradeError as err:
             self.msg(err)
 
