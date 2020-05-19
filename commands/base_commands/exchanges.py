@@ -43,7 +43,7 @@ class PersonalTradeInProgress:
                 raise TradeError(f"{trader} has a trade already in progress.")
         trade = cls(caller, target)
         trade.message_participants(
-            f"{trade.caller} has initiated a trade with {trade.target}. (See |w/help trade|n.)"
+            f"{caller} has initiated a trade with {target}. (See |w/help trade|n.)"
         )
 
     def cancel_trade(self):
@@ -53,10 +53,9 @@ class PersonalTradeInProgress:
 
     def display_trade(self):
         "Returns a string about the overall state of the trade."
-        dbl = "\n\n"
-        msg = "".join(
-            (self.HEADER_MSG, self.assemble_manifest(self.caller), dbl, self.assemble_manifest(self.target),
-             dbl, self.assemble_statement(self.caller), self.assemble_statement(self.target)))
+        msg = self.HEADER_MSG + "\n".join(
+            (self.assemble_manifest(self.caller), self.assemble_manifest(self.target),
+             (self.assemble_statement(self.caller) + self.assemble_statement(self.target))))
         return text_box(msg)
 
     def assemble_manifest(self, trader):
@@ -109,7 +108,7 @@ class PersonalTradeInProgress:
         self.check_still_trading()
         self.check_trader_location()
         self.check_can_pay()
-        self.check_items()
+        self.check_can_move_items()
         for obj in self.items[self.caller]:
             obj.move_to(self.target)
         for obj in self.items[self.target]:
@@ -122,6 +121,7 @@ class PersonalTradeInProgress:
         self.message_participants("|351Your exchange is complete!|n")
 
     def check_still_trading(self):
+        "Ensures both traders are still using the same trade object."
         caller_trade = self.caller.ndb.personal_trade_in_progress
         target_trade = self.target.ndb.personal_trade_in_progress
         if caller_trade != target_trade:
@@ -129,28 +129,30 @@ class PersonalTradeInProgress:
             raise TradeError("Invalid trade; cancelling it. Please restart.")
 
     def check_trader_location(self):
-        "Ensures traders are in the same place and resets agreements if they are not."
-        if self.caller.location != self.target.location:
+        "Ensures traders are together & using same names. Resets agreements if not."
+        changed_names = False
+        for trader in (self.caller, self.target):
+            if str(trader) != self.names[trader]:
+                changed_names = True
+        if changed_names or self.caller.location != self.target.location:
             self.reset_agreements("Traders must be in the same location.")
             raise TradeError(self.FAIL_MSG)
 
     def check_can_pay(self):
-        "Checks wallet and resets agreements if one of them can't afford the trade."
+        "Resets agreements if a trader cannot afford their offered silver."
         for trader in (self.caller, self.target):
             if self.silver[trader] > trader.currency:
                 self.reset_agreements(f"{self.names[trader]} does not have enough silver to complete the trade.")
                 raise TradeError(self.FAIL_MSG)
 
-    def check_items(self):
-        "Checks items for permission to move them and resets agreements upon any failure."
-        def check(trader, recipient):
+    def check_can_move_items(self):
+        "Runs both traders through an item check."
+        for trader in (self.caller, self.target):
+            recipient = self.target if (trader == self.caller) else self.caller
             for obj in self.items[trader]:
                 if not obj.at_before_move(recipient, caller=trader):
                     self.reset_agreements(f"{self.names[trader]} cannot trade {obj}.")
                     raise TradeError(self.FAIL_MSG)
-
-        check(self.caller, self.target)
-        check(self.target, self.caller)
 
     def mark_agreement(self, trader):
         "Trader's agreement becomes Truthy, then trade attempts to finish if all parties have agreed."

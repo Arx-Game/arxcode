@@ -599,16 +599,18 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("Char", f"{head}Char2 has initiated a trade with Char. (See /help trade.)")
         self.call_cmd("/cancel", f"{head}Your trade has been cancelled.")
         self.assertEqual(self.char2.ndb.personal_trade_in_progress, None)
+        self.top2.wear(self.char2)
         self.mask1.db.quality_level = 11
         self.mask1.wear(self.char2)
         self.call_cmd("Char",
                       f"{head}Someone wearing A Fox Mask has initiated a trade with Char. (See /help trade.)")
+        self.mask1.remove(self.char2)
         trade = self.char1.ndb.personal_trade_in_progress
         self.assertEqual(trade, self.char2.ndb.personal_trade_in_progress)
         self.call_cmd("/item", "Trade what?")
-        self.call_cmd("/item a fox mask", f"{head}Someone wearing A Fox Mask offers A Fox Mask.")
-        self.char1.msg.assert_called_with(f"{head2}Someone wearing A Fox Mask offers A Fox Mask.")
-        self.assertEqual(trade.items[self.char2], [self.mask1])
+        self.call_cmd("/item top2", f"{head}Someone wearing A Fox Mask offers Top2.")
+        self.char1.msg.assert_called_with(f"{head2}Someone wearing A Fox Mask offers Top2.")
+        self.assertEqual(trade.items[self.char2], [self.top2])
         self.call_cmd("/silver", "Amount must be a positive number that you can afford.")
         self.call_cmd("/silver -30", "Amount must be a positive number that you can afford.")
         self.call_cmd("/silver 30.99", "Amount must be a positive number that you can afford.")
@@ -617,20 +619,24 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         trade.agreements[self.char1] = True
         self.call_cmd("", ("**********************************************************************\n"
                            "[Personal Trade] Someone wearing A Fox Mask offers 30 silver and:\n"
-                           " + A Fox Mask\n\n"
-                           "Char offers no money and no items.\n\n"
+                           " + Top2\n"
+                           "Char offers no money and no items.\n"
                            "Someone wearing A Fox Mask has not yet agreed. Char has agreed. \n"
                            "**********************************************************************"))
         self.call_cmd("/agree",
+                      f"{head}Traders must be in the same location. Agreements have been reset.|{fail}")
+        self.assertEqual(trade.agreements[self.char1], False)
+        self.mask1.wear(self.char2)
+        trade.agreements[self.char1] = True
+        self.call_cmd("/agree",
                       (f"{head}Someone wearing A Fox Mask does not have enough silver to complete the trade. "
                        f"Agreements have been reset.|{fail}"))
-        self.assertEqual(trade.agreements[self.char1], False)
         self.char2.currency = 30
         trade.agreements[self.char1] = True
         self.call_cmd("/agree",
-                      (f"A Fox Mask is currently worn and cannot be moved.|{head}Someone wearing A Fox Mask "
-                       f"cannot trade A Fox Mask. Agreements have been reset.|{fail}"))
-        self.mask1.remove(self.char2)
+                      (f"Top2 is currently worn and cannot be moved.|{head}Someone wearing A Fox Mask "
+                       f"cannot trade Top2. Agreements have been reset.|{fail}"))
+        self.top2.remove(self.char2)
         self.char1.location = self.top1
         trade.agreements[self.char1] = True
         self.call_cmd("/agree",
@@ -641,7 +647,7 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.caller = self.char2
         self.call_cmd("/agree", f"{head}Your exchange is complete!")
         self.assertEqual(self.char1.currency, 30)
-        self.assertEqual(self.mask1.location, self.char1)
+        self.assertEqual(self.top2.location, self.char1)
         self.char2.ndb.personal_trade_in_progress = trade
         self.char1.ndb.personal_trade_in_progress = "Pineapple"
         self.call_cmd("/agree", "Invalid trade; cancelling it. Please restart.")
