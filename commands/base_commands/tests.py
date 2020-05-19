@@ -6,20 +6,16 @@ from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
-
-from web.character.models import Revelation
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent
+from world.dominion.models import RPEvent, CraftingRecipe
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
-
 from world.templates.models import Template
 from web.character.models import PlayerAccount, Clue, Revelation
 
-from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general, exchanges
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -539,33 +535,6 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.caller = self.char1  # staff
         self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
 
-    def test_cmd_give(self):
-        from typeclasses.wearable.wearable import Wearable
-        from evennia.utils.create import create_object
-        self.setup_cmd(overrides.CmdGive, self.char1)
-        self.call_cmd("obj to char2", "You are not holding Obj.")
-        self.obj1.move_to(self.char1)
-        self.call_cmd("obj to char2", "You give Obj to Char2.")
-        wearable = create_object(typeclass=Wearable, key="worn", location=self.char1)
-        wearable.wear(self.char1)
-        self.call_cmd("worn to char2", 'worn is currently worn and cannot be moved.')
-        wearable.remove(self.char1)
-        self.call_cmd("worn to char2", "You give worn to Char2.")
-        self.char1.currency = 50
-        self.call_cmd("-10 silver to char2", "Amount must be positive.")
-        self.call_cmd("75 silver to char2", "You do not have that much money to give.")
-        self.call_cmd("25 silver to char2", "You give coins worth 25.0 silver pieces to Char2.")
-        self.assetowner.economic = 50
-        self.call_cmd("/resource economic,60 to TestAccount2", "You do not have enough economic resources.")
-        self.account2.inform = Mock()
-        self.call_cmd("/resource economic,50 to TestAccount2", "You give 50 economic resources to Char2.")
-        self.assertEqual(self.assetowner2.economic, 50)
-        self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
-
-
-    
-
-
     def test_cmd_inventory(self):
         self.setup_cmd(overrides.CmdInventory, self.char1)
         self.char1.currency = 125446
@@ -608,6 +577,102 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
 
 
 # noinspection PyUnresolvedReferences
+class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
+    def test_cmd_trade(self):
+        self.setup_cmd(exchanges.CmdTrade, self.char2)
+        self.char.msg = Mock()
+        head = "[Personal Trade] "
+        head2 = "|w[|nPersonal Trade|w]|n "
+        fail = "Could not finish the exchange."
+        self.call_cmd("", "You are not trading with anyone right now.")
+        self.call_cmd("char2", "You cannot trade with Char2.")
+        self.call_cmd("top1", "You cannot trade with Top1.")
+        self.char1.ndb.personal_trade_in_progress = True
+        self.call_cmd("Char", "Char has a trade already in progress.")
+        self.char1.msg.assert_called_with(
+            f"{head2}Char2 wants to trade, but you have a trade in progress.")
+        self.char1.ndb.personal_trade_in_progress = None
+        self.call_cmd("Char", f"{head}Char2 has initiated a trade with Char. (See 'help trade'.)")
+        self.call_cmd("/cancel", f"{head}Your trade has been cancelled.")
+        self.assertEqual(self.char2.ndb.personal_trade_in_progress, None)
+        self.top2.wear(self.char2)
+        self.mask1.db.quality_level = 11
+        self.mask1.wear(self.char2)
+        self.call_cmd("Char",
+                      f"{head}Someone wearing A Fox Mask has initiated a trade with Char. (See 'help trade'.)")
+        self.mask1.remove(self.char2)
+        trade = self.char1.ndb.personal_trade_in_progress
+        self.assertEqual(trade, self.char2.ndb.personal_trade_in_progress)
+        self.call_cmd("/item", "Trade what?")
+        self.call_cmd("/item top2", f"{head}Someone wearing A Fox Mask offers Top2.")
+        self.char1.msg.assert_called_with(f"{head2}Someone wearing A Fox Mask offers Top2.")
+        self.assertEqual(trade.items[self.char2], [self.top2])
+        self.call_cmd("/silver", "Amount must be a positive number that you can afford.")
+        self.call_cmd("/silver -30", "Amount must be a positive number that you can afford.")
+        self.call_cmd("/silver 30.99", "Amount must be a positive number that you can afford.")
+        self.call_cmd("/silver 30", f"{head}Someone wearing A Fox Mask offers 30 silver.")
+        self.call_cmd("/silver 1", "Already offered 30 silver. Cancel trade if amount is incorrect.")
+        trade.agreements[self.char1] = True
+        self.call_cmd("", ("**********************************************************************\n"
+                           "[Personal Trade] Someone wearing A Fox Mask offers 30 silver and:\n"
+                           " + Top2\n"
+                           "Char offers no money and no items.\n"
+                           "Someone wearing A Fox Mask has not yet agreed. Char has agreed. \n"
+                           "**********************************************************************"))
+        self.call_cmd("/agree",
+                      f"{head}Traders must be in the same location. Agreements have been reset.|{fail}")
+        self.assertEqual(trade.agreements[self.char1], False)
+        self.mask1.wear(self.char2)
+        trade.agreements[self.char1] = True
+        self.call_cmd("/agree",
+                      (f"{head}Someone wearing A Fox Mask does not have enough silver to complete the trade. "
+                       f"Agreements have been reset.|{fail}"))
+        self.char2.currency = 30
+        trade.agreements[self.char1] = True
+        self.call_cmd("/agree",
+                      (f"Top2 is currently worn and cannot be moved.|{head}Someone wearing A Fox Mask "
+                       f"cannot trade Top2. Agreements have been reset.|{fail}"))
+        self.top2.remove(self.char2)
+        self.char1.location = self.top1
+        trade.agreements[self.char1] = True
+        self.call_cmd("/agree",
+                      f"{head}Traders must be in the same location. Agreements have been reset.|{fail}")
+        self.char1.location = self.room1
+        self.caller = self.char1
+        self.call_cmd("/agree", f"{head}Char has agreed to the trade.")
+        self.caller = self.char2
+        self.call_cmd("/agree", f"{head}Your exchange is complete!")
+        self.assertEqual(self.char1.currency, 30)
+        self.assertEqual(self.top2.location, self.char1)
+        self.char2.ndb.personal_trade_in_progress = trade
+        self.char1.ndb.personal_trade_in_progress = "Pineapple"
+        self.call_cmd("/agree", "Invalid trade; cancelling it. Please restart.")
+        self.assertEqual(self.char1.ndb.personal_trade_in_progress, "Pineapple")
+
+    def test_cmd_give(self):
+        self.setup_cmd(exchanges.CmdGive, self.char2)
+        self.call_cmd("top1 to char", "You are not holding Top1.")
+        self.top2.wear(self.char2)
+        self.call_cmd("top2 to char", 'Top2 is currently worn and cannot be moved.')
+        self.top2.remove(self.char2)
+        self.call_cmd("top2 to char", "You give Top2 to Char.")
+        self.assertEqual(self.top2.location, self.char1)
+        self.char2.currency = 50
+        self.call_cmd("-10 silver to char", "Amount must be positive.")
+        self.call_cmd("75 silver to char", "You do not have that much money to give.")
+        self.call_cmd("25 silver to char", "You give coins worth 25.0 silver pieces to Char.")
+        self.assertEqual(self.char1.currency, 25)
+        self.assertEqual(self.char2.currency, 25)
+        self.assetowner2.economic = 50
+        self.call_cmd("/resource economic,60 to TestAccount", "You do not have enough economic resources.")
+        self.account.inform = Mock()
+        self.call_cmd("/resource economic,50 to TestAccount", "You give 50 economic resources to Char.")
+        self.account.inform.assert_called_with("Char2 has given 50 economic resources to you.", category="Resources")
+        self.assertEqual(self.assetowner2.economic, 0)
+        self.assertEqual(self.assetowner.economic, 50)
+
+
+# noinspection PyUnresolvedReferences
 class RosterTests(ArxCommandTest):
     def setUp(self):
         """Adds rosters and an announcement board"""
@@ -640,7 +705,6 @@ class RosterTests(ArxCommandTest):
         self.assertEqual(self.member.rank, 3)
         self.assertEqual(self.dompc2.patron, None)
 
-
     def test_cmd_propriety(self):
         self.setup_cmd(roster.CmdPropriety, self.account)
         self.call_cmd(" nonsense", "There's no propriety known as 'nonsense'.")
@@ -653,7 +717,6 @@ class RosterTests(ArxCommandTest):
         self.caller.execute_cmd("admin_propriety/remove Tester=testaccount")
         self.caller.execute_cmd("admin_propriety/create Vixen=-3")
         self.call_cmd("vixen", "No one is currently spoken of with the 'Vixen' reputation.")
-
 
 
 # noinspection PyUnresolvedReferences
@@ -676,7 +739,6 @@ class SocialTests(ArxCommandTest):
                           'and players who are on your watch list have a * by their name.\nRoom: Char')
         self.room1.tags.add("private")
         self.call_cmd("", "No visible characters found.")
-
 
     def test_cmd_watch(self):
         self.setup_cmd(social.CmdWatch, self.account)
