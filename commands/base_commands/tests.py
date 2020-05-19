@@ -5,22 +5,17 @@ Tests for different general commands.
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 
-import commands.base_commands.exchanges
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
-
-from web.character.models import Revelation
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent
+from world.dominion.models import RPEvent, CraftingRecipe
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
-
 from world.templates.models import Template
 from web.character.models import PlayerAccount, Clue, Revelation
 
-from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general, exchanges
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -581,9 +576,10 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("asdf", "Players:\n\nPlayer name Fealty Idle \n\nShowing 0 out of 1 unique account logged in.")
 
 
+# noinspection PyUnresolvedReferences
 class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
     def test_cmd_trade(self):
-        self.setup_cmd(commands.base_commands.exchanges.CmdTrade, self.char2)
+        self.setup_cmd(exchanges.CmdTrade, self.char2)
         self.char.msg = Mock()
         head = "[Personal Trade] "
         head2 = "|w[|nPersonal Trade|w]|n "
@@ -654,27 +650,26 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.char1.ndb.personal_trade_in_progress, "Pineapple")
 
     def test_cmd_give(self):
-        from typeclasses.wearable.wearable import Wearable
-        from evennia.utils.create import create_object
-        self.setup_cmd(commands.base_commands.exchanges.CmdGive, self.char1)
-        self.call_cmd("obj to char2", "You are not holding Obj.")
-        self.obj1.move_to(self.char1)
-        self.call_cmd("obj to char2", "You give Obj to Char2.")
-        wearable = create_object(typeclass=Wearable, key="worn", location=self.char1)
-        wearable.wear(self.char1)
-        self.call_cmd("worn to char2", 'worn is currently worn and cannot be moved.')
-        wearable.remove(self.char1)
-        self.call_cmd("worn to char2", "You give worn to Char2.")
-        self.char1.currency = 50
-        self.call_cmd("-10 silver to char2", "Amount must be positive.")
-        self.call_cmd("75 silver to char2", "You do not have that much money to give.")
-        self.call_cmd("25 silver to char2", "You give coins worth 25.0 silver pieces to Char2.")
-        self.assetowner.economic = 50
-        self.call_cmd("/resource economic,60 to TestAccount2", "You do not have enough economic resources.")
-        self.account2.inform = Mock()
-        self.call_cmd("/resource economic,50 to TestAccount2", "You give 50 economic resources to Char2.")
-        self.assertEqual(self.assetowner2.economic, 50)
-        self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
+        self.setup_cmd(exchanges.CmdGive, self.char2)
+        self.call_cmd("top1 to char", "You are not holding Top1.")
+        self.top2.wear(self.char2)
+        self.call_cmd("top2 to char", 'Top2 is currently worn and cannot be moved.')
+        self.top2.remove(self.char2)
+        self.call_cmd("top2 to char", "You give Top2 to Char.")
+        self.assertEqual(self.top2.location, self.char1)
+        self.char2.currency = 50
+        self.call_cmd("-10 silver to char", "Amount must be positive.")
+        self.call_cmd("75 silver to char", "You do not have that much money to give.")
+        self.call_cmd("25 silver to char", "You give coins worth 25.0 silver pieces to Char.")
+        self.assertEqual(self.char1.currency, 25)
+        self.assertEqual(self.char2.currency, 25)
+        self.assetowner2.economic = 50
+        self.call_cmd("/resource economic,60 to TestAccount", "You do not have enough economic resources.")
+        self.account.inform = Mock()
+        self.call_cmd("/resource economic,50 to TestAccount", "You give 50 economic resources to Char.")
+        self.account.inform.assert_called_with("Char2 has given 50 economic resources to you.", category="Resources")
+        self.assertEqual(self.assetowner2.economic, 0)
+        self.assertEqual(self.assetowner.economic, 50)
 
 
 # noinspection PyUnresolvedReferences
