@@ -119,6 +119,7 @@ INSTALLED_APPS += ('world.dominion',
                    'world.exploration',
                    'web.admintools',
                    'world.magic',
+                   'world.quests.apps.QuestsConfig',
                    )
 
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
