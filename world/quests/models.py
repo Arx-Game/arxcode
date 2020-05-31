@@ -13,6 +13,7 @@ class Quest(QuestText):
     """A To-Do list of smaller accomplishments for a character to achieve something."""
     name = models.CharField(unique=True, max_length=255)
     db_date_created = models.DateTimeField(auto_now_add=True)
+    entities = models.ManyToManyField(to="dominion.AssetOwner", through="QuestStatus", related_name="quests")
 
 
 class QuestStep(QuestText):
@@ -22,22 +23,36 @@ class QuestStep(QuestText):
     step_number = models.PositiveSmallIntegerField(default=0)
 
 
-class EntityQuestStepProgress(models.Model):
-    "Records a character's efforts and completion status of a QuestStep"
-    quest_step = models.ForeignKey(to="QuestStep", related_name="quest_step_progresses", on_delete=models.CASCADE)
-    entity = models.ForeignKey(to="AssetOwner", related_name="quest_step_progresses", on_delete=models.CASCADE)
-    date_completed = models.DateTimeField(blank=True, null=True)
+class QuestStatus(models.Model):
+    "Records an entity's efforts and completion status of a Quest."
+    quest = models.ForeignKey(to="Quest", related_name="statuses", on_delete=models.CASCADE)
+    entity = models.ForeignKey(verbose_name="Character/Org", to="dominion.AssetOwner", related_name="statuses", on_delete=models.CASCADE)
+    quest_completed = models.DateTimeField(verbose_name="Completed On", blank=True, null=True,
+                                           help_text="Generated when all steps are marked complete.")
+
+    class Meta:
+        verbose_name_plural = "Quest Statuses"
 
 
 class QuestStepEffort(models.Model):
     """Any of the items that show evidence toward a QuestStep's completion."""
+    status = models.ForeignKey(to="QuestStatus", related_name="efforts", on_delete=models.CASCADE)
+    step = models.ForeignKey(to="QuestStep", related_name="efforts", on_delete=models.CASCADE)
     attempt_number = models.PositiveSmallIntegerField(default=0)  # auto-increment this but allow changes
-    effort_for = models.ForeignKey(to="EntityQuestStepProgress", related_name="efforts", on_delete=models.CASCADE)
+    step_completed = models.DateTimeField(verbose_name="Marked Complete On", blank=True, null=True,
+                                          help_text="Mark this date to complete this step of the quest.")
     # behold! the field in which I grow mine fks, and see that there are many:
-    # event  # This includes PRP
-    # flashback
-    # clue  # This includes vision, secret
-    # revelation
-    # action
-    # quest  # the quest-completion of another quest, as a step. aka 'achievements' in eq2
-
+    event = models.ForeignKey(to="dominion.RPEvent", related_name="used_in_efforts", on_delete=models.CASCADE,
+                              blank=True, null=True)
+    flashback = models.ForeignKey(to="character.Flashback", related_name="used_in_efforts", on_delete=models.CASCADE,
+                                  blank=True, null=True)
+    char_clue = models.ForeignKey(to="character.ClueDiscovery", related_name="used_in_efforts",
+                                  on_delete=models.CASCADE, blank=True, null=True)
+    org_clue = models.ForeignKey(to="dominion.ClueForOrg", related_name="used_in_efforts", on_delete=models.CASCADE,
+                                 blank=True, null=True)
+    revelation = models.ForeignKey(to="character.RevelationDiscovery", related_name="used_in_efforts",
+                                   on_delete=models.CASCADE, blank=True, null=True)
+    action = models.ForeignKey(to="dominion.PlotAction", related_name="used_in_efforts", on_delete=models.CASCADE,
+                               blank=True, null=True)
+    quest = models.ForeignKey(to="QuestStatus", related_name="used_in_efforts", on_delete=models.CASCADE, blank=True,
+                              null=True)
