@@ -75,7 +75,7 @@ class CmdDiceCheck(ArxCommand):
 
         if not self.args:
             if is_retainer:
-                caller.msg("Usage: @check/retainer id|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
+                caller.msg("Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
                 return
             else:
                 caller.msg("Usage: @check <stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
@@ -112,13 +112,13 @@ class CmdDiceCheck(ArxCommand):
         Returns retainer's ID and '<stat>[+<skill>][ at <difficulty number>]'
         """
         split_str = args.split("|")
-        if not split_str[1].isdigit():
+        if not split_str[0].lstrip('-').isdigit():
             raise ValueError("Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
 
-        if not int(split_str[1]) > 0:
+        if split_str[0].lstrip('-').isdigit() and not int(split_str[0]) > 0:
             raise ValueError("Retainer ID must be a positive number.")
 
-        retainer_id = int(split_str[1])
+        retainer_id = int(split_str[0])
 
         return split_str[1], retainer_id
 
