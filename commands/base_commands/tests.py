@@ -1333,9 +1333,13 @@ class CheckCommandTests(ArxCommandTest):
             "Char's retainer (Steve, the Retainer) checked strength"
             " + athletics at difficulty 20, rolling 0 higher.")
 
+        self.call_cmd("/retainer/flub 1|strength + athletics at 20",
+            "Char's retainer (Steve, the Retainer) checked strength"
+            " + athletics at difficulty 20, rolling 12 lower.")
+
         self.call_cmd("/retainer 1|strength + athletics at 20=self",
             "[Private Roll] Char's retainer (Steve, the Retainer) checked strength"
-            " + athletics at difficulty 20, rolling 3 higher. (Shared with: self-only)")
+            " + athletics at difficulty 20, rolling 5 higher. (Shared with: self-only)")
 
     def tearDown(self):
         setstate(self.random_state)
