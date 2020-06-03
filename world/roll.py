@@ -65,7 +65,7 @@ class Roll(object):
                 if self.retainer is None:
                     self.stats[somestat] += self.character.attributes.get(somestat, 0)
                 else:
-                    self.stats[somestat] += self.retainer.attributes.get(somestat, 0)
+                    self.stats[somestat] += self.retainer.dbobj.attributes.get(somestat, 0)
             # None isn't iterable so make an empty set of skills
             skill_list = skill_list or []
             # add individual skill to the list
@@ -76,7 +76,7 @@ class Roll(object):
             if self.retainer is None:
                 skills = caller.db.skills or {}
             else:
-                skills = retainer.db.skills or {}
+                skills = self.retainer.dbobj.db.skills or {}
             # compares skills to dict we just made, adds to self.skills dict
             for someskill in skill_list:
                 self.skills[someskill] += skills.get(someskill, 0)
@@ -214,8 +214,13 @@ class Roll(object):
             resultstr = "%s%s higher" % (white_col, self.result)
         else:
             resultstr = "%s%s lower" % (red_col, -self.result)
-        msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg,
+
+        if self.retainer is None:
+            msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg,
                                                                      self.difficulty, resultstr, no_col)
+        else:
+            msg = "%s%s's%s retainer (%s%s) checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col,
+                self.retainer.pretty_name, no_col, roll_msg, self.difficulty, resultstr, no_col)
         if self.crit_mult > 1 and self.result >= 0:
             msg = "%s %s%s rolled a critical!%s" % (msg, green_col, name, no_col)
         self.msg = msg

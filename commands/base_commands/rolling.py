@@ -42,7 +42,7 @@ class CmdDiceCheck(ArxCommand):
     Usage:
       @check <stat>[+<skill>][ at <difficulty number>][=receivers]
       @check/flub <same as above>
-      @check/retainer <retainer id>|<same as above>
+      @check/retainer[/flub] <retainer id>|<same as above>
 
     Performs a stat/skill check for your character, generally to
     determine success in an attempted action. For example, if you
@@ -101,7 +101,7 @@ class CmdDiceCheck(ArxCommand):
             caller.msg("No retainer found with ID %s." % retainer_id)
             return
 
-        stats_and_skills.do_dice_check(caller, retainer=retainer, stat=stat, skill=skill, difficulty=difficulty, quiet=quiet, flub=flub)
+        stats_and_skills.do_dice_check(caller=caller, retainer=retainer, stat=stat, skill=skill, difficulty=difficulty, quiet=quiet, flub=flub)
         
         if quiet:
             self._send_quiet_roll_msg()
