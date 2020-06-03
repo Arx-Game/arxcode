@@ -4,7 +4,7 @@ Commands for dice checks.
 from commands.base import ArxCommand
 from world import stats_and_skills
 from world.roll import Roll
-
+from world.dominion.models import Agent
 
 class CmdDiceString(ArxCommand):
     """
@@ -90,12 +90,16 @@ class CmdDiceCheck(ArxCommand):
         try:
             if is_retainer:
                 args, retainer_id = self._extract_retainer_id(args)
-                #TODO: get retainer object here
+                # TODO: Get this access to work in tests.
+                # retainer = caller.player_ob.retainers.get(retainer_id)
 
             args, difficulty = self._extract_difficulty(args)
             stat, skill = self._extract_stat_skill(args)
         except ValueError as err:
             caller.msg(str(err))
+            return
+        except Agent.DoesNotExist:
+            caller.msg("No retainer found with ID %s." % retainer_id)
             return
 
         stats_and_skills.do_dice_check(caller, retainer=retainer, stat=stat, skill=skill, difficulty=difficulty, quiet=quiet, flub=flub)
@@ -109,6 +113,7 @@ class CmdDiceCheck(ArxCommand):
         Extracts retainer's ID number from args.
 
         Args must be of the form '<id>|<stat>[+<skill>][ at <difficulty number>]'
+        
         Returns retainer's ID and '<stat>[+<skill>][ at <difficulty number>]'
         """
         split_str = args.split("|")
@@ -129,6 +134,7 @@ class CmdDiceCheck(ArxCommand):
         to be DIFF_DEFAULT.
 
         Args must be of the form '<stat>[+<skill>][ at <difficulty number>]'
+        
         Returns difficulty and '<stat>[+<skill>]'
         """
         difficulty = stats_and_skills.DIFF_DEFAULT

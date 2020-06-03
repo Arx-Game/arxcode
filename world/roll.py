@@ -50,6 +50,7 @@ class Roll(object):
         self.crit_mult = 1
         self.msg = ""
         self.character_name = ""
+        self.retainer_name = "" if self.retainer is None else retainer.pretty_name
         self.flat_modifier = flat_modifier
         if self.character:
             caller.ndb.last_roll = self
@@ -61,7 +62,10 @@ class Roll(object):
             stat_list = [ob.lower() for ob in stat_list]
             # look up each stat from supplied caller, adds to stats dict
             for somestat in stat_list:
-                self.stats[somestat] += self.character.attributes.get(somestat, 0)
+                if self.retainer is None:
+                    self.stats[somestat] += self.character.attributes.get(somestat, 0)
+                else:
+                    self.stats[somestat] += self.retainer.attributes.get(somestat, 0)
             # None isn't iterable so make an empty set of skills
             skill_list = skill_list or []
             # add individual skill to the list
@@ -69,12 +73,20 @@ class Roll(object):
                 skill_list.append(skill)
             skill_list = [ob.lower() for ob in skill_list]
             # grabs the caller's skills or makes blank dict
-            skills = caller.db.skills or {}
+            if self.retainer is None:
+                skills = caller.db.skills or {}
+            else:
+                skills = retainer.db.skills or {}
             # compares skills to dict we just made, adds to self.skills dict
             for someskill in skill_list:
                 self.skills[someskill] += skills.get(someskill, 0)
-            self.bonus_crit_chance = caller.db.bonus_crit_chance or 0
-            self.bonus_crit_mult = caller.db.bonus_crit_mult or 0
+            if self.retainer is None:
+                self.bonus_crit_chance = caller.db.bonus_crit_chance or 0
+                self.bonus_crit_mult = caller.db.bonus_crit_mult or 0
+            else:
+                # Retainers cannot roll criticals; feels unbalanced otherwise.
+                self.bonus_crit_chance = 0
+                self.bonus_crit_mult = 0
             if use_real_name:
                 self.character_name = caller.key
             else:

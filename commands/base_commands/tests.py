@@ -1282,18 +1282,18 @@ class HelpCommandTests(ArxCommandTest):
 class CheckCommandTests(ArxCommandTest):
 
     def setUp(self):
+        from world.dominion.models import AssetOwner
+
         super(CheckCommandTests, self).setUp()
 
-        # Initialize a retainer's name, id, stats, skills
-        # self.retainer = Agent.objects.create(name="Steve, the best retainer", type=Agent.SPY, quantity=1, unique=True)
-        # self.retainer.set_name("{rSteve, the best retainer{n")
+        # Create an AssetOwner.  char1 gets put into it.
+        # AssetOwner creates agent/retainer.  Check ID.
 
-        # Set retainer to be char1's retainer somehow.
-        # self.retainer.assign(char1.char_ob, 1)
-        # self.char1.save()
         pass
 
-    def test_cmd_check_retainer(self):
+    @patch('world.roll.Roll.build_msg')
+    @patch('world.stats_and_skills.do_dice_check')
+    def test_cmd_check_retainer(self, mock_dice_check, mock_build_msg):
         self.setup_cmd(rolling.CmdDiceCheck, self.char1)
 
         expected_return = "Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]"
@@ -1304,18 +1304,24 @@ class CheckCommandTests(ArxCommandTest):
         # Wrong difficulty value (X < 1 || X > 100)
         self.call_cmd("/retainer 1|strength + athletics at 0", "Difficulty must be a number between 1 and 100.")
 
-        # Using 's' for stat (doesn't work because strength/stamina; must be uniquely identifiable)
+        # Using 's' for stat (not-unique stat test)
         self.call_cmd("/retainer 1|s + athletics at 20", "There must be one unique match for a character stat. Please check spelling and try again.")
         
-        # Using 's' for skill (again, unique or not)
+        # Using 's' for skill (not-unique skill test)
         self.call_cmd("/retainer 1|strength + s at 20", "There must be one unique match for a character skill. Please check spelling and try again.")
         
         # Invalid skill name.
         self.call_cmd("/retainer 1|strength + cuddles at 20", "No matches for a skill by that name. Check spelling and try again.")
 
         # Couldn't find retainer with that ID.
+        # self.call_cmd("/retainer 10|strength + athletics at 20", "No retainer found with ID 10.")
 
-        # Mock die roll?
+        # Mock die roll
+        mock_dice_check.return_value = 1
+        mock_build_msg.return_value = ""
+
         # Private mock die roll
+        mock_dice_check.return_value = 10
+        mock_build_msg.return_value = ""
 
-    # I don't think tearDown() is necessary?
+    # I don't think tearDown() is necessary?  Might be for deleting retainer and AssetOwner.
