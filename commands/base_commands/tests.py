@@ -1282,13 +1282,15 @@ class HelpCommandTests(ArxCommandTest):
 class CheckCommandTests(ArxCommandTest):
 
     def setUp(self):
-        from world.dominion.models import AssetOwner
-
         super(CheckCommandTests, self).setUp()
 
-        # Create an AssetOwner.  char1 gets put into it.
-        # AssetOwner creates agent/retainer.  Check ID.
+        # Because PEP8 line lengths.
+        create_agent = self.char1.player_ob.Dominion.assets.agents.create
 
+        agent = create_agent(type=Agent.CHAMPION, name="Steve, the Retainer", 
+            quality=1, quantity=1, unique=True, desc="I'm an agent!")
+        agent.assign(self.char1, 1)
+        
         pass
 
     @patch('world.roll.Roll.build_msg')
@@ -1314,7 +1316,7 @@ class CheckCommandTests(ArxCommandTest):
         self.call_cmd("/retainer 1|strength + cuddles at 20", "No matches for a skill by that name. Check spelling and try again.")
 
         # Couldn't find retainer with that ID.
-        # self.call_cmd("/retainer 10|strength + athletics at 20", "No retainer found with ID 10.")
+        self.call_cmd("/retainer 10|strength + athletics at 20", "No retainer found with ID 10.")
 
         # Mock die roll
         mock_dice_check.return_value = 1
@@ -1324,4 +1326,4 @@ class CheckCommandTests(ArxCommandTest):
         mock_dice_check.return_value = 10
         mock_build_msg.return_value = ""
 
-    # I don't think tearDown() is necessary?  Might be for deleting retainer and AssetOwner.
+    # I don't think tearDown() is necessary?  Might be for deleting retainer.

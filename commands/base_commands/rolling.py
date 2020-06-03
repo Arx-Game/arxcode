@@ -90,8 +90,7 @@ class CmdDiceCheck(ArxCommand):
         try:
             if is_retainer:
                 args, retainer_id = self._extract_retainer_id(args)
-                # TODO: Get this access to work in tests.
-                # retainer = caller.player_ob.retainers.get(retainer_id)
+                retainer = caller.player_ob.retainers.get(id=retainer_id)
 
             args, difficulty = self._extract_difficulty(args)
             stat, skill = self._extract_stat_skill(args)
