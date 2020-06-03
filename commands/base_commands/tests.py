@@ -20,6 +20,9 @@ from typeclasses.readable.readable import CmdWrite
 
 from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general, rolling
 
+# for @check/retainer test
+from random import getstate, setstate, seed
+
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
     paccount1 = None
@@ -1291,6 +1294,8 @@ class CheckCommandTests(ArxCommandTest):
             quality=1, quantity=1, unique=True, desc="I'm a retainer!")
         retainer.assign(self.char1, 1)
 
+        self.random_state = getstate()
+
 
     def test_cmd_check_retainer(self):
         self.setup_cmd(rolling.CmdDiceCheck, self.char1)
@@ -1322,3 +1327,15 @@ class CheckCommandTests(ArxCommandTest):
         # Couldn't find retainer with that ID.
         self.call_cmd("/retainer 10|strength + athletics at 20", 
             "No retainer found with ID 10.")
+
+        seed(1)
+        self.call_cmd("/retainer 1|strength + athletics at 20",
+            "Char's retainer (Steve, the Retainer) checked strength"
+            " + athletics at difficulty 20, rolling 0 higher.")
+
+        self.call_cmd("/retainer 1|strength + athletics at 20=self",
+            "[Private Roll] Char's retainer (Steve, the Retainer) checked strength"
+            " + athletics at difficulty 20, rolling 3 higher. (Shared with: self-only)")
+
+    def tearDown(self):
+        setstate(self.random_state)
