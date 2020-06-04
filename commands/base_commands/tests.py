@@ -1337,7 +1337,9 @@ class CheckCommandTests(ArxCommandTest):
             "Char's retainer (Steve, the Retainer) checked strength"
             " + athletics at difficulty 20, rolling 12 lower.")
 
-        self.call_cmd("/retainer 1|strength + athletics at 20=self",
+        # This test returns two messages twice because char1 is >= "Builders"
+        # permissions hierarchy, so it will notify both char1, and GM-char1.
+        self.call_cmd("/retainer 1|strength + athletics at 20=Char",
             "[Private Roll] Char's retainer (Steve, the Retainer) checked strength"
             " + athletics at difficulty 20, rolling 5 higher. (Shared with: self-only)")
 
