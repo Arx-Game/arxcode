@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models.functions import Now
 
 
 class QuestText(models.Model):
@@ -10,15 +11,15 @@ class QuestText(models.Model):
 
 
 class Quest(QuestText):
-    """A To-Do list of smaller accomplishments for a character to achieve something."""
+    """A To-Do list of accomplishments for a character to achieve something."""
     name = models.CharField(unique=True, max_length=255)
-    db_date_created = models.DateTimeField(auto_now_add=True)
     entities = models.ManyToManyField(to="dominion.AssetOwner", through="QuestStatus", related_name="quests")
+    search_tags = models.ManyToManyField("SearchTag", blank=True, db_index=True, related_name="quests")
 
 
 class QuestStep(QuestText):
     """A task that contributes to the completion of a Quest."""
-    quest = models.ForeignKey(to="Quest", related_name="quest_steps", on_delete=models.CASCADE)
+    quest = models.ForeignKey(to="Quest", related_name="steps", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     step_number = models.PositiveSmallIntegerField(default=0)
 
@@ -27,6 +28,7 @@ class QuestStatus(models.Model):
     "Records an entity's efforts and completion status of a Quest."
     quest = models.ForeignKey(to="Quest", related_name="statuses", on_delete=models.CASCADE)
     entity = models.ForeignKey(verbose_name="Character/Org", to="dominion.AssetOwner", related_name="statuses", on_delete=models.CASCADE)
+    db_date_created = models.DateTimeField(auto_now_add=True)
     quest_completed = models.DateTimeField(verbose_name="Completed On", blank=True, null=True,
                                            help_text="Generated when all steps are marked complete.")
 
@@ -38,9 +40,9 @@ class QuestStepEffort(models.Model):
     """Any of the items that show evidence toward a QuestStep's completion."""
     status = models.ForeignKey(to="QuestStatus", related_name="efforts", on_delete=models.CASCADE)
     step = models.ForeignKey(to="QuestStep", related_name="efforts", on_delete=models.CASCADE)
-    attempt_number = models.PositiveSmallIntegerField(default=0)  # auto-increment this but allow changes
+    attempt_number = models.PositiveSmallIntegerField(blank=True, null=True)
     step_completed = models.DateTimeField(verbose_name="Marked Complete On", blank=True, null=True,
-                                          help_text="Mark this date to complete this step of the quest.")
+                                          help_text="Mark the date to complete this step of the quest.")
     # behold! the field in which I grow mine fks, and see that there are many:
     event = models.ForeignKey(to="dominion.RPEvent", related_name="used_in_efforts", on_delete=models.CASCADE,
                               blank=True, null=True)
@@ -56,3 +58,15 @@ class QuestStepEffort(models.Model):
                                blank=True, null=True)
     quest = models.ForeignKey(to="QuestStatus", related_name="used_in_efforts", on_delete=models.CASCADE, blank=True,
                               null=True)
+
+    def save(self, *args, **kwargs):
+        if self.attempt_number == None:
+            last_num = self.status.efforts.filter(step=self.step).exclude(id=self.id).count()
+            self.attempt_number = last_num + 1
+        super().save(*args, **kwargs)
+        if self.step_completed and not self.status.quest_completed:
+            successful_efforts = QuestStepEffort.objects.filter(status=self.status, step_completed=True)
+            incomplete_steps = self.status.quest.steps.exclude(efforts__in=successful_efforts).distinct().count()
+            if not incomplete_steps:
+                self.status.quest_completed = Now()
+                self.status.save()
