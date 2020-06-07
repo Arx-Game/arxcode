@@ -164,7 +164,7 @@ class Traitshandler:
             return trainerval > callerval + 1
         if stype == "ability":
             callerval = self.get_ability_value(field)
-            trainerval = trainer.traits.get_ability_value(field, 0)
+            trainerval = trainer.traits.get_ability_value(field)
             return trainerval > callerval + 1
         if stype == "dom":
             try:
