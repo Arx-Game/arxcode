@@ -1,5 +1,6 @@
+from datetime import datetime
+
 from django.db import models
-from django.db.models.functions import Now
 
 
 class QuestText(models.Model):
@@ -76,7 +77,7 @@ class QuestStepEffort(models.Model):
             successful_efforts = QuestStepEffort.objects.filter(status=self.status, step_completed=True)
             incomplete_steps = self.status.quest.steps.exclude(efforts__in=successful_efforts).distinct().count()
             if not incomplete_steps:
-                self.status.quest_completed = Now()
+                self.status.quest_completed = datetime.now()  # You're killing me, Smalls
                 self.status.save()
 
     def __str__(self):
