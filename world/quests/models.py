@@ -14,8 +14,10 @@ class Quest(QuestText):
     """A To-Do list of accomplishments for a character to achieve something."""
     name = models.CharField(unique=True, max_length=255)
     entities = models.ManyToManyField(to="dominion.AssetOwner", through="QuestStatus", related_name="quests")
-    search_tags = models.ManyToManyField("SearchTag", blank=True, db_index=True, related_name="quests")
+    search_tags = models.ManyToManyField("character.SearchTag", blank=True, db_index=True, related_name="quests")
 
+    def __str__(self):
+        return self.name
 
 class QuestStep(QuestText):
     """A task that contributes to the completion of a Quest."""
@@ -24,7 +26,7 @@ class QuestStep(QuestText):
     step_number = models.PositiveSmallIntegerField(default=0)
 
 
-class QuestStatus(models.Model):
+class QuestStatus(QuestText):
     "Records an entity's efforts and completion status of a Quest."
     quest = models.ForeignKey(to="Quest", related_name="statuses", on_delete=models.CASCADE)
     entity = models.ForeignKey(verbose_name="Character/Org", to="dominion.AssetOwner", related_name="statuses", on_delete=models.CASCADE)
@@ -34,6 +36,9 @@ class QuestStatus(models.Model):
 
     class Meta:
         verbose_name_plural = "Quest Statuses"
+
+    def __str__(self):
+        return f"({self.id}) {self.entity} on: {self.quest}"
 
 
 class QuestStepEffort(models.Model):
@@ -56,8 +61,8 @@ class QuestStepEffort(models.Model):
                                    on_delete=models.CASCADE, blank=True, null=True)
     action = models.ForeignKey(to="dominion.PlotAction", related_name="used_in_efforts", on_delete=models.CASCADE,
                                blank=True, null=True)
-    quest = models.ForeignKey(to="QuestStatus", related_name="used_in_efforts", on_delete=models.CASCADE, blank=True,
-                              null=True)
+    quest_status = models.ForeignKey(to="QuestStatus", related_name="used_in_efforts", on_delete=models.CASCADE,
+                                     blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if self.attempt_number == None:
