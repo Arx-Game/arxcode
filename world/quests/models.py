@@ -25,6 +25,9 @@ class QuestStep(QuestText):
     name = models.CharField(max_length=255)
     step_number = models.PositiveSmallIntegerField(default=0)
 
+    def __str__(self):
+        return self.name
+
 
 class QuestStatus(QuestText):
     "Records an entity's efforts and completion status of a Quest."
@@ -38,7 +41,7 @@ class QuestStatus(QuestText):
         verbose_name_plural = "Quest Statuses"
 
     def __str__(self):
-        return f"({self.id}) {self.entity} on: {self.quest}"
+        return f"{self.entity} on: {self.quest}"
 
 
 class QuestStepEffort(models.Model):
@@ -75,3 +78,6 @@ class QuestStepEffort(models.Model):
             if not incomplete_steps:
                 self.status.quest_completed = Now()
                 self.status.save()
+
+    def __str__(self):
+        return f"Effort by {self.status.entity}: {self.step.quest} ({self.step.name})"

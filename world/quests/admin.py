@@ -27,6 +27,7 @@ class QuestStepInline(admin.TabularInline):
     """Inline of steps for a quest"""
     model = QuestStep
     extra = 0
+    fields = ('step_number', 'name', 'ic_desc', 'gm_note')
 
 
 class QuestStatusInline(admin.TabularInline):
@@ -35,6 +36,8 @@ class QuestStatusInline(admin.TabularInline):
     extra = 0
     show_change_link = True
     raw_id_fields = ('entity',)
+    readonly_fields = ('quest_completed',)
+    fields = ('entity', 'ic_desc', 'gm_note', 'quest_completed')
 
 
 class QuestAdmin(admin.ModelAdmin):
@@ -71,6 +74,7 @@ class QuestStatusListFilter(QuestListFilter):
 class QuestStepEffortInline(admin.TabularInline):
     model = QuestStepEffort
     ordering = ('step__step_number', 'attempt_number')
+    list_select_related = ('status__entity', 'step__quest')
     raw_id_fields = ('event', 'flashback', 'char_clue', 'org_clue', 'revelation', 'action', 'quest_status')
     extra = 0
     fk_name = 'status'
@@ -78,7 +82,7 @@ class QuestStepEffortInline(admin.TabularInline):
 
 class QuestStatusAdmin(admin.ModelAdmin):
     """Admin for the status of entities' progress on a quest."""
-    list_display = ('status_name', 'db_date_created', 'quest_completed')
+    list_display = ('id', 'status_name', 'db_date_created', 'quest_completed')
     search_fields = ('=id', 'quest__name', '=entity__player__player__username', 'entity__organization_owner__name')
     list_filter = (QuestStatusListFilter,)
     raw_id_fields = ('entity',)
