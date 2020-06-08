@@ -791,7 +791,15 @@ class PrestigeTierAdmin(DomAdmin):
     search_fields = ('rank_name',)
 
 
+class ClueForOrgAdmin(admin.ModelAdmin):
+    """Admin for org clues."""
+    list_display = ('clue', 'org', 'revealed_by')
+    search_fields = ('clue__name', 'org__name')
+    raw_id_fields = ('clue', 'org', 'revealed_by')
+
+
 # Register your models here.
+admin.site.register(ClueForOrg, ClueForOrgAdmin)
 admin.site.register(PlayerOrNpc, PCAdmin)
 admin.site.register(Organization, OrgAdmin)
 admin.site.register(Domain, DomainAdmin)

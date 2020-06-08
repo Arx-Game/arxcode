@@ -256,6 +256,13 @@ class ClueDiscoveryAdmin(BaseCharAdmin):
     raw_id_fields = ('clue', 'character', 'investigation', 'revealed_by')
 
 
+class RevelationDiscoveryAdmin(BaseCharAdmin):
+    """Admin for ClueDiscoveries"""
+    list_display = ('id', 'revelation', 'character', 'discovery_method', 'revealed_by', 'investigation')
+    search_fields = ('id', 'revelation__name', '=character__character__db_key')
+    raw_id_fields = ('revelation', 'character', 'investigation', 'revealed_by')
+
+
 class RevForEntry(RevDiscoInline):
     """Inline of revelation discoveries"""
     fk_name = 'character'
@@ -510,6 +517,7 @@ admin.site.register(PlayerAccount, AccountAdmin)
 admin.site.register(StoryEmit, StoryEmitAdmin)
 admin.site.register(Mystery, MysteryAdmin)
 admin.site.register(Revelation, RevelationAdmin)
+admin.site.register(RevelationDiscovery, RevelationDiscoveryAdmin)
 admin.site.register(Clue, ClueAdmin)
 admin.site.register(ClueDiscovery, ClueDiscoveryAdmin)
 admin.site.register(Investigation, InvestigationAdmin)

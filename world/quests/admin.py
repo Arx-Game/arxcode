@@ -82,6 +82,7 @@ class QuestStatusAdmin(admin.ModelAdmin):
     search_fields = ('=id', 'quest__name', '=entity__player__player__username', 'entity__organization_owner__name')
     list_filter = (QuestStatusListFilter,)
     raw_id_fields = ('entity',)
+    readonly_fields = ('quest_completed',)
     inlines = [QuestStepEffortInline]
 
     @staticmethod
