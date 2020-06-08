@@ -74,7 +74,7 @@ class QuestStepEffort(models.Model):
             self.attempt_number = last_num + 1
         super().save(*args, **kwargs)
         if self.step_completed and not self.status.quest_completed:
-            successful_efforts = QuestStepEffort.objects.filter(status=self.status, step_completed=True)
+            successful_efforts = QuestStepEffort.objects.filter(status=self.status, step_completed__isnull=False)
             incomplete_steps = self.status.quest.steps.exclude(efforts__in=successful_efforts).distinct().count()
             if not incomplete_steps:
                 self.status.quest_completed = datetime.now()  # You're killing me, Smalls
