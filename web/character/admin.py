@@ -252,14 +252,14 @@ class ClueAdmin(BaseCharAdmin):
 class ClueDiscoveryAdmin(BaseCharAdmin):
     """Admin for ClueDiscoveries"""
     list_display = ('id', 'clue', 'character', 'discovery_method', 'revealed_by', 'investigation')
-    search_fields = ('id', 'clue__name', '=character__character__db_key')
+    search_fields = ('id', '=clue__name', '=character__character__db_key')
     raw_id_fields = ('clue', 'character', 'investigation', 'revealed_by')
 
 
 class RevelationDiscoveryAdmin(BaseCharAdmin):
     """Admin for ClueDiscoveries"""
     list_display = ('id', 'revelation', 'character', 'discovery_method', 'revealed_by', 'investigation')
-    search_fields = ('id', 'revelation__name', '=character__character__db_key')
+    search_fields = ('id', '=revelation__name', '=character__character__db_key')
     raw_id_fields = ('revelation', 'character', 'investigation', 'revealed_by')
 
 

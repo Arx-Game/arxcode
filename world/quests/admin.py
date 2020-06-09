@@ -12,8 +12,8 @@ class QuestListFilter(admin.SimpleListFilter):
 
     def lookups(self, request, model_admin):
         return (
-            ('org', 'For Organizations'),
-            ('char', 'For Characters'),
+            ('org', 'Organizations'),
+            ('char', 'Characters'),
         )
 
     def queryset(self, request, queryset):
@@ -26,8 +26,11 @@ class QuestListFilter(admin.SimpleListFilter):
 class QuestStepInline(admin.TabularInline):
     """Inline of steps for a quest"""
     model = QuestStep
+    ordering = ('step_number',)
     extra = 0
-    fields = ('step_number', 'name', 'ic_desc', 'gm_note')
+    fieldsets = [(None, {'fields': [('step_number', 'name')]}),
+                 (None, {'fields': ['ic_desc', 'gm_note'],
+                         'description': "Optional details or instruction for this Quest Step.", })]
 
 
 class QuestStatusInline(admin.TabularInline):
@@ -36,17 +39,21 @@ class QuestStatusInline(admin.TabularInline):
     extra = 0
     show_change_link = True
     raw_id_fields = ('entity',)
-    readonly_fields = ('quest_completed',)
-    fields = ('entity', 'ic_desc', 'gm_note', 'quest_completed')
+    readonly_fields = ('db_date_created', 'quest_completed',)
+    classes = ['collapse']
+    fieldsets = [(None, {'fields': [('entity', 'db_date_created', 'quest_completed')]}),
+                 (None, {'fields': ['ic_desc', 'gm_note'],
+                         'classes': ['collapse']})]
 
 
 class QuestAdmin(admin.ModelAdmin):
     """Admin for Quest model."""
     list_display = ('id', 'name', 'num_steps', 'has', 'done')
     search_fields = (
-    'name', '=id', '=search_tags__name', '=entities__player__player__username', 'entities__organization_owner__name')
+    '=name', 'id', '=search_tags__name', '=entities__player__player__username', '=entities__organization_owner__name')
     filter_horizontal = ('search_tags',)
     list_filter = (QuestListFilter,)
+    fields = ('name', 'ic_note', 'gm_note', 'search_tags')
     inlines = [QuestStepInline, QuestStatusInline]
 
     @staticmethod
@@ -73,20 +80,27 @@ class QuestStatusListFilter(QuestListFilter):
 
 class QuestStepEffortInline(admin.TabularInline):
     model = QuestStepEffort
+    list_select_related = ('status__entity', 'step')
     ordering = ('step__step_number', 'attempt_number')
-    list_select_related = ('status__entity', 'step__quest')
-    raw_id_fields = ('event', 'flashback', 'char_clue', 'org_clue', 'revelation', 'action', 'quest_status')
+    raw_id_fields = ('event', 'flashback', 'clue', 'org_clue', 'revelation', 'action', 'quest')
     extra = 0
     fk_name = 'status'
+    fieldsets = [(None, {'fields': [('step', 'attempt_number', 'step_completed')]}),
+                 (None, {'fields': [('event', 'action', 'flashback'), ('clue', 'revelation', 'org_clue', 'quest')],
+                         'description': "Please choose only one field per Effort.",
+                         'classes': ['collapse']})]
 
 
 class QuestStatusAdmin(admin.ModelAdmin):
     """Admin for the status of entities' progress on a quest."""
     list_display = ('id', 'status_name', 'db_date_created', 'quest_completed')
-    search_fields = ('=id', 'quest__name', '=entity__player__player__username', 'entity__organization_owner__name')
+    search_fields = ('id', '=quest__name', '=entity__player__player__username', '=entity__organization_owner__name')
     list_filter = (QuestStatusListFilter,)
     raw_id_fields = ('entity',)
-    readonly_fields = ('quest_completed',)
+    readonly_fields = ('quest', 'quest_completed',)
+    fieldsets = [(None, {'fields': [('quest', 'entity', 'quest_completed')]}),
+                 (None, {'fields': ['ic_desc', 'gm_note'],
+                         'description': "A story linking efforts toward quest resolution.",})]
     inlines = [QuestStepEffortInline]
 
     @staticmethod
@@ -96,3 +110,8 @@ class QuestStatusAdmin(admin.ModelAdmin):
 
 admin.site.register(Quest, QuestAdmin)
 admin.site.register(QuestStatus, QuestStatusAdmin)
+
+#TODO ask whether Effort model's on-save queries are unevaluated, as variables.
+#TODO ask whether QuestStepEffortInline needs 'step' in select_related
+#TODO in quest admin, make sure queststatus inline is collapsing overall
+#TODO make migrations
