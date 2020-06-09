@@ -17,10 +17,6 @@ class Guest(Account):
     See Player object for API. Will be overloading most methods to customize.
     """
 
-    @property
-    def is_authenticated(self):
-        return False
-
     def at_account_creation(self):
         """
         This is called once, the very first time
