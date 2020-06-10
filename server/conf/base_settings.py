@@ -177,3 +177,13 @@ GAME_INDEX_ENABLED = config('SEND_GAME_INDEX', cast=bool, default=False)
 ISSUES_URL = config('ISSUES_URL', default='')
 # Evennia's base settings screw up current account creation
 AUTH_PASSWORD_VALIDATORS = []
+MIDDLEWARE = [
+    "django.middleware.common.CommonMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",  # 1.4?
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.admindocs.middleware.XViewMiddleware",
+    "django.contrib.flatpages.middleware.FlatpageFallbackMiddleware",
+    "web.middleware.auth.SharedLoginMiddleware",
+]

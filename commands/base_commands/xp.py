@@ -180,7 +180,7 @@ class CmdUseXP(ArxCommand):
             if args in stats_and_skills.CRAFTING_ABILITIES:
                 spec_warning = True
             if current == 5:
-                if any(key for key, value in caller.traits.abilities
+                if any(key for key, value in caller.traits.abilities.items()
                        if key in stats_and_skills.CRAFTING_ABILITIES and value >= 6):
                     caller.msg("You have already chosen a crafting specialization.")
                     return
