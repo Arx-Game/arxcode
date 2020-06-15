@@ -12,7 +12,7 @@ class QuestText(models.Model):
 
 class Quest(QuestText):
     """A To-Do list of accomplishments for a character to achieve something."""
-    name = models.CharField(unique=True, max_length=255)
+    name = models.CharField(unique=True, max_length=255, blank=False)
     entities = models.ManyToManyField(to="dominion.AssetOwner", through="QuestStatus", related_name="quests")
     search_tags = models.ManyToManyField("character.SearchTag", blank=True, db_index=True, related_name="quests")
 
@@ -22,9 +22,9 @@ class Quest(QuestText):
 
 class QuestStep(QuestText):
     """A task that contributes to the completion of a Quest."""
-    quest = models.ForeignKey(to="Quest", related_name="steps", on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    step_number = models.PositiveSmallIntegerField(default=0)
+    quest = models.ForeignKey(to="Quest", related_name="steps", on_delete=models.CASCADE, null=False, blank=False)
+    name = models.CharField(max_length=255, blank=False)
+    step_number = models.PositiveSmallIntegerField(blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -32,8 +32,9 @@ class QuestStep(QuestText):
 
 class QuestStatus(QuestText):
     "Records an entity's efforts and completion status of a Quest."
-    quest = models.ForeignKey(to="Quest", related_name="statuses", on_delete=models.CASCADE)
-    entity = models.ForeignKey(verbose_name="Character/Org", to="dominion.AssetOwner", related_name="statuses", on_delete=models.CASCADE)
+    quest = models.ForeignKey(to="Quest", related_name="statuses", on_delete=models.CASCADE, blank=False)
+    entity = models.ForeignKey(verbose_name="Character/Org", to="dominion.AssetOwner", related_name="statuses",
+                               on_delete=models.CASCADE, blank=False)
     db_date_created = models.DateField(auto_now_add=True)
     quest_completed = models.DateField(verbose_name="Completed On", blank=True, null=True,
                                        help_text="Generated when all steps are marked complete.")
@@ -48,9 +49,9 @@ class QuestStatus(QuestText):
 class QuestStepEffort(models.Model):
     """Any of the items that show evidence toward a QuestStep's completion."""
     status = models.ForeignKey(to="QuestStatus", verbose_name="Contributes to", related_name="efforts",
-                               on_delete=models.CASCADE)
+                               on_delete=models.CASCADE, blank=False)
     step = models.ForeignKey(to="QuestStep", verbose_name="Quest Step", related_name="efforts",
-                             on_delete=models.CASCADE)
+                             on_delete=models.CASCADE, blank=False)
     attempt_number = models.PositiveSmallIntegerField(verbose_name="Attempt #", blank=True, null=True,
                                                       help_text="Efforts can be reordered with this.")
     step_completed = models.BooleanField(verbose_name="Step Complete?", blank=True, default=False,
