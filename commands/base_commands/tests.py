@@ -1296,8 +1296,13 @@ class CheckCommandTests(ArxCommandTest):
 
         self.random_state = getstate()
 
+        # This is to prevent char1 from also receiving GM-only messages
+        # from the @check announcement to the room.
+        self.char1.permissions.remove("Developer")
+
 
     def test_cmd_check_retainer(self):
+        # I need to quell char1 somehow, or change permissions to non-Wizard.
         self.setup_cmd(rolling.CmdDiceCheck, self.char1)
 
         expected_return = "Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]"
@@ -1345,3 +1350,4 @@ class CheckCommandTests(ArxCommandTest):
 
     def tearDown(self):
         setstate(self.random_state)
+        self.char1.permissions.add("Developer")
