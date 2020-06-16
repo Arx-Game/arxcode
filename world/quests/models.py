@@ -36,7 +36,7 @@ class QuestStatus(QuestText):
     entity = models.ForeignKey(verbose_name="Character/Org", to="dominion.AssetOwner", related_name="statuses",
                                on_delete=models.CASCADE, blank=False)
     db_date_created = models.DateField(auto_now_add=True)
-    quest_completed = models.DateField(verbose_name="Completed On", blank=True, null=True,
+    quest_completed = models.DateField(verbose_name="Completed", blank=True, null=True,
                                        help_text="Generated when all steps are marked complete.")
 
     class Meta:
@@ -46,7 +46,7 @@ class QuestStatus(QuestText):
         return f"{self.entity} on: {self.quest}"
 
 
-class QuestStepEffort(models.Model):
+class QuestEffort(models.Model):
     """Any of the items that show evidence toward a QuestStep's completion."""
     status = models.ForeignKey(to="QuestStatus", verbose_name="Contributes to", related_name="efforts",
                                on_delete=models.CASCADE, blank=False)
@@ -72,7 +72,7 @@ class QuestStepEffort(models.Model):
                                    help_text="A character's discovery of revelation, not the revelation itself.")
     action = models.ForeignKey(to="dominion.PlotAction", verbose_name="Action", related_name="used_in_efforts",
                                on_delete=models.CASCADE, blank=True, null=True)
-    quest = models.ForeignKey(to="QuestStatus", verbose_name="Completed Quest", related_name="used_in_efforts",
+    quest = models.ForeignKey(to="QuestStatus", verbose_name="Required Quest", related_name="used_in_efforts",
                               on_delete=models.CASCADE, blank=True, null=True,
                               help_text="Character's status/progress on another quest, not the quest itself.")
 
@@ -81,7 +81,7 @@ class QuestStepEffort(models.Model):
             last_number = self.status.efforts.filter(step=self.step).exclude(id=self.id).count()
             self.attempt_number = last_number + 1
         super().save(*args, **kwargs)
-        successful_efforts = QuestStepEffort.objects.filter(status=self.status, step_completed=True)
+        successful_efforts = QuestEffort.objects.filter(status=self.status, step_completed=True)
         incomplete_steps = self.step.quest.steps.exclude(efforts__in=successful_efforts).distinct().count()
         if not self.step_completed and self.status.quest_completed and incomplete_steps:
             self.status.quest_completed = None
