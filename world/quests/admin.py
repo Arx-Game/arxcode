@@ -111,7 +111,7 @@ class QuestEffortInline(admin.StackedInline):
                              'classes': ['collapse']})]
 
     def get_formset(self, request, obj=None, **kwargs):
-        formset = super(QuestEffortInline, self).get_formset(request, obj=None, **kwargs)
+        formset = super().get_formset(request, obj=obj, **kwargs)
         if obj:
             step_field = formset.form.declared_fields['step']
             step_field.queryset = QuestStep.objects.filter(quest=obj.quest_id).order_by('step_number')
@@ -121,7 +121,7 @@ class QuestEffortInline(admin.StackedInline):
 class QuestStatusForm(forms.ModelForm):
     """Form for status of someone's progress on a quest."""
     def __init__(self, *args, **kwargs):
-        super(QuestStatusForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         instance = getattr(self, 'instance', None)
         if instance and instance.pk:
             # noinspection PyStatementEffect
