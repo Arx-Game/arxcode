@@ -111,7 +111,7 @@ class QuestEffortInline(admin.StackedInline):
                              'classes': ['collapse']})]
 
     def get_formset(self, request, obj=None, **kwargs):
-        formset = super().get_formset(request, obj=obj, **kwargs)
+        formset = super().get_formset(request, obj, **kwargs)
         if obj:
             step_field = formset.form.declared_fields['step']
             step_field.queryset = QuestStep.objects.filter(quest=obj.quest_id).order_by('step_number')
@@ -142,8 +142,8 @@ class QuestStatusAdmin(admin.ModelAdmin, StatusDateMixin):
 
     def get_inline_instances(self, request, obj=None):
         if obj:
-            return self.inlines
-        return [ob(self.model, self.admin_site) for ob in self.inlines if (ob != QuestEffortInline)]
+            return [ob(self.model, self.admin_site) for ob in self.inlines]
+        return []
 
 
 # Register your models here.
