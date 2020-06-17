@@ -91,4 +91,4 @@ class QuestEffort(models.Model):
             self.status.save()
 
     def __str__(self):
-        return f"Effort by {self.status.entity} (Quest #{self.step.quest_id} Step {self.step.step_number})"
+        return f"{self.step}: Attempt #{self.attempt_number} by {self.status.entity}"
