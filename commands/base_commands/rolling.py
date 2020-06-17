@@ -173,7 +173,7 @@ class CmdDiceCheck(ArxCommand):
             matches = stats_and_skills.get_partial_match(skill, "skill")
             if not matches:
                 # check for a skill not in the normal valid list
-                if skill in caller.traits.skills:
+                if skill in self.caller.traits.skills:
                     matches = [skill]
                 else:
                     raise ValueError("No matches for a skill by that name. Check spelling and try again.")

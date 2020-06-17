@@ -4,6 +4,7 @@ Tests for different general commands.
 
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
+from random import getstate, setstate, seed
 
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
 from world.dominion.domain.models import Army
