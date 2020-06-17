@@ -55,6 +55,7 @@ class QuestStatusInline(admin.StackedInline, StatusDateMixin):
     extra = 0
     show_change_link = True
     raw_id_fields = ('entity',)
+    readonly_fields = ('created', 'completed',)
     classes = ['collapse']
     fieldsets = [(None, {'fields': [('entity', 'created', 'completed')]}),
                  ('Details', {'fields': ['ic_desc', 'gm_note'],
@@ -133,7 +134,8 @@ class QuestStatusAdmin(admin.ModelAdmin, StatusDateMixin):
     search_fields = ('id', 'quest__name', '=entity__player__player__username', '=entity__organization_owner__name')
     list_filter = (QuestStatusListFilter,)
     raw_id_fields = ('entity',)
-    fieldsets = [(None, {'fields': [('quest', 'entity', 'completed'),]}),
+    readonly_fields = ('created', 'completed',)
+    fieldsets = [(None, {'fields': [('quest', 'entity', 'created', 'completed'),]}),
                  (None, {'fields': ['ic_desc', 'gm_note'],
                          'description': "A story linking efforts toward quest resolution.",})]
     inlines = [QuestEffortInline]
