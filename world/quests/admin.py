@@ -25,7 +25,7 @@ class QuestListFilter(admin.SimpleListFilter):
             return queryset.filter(entities__player__isnull=False).distinct()
 
 
-class QuestStepInline(admin.TabularInline):
+class QuestStepInline(admin.StackedInline):
     """Inline of steps for a quest"""
     model = QuestStep
     ordering = ('step_number',)
@@ -36,13 +36,13 @@ class QuestStepInline(admin.TabularInline):
     #                      'description': "Optional details or instruction for this Quest Step.", })]
 
 
-class QuestStatusInline(admin.TabularInline):
+class QuestStatusInline(admin.StackedInline):
     """Inline of statuses of entities on a quest"""
     model = QuestStatus
     extra = 0
     show_change_link = True
     raw_id_fields = ('entity',)
-    readonly_fields = ('db_date_created', 'quest_completed',)  # TODO
+    readonly_fields = ('db_date_created', 'quest_completed',)
     classes = ['collapse']
     fields = (('entity', 'db_date_created', 'quest_completed'),('ic_desc', 'gm_note'))
     # fieldsets = [(None, {'fields': [('entity', 'db_date_created', 'quest_completed')]}),
@@ -84,7 +84,7 @@ class QuestEffortForm(forms.ModelForm):
     step = forms.ModelChoiceField(queryset=None, label='Quest Step', required=True)
 
 
-class QuestEffortInline(admin.TabularInline):
+class QuestEffortInline(admin.StackedInline):
     model = QuestEffort
     form = QuestEffortForm
     list_select_related = ('status__entity',)
@@ -100,8 +100,10 @@ class QuestEffortInline(admin.TabularInline):
     #                      'classes': ['collapse']})]
     def get_formset(self, request, obj=None, **kwargs):
         formset = super(QuestEffortInline, self).get_formset(request, obj=None, **kwargs)
-        field = formset.form.declared_fields['step']
-        field.queryset = QuestStep.objects.filter(quest=obj.quest_id).order_by('step_number')
+        if obj:
+            step_field = formset.form.declared_fields['step']
+            step_field.queryset = QuestStep.objects.filter(quest=obj.quest_id).order_by('step_number')
+        return formset
 
 
 class QuestStatusAdmin(admin.ModelAdmin):

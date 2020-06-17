@@ -35,7 +35,7 @@ class QuestStatus(QuestText):
     quest = models.ForeignKey(to="Quest", related_name="statuses", on_delete=models.CASCADE, blank=False)
     entity = models.ForeignKey(verbose_name="Character/Org", to="dominion.AssetOwner", related_name="statuses",
                                on_delete=models.CASCADE, blank=False)
-    db_date_created = models.DateField(auto_now_add=True)
+    db_date_created = models.DateField(verbose_name="Started", auto_now_add=True)
     quest_completed = models.DateField(verbose_name="Completed", blank=True, null=True,
                                        help_text="Generated when all steps are marked complete.")
 
@@ -48,7 +48,7 @@ class QuestStatus(QuestText):
 
 class QuestEffort(models.Model):
     """Any of the items that show evidence toward a QuestStep's completion."""
-    status = models.ForeignKey(to="QuestStatus", verbose_name="Contributes to", related_name="efforts",
+    status = models.ForeignKey(to="QuestStatus", verbose_name="Quester Status", related_name="efforts",
                                on_delete=models.CASCADE, blank=False)
     step = models.ForeignKey(to="QuestStep", verbose_name="Quest Step", related_name="efforts",
                              on_delete=models.CASCADE, blank=False)
