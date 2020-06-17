@@ -65,7 +65,7 @@ class Roll(object):
                 if self.retainer is None:
                     self.stats[somestat] += self.character.traits.get_stat_value(somestat)
                 else:
-                    self.stats[somestat] += self.retainer.dbobj.attributes.get(somestat, 0)
+                    self.stats[somestat] += self.retainer.dbobj.traits.get_stat_value(somestat)
             # None isn't iterable so make an empty set of skills
             skill_list = skill_list or []
             # add individual skill to the list
@@ -76,7 +76,7 @@ class Roll(object):
             if self.retainer is None:
                 skills = caller.traits.skills or {}
             else:
-                skills = self.retainer.dbobj.db.skills or {}
+                skills = self.retainer.dbobj.traits.skills or {}
             # compares skills to dict we just made, adds to self.skills dict
             for someskill in skill_list:
                 self.skills[someskill] += skills.get(someskill, 0)
