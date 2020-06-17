@@ -49,7 +49,7 @@ class QuestStepInline(admin.StackedInline):
                          'description': "Optional details or instruction for this Quest Step.", })]
 
 
-class QuestStatusInline(admin.StackedInline, StatusDateMixin):
+class QuestStatusInline(admin.TabularInline, StatusDateMixin):
     """Inline of quester-statuses on a quest."""
     model = QuestStatus
     extra = 0
@@ -57,9 +57,7 @@ class QuestStatusInline(admin.StackedInline, StatusDateMixin):
     raw_id_fields = ('entity',)
     readonly_fields = ('created', 'completed',)
     classes = ['collapse']
-    fieldsets = [(None, {'fields': [('entity', 'created', 'completed')]}),
-                 ('Details', {'fields': ['ic_desc', 'gm_note'],
-                              'classes': ['collapse']})]
+    fields = ('entity', 'created', 'completed')
 
 
 class QuestAdmin(admin.ModelAdmin):
@@ -106,9 +104,8 @@ class QuestEffortInline(admin.StackedInline):
     extra = 0
     fk_name = 'status'
     fieldsets = [(None, {'fields': [('step', 'attempt_number', 'step_completed')]}),
-                 ('Object', {'fields': [('event', 'action', 'flashback'), ('clue', 'revelation', 'org_clue', 'quest')],
-                             'description': "Please choose only one field.",
-                             'classes': ['collapse']})]
+                 (None, {'fields': [('event', 'action', 'flashback'), ('clue', 'revelation', 'org_clue', 'quest')],
+                         'description': "Please choose only one field:",})]
 
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
@@ -135,7 +132,7 @@ class QuestStatusAdmin(admin.ModelAdmin, StatusDateMixin):
     list_filter = (QuestStatusListFilter,)
     raw_id_fields = ('entity',)
     readonly_fields = ('created', 'completed',)
-    fieldsets = [(None, {'fields': [('quest', 'entity', 'created', 'completed'),]}),
+    fieldsets = [(None, {'fields': [('quest', 'entity'), ('created', 'completed'),]}),
                  (None, {'fields': ['ic_desc', 'gm_note'],
                          'description': "A story linking efforts toward quest resolution.",})]
     inlines = [QuestEffortInline]
