@@ -53,9 +53,9 @@ class QuestEffort(models.Model):
     step = models.ForeignKey(to="QuestStep", verbose_name="Quest Step", related_name="efforts",
                              on_delete=models.CASCADE, blank=False)
     attempt_number = models.PositiveSmallIntegerField(verbose_name="Attempt #", blank=True, null=True,
-                                                      help_text="Efforts can be reordered with this.")
+                                                      help_text="Reorders efforts")
     step_completed = models.BooleanField(verbose_name="Step Complete?", blank=True, default=False,
-                                         help_text="Mark if this effort fulfills the Quest Step's requirements.")
+                                         help_text="Mark if effort fulfills Quest Step requirements.")
     # behold! the field in which I grow mine fks, and see that there are many:
     event = models.ForeignKey(to="dominion.RPEvent", verbose_name="Event", related_name="used_in_efforts",
                               on_delete=models.CASCADE, blank=True, null=True)
@@ -63,18 +63,18 @@ class QuestEffort(models.Model):
                                   on_delete=models.CASCADE, blank=True, null=True)
     clue = models.ForeignKey(to="character.ClueDiscovery", verbose_name="Clue disco", related_name="used_in_efforts",
                              on_delete=models.CASCADE, blank=True, null=True,
-                             help_text="A character's discovery of a clue, not the clue itself.")
+                             help_text="Character's discovery of a clue, not clue itself.")
     org_clue = models.ForeignKey(to="dominion.ClueForOrg", verbose_name="Org Clue", related_name="used_in_efforts",
                                  on_delete=models.CASCADE, blank=True, null=True,
-                                 help_text="An organization's possession of a clue, not the clue itself.")
+                                 help_text="Org's possession of a clue, not clue itself.")
     revelation = models.ForeignKey(to="character.RevelationDiscovery", verbose_name="Rev disco",
                                    related_name="used_in_efforts", on_delete=models.CASCADE, blank=True, null=True,
-                                   help_text="A character's discovery of revelation, not the revelation itself.")
+                                   help_text="Character's discovery of revelation, not revelation itself.")
     action = models.ForeignKey(to="dominion.PlotAction", verbose_name="Action", related_name="used_in_efforts",
                                on_delete=models.CASCADE, blank=True, null=True)
     quest = models.ForeignKey(to="QuestStatus", verbose_name="Required Quest", related_name="used_in_efforts",
                               on_delete=models.CASCADE, blank=True, null=True,
-                              help_text="Character's status/progress on another quest, not the quest itself.")
+                              help_text="Character/org's status on a quest, not quest itself.")
 
     def save(self, *args, **kwargs):
         if self.attempt_number == None:

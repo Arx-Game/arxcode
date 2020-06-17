@@ -10,7 +10,7 @@ from .models import Quest, QuestStep, QuestStatus, QuestEffort
 class StatusDateMixin:
     """A mixin keeping readonly dates DRY."""
     @staticmethod
-    def created(obj):
+    def started(obj):
         return obj.db_date_created.strftime('%Y-%m-%d')
 
     @staticmethod
@@ -44,9 +44,7 @@ class QuestStepInline(admin.StackedInline):
     model = QuestStep
     ordering = ('step_number',)
     extra = 0
-    fieldsets = [(None, {'fields': [('step_number', 'name')]}),
-                 (None, {'fields': ['ic_desc', 'gm_note'],
-                         'description': "Optional details or instruction for this Quest Step.", })]
+    fields = (('name', 'step_number'), 'ic_desc', 'gm_note')
 
 
 class QuestStatusInline(admin.TabularInline, StatusDateMixin):
@@ -55,9 +53,9 @@ class QuestStatusInline(admin.TabularInline, StatusDateMixin):
     extra = 0
     show_change_link = True
     raw_id_fields = ('entity',)
-    readonly_fields = ('created', 'completed',)
+    readonly_fields = ('started', 'completed',)
     classes = ['collapse']
-    fields = ('entity', 'created', 'completed')
+    fields = ('entity', 'started', 'completed')
 
 
 class QuestAdmin(admin.ModelAdmin):
@@ -103,8 +101,8 @@ class QuestEffortInline(admin.StackedInline):
     raw_id_fields = ('event', 'flashback', 'clue', 'org_clue', 'revelation', 'action', 'quest')
     extra = 0
     fk_name = 'status'
-    fieldsets = [(None, {'fields': [('step', 'attempt_number', 'step_completed')]}),
-                 (None, {'fields': [('event', 'action', 'flashback'), ('clue', 'revelation', 'org_clue', 'quest')],
+    fieldsets = [('Effort', {'fields': [('step', 'attempt_number', 'step_completed')]}),
+                 (None, {'fields': ['event', 'action', 'flashback', 'clue', 'revelation', 'org_clue', 'quest'],
                          'description': "Please choose only one field:",})]
 
     def get_formset(self, request, obj=None, **kwargs):
@@ -127,14 +125,14 @@ class QuestStatusForm(forms.ModelForm):
 
 class QuestStatusAdmin(admin.ModelAdmin, StatusDateMixin):
     """Admin for the status of someone's progress on a quest."""
-    list_display = ('id', '__str__', 'created', 'completed')
+    list_display = ('id', '__str__', 'started', 'completed')
     search_fields = ('id', 'quest__name', '=entity__player__player__username', '=entity__organization_owner__name')
     list_filter = (QuestStatusListFilter,)
     raw_id_fields = ('entity',)
-    readonly_fields = ('created', 'completed',)
-    fieldsets = [(None, {'fields': [('quest', 'entity'), ('created', 'completed'),]}),
+    readonly_fields = ('started', 'completed',)
+    fieldsets = [(None, {'fields': [('quest', 'entity'), ('started', 'completed'),]}),
                  (None, {'fields': ['ic_desc', 'gm_note'],
-                         'description': "A story linking efforts toward quest resolution.",})]
+                         'description': "Summary linking efforts toward quest resolution.",})]
     inlines = [QuestEffortInline]
 
     def get_inline_instances(self, request, obj=None):
