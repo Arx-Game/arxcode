@@ -3,8 +3,8 @@ from django.db import models
 
 
 class QuestText(models.Model):
-    ic_desc = models.TextField(blank=True)
-    gm_note = models.TextField(blank=True)
+    ic_desc = models.TextField(verbose_name='IC Desc', blank=True)
+    gm_note = models.TextField(verbose_name='GM Note', blank=True)
 
     class Meta:
         abstract = True
@@ -31,7 +31,7 @@ class QuestStep(QuestText):
 
 
 class QuestStatus(QuestText):
-    "Records an entity's efforts and completion status of a Quest."
+    """Records an entity's efforts and completion status of a Quest."""
     quest = models.ForeignKey(to="Quest", related_name="statuses", on_delete=models.CASCADE, blank=False)
     entity = models.ForeignKey(verbose_name="Character/Org", to="dominion.AssetOwner", related_name="statuses",
                                on_delete=models.CASCADE, blank=False)
@@ -77,7 +77,7 @@ class QuestEffort(models.Model):
                               help_text="Character/org's status on a quest, not quest itself.")
 
     def save(self, *args, **kwargs):
-        if self.attempt_number == None:
+        if self.attempt_number is None:
             last_number = self.status.efforts.filter(step=self.step).exclude(id=self.id).count()
             self.attempt_number = last_number + 1
         super().save(*args, **kwargs)

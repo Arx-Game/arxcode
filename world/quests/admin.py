@@ -44,6 +44,7 @@ class QuestStepInline(admin.StackedInline):
     model = QuestStep
     ordering = ('step_number',)
     extra = 0
+    classes = ['collapse']
     fields = (('name', 'step_number'), 'ic_desc', 'gm_note')
 
 
@@ -68,6 +69,7 @@ class QuestAdmin(admin.ModelAdmin):
     list_filter = (QuestListFilter,)
     fields = ('name', 'ic_desc', 'gm_note', 'search_tags')
     inlines = [QuestStepInline, QuestStatusInline]
+    save_on_top = True
 
     @staticmethod
     def questers(obj):
@@ -101,9 +103,9 @@ class QuestEffortInline(admin.StackedInline):
     raw_id_fields = ('event', 'flashback', 'clue', 'org_clue', 'revelation', 'action', 'quest')
     extra = 0
     fk_name = 'status'
-    fieldsets = [('Effort', {'fields': [('step', 'attempt_number', 'step_completed')]}),
+    fieldsets = [(None, {'fields': [('step', 'attempt_number', 'step_completed')]}),
                  (None, {'fields': ['event', 'action', 'flashback', 'clue', 'revelation', 'org_clue', 'quest'],
-                         'description': "Please choose only one field:",})]
+                         'description': "Please choose only one field:"})]
 
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
@@ -130,10 +132,11 @@ class QuestStatusAdmin(admin.ModelAdmin, StatusDateMixin):
     list_filter = (QuestStatusListFilter,)
     raw_id_fields = ('entity',)
     readonly_fields = ('started', 'completed',)
-    fieldsets = [(None, {'fields': [('quest', 'entity'), ('started', 'completed'),]}),
+    fieldsets = [(None, {'fields': [('quest', 'entity'), ('started', 'completed')]}),
                  (None, {'fields': ['ic_desc', 'gm_note'],
-                         'description': "Summary linking efforts toward quest resolution.",})]
+                         'description': "Summary linking efforts toward quest resolution."})]
     inlines = [QuestEffortInline]
+    save_on_top = True
 
     def get_inline_instances(self, request, obj=None):
         if obj:
