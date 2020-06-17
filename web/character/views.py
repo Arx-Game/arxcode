@@ -584,7 +584,7 @@ class AssistForm(forms.Form):
     def __init__(self, caller, *args, **kwargs):
         super(AssistForm,self).__init__(*args, **kwargs)
         skills = []
-        for k, v in caller.db.skills.items():
+        for k, v in caller.traits.skills:
             skills.append((k, k.capitalize()))
         self.fields['skill_choice'] = forms.ChoiceField(choices=skills, label='Skill to Roll')
 

@@ -4,13 +4,18 @@ Tests for different command sets.
 from mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest
-from . import combat, market
+from . import combat, market, home
 
 
 # noinspection PyUnresolvedReferences
 # noinspection PyUnusedLocal
 @patch.object(combat, "inform_staff")
 class CombatCommandsTests(ArxCommandTest):
+    def setUp(self):
+        super().setUp()
+        self.char1.traits.initialize_stats()
+        self.char2.traits.initialize_stats()
+
     def start_fight(self, *args):
         """Helper function for starting a fight in our test"""
         fight = combat.start_fight_at_room(self.room1)
@@ -254,6 +259,7 @@ class CombatCommandsTests(ArxCommandTest):
         self.char1.db.defenders = [self.char3]
         self.char3.db.guarding = self.char1
         self.char3.combat.autoattack = True
+        self.char3.traits.initialize_stats()
         fight = self.start_fight(self.char1)
         self.call_cmd("", "Could not find ''.|Attack who?")
         self.call_cmd("Emerald", "Could not find 'Emerald'.|Attack who?")
@@ -520,24 +526,24 @@ class TestMarketCommands(ArxCommandTest):
                                                     "You can use /roll to try to negotiate the price.")
         self.assertEqual(self.roster_entry.action_points, 90)
         self.call_cmd("/findbuyer economic=200", 'You already have a deal in progress: please decline it first.\n'
-                                                 'Attempting to buy: 100 economic resources.\nCurrent Discount: 0\n'
-                                                 'Silver Cost: 50000.0 (Base Cost Per Unit: 500.0)\n'
+                                                 'Attempting to buy: 100 economic resources.\nCurrent Discount: 20\n'
+                                                 'Silver Cost: 40000.0 (Base Cost Per Unit: 500.0)\n'
                                                  'Roll Modifier: 0')
         self.call_cmd("/accept", "You haven't struck a deal yet. You must negotiate the deal before you can accept it.")
         self.call_cmd("/roll", 'You have found a better deal:\nAttempting to buy: 100 economic resources.\n'
-                               'Current Discount: 10\nSilver Cost: 45000.0 (Base Cost Per Unit: 500.0)\n'
+                               'Current Discount: 30\nSilver Cost: 35000.0 (Base Cost Per Unit: 500.0)\n'
                                'Roll Modifier: 0')
         self.call_cmd("/roll", 'You failed to find a better deal.\nAttempting to buy: 100 economic resources.\n'
-                               'Current Discount: 10\nSilver Cost: 45000.0 (Base Cost Per Unit: 500.0)\n'
+                               'Current Discount: 30\nSilver Cost: 35000.0 (Base Cost Per Unit: 500.0)\n'
                                'Roll Modifier: 0')
         self.assertEqual(self.roster_entry.action_points, 80)
         deal = self.char1.db.haggling_deal
         self.call_cmd("/decline", "You have cancelled the deal.")
         self.assertEqual(self.char1.db.haggling_deal, None)
         self.char1.db.haggling_deal = deal
-        self.call_cmd("/accept", 'You cannot afford the silver cost of 45000.0.')
-        self.char1.db.currency = 50000.0
-        self.call_cmd("/accept", 'You have bought 100 economic resources for 45000.0 silver.')
+        self.call_cmd("/accept", 'You cannot afford the silver cost of 35000.0.')
+        self.char1.db.currency = 40000.0
+        self.call_cmd("/accept", 'You have bought 100 economic resources for 35000.0 silver.')
         self.assertEqual(self.assetowner.economic, 100)
         self.assertEqual(self.char1.currency, 5000.0)
         mock_dice_check.return_value = 200
@@ -545,11 +551,11 @@ class TestMarketCommands(ArxCommandTest):
                                                  ' a bonus of 25.|You found someone willing to buy 100 economic. '
                                                  'You can use /roll to try to negotiate the price.')
         self.call_cmd("/roll", 'You have found a better deal:\nAttempting to sell: 100 economic resources.\n'
-                               'Current Markup Bonus: 89\nSilver Value: 44500.0 (Base Cost Per Unit: 500.0)\n'
+                               'Current Markup Bonus: 55\nSilver Value: 14771.9 (Base Cost Per Unit: 268.6)\n'
                                'Roll Modifier: 25')
-        self.call_cmd("/accept", 'You have sold 100 economic resources and gained 44500.0 silver.')
+        self.call_cmd("/accept", 'You have sold 100 economic resources and gained 14771.9 silver.')
         self.assertEqual(self.assetowner.economic, 0)
-        self.assertEqual(self.char1.currency, 49500.0)
+        self.assertEqual(self.char1.currency, 19771.9)
         material = CraftingMaterialType.objects.create(name="testium", value=50000000)
         self.call_cmd("/findseller testium=10", 'You had trouble finding a deal for such a valuable item. Haggling '
                                                 'rolls will have a penalty of -99.|You found someone willing to sell 1 '
@@ -560,10 +566,10 @@ class TestMarketCommands(ArxCommandTest):
         self.call_cmd("/findseller testium=10", 'Due to your success in searching for a deal, haggling rolls will have'
                                                 ' a bonus of 25.|You found someone willing to sell 10 testium. You can '
                                                 'use /roll to try to negotiate the price.')
-        self.call_cmd("/roll", 'You have found a better deal:\nAttempting to buy: 10 testium.\nCurrent Discount: 79\n'
-                               'Silver Cost: 10500.0 (Base Cost Per Unit: 5000)\nRoll Modifier: 25')
+        self.call_cmd("/roll", 'You have found a better deal:\nAttempting to buy: 10 testium.\nCurrent Discount: 65\n'
+                               'Silver Cost: 17500.0 (Base Cost Per Unit: 5000.0)\nRoll Modifier: 25')
         deal = list(self.char1.db.haggling_deal)
-        self.call_cmd("/accept", "You have bought 10 testium for 10500.0 silver.")
+        self.call_cmd("/accept", "You have bought 10 testium for 17500.0 silver.")
         mats = self.assetowner.materials.get(type__name=material.name)
         self.assertEqual(mats.amount, 10)
         deal[0] = "sell"
@@ -578,18 +584,18 @@ class TestMarketCommands(ArxCommandTest):
         self.call_cmd("/roll",
                       'Engaging in crass mercantile haggling is considered beneath those of high social rank. '
                       'Fortunately, no one noticed this time.|You failed to find a better deal.\n'
-                      'Attempting to sell: 30 testium.\nCurrent Markup Bonus: 89\n'
-                      'Silver Value: 56951.1 (Base Cost Per Unit: 2133)\nRoll Modifier: 25')
+                      'Attempting to sell: 30 testium.\nCurrent Markup Bonus: 55\n'
+                      'Silver Value: 35201.2 (Base Cost Per Unit: 2133.4)\nRoll Modifier: 25')
         mock_dice_check.return_value = -5
         self.call_cmd("/roll", 'Engaging in crass mercantile haggling is considered beneath those of high social rank. '
                                'Unfortunately, you were noticed and lose 5 fame.|You failed to find a better deal.\n'
-                               'Attempting to sell: 30 testium.\nCurrent Markup Bonus: 89\n'
-                               'Silver Value: 56951.1 (Base Cost Per Unit: 2133)'
+                               'Attempting to sell: 30 testium.\nCurrent Markup Bonus: 55\n'
+                               'Silver Value: 35201.2 (Base Cost Per Unit: 2133.4)'
                                '\nRoll Modifier: 25')
-        self.call_cmd("/accept", 'You have sold 30 testium and gained 56951.1 silver.')
+        self.call_cmd("/accept", 'You have sold 30 testium and gained 35201.2 silver.')
         self.assertEqual(self.assetowner.fame, 495)
         self.assertEqual(mats.amount, 0)
-        self.assertEqual(self.char1.currency, 95951.1)
+        self.assertEqual(self.char1.currency, 37473.1)
         mock_dice_check.return_value = 10
         self.call_cmd("/findseller testium,testaccount2=50,bar", "The optional minimum bonus must be a number.")
         self.call_cmd("/findseller testium,testaccount2=50,500", 'The roll bonus of 0 was below the minimum of 25, '
@@ -601,9 +607,32 @@ class TestMarketCommands(ArxCommandTest):
                       'You found someone willing to sell 50 testium. You let Char2 know that a deal is on the way.')
         self.assertEqual(self.char2.db.haggling_deal, ('buy', 1, 50, 0, 25))
         self.account2.inform.assert_called_with('You have been sent a deal that you can choose to haggle by Char.\n'
-                                                '{wAttempting to buy:{n 50 testium.\n{wCurrent Discount:{n 0\n'
-                                                '{wSilver Cost:{n 250000.0 (Base Cost Per Unit: 5000)\n'
+                                                '{wAttempting to buy:{n 50 testium.\n{wCurrent Discount:{n 20\n'
+                                                '{wSilver Cost:{n 200000.0 (Base Cost Per Unit: 5000.0)\n'
                                                 '{wRoll Modifier:{n 25',
                                                 category='Deal Offer')
         self.call_cmd("/findseller testium,testaccount2=50,25",
                       "They already have a deal in progress. Ask them to decline it first.")
+
+
+class TestHomeCommands(ArxCommandTest):
+    def test_cmd_shop(self):
+        from world.dominion.models import CraftingRecipe
+        recipes = {CraftingRecipe.objects.create(id=1, name="Item1", additional_cost=10),  
+                   CraftingRecipe.objects.create(id=2, name="Item2")}
+        self.char2.player_ob.Dominion.assets.recipes.set(recipes)
+        prices = self.room.db.crafting_prices or {}
+        prices[1] = 10
+        prices["removed"] = {2}
+        self.room.db.crafting_prices = prices
+        self.room.db.shopowner = self.char2
+        self.char1.location = self.room
+        self.setup_cmd(home.CmdBuyFromShop, self.char1)
+        self.call_cmd("/test", "Invalid switch.")
+        self.call_cmd("/craft", "Please provide a valid recipe name.")
+        self.call_cmd("/craft Item2", "Recipe by the name Item2 is not available.")
+        self.call_cmd("/craft Item3", "No recipe found by the name Item3.")
+        self.call_cmd("", 'Crafting Prices\n\nName  Craft Price Refine Price \n'
+                          'Item1 11.0        0            \nItem Prices')
+        self.call_cmd("/craft Item1", 'Char2 has started to craft: Item1.|'
+                                      'To finish it, use /finish after you gather the following:|Silver: 10')              

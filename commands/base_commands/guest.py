@@ -110,13 +110,13 @@ def setup_voc(char, args):
     stat_tup = _voc_start_stats_[args]
     x = 0
     for stat in VALID_STATS:
-        char.attributes.add(stat, stat_tup[x])
+        char.traits.set_stat_value(stat, stat_tup[x])
         x += 1
-    char.attributes.add("skills", copy.deepcopy(skills))
-    char.db.abilities = {}
+    char.traits.skills = copy.deepcopy(skills)
+    char.traits.wipe_all_abilities()
     # if their vocation is a crafter, give them a starting rank of 2
     if args in CRAFTING_ABILITIES:
-        char.db.abilities = {args: 3}
+        char.traits.set_ability_value(args, 3)
 
 
 def get_total_skill_points():
@@ -438,10 +438,8 @@ class CmdGuestLook(ArxPlayerCommand):
             return
         if stage == 4:
             caller.msg(stage_title(stage))
-            if char.db.skills is None:
-                char.db.skills = {}
-            if char.db.abilities is None:
-                char.db.abilities = {}
+            char.traits.initialize_skills()
+            char.traits.initialize_abilities()
             if not caller.ndb.seen_stage4_intro:
                 caller.msg(STAGE4)
                 caller.ndb.seen_stage4_intro = True
@@ -456,14 +454,14 @@ class CmdGuestLook(ArxPlayerCommand):
                 caller.msg("\nYou have {w%s{n stat points and {w%s{n skill points to spend." % (stat_pts, skill_pts))
                 stat_str = "{wCurrent stats:{n "
                 for stat in VALID_STATS:
-                    val = char.attributes.get(stat)
+                    val = char.traits.get_stat_value(stat)
                     if not val:
                         val = 0
                     stat_str += "{c" + stat + "{n: {w" + str(val) + "{n\t"
                 caller.msg(stat_str)
                 skill_str = "{wCurrent skills:{n "
-                for skill in sorted(char.db.skills):
-                    skill_str += " {c" + skill + "{n: {w" + str(char.db.skills[skill]) + "{n\t"
+                for skill, value in sorted(char.traits.skills.items()):
+                    skill_str += " {c" + skill + "{n: {w" + str(value) + "{n\t"
                 caller.msg(skill_str)
                 caller.msg("""
 To see a list of skills, enter '{whelp skills{n', with a description of each
@@ -683,8 +681,8 @@ class CmdGuestAddInput(ArxPlayerCommand):
 
         def remove_all_skills():
             """helper function to wipe skills in case we have a previous vocation set"""
-            char.attributes.add("skills", {})
-            char.attributes.add("abilities", {})
+            char.traits.wipe_all_skills()
+            char.traits.wipe_all_abilities()
 
         if 'newvocation' in switches:
             if args in _vocations_:
@@ -694,7 +692,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             # set up default stats/skills for a new vocation here
             remove_all_skills()
             for stat in VALID_STATS:
-                char.attributes.add(stat, 2)
+                char.traits.set_stat_value(stat, 2)
             char.attributes.add("skill_points", get_total_skill_points())
             char.attributes.add("stat_points", STAT_POINTS)
         elif 'vocation' in switches:
@@ -842,8 +840,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
 
         def check_points(character, arguments, value, category):
             """helper function to see if we can add or remove the points"""
-            if char.db.skills is None:
-                char.db.skills = {}
+            char.traits.initialize_skills()
             if not (category == "skill" or category == "stat"):
                 character.msg("Error: Invalid category for check_points. 'stat' or 'skill' expected.")
                 return False
@@ -867,9 +864,9 @@ class CmdGuestAddInput(ArxPlayerCommand):
             # check the current value of the stat we want to modify, see if it'll be within allowed bounds
             # stats have a minimum of 1, skills have a minimum of 0
             if category == 'stat':
-                current_val = char.attributes.get(arguments)
+                current_val = char.traits.get_stat_value(arguments)
             else:
-                current_val = char.db.skills.get(arguments, 0)
+                current_val = char.traits.get_skill_value(arguments)
             if not current_val:
                 current_val = 0
             if category == "stat":
@@ -888,20 +885,16 @@ class CmdGuestAddInput(ArxPlayerCommand):
                 # check how many stats we have at maximum. We only allow 2
                 num_max_stats = 0
                 for stat in VALID_STATS:
-                    if char.attributes.get(stat) == 5:
+                    if char.traits.get_stat_value(stat) == 5:
                         num_max_stats += 1
                 if num_max_stats >= 2:
                     character.msg("Sorry, only a maximum of two stats are allowed to start at 5.")
                     return False
             avail_pts -= cost
             if category == 'stat':
-                char.attributes.add(arguments, new_val)
+                char.traits.set_stat_value(arguments, new_val)
             elif category == 'skill':
-                # if it's a skill with value of 0, we remove it from their sheet entirely
-                if new_val == 0:
-                    char.db.skills.pop(arguments, None)
-                else:
-                    char.db.skills[arguments] = new_val
+                char.traits.set_skill_value(arguments, new_val)
             char.attributes.add(category + "_points", avail_pts)
             character.msg("\n{c%s{n has been set to {w%s{n. You now have {w%s{n points remaining for {w%s{n." % (
                 arguments.capitalize(), new_val, avail_pts, category + "s"))

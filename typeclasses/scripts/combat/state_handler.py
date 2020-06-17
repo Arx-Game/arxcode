@@ -559,9 +559,9 @@ class CombatantStateHandler(object):
     @property
     def fatigue_soak(self):
         """Returns a buffer value before fatigue kicks in"""
-        soak = max(self.character.db.willpower or 0, self.character.db.stamina or 0)
+        soak = max(self.character.traits.willpower, self.character.traits.stamina)
         try:
-            soak += self.character.db.skills.get("athletics", 0)
+            soak += self.character.traits.get_skill_value("athletics", 0)
         except (AttributeError, TypeError, ValueError):
             pass
         if soak < 2:

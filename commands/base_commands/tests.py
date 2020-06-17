@@ -6,22 +6,16 @@ from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
-
-from web.character.models import Revelation
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent, Agent
-from world.dominion.plots.models import PlotAction, Plot
-
+from world.dominion.models import RPEvent, CraftingRecipe, Agent
+from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
+from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
-from web.character.models import PlayerAccount
+from web.character.models import PlayerAccount, Clue, Revelation
 
-from world.dominion.models import CraftingRecipe
 from typeclasses.readable.readable import CmdWrite
 
-from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general, rolling
-
-# for @check/retainer test
-from random import getstate, setstate, seed
+from . import story_actions, overrides, social, staff_commands, roster, crafting, jobs, xp, help, general, exchanges, rolling
 
 
 class CraftingTests(TestEquipmentMixins, ArxCommandTest):
@@ -177,6 +171,9 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
 
 class StoryActionTests(ArxCommandTest):
+    def tearDown(self):
+        ActionRequirement.objects.all().delete()
+        super().tearDown()
 
     @patch("world.dominion.plots.models.inform_staff")
     @patch("world.dominion.plots.models.get_week")
@@ -212,13 +209,58 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/setaction 1=test assist",
                       "Action by Testaccount for Test Crisis now has your assistance: test assist")
         Army.objects.create(name="test army", owner=self.assetowner)
+        # check for adding things to meet requirements
+        self.call_cmd("/add 1=army,1", "There isn't an unmet requirement for army.")
+        action.requirements.create(requirement_type=ActionRequirement.FORCES, requirement_text="Add some doodz")
         self.call_cmd("/add 1=army,1", "You don't have access to that Army.|Failed to send orders to the army.")
         self.call_cmd("/readycheck 1", "Only the action leader can use that switch.")
         self.caller = self.account
+        # check adding resource-type requirements
         self.call_cmd("/add 1=foo,bar", "Invalid type of resource.")
-        self.call_cmd("/add 1=ap,50", "50 ap added. Action #1 Total resources: extra action points 50")
+        self.call_cmd("/add 1=ap,50", "There isn't an unmet requirement for ap.")
+        req = action.requirements.create(requirement_type=ActionRequirement.AP, max_rate=25, weekly_total=25,
+                                         total_required_amount=50)
+        self.call_cmd("/add 1=ap,25", "That would exceed the weekly maximum. Current Week: 25/25, Progress: 0/50")
+        req.weekly_total = 0
+        req.save()
+        action.action_points = 30
+        action.save()
+        old_inform = self.caller.inform
+        self.caller.inform = Mock()
+        self.call_cmd("/add 1=ap,25", "That would exceed the total required. Current Week: 0/25, Progress: 30/50")
+        self.call_cmd("/add 1=ap,20", "20 ap added. Action #1 Total requirements:\n"
+                                      "military forces: Add some doodz: Fulfilled by: No one yet\n"
+                                      "action points: 50(max per week: 25): Current Week: 20/25, Progress: 50/50")
+        self.assertEqual(req.weekly_total, 20)
+        self.caller.inform.assert_called_with(
+            "A requirement has been completed for Action #1: action points: 50(max per week: 25)",
+            append=False, category='Actions', week=1)
         self.char.pay_money = Mock(return_value=True)
-        self.call_cmd("/add 1=silver,50", "50 silver added. Action #1 Total resources: extra action points 50, silver 50")
+        # check to make sure unmet requirements block submission
+        action.requirements.create(requirement_type=ActionRequirement.SILVER, total_required_amount=50)
+        self.call_cmd("/submit 1", "You have Action Requirements that are not yet satisfied: "
+                                   "military forces: Add some doodz\nRequirement: silver: 50")
+        reqs_string = ("Action #1 Total requirements:\n"
+                       "military forces: Add some doodz: Fulfilled by: No one yet\n"
+                       "action points: 50(max per week: 25): Current Week: 20/25, Progress: 50/50\n"
+                       "silver: 50: Progress: 50/50")
+        self.call_cmd("/add 1=silver,50",
+                      "50 silver added. " + reqs_string)
+        self.call_cmd("/submit 1", "You have Action Requirements that are not yet satisfied: "
+                                   "military forces: Add some doodz")
+        # tests
+        self.account.pay_resources = Mock(return_value=True)
+        for name, rtype in [("military", ActionRequirement.MILITARY), ("social", ActionRequirement.SOCIAL),
+                            ("economic", ActionRequirement.ECONOMIC)]:
+            action.requirements.create(requirement_type=rtype, total_required_amount=50)
+            reqs_string += f"\n{name} resources: 50: Progress: 50/50"
+            self.call_cmd(f"/add 1={name},50", f"50 {name} added. {reqs_string}")
+        clue = Clue.objects.create(name="test")
+        action.requirements.create(requirement_type=ActionRequirement.CLUE, clue=clue)
+        self.call_cmd(f"/add 1=clue,{clue.id}", "No Clue found using '1'.")
+        clue.discoveries.create(character=self.roster_entry)
+        reqs_string += "\nclue: test: Fulfilled by: Testaccount"
+        self.call_cmd(f"/add 1=clue,{clue.id}", f"test clue added. {reqs_string}")
         self.call_cmd("/add 1=army,1", "You have successfully relayed new orders to that army.")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: True")
         self.call_cmd("/toggletraitor 1", "Traitor is now set to: False")
@@ -232,6 +274,7 @@ class StoryActionTests(ArxCommandTest):
                                    "who have incomplete actions will have their assists deleted.\nThe following "
                                    "assistants are not ready and will be deleted: Testaccount2\nWhen ready, /submit "
                                    "the action again.")
+        self.caller.inform = old_inform
         self.call_cmd("/submit 1", "You have new informs. Use @inform 1 to read them.|You have submitted your action.")
         mock_inform_staff.assert_called_with('Testaccount submitted action #1. {wSummary:{n summary')
         self.call_cmd("/makepublic 1", "The action must be finished before you can make details of it public.")
@@ -323,11 +366,41 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/invite 1=TestAccount2", "The owner of an action cannot be an assistant.")
         self.call_cmd("/invite 1=TestAccount", "You have new informs. Use @inform 1 to read them."
                                                "|You have invited Testaccount to join your action.")
-        self.account2.pay_resources = Mock()
-        self.call_cmd("/charge 1=economic,2000", "2000 economic added. Action #1 Total resources: economic 2000, silver 50")
-        self.account2.pay_resources.assert_called_with("economic", 2000)
+        # test adding requirements
         self.caller.inform = Mock()
         self.account2.inform = Mock()
+        self.call_cmd("/addrequirement/foo 1=bar", "That is not a recognized requirement type.")
+        self.call_cmd("/addrequirement/resources 1=silver,50000", "You have added a requirement: silver: 50000")
+        self.account2.inform.assert_called_with(
+            'A new requirement has been added to Action #1: silver: 50000\n'
+            'For resources, use action/add to contribute the required amounts. For\n'
+            'required clues, revelations, items, or magic, have a character who is on\n'
+            'the action and has the required entity add its ID as the value. For required\n'
+            'event prerequisites, add a plot RFR ID as the value, as well as an\n'
+            'explanation for how the plot satisfies the requirement.\n'
+            'Once all requirements have been met, the action can be resubmitted for\n'
+            'evaluation by GMs.', append=False, category='Actions', week=1)
+        self.call_cmd("/addrequirement/clue 1=test clue", "No Clue found using 'test clue'.")
+        Clue.objects.create(name="test clue")
+        Clue.objects.create(name="test clue 2")
+        self.call_cmd("/addrequirement/clue 1=test clue", "You have added a requirement: clue: test clue")
+        self.call_cmd("/addrequirement/clue 1=test clue 2", "You have added a requirement: clue: test clue 2")
+        self.call_cmd("/addrequirement/revelation 1=test rev", "No Revelation found using 'test rev'.")
+        Revelation.objects.create(name="test rev")
+        self.call_cmd("/addrequirement/revelation 1=test rev", "You have added a requirement: revelation: test rev")
+        self.call_cmd("/addrequirement/item 1=asdf", "No ObjectDB found using 'asdf'.")
+        self.call_cmd("/addrequirement/item 1=Obj2", "You have added a requirement: item: Obj2")
+        self.call_cmd("/addrequirement/skillnode 1=test node", "No SkillNode found using 'test node'.")
+        node = SkillNode.objects.create(name="test node")
+        self.call_cmd("/addrequirement/skillnode 1=test node",
+                      "You have added a requirement: magic skill node: test node")
+        self.call_cmd("/addrequirement/spell 1=test spell", "No Spell found using 'test spell'.")
+        Spell.objects.create(name="test spell", node=node)
+        self.call_cmd("/addrequirement/spell 1=test spell", "You have added a requirement: spell: test spell")
+        self.call_cmd("/addrequirement/event 1=test", "You have added a requirement: Other Requirement/Event: test")
+        self.call_cmd("/addrequirement/forces 1=test", "You have added a requirement: military forces: test")
+        self.assertEqual(action.status, action.NEEDS_PLAYER)
+        # test asking questions
         action.ask_question("foo inform")
         self.caller.inform.assert_called_with('{cTestaccount2{n added a comment/question about Action #1:\nfoo inform',
                                               category='Action questions')
@@ -339,6 +412,9 @@ class StoryActionTests(ArxCommandTest):
         self.account2.inform.assert_called_with('Your action is now a free action and will '
                                                 'not count towards your maximum.',
                                                 append=False, category='Actions', week=1)
+        # test refund
+        action.economic = 2000
+        action.save()
         self.account2.gain_resources = Mock()
         self.call_cmd("/cancel 1", "Action cancelled.")
         self.account2.gain_resources.assert_called_with("economic", 2000)
@@ -359,7 +435,17 @@ class StoryActionTests(ArxCommandTest):
                            "Testaccount2 OOC intentions: ooc intent test\n\nOOC Notes and GM responses\n"
                            "Testaccount2 OOC Question: foo inform\nReply by Testaccount: Sure go nuts\n"
                            "Testaccount2 OOC Question: another test question\nOutcome Value: 0\nStory Result: \n"
-                           "Secret Story sekritfoo\nTotal resources: economic 2000, silver 50\n[STATUS: Pending Resolution]")
+                           "Secret Story sekritfoo\nTotal requirements:\n"
+                           "silver: 50000: Progress: 50/50000\n"
+                           "clue: test clue: Fulfilled by: No one yet\n"
+                           "clue: test clue 2: Fulfilled by: No one yet\n"
+                           "revelation: test rev: Fulfilled by: No one yet\n"
+                           "item: Obj2: Fulfilled by: No one yet\n"
+                           "magic skill node: test node: Fulfilled by: No one yet\n"
+                           "spell: test spell: Fulfilled by: No one yet\n"
+                           "Other Requirement/Event: test: Fulfilled by: No one yet\n"
+                           "military forces: test: Fulfilled by: No one yet\n"
+                           "[STATUS: Pending Resolution]")
         self.call_cmd("/publish 1=story test", "You have published the action and sent the players informs.")
         self.assertEquals(action.status, PlotAction.PUBLISHED)
         self.account2.inform.assert_called_with('{wGM Response to story action of Testaccount2\n'
@@ -449,33 +535,6 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.caller = self.char1  # staff
         self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
 
-    def test_cmd_give(self):
-        from typeclasses.wearable.wearable import Wearable
-        from evennia.utils.create import create_object
-        self.setup_cmd(overrides.CmdGive, self.char1)
-        self.call_cmd("obj to char2", "You are not holding Obj.")
-        self.obj1.move_to(self.char1)
-        self.call_cmd("obj to char2", "You give Obj to Char2.")
-        wearable = create_object(typeclass=Wearable, key="worn", location=self.char1)
-        wearable.wear(self.char1)
-        self.call_cmd("worn to char2", 'worn is currently worn and cannot be moved.')
-        wearable.remove(self.char1)
-        self.call_cmd("worn to char2", "You give worn to Char2.")
-        self.char1.currency = 50
-        self.call_cmd("-10 silver to char2", "Amount must be positive.")
-        self.call_cmd("75 silver to char2", "You do not have that much money to give.")
-        self.call_cmd("25 silver to char2", "You give coins worth 25.0 silver pieces to Char2.")
-        self.assetowner.economic = 50
-        self.call_cmd("/resource economic,60 to TestAccount2", "You do not have enough economic resources.")
-        self.account2.inform = Mock()
-        self.call_cmd("/resource economic,50 to TestAccount2", "You give 50 economic resources to Char2.")
-        self.assertEqual(self.assetowner2.economic, 50)
-        self.account2.inform.assert_called_with("Char has given 50 economic resources to you.", category="Resources")
-
-
-    
-
-
     def test_cmd_inventory(self):
         self.setup_cmd(overrides.CmdInventory, self.char1)
         self.char1.currency = 125446
@@ -518,6 +577,102 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
 
 
 # noinspection PyUnresolvedReferences
+class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
+    def test_cmd_trade(self):
+        self.setup_cmd(exchanges.CmdTrade, self.char2)
+        self.char.msg = Mock()
+        head = "[Personal Trade] "
+        head2 = "|w[|nPersonal Trade|w]|n "
+        fail = "Could not finish the exchange."
+        self.call_cmd("", "You are not trading with anyone right now.")
+        self.call_cmd("char2", "You cannot trade with Char2.")
+        self.call_cmd("top1", "You cannot trade with Top1.")
+        self.char1.ndb.personal_trade_in_progress = True
+        self.call_cmd("Char", "Char has a trade already in progress.")
+        self.char1.msg.assert_called_with(
+            f"{head2}Char2 wants to trade, but you have a trade in progress.")
+        self.char1.ndb.personal_trade_in_progress = None
+        self.call_cmd("Char", f"{head}Char2 has initiated a trade with Char. (See 'help trade'.)")
+        self.call_cmd("/cancel", f"{head}Your trade has been cancelled.")
+        self.assertEqual(self.char2.ndb.personal_trade_in_progress, None)
+        self.top2.wear(self.char2)
+        self.mask1.db.quality_level = 11
+        self.mask1.wear(self.char2)
+        self.call_cmd("Char",
+                      f"{head}Someone wearing A Fox Mask has initiated a trade with Char. (See 'help trade'.)")
+        self.mask1.remove(self.char2)
+        trade = self.char1.ndb.personal_trade_in_progress
+        self.assertEqual(trade, self.char2.ndb.personal_trade_in_progress)
+        self.call_cmd("/item", "Trade what?")
+        self.call_cmd("/item top2", f"{head}Someone wearing A Fox Mask offers Top2.")
+        self.char1.msg.assert_called_with(f"{head2}Someone wearing A Fox Mask offers Top2.")
+        self.assertEqual(trade.items[self.char2], [self.top2])
+        self.call_cmd("/silver", "Amount must be a positive number that you can afford.")
+        self.call_cmd("/silver -30", "Amount must be a positive number that you can afford.")
+        self.call_cmd("/silver 30.99", "Amount must be a positive number that you can afford.")
+        self.call_cmd("/silver 30", f"{head}Someone wearing A Fox Mask offers 30 silver.")
+        self.call_cmd("/silver 1", "Already offered 30 silver. Cancel trade if amount is incorrect.")
+        trade.agreements[self.char1] = True
+        self.call_cmd("", ("**********************************************************************\n"
+                           "[Personal Trade] Someone wearing A Fox Mask offers 30 silver and:\n"
+                           " + Top2\n"
+                           "Char offers no money and no items.\n"
+                           "Someone wearing A Fox Mask has not yet agreed. Char has agreed. \n"
+                           "**********************************************************************"))
+        self.call_cmd("/agree",
+                      f"{head}Traders must be in the same location. Agreements have been reset.|{fail}")
+        self.assertEqual(trade.agreements[self.char1], False)
+        self.mask1.wear(self.char2)
+        trade.agreements[self.char1] = True
+        self.call_cmd("/agree",
+                      (f"{head}Someone wearing A Fox Mask does not have enough silver to complete the trade. "
+                       f"Agreements have been reset.|{fail}"))
+        self.char2.currency = 30
+        trade.agreements[self.char1] = True
+        self.call_cmd("/agree",
+                      (f"Top2 is currently worn and cannot be moved.|{head}Someone wearing A Fox Mask "
+                       f"cannot trade Top2. Agreements have been reset.|{fail}"))
+        self.top2.remove(self.char2)
+        self.char1.location = self.top1
+        trade.agreements[self.char1] = True
+        self.call_cmd("/agree",
+                      f"{head}Traders must be in the same location. Agreements have been reset.|{fail}")
+        self.char1.location = self.room1
+        self.caller = self.char1
+        self.call_cmd("/agree", f"{head}Char has agreed to the trade.")
+        self.caller = self.char2
+        self.call_cmd("/agree", f"{head}Your exchange is complete!")
+        self.assertEqual(self.char1.currency, 30)
+        self.assertEqual(self.top2.location, self.char1)
+        self.char2.ndb.personal_trade_in_progress = trade
+        self.char1.ndb.personal_trade_in_progress = "Pineapple"
+        self.call_cmd("/agree", "Invalid trade; cancelling it. Please restart.")
+        self.assertEqual(self.char1.ndb.personal_trade_in_progress, "Pineapple")
+
+    def test_cmd_give(self):
+        self.setup_cmd(exchanges.CmdGive, self.char2)
+        self.call_cmd("top1 to char", "You are not holding Top1.")
+        self.top2.wear(self.char2)
+        self.call_cmd("top2 to char", 'Top2 is currently worn and cannot be moved.')
+        self.top2.remove(self.char2)
+        self.call_cmd("top2 to char", "You give Top2 to Char.")
+        self.assertEqual(self.top2.location, self.char1)
+        self.char2.currency = 50
+        self.call_cmd("-10 silver to char", "Amount must be positive.")
+        self.call_cmd("75 silver to char", "You do not have that much money to give.")
+        self.call_cmd("25 silver to char", "You give coins worth 25.0 silver pieces to Char.")
+        self.assertEqual(self.char1.currency, 25)
+        self.assertEqual(self.char2.currency, 25)
+        self.assetowner2.economic = 50
+        self.call_cmd("/resource economic,60 to TestAccount", "You do not have enough economic resources.")
+        self.account.inform = Mock()
+        self.call_cmd("/resource economic,50 to TestAccount", "You give 50 economic resources to Char.")
+        self.account.inform.assert_called_with("Char2 has given 50 economic resources to you.", category="Resources")
+        self.assertEqual(self.assetowner2.economic, 0)
+        self.assertEqual(self.assetowner.economic, 50)
+
+
+# noinspection PyUnresolvedReferences
 class RosterTests(ArxCommandTest):
     def setUp(self):
         """Adds rosters and an announcement board"""
@@ -550,7 +705,6 @@ class RosterTests(ArxCommandTest):
         self.assertEqual(self.member.rank, 3)
         self.assertEqual(self.dompc2.patron, None)
 
-
     def test_cmd_propriety(self):
         self.setup_cmd(roster.CmdPropriety, self.account)
         self.call_cmd(" nonsense", "There's no propriety known as 'nonsense'.")
@@ -563,7 +717,6 @@ class RosterTests(ArxCommandTest):
         self.caller.execute_cmd("admin_propriety/remove Tester=testaccount")
         self.caller.execute_cmd("admin_propriety/create Vixen=-3")
         self.call_cmd("vixen", "No one is currently spoken of with the 'Vixen' reputation.")
-
 
 
 # noinspection PyUnresolvedReferences
@@ -586,7 +739,6 @@ class SocialTests(ArxCommandTest):
                           'and players who are on your watch list have a * by their name.\nRoom: Char')
         self.room1.tags.add("private")
         self.call_cmd("", "No visible characters found.")
-
 
     def test_cmd_watch(self):
         self.setup_cmd(social.CmdWatch, self.account)
@@ -971,23 +1123,26 @@ class StaffCommandTests(ArxCommandTest):
 
     def test_cmd_config(self):
         self.setup_cmd(staff_commands.CmdSetServerConfig, self.account)
-        self.call_cmd("asdf", 'Not a valid key: ap transfers disabled, cg bonus skill points, income, motd, new clue ap cost')
+        self.call_cmd("asdf", 'Not a valid key: ap transfers disabled, cg bonus skill points, income, '
+                              'material cost multiplier, motd, new clue ap cost')
         self.call_cmd("income=5",
-                      '| key                                    | value                             '
-                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'                      
-                      '| ap transfers disabled                  | None                              '
-                      '| cg bonus skill points                  | None                              '
-                      '| income                                 | 5.0                               '                      
-                      '| motd                                   | None                              '
-                      '| new clue ap cost                       | None')
+                      '| key                                     | value                            '
+                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                      '| ap transfers disabled                   | None                             '
+                      '| cg bonus skill points                   | None                             '
+                      '| income                                  | 5.0                              '
+                      '| material cost multiplier                | None                             '
+                      '| motd                                    | None                             '
+                      '| new clue ap cost                        | None')
         self.call_cmd("cg bonus skill points=20",
-                      '| key                                    | value                             '
-                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
-                      '| ap transfers disabled                  | None                              '
-                      '| cg bonus skill points                  | 20                                '
-                      '| income                                 | 5.0                               '                      
-                      '| motd                                   | None                              '
-                      '| new clue ap cost                       | None')
+                      '| key                                     | value                            '
+                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n'
+                      '| ap transfers disabled                   | None                             '
+                      '| cg bonus skill points                   | 20                               '
+                      '| income                                  | 5.0                              '
+                      '| material cost multiplier                | None                             '
+                      '| motd                                    | None                             '
+                      '| new clue ap cost                        | None')
 
     def test_cmd_adjustfame(self):
         self.setup_cmd(staff_commands.CmdAdjustFame, self.account)
@@ -1235,7 +1390,7 @@ class XPCommandTests(ArxCommandTest):
         self.char2.db.xp = 0
         self.call_cmd("/spend Teasing", "'Teasing' wasn't identified as a stat, ability, or skill.")
         self.call_cmd("/spend Seduction", "Unable to raise seduction. The cost is 42, and you have 0 xp.")
-        stats_and_skills.adjust_skill(self.char2, "seduction")
+        self.char2.traits.adjust_skill("seduction")
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 8)
         self.char2.adjust_xp(10)
         self.call_cmd("/spend Seduction", 'You spend 10 xp and have 0 remaining.|'
@@ -1246,11 +1401,11 @@ class XPCommandTests(ArxCommandTest):
         ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", 5)
         self.call_cmd("/spend Seduction", 'You spend 1039 xp and have 24 remaining.|'
                                           'You have increased your seduction to 6.')
-        self.assertEqual(self.char2.db.skills.get("seduction"), 6)
+        self.assertEqual(self.char2.traits.get_skill_value("seduction"), 6)
         self.assertEqual(stats_and_skills.get_skill_cost(self.char2, "dodge"), 43)
         self.assertEqual(stats_and_skills.get_skill_cost_increase(self.char2), 1.0775)
         self.char2.db.trainer = self.char1
-        self.char1.db.skills = {"teaching": 5, "dodge": 2}
+        self.char1.traits.skills = {"teaching": 5, "dodge": 2}
         self.call_cmd("/spend dodge", 'You spend 24 xp and have 0 remaining.|You have increased your dodge to 1.')
         # TODO: other switches
 

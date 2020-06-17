@@ -19,6 +19,7 @@ from evennia.utils.utils import lazy_property, variable_from_module
 import time
 from world.stats_and_skills import do_dice_check
 from world.magic.mixins import MagicMixins
+from world.traits.traitshandler import Traitshandler
 
 
 class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMixins, DefaultCharacter):
@@ -57,8 +58,8 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         self.db.dice_string = "Default Dicestring"
         self.db.health_status = "alive"
         self.db.sleep_status = "awake"
-        self.db.skills = {}
-        self.db.abilities = {}
+        self.traits.initialize_skills()
+        self.traits.initialize_abilities()
         self.at_init()
         self.locks.add("delete:perm(Immortals);tell:all()")
 
@@ -73,6 +74,10 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     @lazy_property
     def languages(self):
         return LanguageHandler(self)
+
+    @lazy_property
+    def traits(self):
+        return Traitshandler(self)
 
     def at_after_move(self, source_location, **kwargs):
         """
@@ -585,14 +590,14 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     def social_clout(self):
         """Another representation of social value of a character"""
         total = 0
-        my_skills = self.db.skills or {}
+        my_skills = self.traits.skills
         skills_used = {"diplomacy": 2, "empathy": 2, "seduction": 2, "etiquette": 2, "manipulation": 2, "propaganda": 2,
                        "intimidation": 1, "leadership": 1, "streetwise": 1, "performance": 1, "haggling": 1}
         stats_used = {"charm": 2, "composure": 1, "command": 1}
         for skill, exponent in skills_used.items():
             total += pow(my_skills.get(skill, 0), exponent)
         for stat, exponent in stats_used.items():
-            total += pow((self.attributes.get(stat) or 0), exponent)
+            total += pow(self.traits.get_stat_value(stat), exponent)
         return total // 5
 
     @property
@@ -1060,12 +1065,6 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     @property
     def recent_assists(self):
         return self.player_ob.recent_assists
-
-    @property
-    def skills(self):
-        if self.db.skills is None:
-            self.db.skills = {}
-        return self.db.skills
 
     @property
     def truesight(self):

@@ -16,7 +16,7 @@ class Guest(Account):
     """
     See Player object for API. Will be overloading most methods to customize.
     """
-    
+
     def at_account_creation(self):
         """
         This is called once, the very first time
@@ -53,7 +53,7 @@ class Guest(Account):
         self.ndb.seen_stage2_intro = False
         self.ndb.seen_stage3_intro = False
         self.ndb.seen_stage4_intro = False
-        
+
         # The tutorial for a guest will be a series of overloaded look
         # commands, returning different results based on the current
         # tutorial stage value. 0 will be the entry window.
@@ -62,7 +62,7 @@ class Guest(Account):
         self.execute_cmd("@bbsub/quiet story updates")
         self.cmdset.remove("more_commands")
         self.execute_cmd("l")
-        
+
     def is_guest(self):
         """
         Overload in guest object to return True

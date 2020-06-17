@@ -1,0 +1,7 @@
+RESOURCES = "resources"
+CLUE = "clue"
+REVELATION = "revelation"
+SKILL_NODE = "skillnode"
+SPELL = "spell"
+FORCES = "forces"
+REQUIREMENT_TYPES = (RESOURCES, CLUE, REVELATION, SKILL_NODE, SPELL, FORCES)

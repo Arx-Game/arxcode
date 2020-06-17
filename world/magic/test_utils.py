@@ -59,9 +59,9 @@ class ArxMagicTest(ArxTest):
 
         self.char2.msg = override_msg
 
-        self.char2.db.mana = 5
-        self.char2.db.intellect = 5
-        self.char2.db.skills = {'occult': 5}
+        self.char2.traits.set_stat_value("mana", 5)
+        self.char2.traits.set_stat_value("intellect", 5)
+        self.char2.traits.skills = {'occult': 5}
         self.node = SkillNode.objects.create(name="Test Node")
         self.effect = Effect.objects.create(name="Test Effect", target_type=Effect.TARGET_TYPE_EITHER,
                                             coded_effect=Effect.CODED_SIGHT)

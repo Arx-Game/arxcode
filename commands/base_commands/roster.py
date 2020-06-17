@@ -779,12 +779,12 @@ def display_skills(caller, character):
         skstr = "%-22s" % skstr
         return skstr
     title = "Skills"
-    skills = character.db.skills
+    skills = character.traits.skills
     if not skills:
         skillstr = "No skills known."
     else:
         skillstr = ""
-        skills = character.db.skills.items()
+        skills = character.traits.skills.items()
         skills = sorted(skills)
         skills_count = 0
         for skill, value in skills:
@@ -823,12 +823,12 @@ def display_abilities(caller, character):
     Display magical abilities and attributes tied to that.
     """
     title = "Abilities"
-    abilities = character.db.abilities
+    abilities = character.traits.abilities
     if not abilities:
         abilstr = "No abilities known."
     else:
         abilstr = ""
-        abilities = character.db.abilities.items()
+        abilities = character.traits.abilities.items()
         abilities = sorted(abilities)
         abilities_count = 0
         for ability, value in abilities:

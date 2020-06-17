@@ -10,6 +10,10 @@ class ArxCommmandMixin(object):
     error_class = CommandError
     help_entry_tags = []
 
+    def fail(self, msg):
+        """Raises an error for the class with a given message"""
+        raise self.error_class(msg)
+
     def check_switches(self, switch_set):
         """Checks if the commands switches are inside switch_set"""
         return set(self.switches) & set(switch_set)

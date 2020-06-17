@@ -108,12 +108,7 @@ class Monster(SharedMemoryModel):
 
             if len(characters) > 0:
                 character = random.choice(characters)
-
-                for stat in ("strength", "stamina", "dexterity"):
-                    val = character.attributes.get(stat, 0)
-                    result.attributes.add(stat, val)
-                skills = character.db.skills
-                result.attributes.add("skills", dict(skills))
+                result.traits.mirror_physical_stats_and_skills(character)
                 new_desc = self.description.replace("{name}", character.name)
                 result.db.desc = new_desc
                 location.msg_contents("The {} mirrors {}!".format(result.name, character.name))

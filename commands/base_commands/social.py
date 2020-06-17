@@ -161,9 +161,7 @@ class CmdWhere(ArxPlayerCommand):
         for room in rooms:
             owner = room.db.shopowner
             if self.args and owner:
-                if not owner.db.abilities:
-                    continue
-                if self.args.lower() not in owner.db.abilities:
+                if self.args.lower() not in owner.traits.abilities:
                     continue
             name = owner.key
             if owner and not owner.roster.roster.name == "Active":
@@ -915,7 +913,7 @@ class CmdMessenger(ArxCommand):
         except AttributeError:
             self.msg("That agent cannot %s." % attr_desc)
         else:
-            if obj.db.abilities and obj.db.abilities.get(attr_name, 0):
+            if obj.traits.get_ability_value(attr_name):
                 setattr(handler, attr_name, obj)
             else:
                 self.msg("%s does not have the ability to %s." % (obj, attr_desc))

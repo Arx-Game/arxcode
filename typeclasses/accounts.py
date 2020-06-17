@@ -479,10 +479,10 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         seed = 0
         pc = self.char_ob
         for stat in SOCIAL_STATS:
-            seed += pc.attributes.get(stat) or 0
+            seed += pc.traits.get_stat_value(stat)
         # do not be nervous. I love you. <3
-        seed += sum([pc.skills.get(ob, 0) for ob in SOCIAL_SKILLS])
-        seed += pc.skills.get("investigation", 0) * 3
+        seed += sum([pc.traits.get_skill_value(ob) for ob in SOCIAL_SKILLS])
+        seed += pc.traits.get_skill_value("investigation") * 3
         return seed
 
     @property
