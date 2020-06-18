@@ -68,6 +68,7 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/verbose_where
         @settings/emit_label
         @settings/highlight_all_mentions
+        @settings/highlight_place
 
     Switches: /brief suppresses room descs when moving through rooms.
     /posebreak adds a newline between poses from characters.
@@ -89,6 +90,7 @@ class CmdGameSettings(ArxPlayerCommand):
         about their current activities, when using the +where command.
     /emit_label will prefix each emit with its author.
     /highlight_all_mentions enables highlighting for all mentions in channels.
+    /highlight_place enables highlighting for place names in poses.
     """
     key = "@settings"
     locks = "cmd:all()"
@@ -98,7 +100,8 @@ class CmdGameSettings(ArxPlayerCommand):
                       'afk', 'nomessengerpreview', 'bbaltread', 'ignore_messenger_notifications',
                       'ignore_messenger_deliveries', 'newline_on_messages', 'private_mode',
                       'ic_only', 'ignore_bboard_notifications', 'quote_color', 'name_color',
-                      'emit_label', 'ignore_weather', 'ignore_model_emits', "highlight_all_mentions")
+                      'emit_label', 'ignore_weather', 'ignore_model_emits', "highlight_all_mentions",
+                      'highlight_place')
 
     def func(self):
         """Executes setting command"""
@@ -172,6 +175,9 @@ class CmdGameSettings(ArxPlayerCommand):
             return
         if "highlight_all_mentions" in switches:
             self.togglesetting(caller, "highlight_all_mentions")
+            return
+        if "highlight_place" in switches:
+            self.togglesetting(caller, "highlight_place")
             return
         caller.msg("Invalid switch. Valid switches are: %s" % ", ".join(self.valid_switches))
 
