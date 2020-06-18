@@ -57,6 +57,9 @@ nosetests.xml
 # PyCharm config
 .idea
 
+# Visual Studio Code
+.vscode
+
 # nano .save files
 *.save
 
