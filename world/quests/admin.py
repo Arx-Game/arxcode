@@ -98,7 +98,6 @@ class QuestEffortInline(admin.StackedInline):
     """Inline allowing Efforts to be added to a quest status."""
     model = QuestEffort
     form = QuestEffortForm
-    list_select_related = ('status__entity',)
     ordering = ('step__step_number', 'step__name', 'attempt_number')
     raw_id_fields = ('event', 'flashback', 'clue', 'org_clue', 'revelation', 'action', 'quest')
     extra = 0

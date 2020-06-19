@@ -1,8 +1,10 @@
 from datetime import date
 from django.db import models
 
+from evennia.utils.idmapper.models import SharedMemoryModel
 
-class QuestText(models.Model):
+
+class QuestText(SharedMemoryModel):
     ic_desc = models.TextField(verbose_name='IC Desc', blank=True)
     gm_note = models.TextField(verbose_name='GM Note', blank=True)
 
@@ -22,7 +24,7 @@ class Quest(QuestText):
 
 class QuestStep(QuestText):
     """A task that contributes to the completion of a Quest."""
-    quest = models.ForeignKey(to="Quest", related_name="steps", on_delete=models.CASCADE, null=False, blank=False)
+    quest = models.ForeignKey(to="Quest", related_name="steps", on_delete=models.CASCADE, blank=False)
     name = models.CharField(max_length=255, blank=False)
     step_number = models.PositiveSmallIntegerField(blank=True, null=True)
 
@@ -46,7 +48,7 @@ class QuestStatus(QuestText):
         return f"{self.entity} on: {self.quest}"
 
 
-class QuestEffort(models.Model):
+class QuestEffort(SharedMemoryModel):
     """Any of the items that show evidence toward a QuestStep's completion."""
     status = models.ForeignKey(to="QuestStatus", verbose_name="Quester Status", related_name="efforts",
                                on_delete=models.CASCADE, blank=False)
