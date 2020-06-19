@@ -20,12 +20,13 @@ class Roll(object):
     # This is the number that the roll needs to be >= for an extra die
     EXPLODE_VAL = 10
 
-    def __init__(self, caller=None, stat=None, skill=None, difficulty=15, stat_list=None,
+    def __init__(self, caller=None, retainer=None, stat=None, skill=None, difficulty=15, stat_list=None,
                  skill_list=None, skill_keep=True, stat_keep=False, quiet=True, announce_room=None,
                  keep_override=None, bonus_dice=0, divisor=1, average_lists=False, can_crit=True,
                  average_stat_list=False, average_skill_list=False, announce_values=False, flub=False,
                  use_real_name=False, bonus_keep=0, flat_modifier=0):
         self.character = caller
+        self.retainer = retainer
         self.difficulty = difficulty
         self.skill_keep = skill_keep
         self.stat_keep = stat_keep
@@ -49,6 +50,7 @@ class Roll(object):
         self.crit_mult = 1
         self.msg = ""
         self.character_name = ""
+        self.retainer_name = "" if self.retainer is None else retainer.pretty_name
         self.flat_modifier = flat_modifier
         if self.character:
             caller.ndb.last_roll = self
@@ -60,18 +62,31 @@ class Roll(object):
             stat_list = [ob.lower() for ob in stat_list]
             # look up each stat from supplied caller, adds to stats dict
             for somestat in stat_list:
-                self.stats[somestat] += self.character.traits.get_stat_value(somestat)
+                if self.retainer is None:
+                    self.stats[somestat] += self.character.traits.get_stat_value(somestat)
+                else:
+                    self.stats[somestat] += self.retainer.dbobj.traits.get_stat_value(somestat)
             # None isn't iterable so make an empty set of skills
             skill_list = skill_list or []
             # add individual skill to the list
             if skill and skill not in skill_list:
                 skill_list.append(skill)
             skill_list = [ob.lower() for ob in skill_list]
+            # grabs the caller's skills or makes blank dict
+            if self.retainer is None:
+                skills = caller.traits.skills or {}
+            else:
+                skills = self.retainer.dbobj.traits.skills or {}
             # compares skills to dict we just made, adds to self.skills dict
             for someskill in skill_list:
-                self.skills[someskill] += self.character.traits.get_skill_value(someskill)
-            self.bonus_crit_chance = caller.db.bonus_crit_chance or 0
-            self.bonus_crit_mult = caller.db.bonus_crit_mult or 0
+                self.skills[someskill] += skills.get(someskill, 0)
+            if self.retainer is None:
+                self.bonus_crit_chance = caller.db.bonus_crit_chance or 0
+                self.bonus_crit_mult = caller.db.bonus_crit_mult or 0
+            else:
+                # Retainers cannot roll criticals; feels unbalanced otherwise.
+                self.bonus_crit_chance = 0
+                self.bonus_crit_mult = 0
             if use_real_name:
                 self.character_name = caller.key
             else:
@@ -199,8 +214,13 @@ class Roll(object):
             resultstr = "%s%s higher" % (white_col, self.result)
         else:
             resultstr = "%s%s lower" % (red_col, -self.result)
-        msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg,
+
+        if self.retainer is None:
+            msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg,
                                                                      self.difficulty, resultstr, no_col)
+        else:
+            msg = "%s%s's%s retainer (%s%s) checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col,
+                self.retainer.pretty_name, no_col, roll_msg, self.difficulty, resultstr, no_col)
         if self.crit_mult > 1 and self.result >= 0:
             msg = "%s %s%s rolled a critical!%s" % (msg, green_col, name, no_col)
         self.msg = msg

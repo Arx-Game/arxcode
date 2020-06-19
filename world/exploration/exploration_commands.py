@@ -403,7 +403,7 @@ class CmdExplorationSneak(ArxCommand):
             self.msg("You cannot sneak that way; there's still an obstacle there you have to pass!")
             return
 
-        roll = do_dice_check(self.caller, "dexterity", "stealth", 25, quiet=False)
+        roll = do_dice_check(self.caller, stat="dexterity", skill="stealth", difficulty=25, quiet=False)
         if roll < 0:
             self.caller.location.msg_contents("%s attempts to sneak %s, but makes noise as they do so!"
                                               % (self.caller.name, exit_obj.direction_name))
@@ -465,7 +465,7 @@ class CmdExplorationAssist(ArxCommand):
             return
 
         self.caller.db.shardhaven_last_assist = time.time()
-        roll = do_dice_check(self.caller, "wits", "leadership", 30, quiet=False)
+        roll = do_dice_check(self.caller, stat="wits", skill="leadership", difficulty=30, quiet=False)
         haven_exit.modify_diff(amount=roll / 2, reason="%s assisted with a leadership roll" % self.caller.name)
         self.caller.location.msg_contents("%s attempts to assist the party with the obstacle to the %s, "
                                           "adjusting the difficulty." % (self.caller.name, exit_obj.direction_name))
