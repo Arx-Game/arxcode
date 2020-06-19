@@ -63,7 +63,7 @@ class QuestAdmin(admin.ModelAdmin):
     """Admin for Quest model."""
     list_display = ('id', '__str__', 'questers', 'finished')
     search_fields = (
-        'name', 'id', 'search_tags__name', '=entities__player__player__username',
+        'name', '=id', 'search_tags__name', '=entities__player__player__username',
         '=entities__organization_owner__name')
     filter_horizontal = ('search_tags',)
     list_filter = (QuestListFilter,)
@@ -99,7 +99,7 @@ class QuestEffortInline(admin.StackedInline):
     model = QuestEffort
     form = QuestEffortForm
     list_select_related = ('status__entity',)
-    ordering = ('step__step_number', 'attempt_number')
+    ordering = ('step__step_number', 'step__name', 'attempt_number')
     raw_id_fields = ('event', 'flashback', 'clue', 'org_clue', 'revelation', 'action', 'quest')
     extra = 0
     fk_name = 'status'
@@ -128,7 +128,7 @@ class QuestStatusForm(forms.ModelForm):
 class QuestStatusAdmin(admin.ModelAdmin, StatusDateMixin):
     """Admin for the status of someone's progress on a quest."""
     list_display = ('id', '__str__', 'started', 'completed')
-    search_fields = ('id', 'quest__name', '=entity__player__player__username', '=entity__organization_owner__name')
+    search_fields = ('=id', 'quest__name', '=entity__player__player__username', '=entity__organization_owner__name')
     list_filter = (QuestStatusListFilter,)
     raw_id_fields = ('entity',)
     readonly_fields = ('started', 'completed',)
