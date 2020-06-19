@@ -2160,6 +2160,9 @@ class ClueForOrg(SharedMemoryModel):
     class Meta:
         unique_together = ('clue', 'org')
 
+    def __str__(self):
+        return f"{self.org} knows {self.clue}"
+
 
 class Agent(SharedMemoryModel):
     """

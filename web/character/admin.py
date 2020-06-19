@@ -170,7 +170,7 @@ class RevelationAdmin(BaseCharAdmin):
     """Admin for revelations"""
     list_display = ('id', 'name', 'known_by', 'requires')
     inlines = [ClueForRevInline, RevDiscoInline, RevPlotInvolvementInline]
-    search_fields = ('=id', 'name', 'mysteries__name', '=search_tags__name')
+    search_fields = ('=id', 'name', 'mysteries__name', 'search_tags__name')
     list_filter = (RevelationListFilter, 'mysteries')
     filter_horizontal = ('search_tags', 'mysteries')
     raw_id_fields = ('author',)
@@ -252,8 +252,15 @@ class ClueAdmin(BaseCharAdmin):
 class ClueDiscoveryAdmin(BaseCharAdmin):
     """Admin for ClueDiscoveries"""
     list_display = ('id', 'clue', 'character', 'discovery_method', 'revealed_by', 'investigation')
-    search_fields = ('id', 'clue__name', '=character__character__db_key')
+    search_fields = ('=id', 'clue__name', '=character__character__db_key')
     raw_id_fields = ('clue', 'character', 'investigation', 'revealed_by')
+
+
+class RevelationDiscoveryAdmin(BaseCharAdmin):
+    """Admin for ClueDiscoveries"""
+    list_display = ('id', 'revelation', 'character', 'discovery_method', 'revealed_by', 'investigation')
+    search_fields = ('=id', 'revelation__name', '=character__character__db_key')
+    raw_id_fields = ('revelation', 'character', 'investigation', 'revealed_by')
 
 
 class RevForEntry(RevDiscoInline):
@@ -364,7 +371,7 @@ class StoryEmitAdmin(BaseCharAdmin):
 class SearchTagAdmin(BaseCharAdmin):
     """Admin for Search Tags. Has to exist for Clue's filter_horizontal to have an add box"""
     list_display = ('id', 'name',)
-    search_fields = ('id', 'name',)
+    search_fields = ('=id', 'name',)
     readonly_fields = ('tagged_revelations', 'tagged_clues', 'tagged_plots', 'tagged_plot_updates',
                        'tagged_actions', 'tagged_story_emits', 'tagged_objects', 'tagged_events')
     raw_id_fields = ("game_objects",)
@@ -429,7 +436,7 @@ class SearchTagAdmin(BaseCharAdmin):
 class FirstContactAdmin(BaseCharAdmin):
     """Admin for First Impressions"""
     list_display = ('id', 'from_name', 'summary', 'to_name')
-    search_fields = ('id', 'from_account__entry__player__username', 'to_account__entry__player__username')
+    search_fields = ('=id', 'from_account__entry__player__username', 'to_account__entry__player__username')
     readonly_fields = ('from_account', 'to_account')
 
     @staticmethod
@@ -471,7 +478,7 @@ class FBParticipantsInline(admin.TabularInline):
 class FlashbackAdmin(BaseCharAdmin):
     """Admin for Flashbacks"""
     list_display = ('id', 'title', 'owner',)
-    search_fields = ('id', 'title', 'participants__player__username')
+    search_fields = ('=id', 'title', 'participants__player__username')
     inlines = [FBParticipantsInline, PostInline]
     fieldsets = [(None, {'fields': ['title', 'summary']})]
 
@@ -491,7 +498,7 @@ class GoalUpdateInline(admin.StackedInline):
 class GoalAdmin(BaseCharAdmin):
     """Admin for Goals"""
     list_display = ('id', 'entry', 'summary', 'status', 'scope', 'plot')
-    search_fields = ('id', 'entry__player__username', 'summary', 'description', 'gm_notes')
+    search_fields = ('=id', 'entry__player__username', 'summary', 'description', 'gm_notes')
     raw_id_fields = ('entry', 'plot')
     list_filter = ('scope', 'status')
     inlines = (GoalUpdateInline,)
@@ -510,6 +517,7 @@ admin.site.register(PlayerAccount, AccountAdmin)
 admin.site.register(StoryEmit, StoryEmitAdmin)
 admin.site.register(Mystery, MysteryAdmin)
 admin.site.register(Revelation, RevelationAdmin)
+admin.site.register(RevelationDiscovery, RevelationDiscoveryAdmin)
 admin.site.register(Clue, ClueAdmin)
 admin.site.register(ClueDiscovery, ClueDiscoveryAdmin)
 admin.site.register(Investigation, InvestigationAdmin)
