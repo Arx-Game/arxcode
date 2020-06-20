@@ -91,6 +91,7 @@ class CmdGameSettings(ArxPlayerCommand):
     /emit_label will prefix each emit with its author.
     /highlight_all_mentions enables highlighting for all mentions in channels.
     /highlight_place enables highlighting for place names in poses.
+    /place_color sets a color for place names (with highlight_place enabled).
     """
     key = "@settings"
     locks = "cmd:all()"
