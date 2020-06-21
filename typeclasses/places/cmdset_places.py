@@ -224,7 +224,7 @@ class CmdTableTalk(ArxCommand):
         if "ooc" in self.switches:
             options = {}
             ooc_string = "|w(OOC)|n "
-        if highlight:
+        if highlight and color:
             prefix = "%sAt the %s%s|n," % (ooc_string, color, table.key)
         else:
             prefix = "%sAt the %s," % (ooc_string, table.key)
