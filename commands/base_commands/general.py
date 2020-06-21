@@ -68,6 +68,8 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/verbose_where
         @settings/emit_label
         @settings/highlight_all_mentions
+        @settings/highlight_place
+        @settings/place_color
 
     Switches: /brief suppresses room descs when moving through rooms.
     /posebreak adds a newline between poses from characters.
@@ -89,6 +91,8 @@ class CmdGameSettings(ArxPlayerCommand):
         about their current activities, when using the +where command.
     /emit_label will prefix each emit with its author.
     /highlight_all_mentions enables highlighting for all mentions in channels.
+    /highlight_place enables highlighting for place names in poses.
+    /place_color sets a color for place names (with highlight_place enabled).
     """
     key = "@settings"
     locks = "cmd:all()"
@@ -98,7 +102,8 @@ class CmdGameSettings(ArxPlayerCommand):
                       'afk', 'nomessengerpreview', 'bbaltread', 'ignore_messenger_notifications',
                       'ignore_messenger_deliveries', 'newline_on_messages', 'private_mode',
                       'ic_only', 'ignore_bboard_notifications', 'quote_color', 'name_color',
-                      'emit_label', 'ignore_weather', 'ignore_model_emits', "highlight_all_mentions")
+                      'emit_label', 'ignore_weather', 'ignore_model_emits', "highlight_all_mentions",
+                      'highlight_place', 'place_color')
 
     def func(self):
         """Executes setting command"""
@@ -173,6 +178,12 @@ class CmdGameSettings(ArxPlayerCommand):
         if "highlight_all_mentions" in switches:
             self.togglesetting(caller, "highlight_all_mentions")
             return
+        if "highlight_place" in switches:
+            self.togglesetting(caller, "highlight_place")
+            return
+        if "place_color" in switches:
+            self.set_text_colors(char, "place_color")
+            return
         caller.msg("Invalid switch. Valid switches are: %s" % ", ".join(self.valid_switches))
 
     def togglesetting(self, char, attr, tag=False):
@@ -205,9 +216,12 @@ class CmdGameSettings(ArxPlayerCommand):
             if attr == "pose_quote_color":
                 char.db.pose_quote_color = args
                 char.msg('Text in quotes will appear %s"like this."|n' % args)
-            else:
+            elif attr == "name_color":
                 char.db.name_color = args
                 char.msg('Mentions of your name will look like: %s%s|n' % (args, char.key))
+            elif attr == "place_color":
+                char.db.place_color = args
+                char.msg("Place names will look like %sthis|n." % args)
 
 
 class CmdGlance(ArxCommand):
