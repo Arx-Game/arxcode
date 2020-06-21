@@ -69,6 +69,7 @@ class CmdGameSettings(ArxPlayerCommand):
         @settings/emit_label
         @settings/highlight_all_mentions
         @settings/highlight_place
+        @settings/place_color
 
     Switches: /brief suppresses room descs when moving through rooms.
     /posebreak adds a newline between poses from characters.
