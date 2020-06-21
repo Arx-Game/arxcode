@@ -210,6 +210,8 @@ class CmdTableTalk(ArxCommand):
         """Implements command"""
         caller = self.caller
         args = self.args
+        highlight = caller.player_ob.db.highlight_place
+        color = caller.char_ob.db.place_color
         if not args:
             caller.msg("Usage: {wtt <message>{n")
             return
@@ -222,7 +224,10 @@ class CmdTableTalk(ArxCommand):
         if "ooc" in self.switches:
             options = {}
             ooc_string = "|w(OOC)|n "
-        prefix = "%sAt the %s," % (ooc_string, table.key)
+        if highlight and color:
+            prefix = "%sAt the %s%s|n," % (ooc_string, color, table.key)
+        else:
+            prefix = "%sAt the %s," % (ooc_string, table.key)
         # get the first character to see if it's special
         start_char = args[0]
         if start_char in self.char_symbols:

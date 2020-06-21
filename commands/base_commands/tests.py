@@ -1464,6 +1464,7 @@ class CheckCommandTests(ArxCommandTest):
         expected_return = "Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]"
         self.call_cmd("/retainer", expected_return)
         self.call_cmd("/retainer X|strength + athletics at 20", expected_return)
+        self.call_cmd("/retainer 1=strength + athletics at 20", expected_return)
         self.call_cmd("/retainer -1|strength + athletics at 20", "Retainer ID must be a positive number.")
 
         # Wrong difficulty value (X < 1 || X > 100)

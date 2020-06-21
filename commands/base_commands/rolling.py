@@ -116,7 +116,9 @@ class CmdDiceCheck(ArxCommand):
         Returns retainer's ID and '<stat>[+<skill>][ at <difficulty number>]'
         """
         split_str = args.split("|")
-        if not split_str[0].lstrip('-').isdigit():
+        
+        # If player uses negative number or = on accident (ie - split of | fails)
+        if not split_str[0].lstrip('-').isdigit() or len(split_str) < 2:
             raise ValueError("Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
 
         if split_str[0].lstrip('-').isdigit() and not int(split_str[0]) > 0:
@@ -144,7 +146,6 @@ class CmdDiceCheck(ArxCommand):
         if len(split_str) > 1:
             if not split_str[1].isdigit() or not 0 < int(split_str[1]) < maximum_difference:
                 raise ValueError("Difficulty must be a number between 1 and %s." % maximum_difference)
-                return
             difficulty = int(split_str[1])
         
         return split_str[0], difficulty
