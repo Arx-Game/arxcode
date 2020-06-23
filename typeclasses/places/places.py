@@ -15,6 +15,10 @@ class Place(Object):
     PLACE_LOCKS = "call:true();control:perm(Wizards);delete:perm(Wizards);examine:perm(Builders);" \
                   "get:perm(Builders) or decorators();puppet:perm(Immortals);tell:all();view:all()"
 
+    TT_SAY = 1
+    TT_POSE = 2
+    TT_EMIT = 3
+
     def at_object_creation(self):
         """
         Run at Place creation.
@@ -48,8 +52,40 @@ class Place(Object):
         occupants.append(character)
         self.db.occupants = occupants
         self.location.msg_contents("%s has joined the %s." % (character.name, self.key), exclude=character)
+
+
+    def build_tt_msg(self, from_obj, to_obj, msg, is_ooc=False, msg_type=TT_SAY) -> str:
+        say_msg = "{ooc}At the {place_color}{place_name}|n, {name} says, \"{msg}\""
+        pose_msg = "{ooc}At the {place_color}{place_name}|n, {name}{msg}"
+        emit_msg = "{ooc}{emit_label}At the {place_color}{place_name}|n, {msg}"
+
+        ooc = "|w(OOC)|n " if is_ooc else ""
+        place_name = self.key
+
+        highlight = to_obj.player_ob.db.highlight_place
+
+        if highlight:
+            place_color = to_obj.char_ob.db.place_color or "" # Beware of None
+        else:
+            place_color = ""
+
+        if msg_type == TT_SAY:
+            tt_msg = say_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.key, msg=msg)
+        elif msg_type == TT_POSE:
+            tt_msg = pose_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.key, msg=msg)
+        elif msg_type == TT_EMIT:
+            if to_obj.tags.get("emit_label"):
+                emit_label = "{w[{c%s{w]{n " % from_obj.key
+            else:
+                emit_label = ""
+            tt_msg = emit_msg.format(ooc=ooc, emit_label=emit_label, place_color=place_color, place_name=place_name, msg=msg)
+        else:
+            raise ValueError("Invalid message type in Places.build_tt_msg()")
+
+        return tt_msg
     
-    def tt_msg(self, message, from_obj, exclude=None, emit=False, options=None):
+    
+    def tt_msg(self, message, from_obj, exclude=None, is_ooc=False, msg_type=TT_SAY, options=None):
         """
         Send msg to characters at table. Note that if this method was simply named
         'msg' rather than tt_msg, it would be called by msg_contents in rooms, causing
@@ -61,12 +97,10 @@ class Place(Object):
         exclude = make_iter(exclude)
         for ob in self.db.occupants:
             if ob not in exclude:
-                if emit and ob.tags.get("emit_label"):
-                    formatted_message = "{w[{c%s{w]{n %s" % (from_obj, message)
-                else:
-                    formatted_message = message
-                ob.msg(formatted_message, from_obj=from_obj, options=options)
+                tt_msg = self.build_tt_msg(from_obj, ob, message, is_ooc, msg_type)
+                ob.msg(tt_msg, from_obj=from_obj, options=options)
         from_obj.posecount += 1
+
 
     def at_after_move(self, source_location, **kwargs):
         """If new location is not our wearer, remove."""

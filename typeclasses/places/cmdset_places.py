@@ -212,10 +212,13 @@ class CmdTableTalk(ArxCommand):
         args = self.args
         highlight = caller.player_ob.db.highlight_place
         color = caller.char_ob.db.place_color
+        is_ooc = False
+
         if not args:
             caller.msg("Usage: {wtt <message>{n")
             return
         table = caller.db.sitting_at_table
+        msg_type = table.TT_SAY
         if not table:
             caller.msg("You are not sitting at a private table currently.")
             return
@@ -224,10 +227,13 @@ class CmdTableTalk(ArxCommand):
         if "ooc" in self.switches:
             options = {}
             ooc_string = "|w(OOC)|n "
+            is_ooc=True
+            
         if highlight and color:
             prefix = "%sAt the %s%s|n," % (ooc_string, color, table.key)
         else:
             prefix = "%sAt the %s," % (ooc_string, table.key)
+        
         # get the first character to see if it's special
         start_char = args[0]
         if start_char in self.char_symbols:
@@ -236,14 +242,12 @@ class CmdTableTalk(ArxCommand):
             msg = "%s%s" % (whitespace, msg)
             if start_char == "|":
                 # send message as an emit
-                msg = "%s %s" % (prefix, msg)
-                emit = True
+                msg_type = table.TT_EMIT
             else:  # send message as a pose
-                msg = "%s {c%s{n%s" % (prefix, caller.name, msg)
-                emit = False
-            # gives the message, its sender, and whether it's an emit
-            table.tt_msg(msg, from_obj=caller, emit=emit, options=options)
-            return
-        caller.msg('%s you say, "%s"' % (prefix, args), options=options, from_obj=caller)
-        table.tt_msg('%s {c%s{n says, "%s"' % (prefix, caller.name, args), from_obj=caller,
-                     exclude=caller, options=options)
+                msg_type = table.TT_POSE
+            
+        if msg_type == table.TT_SAY:
+            caller.msg('%s you say, "%s"' % (prefix, args), options=options, from_obj=caller)
+            table.tt_msg(msg, from_obj=caller, exclude=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)
+        else:
+            table.tt_msg(msg, from_obj=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)
