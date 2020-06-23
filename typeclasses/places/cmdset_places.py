@@ -248,6 +248,6 @@ class CmdTableTalk(ArxCommand):
             
         if msg_type == table.TT_SAY:
             caller.msg('%s you say, "%s"' % (prefix, args), options=options, from_obj=caller)
-            table.tt_msg(msg, from_obj=caller, exclude=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)
+            table.tt_msg(args, from_obj=caller, exclude=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)
         else:
             table.tt_msg(msg, from_obj=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)

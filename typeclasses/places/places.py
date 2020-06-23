@@ -54,7 +54,7 @@ class Place(Object):
         self.location.msg_contents("%s has joined the %s." % (character.name, self.key), exclude=character)
 
 
-    def build_tt_msg(self, from_obj, to_obj, msg, is_ooc=False, msg_type=TT_SAY) -> str:
+    def build_tt_msg(self, from_obj, to_obj, msg: str, is_ooc=False, msg_type=TT_SAY) -> str:
         say_msg = "{ooc}At the {place_color}{place_name}|n, {name} says, \"{msg}\""
         pose_msg = "{ooc}At the {place_color}{place_name}|n, {name}{msg}"
         emit_msg = "{ooc}{emit_label}At the {place_color}{place_name}|n, {msg}"
@@ -69,13 +69,13 @@ class Place(Object):
         else:
             place_color = ""
 
-        if msg_type == TT_SAY:
-            tt_msg = say_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.key, msg=msg)
-        elif msg_type == TT_POSE:
-            tt_msg = pose_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.key, msg=msg)
-        elif msg_type == TT_EMIT:
+        if msg_type == self.TT_SAY:
+            tt_msg = say_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.name, msg=msg)
+        elif msg_type == self.TT_POSE:
+            tt_msg = pose_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.name, msg=msg)
+        elif msg_type == self.TT_EMIT:
             if to_obj.tags.get("emit_label"):
-                emit_label = "{w[{c%s{w]{n " % from_obj.key
+                emit_label = "{w[{c%s{w]{n " % from_obj.name
             else:
                 emit_label = ""
             tt_msg = emit_msg.format(ooc=ooc, emit_label=emit_label, place_color=place_color, place_name=place_name, msg=msg)
