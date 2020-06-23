@@ -98,7 +98,7 @@ class Place(Object):
         for ob in self.db.occupants:
             if ob not in exclude:
                 place_msg = self.build_tt_msg(from_obj, ob, message, is_ooc, msg_type)
-                ob.msg(tt_msg, from_obj=from_obj, options=options)
+                ob.msg(place_msg, from_obj=from_obj, options=options)
         from_obj.posecount += 1
 
 
