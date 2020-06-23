@@ -70,19 +70,19 @@ class Place(Object):
             place_color = ""
 
         if msg_type == self.TT_SAY:
-            tt_msg = say_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.name, msg=msg)
+            place_msg = say_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.name, msg=msg)
         elif msg_type == self.TT_POSE:
-            tt_msg = pose_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.name, msg=msg)
+            place_msg = pose_msg.format(ooc=ooc, place_color=place_color, place_name=place_name, name=from_obj.name, msg=msg)
         elif msg_type == self.TT_EMIT:
             if to_obj.tags.get("emit_label"):
                 emit_label = "{w[{c%s{w]{n " % from_obj.name
             else:
                 emit_label = ""
-            tt_msg = emit_msg.format(ooc=ooc, emit_label=emit_label, place_color=place_color, place_name=place_name, msg=msg)
+            place_msg = emit_msg.format(ooc=ooc, emit_label=emit_label, place_color=place_color, place_name=place_name, msg=msg)
         else:
             raise ValueError("Invalid message type in Places.build_tt_msg()")
 
-        return tt_msg
+        return place_msg
     
     
     def tt_msg(self, message, from_obj, exclude=None, is_ooc=False, msg_type=TT_SAY, options=None):
@@ -97,7 +97,7 @@ class Place(Object):
         exclude = make_iter(exclude)
         for ob in self.db.occupants:
             if ob not in exclude:
-                tt_msg = self.build_tt_msg(from_obj, ob, message, is_ooc, msg_type)
+                place_msg = self.build_tt_msg(from_obj, ob, message, is_ooc, msg_type)
                 ob.msg(tt_msg, from_obj=from_obj, options=options)
         from_obj.posecount += 1
 
