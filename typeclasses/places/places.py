@@ -62,8 +62,8 @@ class Place(Object):
         ooc = "|w(OOC)|n " if is_ooc else ""
         place_name = self.key
 
+        # If highlighting place name for rcvr.
         highlight = to_obj.player_ob.db.highlight_place
-
         if highlight:
             place_color = to_obj.char_ob.db.place_color or "" # Beware of None
         else:
