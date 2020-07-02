@@ -235,7 +235,7 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
                                                          .exclude(inform=False)
                                                          .filter(owner__memberships__in=members)
                            )
-                targets = [ob for ob in targets if petition.organization.access(petition.owner, "view_petition")]
+                targets = [ob for ob in targets if petition.organization.access(ob.owner, "view_petition")]
                 for target in targets:
                     target.owner.player.msg("{wA new petition was posted by %s to %s.{n" % (petition.owner,
                                                                                             petition.organization))
@@ -296,14 +296,20 @@ class CmdPetition(RewardRPToolUseMixin, ArxCommand):
         settings, created = self.caller.dompc.petition_settings.get_or_create()
         if self.lhs == "all":
             settings.inform ^= True
-            self.msg("You are now %sinformed of new petitions." % ("" if settings.inform else "not "))
+            self.msg("You are %s informed of new petitions." % ("now" if settings.inform else "no longer"))
+            settings.save()
         elif self.lhs == "general":
             settings.ignore_general ^= True
-            self.msg("You are now %sinformed of new general petitions." % ("" if settings.inform else "not "))
+            self.msg("You are %s informed of new general petitions." % ("no longer" if settings.ignore_general else "now"))
+            settings.save()
         else:
             org = self.get_org_from_args(self.lhs)
-            settings.ignored_organizations.add(org)
-            msg = "You are now %sinformed of new " % ("" if settings.inform else "not ")
+            if org in settings.ignored_organizations.all():
+                settings.ignored_organizations.remove(org)
+                msg = "You are now informed of new "
+            else:
+                settings.ignored_organizations.add(org)
+                msg = "You are no longer informed of new "
             self.msg(msg + self.lhs + " petitions.")
 
     def get_org_from_args(self, args):
