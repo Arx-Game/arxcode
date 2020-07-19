@@ -4,7 +4,7 @@ them both using the same underlying database model, though for now going to hand
 them differently due to a Crisis being public, while plots are private and can
 be player-run.
 """
-from commands.base import ArxCommand
+from commands.base import ArxCommand, ArxPlayerCommand
 from commands.mixins import RewardRPToolUseMixin
 from server.utils.helpdesk_api import create_ticket, add_followup, resolve_ticket
 from server.utils.prettytable import PrettyTable
@@ -66,6 +66,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         plots/add/theory <plot ID>=<theory ID>
         plots/tag <plot ID>[,<beat ID>]=<tag topic>
         plots/search <tag topic>
+        plots/close <plot ID>
     Beat Usage:
         plots/createbeat <plot ID>=<IC summary>/<ooc notes of consequences>
         plots/add/rpevent <rp event ID>=<beat ID>
@@ -115,7 +116,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
     key = "+plots"
     aliases = ["+plot"]
     help_category = "Story"
-    admin_switches = ("storyhook", "rfr", "invite", "invitation", "perm", "cast", "tag")
+    admin_switches = ("storyhook", "rfr", "invite", "invitation", "perm", "cast", "tag", "close")
     recruited_xp = 1
     help_entry_tags = ["plots", "goals"]
 
@@ -370,7 +371,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
                     new_cast = PCPlotInvolvement.EXTRA
                 else:
                     err = ("You entered '%s'. Valid permission levels: gm, player, or recruiter. "
-                          "Valid cast options: required, main, supporting, or extra." % attr)
+                           "Valid cast options: required, main, supporting, or extra." % attr)
                     raise CommandError(err)
             plot = self.get_involvement_by_plot_id(required_permission=access_level).plot
             self.change_permission_or_set_story(plot, name, new_perm, new_cast, story)
@@ -379,10 +380,12 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
                 return self.msg(self.list_invitations())
             plot = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.RECRUITER).plot
             self.invite_to_plot(plot)
-        elif self.check_switches(("rfr", "tag")):
+        elif self.check_switches(("rfr", "tag", "close")):
             plot = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.GM, allow_old=True).plot
             if "rfr" in self.switches:
                 self.request_for_review(plot)
+            elif "close" in self.switches:
+                self.close_plot(plot)
             else:
                 self.tag_plot_or_beat(plot)
 
@@ -402,7 +405,8 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
             if new_cast < PCPlotInvolvement.SUPPORTING_CAST and involvement.admin_status == PCPlotInvolvement.GM:
                 raise CommandError(gm_err)
             involvement.cast_status = new_cast
-            success.append("added %s to the plot's %s members." % (involvement.dompc, involvement.get_cast_status_display()))
+            success.append("added %s to the plot's %s members." % (involvement.dompc,
+                                                                   involvement.get_cast_status_display()))
         else:
             if story:
                 if involvement.admin_status == PCPlotInvolvement.PLAYER:
@@ -417,7 +421,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         involvement.save()
         self.msg("".join(success))
 
-    def get_involvement_by_plot_object(self, plot, pc_name):
+    def get_involvement_by_plot_object(self, plot: Plot, pc_name: str):
         """
         Gets the involvement object for a given plot
         Args:
@@ -434,7 +438,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
             raise self.error_class("No one is involved in your plot by the name '%s'." % pc_name)
         return involvement
 
-    def invite_to_plot(self, plot):
+    def invite_to_plot(self, plot: Plot):
         """Invites a player to join a plot"""
         try:
             name, status = self.rhslist
@@ -444,7 +448,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         plot.add_dompc(dompc, status=status.lower(), recruiter=self.caller.key)
         self.msg("You have invited %s to join %s." % (dompc, plot))
 
-    def request_for_review(self, plot):
+    def request_for_review(self, plot: Plot):
         """Makes a request for joining a plot"""
         if not self.rhs:
             return self.display_open_tickets_for_plot(plot)
@@ -454,6 +458,14 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         title = "RFR: %s" % plot
         create_ticket(self.caller.player_ob, self.rhs, queue_slug="PRP", optional_title=title, plot=plot, beat=beat)
         self.msg("You have submitted a new ticket for %s." % plot)
+
+    def close_plot(self, plot: Plot):
+        """Marks a plot as done"""
+        plot.resolved = True
+        if not plot.end_date:
+            plot.end_date = datetime.now()
+        plot.save()
+        self.msg(f"{plot} has been marked as finished.")
 
     def tag_plot_or_beat(self, plot):
         """Tags a plot or beat with specified topic."""
@@ -873,3 +885,50 @@ class CmdGMPlots(ArxCommand):
         involvement.gm_notes += gm_notes
         involvement.save()
         self.msg("You have connected %s with %s." % (target, plot))
+
+
+class CmdStoryCoordinators(ArxPlayerCommand):
+    """
+    Lists story coordinator stuff
+
+    story <story coordinator name>
+    story/old <org name>
+    story/org <org name>
+    """
+    key = "story"
+    locks = "cmd:perm(builders)"
+    help_category = "GMing"
+
+    def func(self):
+        try:
+            if not self.switches:
+                return self.display_coordinator()
+            if "old" in self.switches:
+                return self.display_resolved_plots_for_org()
+            return self.display_current_plots_for_org()
+        except self.error_class as err:
+            self.msg(err)
+
+    def display_coordinator(self):
+        targ = self.search(self.args)
+        if not targ:
+            return
+        orgs = Organization.objects.filter(members__in=targ.active_memberships.filter(story_coordinator=True))
+        plots = Plot.objects.filter(resolved=False, orgs__in=orgs).distinct()
+        plot_display = "\n".join([plot.display_involvement() for plot in plots])
+        self.msg(f"Plots for {targ}:\n{plot_display}")
+
+    def display_resolved_plots_for_org(self):
+        plots = self.get_plots_for_org().order_by('start_date')
+        plot_display = ", ".join([f"{plot.name_and_id}" for plot in plots])
+        self.msg(f"Resolved plots for {self.args}: {plot_display}")
+
+    def display_current_plots_for_org(self):
+        plots = self.get_plots_for_org()
+        plot_display = "\n".join([plot.display_activity() for plot in plots])
+        self.msg(f"Active plots for {self.args}: {plot_display}")
+
+    def get_plots_for_org(self):
+        resolved = "old" in self.switches
+        org = self.get_by_name_or_id(Organization, self.args)
+        return Plot.objects.filter(resolved=resolved, orgs=org)

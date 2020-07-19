@@ -19,7 +19,7 @@ from server.utils.prettytable import PrettyTable
 from . import setup_utils
 from web.character.models import Clue
 from world.dominion.models import (Region, Land, PlayerOrNpc, ClueForOrg, Reputation, AssetOwner, Organization, Member,
-                                   SphereOfInfluence, InfluenceCategory, PlotRoom)
+                                   SphereOfInfluence, InfluenceCategory, PlotRoom, Plot, PCPlotInvolvement)
 
 from world.dominion.domain.models import MilitaryUnit, Army, Domain, Castle, Ruler, Minister
 
@@ -768,6 +768,8 @@ class CmdAdmOrganization(ArxPlayerCommand):
         @admin_org/setinfluence <org name or number>=<inf name>,<value>
         @admin_org/cptasks <target org>=<org to copy>
         @admin_org/addclue <org name or number>=<clue ID>
+        @admin_org/addsc org=name
+        @admin_org/rmsc org=name
 
     Allows you to change or control organizations. Orgs can be accessed either by
     their ID number or name. /setup creates a board and channel for them.
@@ -935,6 +937,15 @@ class CmdAdmOrganization(ArxPlayerCommand):
                                                                                                briefing_type)
                 org.inform(text, category)
                 self.msg("Added clue {w%s{n to {c%s{n" % (clue, org))
+            if "addsc" in self.switches or "rmsc" in self.switches:
+                added = "addsc" in self.switches
+                try:
+                    member = org.members.get(player__player__username__iexact=self.rhs)
+                except Member.DoesNotExist:
+                    raise CommandError("No member by that name. Add them.")
+                member.story_coordinator = added
+                self.msg(f"Set {member} story coordinator status to {added}")
+                member.save()
         except CommandError as err:
             self.msg(err)
 
@@ -1811,6 +1822,9 @@ class CmdOrganization(ArxPlayerCommand):
         @org/briefing <player>/<clue name>[=<org name>]
         @org/addtheory <theory #>[=<org name>]
         @org/theorybriefing <player>/<theory #>[=<org name>]
+        @org/plots[/old] [<org name>]
+        @org/addplot <plot ID>,<required rank to see plot>=[<org name>]
+        @org/rmplot <plot ID>[=<org name>]
 
     Lists the houses/organizations your character is a member
     of. Give the name of an organization for more detailed information.
@@ -1835,7 +1849,7 @@ class CmdOrganization(ArxPlayerCommand):
                  "setruler", "view", "guards", "build", "briefing",
                  "declarations", "army", "informs", "transactions",
                  "viewassets", "memberdesc", "motd", "admin_petition",
-                 "view_petition", "recipe")
+                 "view_petition", "recipe", "remove_plots")
 
     @staticmethod
     def get_org_and_member(caller, myorgs, args):
@@ -1870,14 +1884,15 @@ class CmdOrganization(ArxPlayerCommand):
     def display_permtypes(self):
         self.msg("Type must be one of the following: %s" % ", ".join(self.org_locks))
 
-    def get_org_from_myorgs(self, myorgs):
+    def get_org_from_myorgs(self, myorgs, args=None):
         if len(myorgs) == 1:
             org = myorgs[0]
         else:
+            args = args or self.rhs
             try:
-                org, _ = self.get_org_and_member(self.caller, myorgs, self.rhs)
+                org, _ = self.get_org_and_member(self.caller, myorgs, args)
             except Organization.DoesNotExist:
-                self.msg("You are not a member of any organization named %s." % self.rhs)
+                self.msg("You are not a member of any organization named %s." % args)
                 return
         return org
 
@@ -2054,6 +2069,50 @@ class CmdOrganization(ArxPlayerCommand):
                                                                                            targ_type, share_str, org,
                                                                                            briefing_type)
             org.inform(text, category)
+            return
+        if "plots" in self.switches:
+            org = self.get_org_from_myorgs(myorgs, self.args)
+            if not org:
+                return
+            plot_display = org.display_plots_to_player(self.caller, resolved="old" in self.switches)
+            self.msg(f"Plots:\n{plot_display}")
+            return
+        if "addplot" in self.switches or "rmplot" in self.switches:
+            org = self.get_org_from_myorgs(myorgs)
+            if not org:
+                return
+            if "addplot" in self.switches:
+                # Q object needs to be a plot they have access to
+                q_args = Q(id__in=caller.Dominion.plots_we_can_gm)
+                try:
+                    name, rank = self.lhslist
+                except (TypeError, ValueError):
+                    self.msg("Must give name/id and rank to set the plot at.")
+                    return
+            else:
+                # Q object needs to be a plot connected to the org
+                # they need to have remove_plots perm
+                q_args = Q(orgs=org)
+                name = self.lhs
+            # find plot by name or id
+            try:
+                plot = self.get_by_name_or_id(Plot, name, q_args=q_args)
+            except self.error_class as err:
+                self.msg(err)
+                return
+            # add or remove it to/from the org
+            if "addplot" in self.switches:
+                org.add_plot(plot, rank)
+                self.msg("Plot added.")
+            else:
+                member = self.get_member_from_player(org, self.caller)
+                if not member:
+                    return
+                if member.rank > 2:
+                    self.msg("You must be rank 1 or 2 to remove a plot.")
+                    return
+                org.remove_plot(plot)
+                self.msg("Plot removed.")
             return
         if 'accept' in self.switches:
             org = caller.ndb.orginvite

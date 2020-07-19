@@ -62,6 +62,7 @@ from evennia.utils import create
 from django.db import models
 from django.db.models import Q, Count, F, Sum, Case, When
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
 
 from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
@@ -2147,6 +2148,34 @@ class Organization(InformMixin, SharedMemoryModel):
             pc.has_seen_motd = False
             pc.save()
 
+    def display_plots_to_player(self, player, resolved=False) -> str:
+        """Returns a message of org plots that the player has access to"""
+        rank = 11
+        if player.is_staff:
+            rank = 1
+        else:
+            try:
+                member = self.active_members.get(player__player=player)
+                rank = member.rank
+            except Member.DoesNotExist:
+                pass
+        # list of all plots
+        plots = self.plot_involvement.filter(rank_requirement__gte=rank,
+                                             plot__resolved=resolved)
+        return "\n".join([ob.display_plot_for_org() for ob in plots])
+
+    def add_plot(self, plot, rank):
+        inv, _ = self.plot_involvement.get_or_create(plot=plot)
+        inv.rank_requirement = rank
+        inv.save()
+
+    def remove_plot(self, plot):
+        try:
+            inv = self.plot_involvement.get(plot=plot)
+            inv.delete()
+        except ObjectDoesNotExist:
+            pass
+
 
 class ClueForOrg(SharedMemoryModel):
     """Model that shows a clue known by an org"""
@@ -2519,6 +2548,7 @@ class Member(SharedMemoryModel):
                                            null=True)
     organization = models.ForeignKey('Organization', related_name='members', blank=True, null=True, db_index=True,
                                      on_delete=models.CASCADE)
+    story_coordinator = models.BooleanField("Whether they're a coordinator for this org", default=False)
     # work they've gained
     work_this_week = models.PositiveSmallIntegerField(default=0, blank=0)
     work_total = models.PositiveSmallIntegerField(default=0, blank=0)

@@ -1,6 +1,7 @@
 """
 Mixins for commands
 """
+from typing import Union, Dict
 from server.utils.exceptions import CommandError
 from django.db.models import Q
 
@@ -54,8 +55,9 @@ class ArxCommmandMixin(object):
         """Whether caller has staff permissions"""
         return self.caller.check_permstring("builders")
 
-    def get_by_name_or_id(self, cls, args, field_name="name", check_contains_first=True, q_args=None,
-                          filter_kwargs=None):
+    def get_by_name_or_id(self, cls, args: str, field_name: str = "name",
+                          check_contains_first: bool = True, q_args: Union[Q, None] = None,
+                          filter_kwargs: Union[Dict, None] = None):
         """Gets a given class by ID or a unique text field (default of 'name')"""
         err = "No %s found using '%s'." % (cls.__name__, args)
         qs = cls.objects.all().distinct()
