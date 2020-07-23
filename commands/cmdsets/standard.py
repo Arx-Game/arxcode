@@ -192,7 +192,7 @@ class OOCCmdSet(CmdSet):
         self.add(social.CmdSocialNotable())
         self.add(social.CmdSocialNominate())
         self.add(social.CmdSocialReview())
-        self.add(social.CmdFavor())
+        # self.add(social.CmdFavor())
         self.add(overrides.SystemNoMatch())
         self.add(weather_commands.CmdAdminWeather())
         self.add(roster.CmdPropriety())
