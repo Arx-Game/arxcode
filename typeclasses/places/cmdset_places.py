@@ -210,24 +210,34 @@ class CmdTableTalk(ArxCommand):
         """Implements command"""
         caller = self.caller
         args = self.args
-        highlight = caller.player_ob.db.highlight_place
-        color = caller.char_ob.db.place_color
+
         if not args:
             caller.msg("Usage: {wtt <message>{n")
             return
+
         table = caller.db.sitting_at_table
         if not table:
             caller.msg("You are not sitting at a private table currently.")
             return
+
+        is_ooc = False
+        msg_type = table.TT_SAY
         options = {'is_pose': True}
+
+        # If /ooc was used
         ooc_string = ""
         if "ooc" in self.switches:
             options = {}
             ooc_string = "|w(OOC)|n "
-        if highlight and color:
-            prefix = "%sAt the %s%s|n," % (ooc_string, color, table.key)
+            is_ooc=True
+
+        # If highlighting color for caller
+        highlight = caller.player_ob.db.highlight_place        
+        if highlight:
+            place_color = caller.char_ob.db.place_color or ""
         else:
-            prefix = "%sAt the %s," % (ooc_string, table.key)
+            place_color = ""
+
         # get the first character to see if it's special
         start_char = args[0]
         if start_char in self.char_symbols:
@@ -236,14 +246,18 @@ class CmdTableTalk(ArxCommand):
             msg = "%s%s" % (whitespace, msg)
             if start_char == "|":
                 # send message as an emit
-                msg = "%s %s" % (prefix, msg)
-                emit = True
-            else:  # send message as a pose
-                msg = "%s {c%s{n%s" % (prefix, caller.name, msg)
-                emit = False
-            # gives the message, its sender, and whether it's an emit
-            table.tt_msg(msg, from_obj=caller, emit=emit, options=options)
-            return
-        caller.msg('%s you say, "%s"' % (prefix, args), options=options, from_obj=caller)
-        table.tt_msg('%s {c%s{n says, "%s"' % (prefix, caller.name, args), from_obj=caller,
-                     exclude=caller, options=options)
+                msg_type = table.TT_EMIT
+            else:
+                # send message as a pose
+                msg_type = table.TT_POSE
+            
+        # If tt "say" msg, send to caller as "you say" then everyone else as "caller.name says"
+        if msg_type == table.TT_SAY:
+            you_msg = "{ooc}At the {place_color}{place_name}|n, you say, \"{msg}\""
+            you_msg = you_msg.format(ooc=ooc_string, place_color=place_color, place_name=table.key, msg=args)
+
+            caller.msg(you_msg, options=options, from_obj=caller)
+            table.tt_msg(args, from_obj=caller, exclude=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)
+        else:
+            # Otherwise, it's a pose or emit so send it to everyone as a pose/emit.
+            table.tt_msg(msg, from_obj=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)

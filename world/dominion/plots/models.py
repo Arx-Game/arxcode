@@ -265,6 +265,20 @@ class Plot(SharedMemoryModel):
         for dompc in active:
             dompc.inform(text, category=category, append=append)
 
+    @property
+    def name_and_id(self):
+        return f"{self.name} (#{self.id})"
+
+    def display_involvement(self):
+        return f"{self.name_and_id}, Orgs: {self.orgs.all()}, Players: {self.dompcs.all()}"
+
+    def display_activity(self):
+        most_recent_beat = self.updates.last()
+        beat_date = "|rNever|n"
+        if most_recent_beat and most_recent_beat.date:
+            beat_date = most_recent_beat.date.strftime("%x")
+        return f"{self.name_and_id}: Last Update: {beat_date} (#{most_recent_beat.id})"
+
 
 class OrgPlotInvolvement(SharedMemoryModel):
     """An org's participation in a plot"""
@@ -272,6 +286,11 @@ class OrgPlotInvolvement(SharedMemoryModel):
     org = models.ForeignKey("Organization", related_name="plot_involvement", on_delete=models.CASCADE)
     auto_invite_members = models.BooleanField(default=False)
     gm_notes = models.TextField(blank=True)
+    rank_requirement = models.PositiveSmallIntegerField(default=10, blank=True)
+
+    def display_plot_for_org(self) -> str:
+        """Prints out a display of this plot for the org"""
+        return f"Plot: {self.plot}, Rank required: {self.rank_requirement}\n{self.plot.cast_list}"
 
 
 class PCPlotInvolvement(SharedMemoryModel):
@@ -1250,19 +1269,19 @@ class ActionRequirement(SharedMemoryModel):
     total_required_amount = models.PositiveIntegerField("Amount for resources/AP", default=0)
     max_rate = models.PositiveIntegerField("If greater than 0, max amount that can be added per week", default=0)
     weekly_total = models.PositiveIntegerField("Amount added so far this week", default=0)
-    clue = models.ForeignKey("character.Clue", null=True, on_delete=models.CASCADE)
-    revelation = models.ForeignKey("character.Revelation", null=True, on_delete=models.CASCADE)
-    skill_node = models.ForeignKey("magic.SkillNode", null=True, on_delete=models.CASCADE)
-    spell = models.ForeignKey("magic.Spell", null=True, on_delete=models.CASCADE)
-    item = models.ForeignKey("objects.ObjectDB", null=True, on_delete=models.CASCADE)
-    fulfilled_by = models.ForeignKey("dominion.PlayerOrNpc", null=True, on_delete=models.PROTECT,
+    clue = models.ForeignKey("character.Clue", null=True, on_delete=models.CASCADE, blank=True)
+    revelation = models.ForeignKey("character.Revelation", null=True, on_delete=models.CASCADE, blank=True)
+    skill_node = models.ForeignKey("magic.SkillNode", null=True, on_delete=models.CASCADE, blank=True)
+    spell = models.ForeignKey("magic.Spell", null=True, on_delete=models.CASCADE, blank=True)
+    item = models.ForeignKey("objects.ObjectDB", null=True, on_delete=models.CASCADE, blank=True)
+    fulfilled_by = models.ForeignKey("dominion.PlayerOrNpc", null=True, blank=True, on_delete=models.PROTECT,
                                      related_name="requirements_fulfilled",
                                      help_text="For non-amount clues, who satisfied the requirement")
     requirement_text = models.TextField("Specifies what you want the player to add for military "
                                         "forces or an event", blank=True)
     explanation = models.TextField("Explanation by fulfilling player of how the requirement is met",
                                    blank=True)
-    rfr = models.ForeignKey("PlotUpdate", null=True, on_delete=models.PROTECT,
+    rfr = models.ForeignKey("PlotUpdate", null=True, blank=True, on_delete=models.PROTECT,
                             help_text="PlotUpdate that player specified to fill this requirement")
 
     @classmethod

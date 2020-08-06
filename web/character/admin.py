@@ -85,7 +85,7 @@ class EmitInline(admin.TabularInline):
     list_display = ('id',)
     model = StoryEmit
     extra = 0
-    raw_id_fields = ('sender',)
+    raw_id_fields = ('sender', 'beat', 'episode', 'chapter', 'orgs', 'search_tags')
 
 
 class ChapterAdmin(BaseCharAdmin):

@@ -9,7 +9,7 @@ from . import crisis_commands, general_dominion_commands
 from world.dominion.plots import plot_commands
 from web.character.models import StoryEmit, Clue, CluePlotInvolvement, Revelation, Theory, TheoryPermissions, SearchTag
 from world.dominion.models import RPEvent, Organization, CraftingMaterialType, ClueForOrg
-from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement, PlotUpdate
+from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement, PlotUpdate, OrgPlotInvolvement
 
 
 class TestCraftingCommands(ArxCommandTest):
@@ -201,27 +201,53 @@ class TestGeneralDominionCommands(ArxCommandTest):
         org = Organization.objects.create(name="Orgtest")
         org_owner = AssetOwner.objects.create(organization_owner=org)
 
-        member = org.members.create(player=self.dompc)
+        member = org.members.create(player=self.dompc, rank=9)
         self.cmd_class = general_dominion_commands.CmdOrganization
         self.caller = self.account
-        self.call_cmd("Orgtest","Name: Orgtest\n"
+        self.call_cmd("Orgtest", "Name: Orgtest\n"
                       "Desc: None\n\nLeaders of Orgtest:\n"
-                      "\nWebpage: http://example.com/topics/org/1/\nMembers of Orgtest:\nSerf (Rank 10): Testaccount\n"
-                      "\nMoney:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%\nResources: Economic: 0, Military: 0, Social: 0\n"
-                      "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\nWork Settings: None found.\n\n"
-                      "Member stats for Testaccount\n\nRank: 10\nSupport Pool Share: 0/0\nTotal Work: 0\nTasks Completed: 0, Total Rating: 0")
+                      "\nWebpage: http://example.com/topics/org/1/\nMembers of Orgtest:\n"
+                      "Forgotten Commoners (Rank 9): Testaccount\n"
+                      "\nMoney:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%"
+                      "\nResources: Economic: 0, Military: 0, Social: 0\n"
+                      "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\n"
+                      "Work Settings: None found.\n\n"
+                      "Member stats for Testaccount\n\nRank: 9\nSupport Pool Share: 10/10\nTotal Work: 0\n"
+                      "Tasks Completed: 0, Total Rating: 0")
         clue = Clue.objects.create(name="Org test clue 1")
         clue2 = Clue.objects.create(name="Org test clue 2")
         clue2.discoveries.create(character=self.roster_entry)
         ClueForOrg.objects.create(clue=clue, org=org, revealed_by=self.roster_entry)
         ClueForOrg.objects.create(clue=clue2, org=org, revealed_by=self.roster_entry)
-        self.call_cmd("Orgtest","Name: Orgtest\nDesc: None\n\nLeaders of Orgtest:\n\n"
-                      "Webpage: http://example.com/topics/org/1/\nMembers of Orgtest:\nSerf (Rank 10): Testaccount\n\n"
-                      "Money:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%\nResources: Economic: 0, Military: 0, Social: 0\n"
-                      "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\nWork Settings: None found.\n"
+        self.call_cmd("Orgtest", "Name: Orgtest\nDesc: None\n\nLeaders of Orgtest:\n\n"
+                      "Webpage: http://example.com/topics/org/1/\nMembers of Orgtest:\nForgotten Commoners (Rank 9): Testaccount\n\n"
+                      "Money:          0 Prestige:          0 Resource Mod: 0% Income Mod: 0%\nResources: Economic: 0, "
+                      "Military: 0, Social: 0\n"
+                      "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n"
+                      "\nWork Settings: None found.\n"
                       "\nClues Known: Org test clue 1; Org test clue 2;\n\n"
-                      "Member stats for Testaccount\n\nRank: 10\nSupport Pool Share: 0/0\nTotal Work: 0\nTasks Completed: 0, Total Rating: 0")
-
+                      "Member stats for Testaccount\n\nRank: 9\nSupport Pool Share: 10/10\nTotal Work: 0\n"
+                      "Tasks Completed: 0, Total Rating: 0")
+        plot = Plot.objects.create(name="test plot", resolved=False, usage=Plot.GM_PLOT)
+        old_plot = Plot.objects.create(name="old plot", resolved=True, usage=Plot.PLAYER_RUN_PLOT)
+        inv = OrgPlotInvolvement.objects.create(plot=old_plot, org=org, rank_requirement=5)
+        self.call_cmd("/plots", "Plots:")
+        self.call_cmd("/plots/old", "Plots:")
+        # make plot visible
+        inv.rank_requirement = 10
+        inv.save()
+        self.call_cmd("/plots/old", "Plots:\nPlot: old plot, Rank required: 10")
+        self.call_cmd("/addplot test plot", "Must give name/id and rank to set the plot at.")
+        self.call_cmd("/addplot test plot,10", "No Plot found using 'test plot'.")
+        PCPlotInvolvement.objects.create(plot=plot, dompc=self.dompc, admin_status=PCPlotInvolvement.OWNER)
+        self.call_cmd("/addplot test plot,9", "Plot added.")
+        self.call_cmd("/plots", "Plots:\n"
+                                "Plot: test plot, Rank required: 9\n"
+                                "Involved Characters:\nTestaccount (Main Cast, Owner)")
+        self.call_cmd("/rmplot test plot", "You must be rank 1 or 2 to remove a plot.")
+        member.rank = 1
+        member.save()
+        self.call_cmd("/rmplot test plot", "Plot removed.")
 
 
 class TestPlotCommands(TestTicketMixins, ArxCommandTest):

@@ -4,16 +4,15 @@ own personal story.
 """
 from django.db.models import Q
 
-from evennia.utils.evtable import EvTable
-
-from server.utils.exceptions import ActionSubmissionError
-from server.utils.arx_utils import dict_from_choices_field
 from commands.base import ArxPlayerCommand
 from evennia.objects.models import ObjectDB
+from evennia.utils.evtable import EvTable
 from server.utils import arx_more
+from server.utils.arx_utils import dict_from_choices_field
+from server.utils.exceptions import ActionSubmissionError
 from web.character.models import Clue, Revelation
-from world.dominion.plots.models import Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion, ActionRequirement, PlotUpdate
-from world.dominion.plots.constants import REQUIREMENT_TYPES
+from world.dominion.plots.models import (Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion,
+                                         ActionRequirement, PlotUpdate)
 from world.magic.models import Spell, SkillNode
 
 
@@ -219,7 +218,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     
     def do_requires_editable_switches(self, action):
         """Executes switches that requires the action to be in an editable state"""
-        if not action.editable:
+        if not action.editable and not action.main_action.editable:
             return self.send_no_edits_msg()
         if "roll" in self.switches:
             return self.set_roll(action)

@@ -157,7 +157,7 @@ class TestPetitionCommands(ArxCommandTest):
         self.assertEqual(self.char1.currency, 31925)
 
     def test_cmd_petition(self):
-        
+
         from world.petitions.models import Petition, PetitionParticipation
         from world.dominion.models import Organization
         self.setup_cmd(petitions_commands.CmdPetition, self.char1)
@@ -221,5 +221,58 @@ class TestPetitionCommands(ArxCommandTest):
         self.call_cmd("/search asdfadsf", "Updated ID Owner Topic Org On")
         org.inform.assert_called_with('A new petition has been made by Testaccount.', category='Petitions')
         self.account2.inform.assert_not_called()
-        self.call_cmd("/ignore all", "You are now not informed of new petitions.")
+
+        self.caller = self.char2
+        self.account2.inform = Mock()
+        self.call_cmd("/ignore all", "You are no longer informed of new petitions.")
+
+        self.caller = self.char1
+        self.char.db.petition_form = {'topic': 'test2', 'description': 'testing2'}
+        self.call_cmd("/submit", "Successfully created petition 4.")
+        self.account2.inform.assert_not_called()
+
+        self.caller = self.char2
+        self.account2.inform = Mock()
         self.call_cmd("/ignore all", "You are now informed of new petitions.")
+
+        self.caller = self.char1
+        self.char.db.petition_form = {'topic': 'test2', 'description': 'testing2'}
+        self.call_cmd("/submit", "Successfully created petition 5.")
+        self.account2.inform.assert_called()
+
+        self.caller = self.char2
+        self.account2.inform = Mock()
+        self.call_cmd("/ignore general", "You are no longer informed of new general petitions.")
+
+        self.caller = self.char1
+        self.char.db.petition_form = {'topic': 'test2', 'description': 'testing2'}
+        self.call_cmd("/submit", "Successfully created petition 6.")
+        self.account2.inform.assert_not_called()
+
+        self.caller = self.char2
+        self.account2.inform = Mock()
+        self.call_cmd("/ignore general", "You are now informed of new general petitions.")
+
+        self.caller = self.char1
+        self.char.db.petition_form = {'topic': 'test2', 'description': 'testing2'}
+        self.call_cmd("/submit", "Successfully created petition 7.")
+        self.account2.inform.assert_called()
+
+        self.caller = self.char1
+        self.call_cmd("/ignore test org", "You are no longer informed of new test org petitions.")
+
+        self.caller = self.char2
+        self.account1.inform = Mock()
+        self.char2.db.petition_form = {'topic': 'test2', 'description': 'testing2', 'organization': org.id}
+        self.call_cmd("/submit", "Successfully created petition 8.")
+        self.account1.inform.assert_not_called()
+
+        self.caller = self.char1
+        self.call_cmd("/ignore test org", "You are now informed of new test org petitions.")
+
+        self.caller = self.char2
+        self.account1.inform = Mock()
+        self.char2.db.petition_form = {'topic': 'test2', 'description': 'testing2', 'organization': org.id}
+        self.call_cmd("/submit", "Successfully created petition 9.")
+        self.account1.inform.assert_called()
+
