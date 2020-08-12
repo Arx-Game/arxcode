@@ -2781,7 +2781,7 @@ class CmdRandomScene(ArxCommand):
     NUM_DAYS = 3
     DAYS_FOR_NEWBIE_CHECK = 14
     random_rp_command_keys = ["knock", "shout", "mutter", "petition", "goals", "+plots", "+room_mood", "+roomtitle",
-                              "+tempdesc", "flashback", "favor"]
+                              "+tempdesc", "flashback"]
 
     @property
     def scenelist(self):
