@@ -1345,12 +1345,15 @@ class CmdListClues(ArxPlayerCommand):
         @clues <clue #>
         @clues/share <clue #>[,<clue2 #>...]=<target>[,<target2>...]/<note>
         @clues/search <text>
+        @clues/search/name <tag>
+        @clues/search/tag <tag>
         @clues/addnote <clue #>=[text to append]
 
     Displays the clues that your character has discovered in game,
     or shares them with others. /search returns the clues that
-    contain the text specified. /addnote allows you to add more text to
-    your discovery of the clue.
+    contain the text specified. /search/name and /search/tag checks the
+    specific field for the text specified. /addnote allows you to add more 
+    text to your discovery of the clue.
 
     When sharing clues, please roleplay a bit about them first. Don't dump
     information on people without any context. You must also write a note
@@ -1461,7 +1464,15 @@ class CmdListClues(ArxPlayerCommand):
     def disp_clue_table(self):
         table = PrettyTable(["{wClue #{n", "{wSubject{n", "{wType{n"])
         discoveries = self.clue_discoveries.select_related('clue').order_by('date')
-        if "search" in self.switches:
+        if "tag" in self.switches:
+            msg = "{wMatching Clues{n\n"
+            discoveries = discoveries.filter(Q(clue__search_tags__name__iexact=self.args)).distinct()
+        elif "name" in self.switches:
+
+            msg = "{wMatching Clues{n\n"
+            discoveries = discoveries.filter(Q(clue__name__icontains=self.args)).distinct()
+        elif "search" in self.switches and self.args:
+
             msg = "{wMatching Clues{n\n"
             discoveries = discoveries.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
                                              Q(clue__name__icontains=self.args) |
