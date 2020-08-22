@@ -1384,7 +1384,7 @@ class CmdListClues(ArxPlayerCommand):
     def func(self):
         """Executes clues command"""
         try:
-            if not self.args or "search" in self.switches or "search/tag" in self.switches or "search/name" in self.switches:
+            if not self.args or "search" in self.switches:
                 return self.disp_clue_table()
             if "share" in self.switches:
                 return self.share_clues()
