@@ -1464,13 +1464,15 @@ class CmdListClues(ArxPlayerCommand):
     def disp_clue_table(self):
         table = PrettyTable(["{wClue #{n", "{wSubject{n", "{wType{n"])
         discoveries = self.clue_discoveries.select_related('clue').order_by('date')
-        if "search/tag" in self.switches:
+        if "tag" in self.switches:
             msg = "{wMatching Clues{n\n"
             discoveries = discoveries.filter(Q(clue__search_tags__name__iexact=self.args)).distinct()
-        if "search/name" in self.switches:
+        elif "name" in self.switches:
+
             msg = "{wMatching Clues{n\n"
             discoveries = discoveries.filter(Q(clue__name__icontains=self.args)).distinct()
-        if "search" in self.switches:
+        elif "search" in self.switches and self.args:
+
             msg = "{wMatching Clues{n\n"
             discoveries = discoveries.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
                                              Q(clue__name__icontains=self.args) |
