@@ -553,7 +553,7 @@ class AbstractAction(AbstractPlayerAllocations):
         if fields:
             raise ActionSubmissionError("Incomplete fields: %s" % ", ".join(fields))
         from server.utils.arx_utils import check_break
-        if check_break():
+        if check_break() and not self.can_submit_during_break:
             raise ActionSubmissionError("Cannot submit an action while staff are on break.")
 
     def check_incomplete_required_fields(self):
@@ -778,6 +778,10 @@ class AbstractAction(AbstractPlayerAllocations):
     def unanswered_questions(self: Union["PlotAction", "PlotActionAssistant"]):
         """Returns queryset of an OOC questions without an answer"""
         return self.questions.filter(answers__isnull=True).exclude(Q(is_intent=True) | Q(mark_answered=True))
+
+    @property
+    def can_submit_during_break(self):
+        return False
 
 
 class PlotAction(AbstractAction):
@@ -1251,6 +1255,10 @@ class PlotAction(AbstractAction):
         self.save()
         return req
 
+    @property
+    def can_submit_during_break(self):
+        return self.status == self.NEEDS_PLAYER
+
 
 class ActionRequirement(SharedMemoryModel):
     """
@@ -1520,6 +1528,10 @@ class PlotActionAssistant(AbstractAction):
         """Raises errors that prevent submission"""
         super(PlotActionAssistant, self).raise_submission_errors()
         self.check_max_assists()
+
+    @property
+    def can_submit_during_break(self):
+        return self.plot_action.can_submit_during_break
 
 
 class ActionOOCQuestion(SharedMemoryModel):
