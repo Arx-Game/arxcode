@@ -67,8 +67,8 @@ class NamePaginator(object):
 
             current_page.add(sub_list, letter)
 
-        # if we finished the for loop with a page that isn't empty, add it
-        if current_page.count > 0:
+        # if we finished the for loop with a page that isn't empty or we have no pages, add it
+        if current_page.count > 0 or (allow_empty_first_page and not self.pages):
             self.pages.append(current_page)
 
     def page(self, num):
