@@ -6,6 +6,7 @@ from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 from random import getstate, setstate, seed
 
+from evennia.server.models import ServerConfig
 from server.utils.test_utils import ArxCommandTest, TestEquipmentMixins, TestTicketMixins
 from world.dominion.domain.models import Army
 from world.dominion.models import RPEvent, CraftingRecipe, Agent
@@ -344,6 +345,17 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/newaction test crisis=testing", "You have drafted a new action (#9) to respond to Test Crisis: "
                                                         "testing|Please note that you cannot invite players to an "
                                                         "action once it is submitted.")
+        action_9 = PlotAction.objects.get(id=9)
+        date = datetime.now() + timedelta(days=7)
+        ServerConfig.objects.conf("end_break_date", date)
+        self.call_cmd("/category 9=combat", "category set to Combat.")
+        self.call_cmd("/ooc_intent 9=testooc", "You have set your ooc intent to be: testooc")
+        self.call_cmd("/tldr 9=summary", "topic set to summary.")
+        self.call_cmd("/roll 9=Strength,athletics", "stat set to strength.|skill set to athletics.")
+        self.call_cmd("/submit 9", "Cannot submit an action while staff are on break.")
+        action_9.status = PlotAction.NEEDS_PLAYER
+        action_9.save()
+        self.call_cmd("/submit 9", "You have submitted your action.")
 
     @patch("world.dominion.plots.models.inform_staff")
     @patch("world.dominion.plots.models.get_week")
