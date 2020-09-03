@@ -26,6 +26,9 @@ from typeclasses.mixins import MsgMixins, InformMixin
 from web.character.models import PlayerSiteEntry
 
 
+_MUDINFO_CHANNEL = None
+
+
 class Account(InformMixin, MsgMixins, DefaultAccount):
 
     """
@@ -581,3 +584,31 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
                 self.msg("{wThe following petitions have unread messages:{n %s" % ", ".join(unread_ids))
         except AttributeError:
             pass
+
+    def _send_to_connect_channel(self, message):
+        """
+        Helper method for loading and sending to the comm channel
+        dedicated to connection messages.
+
+        Args:
+            message (str): A message to send to the connect channel.
+
+        """
+        from django.conf import settings
+        from evennia.utils import logger
+        from evennia.comms.models import ChannelDB
+        from django.utils import timezone
+        global _MUDINFO_CHANNEL
+        if not _MUDINFO_CHANNEL:
+            try:
+                _MUDINFO_CHANNEL = ChannelDB.objects.filter(db_key=settings.CHANNEL_MUDINFO["key"])[
+                    0
+                ]
+            except Exception:
+                logger.log_trace()
+        now = timezone.now()
+        now = "%02i-%02i-%02i(%02i:%02i)" % (now.year, now.month, now.day, now.hour, now.minute)
+        if _MUDINFO_CHANNEL:
+            _MUDINFO_CHANNEL.tempmsg(f"[{_MUDINFO_CHANNEL.key}, {now}]: {message}")
+        else:
+            logger.log_info(f"[{now}]: {message}")
