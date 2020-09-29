@@ -1,0 +1,18 @@
+version: '3.4'
+services:
+  arx:
+    image: arx:latest
+    ports:
+      - "3000:3000"
+      - "8000:8000"
+    tty: true
+    volumes:
+      - type: bind
+        source: ./server/evennia.db3
+        target: /usr/src/arx/server/evennia.db3
+      - type: bind
+        source: ./server/logs
+        target: /usr/src/arx/server/logs
+      - type: bind
+        source: ./env
+        target: /usr/src/arx/.env
