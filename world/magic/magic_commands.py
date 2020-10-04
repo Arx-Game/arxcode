@@ -1,8 +1,18 @@
 from commands.base import ArxCommand
 from evennia.commands.cmdset import CmdSet
 from evennia.utils import evtable
-from .models import SkillNode, SkillNodeResonance, Working, WorkingParticipant, Practitioner, \
-    Attunement, FamiliarAttunement, PractitionerSpell, PractitionerEffect, Effect
+from .models import (
+    SkillNode,
+    SkillNodeResonance,
+    Working,
+    WorkingParticipant,
+    Practitioner,
+    Attunement,
+    FamiliarAttunement,
+    PractitionerSpell,
+    PractitionerEffect,
+    Effect,
+)
 from server.utils.arx_utils import commafy, inform_staff
 from server.utils.exceptions import CommandError
 from evennia.utils.ansi import strip_ansi
@@ -47,7 +57,9 @@ class CmdMagemit(ArxCommand):
             self.msg("You need to provide an integer value for the strength!")
             return
 
-        self.caller.location.msg_contents_magic(self.rhs, strength=strength, guaranteed="guaranteed" in self.switches)
+        self.caller.location.msg_contents_magic(
+            self.rhs, strength=strength, guaranteed="guaranteed" in self.switches
+        )
 
 
 class CmdMagicWord(ArxCommand):
@@ -65,6 +77,7 @@ class CmdMagicWord(ArxCommand):
     The first form of the command will show your current magic word.  The second
     will set a new magic word.
     """
+
     key = "@magicword"
     locks = "cmd:all()"
 
@@ -130,6 +143,7 @@ class CmdMagic(ArxCommand):
     anima ritual that your character knows, which tend to be unique to each
     individual caster.
     """
+
     key = "magic"
     locks = "cmd:practitioner() or perm(Admin)"
 
@@ -140,17 +154,21 @@ class CmdMagic(ArxCommand):
         string += "---------------------------------------------------------------------------\n"
         string += " |wStatus:|n " + practitioner.magic_state + "\n"
 
-        nodes = SkillNodeResonance.objects.filter(practitioner=practitioner, practicing=True)
+        nodes = SkillNodeResonance.objects.filter(
+            practitioner=practitioner, practicing=True
+        )
         nodestring = "Nothing"
         if nodes.count() > 0:
             nodestring = commafy([node.node.name for node in nodes.all()])
 
         string += " |wStudying:|n " + nodestring + "\n"
 
-        nodes = SkillNodeResonance.objects.filter(practitioner=practitioner, teaching_multiplier__isnull=False)
+        nodes = SkillNodeResonance.objects.filter(
+            practitioner=practitioner, teaching_multiplier__isnull=False
+        )
         if nodes.count() > 0:
             table = evtable.EvTable(border=None)
-            table.add_column(valign='t')
+            table.add_column(valign="t")
             sublines = []
             for node in nodes.all():
                 sublines.append("%s, taught by %s" % (node.node.name, node.taught_by))
@@ -166,12 +184,20 @@ class CmdMagic(ArxCommand):
                 tool_list.append(bond.obj)
 
         if len(coven_list):
-            string += " |wCoven bonds:|n " + commafy(sorted([obj.name for obj in coven_list])) + "\n"
+            string += (
+                " |wCoven bonds:|n "
+                + commafy(sorted([obj.name for obj in coven_list]))
+                + "\n"
+            )
 
         if len(tool_list):
-            string += " |wTools:|n " + commafy(sorted([obj.name for obj in tool_list])) + "\n"
+            string += (
+                " |wTools:|n " + commafy(sorted([obj.name for obj in tool_list])) + "\n"
+            )
 
-        familiar_list = sorted([bond.familiar.name for bond in practitioner.familiars.all()])
+        familiar_list = sorted(
+            [bond.familiar.name for bond in practitioner.familiars.all()]
+        )
         if len(familiar_list):
             string += " |wFamiliars:|n " + commafy(familiar_list)
 
@@ -184,7 +210,9 @@ class CmdMagic(ArxCommand):
 
     def practitioner_for_string(self, practitioner_name):
 
-        character = self.caller.search(practitioner_name, exact=True, typeclass='typeclasses.characters.Character')
+        character = self.caller.search(
+            practitioner_name, exact=True, typeclass="typeclasses.characters.Character"
+        )
         if not character:
             return None
 
@@ -197,7 +225,9 @@ class CmdMagic(ArxCommand):
         if admin and self.args and (not self.switches or "checkemit" in self.switches):
             practitioner = self.practitioner_for_string(self.args)
             if not practitioner:
-                self.msg("Couldn't find a practitioner by that name.  Are they maybe not a mage yet?")
+                self.msg(
+                    "Couldn't find a practitioner by that name.  Are they maybe not a mage yet?"
+                )
                 return
 
         if not practitioner:
@@ -212,7 +242,9 @@ class CmdMagic(ArxCommand):
             name = "Your"
             if practitioner.character != self.caller:
                 name = practitioner.character.name + "'s"
-            self.msg("{} current emit looks like: ".format(name) + practitioner.casting_emit)
+            self.msg(
+                "{} current emit looks like: ".format(name) + practitioner.casting_emit
+            )
             return
 
         if "gesture" in self.switches:
@@ -226,7 +258,11 @@ class CmdMagic(ArxCommand):
 
         if "language" in self.switches:
             if not self.args:
-                self.msg("Your current casting language is {}.".format(practitioner.language.capitalize()))
+                self.msg(
+                    "Your current casting language is {}.".format(
+                        practitioner.language.capitalize()
+                    )
+                )
                 return
 
             if not self.caller.tags.get(self.args, category="languages"):
@@ -234,7 +270,11 @@ class CmdMagic(ArxCommand):
                 return
 
             practitioner.language = self.args
-            self.msg("Your new casting language is {}.".format(practitioner.language.capitalize()))
+            self.msg(
+                "Your new casting language is {}.".format(
+                    practitioner.language.capitalize()
+                )
+            )
             return
 
         if "verb" in self.switches:
@@ -249,13 +289,20 @@ class CmdMagic(ArxCommand):
         if "animaritual" in self.switches:
             success_msg = self.rhs or ""
             if len(success_msg) < 10:
-                self.msg("Please write a longer description of what happens when your character does their anima "
-                         "ritual. Strange things happening in the room based on their affinity, anything others "
-                         "might notice about your character momentarily looking different, and so on.")
+                self.msg(
+                    "Please write a longer description of what happens when your character does their anima "
+                    "ritual. Strange things happening in the room based on their affinity, anything others "
+                    "might notice about your character momentarily looking different, and so on."
+                )
                 return
             try:
-                ritual = (practitioner.spell_discoveries.filter(effects__coded_effect=Effect.CODED_ANIMA_RITUAL)
-                                                        .distinct().get(spell_id=self.lhs))
+                ritual = (
+                    practitioner.spell_discoveries.filter(
+                        effects__coded_effect=Effect.CODED_ANIMA_RITUAL
+                    )
+                    .distinct()
+                    .get(spell_id=self.lhs)
+                )
                 ritual.success_msg = success_msg
                 ritual.save()
             except (PractitionerSpell.DoesNotExist, ValueError):
@@ -332,7 +379,9 @@ class CmdMagic(ArxCommand):
             conditions = {}
             max_width = 10
             for condition in practitioner.conditions.all():
-                conditions[condition.condition.name] = condition.condition.description or ""
+                conditions[condition.condition.name] = (
+                    condition.condition.description or ""
+                )
                 if len(condition.condition.name) > max_width:
                     max_width = len(condition.condition.name)
 
@@ -359,7 +408,14 @@ class CmdMagic(ArxCommand):
                 except (Working.DoesNotExist, ValueError):
                     self.msg("No working by that ID.")
                     return
-                self.msg("Story: %s" % "\n".join(ob.story for ob in ritual.effect_handlers if hasattr(ob, "story")))
+                self.msg(
+                    "Story: %s"
+                    % "\n".join(
+                        ob.story
+                        for ob in ritual.effect_handlers
+                        if hasattr(ob, "story")
+                    )
+                )
                 return
             self.msg("IDs of anima rituals: %s" % ", ".join(ob.id for ob in rituals))
             return
@@ -372,18 +428,24 @@ class CmdMagic(ArxCommand):
 
             student = self.practitioner_for_string(self.lhs)
             if not student:
-                self.msg("I don't know what practitioner you mean.  You may need to contact staff to make sure your "
-                         "student is set up as a practitioner.")
+                self.msg(
+                    "I don't know what practitioner you mean.  You may need to contact staff to make sure your "
+                    "student is set up as a practitioner."
+                )
                 return
 
             try:
-                source_node = SkillNodeResonance.objects.get(practitioner=practitioner, node__name__iexact=self.rhs)
+                source_node = SkillNodeResonance.objects.get(
+                    practitioner=practitioner, node__name__iexact=self.rhs
+                )
             except SkillNodeResonance.DoesNotExist:
                 self.msg("You don't know of any skill node named %s" % self.rhs)
                 return
 
             try:
-                target_node = SkillNodeResonance.objects.get(practitioner=student, node__name__iexact=self.rhs)
+                target_node = SkillNodeResonance.objects.get(
+                    practitioner=student, node__name__iexact=self.rhs
+                )
                 if source_node.resonance < target_node.resonance:
                     # You can't teach someone who knows more than you.
                     return
@@ -391,28 +453,38 @@ class CmdMagic(ArxCommand):
                 target_node = None
                 if source_node.node.parent_node:
                     try:
-                        parent_node = SkillNodeResonance.objects.get(practitioner=student,
-                                                                     node=source_node.node.parent_node)
+                        parent_node = SkillNodeResonance.objects.get(
+                            practitioner=student, node=source_node.node.parent_node
+                        )
                     except SkillNodeResonance.DoesNotExist:
                         # We don't know the necessary parent node.
-                        self.msg("They lack the knowledge required to learn that skill node.")
+                        self.msg(
+                            "They lack the knowledge required to learn that skill node."
+                        )
                         return
 
             self.msg("Trying to teach %s to %s." % (source_node.node.name, student))
 
-            multiplier = max(int(source_node.resonance ** (1 / 10.)), 1)
+            multiplier = max(int(source_node.resonance ** (1 / 10.0)), 1)
             if not target_node:
-                target_node = student.open_node(source_node.node, SkillNodeResonance.LEARN_TAUGHT,
-                                                "Taught by %s" % str(practitioner))
+                target_node = student.open_node(
+                    source_node.node,
+                    SkillNodeResonance.LEARN_TAUGHT,
+                    "Taught by %s" % str(practitioner),
+                )
 
             if not target_node:
                 return
 
-            inform_staff("|y%s|n just taught skill node '%s' to |y%s|n." %
-                         (practitioner, source_node.node.name, student))
+            inform_staff(
+                "|y%s|n just taught skill node '%s' to |y%s|n."
+                % (practitioner, source_node.node.name, student)
+            )
 
-            student.send_inform("You have a temporary bonus to studying %s thanks to %s's teaching."
-                     % (source_node.node.name, practitioner))
+            student.send_inform(
+                "You have a temporary bonus to studying %s thanks to %s's teaching."
+                % (source_node.node.name, practitioner)
+            )
 
             target_node.teaching_multiplier = multiplier
             target_node.taught_by = str(practitioner)
@@ -428,33 +500,47 @@ class CmdMagic(ArxCommand):
 
             student = self.practitioner_for_string(self.lhs)
             if not student:
-                self.msg("I don't know what practitioner you mean.  You may need to contact staff to make sure your "
-                         "student is set up as a practitioner.")
+                self.msg(
+                    "I don't know what practitioner you mean.  You may need to contact staff to make sure your "
+                    "student is set up as a practitioner."
+                )
                 return
 
             try:
-                source_spell = PractitionerSpell.objects.get(practitioner=practitioner, spell__name__iexact=self.rhs)
+                source_spell = PractitionerSpell.objects.get(
+                    practitioner=practitioner, spell__name__iexact=self.rhs
+                )
             except PractitionerSpell.DoesNotExist:
                 self.msg("You don't know of any spell named %s" % self.rhs)
                 return
 
             try:
-                target_spell = PractitionerSpell.objects.get(practitioner=student, spell__name__iexact=self.rhs)
+                target_spell = PractitionerSpell.objects.get(
+                    practitioner=student, spell__name__iexact=self.rhs
+                )
                 # We can't teach them if they already know.
                 return
             except PractitionerSpell.DoesNotExist:
                 pass
 
             if not student.can_learn_spell(source_spell.spell):
-                self.msg("They don't have the knowledge necessary to understand this spell.")
+                self.msg(
+                    "They don't have the knowledge necessary to understand this spell."
+                )
                 return
 
             self.msg("Trying to teach %s to %s." % (source_spell.spell.name, student))
 
-            inform_staff("|y%s|n just taught spell '%s' to |y%s|n." %
-                         (practitioner, source_spell.spell.name, student))
+            inform_staff(
+                "|y%s|n just taught spell '%s' to |y%s|n."
+                % (practitioner, source_spell.spell.name, student)
+            )
 
-            student.learn_spell(source_spell.spell, PractitionerSpell.LEARN_TAUGHT, "Taught by %s" % str(practitioner))
+            student.learn_spell(
+                source_spell.spell,
+                PractitionerSpell.LEARN_TAUGHT,
+                "Taught by %s" % str(practitioner),
+            )
             return
 
         if "teacheffect" in self.switches:
@@ -465,18 +551,24 @@ class CmdMagic(ArxCommand):
 
             student = self.practitioner_for_string(self.lhs)
             if not student:
-                self.msg("I don't know what practitioner you mean.  You may need to contact staff to make sure your "
-                         "student is set up as a practitioner.")
+                self.msg(
+                    "I don't know what practitioner you mean.  You may need to contact staff to make sure your "
+                    "student is set up as a practitioner."
+                )
                 return
 
             try:
-                source_effect = PractitionerEffect.objects.get(practitioner=practitioner, effect__name__iexact=self.rhs)
+                source_effect = PractitionerEffect.objects.get(
+                    practitioner=practitioner, effect__name__iexact=self.rhs
+                )
             except PractitionerEffect.DoesNotExist:
                 self.msg("You don't know of any effect named %s" % self.rhs)
                 return
 
             try:
-                target_effect = PractitionerEffect.objects.get(practitioner=student, effect__name__iexact=self.rhs)
+                target_effect = PractitionerEffect.objects.get(
+                    practitioner=student, effect__name__iexact=self.rhs
+                )
                 # We can't teach them if they already know.
                 return
             except PractitionerEffect.DoesNotExist:
@@ -484,40 +576,57 @@ class CmdMagic(ArxCommand):
 
             self.msg("Trying to teach %s to %s." % (source_effect.effect.name, student))
 
-            inform_staff("|y%s|n just taught effect '%s' to |y%s|n." %
-                         (practitioner, source_effect.effect.name, student))
+            inform_staff(
+                "|y%s|n just taught effect '%s' to |y%s|n."
+                % (practitioner, source_effect.effect.name, student)
+            )
 
-            student.learn_effect(source_effect.effect, PractitionerEffect.LEARN_TAUGHT, "Taught by %s" % str(practitioner))
+            student.learn_effect(
+                source_effect.effect,
+                PractitionerEffect.LEARN_TAUGHT,
+                "Taught by %s" % str(practitioner),
+            )
             return
 
         if "practice" in self.switches:
 
             if not self.args:
-                SkillNodeResonance.objects.filter(practitioner=practitioner, practicing=True).update(practicing=False)
+                SkillNodeResonance.objects.filter(
+                    practitioner=practitioner, practicing=True
+                ).update(practicing=False)
                 self.msg("You are no longer practicing/studying anything.")
                 return
 
             nodes = []
             for nodename in self.lhslist:
                 try:
-                    node = SkillNodeResonance.objects.get(practitioner=practitioner, node__name__iexact=nodename)
+                    node = SkillNodeResonance.objects.get(
+                        practitioner=practitioner, node__name__iexact=nodename
+                    )
                     nodes.append(node)
                 except SkillNodeResonance.DoesNotExist:
                     self.msg("You don't know any node named %s." % nodename)
                     return
 
-            SkillNodeResonance.objects.filter(practitioner=practitioner, practicing=True).update(practicing=False)
+            SkillNodeResonance.objects.filter(
+                practitioner=practitioner, practicing=True
+            ).update(practicing=False)
             for node in nodes:
                 node.practicing = True
                 node.save()
 
-            self.msg("You are now practicing/studying %s." % commafy([node.node.name for node in nodes]))
+            self.msg(
+                "You are now practicing/studying %s."
+                % commafy([node.node.name for node in nodes])
+            )
             return
 
         if "drain" in self.switches:
 
             if not self.args:
-                self.msg("You must provide an object in your inventory to try to drain.")
+                self.msg(
+                    "You must provide an object in your inventory to try to drain."
+                )
                 return
 
             obj = self.caller.search(self.args)
@@ -528,10 +637,14 @@ class CmdMagic(ArxCommand):
                     self.msg("The object must be in your inventory.")
                     return
                 if not obj.valid_sacrifice:
-                    self.msg("That object isn't something you can sacrifice for primum.")
+                    self.msg(
+                        "That object isn't something you can sacrifice for primum."
+                    )
                     return
 
-                max_primum = min(obj.primum, practitioner.potential - practitioner.anima)
+                max_primum = min(
+                    obj.primum, practitioner.potential - practitioner.anima
+                )
                 self.msg("Draining primum from %s." % obj.name)
                 obj.drain_primum(max_primum)
                 practitioner.anima = practitioner.anima + max_primum
@@ -572,6 +685,7 @@ class CmdAdminMagic(ArxCommand):
     The remaining command switches are for managing workings that are tied
     to an action for GM'ing.
     """
+
     key = "@adminmagic"
     locks = "cmd:perm(Admins)"
 
@@ -589,7 +703,12 @@ class CmdAdminMagic(ArxCommand):
 
     def practitioner_for_string(self, practitioner_name):
 
-        character = self.caller.search(practitioner_name, exact=True, global_search=True, typeclass='typeclasses.characters.Character')
+        character = self.caller.search(
+            practitioner_name,
+            exact=True,
+            global_search=True,
+            typeclass="typeclasses.characters.Character",
+        )
         if not character:
             return None
 
@@ -609,8 +728,10 @@ class CmdAdminMagic(ArxCommand):
         if not self.switches:
             practitioner = self.practitioner_for_string(self.args)
             if not practitioner:
-                self.msg("Couldn't find a practitioner by that name.  "
-                         "The player may not yet be a practitioner.")
+                self.msg(
+                    "Couldn't find a practitioner by that name.  "
+                    "The player may not yet be a practitioner."
+                )
                 return
 
             table = evtable.EvTable(border=None)
@@ -633,15 +754,30 @@ class CmdAdminMagic(ArxCommand):
                     subtable.add_row(str(favor_record.alignment), favor_record.value)
                 table.add_row("|wFavor:|n", str(subtable))
 
-            node_names = sorted(["|w{}|n".format(noderes.node.name) for noderes in practitioner.node_resonances.all()])
+            node_names = sorted(
+                [
+                    "|w{}|n".format(noderes.node.name)
+                    for noderes in practitioner.node_resonances.all()
+                ]
+            )
             if len(node_names):
                 table.add_row("|wNodes:|n", commafy(node_names))
 
-            spell_names = sorted(["|w{}|n".format(spellrecord.spell.name) for spellrecord in practitioner.spell_discoveries.all()])
+            spell_names = sorted(
+                [
+                    "|w{}|n".format(spellrecord.spell.name)
+                    for spellrecord in practitioner.spell_discoveries.all()
+                ]
+            )
             if len(spell_names):
                 table.add_row("|wSpells:|n", commafy(spell_names))
 
-            effect_names = sorted(["|w{}|n".format(effectrecord.effect.name) for effectrecord in practitioner.effect_discoveries.all()])
+            effect_names = sorted(
+                [
+                    "|w{}|n".format(effectrecord.effect.name)
+                    for effectrecord in practitioner.effect_discoveries.all()
+                ]
+            )
             if len(effect_names):
                 table.add_row("|wEffects:|n", commafy(effect_names))
 
@@ -649,7 +785,9 @@ class CmdAdminMagic(ArxCommand):
                 tool_records = []
                 coven_records = []
                 for attune_record in practitioner.attunements.all():
-                    if attune_record.obj.is_typeclass("typeclasses.characters.Character"):
+                    if attune_record.obj.is_typeclass(
+                        "typeclasses.characters.Character"
+                    ):
                         coven_records.append(attune_record)
                     else:
                         tool_records.append(attune_record)
@@ -659,7 +797,9 @@ class CmdAdminMagic(ArxCommand):
                     subtable.add_column(width=30, valign="t")
                     subtable.add_column()
                     for record in coven_records:
-                        subtable.add_row(strip_ansi(record.obj.name), record.attunement_level)
+                        subtable.add_row(
+                            strip_ansi(record.obj.name), record.attunement_level
+                        )
                     table.add_row("|wCoven Bonds:|n", str(subtable))
 
                 if len(tool_records):
@@ -667,7 +807,9 @@ class CmdAdminMagic(ArxCommand):
                     subtable.add_column(width=30, valign="t")
                     subtable.add_column()
                     for record in tool_records:
-                        subtable.add_row(strip_ansi(record.obj.name), record.attunement_level)
+                        subtable.add_row(
+                            strip_ansi(record.obj.name), record.attunement_level
+                        )
                     table.add_row("|wAttunments:|n", str(subtable))
 
             if practitioner.familiars.count():
@@ -675,7 +817,9 @@ class CmdAdminMagic(ArxCommand):
                 subtable.add_column(width=30, valign="t")
                 subtable.add_column()
                 for familiar in practitioner.familiars.all():
-                    subtable.add_row(strip_ansi(familiar.familiar.name), familiar.attunement_level)
+                    subtable.add_row(
+                        strip_ansi(familiar.familiar.name), familiar.attunement_level
+                    )
                 table.add_row("|wFamiliars:|n", str(subtable))
 
             self.msg("\n" + str(table))
@@ -685,11 +829,13 @@ class CmdAdminMagic(ArxCommand):
 
             practitioner = self.practitioner_for_string(self.lhs)
             if not practitioner:
-                self.msg("Couldn't find a practitioner by that name.  "
-                         "The player may not yet be a practitioner.")
+                self.msg(
+                    "Couldn't find a practitioner by that name.  "
+                    "The player may not yet be a practitioner."
+                )
                 return
 
-            rhs_args = self.rhs.split('/')
+            rhs_args = self.rhs.split("/")
 
             node = self.node_for_string(rhs_args[0])
             if not node:
@@ -702,8 +848,11 @@ class CmdAdminMagic(ArxCommand):
 
             reason = rhs_args[1] if len(rhs_args) > 1 else None
 
-            inform_staff("{} opened |y{}|n's |y{}|n node."
-                         .format(self.caller.name, str(practitioner), node.name))
+            inform_staff(
+                "{} opened |y{}|n's |y{}|n node.".format(
+                    self.caller.name, str(practitioner), node.name
+                )
+            )
 
             practitioner.open_node(node, SkillNodeResonance.LEARN_FIAT, reason)
             self.msg("Node opened!")
@@ -718,8 +867,10 @@ class CmdAdminMagic(ArxCommand):
 
             practitioner = self.practitioner_for_string(lhs_args[0])
             if not practitioner:
-                self.msg("Couldn't find a practitioner by that name.  "
-                         "The player may not yet be a practitioner.")
+                self.msg(
+                    "Couldn't find a practitioner by that name.  "
+                    "The player may not yet be a practitioner."
+                )
                 return
 
             node = self.node_for_string(lhs_args[1])
@@ -736,10 +887,17 @@ class CmdAdminMagic(ArxCommand):
             if not practitioner.knows_node(node):
                 self.msg("That practitioner hasn't yet opened that node.")
 
-            inform_staff("{} adjusted |y{}|n's |y{}|n resonance by {}"
-                         .format(self.caller.name, str(practitioner), node.name, amount))
+            inform_staff(
+                "{} adjusted |y{}|n's |y{}|n resonance by {}".format(
+                    self.caller.name, str(practitioner), node.name, amount
+                )
+            )
 
-            self.msg("Adding {} resonance to {}'s {} node.".format(amount, practitioner, node))
+            self.msg(
+                "Adding {} resonance to {}'s {} node.".format(
+                    amount, practitioner, node
+                )
+            )
             practitioner.add_resonance_to_node(node, amount)
             return
 
@@ -747,8 +905,10 @@ class CmdAdminMagic(ArxCommand):
 
             practitioner = self.practitioner_for_string(self.lhs)
             if not practitioner:
-                self.msg("Couldn't find a practitioner by that name.  "
-                         "The player may not yet be a practitioner.")
+                self.msg(
+                    "Couldn't find a practitioner by that name.  "
+                    "The player may not yet be a practitioner."
+                )
                 return
 
             try:
@@ -760,16 +920,21 @@ class CmdAdminMagic(ArxCommand):
             practitioner.potential = practitioner.potential + amount
             practitioner.save()
             self.msg("Potential added.")
-            inform_staff("|y{}|n just added {} aionic potential to |y{}|n, for a total of {}."
-                         .format(self.caller.name, amount, practitioner, practitioner.potential))
+            inform_staff(
+                "|y{}|n just added {} aionic potential to |y{}|n, for a total of {}.".format(
+                    self.caller.name, amount, practitioner, practitioner.potential
+                )
+            )
             return
 
         if "adjustresonance" in self.switches:
 
             practitioner = self.practitioner_for_string(self.lhs)
             if not practitioner:
-                self.msg("Couldn't find a practitioner by that name.  "
-                         "The player may not yet be a practitioner.")
+                self.msg(
+                    "Couldn't find a practitioner by that name.  "
+                    "The player may not yet be a practitioner."
+                )
                 return
 
             try:
@@ -778,22 +943,33 @@ class CmdAdminMagic(ArxCommand):
                 self.msg("You must provide a valid floating point value.")
                 return
 
-            practitioner.unspent_resonance = min(practitioner.potential,
-                                                 practitioner.unspent_resonance + amount)
+            practitioner.unspent_resonance = min(
+                practitioner.potential, practitioner.unspent_resonance + amount
+            )
             practitioner.save()
             self.msg("Resonance added.")
-            inform_staff("|y{}|n just added {} resonance to |y{}|n, for a total of {}."
-                         .format(self.caller.name, amount, practitioner, practitioner.unspent_resonance))
+            inform_staff(
+                "|y{}|n just added {} resonance to |y{}|n, for a total of {}.".format(
+                    self.caller.name,
+                    amount,
+                    practitioner,
+                    practitioner.unspent_resonance,
+                )
+            )
             return
 
         if "stories" in self.switches:
             practitioner = self.practitioner_for_string(self.lhs)
             if not practitioner:
-                self.msg("Couldn't find a practitioner by that name.  "
-                         "The player may not yet be a practitioner.")
+                self.msg(
+                    "Couldn't find a practitioner by that name.  "
+                    "The player may not yet be a practitioner."
+                )
                 return
-            self.msg("IDs of anima rituals for %s: %s" % (practitioner,
-                                                          ", ".join(ob.id for ob in practitioner.anima_rituals)))
+            self.msg(
+                "IDs of anima rituals for %s: %s"
+                % (practitioner, ", ".join(ob.id for ob in practitioner.anima_rituals))
+            )
             return
 
         if "working" in self.switches:
@@ -810,7 +986,11 @@ class CmdAdminMagic(ArxCommand):
             self.msg(working.description_string())
             return
 
-        if "gm_difficulty" in self.switches or "gm_cost" in self.switches or "gm_strength" in self.switches:
+        if (
+            "gm_difficulty" in self.switches
+            or "gm_cost" in self.switches
+            or "gm_strength" in self.switches
+        ):
 
             working = self.working_for_string(self.lhs)
             if not working:
@@ -822,7 +1002,9 @@ class CmdAdminMagic(ArxCommand):
                 return
 
             if not working.intent:
-                self.msg("This doesn't seem to be a GM'd working.  Are you sure you entered the number right?")
+                self.msg(
+                    "This doesn't seem to be a GM'd working.  Are you sure you entered the number right?"
+                )
                 return
 
             try:
@@ -870,8 +1052,14 @@ class CmdAdminMagic(ArxCommand):
                 resultstring += "\n|wTarget:|n %d" % working.successes_to_beat
                 if working.effects_description:
                     resultstring += "\n|wResults:|n " + working.effects_description
-                resultstring += "\n|wConsequence:|n " + working.consequence_description or "No consequence (whew!)"
-                resultstring += "\n\nDo |w@adminmagic/finalize %d|n to finalize these results." % working.id
+                resultstring += (
+                    "\n|wConsequence:|n " + working.consequence_description
+                    or "No consequence (whew!)"
+                )
+                resultstring += (
+                    "\n\nDo |w@adminmagic/finalize %d|n to finalize these results."
+                    % working.id
+                )
                 self.msg(resultstring)
             else:
                 self.msg("Working could not be performed.  Talk to Pax?")
@@ -920,7 +1108,7 @@ class CmdAdminMagic(ArxCommand):
                 return
 
             table = evtable.EvTable(border="cells")
-            table.add_column(valign='t')
+            table.add_column(valign="t")
             table.add_column()
             table.add_row("|wName|n", obj.name)
             table.add_row("|wAlignment|n", obj.alignment)
@@ -940,7 +1128,7 @@ class WorkingDisplayMixin(object):
     # noinspection PyMethodMayBeStatic
     def string_for_working(self, working, practitioner):
         table = evtable.EvTable(border="cells")
-        table.add_column(valign='t')
+        table.add_column(valign="t")
         table.add_column()
 
         table.add_row("|wWorking ID:|n", working.id)
@@ -982,13 +1170,20 @@ class WorkingDisplayMixin(object):
 
         if working.cost:
             current_danger_level = working.calculate_danger_level(draft=False)
-            table.add_row("|wCurrent Risk:|n", Working.danger_level_string(current_danger_level))
+            table.add_row(
+                "|wCurrent Risk:|n", Working.danger_level_string(current_danger_level)
+            )
         else:
-            table.add_row("|wCurrent Risk:|n ", "Cannot be calculated until GM intervention.")
+            table.add_row(
+                "|wCurrent Risk:|n ", "Cannot be calculated until GM intervention."
+            )
 
         if working.has_pending:
             draft_danger_level = working.calculate_danger_level(draft=True)
-            table.add_row("|wIf Everyone Joins:|n", Working.danger_level_string(draft_danger_level))
+            table.add_row(
+                "|wIf Everyone Joins:|n",
+                Working.danger_level_string(draft_danger_level),
+            )
 
         result = str(table)
         if working.has_pending:
@@ -1078,7 +1273,9 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
     def working_for_id(self, id, practitioner):
         try:
             id = int(id)
-            working = Working.objects.get(id=id, practitioners__in=[practitioner], finalized=False)
+            working = Working.objects.get(
+                id=id, practitioners__in=[practitioner], finalized=False
+            )
             return working
         except (ValueError, Working.DoesNotExist):
             return None
@@ -1121,21 +1318,31 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
             for obj in targets:
                 target_practitioner = Practitioner.practitioner_for_character(obj)
                 if not target_practitioner or not target_practitioner.eyes_open:
-                    self.msg("One or more of these participants are not set up for the magic system.  "
-                             "Contact staff if you think this is an error!")
+                    self.msg(
+                        "One or more of these participants are not set up for the magic system.  "
+                        "Contact staff if you think this is an error!"
+                    )
                     return
                 practitioners.append(target_practitioner)
 
             for target in practitioners:
                 if working.practitioner_record(target):
-                    self.msg("{} has already been invited to this working!".format(target))
+                    self.msg(
+                        "{} has already been invited to this working!".format(target)
+                    )
                     return
 
-            inform_string = \
-                "|w{}|n has invited you to be a participant in a magical working to {}!\n\n"\
-                "For more information, you can do |wworking {}|n -- to accept, do |wworking/accept {}|n "\
-                "or to decline do |wworking/decline {}|n."\
-                .format(self.caller.name, working.short_description, working.id, working.id, working.id)
+            inform_string = (
+                "|w{}|n has invited you to be a participant in a magical working to {}!\n\n"
+                "For more information, you can do |wworking {}|n -- to accept, do |wworking/accept {}|n "
+                "or to decline do |wworking/decline {}|n.".format(
+                    self.caller.name,
+                    working.short_description,
+                    working.id,
+                    working.id,
+                    working.id,
+                )
+            )
 
             for target in practitioners:
                 working.add_practitioner(target)
@@ -1151,13 +1358,19 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
                 return
 
             try:
-                participant_record = WorkingParticipant.objects.get(working=working, practitioner=practitioner)
+                participant_record = WorkingParticipant.objects.get(
+                    working=working, practitioner=practitioner
+                )
             except WorkingParticipant.DoesNotExist:
-                self.msg("Something has gone terribly wrong.  Please contact staff with this working ID.")
+                self.msg(
+                    "Something has gone terribly wrong.  Please contact staff with this working ID."
+                )
                 return
 
             if participant_record.accepted:
-                self.msg("You're already part of that working; you can't change your invite status now!")
+                self.msg(
+                    "You're already part of that working; you can't change your invite status now!"
+                )
                 return
 
             if "accept" in self.switches:
@@ -1210,8 +1423,9 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
 
             familiar = None
             if len(self.rhs):
-                familiars = FamiliarAttunement.objects.filter(practitioner=practitioner,
-                                                              familiar__name__istartswith=self.rhs)
+                familiars = FamiliarAttunement.objects.filter(
+                    practitioner=practitioner, familiar__name__istartswith=self.rhs
+                )
                 if familiars.count() > 1:
                     self.msg("I don't know which one you mean!")
                     return
@@ -1243,7 +1457,9 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
                 return
             # if we're in combat, we route to there
             if self.caller.combat.state:
-                self.caller.combat.state.set_queued_action("casting", working=working, unsafe="unsafe" in self.switches)
+                self.caller.combat.state.set_queued_action(
+                    "casting", working=working, unsafe="unsafe" in self.switches
+                )
                 return
             if working.perform(unsafe="unsafe" in self.switches):
                 working.finalize()
@@ -1267,7 +1483,9 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
                 self.msg("Something has gone horribly wrong.")
                 return
 
-            if not hasattr(player, 'Dominion') or not hasattr(player.Dominion, 'assets'):
+            if not hasattr(player, "Dominion") or not hasattr(
+                player.Dominion, "assets"
+            ):
                 self.msg("You don't seem to be set up as an asset owner.")
                 return
 
@@ -1275,7 +1493,11 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
             econ = assets.economic
 
             if amount > econ:
-                self.msg("You tried to add {} econ, but you only have {}!".format(amount, econ))
+                self.msg(
+                    "You tried to add {} econ, but you only have {}!".format(
+                        amount, econ
+                    )
+                )
                 return
 
             econ -= amount
@@ -1347,10 +1569,16 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
 
             try:
                 from django.db.models import Q
+
                 plotid = int(self.rhs)
-                action = PlotAction.objects.get(Q(id=plotid) & (Q(dompc=practitioner.character.dompc) |
-                                                                Q(assistants=practitioner.character.dompc))
-                                                & Q(status=PlotAction.DRAFT))
+                action = PlotAction.objects.get(
+                    Q(id=plotid)
+                    & (
+                        Q(dompc=practitioner.character.dompc)
+                        | Q(assistants=practitioner.character.dompc)
+                    )
+                    & Q(status=PlotAction.DRAFT)
+                )
             except ValueError:
                 self.msg("You need to provide a number for the action ID!")
                 return
@@ -1360,11 +1588,15 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
 
             action.working = working
             action.save()
-            self.msg("Working %d has been attached to action %d." % (working.id, action.id))
+            self.msg(
+                "Working %d has been attached to action %d." % (working.id, action.id)
+            )
             return
 
         if "list" in self.switches:
-            workings = Working.objects.filter(calculated=False, template=False, practitioners__in=[practitioner])
+            workings = Working.objects.filter(
+                calculated=False, template=False, practitioners__in=[practitioner]
+            )
             if workings.count() == 0:
                 self.msg("You don't have any pending workings!")
                 return
@@ -1387,9 +1619,11 @@ class CmdWorking(PaxformCommand, WorkingDisplayMixin):
                 table.add_row(id_string, practitioners, ritual.short_description)
 
             self.msg(str(table))
-            self.msg("Any workings with a |r*|n next to their ID are ones you have been invited to but have not "
-                     "yet accepted.  Any participants with a |r*|n next to their name have been invited but not "
-                     "yet accepted.")
+            self.msg(
+                "Any workings with a |r*|n next to their ID are ones you have been invited to but have not "
+                "yet accepted.  Any participants with a |r*|n next to their name have been invited but not "
+                "yet accepted."
+            )
             return
 
         super(CmdWorking, self).func()
@@ -1417,6 +1651,7 @@ class CmdCast(ArxCommand, WorkingDisplayMixin):
 
     Working templates are defined using the 'working' command.
     """
+
     key = "cast"
     locks = "cmd:practitioner()"
 
@@ -1424,13 +1659,17 @@ class CmdCast(ArxCommand, WorkingDisplayMixin):
     def working_for_id(self, working_id, practitioner):
         try:
             working_id = int(working_id)
-            working = Working.objects.get(id=working_id, lead=practitioner, template=True)
+            working = Working.objects.get(
+                id=working_id, lead=practitioner, template=True
+            )
             return working
         except (ValueError, Working.DoesNotExist):
             return None
 
     def working_for_name(self, name, practitioner):
-        workings = Working.objects.filter(template_name__iexact=name, lead=practitioner, template=True)
+        workings = Working.objects.filter(
+            template_name__iexact=name, lead=practitioner, template=True
+        )
         if workings.count() == 0:
             return None
         if workings.count() > 1:
@@ -1442,7 +1681,9 @@ class CmdCast(ArxCommand, WorkingDisplayMixin):
 
         practitioner = self.caller.practitioner
         if not practitioner:
-            self.msg("Something horrible has happened. Are you set up for the magic system?")
+            self.msg(
+                "Something horrible has happened. Are you set up for the magic system?"
+            )
             return
 
         if "list" in self.switches:
@@ -1452,12 +1693,14 @@ class CmdCast(ArxCommand, WorkingDisplayMixin):
                 return
 
             table = evtable.EvTable(border="cells")
-            table.add_column("", width=7, valign='t')
+            table.add_column("", width=7, valign="t")
             table.add_column("|wName|n", width=25)
             table.add_column("|wDescription|n")
 
             for working in workings.all():
-                table.add_row(working.id, working.template_name or "", working.short_description)
+                table.add_row(
+                    working.id, working.template_name or "", working.short_description
+                )
 
             self.msg(str(table))
             return
@@ -1499,8 +1742,12 @@ class CmdCast(ArxCommand, WorkingDisplayMixin):
         real_cast = working.performable_copy(target=self.rhs)
         # if we're in combat, we route to there
         if self.caller.combat.state:
-            self.caller.combat.state.set_queued_action("casting", working=real_cast, unsafe="unsafe" in self.switches,
-                                                       delete_on_fail=True)
+            self.caller.combat.state.set_queued_action(
+                "casting",
+                working=real_cast,
+                unsafe="unsafe" in self.switches,
+                delete_on_fail=True,
+            )
             return
 
         if real_cast.perform(unsafe="unsafe" in self.switches):
@@ -1510,7 +1757,6 @@ class CmdCast(ArxCommand, WorkingDisplayMixin):
 
 
 class MagicCmdSet(CmdSet):
-
     def at_cmdset_creation(self):
         self.add(CmdMagemit())
         self.add(CmdMagicWord())

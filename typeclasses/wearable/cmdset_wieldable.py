@@ -13,7 +13,7 @@ from commands.base import ArxCommand
 from typeclasses.exceptions import EquipError
 
 # error return function, needed by wear/remove command
-AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
+AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 1))
 
 # ------------------------------------------------------------
 # Commands defined for wearable
@@ -33,6 +33,7 @@ class CmdWield(ArxCommand):
     weapon. Remove places the weapon in your inventory, neither worn nor
     wielded.
     """
+
     key = "wield"
     locks = "cmd:all()"
     aliases = ["sheathe"]
@@ -40,6 +41,7 @@ class CmdWield(ArxCommand):
 
     def func(self):
         from typeclasses.scripts.combat.combat_settings import CombatError
+
         try:
             if not self.args:
                 raise EquipError("What are you trying to %s?" % self.cmdstring.lower())
@@ -63,6 +65,7 @@ class WeaponCmdSet(CmdSet):
     bring it back. It's added to the object
     using obj.cmdset.add_default().
     """
+
     key = "WieldableDefault"
     # if we have multiple wearable objects, just keep
     # one cmdset, ditch others

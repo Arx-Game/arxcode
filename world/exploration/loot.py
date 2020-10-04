@@ -8,7 +8,6 @@ import random
 
 
 class Trinket(Bauble):
-
     @property
     def type_description(self):
         return "trinket"
@@ -22,7 +21,6 @@ class Trinket(Bauble):
 
 
 class AncientWeapon(Wieldable):
-
     @property
     def type_description(self):
         if self.recipe:
@@ -62,7 +60,7 @@ class LootGenerator(object):
             alignment = Alignment.PRIMAL
 
         if not affinity:
-            affinity = Affinity.objects.order_by('?').first()
+            affinity = Affinity.objects.order_by("?").first()
 
         obj.db.alignment = alignment.id
         obj.db.affinity = affinity.id
@@ -70,8 +68,12 @@ class LootGenerator(object):
     @classmethod
     def create_trinket(cls, haven):
         name = GeneratedLootFragment.generate_trinket_name()
-        trinket = create.create_object(typeclass="world.exploration.loot.Trinket", key=name)
-        trinket.db.desc = "\nAn ancient trinket, one that feels slightly warm to the touch.\n"
+        trinket = create.create_object(
+            typeclass="world.exploration.loot.Trinket", key=name
+        )
+        trinket.db.desc = (
+            "\nAn ancient trinket, one that feels slightly warm to the touch.\n"
+        )
 
         quality_picker = WeightedPicker()
         quality_picker.add_option(4, 25)
@@ -92,30 +94,30 @@ class LootGenerator(object):
     def get_weapon_recipe(cls, material, wpn_type=WPN_MEDIUM):
 
         recipes = {
-            'steel': {
+            "steel": {
                 LootGenerator.WPN_SMALL: 105,
                 LootGenerator.WPN_MEDIUM: 111,
                 LootGenerator.WPN_HUGE: 117,
                 LootGenerator.WPN_BOW: 134,
             },
-            'rubicund': {
+            "rubicund": {
                 LootGenerator.WPN_SMALL: 106,
                 LootGenerator.WPN_MEDIUM: 112,
                 LootGenerator.WPN_HUGE: 118,
                 LootGenerator.WPN_BOW: 135,
             },
-            'diamondplate': {
+            "diamondplate": {
                 LootGenerator.WPN_SMALL: 107,
                 LootGenerator.WPN_MEDIUM: 113,
                 LootGenerator.WPN_HUGE: 119,
                 LootGenerator.WPN_BOW: 136,
             },
-            'alaricite': {
+            "alaricite": {
                 LootGenerator.WPN_SMALL: 108,
                 LootGenerator.WPN_MEDIUM: 114,
                 LootGenerator.WPN_HUGE: 120,
                 LootGenerator.WPN_BOW: 137,
-            }
+            },
         }
 
         return recipes[material][wpn_type]
@@ -123,8 +125,12 @@ class LootGenerator(object):
     @classmethod
     def create_weapon(cls, haven, wpn_type=None):
 
-        weapon_types = (LootGenerator.WPN_SMALL, LootGenerator.WPN_MEDIUM, LootGenerator.WPN_HUGE,
-                        LootGenerator.WPN_BOW)
+        weapon_types = (
+            LootGenerator.WPN_SMALL,
+            LootGenerator.WPN_MEDIUM,
+            LootGenerator.WPN_HUGE,
+            LootGenerator.WPN_BOW,
+        )
 
         if not wpn_type:
             wpn_type = random.choice(weapon_types)
@@ -151,7 +157,7 @@ class LootGenerator(object):
 
         material = picker.pick()
 
-        should_name = material in ['diamondplate', 'alaricite']
+        should_name = material in ["diamondplate", "alaricite"]
 
         generator_wpn = GeneratedLootFragment.MEDIUM_WEAPON_TYPE
         if wpn_type == LootGenerator.WPN_SMALL:
@@ -161,16 +167,26 @@ class LootGenerator(object):
         elif wpn_type == LootGenerator.WPN_BOW:
             generator_wpn = GeneratedLootFragment.BOW_WEAPON_TYPE
 
-        name = GeneratedLootFragment.generate_weapon_name(material, include_name=should_name, wpn_type=generator_wpn)
-        weapon = create.create_object(typeclass="world.exploration.loot.AncientWeapon", key=name)
+        name = GeneratedLootFragment.generate_weapon_name(
+            material, include_name=should_name, wpn_type=generator_wpn
+        )
+        weapon = create.create_object(
+            typeclass="world.exploration.loot.AncientWeapon", key=name
+        )
 
         desc = "\n{particle} {adjective} ancient {material} weapon, with {decor} on the {element}.\n"
         if wpn_type == LootGenerator.WPN_BOW:
             desc = "\n{particle} {adjective} ancient {material} bow, decorated with {decor}.\n"
 
-        adjective = GeneratedLootFragment.pick_random_fragment(GeneratedLootFragment.ADJECTIVE)
-        decor = GeneratedLootFragment.pick_random_fragment(GeneratedLootFragment.WEAPON_DECORATION)
-        element = GeneratedLootFragment.pick_random_fragment(GeneratedLootFragment.WEAPON_ELEMENT)
+        adjective = GeneratedLootFragment.pick_random_fragment(
+            GeneratedLootFragment.ADJECTIVE
+        )
+        decor = GeneratedLootFragment.pick_random_fragment(
+            GeneratedLootFragment.WEAPON_DECORATION
+        )
+        element = GeneratedLootFragment.pick_random_fragment(
+            GeneratedLootFragment.WEAPON_ELEMENT
+        )
         particle = a_or_an(adjective).capitalize()
 
         desc = desc.replace("{particle}", particle)
@@ -196,8 +212,3 @@ class LootGenerator(object):
         cls.set_alignment_and_affinity(haven, weapon)
 
         return weapon
-
-
-
-
-

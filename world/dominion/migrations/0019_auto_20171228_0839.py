@@ -8,9 +8,12 @@ from django.db import migrations, models
 def fix_names(apps, schema_editor):
     from evennia.utils.ansi import strip_ansi
     from django.db.models import F, Q
+
     Agent = apps.get_model("dominion", "Agent")
-    Agent.objects.all().update(colored_name=F('name'))
-    for agent in Agent.objects.filter(Q(name__icontains='{') | Q(name__icontains='|') | Q(name__icontains='%')):
+    Agent.objects.all().update(colored_name=F("name"))
+    for agent in Agent.objects.filter(
+        Q(name__icontains="{") | Q(name__icontains="|") | Q(name__icontains="%")
+    ):
         agent.name = strip_ansi(agent.name)
         agent.save()
 
@@ -18,67 +21,86 @@ def fix_names(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0018_auto_20171226_0208'),
+        ("dominion", "0018_auto_20171226_0208"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='agent',
-            name='colored_name',
+            model_name="agent",
+            name="colored_name",
             field=models.CharField(blank=True, max_length=80),
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='cost_per_guard',
+            model_name="agent",
+            name="cost_per_guard",
             field=models.PositiveSmallIntegerField(default=0),
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='desc',
-            field=models.TextField(blank=True, default=''),
+            model_name="agent",
+            name="desc",
+            field=models.TextField(blank=True, default=""),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='loyalty',
+            model_name="agent",
+            name="loyalty",
             field=models.PositiveSmallIntegerField(default=100),
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='modifiers',
-            field=models.TextField(blank=True, default=''),
+            model_name="agent",
+            name="modifiers",
+            field=models.TextField(blank=True, default=""),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='name',
-            field=models.CharField(blank=True, default='', max_length=80),
+            model_name="agent",
+            name="name",
+            field=models.CharField(blank=True, default="", max_length=80),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='quality',
+            model_name="agent",
+            name="quality",
             field=models.PositiveSmallIntegerField(default=0),
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='quantity',
+            model_name="agent",
+            name="quantity",
             field=models.PositiveIntegerField(default=0),
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='type',
-            field=models.PositiveSmallIntegerField(choices=[(0, b'Guard'), (1, b'Thug'), (2, b'Spy'), (3, b'Assistant'), (4, b'Champion'), (5, b'Animal'), (6, b'Small Animal')], default=0),
+            model_name="agent",
+            name="type",
+            field=models.PositiveSmallIntegerField(
+                choices=[
+                    (0, b"Guard"),
+                    (1, b"Thug"),
+                    (2, b"Spy"),
+                    (3, b"Assistant"),
+                    (4, b"Champion"),
+                    (5, b"Animal"),
+                    (6, b"Small Animal"),
+                ],
+                default=0,
+            ),
         ),
         migrations.AlterField(
-            model_name='agent',
-            name='xp',
+            model_name="agent",
+            name="xp",
             field=models.PositiveSmallIntegerField(default=0),
         ),
         migrations.AlterField(
-            model_name='shardhavendiscovery',
-            name='discovery_method',
-            field=models.PositiveSmallIntegerField(choices=[(0, b'Unknown'), (1, b'Exploration'), (2, b'Clues'), (3, b'Staff Ex Machina')], default=0),
+            model_name="shardhavendiscovery",
+            name="discovery_method",
+            field=models.PositiveSmallIntegerField(
+                choices=[
+                    (0, b"Unknown"),
+                    (1, b"Exploration"),
+                    (2, b"Clues"),
+                    (3, b"Staff Ex Machina"),
+                ],
+                default=0,
+            ),
         ),
-        migrations.RunPython(fix_names)
+        migrations.RunPython(fix_names),
     ]

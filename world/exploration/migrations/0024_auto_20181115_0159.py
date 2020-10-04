@@ -8,12 +8,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0023_auto_20181114_2225'),
+        ("exploration", "0023_auto_20181114_2225"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='generatedlootfragment',
-            unique_together=set([('fragment_type', 'text')]),
+            name="generatedlootfragment",
+            unique_together=set([("fragment_type", "text")]),
         ),
     ]

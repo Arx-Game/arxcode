@@ -7,13 +7,11 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     def purge_the_things(apps, schema_editor):
-        Domain = apps.get_model('dominion', 'Domain')
+        Domain = apps.get_model("dominion", "Domain")
         Domain.objects.update(unassigned_serfs=0, lawlessness=0)
 
     dependencies = [
-        ('dominion', '0044_auto_20190225_2014'),
+        ("dominion", "0044_auto_20190225_2014"),
     ]
 
-    operations = [
-        migrations.RunPython(purge_the_things)
-    ]
+    operations = [migrations.RunPython(purge_the_things)]

@@ -16,7 +16,9 @@ class Alignment(SharedMemoryModel):
 
     name = models.CharField(max_length=20, blank=False, null=False, unique=True)
     alter_caster = models.BooleanField(default=False)
-    adjective = models.CharField(max_length=20, blank=False, null=False, default="colorful")
+    adjective = models.CharField(
+        max_length=20, blank=False, null=False, default="colorful"
+    )
 
     _PRIMAL = None
     _ABYSSAL = None
@@ -41,7 +43,7 @@ class Alignment(SharedMemoryModel):
             return cls._PRIMAL
 
         try:
-            cls._PRIMAL = Alignment.objects.get(name__iexact='primal')
+            cls._PRIMAL = Alignment.objects.get(name__iexact="primal")
             return cls._PRIMAL
         except Alignment.DoesNotExist:
             return None
@@ -52,7 +54,7 @@ class Alignment(SharedMemoryModel):
             return cls._ABYSSAL
 
         try:
-            cls._ABYSSAL = Alignment.objects.get(name__iexact='abyssal')
+            cls._ABYSSAL = Alignment.objects.get(name__iexact="abyssal")
             return cls._ABYSSAL
         except Alignment.DoesNotExist:
             return None
@@ -63,7 +65,7 @@ class Alignment(SharedMemoryModel):
             return cls._ELYSIAN
 
         try:
-            cls._ELYSIAN = Alignment.objects.get(name__iexact='elysian')
+            cls._ELYSIAN = Alignment.objects.get(name__iexact="elysian")
             return cls._ELYSIAN
         except Alignment.DoesNotExist:
             return None
@@ -73,15 +75,18 @@ class Affinity(SharedMemoryModel):
 
     name = models.CharField(max_length=20, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
-    opposed = models.ForeignKey('self', blank=True, null=True, related_name='+', on_delete=models.SET_NULL)
-    rank1_desc = models.CharField(max_length=255, default='spark')
-    rank2_desc = models.CharField(max_length=255, default='glimmer')
-    rank3_desc = models.CharField(max_length=255, default='glow')
-    rank4_desc = models.CharField(max_length=255, default='light')
-    rank5_desc = models.CharField(max_length=255, default='brilliance')
+    opposed = models.ForeignKey(
+        "self", blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
+    rank1_desc = models.CharField(max_length=255, default="spark")
+    rank2_desc = models.CharField(max_length=255, default="glimmer")
+    rank3_desc = models.CharField(max_length=255, default="glow")
+    rank4_desc = models.CharField(max_length=255, default="light")
+    rank5_desc = models.CharField(max_length=255, default="brilliance")
 
     class Meta:
         """Define Django meta options"""
+
         verbose_name_plural = "Affinities"
 
     def __str__(self):
@@ -114,8 +119,16 @@ class AlchemicalMaterial(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=False, null=False)
     plural_name = models.CharField(max_length=40, blank=True, null=True)
-    alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+', on_delete=models.SET_NULL)
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='materials', on_delete=models.SET_NULL)
+    alignment = models.ForeignKey(
+        Alignment, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
+    affinity = models.ForeignKey(
+        Affinity,
+        blank=True,
+        null=True,
+        related_name="materials",
+        on_delete=models.SET_NULL,
+    )
     description = models.TextField(blank=True, null=True)
 
     def create_instance(self, quantity):
@@ -124,7 +137,9 @@ class AlchemicalMaterial(SharedMemoryModel):
         if quantity > 2:
             name_string = "{} {}".format(quantity, self.plural_name or self.name)
 
-        result = create_object(key=name_string, typeclass="world.magic.materials.MagicMaterial")
+        result = create_object(
+            key=name_string, typeclass="world.magic.materials.MagicMaterial"
+        )
         result.db.desc = self.description
         result.db.alchemical_material = self.id
 
@@ -155,14 +170,14 @@ class Effect(SharedMemoryModel):
     TARGET_TYPE_AGENT = 7
 
     TARGET_TYPES = (
-        (TARGET_TYPE_NONE, 'None'),
-        (TARGET_TYPE_SELF, 'Self'),
-        (TARGET_TYPE_CHARACTER, 'Character'),
-        (TARGET_TYPE_OBJECT, 'Object'),
-        (TARGET_TYPE_EITHER, 'Player or Object'),
-        (TARGET_TYPE_CLUE, 'Clue'),
-        (TARGET_TYPE_LOCATION, 'Location'),
-        (TARGET_TYPE_AGENT, 'Retainer'),
+        (TARGET_TYPE_NONE, "None"),
+        (TARGET_TYPE_SELF, "Self"),
+        (TARGET_TYPE_CHARACTER, "Character"),
+        (TARGET_TYPE_OBJECT, "Object"),
+        (TARGET_TYPE_EITHER, "Player or Object"),
+        (TARGET_TYPE_CLUE, "Clue"),
+        (TARGET_TYPE_LOCATION, "Location"),
+        (TARGET_TYPE_AGENT, "Retainer"),
     )
 
     CODED_SIGHT = 0
@@ -185,41 +200,56 @@ class Effect(SharedMemoryModel):
     CODED_ANIMA_RITUAL = 17
 
     CODED_EFFECTS = (
-        (CODED_SIGHT, 'Sight'),
-        (CODED_ADD_CLUE, 'Add Clue to Collection'),
-        (CODED_ADD_TOTAL, 'Add Successes to A Global Tally'),
-        (CODED_INFUSE, 'Add to Primum Value of Object'),
-        (CODED_ABSORB, 'Absorb Primum from an Object'),
-        (CODED_ATTUNE, 'Attune to Object, Player, or Agent'),
-        (CODED_BOOST, 'Boost a Stat'),
-        (CODED_WARD, 'Ward a Location'),
-        (CODED_HEAL, 'Heal a Character'),
-        (CODED_EMIT, 'Simply Emits Flavor Text'),
-        (CODED_MAP, 'Temporarily Reveal an Exploration Map'),
-        (CODED_APPLY_COMBAT_CONDITION, 'Apply a Combat Condition'),
-        (CODED_REMOVE_COMBAT_CONDITION, 'Remove a Combat Condition'),
-        (CODED_APPLY_COMBAT_EFFECT, 'Apply a Combat Effect'),
-        (CODED_REMOVE_COMBAT_EFFECT, 'Remove a Combat Effect'),
-        (CODED_SET_WEATHER, 'Change the Weather'),
+        (CODED_SIGHT, "Sight"),
+        (CODED_ADD_CLUE, "Add Clue to Collection"),
+        (CODED_ADD_TOTAL, "Add Successes to A Global Tally"),
+        (CODED_INFUSE, "Add to Primum Value of Object"),
+        (CODED_ABSORB, "Absorb Primum from an Object"),
+        (CODED_ATTUNE, "Attune to Object, Player, or Agent"),
+        (CODED_BOOST, "Boost a Stat"),
+        (CODED_WARD, "Ward a Location"),
+        (CODED_HEAL, "Heal a Character"),
+        (CODED_EMIT, "Simply Emits Flavor Text"),
+        (CODED_MAP, "Temporarily Reveal an Exploration Map"),
+        (CODED_APPLY_COMBAT_CONDITION, "Apply a Combat Condition"),
+        (CODED_REMOVE_COMBAT_CONDITION, "Remove a Combat Condition"),
+        (CODED_APPLY_COMBAT_EFFECT, "Apply a Combat Effect"),
+        (CODED_REMOVE_COMBAT_EFFECT, "Remove a Combat Effect"),
+        (CODED_SET_WEATHER, "Change the Weather"),
         (CODED_ANIMA_RITUAL, "Anima Ritual"),
     )
 
     name = models.CharField(max_length=20, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
-    target_type = models.PositiveSmallIntegerField(default=TARGET_TYPE_NONE, choices=TARGET_TYPES)
+    target_type = models.PositiveSmallIntegerField(
+        default=TARGET_TYPE_NONE, choices=TARGET_TYPES
+    )
     weave_usable = models.BooleanField(default=True)
-    coded_effect = models.PositiveSmallIntegerField(default=CODED_SIGHT, choices=CODED_EFFECTS)
-    coded_params = models.CharField(max_length=255, blank=True, null=True,
-                                    help_text="Parameters specific to the coded effect type.")
+    coded_effect = models.PositiveSmallIntegerField(
+        default=CODED_SIGHT, choices=CODED_EFFECTS
+    )
+    coded_params = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Parameters specific to the coded effect type.",
+    )
     base_difficulty = models.PositiveSmallIntegerField(default=70)
     base_cost = models.PositiveSmallIntegerField(default=500)
-    required_favor = models.PositiveIntegerField(default=0, help_text='A base amount of favor required to '
-                                                                      'weave this effect.')
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+', on_delete=models.SET_NULL)
-    antagonistic = models.BooleanField(default=False, help_text="Is this effect harmful to the target?")
-    want_opposed = models.BooleanField(default=False,
-                                       help_text="Is this effect more effective when used on an opposed affinity? "
-                                                 "(If not, it will be more effective when used on the same affinity.)")
+    required_favor = models.PositiveIntegerField(
+        default=0, help_text="A base amount of favor required to " "weave this effect."
+    )
+    affinity = models.ForeignKey(
+        Affinity, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
+    antagonistic = models.BooleanField(
+        default=False, help_text="Is this effect harmful to the target?"
+    )
+    want_opposed = models.BooleanField(
+        default=False,
+        help_text="Is this effect more effective when used on an opposed affinity? "
+        "(If not, it will be more effective when used on the same affinity.)",
+    )
     conditions = models.CharField(max_length=255, blank=True, null=True)
     strength = models.PositiveSmallIntegerField(default=10, blank=False, null=False)
     success_msg = models.TextField(blank=True, null=True)
@@ -245,12 +275,22 @@ class Effect(SharedMemoryModel):
             return practitioner.character, True
         if self.target_type == Effect.TARGET_TYPE_LOCATION:
             return practitioner.character.location, True
-        if self.target_type in [Effect.TARGET_TYPE_CHARACTER, Effect.TARGET_TYPE_OBJECT, Effect.TARGET_TYPE_EITHER]:
-            results = practitioner.character.search(target_string, global_search=False, quiet=True,
-                                                    location=practitioner.character.location)
+        if self.target_type in [
+            Effect.TARGET_TYPE_CHARACTER,
+            Effect.TARGET_TYPE_OBJECT,
+            Effect.TARGET_TYPE_EITHER,
+        ]:
+            results = practitioner.character.search(
+                target_string,
+                global_search=False,
+                quiet=True,
+                location=practitioner.character.location,
+            )
             final_results = []
             for obj in results:
-                is_character = obj.has_account or (hasattr(obj, 'is_character') and obj.is_character)
+                is_character = obj.has_account or (
+                    hasattr(obj, "is_character") and obj.is_character
+                )
                 if self.target_type == Effect.TARGET_TYPE_OBJECT:
                     if not is_character:
                         final_results.append(obj)
@@ -270,13 +310,20 @@ class Effect(SharedMemoryModel):
 
 class PractitionerAlignment(SharedMemoryModel):
 
-    practitioner = models.ForeignKey('Practitioner', null=False, blank=False, related_name='alignments',
-                                     on_delete=models.CASCADE)
-    alignment = models.ForeignKey(Alignment, null=False, blank=False, on_delete=models.CASCADE)
+    practitioner = models.ForeignKey(
+        "Practitioner",
+        null=False,
+        blank=False,
+        related_name="alignments",
+        on_delete=models.CASCADE,
+    )
+    alignment = models.ForeignKey(
+        Alignment, null=False, blank=False, on_delete=models.CASCADE
+    )
     value = models.PositiveIntegerField(default=0)
 
     class Meta:
-        unique_together = ('practitioner', 'alignment')
+        unique_together = ("practitioner", "alignment")
 
     def __str__(self):
         return "{}'s {} level".format(self.practitioner, self.alignment)
@@ -284,50 +331,91 @@ class PractitionerAlignment(SharedMemoryModel):
 
 class PractitionerFavor(SharedMemoryModel):
 
-    practitioner = models.ForeignKey('Practitioner', blank=False, null=False, related_name='favored_by',
-                                     on_delete=models.CASCADE)
-    alignment = models.ForeignKey(Alignment, blank=False, null=False, related_name='favored',
-                                  on_delete=models.CASCADE)
+    practitioner = models.ForeignKey(
+        "Practitioner",
+        blank=False,
+        null=False,
+        related_name="favored_by",
+        on_delete=models.CASCADE,
+    )
+    alignment = models.ForeignKey(
+        Alignment,
+        blank=False,
+        null=False,
+        related_name="favored",
+        on_delete=models.CASCADE,
+    )
     value = models.PositiveIntegerField(default=0)
     gm_notes = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('practitioner', 'alignment')
+        unique_together = ("practitioner", "alignment")
 
 
 class Practitioner(SharedMemoryModel):
 
-    character = models.OneToOneField('objects.ObjectDB', blank=False, null=False, related_name='practitioner_record',
-                                     on_delete=models.CASCADE)
+    character = models.OneToOneField(
+        "objects.ObjectDB",
+        blank=False,
+        null=False,
+        related_name="practitioner_record",
+        on_delete=models.CASCADE,
+    )
     potential = models.PositiveIntegerField(default=1)
     anima = models.PositiveIntegerField(default=1)
-    unspent_resonance = models.FloatField(default=0.)
-    raw_alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+',
-                                      on_delete=models.SET_NULL)
-    raw_affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+',
-                                     on_delete=models.SET_NULL)
+    unspent_resonance = models.FloatField(default=0.0)
+    raw_alignment = models.ForeignKey(
+        Alignment, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
+    raw_affinity = models.ForeignKey(
+        Affinity, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
     stat = models.CharField(max_length=40, default="intellect")
     skill = models.CharField(max_length=40, default="occult")
-    language = models.CharField(max_length=20, default="Arvani",
-                                help_text="The language in which this practitioner casts.")
-    verb = models.CharField(max_length=20, default="chants", help_text="The verb (chants, sings, etc.) to describe "
-                                                                       "this practitioner's casting style.")
-    gesture = models.CharField(max_length=255, default="gestures expansively and energetically",
-                               help_text="Short descriptive fragment of how this practitioner casts.")
-    sigil_desc = models.CharField(max_length=255, blank=True, null=True,
-                                  help_text="What this person's magic looks for description as a signature "
-                                            "(on wards and workings).")
-    sigil_emit = models.TextField(blank=True, null=True,
-                                  help_text='The emit that\'s shown to mage-sight when this practitioner works magic.')
-    magic_desc_short = models.CharField(max_length=1024, blank=True, null=True,
-                                        help_text='A short description of someone\'s magic, to be included in a '
-                                                  'generated sentence')
-    magic_desc = models.TextField(blank=True, null=True,
-                                  help_text="Additional text someone might see if they soulgaze this practitioner "
-                                            "with high successes.")
-    nodes = models.ManyToManyField('SkillNode', through='SkillNodeResonance')
-    spells = models.ManyToManyField('Spell', through='PractitionerSpell')
-    effects = models.ManyToManyField('Effect', through='PractitionerEffect')
+    language = models.CharField(
+        max_length=20,
+        default="Arvani",
+        help_text="The language in which this practitioner casts.",
+    )
+    verb = models.CharField(
+        max_length=20,
+        default="chants",
+        help_text="The verb (chants, sings, etc.) to describe "
+        "this practitioner's casting style.",
+    )
+    gesture = models.CharField(
+        max_length=255,
+        default="gestures expansively and energetically",
+        help_text="Short descriptive fragment of how this practitioner casts.",
+    )
+    sigil_desc = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="What this person's magic looks for description as a signature "
+        "(on wards and workings).",
+    )
+    sigil_emit = models.TextField(
+        blank=True,
+        null=True,
+        help_text="The emit that's shown to mage-sight when this practitioner works magic.",
+    )
+    magic_desc_short = models.CharField(
+        max_length=1024,
+        blank=True,
+        null=True,
+        help_text="A short description of someone's magic, to be included in a "
+        "generated sentence",
+    )
+    magic_desc = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Additional text someone might see if they soulgaze this practitioner "
+        "with high successes.",
+    )
+    nodes = models.ManyToManyField("SkillNode", through="SkillNodeResonance")
+    spells = models.ManyToManyField("Spell", through="PractitionerSpell")
+    effects = models.ManyToManyField("Effect", through="PractitionerEffect")
 
     def __str__(self):
         return self.character.name
@@ -337,7 +425,11 @@ class Practitioner(SharedMemoryModel):
         try:
             practitioner = Practitioner.objects.get(character=obj)
             return practitioner
-        except (Practitioner.DoesNotExist, Practitioner.MultipleObjectsReturned, TypeError):
+        except (
+            Practitioner.DoesNotExist,
+            Practitioner.MultipleObjectsReturned,
+            TypeError,
+        ):
             return None
 
     @staticmethod
@@ -354,7 +446,11 @@ class Practitioner(SharedMemoryModel):
         nodes = SkillNodeResonance.objects.filter(practitioner=self)
         for node in nodes:
             if node.node.affinity:
-                old_value = affinities[node.node.affinity] if node.node.affinity in affinities else 0
+                old_value = (
+                    affinities[node.node.affinity]
+                    if node.node.affinity in affinities
+                    else 0
+                )
                 affinities[node.node.affinity] = old_value + node.resonance
 
         result = None
@@ -371,7 +467,9 @@ class Practitioner(SharedMemoryModel):
         if self.raw_alignment:
             return self.raw_alignment
 
-        alignments = PractitionerAlignment.objects.filter(practitioner=self).order_by('-value')
+        alignments = PractitionerAlignment.objects.filter(practitioner=self).order_by(
+            "-value"
+        )
         if alignments.count() > 0:
             return alignments[0].alignment
 
@@ -386,8 +484,13 @@ class Practitioner(SharedMemoryModel):
 
     def resonance_record_for_node(self, node):
         try:
-            resonance_node = SkillNodeResonance.objects.get(practitioner=self, node=node)
-        except (SkillNodeResonance.DoesNotExist, SkillNodeResonance.MultipleObjectsReturned):
+            resonance_node = SkillNodeResonance.objects.get(
+                practitioner=self, node=node
+            )
+        except (
+            SkillNodeResonance.DoesNotExist,
+            SkillNodeResonance.MultipleObjectsReturned,
+        ):
             return None
 
         return resonance_node
@@ -399,7 +502,7 @@ class Practitioner(SharedMemoryModel):
             value = resonance_record.resonance
 
         if node.parent_node:
-            value += (self.resonance_for_node(node.parent_node) / 10)
+            value += self.resonance_for_node(node.parent_node) / 10
 
         return value
 
@@ -424,42 +527,68 @@ class Practitioner(SharedMemoryModel):
 
     def add_resonance_to_node(self, node, amount):
         try:
-            resonance_node = SkillNodeResonance.objects.get(practitioner=self, node=node)
-        except (SkillNodeResonance.DoesNotExist, SkillNodeResonance.MultipleObjectsReturned):
+            resonance_node = SkillNodeResonance.objects.get(
+                practitioner=self, node=node
+            )
+        except (
+            SkillNodeResonance.DoesNotExist,
+            SkillNodeResonance.MultipleObjectsReturned,
+        ):
             return
 
         before = resonance_node.resonance
         after = min(self.potential, resonance_node.raw_resonance + amount)
         if after == self.potential:
-            self.send_inform("You feel that you've reached the limit of your ability to learn |y%s|n until "
-                             "you improve as a practitioner." % node.name)
+            self.send_inform(
+                "You feel that you've reached the limit of your ability to learn |y%s|n until "
+                "you improve as a practitioner." % node.name
+            )
         resonance_node.raw_resonance = after
         resonance_node.save()
 
         if before != after:
             explanation_string = "Discovered by improving {}.".format(node.name)
-            child_nodes = node.child_nodes.filter(auto_discover=True, required_resonance__lte=after)\
-                .exclude(id__in=self.nodes.all())
+            child_nodes = node.child_nodes.filter(
+                auto_discover=True, required_resonance__lte=after
+            ).exclude(id__in=self.nodes.all())
             if child_nodes.count():
                 for child_node in child_nodes.all():
-                    self.open_node(child_node, SkillNodeResonance.LEARN_DISCOVERED, explanation=explanation_string)
+                    self.open_node(
+                        child_node,
+                        SkillNodeResonance.LEARN_DISCOVERED,
+                        explanation=explanation_string,
+                    )
 
-            spells = node.spells.filter(auto_discover=True, required_resonance__lte=after)\
-                .exclude(id__in=self.spells.all())
+            spells = node.spells.filter(
+                auto_discover=True, required_resonance__lte=after
+            ).exclude(id__in=self.spells.all())
             if spells.count():
                 for spell in spells.all():
-                    self.learn_spell(spell, PractitionerSpell.LEARN_DISCOVERED, explanation=explanation_string)
+                    self.learn_spell(
+                        spell,
+                        PractitionerSpell.LEARN_DISCOVERED,
+                        explanation=explanation_string,
+                    )
 
-            effects = node.effect_records.filter(auto_discover=True, required_resonance__lte=after)\
-                .exclude(effect__in=self.effects.all())
+            effects = node.effect_records.filter(
+                auto_discover=True, required_resonance__lte=after
+            ).exclude(effect__in=self.effects.all())
             if effects.count():
                 for effect in effects.all():
-                    self.learn_effect(effect, PractitionerEffect.LEARN_DISCOVERED, explanation=explanation_string)
+                    self.learn_effect(
+                        effect,
+                        PractitionerEffect.LEARN_DISCOVERED,
+                        explanation=explanation_string,
+                    )
 
-            conditions = node.conditions.filter(auto_discover=True, required_resonance__lte=after)
+            conditions = node.conditions.filter(
+                auto_discover=True, required_resonance__lte=after
+            )
             if conditions.count():
                 for condition in conditions.all():
-                    self.gain_condition(condition, explanation="Gained by improving %s." % node.name)
+                    self.gain_condition(
+                        condition, explanation="Gained by improving %s." % node.name
+                    )
 
         if node.parent_node:
             self.add_resonance_to_node(node.parent_node, amount / 20)
@@ -469,14 +598,23 @@ class Practitioner(SharedMemoryModel):
         if conditions.count() > 0:
             return
 
-        PractitionerCondition.objects.create(practitioner=self, condition=condition, gm_notes=explanation)
-        inform_staff("|y%s|n just gained the |y%s|n condition: %s" % (self, condition, explanation))
+        PractitionerCondition.objects.create(
+            practitioner=self, condition=condition, gm_notes=explanation
+        )
+        inform_staff(
+            "|y%s|n just gained the |y%s|n condition: %s"
+            % (self, condition, explanation)
+        )
 
     def apply_alignment(self, align, amount):
         try:
-            practalign = PractitionerAlignment.objects.get(practitioner=self, alignment=align)
+            practalign = PractitionerAlignment.objects.get(
+                practitioner=self, alignment=align
+            )
         except PractitionerAlignment.DoesNotExist:
-            practalign = PractitionerAlignment.objects.create(practitioner=self, alignment=align)
+            practalign = PractitionerAlignment.objects.create(
+                practitioner=self, alignment=align
+            )
 
         practalign.value = practalign.value + amount
         practalign.save()
@@ -488,11 +626,17 @@ class Practitioner(SharedMemoryModel):
         if self.knows_node(node):
             return None
 
-        result = SkillNodeResonance.objects.create(practitioner=self, node=node, learned_by=reason,
-                                                   learned_on=datetime.now(), learned_notes=explanation)
+        result = SkillNodeResonance.objects.create(
+            practitioner=self,
+            node=node,
+            learned_by=reason,
+            learned_on=datetime.now(),
+            learned_notes=explanation,
+        )
 
-        inform_string = "just unlocked node |y{}|n in the magic tree by {}"\
-            .format(node.name, SkillNodeResonance.reason_string(reason))
+        inform_string = "just unlocked node |y{}|n in the magic tree by {}".format(
+            node.name, SkillNodeResonance.reason_string(reason)
+        )
         if explanation:
             inform_string += ": " + explanation
         else:
@@ -507,12 +651,17 @@ class Practitioner(SharedMemoryModel):
         if self.knows_spell(spell):
             return
 
-        PractitionerSpell.objects.create(practitioner=self, spell=spell,
-                                         learned_by=reason, learned_on=datetime.now(),
-                                         learned_notes=explanation)
+        PractitionerSpell.objects.create(
+            practitioner=self,
+            spell=spell,
+            learned_by=reason,
+            learned_on=datetime.now(),
+            learned_notes=explanation,
+        )
 
-        inform_string = "just learned spell |y{}|n by {}" \
-            .format(spell.name, PractitionerSpell.reason_string(reason))
+        inform_string = "just learned spell |y{}|n by {}".format(
+            spell.name, PractitionerSpell.reason_string(reason)
+        )
         if explanation:
             inform_string += ": " + explanation
         else:
@@ -524,8 +673,11 @@ class Practitioner(SharedMemoryModel):
     def teach_node(self, node, teacher):
         resonance_record = self.resonance_record_for_node(node)
         if not resonance_record:
-            resonance_record = self.open_node(node, SkillNodeResonance.LEARN_TAUGHT,
-                                              "Taught by " + teacher.character.name)
+            resonance_record = self.open_node(
+                node,
+                SkillNodeResonance.LEARN_TAUGHT,
+                "Taught by " + teacher.character.name,
+            )
 
         resonance_record.add_teacher(teacher)
 
@@ -533,12 +685,17 @@ class Practitioner(SharedMemoryModel):
         if self.knows_effect(effect):
             return
 
-        PractitionerEffect.objects.create(practitioner=self, effect=effect,
-                                          learned_by=reason, learned_on=datetime.now(),
-                                          learned_notes=explanation)
+        PractitionerEffect.objects.create(
+            practitioner=self,
+            effect=effect,
+            learned_by=reason,
+            learned_on=datetime.now(),
+            learned_notes=explanation,
+        )
 
-        inform_string = "just learned effect |y{}|n by {}" \
-            .format(effect.name, PractitionerEffect.reason_string(reason))
+        inform_string = "just learned effect |y{}|n by {}".format(
+            effect.name, PractitionerEffect.reason_string(reason)
+        )
         if explanation:
             inform_string += ": " + explanation
         else:
@@ -548,8 +705,9 @@ class Practitioner(SharedMemoryModel):
         self.send_inform("You " + inform_string)
 
     def resonance_for_main_school(self):
-        nodes = SkillNodeResonance.objects.filter(practitioner=self, node__parent_node__isnull=True)\
-            .order_by('-raw_resonance')
+        nodes = SkillNodeResonance.objects.filter(
+            practitioner=self, node__parent_node__isnull=True
+        ).order_by("-raw_resonance")
 
         if nodes.count() == 0:
             # Are you even a mage?
@@ -558,8 +716,9 @@ class Practitioner(SharedMemoryModel):
         return self.resonance_for_node(nodes[0])
 
     def resonance_for_affinity(self, affinity):
-        nodes = SkillNodeResonance.objects.filter(practitioner=self, node__affinity=affinity,
-                                                  node__affinity_default=True).order_by('-raw_resonance')
+        nodes = SkillNodeResonance.objects.filter(
+            practitioner=self, node__affinity=affinity, node__affinity_default=True
+        ).order_by("-raw_resonance")
 
         if nodes.count() > 0:
             return self.resonance_for_node(nodes[0].node)
@@ -567,13 +726,19 @@ class Practitioner(SharedMemoryModel):
         return 0
 
     def roll_magic(self, difficulty):
-        stat_list = ['mana', self.stat]
-        roll = Roll(self.character, stat_list=stat_list, skill=self.skill, average_stat_list=True,
-                    difficulty=difficulty, quiet=True)
+        stat_list = ["mana", self.stat]
+        roll = Roll(
+            self.character,
+            stat_list=stat_list,
+            skill=self.skill,
+            average_stat_list=True,
+            difficulty=difficulty,
+            quiet=True,
+        )
         return roll.roll()
 
     def notify_magic(self, magic_string):
-        self.character.msg(magic_string, options={'is_magic': True, 'is_pose': True})
+        self.character.msg(magic_string, options={"is_magic": True, "is_pose": True})
 
     def check_perceive_magic(self, magic_string, strength=10):
         difficulty = 50 - (strength / 10)
@@ -582,7 +747,7 @@ class Practitioner(SharedMemoryModel):
 
     @property
     def magic_state(self):
-        value = math.trunc(self.anima / (self.potential / 10.))
+        value = math.trunc(self.anima / (self.potential / 10.0))
 
         if value == 0:
             return "You feel so exhausted that you're close to dead!"
@@ -597,30 +762,44 @@ class Practitioner(SharedMemoryModel):
 
     @property
     def casting_emit(self):
-        return "{} {} in {} and {}!".format(self.character.name, self.verb.lower(), self.language.capitalize(),
-                                            self.gesture)
+        return "{} {} in {} and {}!".format(
+            self.character.name,
+            self.verb.lower(),
+            self.language.capitalize(),
+            self.gesture,
+        )
 
     def emit_casting_gestures(self, location, tool=None):
         if tool:
-            casting_string = "Using {}, {} {} in %s and {}!".format(self.character.name, self.tool.obj.name,
-                                                                    self.verb.lower(), self.gesture)
+            casting_string = "Using {}, {} {} in %s and {}!".format(
+                self.character.name, self.tool.obj.name, self.verb.lower(), self.gesture
+            )
         else:
-            casting_string = "{} {} in %s and {}!".format(self.character.name, self.verb.lower(), self.gesture)
+            casting_string = "{} {} in %s and {}!".format(
+                self.character.name, self.verb.lower(), self.gesture
+            )
 
         for obj in location.contents:
-            if self.language.lower() == "arvani" or obj.tags.get(self.language, "languages"):
+            if self.language.lower() == "arvani" or obj.tags.get(
+                self.language, "languages"
+            ):
                 language_string = self.language.capitalize()
             else:
                 language_string = "a foreign tongue"
 
-            obj.msg(casting_string % language_string, from_obj=self.character, options={'is_pose': True})
+            obj.msg(
+                casting_string % language_string,
+                from_obj=self.character,
+                options={"is_pose": True},
+            )
 
     def emit_sigil(self, location, strength=10):
         if self.sigil_emit:
             sigil_string = self.sigil_emit
         else:
-            sigil_string = "As {} works magic, the effect spreading out from them resembles {}."\
-                .format(self.character.name, self.sigil_desc)
+            sigil_string = "As {} works magic, the effect spreading out from them resembles {}.".format(
+                self.character.name, self.sigil_desc
+            )
         location.msg_contents_magic(sigil_string, strength=strength)
 
     @property
@@ -635,7 +814,10 @@ class Practitioner(SharedMemoryModel):
         try:
             favor = PractitionerFavor.objects.get(practitioner=self, alignment=align)
             return favor.value
-        except (PractitionerFavor.DoesNotExist, PractitionerFavor.MultipleObjectsReturned):
+        except (
+            PractitionerFavor.DoesNotExist,
+            PractitionerFavor.MultipleObjectsReturned,
+        ):
             pass
 
         return 0
@@ -648,16 +830,24 @@ class Practitioner(SharedMemoryModel):
 
     @property
     def eyes_open(self):
-        return self.node_resonances.filter(node__eyes_open=True, raw_resonance__gte=0)\
-                   .count() > 0
+        return (
+            self.node_resonances.filter(
+                node__eyes_open=True, raw_resonance__gte=0
+            ).count()
+            > 0
+        )
 
     def at_magic_exposure(self, alignment=None, affinity=None, strength=10):
         conditions = None
         if affinity:
-            conditions = self.conditions.filter(condition_alignment=alignment, condition__affinity=affinity)
+            conditions = self.conditions.filter(
+                condition_alignment=alignment, condition__affinity=affinity
+            )
 
         if not conditions or conditions.count() == 0:
-            conditions = self.conditions.filter(condition__alignment=alignment, condition__affinity=None)
+            conditions = self.conditions.filter(
+                condition__alignment=alignment, condition__affinity=None
+            )
 
         if conditions.count() == 0:
             return
@@ -668,8 +858,15 @@ class Practitioner(SharedMemoryModel):
     @property
     def anima_rituals(self):
         from django.db.models import Q
-        return self.workings.filter(Q(spell__effects__coded_effect=Effect.CODED_ANIMA_RITUAL) |
-                                     Q(weave_effect__coded_effect=Effect.CODED_ANIMA_RITUAL)).distinct().count()
+
+        return (
+            self.workings.filter(
+                Q(spell__effects__coded_effect=Effect.CODED_ANIMA_RITUAL)
+                | Q(weave_effect__coded_effect=Effect.CODED_ANIMA_RITUAL)
+            )
+            .distinct()
+            .count()
+        )
 
     @property
     def anima_rituals_this_week(self):
@@ -690,21 +887,33 @@ class PractitionerEffect(SharedMemoryModel):
     LEARN_DISCOVERED = 2
 
     LEARN_TYPES = (
-        (LEARN_FIAT, 'Staff Fiat'),
-        (LEARN_TAUGHT, 'Teaching'),
-        (LEARN_DISCOVERED, 'Discovery'),
+        (LEARN_FIAT, "Staff Fiat"),
+        (LEARN_TAUGHT, "Teaching"),
+        (LEARN_DISCOVERED, "Discovery"),
     )
 
-    practitioner = models.ForeignKey(Practitioner, default=False, null=False, related_name='effect_discoveries',
-                                     on_delete=models.CASCADE)
-    effect = models.ForeignKey(Effect, default=False, null=False, related_name='known_by',
-                               on_delete=models.CASCADE)
-    learned_by = models.PositiveSmallIntegerField(default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False)
+    practitioner = models.ForeignKey(
+        Practitioner,
+        default=False,
+        null=False,
+        related_name="effect_discoveries",
+        on_delete=models.CASCADE,
+    )
+    effect = models.ForeignKey(
+        Effect,
+        default=False,
+        null=False,
+        related_name="known_by",
+        on_delete=models.CASCADE,
+    )
+    learned_by = models.PositiveSmallIntegerField(
+        default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False
+    )
     learned_on = models.DateField(blank=True, null=True)
     learned_notes = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
-        unique_together = ('practitioner', 'effect')
+        unique_together = ("practitioner", "effect")
 
     def __str__(self):
         return "{}'s knowledge of {}".format(self.practitioner, self.effect)
@@ -722,21 +931,38 @@ class SkillNode(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
-    parent_node = models.ForeignKey('self', blank=True, null=True, related_name='child_nodes',
-                                    on_delete=models.CASCADE)
-    eyes_open = models.BooleanField(default=False, help_text='If set, then having this node open means '
-                                                             'someone\'s eyes are opened.')
+    parent_node = models.ForeignKey(
+        "self",
+        blank=True,
+        null=True,
+        related_name="child_nodes",
+        on_delete=models.CASCADE,
+    )
+    eyes_open = models.BooleanField(
+        default=False,
+        help_text="If set, then having this node open means "
+        "someone's eyes are opened.",
+    )
     auto_discover = models.BooleanField(default=False)
-    discovered_by_revelations = models.ManyToManyField("character.Revelation", blank=True, related_name="nodes",
-                                                       help_text="If we discover these revelations, the node is "
-                                                                 "automatically discovered.")
+    discovered_by_revelations = models.ManyToManyField(
+        "character.Revelation",
+        blank=True,
+        related_name="nodes",
+        help_text="If we discover these revelations, the node is "
+        "automatically discovered.",
+    )
     required_resonance = models.PositiveSmallIntegerField(default=10)
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='nodes',
-                                 on_delete=models.SET_NULL)
-    affinity_default = models.BooleanField(default=False,
-                                           help_text="Does this node function as the default for this "
-                                                     "affinity in its tree?")
-    related_effects = models.ManyToManyField(Effect, through='SkillNodeEffect', related_name='nodes')
+    affinity = models.ForeignKey(
+        Affinity, blank=True, null=True, related_name="nodes", on_delete=models.SET_NULL
+    )
+    affinity_default = models.BooleanField(
+        default=False,
+        help_text="Does this node function as the default for this "
+        "affinity in its tree?",
+    )
+    related_effects = models.ManyToManyField(
+        Effect, through="SkillNodeEffect", related_name="nodes"
+    )
 
     def __str__(self):
         return self.name
@@ -744,15 +970,25 @@ class SkillNode(SharedMemoryModel):
 
 class SkillNodeEffect(SharedMemoryModel):
 
-    node = models.ForeignKey(SkillNode, blank=False, null=False, related_name='effect_records',
-                             on_delete=models.CASCADE)
-    effect = models.ForeignKey(Effect, blank=False, null=False, related_name='node_records',
-                               on_delete=models.CASCADE)
+    node = models.ForeignKey(
+        SkillNode,
+        blank=False,
+        null=False,
+        related_name="effect_records",
+        on_delete=models.CASCADE,
+    )
+    effect = models.ForeignKey(
+        Effect,
+        blank=False,
+        null=False,
+        related_name="node_records",
+        on_delete=models.CASCADE,
+    )
     auto_discover = models.BooleanField(default=False)
     required_resonance = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        unique_together = ('node', 'effect')
+        unique_together = ("node", "effect")
 
 
 class SkillNodeResonance(SharedMemoryModel):
@@ -762,17 +998,29 @@ class SkillNodeResonance(SharedMemoryModel):
     LEARN_DISCOVERED = 2
 
     LEARN_TYPES = (
-        (LEARN_FIAT, 'Staff Fiat'),
-        (LEARN_TAUGHT, 'Teaching'),
-        (LEARN_DISCOVERED, 'Discovery'),
+        (LEARN_FIAT, "Staff Fiat"),
+        (LEARN_TAUGHT, "Teaching"),
+        (LEARN_DISCOVERED, "Discovery"),
     )
 
-    practitioner = models.ForeignKey(Practitioner, default=False, null=False, related_name='node_resonances',
-                                     on_delete=models.CASCADE)
-    node = models.ForeignKey(SkillNode, default=False, null=False, related_name='known_by',
-                             on_delete=models.CASCADE)
+    practitioner = models.ForeignKey(
+        Practitioner,
+        default=False,
+        null=False,
+        related_name="node_resonances",
+        on_delete=models.CASCADE,
+    )
+    node = models.ForeignKey(
+        SkillNode,
+        default=False,
+        null=False,
+        related_name="known_by",
+        on_delete=models.CASCADE,
+    )
     raw_resonance = models.FloatField(default=0.0)
-    learned_by = models.PositiveSmallIntegerField(default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False)
+    learned_by = models.PositiveSmallIntegerField(
+        default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False
+    )
     learned_on = models.DateField(blank=True, null=True)
     learned_notes = models.CharField(max_length=255, blank=True, null=True)
     teaching_multiplier = models.PositiveSmallIntegerField(blank=True, null=True)
@@ -781,7 +1029,7 @@ class SkillNodeResonance(SharedMemoryModel):
     practicing = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('practitioner', 'node')
+        unique_together = ("practitioner", "node")
 
     def __str__(self):
         return "{}'s {} resonance".format(self.practitioner, self.node)
@@ -801,7 +1049,7 @@ class SkillNodeResonance(SharedMemoryModel):
     def add_teacher(self, teacher):
         teacher_resonance = teacher.resonance_for_node(self.node)
         self.taught_by = teacher.character.name
-        self.teaching_multiplier = math.trunc(teacher_resonance ** (1 / 10.))
+        self.teaching_multiplier = math.trunc(teacher_resonance ** (1 / 10.0))
         self.taught_on = datetime.now()
 
 
@@ -809,25 +1057,43 @@ class Condition(SharedMemoryModel):
 
     name = models.CharField(max_length=40)
     alignment = models.ForeignKey(Alignment, on_delete=models.CASCADE)
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, on_delete=models.SET_NULL)
+    affinity = models.ForeignKey(
+        Affinity, blank=True, null=True, on_delete=models.SET_NULL
+    )
     description = models.TextField(blank=True, null=True)
-    node = models.ForeignKey(SkillNode, related_name='conditions',
-                             on_delete=models.CASCADE)
+    node = models.ForeignKey(
+        SkillNode, related_name="conditions", on_delete=models.CASCADE
+    )
     auto_discover = models.BooleanField(default=False)
-    required_resonance = models.PositiveSmallIntegerField(blank=True, null=True,
-                                                          help_text='If auto_discover is set, the Condition will '
-                                                                    'automatically be gained when you have this much '
-                                                                    'resonance in the associated node.')
-    roll_stat = models.CharField(max_length=20, default='Will', help_text='The stat to roll to avoid this condition.')
-    roll_skill = models.CharField(max_length=25, default='Occult',
-                                  help_text='The skill to roll to avoid this condition.')
-    roll_base_difficulty = models.PositiveSmallIntegerField(default=30,
-                                                            help_text='The base difficulty, which will be modified by '
-                                                                      'effect strength and resonance of the attached '
-                                                                      'node.')
-    positive_condition = models.BooleanField(default=False, help_text='If true, then succeeding the roll triggers this '
-                                                                      'Condition; if false, failing does.')
-    effects = models.ManyToManyField(Effect, related_name='+')
+    required_resonance = models.PositiveSmallIntegerField(
+        blank=True,
+        null=True,
+        help_text="If auto_discover is set, the Condition will "
+        "automatically be gained when you have this much "
+        "resonance in the associated node.",
+    )
+    roll_stat = models.CharField(
+        max_length=20,
+        default="Will",
+        help_text="The stat to roll to avoid this condition.",
+    )
+    roll_skill = models.CharField(
+        max_length=25,
+        default="Occult",
+        help_text="The skill to roll to avoid this condition.",
+    )
+    roll_base_difficulty = models.PositiveSmallIntegerField(
+        default=30,
+        help_text="The base difficulty, which will be modified by "
+        "effect strength and resonance of the attached "
+        "node.",
+    )
+    positive_condition = models.BooleanField(
+        default=False,
+        help_text="If true, then succeeding the roll triggers this "
+        "Condition; if false, failing does.",
+    )
+    effects = models.ManyToManyField(Effect, related_name="+")
     emit_room = models.TextField(blank=True, null=True)
     emit_self = models.TextField(blank=True, null=True)
 
@@ -849,8 +1115,13 @@ class Condition(SharedMemoryModel):
         else:
             difficulty = self.roll_base_difficulty + ((strength - resonance) / 10)
 
-        roll = Roll(practitioner.character, stat=self.roll_stat, skill=self.roll_skill,
-                    difficulty=difficulty, quiet=True)
+        roll = Roll(
+            practitioner.character,
+            stat=self.roll_stat,
+            skill=self.roll_skill,
+            difficulty=difficulty,
+            quiet=True,
+        )
         successes = roll.roll()
 
         if self.positive_condition:
@@ -873,26 +1144,40 @@ class Condition(SharedMemoryModel):
         for effect in self.effects.all():
             effect_class = effect.effect_handler_class
             if effect_class:
-                handler = effect_class(lead=practitioner, participants=[practitioner], target_string="me",
-                                       target_obj=practitioner.character, parameters=effect.coded_params,
-                                       conditions=effect.conditions, strength=strength, alignment=self.alignment,
-                                       successes=successes, quiet=False, affinity=effect.affinity or self.affinity)
+                handler = effect_class(
+                    lead=practitioner,
+                    participants=[practitioner],
+                    target_string="me",
+                    target_obj=practitioner.character,
+                    parameters=effect.coded_params,
+                    conditions=effect.conditions,
+                    strength=strength,
+                    alignment=self.alignment,
+                    successes=successes,
+                    quiet=False,
+                    affinity=effect.affinity or self.affinity,
+                )
                 handler.calculate()
                 handler.perform()
             else:
-                logger.log_err('Condition %s\'s effect %s has no coded handler!' % (self, self.effect))
+                logger.log_err(
+                    "Condition %s's effect %s has no coded handler!"
+                    % (self, self.effect)
+                )
 
 
 class PractitionerCondition(SharedMemoryModel):
 
-    practitioner = models.ForeignKey(Practitioner, related_name='conditions',
-                                     on_delete=models.CASCADE)
-    condition = models.ForeignKey(Condition, related_name='afflicted',
-                                  on_delete=models.CASCADE)
+    practitioner = models.ForeignKey(
+        Practitioner, related_name="conditions", on_delete=models.CASCADE
+    )
+    condition = models.ForeignKey(
+        Condition, related_name="afflicted", on_delete=models.CASCADE
+    )
     gm_notes = models.TextField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('practitioner', 'condition')
+        unique_together = ("practitioner", "condition")
 
     def __str__(self):
         return "%s's %s condition" % (self.practitioner, self.condition)
@@ -902,26 +1187,43 @@ class Spell(SharedMemoryModel):
 
     name = models.CharField(max_length=40, blank=False, null=False)
     description = models.TextField(blank=True, null=True)
-    node = models.ForeignKey(SkillNode, blank=False, null=False, related_name='spells',
-                             on_delete=models.CASCADE)
-    effects = models.ManyToManyField(Effect, through='SpellEffect', related_name='+')
-    alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+',
-                                  on_delete=models.SET_NULL)
-    affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+',
-                                 on_delete=models.SET_NULL)
+    node = models.ForeignKey(
+        SkillNode,
+        blank=False,
+        null=False,
+        related_name="spells",
+        on_delete=models.CASCADE,
+    )
+    effects = models.ManyToManyField(Effect, through="SpellEffect", related_name="+")
+    alignment = models.ForeignKey(
+        Alignment, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
+    affinity = models.ForeignKey(
+        Affinity, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
     auto_discover = models.BooleanField(default=False)
-    discovered_by_clues = models.ManyToManyField("character.Clue", blank=True, related_name="spells",
-                                                 help_text="If we discover any of these clues, the spell is "
-                                                           "automatically learned.")
+    discovered_by_clues = models.ManyToManyField(
+        "character.Clue",
+        blank=True,
+        related_name="spells",
+        help_text="If we discover any of these clues, the spell is "
+        "automatically learned.",
+    )
     required_resonance = models.PositiveSmallIntegerField(default=1)
-    required_favor = models.PositiveIntegerField(default=0, help_text='A base amount of favor required with Abyssal or ' \
-                                                                      'Elysian to cast this spell.')
+    required_favor = models.PositiveIntegerField(
+        default=0,
+        help_text="A base amount of favor required with Abyssal or "
+        "Elysian to cast this spell.",
+    )
     base_difficulty = models.PositiveSmallIntegerField(default=50)
     base_cost = models.PositiveSmallIntegerField(default=50)
-    extra_primum = models.PositiveSmallIntegerField(default=100, help_text="What percentage of a player's anima can "
-                                                                           "they pull from external sources for this "
-                                                                           "spell?  100% means they can pull exactly "
-                                                                           "as much as their maximum anima.")
+    extra_primum = models.PositiveSmallIntegerField(
+        default=100,
+        help_text="What percentage of a player's anima can "
+        "they pull from external sources for this "
+        "spell?  100% means they can pull exactly "
+        "as much as their maximum anima.",
+    )
     success_msg = models.TextField(blank=True, null=True)
 
     def __str__(self):
@@ -929,21 +1231,30 @@ class Spell(SharedMemoryModel):
 
     def get_spell_success_msg(self, practitioner):
         try:
-            return self.known_by.get(practitioner=practitioner).success_msg or self.success_msg
+            return (
+                self.known_by.get(practitioner=practitioner).success_msg
+                or self.success_msg
+            )
         except PractitionerSpell.DoesNotExist:
             return self.success_msg
 
 
 class SpellEffect(SharedMemoryModel):
 
-    spell = models.ForeignKey(Spell, blank=False, null=False, related_name='spell_effects',
-                              on_delete=models.CASCADE)
-    effect = models.ForeignKey(Effect, blank=False, null=False, related_name='+',
-                               on_delete=models.CASCADE)
+    spell = models.ForeignKey(
+        Spell,
+        blank=False,
+        null=False,
+        related_name="spell_effects",
+        on_delete=models.CASCADE,
+    )
+    effect = models.ForeignKey(
+        Effect, blank=False, null=False, related_name="+", on_delete=models.CASCADE
+    )
     primary = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('spell', 'effect')
+        unique_together = ("spell", "effect")
 
 
 class PractitionerSpell(SharedMemoryModel):
@@ -953,22 +1264,36 @@ class PractitionerSpell(SharedMemoryModel):
     LEARN_DISCOVERED = 2
 
     LEARN_TYPES = (
-        (LEARN_FIAT, 'Staff Fiat'),
-        (LEARN_TAUGHT, 'Teaching'),
-        (LEARN_DISCOVERED, 'Discovery'),
+        (LEARN_FIAT, "Staff Fiat"),
+        (LEARN_TAUGHT, "Teaching"),
+        (LEARN_DISCOVERED, "Discovery"),
     )
 
-    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='spell_discoveries',
-                                     on_delete=models.CASCADE)
-    spell = models.ForeignKey(Spell, blank=False, null=False, related_name='known_by',
-                              on_delete=models.CASCADE)
-    learned_by = models.PositiveSmallIntegerField(default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False)
+    practitioner = models.ForeignKey(
+        Practitioner,
+        blank=False,
+        null=False,
+        related_name="spell_discoveries",
+        on_delete=models.CASCADE,
+    )
+    spell = models.ForeignKey(
+        Spell,
+        blank=False,
+        null=False,
+        related_name="known_by",
+        on_delete=models.CASCADE,
+    )
+    learned_by = models.PositiveSmallIntegerField(
+        default=LEARN_FIAT, choices=LEARN_TYPES, blank=False, null=False
+    )
     learned_on = models.DateField(blank=False, null=False)
     learned_notes = models.CharField(max_length=255, blank=True, null=True)
-    success_msg = models.TextField(blank=True, help_text="Custom message for our version of the spell")
+    success_msg = models.TextField(
+        blank=True, help_text="Custom message for our version of the spell"
+    )
 
     class Meta:
-        unique_together = ('practitioner', 'spell')
+        unique_together = ("practitioner", "spell")
 
     @classmethod
     def reason_string(cls, reason):
@@ -981,14 +1306,26 @@ class PractitionerSpell(SharedMemoryModel):
 
 class Attunement(SharedMemoryModel):
 
-    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='attunements',
-                                     on_delete=models.CASCADE)
-    obj = models.ForeignKey('objects.ObjectDB', blank=False, null=False, related_name='attuned_by',
-                            on_delete=models.CASCADE)
+    practitioner = models.ForeignKey(
+        Practitioner,
+        blank=False,
+        null=False,
+        related_name="attunements",
+        on_delete=models.CASCADE,
+    )
+    obj = models.ForeignKey(
+        "objects.ObjectDB",
+        blank=False,
+        null=False,
+        related_name="attuned_by",
+        on_delete=models.CASCADE,
+    )
     raw_attunement_level = models.FloatField(default=0.0)
 
     def __str__(self):
-        return "{}'s attunement to {}".format(self.practitioner, strip_ansi(self.obj.name))
+        return "{}'s attunement to {}".format(
+            self.practitioner, strip_ansi(self.obj.name)
+        )
 
     @property
     def attunement_level(self):
@@ -997,14 +1334,26 @@ class Attunement(SharedMemoryModel):
 
 class FamiliarAttunement(SharedMemoryModel):
 
-    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='familiars',
-                                     on_delete=models.CASCADE)
-    familiar = models.ForeignKey('dominion.Agent', blank=False, null=False, related_name='bondmates',
-                                 on_delete=models.CASCADE)
+    practitioner = models.ForeignKey(
+        Practitioner,
+        blank=False,
+        null=False,
+        related_name="familiars",
+        on_delete=models.CASCADE,
+    )
+    familiar = models.ForeignKey(
+        "dominion.Agent",
+        blank=False,
+        null=False,
+        related_name="bondmates",
+        on_delete=models.CASCADE,
+    )
     raw_attunement_level = models.FloatField(default=0.0)
 
     def __str__(self):
-        return "{}'s familiar bond with {}".format(self.practitioner, strip_ansi(self.familiar.name))
+        return "{}'s familiar bond with {}".format(
+            self.practitioner, strip_ansi(self.familiar.name)
+        )
 
     @property
     def attunement_level(self):
@@ -1015,7 +1364,7 @@ class ClueCollection(SharedMemoryModel):
 
     name = models.CharField(max_length=80, blank=False, null=False)
     gm_notes = models.TextField(blank=True, null=True)
-    clues = models.ManyToManyField('character.Clue', related_name='magic_collections')
+    clues = models.ManyToManyField("character.Clue", related_name="magic_collections")
 
 
 class MagicBucket(SharedMemoryModel):
@@ -1027,16 +1376,32 @@ class MagicBucket(SharedMemoryModel):
 
 class WorkingParticipant(SharedMemoryModel):
 
-    practitioner = models.ForeignKey(Practitioner, blank=False, null=False, related_name='+',
-                                     on_delete=models.CASCADE)
-    working = models.ForeignKey('Working', blank=False, null=False, related_name='participant_records',
-                                on_delete=models.CASCADE)
+    practitioner = models.ForeignKey(
+        Practitioner,
+        blank=False,
+        null=False,
+        related_name="+",
+        on_delete=models.CASCADE,
+    )
+    working = models.ForeignKey(
+        "Working",
+        blank=False,
+        null=False,
+        related_name="participant_records",
+        on_delete=models.CASCADE,
+    )
     accepted = models.BooleanField(default=False)
-    tool = models.ForeignKey(Attunement, blank=True, null=True, related_name='+',
-                             on_delete=models.SET_NULL)
-    familiar = models.ForeignKey(FamiliarAttunement, blank=True, null=True, related_name='+',
-                                 on_delete=models.SET_NULL)
-    drained = models.ManyToManyField('objects.ObjectDB', related_name='+')
+    tool = models.ForeignKey(
+        Attunement, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
+    familiar = models.ForeignKey(
+        FamiliarAttunement,
+        blank=True,
+        null=True,
+        related_name="+",
+        on_delete=models.SET_NULL,
+    )
+    drained = models.ManyToManyField("objects.ObjectDB", related_name="+")
 
     def __str__(self):
         result = str(self.practitioner)
@@ -1088,23 +1453,41 @@ class Working(SharedMemoryModel):
         (QUIET_TOTAL, "Total"),
     )
 
-    lead = models.ForeignKey(Practitioner, related_name='workings', blank=False, null=False, on_delete=models.CASCADE)
-    practitioners = models.ManyToManyField(Practitioner, through='WorkingParticipant', related_name='assisted_workings')
+    lead = models.ForeignKey(
+        Practitioner,
+        related_name="workings",
+        blank=False,
+        null=False,
+        on_delete=models.CASCADE,
+    )
+    practitioners = models.ManyToManyField(
+        Practitioner, through="WorkingParticipant", related_name="assisted_workings"
+    )
     template = models.BooleanField(default=False)
     template_name = models.CharField(max_length=40, blank=True, null=True)
-    quiet_level = models.PositiveSmallIntegerField(default=QUIET_NONE, choices=QUIET_TYPES)
+    quiet_level = models.PositiveSmallIntegerField(
+        default=QUIET_NONE, choices=QUIET_TYPES
+    )
     intent = models.TextField(blank=True, null=True)
     spell = models.ForeignKey(Spell, blank=True, null=True, on_delete=models.CASCADE)
-    weave_effect = models.ForeignKey(Effect, blank=True, null=True, related_name='+', on_delete=models.SET_NULL)
-    weave_alignment = models.ForeignKey(Alignment, blank=True, null=True, related_name='+', on_delete=models.SET_NULL)
-    weave_affinity = models.ForeignKey(Affinity, blank=True, null=True, related_name='+', on_delete=models.SET_NULL)
+    weave_effect = models.ForeignKey(
+        Effect, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
+    weave_alignment = models.ForeignKey(
+        Alignment, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
+    weave_affinity = models.ForeignKey(
+        Affinity, blank=True, null=True, related_name="+", on_delete=models.SET_NULL
+    )
     target_string = models.CharField(max_length=60, blank=True, null=True)
     econ = models.PositiveSmallIntegerField(blank=True, default=0)
     gm_cost = models.PositiveIntegerField(blank=True, default=0)
-    gm_difficulty = models.PositiveSmallIntegerField(blank=True,default=0)
-    gm_strength = models.PositiveSmallIntegerField(blank=True, default=0,
-                                                   help_text="The base 'strength' of this magic, when it's a "
-                                                             "GM'd working.")
+    gm_difficulty = models.PositiveSmallIntegerField(blank=True, default=0)
+    gm_strength = models.PositiveSmallIntegerField(
+        blank=True,
+        default=0,
+        help_text="The base 'strength' of this magic, when it's a " "GM'd working.",
+    )
     primum_at_perform = models.PositiveSmallIntegerField(blank=True, default=0)
     total_successes = models.PositiveSmallIntegerField(blank=True, default=0)
     total_favor = models.PositiveIntegerField(blank=True, default=0)
@@ -1149,6 +1532,7 @@ class Working(SharedMemoryModel):
     def consequence_handler(self):
         if not self.cached_consequence and self.consequence_result:
             from world.magic.consequences import MagicConsequence
+
             self.cached_consequence = MagicConsequence.loads(self.consequence_result)
 
         return self.cached_consequence
@@ -1157,6 +1541,7 @@ class Working(SharedMemoryModel):
     def effect_handlers(self):
         if not self.cached_effect_handlers and self.effects_result:
             from world.magic.effects import CodedEffect
+
             result = []
             serialized_array = json.loads(self.effects_result)
             for entry in serialized_array:
@@ -1189,7 +1574,9 @@ class Working(SharedMemoryModel):
             return "cast the spell '{}'".format(self.spell.name)
         elif self.weave_effect:
             if self.weave_alignment:
-                return "weave with the {} effect '{}'".format(self.weave_alignment.name, self.weave_effect.name)
+                return "weave with the {} effect '{}'".format(
+                    self.weave_alignment.name, self.weave_effect.name
+                )
             else:
                 return "weave with the effect '{}'".format(self.weave_effect.name)
         else:
@@ -1199,12 +1586,21 @@ class Working(SharedMemoryModel):
         if practitioner in self.participants:
             return
 
-        WorkingParticipant.objects.create(practitioner=practitioner, working=self, tool=tool, familiar=familiar,
-                                          accepted=accepted)
+        WorkingParticipant.objects.create(
+            practitioner=practitioner,
+            working=self,
+            tool=tool,
+            familiar=familiar,
+            accepted=accepted,
+        )
 
-    def update_practitioner(self, practitioner, tool=None, familiar=None, clear_empty=False):
+    def update_practitioner(
+        self, practitioner, tool=None, familiar=None, clear_empty=False
+    ):
         try:
-            record = WorkingParticipant.objects.get(working=self, practitioner=practitioner)
+            record = WorkingParticipant.objects.get(
+                working=self, practitioner=practitioner
+            )
             if tool or clear_empty:
                 record.tool = tool
             if familiar or clear_empty:
@@ -1216,7 +1612,9 @@ class Working(SharedMemoryModel):
     def accept_practitioner(self, practitioner):
 
         try:
-            record = WorkingParticipant.objects.get(working=self, practitioner=practitioner)
+            record = WorkingParticipant.objects.get(
+                working=self, practitioner=practitioner
+            )
             record.accepted = True
             record.save()
         except WorkingParticipant.DoesNotExist:
@@ -1225,14 +1623,18 @@ class Working(SharedMemoryModel):
     def decline_practitioner(self, practitioner):
 
         try:
-            record = WorkingParticipant.objects.get(working=self, practitioner=practitioner)
+            record = WorkingParticipant.objects.get(
+                working=self, practitioner=practitioner
+            )
             record.delete()
         except WorkingParticipant.DoesNotExist:
             raise ValueError("That participant isn't part of this working.")
 
     def practitioner_record(self, practitioner):
         try:
-            record = WorkingParticipant.objects.get(working=self, practitioner=practitioner)
+            record = WorkingParticipant.objects.get(
+                working=self, practitioner=practitioner
+            )
             return record
         except WorkingParticipant.DoesNotExist:
             return None
@@ -1374,15 +1776,26 @@ class Working(SharedMemoryModel):
         if result[1]:
             target_obj = result[0]
 
-        return effect_class(lead=self.lead, participants=self.participants, target_string=target_string,
-                            target_obj=target_obj, parameters=effect.coded_params,
-                            conditions=effect.conditions, strength=effect.strength, alignment=self.alignment,
-                            successes=self.total_successes, quiet=quiet, affinity=effect.affinity or self.affinity)
+        return effect_class(
+            lead=self.lead,
+            participants=self.participants,
+            target_string=target_string,
+            target_obj=target_obj,
+            parameters=effect.coded_params,
+            conditions=effect.conditions,
+            strength=effect.strength,
+            alignment=self.alignment,
+            successes=self.total_successes,
+            quiet=quiet,
+            affinity=effect.affinity or self.affinity,
+        )
 
     def validation_error(self, target_string=None, gm_override=False):
         if not gm_override and len(self.effects) == 0:
-            return "This working does not target a spell or weaving effect. This is fine if you're attaching " \
-                   "it to an action, but means it cannot be performed by 'perform'."
+            return (
+                "This working does not target a spell or weaving effect. This is fine if you're attaching "
+                "it to an action, but means it cannot be performed by 'perform'."
+            )
 
         if gm_override:
             if not self.difficulty:
@@ -1395,19 +1808,25 @@ class Working(SharedMemoryModel):
         for effect in self.effects:
             effect_handler = self.effect_handler(effect, target_string=target_string)
             if not effect_handler:
-                return "The effect that this working targets has not been implemented yet!  " \
-                       "Please whine to staff to get on it."
+                return (
+                    "The effect that this working targets has not been implemented yet!  "
+                    "Please whine to staff to get on it."
+                )
 
             other_errors = effect_handler.check_for_other_errors()
             if other_errors:
                 return other_errors
 
             if not effect_handler.valid_target():
-                return "Your target '{}' is not valid for the magical effect you've chosen.".format(self.target_string)
+                return "Your target '{}' is not valid for the magical effect you've chosen.".format(
+                    self.target_string
+                )
 
             if not effect_handler.valid_parameters():
-                return "Something has gone horribly wrong and the system is misconfigured. " \
-                       "Talk to staff and tell them what you tried to do!"
+                return (
+                    "Something has gone horribly wrong and the system is misconfigured. "
+                    "Talk to staff and tell them what you tried to do!"
+                )
 
             if effect_handler.requires_combat and not self.lead.character.combat.state:
                 return "This effect can only be used when you are in combat."
@@ -1429,7 +1848,10 @@ class Working(SharedMemoryModel):
         elif obj.db.alchemical_material:
             try:
                 material = AlchemicalMaterial.objects.get(id=obj.db.alchemical_material)
-            except (AlchemicalMaterial.DoesNotExist, AlchemicalMaterial.MultipleObjectsReturned):
+            except (
+                AlchemicalMaterial.DoesNotExist,
+                AlchemicalMaterial.MultipleObjectsReturned,
+            ):
                 return None
             return material.affinity
 
@@ -1484,13 +1906,13 @@ class Working(SharedMemoryModel):
 
         total_resonance = 0
         for participant in self.participants:
-            total_resonance += self.resonance_for_practitioner(participant) / 25.
+            total_resonance += self.resonance_for_practitioner(participant) / 25.0
 
         for tool in self.attunements:
-            total_resonance += (tool.attunement_level ** (1 / 25.))
+            total_resonance += tool.attunement_level ** (1 / 25.0)
 
         for familiar in self.familiars:
-            total_resonance += (familiar.attunement_level ** (1 / 25.))
+            total_resonance += familiar.attunement_level ** (1 / 25.0)
 
         final_cost = self.base_cost / (1 + total_resonance)
 
@@ -1532,17 +1954,23 @@ class Working(SharedMemoryModel):
                         base_diff -= 5
 
             if self.primary_effect.antagonistic:
-                target_practitioner = Practitioner.practitioner_for_character(self.target_obj)
+                target_practitioner = Practitioner.practitioner_for_character(
+                    self.target_obj
+                )
                 if target_practitioner:
-                    target_resonance = self.resonance_for_practitioner(target_practitioner)
+                    target_resonance = self.resonance_for_practitioner(
+                        target_practitioner
+                    )
                     working_resonance = 0
                     for participant in self.participants:
-                        working_resonance += self.resonance_for_practitioner(participant)
+                        working_resonance += self.resonance_for_practitioner(
+                            participant
+                        )
 
                     # The target is more powerful than the practitioners.
                     # This may hurt.
                     if target_resonance > working_resonance:
-                        base_diff += (target_resonance - working_resonance)
+                        base_diff += target_resonance - working_resonance
 
         return base_diff
 
@@ -1558,7 +1986,7 @@ class Working(SharedMemoryModel):
         available_primum = 0
         external_primum = 0
         if self.econ:
-            external_primum += (self.econ / 100)
+            external_primum += self.econ / 100
 
         if draft:
             # We include even those who haven't accepted yet.
@@ -1575,7 +2003,7 @@ class Working(SharedMemoryModel):
                 external_primum += self.object_primum(drain)
 
         if self.spell:
-            external_potential = (base_potential * (self.spell.extra_primum / 100.))
+            external_potential = base_potential * (self.spell.extra_primum / 100.0)
         else:
             external_potential = base_potential * 2
 
@@ -1635,7 +2063,7 @@ class Working(SharedMemoryModel):
 
         # Our danger scale is the rounded 10-root of the difference between
         # cost and available primum.
-        result = round(abs(difference) ** (1. / 10))
+        result = round(abs(difference) ** (1.0 / 10))
 
         # If we're Invoking/Beseeching, our danger goes down by one level
         if self.favor_cost > 0:
@@ -1655,14 +2083,16 @@ class Working(SharedMemoryModel):
             base_potential += practitioner.potential
 
         if self.spell:
-            external_potential = round(base_potential * (self.spell.extra_primum / 100.))
+            external_potential = round(
+                base_potential * (self.spell.extra_primum / 100.0)
+            )
         else:
             external_potential = base_potential
 
         external_payment = 0
 
         if self.econ:
-            external_payment += (self.econ / 100)
+            external_payment += self.econ / 100
 
         if external_payment < external_potential:
             for drain_me in self.drained:
@@ -1722,8 +2152,12 @@ class Working(SharedMemoryModel):
         if danger_level > 0 and not unsafe:
             danger_description = Working.danger_level_string(danger_level)
 
-            self.lead.character.msg("You sense that this working would be {} at this time.  "
-                                    "If you still wish to attempt it, use the /unsafe switch.".format(danger_description))
+            self.lead.character.msg(
+                "You sense that this working would be {} at this time.  "
+                "If you still wish to attempt it, use the /unsafe switch.".format(
+                    danger_description
+                )
+            )
             return False
 
         successes = self.successes
@@ -1753,10 +2187,13 @@ class Working(SharedMemoryModel):
             danger_level = self.danger_level
             consequence_handler_class = Working.random_consequence(danger_level)
             if consequence_handler_class:
-                consequence_handler = consequence_handler_class(participants=self.participants,
-                                                                danger_level=danger_level,
-                                                                success_diff=missed_by, alignment=self.alignment,
-                                                                affinity=self.affinity)
+                consequence_handler = consequence_handler_class(
+                    participants=self.participants,
+                    danger_level=danger_level,
+                    success_diff=missed_by,
+                    alignment=self.alignment,
+                    affinity=self.affinity,
+                )
                 consequence_handler.calculate()
                 self.consequence_result = str(consequence_handler)
                 self.consequence_description = consequence_handler.results_string()
@@ -1799,8 +2236,12 @@ class Working(SharedMemoryModel):
 
         if not gm_override:
             for obj in self.lead.character.location.contents:
-                if hasattr(obj, 'at_magic_exposure'):
-                    obj.at_magic_exposure(alignment=self.alignment, affinity=self.affinity, strength=self.strength)
+                if hasattr(obj, "at_magic_exposure"):
+                    obj.at_magic_exposure(
+                        alignment=self.alignment,
+                        affinity=self.affinity,
+                        strength=self.strength,
+                    )
 
     @property
     def participant_string(self):
@@ -1871,9 +2312,13 @@ class Working(SharedMemoryModel):
             table.add_row("Available Primum: ", self.available_primum)
             table.add_row("Cost: ", self.cost)
             if self.cost:
-                table.add_row("Danger Level: ", self.danger_level_string(self.danger_level))
+                table.add_row(
+                    "Danger Level: ", self.danger_level_string(self.danger_level)
+                )
             else:
-                table.add_row("Danger Level: ", "Not yet calculated; set gm_cost first.")
+                table.add_row(
+                    "Danger Level: ", "Not yet calculated; set gm_cost first."
+                )
 
         if self.performed:
             table.add_row("Successes: ", self.successes)
@@ -1886,13 +2331,26 @@ class Working(SharedMemoryModel):
 
     def performable_copy(self, target=None):
 
-        new_working = Working.objects.create(lead=self.lead, template=False, quiet_level=self.quiet_level,
-                                             intent=self.intent, spell=self.spell, weave_effect=self.weave_effect,
-                                             weave_alignment=self.weave_alignment, weave_affinity=self.weave_affinity,
-                                             target_string=target or self.target_string, gm_cost=self.gm_cost,
-                                             gm_difficulty=self.gm_difficulty)
+        new_working = Working.objects.create(
+            lead=self.lead,
+            template=False,
+            quiet_level=self.quiet_level,
+            intent=self.intent,
+            spell=self.spell,
+            weave_effect=self.weave_effect,
+            weave_alignment=self.weave_alignment,
+            weave_affinity=self.weave_affinity,
+            target_string=target or self.target_string,
+            gm_cost=self.gm_cost,
+            gm_difficulty=self.gm_difficulty,
+        )
 
         for record in self.participant_records.all():
-            new_working.add_practitioner(record.practitioner, tool=record.tool, familiar=record.familiar, accepted=True)
+            new_working.add_practitioner(
+                record.practitioner,
+                tool=record.tool,
+                familiar=record.familiar,
+                accepted=True,
+            )
 
         return new_working

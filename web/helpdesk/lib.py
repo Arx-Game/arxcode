@@ -6,7 +6,7 @@ django-helpdesk - A Django powered ticket tracker for small enterprise.
 lib.py - Common functions (eg multipart e-mail)
 """
 
-chart_colours = ('80C65A', '990066', 'FF9900', '3399CC', 'BBCCED', '3399CC', 'FFCC33')
+chart_colours = ("80C65A", "990066", "FF9900", "3399CC", "BBCCED", "3399CC", "FFCC33")
 
 try:
     from base64 import urlsafe_b64encode as b64encode
@@ -19,7 +19,16 @@ except ImportError:
 
 from django.utils.encoding import smart_str
 
-def send_templated_mail(template_name, email_context, recipients, sender=None, bcc=None, fail_silently=False, files=None):
+
+def send_templated_mail(
+    template_name,
+    email_context,
+    recipients,
+    sender=None,
+    bcc=None,
+    fail_silently=False,
+    files=None,
+):
     """
     send_templated_mail() is a warpper around Django's e-mail routines that
     allows us to easily send multipart (text/plain & text/html) e-mails using
@@ -42,7 +51,7 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
     fail_silently is passed to Django's mail routine. Set to 'True' to ignore
         any errors at send time.
 
-    files can be a list of tuple. Each tuple should be a filename to attach, 
+    files can be a list of tuple. Each tuple should be a filename to attach,
         along with the File objects to be read. files can be blank.
 
     """
@@ -56,66 +65,88 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
 
     context = dict(email_context)
 
-    if hasattr(context['queue'], 'locale'):
-        locale = getattr(context['queue'], 'locale', '')
+    if hasattr(context["queue"], "locale"):
+        locale = getattr(context["queue"], "locale", "")
     else:
-        locale = context['queue'].get('locale', 'en')
+        locale = context["queue"].get("locale", "en")
     if not locale:
-        locale = 'en'
+        locale = "en"
 
     t = None
     try:
-        t = EmailTemplate.objects.get(template_name__iexact=template_name, locale=locale)
+        t = EmailTemplate.objects.get(
+            template_name__iexact=template_name, locale=locale
+        )
     except EmailTemplate.DoesNotExist:
         pass
 
     if not t:
         try:
-            t = EmailTemplate.objects.get(template_name__iexact=template_name, locale__isnull=True)
+            t = EmailTemplate.objects.get(
+                template_name__iexact=template_name, locale__isnull=True
+            )
         except EmailTemplate.DoesNotExist:
             from evennia.utils.logger import log_warn
+
             log_warn('template "%s" does not exist, no mail sent' % template_name)
             return  # just ignore if template doesn't exist
 
     if not sender:
         sender = settings.DEFAULT_FROM_EMAIL
 
-    footer_file = os.path.join('helpdesk', locale, 'email_text_footer.txt')
+    footer_file = os.path.join("helpdesk", locale, "email_text_footer.txt")
 
-    text_part = engines['django'].from_string(
-        "%s{%% include '%s' %%}" % (t.plain_text, footer_file)
-        ).render(context)
+    text_part = (
+        engines["django"]
+        .from_string("%s{%% include '%s' %%}" % (t.plain_text, footer_file))
+        .render(context)
+    )
 
-    email_html_base_file = os.path.join('helpdesk', locale, 'email_html_base.html')
+    email_html_base_file = os.path.join("helpdesk", locale, "email_html_base.html")
 
-    ''' keep new lines in html emails '''
+    """ keep new lines in html emails """
     from django.utils.safestring import mark_safe
 
     if "comment" in context:
-        html_txt = context['comment']
-        html_txt = html_txt.replace('\r\n', '<br>')
-        context['comment'] = mark_safe(html_txt)
+        html_txt = context["comment"]
+        html_txt = html_txt.replace("\r\n", "<br>")
+        context["comment"] = mark_safe(html_txt)
 
-    html_part = engines['django'].from_string(
-        "{%% extends '%s' %%}{%% block title %%}%s{%% endblock %%}{%% block content %%}%s{%% endblock %%}" % (email_html_base_file, t.heading, t.html)
-        ).render(context)
+    html_part = (
+        engines["django"]
+        .from_string(
+            "{%% extends '%s' %%}{%% block title %%}%s{%% endblock %%}{%% block content %%}%s{%% endblock %%}"
+            % (email_html_base_file, t.heading, t.html)
+        )
+        .render(context)
+    )
 
-    subject_part = engines['django'].from_string(
-        HELPDESK_EMAIL_SUBJECT_TEMPLATE % {
-            "subject": t.subject,
-        }).render(context)
+    subject_part = (
+        engines["django"]
+        .from_string(
+            HELPDESK_EMAIL_SUBJECT_TEMPLATE
+            % {
+                "subject": t.subject,
+            }
+        )
+        .render(context)
+    )
 
     if isinstance(recipients, str):
-        if recipients.find(','):
-            recipients = recipients.split(',')
+        if recipients.find(","):
+            recipients = recipients.split(",")
     elif type(recipients) != list:
-        recipients = [recipients,]
+        recipients = [
+            recipients,
+        ]
 
-    msg = EmailMultiAlternatives(   subject_part.replace('\n', '').replace('\r', ''),
-                                    text_part,
-                                    sender,
-                                    recipients,
-                                    bcc=bcc)
+    msg = EmailMultiAlternatives(
+        subject_part.replace("\n", "").replace("\r", ""),
+        text_part,
+        sender,
+        recipients,
+        bcc=bcc,
+    )
     msg.attach_alternative(html_part, "text/html")
 
     if files:
@@ -163,17 +194,17 @@ def apply_query(queryset, params):
             set of Q() objects.
         sorting: The name of the column to sort by
     """
-    for key in params['filtering'].keys():
-        filter = {key: params['filtering'][key]}
+    for key in params["filtering"].keys():
+        filter = {key: params["filtering"][key]}
         queryset = queryset.filter(**filter)
 
-    if params.get('other_filter', None):
+    if params.get("other_filter", None):
         # eg a Q() set
-        queryset = queryset.filter(params['other_filter'])
+        queryset = queryset.filter(params["other_filter"])
 
-    sorting = params.get('sorting', None)
+    sorting = params.get("sorting", None)
     if sorting:
-        sortreverse = params.get('sortreverse', None)
+        sortreverse = params.get("sortreverse", None)
         if sortreverse:
             sorting = "-%s" % sorting
         queryset = queryset.order_by(sorting)
@@ -197,32 +228,46 @@ def safe_template_context(ticket):
     """
 
     context = {
-        'queue': {},
-        'ticket': {},
-        }
+        "queue": {},
+        "ticket": {},
+    }
     queue = ticket.queue
 
-    for field in (  'title', 'slug', 'email_address', 'from_address', 'locale'):
+    for field in ("title", "slug", "email_address", "from_address", "locale"):
         attr = getattr(queue, field, None)
         if callable(attr):
-            context['queue'][field] = attr()
+            context["queue"][field] = attr()
         else:
-            context['queue'][field] = attr
+            context["queue"][field] = attr
 
-    for field in (  'title', 'created', 'modified', 'submitter_email',
-                    'status', 'get_status_display', 'on_hold', 'description',
-                    'resolution', 'priority', 'get_priority_display',
-                    'last_escalation', 'ticket', 'ticket_for_url',
-                    'get_status', 'ticket_url', 'staff_url', '_get_assigned_to'
-                 ):
+    for field in (
+        "title",
+        "created",
+        "modified",
+        "submitter_email",
+        "status",
+        "get_status_display",
+        "on_hold",
+        "description",
+        "resolution",
+        "priority",
+        "get_priority_display",
+        "last_escalation",
+        "ticket",
+        "ticket_for_url",
+        "get_status",
+        "ticket_url",
+        "staff_url",
+        "_get_assigned_to",
+    ):
         attr = getattr(ticket, field, None)
         if callable(attr):
-            context['ticket'][field] = '%s' % attr()
+            context["ticket"][field] = "%s" % attr()
         else:
-            context['ticket'][field] = attr
+            context["ticket"][field] = attr
 
-    context['ticket']['queue'] = context['queue']
-    context['ticket']['assigned_to'] = context['ticket']['_get_assigned_to']
+    context["ticket"]["queue"] = context["queue"]
+    context["ticket"]["assigned_to"] = context["ticket"]["_get_assigned_to"]
 
     return context
 
@@ -235,6 +280,7 @@ def text_is_spam(text, request):
     # assume it isn't spam.
     from django.contrib.sites.models import Site
     from django.conf import settings
+
     try:
         from web.helpdesk.akismet import Akismet
     except:
@@ -242,28 +288,28 @@ def text_is_spam(text, request):
     try:
         site = Site.objects.get_current()
     except:
-        site = Site(domain='configure-django-sites.com')
+        site = Site(domain="configure-django-sites.com")
 
     ak = Akismet(
-        blog_url='http://%s/' % site.domain,
-        agent='django-helpdesk',
+        blog_url="http://%s/" % site.domain,
+        agent="django-helpdesk",
     )
 
-    if hasattr(settings, 'TYPEPAD_ANTISPAM_API_KEY'):
-        ak.setAPIKey(key = settings.TYPEPAD_ANTISPAM_API_KEY)
-        ak.baseurl = 'api.antispam.typepad.com/1.1/'
-    elif hasattr(settings, 'AKISMET_API_KEY'):
-        ak.setAPIKey(key = settings.AKISMET_API_KEY)
+    if hasattr(settings, "TYPEPAD_ANTISPAM_API_KEY"):
+        ak.setAPIKey(key=settings.TYPEPAD_ANTISPAM_API_KEY)
+        ak.baseurl = "api.antispam.typepad.com/1.1/"
+    elif hasattr(settings, "AKISMET_API_KEY"):
+        ak.setAPIKey(key=settings.AKISMET_API_KEY)
     else:
         return False
 
     if ak.verify_key():
         ak_data = {
-            'user_ip': request.META.get('REMOTE_ADDR', '127.0.0.1'),
-            'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-            'referrer': request.META.get('HTTP_REFERER', ''),
-            'comment_type': 'comment',
-            'comment_author': '',
+            "user_ip": request.META.get("REMOTE_ADDR", "127.0.0.1"),
+            "user_agent": request.META.get("HTTP_USER_AGENT", ""),
+            "referrer": request.META.get("HTTP_REFERER", ""),
+            "comment_type": "comment",
+            "comment_author": "",
         }
 
         return ak.comment_check(smart_str(text), data=ak_data)

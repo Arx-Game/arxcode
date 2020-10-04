@@ -8,17 +8,19 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0015_auto_20171109_2244'),
+        ("dominion", "0015_auto_20171109_2244"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='rpevent',
-            name='crisis',
+            model_name="rpevent",
+            name="crisis",
         ),
         migrations.AddField(
-            model_name='rpevent',
-            name='actions',
-            field=models.ManyToManyField(blank=True, related_name='events', to='dominion.CrisisAction'),
+            model_name="rpevent",
+            name="actions",
+            field=models.ManyToManyField(
+                blank=True, related_name="events", to="dominion.CrisisAction"
+            ),
         ),
     ]

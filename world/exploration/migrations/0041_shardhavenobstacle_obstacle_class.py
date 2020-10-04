@@ -8,13 +8,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0040_auto_20181120_2016'),
+        ("exploration", "0040_auto_20181120_2016"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='obstacle_class',
-            field=models.PositiveSmallIntegerField(choices=[(0, b'Pass an Exit'), (1, b'Obtain a Treasure')], default=0),
+            model_name="shardhavenobstacle",
+            name="obstacle_class",
+            field=models.PositiveSmallIntegerField(
+                choices=[(0, b"Pass an Exit"), (1, b"Obtain a Treasure")], default=0
+            ),
         ),
     ]

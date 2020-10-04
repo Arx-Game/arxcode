@@ -9,44 +9,68 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0005_auto_20181105_1829'),
+        ("exploration", "0005_auto_20181105_1829"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='shardhavenlayoutsquare',
-            name='exit_east',
+            model_name="shardhavenlayoutsquare",
+            name="exit_east",
         ),
         migrations.RemoveField(
-            model_name='shardhavenlayoutsquare',
-            name='exit_north',
+            model_name="shardhavenlayoutsquare",
+            name="exit_north",
         ),
         migrations.RemoveField(
-            model_name='shardhavenlayoutsquare',
-            name='exit_south',
+            model_name="shardhavenlayoutsquare",
+            name="exit_south",
         ),
         migrations.RemoveField(
-            model_name='shardhavenlayoutsquare',
-            name='exit_west',
+            model_name="shardhavenlayoutsquare",
+            name="exit_west",
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutexit',
-            name='room_east',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exit_west', to='exploration.ShardhavenLayoutSquare'),
+            model_name="shardhavenlayoutexit",
+            name="room_east",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="exit_west",
+                to="exploration.ShardhavenLayoutSquare",
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutexit',
-            name='room_north',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exit_south', to='exploration.ShardhavenLayoutSquare'),
+            model_name="shardhavenlayoutexit",
+            name="room_north",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="exit_south",
+                to="exploration.ShardhavenLayoutSquare",
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutexit',
-            name='room_south',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exit_north', to='exploration.ShardhavenLayoutSquare'),
+            model_name="shardhavenlayoutexit",
+            name="room_south",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="exit_north",
+                to="exploration.ShardhavenLayoutSquare",
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutexit',
-            name='room_west',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exit_east', to='exploration.ShardhavenLayoutSquare'),
+            model_name="shardhavenlayoutexit",
+            name="room_west",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="exit_east",
+                to="exploration.ShardhavenLayoutSquare",
+            ),
         ),
     ]

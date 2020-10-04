@@ -8,13 +8,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0001_initial'),
+        ("dominion", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='organization',
-            name='category',
-            field=models.CharField(blank=True, default=b'noble', max_length=255, null=True),
+            model_name="organization",
+            name="category",
+            field=models.CharField(
+                blank=True, default=b"noble", max_length=255, null=True
+            ),
         ),
     ]

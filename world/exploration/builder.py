@@ -11,7 +11,6 @@ from random import shuffle, randint
 
 
 class BuilderGridSquare(object):
-
     def __init__(self):
 
         self.wall = True
@@ -28,12 +27,7 @@ class Builder(object):
     EAST = 1
     SOUTH = 2
     WEST = 3
-    dir_conversion = {
-        NORTH: (0, -2),
-        EAST: (2, 0),
-        SOUTH: (0, 2),
-        WEST: (-2, 0)
-    }
+    dir_conversion = {NORTH: (0, -2), EAST: (2, 0), SOUTH: (0, 2), WEST: (-2, 0)}
 
     def __init__(self, x_dim=9, y_dim=9, x_start=None, y_start=None):
         if x_dim % 2 == 0 or y_dim % 2 == 0:

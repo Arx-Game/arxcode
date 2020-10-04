@@ -7,9 +7,11 @@ from .mixins import ArxCommmandMixin
 
 class ArxCommand(ArxCommmandMixin, MuxCommand):
     """Base command for Characters for Arx"""
+
     pass
 
 
 class ArxPlayerCommand(ArxCommmandMixin, MuxAccountCommand):
     """Base command for Players/Accounts for Arx"""
+
     pass

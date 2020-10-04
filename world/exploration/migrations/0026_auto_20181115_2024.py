@@ -8,18 +8,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0025_auto_20181115_2011'),
+        ("exploration", "0025_auto_20181115_2011"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='monster',
-            name='weight_trinket',
-            field=models.PositiveSmallIntegerField(default=1, help_text='The weight value to use for Trinkets'),
+            model_name="monster",
+            name="weight_trinket",
+            field=models.PositiveSmallIntegerField(
+                default=1, help_text="The weight value to use for Trinkets"
+            ),
         ),
         migrations.AddField(
-            model_name='monster',
-            name='weight_weapon',
-            field=models.PositiveSmallIntegerField(default=1, help_text='The weight value to use for Weapons'),
+            model_name="monster",
+            name="weight_weapon",
+            field=models.PositiveSmallIntegerField(
+                default=1, help_text="The weight value to use for Weapons"
+            ),
         ),
     ]

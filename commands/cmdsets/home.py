@@ -17,14 +17,16 @@ from evennia.utils import utils
 from evennia.utils.evtable import EvTable
 from typeclasses.characters import Character
 import re
+
 # error return function, needed by Extended Look command
-AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
+AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 1))
 
 DESC_COST = 0
 
 
 class HomeCmdSet(CmdSet):
     """CmdSet for a home spaces."""
+
     key = "HomeCmdSet"
     priority = 101
     duplicates = False
@@ -62,6 +64,7 @@ class CmdManageHome(ArxCommand):
     entry. /lifestyle is to control how much silver you spend per
     week and earn prestige.
     """
+
     key = "+home"
     # aliases = ["@home"]
     locks = "cmd:all()"
@@ -75,9 +78,9 @@ class CmdManageHome(ArxCommand):
         for rating in LIFESTYLES:
             num = str(rating)
             if caller.player_ob.Dominion.lifestyle_rating == rating:
-                num += '{w*{n'
+                num += "{w*{n"
             table.add_row([num, LIFESTYLES[rating][0], LIFESTYLES[rating][1]])
-        caller.msg(str(table), options={'box': True})
+        caller.msg(str(table), options={"box": True})
 
     def func(self):
         """Execute command."""
@@ -93,7 +96,10 @@ class CmdManageHome(ArxCommand):
             locked = "{rlocked{n" if loc.db.locked else "{wunlocked{n"
             caller.msg("Your home is currently %s." % locked)
             caller.msg("{wOwners:{n %s" % ", ".join(str(ob) for ob in owners))
-            caller.msg("{wCharacters who have keys:{n %s" % ", ".join(str(ob) for ob in keylist))
+            caller.msg(
+                "{wCharacters who have keys:{n %s"
+                % ", ".join(str(ob) for ob in keylist)
+            )
             entrance = entrances[0]
             entmsg = entrance.db.success_traverse or ""
             errmsg = entrance.db.err_traverse or ""
@@ -123,12 +129,16 @@ class CmdManageHome(ArxCommand):
         if "lockmsg" in self.switches:
             for r_exit in entrances:
                 r_exit.db.err_traverse = self.args
-            caller.msg("{wThe message those who can't enter now see is{n: %s" % self.args)
+            caller.msg(
+                "{wThe message those who can't enter now see is{n: %s" % self.args
+            )
             return
         if "passmsg" in self.switches:
             for r_exit in entrances:
                 r_exit.db.success_traverse = self.args
-            caller.msg("{wThe message those who enter will now see is{n: %s" % self.args)
+            caller.msg(
+                "{wThe message those who enter will now see is{n: %s" % self.args
+            )
             return
         if "lifestyle" in self.switches or "lifestyles" in self.switches:
             if caller not in owners:
@@ -199,6 +209,7 @@ class CmdAllowBuilding(ArxCommand):
     a room with expansion_cap of 1 in a room, as long as they are
     permitted to do so.
     """
+
     key = "@allowbuilding"
     locks = "cmd:perm(Builders)"
     help_category = "Building"
@@ -229,8 +240,10 @@ class CmdAllowBuilding(ArxCommand):
                 permits["all"] = cost
                 continue
             try:
-                owner = AssetOwner.objects.get(Q(organization_owner__name__iexact=name)
-                                               | Q(player__player__username__iexact=name))
+                owner = AssetOwner.objects.get(
+                    Q(organization_owner__name__iexact=name)
+                    | Q(player__player__username__iexact=name)
+                )
             except AssetOwner.DoesNotExist:
                 caller.msg("No owner by name of %s." % name)
                 continue
@@ -260,6 +273,7 @@ class CmdBuildRoom(CmdDig):
     like to the name of the room and the exits in question; an example
     would be 'north;no;n'.
     """
+
     key = "+buildroom"
     locks = "cmd:all()"
     help_category = "Home"
@@ -294,10 +308,12 @@ class CmdBuildRoom(CmdDig):
                 return
 
             try:
-                org = Organization.objects.get(Q(name__iexact=orgname) &
-                                               Q(members__player=dompc) &
-                                               Q(members__deguilded=False))
-                if not org.access(caller, 'build'):
+                org = Organization.objects.get(
+                    Q(name__iexact=orgname)
+                    & Q(members__player=dompc)
+                    & Q(members__deguilded=False)
+                )
+                if not org.access(caller, "build"):
                     caller.msg("You are not permitted to build for this org.")
                     return
                 self.lhs = roomname
@@ -327,7 +343,9 @@ class CmdBuildRoom(CmdDig):
                 cost = permits["all"]
         try:
             if expansions.get(assets.id, 0) >= max_expansions:
-                caller.msg("You have built as many rooms from this space as you are allowed.")
+                caller.msg(
+                    "You have built as many rooms from this space as you are allowed."
+                )
                 return
         except (AttributeError, TypeError, ValueError):
             caller.msg("{rError logged.{n")
@@ -338,7 +356,10 @@ class CmdBuildRoom(CmdDig):
             return
         if cost > assets.economic:
             noun = "you" if dompc.assets == assets else str(assets)
-            caller.msg("It would cost %s %s to build here, but only have %s." % (noun, cost, assets.economic))
+            caller.msg(
+                "It would cost %s %s to build here, but only have %s."
+                % (noun, cost, assets.economic)
+            )
             if noun != "you":
                 caller.msg("Deposit resources into the account of %s." % noun)
             return
@@ -354,7 +375,9 @@ class CmdBuildRoom(CmdDig):
             caller.msg("You must specify an exit and return exit for the new room.")
             return
 
-        if not re.findall('^[\-\w\'{\[,%;|# ]+$', self.lhs) or not re.findall('^[\-\w\'{\[,%;|<># ]+$', self.rhs):
+        if not re.findall("^[\-\w'{\[,%;|# ]+$", self.lhs) or not re.findall(
+            "^[\-\w'{\[,%;|<># ]+$", self.rhs
+        ):
             caller.msg("Invalid characters entered for names or exits.")
             return
         new_room = CmdDig.func(self)
@@ -377,7 +400,9 @@ class CmdBuildRoom(CmdDig):
         my_expansions = expansions.get(assets.id, 0) + 1
         expansions[assets.id] = my_expansions
         loc.db.expansions = expansions
-        new_room.name = new_room.name  # this will setup .db.colored_name and strip ansi from key
+        new_room.name = (
+            new_room.name
+        )  # this will setup .db.colored_name and strip ansi from key
         if cost_increase and assets.id in permits:
             permits[assets.id] += cost_increase
             loc.db.permitted_builders = permits
@@ -440,6 +465,7 @@ class CmdManageRoom(ArxCommand):
     switch removes characters from the room. Bouncers are able to use ban and boot.
     Decorators are permitted to use the desc switches.
     """
+
     key = "+manageroom"
     locks = "cmd:all()"
     help_category = "Home"
@@ -464,13 +490,16 @@ class CmdManageRoom(ArxCommand):
             caller.msg("No owner is defined here.")
             return
         org = owner.organization_owner
-        if not org and not (owner == caller.player_ob.Dominion.assets
-                            or ('confirmhome' in self.switches or
-                                'confirmshop' in self.switches)):
+        if not org and not (
+            owner == caller.player_ob.Dominion.assets
+            or ("confirmhome" in self.switches or "confirmshop" in self.switches)
+        ):
             caller.msg("You are not the owner here.")
             return
-        if org and not (org.access(caller, 'build') or ('confirmhome' in self.switches or
-                                                        'confirmshop' in self.switches)):
+        if org and not (
+            org.access(caller, "build")
+            or ("confirmhome" in self.switches or "confirmshop" in self.switches)
+        ):
             caller.msg("You do not have permission to build here.")
             return
         return True
@@ -518,7 +547,9 @@ class CmdManageRoom(ArxCommand):
                 exit_object.flush_from_cache()
             caller.msg("%s changed to %s." % (old, exit_object))
             return
-        if (set(self.switches) & set(self.personnel_switches)) or (set(self.switches) & set(self.bouncer_switches)):
+        if (set(self.switches) & set(self.personnel_switches)) or (
+            set(self.switches) & set(self.bouncer_switches)
+        ):
             targ = self.caller.player.search(self.lhs)
             if not targ:
                 return
@@ -549,6 +580,7 @@ class CmdManageRoom(ArxCommand):
                 return
             if "boot" in self.switches:
                 from typeclasses.exits import Exit
+
                 exit_obj = self.caller.search(self.rhs, typeclass=Exit)
                 if not exit_obj:
                     return
@@ -569,7 +601,9 @@ class CmdManageRoom(ArxCommand):
             return
         if set(self.switches) & set(self.desc_switches):
             if "player_made_room" not in loc.tags.all():
-                self.msg("You cannot change the description to a room that was made by a GM.")
+                self.msg(
+                    "You cannot change the description to a room that was made by a GM."
+                )
                 return
             if loc.desc:
                 cost = loc.db.desc_cost or DESC_COST
@@ -592,12 +626,17 @@ class CmdManageRoom(ArxCommand):
                     caller.msg("New desc:")
                     caller.msg(self.args)
                     caller.msg("{wTo confirm this, use the command again.{n")
-                    caller.msg("{wChanging this desc will prompt you again for a confirmation.{n")
+                    caller.msg(
+                        "{wChanging this desc will prompt you again for a confirmation.{n"
+                    )
                     loc.ndb.confirm_desc_change = self.args
                 return
             if cost:
                 if cost > owner.economic:
-                    caller.msg("It would cost %s to re-desc the room, and you have %s." % (cost, owner.economic))
+                    caller.msg(
+                        "It would cost %s to re-desc the room, and you have %s."
+                        % (cost, owner.economic)
+                    )
                     return
                 owner.economic -= cost
                 owner.save()
@@ -624,7 +663,9 @@ class CmdManageRoom(ArxCommand):
             return
         if "confirmhome" in self.switches:
             if caller.db.homeproposal != loc:
-                caller.msg("You don't have an active invitation to accept here. Have them reissue it.")
+                caller.msg(
+                    "You don't have an active invitation to accept here. Have them reissue it."
+                )
                 return
             caller.attributes.remove("homeproposal")
             loc.setup_home(caller)
@@ -632,7 +673,9 @@ class CmdManageRoom(ArxCommand):
             return
         if "confirmshop" in self.switches:
             if caller.db.shopproposal != loc:
-                caller.msg("You don't have an active invitation to accept here. Have them reissue it.")
+                caller.msg(
+                    "You don't have an active invitation to accept here. Have them reissue it."
+                )
                 return
             caller.attributes.remove("shopproposal")
             loc.setup_shop(caller)
@@ -668,9 +711,15 @@ class CmdManageRoom(ArxCommand):
             else:
                 char.db.shopproposal = loc
                 if loc.db.shopowner:
-                    caller.msg("You must shut down the current shop here before adding another.")
+                    caller.msg(
+                        "You must shut down the current shop here before adding another."
+                    )
                     return
-            msg = "%s has offered you a %s. To accept it, go to %s" % (caller, noun, loc.key)
+            msg = "%s has offered you a %s. To accept it, go to %s" % (
+                caller,
+                noun,
+                loc.key,
+            )
             msg += " and use {w+manageroom/confirm%s{n." % noun
             player.send_or_queue_msg(msg)
             caller.msg("You have offered %s this room as a %s." % (char, noun))
@@ -707,6 +756,7 @@ class CmdManageShop(ArxCommand):
     Sets prices for your shop. Note that if you use 'all', that will
     be used for any recipe you don't explicitly set a price for.
     """
+
     key = "+manageshop"
     locks = "cmd:all()"
     help_category = "Home"
@@ -754,12 +804,14 @@ class CmdManageShop(ArxCommand):
             char_discounts = list((loc.db.char_discounts or {}).items())
             # replace char with char.key in char_discounts list
             char_discounts = [(ob[0].key, ob[1]) for ob in char_discounts]
-            discounts = ", ".join(("%s: %s%%" % (ob, val) for ob, val in (org_discounts + char_discounts)))
+            discounts = ", ".join(
+                ("%s: %s%%" % (ob, val) for ob, val in (org_discounts + char_discounts))
+            )
             caller.msg("{wDiscounts{n: %s" % discounts)
             blacklist = []
             if loc.db.blacklist:
                 # if ob doesn't have a key, it becomes a string (because corporations aren't ppl)
-                blacklist = [getattr(ob, 'key', str(ob)) for ob in loc.db.blacklist]
+                blacklist = [getattr(ob, "key", str(ob)) for ob in loc.db.blacklist]
             caller.msg("{wBlacklist{n: %s" % ", ".join(blacklist))
             self.list_designs()
             return
@@ -772,9 +824,14 @@ class CmdManageShop(ArxCommand):
                 caller.msg("Price must be a positive number.")
                 return
             results = caller.search(self.lhs, location=caller, quiet=True)
-            obj = AT_SEARCH_RESULT(results, caller, self.lhs, False,
-                                   nofound_string="You don't carry %s." % self.lhs,
-                                   multimatch_string="You carry more than one %s:" % self.lhs)
+            obj = AT_SEARCH_RESULT(
+                results,
+                caller,
+                self.lhs,
+                False,
+                nofound_string="You don't carry %s." % self.lhs,
+                multimatch_string="You carry more than one %s:" % self.lhs,
+            )
             if not obj:
                 return
             obj.at_drop(caller)
@@ -795,7 +852,9 @@ class CmdManageShop(ArxCommand):
                 caller.msg("No object by that ID exists.")
                 return
             except (ValueError, TypeError):
-                caller.msg("You have to specify the ID # of an item you're trying to remove.")
+                caller.msg(
+                    "You have to specify the ID # of an item you're trying to remove."
+                )
                 return
             obj.move_to(caller)
             obj.tags.remove("for_sale")
@@ -812,23 +871,30 @@ class CmdManageShop(ArxCommand):
                 caller.msg("Cost must be a non-negative number.")
                 return
             if "all" in self.switches:
-                loc.db.crafting_prices['all'] = cost
-                caller.msg("Cost for non-specified recipes set to %s percent markup." % cost)
+                loc.db.crafting_prices["all"] = cost
+                caller.msg(
+                    "Cost for non-specified recipes set to %s percent markup." % cost
+                )
             else:
-                loc.db.crafting_prices['refine'] = cost
+                loc.db.crafting_prices["refine"] = cost
                 caller.msg("Cost for refining set to %s percent markup." % cost)
             return
         if "addrecipe" in self.switches:
             prices = loc.db.crafting_prices or {}
             try:
-                recipe = caller.player_ob.Dominion.assets.recipes.get(name__iexact=self.lhs)
+                recipe = caller.player_ob.Dominion.assets.recipes.get(
+                    name__iexact=self.lhs
+                )
                 cost = int(self.rhs)
                 if cost < 0:
                     raise ValueError
             except (TypeError, ValueError):
                 caller.msg("Cost must be a positive number.")
                 return
-            except (CraftingRecipe.DoesNotExist, CraftingRecipe.MultipleObjectsReturned):
+            except (
+                CraftingRecipe.DoesNotExist,
+                CraftingRecipe.MultipleObjectsReturned,
+            ):
                 caller.msg("Could not retrieve a recipe by that name.")
                 return
             prices[recipe.id] = cost
@@ -836,7 +902,7 @@ class CmdManageShop(ArxCommand):
             removedlist = prices.get("removed", [])
             if recipe.id in removedlist:
                 removedlist.remove(recipe.id)
-            prices['removed'] = removedlist
+            prices["removed"] = removedlist
             loc.db.crafting_prices = prices
             return
         if "rmrecipe" in self.switches:
@@ -849,10 +915,14 @@ class CmdManageShop(ArxCommand):
                 elif self.lhs.lower() == "refining":
                     arg = "refining"
                 else:
-                    recipe = caller.player_ob.Dominion.assets.recipes.get(name__iexact=self.lhs)
+                    recipe = caller.player_ob.Dominion.assets.recipes.get(
+                        name__iexact=self.lhs
+                    )
                     arg = recipe.id
                 del prices[arg]
-                caller.msg("Price for %s has been removed." % recipe.name if recipe else arg)
+                caller.msg(
+                    "Price for %s has been removed." % recipe.name if recipe else arg
+                )
             except KeyError:
                 removedlist = prices.get("removed", [])
                 if arg in removedlist:
@@ -895,7 +965,10 @@ class CmdManageShop(ArxCommand):
         if "addblacklist" in self.switches or "rmblacklist" in self.switches:
             blacklist = loc.db.blacklist or []
             try:
-                targ = caller.player.search(self.args, nofound_string="No player by that name. Checking organizations.")
+                targ = caller.player.search(
+                    self.args,
+                    nofound_string="No player by that name. Checking organizations.",
+                )
                 org = False
                 if not targ:
                     org = True
@@ -913,7 +986,7 @@ class CmdManageShop(ArxCommand):
                             caller.msg("They are already in the blacklist.")
                             return
                         blacklist.append(targ)
-                    caller.msg("%s added to blacklist." % getattr(targ, 'key', targ))
+                    caller.msg("%s added to blacklist." % getattr(targ, "key", targ))
                 else:
                     if org:
                         if targ.name not in blacklist:
@@ -925,7 +998,9 @@ class CmdManageShop(ArxCommand):
                             caller.msg("They are not in the blacklist.")
                             return
                         blacklist.remove(targ)
-                    caller.msg("%s removed from blacklist." % getattr(targ, 'key', targ))
+                    caller.msg(
+                        "%s removed from blacklist." % getattr(targ, "key", targ)
+                    )
             except Organization.DoesNotExist:
                 caller.msg("No valid target found by that name.")
             loc.db.blacklist = blacklist
@@ -962,7 +1037,9 @@ class CmdManageShop(ArxCommand):
                     self.msg("Removed discount for %s." % character.key)
                     return
                 loc.db.char_discounts[character] = discount
-                caller.msg("%s given a discount of %s percent." % (character.key, discount))
+                caller.msg(
+                    "%s given a discount of %s percent." % (character.key, discount)
+                )
                 return
             except (TypeError, ValueError):
                 caller.msg("Discount must be a number, max of 100.")
@@ -1002,6 +1079,7 @@ class CmdBuyFromShop(CmdCraft):
     and materials are covered by you. +shop/viewdesigns lets you see the
     crafter's pre-made descriptions that you can copy for items you create.
     """
+
     key = "+shop"
     aliases = ["@shop", "shop"]
     locks = "cmd:all()"
@@ -1035,7 +1113,7 @@ class CmdBuyFromShop(CmdCraft):
         if price == 0:
             return price
         if price > 0:
-            price -= (price * self.get_discount() / 100.0)
+            price -= price * self.get_discount() / 100.0
             if price < 0:
                 return 0
             return price
@@ -1052,7 +1130,7 @@ class CmdBuyFromShop(CmdCraft):
         elif "all" in crafting_prices:
             price = (base * crafting_prices["all"]) / 100.0
         if price is not None:
-            price -= (price * self.get_discount() / 100.0)
+            price -= price * self.get_discount() / 100.0
             if price < 0:
                 return 0
             return price
@@ -1065,7 +1143,9 @@ class CmdBuyFromShop(CmdCraft):
         prices = loc.db.crafting_prices or {}
         msg = "{wCrafting Prices{n\n"
         table = PrettyTable(["{wName{n", "{wCraft Price{n", "{wRefine Price{n"])
-        recipes = loc.db.shopowner.player_ob.Dominion.assets.recipes.all().order_by('name')
+        recipes = loc.db.shopowner.player_ob.Dominion.assets.recipes.all().order_by(
+            "name"
+        )
         # This try/except block corrects 'removed' lists that are corrupted by
         # non-integers, because that was a thing once upon a time.
         try:
@@ -1073,16 +1153,23 @@ class CmdBuyFromShop(CmdCraft):
             recipes = recipes.exclude(id__in=removed)
         except ValueError:
             removed = [ob for ob in removed if isinstance(ob, int)]
-            prices['removed'] = removed
+            prices["removed"] = removed
             recipes = recipes.exclude(id__in=removed)
         recipes = self.filter_shop_qs(recipes, "name")
         for recipe in recipes:
             try:
                 refineprice = str(self.get_refine_price(recipe.value))
-                table.add_row([recipe.name, str(recipe.additional_cost + self.get_recipe_price(recipe)),
-                               refineprice])
+                table.add_row(
+                    [
+                        recipe.name,
+                        str(recipe.additional_cost + self.get_recipe_price(recipe)),
+                        refineprice,
+                    ]
+                )
             except (ValueError, TypeError):
-                self.msg("{rError: Recipe %s does not have a price defined.{n" % recipe.name)
+                self.msg(
+                    "{rError: Recipe %s does not have a price defined.{n" % recipe.name
+                )
         if recipes:
             msg += str(table)
         msg += "\n{wItem Prices{n\n"
@@ -1092,7 +1179,7 @@ class CmdBuyFromShop(CmdCraft):
         sale_items = self.filter_shop_qs(sale_items, "db_key")
         for item in sale_items:
             price = prices[item.id]
-            price -= (price * self.get_discount() / 100.0)
+            price -= price * self.get_discount() / 100.0
             table.add_row(item.id, item.name, price)
         if sale_items:
             msg += str(table)
@@ -1113,7 +1200,11 @@ class CmdBuyFromShop(CmdCraft):
     def filter_shop_dict(self, shop_dict):
         """Returns filtered dict if a filter word exists"""
         if "filter" in self.switches and self.args:
-            shop_dict = {name: value for name, value in shop_dict.items() if self.args.lower() in name.lower()}
+            shop_dict = {
+                name: value
+                for name, value in shop_dict.items()
+                if self.args.lower() in name.lower()
+            }
         return shop_dict
 
     def pay_owner(self, price, msg):
@@ -1141,7 +1232,9 @@ class CmdBuyFromShop(CmdCraft):
                 item.grantkey(self.caller)
                 self.msg("Good deal! The owner gave you a key for %s." % item)
                 return
-            self.msg("Shady deal? The owner didn't have a key for %s to give you." % item)
+            self.msg(
+                "Shady deal? The owner didn't have a key for %s to give you." % item
+            )
 
     def check_blacklist(self):
         """See if we're allowed to buy"""
@@ -1219,7 +1312,9 @@ class CmdBuyFromShop(CmdCraft):
                     caller.msg("Please provide a valid recipe name.")
                     return
                 try:
-                    recipe = self.crafter.player_ob.Dominion.assets.recipes.all().get(name__iexact=self.args)
+                    recipe = self.crafter.player_ob.Dominion.assets.recipes.all().get(
+                        name__iexact=self.args
+                    )
                 except CraftingRecipe.DoesNotExist:
                     caller.msg("No recipe found by the name %s." % self.args)
                     return
@@ -1234,6 +1329,7 @@ class CmdBuyFromShop(CmdCraft):
 
 class ShopCmdSet(CmdSet):
     """CmdSet for shop spaces."""
+
     key = "ShopCmdSet"
     priority = 101
     duplicates = False

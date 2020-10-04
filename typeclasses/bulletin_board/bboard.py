@@ -14,6 +14,7 @@ class BBoard(Object):
     This is the base class for all Bulletin Boards. Inherit from this to create different
     types of communication bboards.
     """
+
     default_desc = "A bulletin board"
 
     @staticmethod
@@ -24,8 +25,15 @@ class BBoard(Object):
         post.tags.add(tagkey, category=category)
         return post
 
-    def bb_post(self, poster_obj, msg, subject="No Subject", poster_name=None,
-                event=None, announce=True):
+    def bb_post(
+        self,
+        poster_obj,
+        msg,
+        subject="No Subject",
+        poster_name=None,
+        event=None,
+        announce=True,
+    ):
         """
         Post the message to the board.
         """
@@ -55,10 +63,21 @@ class BBoard(Object):
         if announce:
             post_num = self.posts.count()
             from django.urls import reverse
-            post_url = get_full_url(reverse('msgs:post_view', kwargs={'board_id': self.id, 'post_id': post.id}))
 
-            notify = "\n{{wNew post on {0} by {1}:{{n {2}".format(self.key, posted_by, subject)
-            notify += "\nUse {w@bbread %s/%s {nor {w%s{n to read this message." % (self.key, post_num, post_url)
+            post_url = get_full_url(
+                reverse(
+                    "msgs:post_view", kwargs={"board_id": self.id, "post_id": post.id}
+                )
+            )
+
+            notify = "\n{{wNew post on {0} by {1}:{{n {2}".format(
+                self.key, posted_by, subject
+            )
+            notify += "\nUse {w@bbread %s/%s {nor {w%s{n to read this message." % (
+                self.key,
+                post_num,
+                post_url,
+            )
 
             self.notify_subs(notify)
         self.update_cache_on_post(poster_obj)
@@ -69,8 +88,13 @@ class BBoard(Object):
         return self.db.max_posts or 100
 
     def notify_subs(self, notification):
-        subs = [ob for ob in self.subscriber_list if self.access(ob, "read")
-                and "no_post_notifications" not in ob.tags.all() and (not hasattr(ob, 'is_guest') or not ob.is_guest())]
+        subs = [
+            ob
+            for ob in self.subscriber_list
+            if self.access(ob, "read")
+            and "no_post_notifications" not in ob.tags.all()
+            and (not hasattr(ob, "is_guest") or not ob.is_guest())
+        ]
         for sub in subs:
             sub.msg(notification)
 
@@ -92,24 +116,38 @@ class BBoard(Object):
         if not post:
             return
         if post.tags.get(tagname, category=category):
-            poster_obj.msg("|w%s|n has already declared a position on this matter." % org)
+            poster_obj.msg(
+                "|w%s|n has already declared a position on this matter." % org
+            )
             return
         if not org.access(poster_obj, "declarations"):
-            poster_obj.msg("Your |w%s|n rank is not set to make declarations on their behalf." % org)
+            poster_obj.msg(
+                "Your |w%s|n rank is not set to make declarations on their behalf."
+                % org
+            )
             return
         if len(msg) > 280:
             poster_obj.msg("That message is too long for a brief declaration.")
             return
         secret = org.secret
         poster_obj_str = "" if secret else (" via |c%s|n" % poster_obj)
-        post.db_message += "\n\n--- |w%s|n Stance%s ---\n%s" % (org, poster_obj_str, msg)
+        post.db_message += "\n\n--- |w%s|n Stance%s ---\n%s" % (
+            org,
+            poster_obj_str,
+            msg,
+        )
         post.tags.add(tagname, category=category)
         post.save()
-        success_msg = "|w%s|n%s declared a stance on '%s' (proclamation %s)." % (org, poster_obj_str, post.db_header,
-                                                                                 postnum)
+        success_msg = "|w%s|n%s declared a stance on '%s' (proclamation %s)." % (
+            org,
+            poster_obj_str,
+            post.db_header,
+            postnum,
+        )
         poster_obj.msg(success_msg)
         self.notify_subs(success_msg)
         from server.utils.arx_utils import inform_staff
+
         if secret:
             success_msg = "(By |c%s|n) %s" % (poster_obj.key, success_msg)
         inform_staff(success_msg)
@@ -240,12 +278,15 @@ class BBoard(Object):
             posts = self.posts
         # format post
         sender = self.get_poster(post)
-        message = "\n{w" + "-"*60 + "{n\n"
-        message += "{wBoard:{n %s, {wPost Number:{n %s\n" % (self.key, list(posts).index(post) + 1)
+        message = "\n{w" + "-" * 60 + "{n\n"
+        message += "{wBoard:{n %s, {wPost Number:{n %s\n" % (
+            self.key,
+            list(posts).index(post) + 1,
+        )
         message += "{wPoster:{n %s\n" % sender
         message += "{wSubject:{n %s\n" % post.db_header
         message += "{wDate:{n %s\n" % post.db_date_created.strftime("%x %X")
-        message += "{w" + "-"*60 + "{n\n"
+        message += "{w" + "-" * 60 + "{n\n"
         message += post.db_message
         message += "\n{w" + "-" * 60 + "{n\n"
         caller.msg(message)
@@ -316,6 +357,7 @@ class BBoard(Object):
 
 def convert_tag():
     from evennia.typeclasses.tags import Tag
+
     tag = Tag.objects.get(db_key="Board Post")
     tag.db_key = POST_TAG
     tag.db_category = TAG_CATEGORY

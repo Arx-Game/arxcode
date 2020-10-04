@@ -26,7 +26,9 @@ class Guest(Account):
         like configuration values etc.
         """
         # set an (empty) attribute holding the characters this player has
-        lockstring = "attrread:perm(Wizards);attredit:perm(Wizards);attrcreate:perm(Wizards)"
+        lockstring = (
+            "attrread:perm(Wizards);attredit:perm(Wizards);attrcreate:perm(Wizards)"
+        )
         self.attributes.add("_playable_characters", [], lockstring=lockstring)
         self.db.mails = []
         self.db.newmail = False
@@ -102,10 +104,15 @@ class Guest(Account):
         try:
             from evennia.comms.models import ChannelDB
             from django.utils import timezone
+
             try:
                 chan = ChannelDB.objects.get(db_key=settings.GUEST_CHANNEL_NAME)
             except ChannelDB.DoesNotExist:
-                chan_dict = [d for d in settings.DEFAULT_CHANNELS if d['key'] == settings.GUEST_CHANNEL_NAME][0]
+                chan_dict = [
+                    d
+                    for d in settings.DEFAULT_CHANNELS
+                    if d["key"] == settings.GUEST_CHANNEL_NAME
+                ][0]
                 chan = create.create_channel(**chan_dict)
             now = timezone.now()
             now = "%02i:%02i" % (now.hour, now.minute)
@@ -113,12 +120,17 @@ class Guest(Account):
             try:
                 gm_chan = ChannelDB.objects.get(db_key=settings.STAFF_INFO_CHANNEL_NAME)
             except ChannelDB.DoesNotExist:
-                chan_dict = [d for d in settings.DEFAULT_CHANNELS if d['key'] == settings.STAFF_INFO_CHANNEL_NAME][0]
+                chan_dict = [
+                    d
+                    for d in settings.DEFAULT_CHANNELS
+                    if d["key"] == settings.STAFF_INFO_CHANNEL_NAME
+                ][0]
                 gm_chan = create.create_channel(**chan_dict)
             addr = self.sessions.all()[0].address
             message += " from %s" % addr
             gm_chan.msg(message)
         except Exception as err:
             import traceback
+
             traceback.print_exc()
             print("Error in logging messages to guest channel: %s" % err)

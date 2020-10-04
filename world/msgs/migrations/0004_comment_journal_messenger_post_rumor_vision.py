@@ -9,63 +9,57 @@ import world.msgs.models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('comms', '0010_auto_20161206_1912'),
-        ('msgs', '0003_convert_header_to_tags'),
+        ("comms", "0010_auto_20161206_1912"),
+        ("msgs", "0003_convert_header_to_tags"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Comment',
-            fields=[
-            ],
+            name="Comment",
+            fields=[],
             options={
-                'proxy': True,
+                "proxy": True,
             },
-            bases=(world.msgs.models.MarkReadMixin, 'comms.msg'),
+            bases=(world.msgs.models.MarkReadMixin, "comms.msg"),
         ),
         migrations.CreateModel(
-            name='Journal',
-            fields=[
-            ],
+            name="Journal",
+            fields=[],
             options={
-                'proxy': True,
+                "proxy": True,
             },
-            bases=(world.msgs.models.MarkReadMixin, 'comms.msg'),
+            bases=(world.msgs.models.MarkReadMixin, "comms.msg"),
         ),
         migrations.CreateModel(
-            name='Messenger',
-            fields=[
-            ],
+            name="Messenger",
+            fields=[],
             options={
-                'proxy': True,
+                "proxy": True,
             },
-            bases=(world.msgs.models.MarkReadMixin, 'comms.msg'),
+            bases=(world.msgs.models.MarkReadMixin, "comms.msg"),
         ),
         migrations.CreateModel(
-            name='Post',
-            fields=[
-            ],
+            name="Post",
+            fields=[],
             options={
-                'proxy': True,
+                "proxy": True,
             },
-            bases=(world.msgs.models.MarkReadMixin, 'comms.msg'),
+            bases=(world.msgs.models.MarkReadMixin, "comms.msg"),
         ),
         migrations.CreateModel(
-            name='Rumor',
-            fields=[
-            ],
+            name="Rumor",
+            fields=[],
             options={
-                'proxy': True,
+                "proxy": True,
             },
-            bases=(world.msgs.models.MarkReadMixin, 'comms.msg'),
+            bases=(world.msgs.models.MarkReadMixin, "comms.msg"),
         ),
         migrations.CreateModel(
-            name='Vision',
-            fields=[
-            ],
+            name="Vision",
+            fields=[],
             options={
-                'proxy': True,
+                "proxy": True,
             },
-            bases=(world.msgs.models.MarkReadMixin, 'comms.msg'),
+            bases=(world.msgs.models.MarkReadMixin, "comms.msg"),
         ),
     ]

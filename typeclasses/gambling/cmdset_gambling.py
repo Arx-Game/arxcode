@@ -22,6 +22,7 @@ class CmdRoll(ArxCommand):
     Rolls dice for random checks. You can specify dice of any number of sides,
     and between 1 and 50 dice.
     """
+
     key = "roll"
     locks = "cmd:all()"
     help_category = "Social"
@@ -47,10 +48,13 @@ class CmdRoll(ArxCommand):
         rolls.sort()
         rolls = [str(ob) for ob in rolls]
         caller.msg("You have rolled: %s" % ", ".join(rolls))
-        caller.location.msg_contents("%s has rolled %s %s-sided dice: %s" % (caller.name, num_dice, sides,
-                                                                             ", ".join(rolls)),
-                                     exclude=caller, options={"roll": True})
-        
+        caller.location.msg_contents(
+            "%s has rolled %s %s-sided dice: %s"
+            % (caller.name, num_dice, sides, ", ".join(rolls)),
+            exclude=caller,
+            options={"roll": True},
+        )
+
 
 class DiceCmdSet(CmdSet):
     """
@@ -61,6 +65,7 @@ class DiceCmdSet(CmdSet):
     bring it back. It's added to the object
     using obj.cmdset.add_default().
     """
+
     key = "Dice"
     # if we have multiple wearable objects, just keep
     # one cmdset, ditch others

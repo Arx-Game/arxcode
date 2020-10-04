@@ -8,19 +8,29 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0033_goal_goalupdate'),
-        ('magic', '0008_auto_20181211_0253'),
+        ("character", "0033_goal_goalupdate"),
+        ("magic", "0008_auto_20181211_0253"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='skillnode',
-            name='discovered_by_revelations',
-            field=models.ManyToManyField(blank=True, help_text=b'If we discover these revelations, the node is automatically discovered.', related_name='nodes', to='character.Revelation'),
+            model_name="skillnode",
+            name="discovered_by_revelations",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text=b"If we discover these revelations, the node is automatically discovered.",
+                related_name="nodes",
+                to="character.Revelation",
+            ),
         ),
         migrations.AddField(
-            model_name='spell',
-            name='discovered_by_clues',
-            field=models.ManyToManyField(blank=True, help_text=b'If we discover any of these clues, the spell is automatically learned.', related_name='spells', to='character.Clue'),
+            model_name="spell",
+            name="discovered_by_clues",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text=b"If we discover any of these clues, the spell is automatically learned.",
+                related_name="spells",
+                to="character.Clue",
+            ),
         ),
     ]

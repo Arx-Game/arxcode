@@ -27,29 +27,33 @@ class Template(SharedMemoryModel):
         3) Templates will, by default be private.
     """
 
-    PRIVATE = 'PR'
-    RESTRICTED = 'RS'
-    OPEN = 'OP'
-    ACCESS_LEVELS = (
-        (PRIVATE, 'PRIVATE'),
-        (RESTRICTED, 'RESTRICTED'),
-        (OPEN, 'OPEN')
-    )
+    PRIVATE = "PR"
+    RESTRICTED = "RS"
+    OPEN = "OP"
+    ACCESS_LEVELS = ((PRIVATE, "PRIVATE"), (RESTRICTED, "RESTRICTED"), (OPEN, "OPEN"))
 
-    owner = models.ForeignKey('character.PlayerAccount', related_name='templates', db_index=True,
-                              on_delete=models.CASCADE)
+    owner = models.ForeignKey(
+        "character.PlayerAccount",
+        related_name="templates",
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     desc = models.TextField()
 
-    access_level = models.CharField(max_length=2, choices=ACCESS_LEVELS, default=PRIVATE)
+    access_level = models.CharField(
+        max_length=2, choices=ACCESS_LEVELS, default=PRIVATE
+    )
 
     attribution = models.CharField(max_length=60)
     apply_attribution = models.BooleanField(default=False)
 
     title = models.CharField(max_length=255)
 
-    applied_to = models.ManyToManyField('objects.ObjectDB', blank=True)
+    applied_to = models.ManyToManyField("objects.ObjectDB", blank=True)
 
-    grantees = models.ManyToManyField('character.RosterEntry', through="TemplateGrantee", blank=True)
+    grantees = models.ManyToManyField(
+        "character.RosterEntry", through="TemplateGrantee", blank=True
+    )
 
     objects = TemplateManager()
 
@@ -62,9 +66,11 @@ class Template(SharedMemoryModel):
         return self.title
 
     def is_accessible_by(self, char):
-        return self.owner == char.roster.current_account \
-               or self.access_level == 'OP' \
-               or self.grantees.filter(templategrantee__grantee=char.roster)
+        return (
+            self.owner == char.roster.current_account
+            or self.access_level == "OP"
+            or self.grantees.filter(templategrantee__grantee=char.roster)
+        )
 
     def in_use(self):
         return self.applied_to.count() > 0
@@ -72,7 +78,7 @@ class Template(SharedMemoryModel):
     def markup(self):
         return "[[TEMPLATE_%s]]" % self.id
 
-    def access(self, accessing_obj, access_type='template', default=True):
+    def access(self, accessing_obj, access_type="template", default=True):
         """
         Determines if another object has permission to access.
         accessing_obj - object trying to access this one
@@ -88,9 +94,6 @@ class TemplateGrantee(SharedMemoryModel):
     additional metadata about the grantee status, as the feature
     expands.
     """
-    template = models.ForeignKey('Template', on_delete=models.CASCADE)
-    grantee = models.ForeignKey('character.RosterEntry', on_delete=models.CASCADE)
 
-
-
-
+    template = models.ForeignKey("Template", on_delete=models.CASCADE)
+    grantee = models.ForeignKey("character.RosterEntry", on_delete=models.CASCADE)

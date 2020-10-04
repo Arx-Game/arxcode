@@ -4,7 +4,13 @@ Handler for Journals
 
 from .msg_utils import get_initial_queryset, lazy_import_from_str
 from .handler_base import MsgHandlerBase
-from world.msgs.managers import WHITE_TAG, BLACK_TAG, RELATIONSHIP_TAG, q_search_text_body, q_receiver_character_name
+from world.msgs.managers import (
+    WHITE_TAG,
+    BLACK_TAG,
+    RELATIONSHIP_TAG,
+    q_search_text_body,
+    q_receiver_character_name,
+)
 
 from server.utils.arx_utils import get_date, create_arx_message
 
@@ -93,14 +99,18 @@ class JournalHandler(MsgHandlerBase):
         """
         Returns a list of all 'white journal' entries our character has written.
         """
-        self._white_journal = list(get_initial_queryset("Journal").written_by(self.obj).white())
+        self._white_journal = list(
+            get_initial_queryset("Journal").written_by(self.obj).white()
+        )
         return self._white_journal
 
     def build_blackjournal(self):
         """
         Returns a list of all 'black journal' entries our character has written.
         """
-        self._black_journal = list(get_initial_queryset("Journal").written_by(self.obj).black())
+        self._black_journal = list(
+            get_initial_queryset("Journal").written_by(self.obj).black()
+        )
         return self._black_journal
 
     def add_to_journals(self, msg, white=True):
@@ -121,7 +131,14 @@ class JournalHandler(MsgHandlerBase):
             date = get_date()
         header = self.create_date_header(date)
         j_tag = WHITE_TAG if white else BLACK_TAG
-        msg = create_arx_message(self.obj, msg, receivers=self.obj.player_ob, header=header, cls=cls, tags=j_tag)
+        msg = create_arx_message(
+            self.obj,
+            msg,
+            receivers=self.obj.player_ob,
+            header=header,
+            cls=cls,
+            tags=j_tag,
+        )
         msg = self.add_to_journals(msg, white)
         # journals made this week, for xp purposes
         self.num_journals += 1
@@ -145,7 +162,9 @@ class JournalHandler(MsgHandlerBase):
         name = targ.key.lower()
         receivers = [targ, self.obj.player_ob]
         tags = (WHITE_TAG if white else BLACK_TAG, RELATIONSHIP_TAG)
-        msg = create_arx_message(self.obj, msg, receivers=receivers, header=header, cls=cls, tags=tags)
+        msg = create_arx_message(
+            self.obj, msg, receivers=receivers, header=header, cls=cls, tags=tags
+        )
         msg = self.add_to_journals(msg, white)
         rels = self.white_relationships if white else self.black_relationships
         relslist = rels.get(name, [])
@@ -161,8 +180,11 @@ class JournalHandler(MsgHandlerBase):
         Returns all matches for text in character's journal
         """
         Journal = lazy_import_from_str("Journal")
-        matches = Journal.white_journals.written_by(self.obj).filter(q_receiver_character_name(text)
-                                                                     | q_search_text_body(text)).distinct()
+        matches = (
+            Journal.white_journals.written_by(self.obj)
+            .filter(q_receiver_character_name(text) | q_search_text_body(text))
+            .distinct()
+        )
 
         return list(matches)
 
@@ -254,7 +276,7 @@ class JournalHandler(MsgHandlerBase):
         num -= 1
         entry = journal[num]
         if caller and not white:
-            if not entry.access(caller, 'read'):
+            if not entry.access(caller, "read"):
                 return False
         # noinspection PyBroadException
         try:
@@ -269,6 +291,7 @@ class JournalHandler(MsgHandlerBase):
                 entry.receivers = caller
         except Exception:  # Catch possible database errors, or bad formatting, etc
             import traceback
+
             traceback.print_exc()
             msg = "Error in retrieving journal. It may have been deleted and the server has not yet synchronized."
         return msg

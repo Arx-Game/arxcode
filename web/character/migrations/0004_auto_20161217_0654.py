@@ -8,12 +8,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0003_theory'),
+        ("character", "0003_theory"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='theory',
-            options={'verbose_name_plural': 'Theories'},
+            name="theory",
+            options={"verbose_name_plural": "Theories"},
         ),
     ]

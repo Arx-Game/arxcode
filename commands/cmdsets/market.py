@@ -19,7 +19,7 @@ from evennia.utils.logger import log_info
 from commands.base import ArxCommand
 from server.utils import prettytable
 from evennia.utils.create import create_object
-from world.dominion.models import (CraftingMaterialType, PlayerOrNpc, CraftingMaterials)
+from world.dominion.models import CraftingMaterialType, PlayerOrNpc, CraftingMaterials
 from world.dominion import setup_utils
 from world.stats_and_skills import do_dice_check
 from evennia.server.models import ServerConfig
@@ -27,14 +27,19 @@ from evennia.server.models import ServerConfig
 
 RESOURCE_VAL = 250
 BOOK_PRICE = 1
-other_items = {"book": [BOOK_PRICE, "parchment",
-                        "typeclasses.readable.readable.Readable",
-                        "A book that you can write in and others can read."],
-               }
+other_items = {
+    "book": [
+        BOOK_PRICE,
+        "parchment",
+        "typeclasses.readable.readable.Readable",
+        "A book that you can write in and others can read.",
+    ],
+}
 
 
 class OtherMaterial(object):
     """Class for handling transactions of buying generic items in shop"""
+
     def __init__(self, otype):
         self.name = "book"
         self.value = other_items[otype][0]
@@ -47,18 +52,24 @@ class OtherMaterial(object):
 
     def create(self, caller):
         """Create the object after buying it"""
-        stacking = [ob for ob in caller.contents if ob.typeclass_path == self.path and ob.db.can_stack]
+        stacking = [
+            ob
+            for ob in caller.contents
+            if ob.typeclass_path == self.path and ob.db.can_stack
+        ]
         if stacking:
             obj = stacking[0]
             obj.set_num(obj.db.num_instances + 1)
         else:
-            obj = create_object(typeclass=self.path, key=self.name,
-                                location=caller, home=caller)
+            obj = create_object(
+                typeclass=self.path, key=self.name, location=caller, home=caller
+            )
         return obj
 
 
 class MarketCmdSet(CmdSet):
     """CmdSet for a market."""
+
     key = "MarketCmdSet"
     priority = 101
     duplicates = False
@@ -76,6 +87,7 @@ class MarketCmdSet(CmdSet):
         replaced as needed.
         """
         from world.petitions.petitions_commands import CmdBroker
+
         self.add(CmdMarket())
         self.add(CmdHaggle())
         self.add(CmdBroker())
@@ -106,6 +118,7 @@ class CmdMarket(ArxCommand):
     sold to the market for 5% of the cost. Economic resources are worth
     250 silver for buying materials. Resources cost 500 silver each.
     """
+
     key = "market"
     aliases = ["buy", "sell"]
     locks = "cmd:all()"
@@ -116,9 +129,11 @@ class CmdMarket(ArxCommand):
         caller = self.caller
         usemats = True
         material = None
-        if self.cmdstring == "buy" and not ('economic' in self.switches or
-                                            'social' in self.switches or
-                                            'military' in self.switches):
+        if self.cmdstring == "buy" and not (
+            "economic" in self.switches
+            or "social" in self.switches
+            or "military" in self.switches
+        ):
             # allow for buy/economic, etc. buy switch precludes that, so we
             # only add it if we don't have the above switches
             self.switches.append("buy")
@@ -134,21 +149,27 @@ class CmdMarket(ArxCommand):
             materials = materials.exclude(acquisition_modifiers__icontains="nosell")
         if not self.args:
             mult = get_cost_multipler()
-            mtable = prettytable.PrettyTable(["{wMaterial",
-                                              "{wCategory",
-                                              "{wCost"])
+            mtable = prettytable.PrettyTable(["{wMaterial", "{wCategory", "{wCost"])
             for mat in materials:
                 mtable.add_row([mat.name, mat.category, str(mat.value * mult)])
             # add other items by hand
             for mat in other_items:
                 mtable.add_row([mat, other_items[mat][1], other_items[mat][0]])
-            caller.msg("\n{w" + "="*60 + "{n\n%s" % mtable)
-            pmats = CraftingMaterials.objects.filter(owner__player__player=caller.player)
+            caller.msg("\n{w" + "=" * 60 + "{n\n%s" % mtable)
+            pmats = CraftingMaterials.objects.filter(
+                owner__player__player=caller.player
+            )
             if pmats:
-                caller.msg("\n{wYour materials:{n %s" % ", ".join(str(ob) for ob in pmats))
+                caller.msg(
+                    "\n{wYour materials:{n %s" % ", ".join(str(ob) for ob in pmats)
+                )
             return
-        if not ("economic" in self.switches or "buyeconomic" in self.switches or "social" in self.switches or
-                "military" in self.switches):
+        if not (
+            "economic" in self.switches
+            or "buyeconomic" in self.switches
+            or "social" in self.switches
+            or "military" in self.switches
+        ):
             try:
                 material = materials.get(name__icontains=self.lhs)
             except CraftingMaterialType.DoesNotExist:
@@ -160,10 +181,13 @@ class CmdMarket(ArxCommand):
             except CraftingMaterialType.MultipleObjectsReturned:
                 try:
                     material = materials.get(name__iexact=self.lhs)
-                except (CraftingMaterialType.DoesNotExist, CraftingMaterialType.MultipleObjectsReturned):
+                except (
+                    CraftingMaterialType.DoesNotExist,
+                    CraftingMaterialType.MultipleObjectsReturned,
+                ):
                     caller.msg("Unable to get a unique match for that.")
                     return
-        if 'buy' in self.switches:
+        if "buy" in self.switches:
             if not usemats:
                 amt = 1
             else:
@@ -182,7 +206,10 @@ class CmdMarket(ArxCommand):
                 dompc = setup_utils.setup_dom_for_char(caller)
             # use silver
             if cost > caller.db.currency:
-                caller.msg("That would cost %s silver coins, and you only have %s." % (cost, caller.db.currency))
+                caller.msg(
+                    "That would cost %s silver coins, and you only have %s."
+                    % (cost, caller.db.currency)
+                )
                 return
             caller.pay_money(cost)
             paystr = "%s silver" % cost
@@ -197,7 +224,7 @@ class CmdMarket(ArxCommand):
                 material.create(caller)
             caller.msg("You buy %s %s for %s." % (amt, material, paystr))
             return
-        if 'sell' in self.switches:
+        if "sell" in self.switches:
             try:
                 amt = int(self.rhs)
             except (ValueError, TypeError):
@@ -219,27 +246,36 @@ class CmdMarket(ArxCommand):
                 caller.msg("You don't have any of %s." % material.name)
                 return
             if mat.amount < amt:
-                caller.msg("You want to sell %s %s, but only have %s." % (amt, material, mat.amount))
+                caller.msg(
+                    "You want to sell %s %s, but only have %s."
+                    % (amt, material, mat.amount)
+                )
                 return
             mat.amount -= amt
             mat.save()
             money = caller.db.currency or 0.0
-            sale = amt * material.value/20
+            sale = amt * material.value / 20
             money += sale
             caller.db.currency = money
-            caller.msg("You have sold %s %s for %s silver coins." % (amt, material.name, sale))
+            caller.msg(
+                "You have sold %s %s for %s silver coins." % (amt, material.name, sale)
+            )
             return
-        if 'info' in self.switches:
+        if "info" in self.switches:
             msg = "{wInformation on %s:{n %s\n" % (material.name, material.desc)
             price = material.value * get_cost_multipler()
             msg += "{wPrice in silver: {c%s{n\n" % price
-            cost = price/250
+            cost = price / 250
             if price % 250:
                 cost += 1
             msg += "{wPrice in economic resources: {c%s{n" % cost
             caller.msg(msg)
             return
-        if "economic" in self.switches or "military" in self.switches or "social" in self.switches:
+        if (
+            "economic" in self.switches
+            or "military" in self.switches
+            or "social" in self.switches
+        ):
             try:
                 assets = caller.player_ob.Dominion.assets
                 amt = int(self.args)
@@ -250,7 +286,9 @@ class CmdMarket(ArxCommand):
                 return
             cost = 500 * amt * get_cost_multipler()
             if cost > caller.db.currency:
-                caller.msg("That would cost %s and you have %s." % (cost, caller.db.currency))
+                caller.msg(
+                    "That would cost %s and you have %s." % (cost, caller.db.currency)
+                )
                 return
             caller.pay_money(cost)
             if "economic" in self.switches:
@@ -268,14 +306,16 @@ class CmdMarket(ArxCommand):
 
 class HaggleError(Exception):
     """Errors raised when haggling"""
+
     pass
 
 
 class HaggledDeal(object):
     """Helper class for trying to haggle a deal"""
+
     BUY = "buy"
     SELL = "sell"
-    VALID_RESOURCES = ('economic', 'military', 'social')
+    VALID_RESOURCES = ("economic", "military", "social")
 
     def __init__(self, caller):
         self.caller = caller
@@ -299,7 +339,9 @@ class HaggledDeal(object):
     def accept(self):
         """Accepts the deal"""
         if not self.discount_roll:
-            raise HaggleError("You haven't struck a deal yet. You must negotiate the deal before you can accept it.")
+            raise HaggleError(
+                "You haven't struck a deal yet. You must negotiate the deal before you can accept it."
+            )
         if self.transaction_type == self.SELL:
             self.sell_materials()
         else:
@@ -318,11 +360,19 @@ class HaggledDeal(object):
 
     def display(self):
         """Returns a user-friendly string of the status of our deal"""
-        msg = "{wAttempting to %s:{n %s %s.\n" % (self.transaction_type, self.amount, self.material_display)
+        msg = "{wAttempting to %s:{n %s %s.\n" % (
+            self.transaction_type,
+            self.amount,
+            self.material_display,
+        )
         noun = "Discount" if self.transaction_type == self.BUY else "Markup Bonus"
         msg += "{wCurrent %s:{n %s\n" % (noun, self.discount)
         noun = "Value" if self.transaction_type == self.SELL else "Cost"
-        msg += "{wSilver %s:{n %s (Base Cost Per Unit: %s)" % (noun, round(self.silver_value, 1), round(self.base_cost, 1))
+        msg += "{wSilver %s:{n %s (Base Cost Per Unit: %s)" % (
+            noun,
+            round(self.silver_value, 1),
+            round(self.base_cost, 1),
+        )
         msg += "\n{wRoll Modifier:{n %s" % self.roll_bonus
         return msg
 
@@ -342,8 +392,12 @@ class HaggledDeal(object):
         clout = self.caller.social_clout
         if clout > 0:
             difficulty -= randint(0, clout)
-        roll = do_dice_check(self.caller, stat="charm", skill_list=["haggling", "haggling", "haggling", "streetwise"],
-                             difficulty=difficulty)
+        roll = do_dice_check(
+            self.caller,
+            stat="charm",
+            skill_list=["haggling", "haggling", "haggling", "streetwise"],
+            difficulty=difficulty,
+        )
         if roll <= self.discount_roll:
             self.caller.msg("You failed to find a better deal.\n%s" % self.display())
         else:
@@ -371,8 +425,13 @@ class HaggledDeal(object):
 
     def save(self):
         """Saves the deal in the underlying Evennia Attribute so progress is not lost if server restarts"""
-        self.caller.db.haggling_deal = (self.transaction_type, self.resource_type or self.material.id,
-                                        self.amount, self.discount_roll, self.roll_bonus)
+        self.caller.db.haggling_deal = (
+            self.transaction_type,
+            self.resource_type or self.material.id,
+            self.amount,
+            self.discount_roll,
+            self.roll_bonus,
+        )
 
     @property
     def discount(self):
@@ -382,12 +441,12 @@ class HaggledDeal(object):
         if discount <= 10:
             return discount + base_value  # 0 to 30
         if discount <= 50:
-            return (11 + (discount - 10)//4) + base_value  # 31 to 41
+            return (11 + (discount - 10) // 4) + base_value  # 31 to 41
         if discount <= 100:
-            return (21 + (discount - 60)//4) + base_value  # 41 to 51
+            return (21 + (discount - 60) // 4) + base_value  # 41 to 51
         if discount <= 160:
-            return (31 + (discount - 100)//5) + base_value  # 51 to 63
-        discount = 43 + (discount - 160)//6  # roll of 262 to cap
+            return (31 + (discount - 100) // 5) + base_value  # 51 to 63
+        discount = 43 + (discount - 160) // 6  # roll of 262 to cap
         if discount > 45:
             discount = 45
         return discount + base_value
@@ -399,7 +458,7 @@ class HaggledDeal(object):
             discount = 100 - self.discount
         else:
             discount = self.discount
-        return round((self.base_cost * discount/100.0) * self.amount, 1)
+        return round((self.base_cost * discount / 100.0) * self.amount, 1)
 
     @property
     def base_cost(self):
@@ -415,12 +474,16 @@ class HaggledDeal(object):
     def sell_materials(self):
         """Attempt to sell the materials we made the deal for"""
         if self.resource_type:
-            if not self.caller.player_ob.pay_resources(self.resource_type, amt=self.amount):
+            if not self.caller.player_ob.pay_resources(
+                self.resource_type, amt=self.amount
+            ):
                 raise HaggleError("You do not have enough resources to sell.")
         else:  # crafting materials
             err = "You do not have enough %s to sell." % self.material
             try:
-                mats = self.caller.player_ob.Dominion.assets.materials.get(type=self.material)
+                mats = self.caller.player_ob.Dominion.assets.materials.get(
+                    type=self.material
+                )
                 if mats.amount < self.amount:
                     raise HaggleError(err)
                 mats.amount -= self.amount
@@ -429,8 +492,16 @@ class HaggledDeal(object):
                 raise HaggleError(err)
         silver = self.silver_value
         self.caller.pay_money(-silver)
-        self.caller.msg("You have sold %s %s and gained %s silver." % (self.amount, self.material_display, silver))
-        log_msg = "%s has sold %s %s and gained %s silver." % (self.caller, self.amount, self.material_display, silver)
+        self.caller.msg(
+            "You have sold %s %s and gained %s silver."
+            % (self.amount, self.material_display, silver)
+        )
+        log_msg = "%s has sold %s %s and gained %s silver." % (
+            self.caller,
+            self.amount,
+            self.material_display,
+            silver,
+        )
         log_info("Haggle Log: %s" % log_msg)
 
     def buy_materials(self):
@@ -445,12 +516,22 @@ class HaggledDeal(object):
             cost = self.silver_value
             if cost > self.caller.currency:
                 raise HaggleError(err % cost)
-            mat, _ = self.caller.player_ob.Dominion.assets.materials.get_or_create(type=self.material)
+            mat, _ = self.caller.player_ob.Dominion.assets.materials.get_or_create(
+                type=self.material
+            )
             mat.amount += self.amount
             mat.save()
         self.caller.pay_money(cost)
-        self.caller.msg("You have bought %s %s for %s silver." % (self.amount, self.material_display, cost))
-        log_msg = "%s has bought %s %s for %s silver." % (self.caller, self.amount, self.material_display, cost)
+        self.caller.msg(
+            "You have bought %s %s for %s silver."
+            % (self.amount, self.material_display, cost)
+        )
+        log_msg = "%s has bought %s %s for %s silver." % (
+            self.caller,
+            self.amount,
+            self.material_display,
+            cost,
+        )
         log_info("Haggle Log: %s" % log_msg)
 
 
@@ -481,6 +562,7 @@ class CmdHaggle(ArxCommand):
     Resources can be bought or sold by specifying the type of resource as
     the 'material'.
     """
+
     key = "haggle"
     locks = "cmd:all()"
     help_category = "Market"
@@ -499,7 +581,7 @@ class CmdHaggle(ArxCommand):
         return HaggledDeal(self.caller)
 
     def send_deal(self, target, deal):
-        """ Sends a deal to the target
+        """Sends a deal to the target
         Args:
             target: Character we're sending it to
             deal: tuple that will be built into a HaggledDeal
@@ -507,7 +589,10 @@ class CmdHaggle(ArxCommand):
         target.db.haggling_deal = deal
         deal = HaggledDeal(target)
         if target != self.caller:
-            msg = "You have been sent a deal that you can choose to haggle by %s." % self.caller
+            msg = (
+                "You have been sent a deal that you can choose to haggle by %s."
+                % self.caller
+            )
             msg += "\n%s" % deal.display()
             target.player_ob.inform(msg, category="Deal Offer")
 
@@ -534,8 +619,10 @@ class CmdHaggle(ArxCommand):
     def display_current_deal(self):
         """Outputs our current deal"""
         if not self.deal:
-            raise HaggleError("You currently haven't found a deal to negotiate. Use haggle/findbuyer or "
-                              "haggle/findseller first.")
+            raise HaggleError(
+                "You currently haven't found a deal to negotiate. Use haggle/findbuyer or "
+                "haggle/findseller first."
+            )
         self.msg(self.deal.display())
 
     def find_deal(self):
@@ -549,7 +636,10 @@ class CmdHaggle(ArxCommand):
             target = target.char_ob
         if target.db.haggling_deal:
             if target == self.caller:
-                err = "You already have a deal in progress: please decline it first.\n%s" % self.deal.display()
+                err = (
+                    "You already have a deal in progress: please decline it first.\n%s"
+                    % self.deal.display()
+                )
             else:
                 err = "They already have a deal in progress. Ask them to decline it first."
             raise HaggleError(err)
@@ -563,11 +653,14 @@ class CmdHaggle(ArxCommand):
                 except ValueError:
                     raise HaggleError("The optional minimum bonus must be a number.")
         except (TypeError, ValueError, IndexError):
-            raise HaggleError("You must provide a material type and a positive amount for the transaction.")
+            raise HaggleError(
+                "You must provide a material type and a positive amount for the transaction."
+            )
         if material not in HaggledDeal.VALID_RESOURCES:
             try:
-                material = CraftingMaterialType.objects.exclude(acquisition_modifiers__icontains="nosell")\
-                                                       .get(name__iexact=material)
+                material = CraftingMaterialType.objects.exclude(
+                    acquisition_modifiers__icontains="nosell"
+                ).get(name__iexact=material)
                 material_identifier = material.id
             except CraftingMaterialType.DoesNotExist:
                 raise HaggleError("No material found for the name '%s'." % material)
@@ -581,9 +674,13 @@ class CmdHaggle(ArxCommand):
         amount, roll_bonus = self.search_for_deal_roll(material, amount)
         if min_bonus is not None:
             if roll_bonus < min_bonus:
-                raise HaggleError("The roll bonus of %s was below the minimum of %s, so the deal is cancelled." % (
-                    roll_bonus, min_bonus))
-        self.send_deal(target, (transaction_type, material_identifier, amount, 0, roll_bonus))
+                raise HaggleError(
+                    "The roll bonus of %s was below the minimum of %s, so the deal is cancelled."
+                    % (roll_bonus, min_bonus)
+                )
+        self.send_deal(
+            target, (transaction_type, material_identifier, amount, 0, roll_bonus)
+        )
         msg = "You found someone willing to %s %s %s." % (their_verb, amount, material)
         if target == self.caller:
             msg += " You can use /roll to try to negotiate the price."
@@ -603,12 +700,21 @@ class CmdHaggle(ArxCommand):
                 HaggleError if they fail to find a deal.
         """
         from math import ceil
+
         skill = self.caller.traits.get_highest_skill(("economics", "streetwise")).name
         difficulty = 20
         bonus = 0
-        roll = do_dice_check(self.caller, skill=skill, stat="perception", difficulty=difficulty, quiet=False)
+        roll = do_dice_check(
+            self.caller,
+            skill=skill,
+            stat="perception",
+            difficulty=difficulty,
+            quiet=False,
+        )
         if roll < 0:
-            raise HaggleError("You failed to find anyone willing to deal with you at all.")
+            raise HaggleError(
+                "You failed to find anyone willing to deal with you at all."
+            )
         if material in HaggledDeal.VALID_RESOURCES:
             # resources are worth 500 each
             value_per_object = 500
@@ -619,12 +725,17 @@ class CmdHaggle(ArxCommand):
         if value_for_amount < 1.0:
             penalty = int((1.0 - value_for_amount) * -100)
             amount_found = 1
-            self.msg("You had trouble finding a deal for such a valuable item. "
-                     "Haggling rolls will have a penalty of %s." % penalty)
+            self.msg(
+                "You had trouble finding a deal for such a valuable item. "
+                "Haggling rolls will have a penalty of %s." % penalty
+            )
             return amount_found, penalty
         # minimum of 1
         amount_found = max(int(ceil(value_we_found / value_per_object)), 1)
         if amount_found > amount:
             bonus = min(amount_found - amount, 25)
-            self.msg("Due to your success in searching for a deal, haggling rolls will have a bonus of %s." % bonus)
+            self.msg(
+                "Due to your success in searching for a deal, haggling rolls will have a bonus of %s."
+                % bonus
+            )
         return min(amount, amount_found), bonus

@@ -7,13 +7,13 @@ from random import randint, choice
 def npc_target_choice(targ, targets, prev_targ, switch_chance):
     """
     Selects a target for an npc.
-    
+
         Args:
             targ: Our primary target, which we see if it will change.
             targets: Our list of valid targets, if we switch.
             prev_targ: Our previously attacked target.
             switch_chance: Our chance of switching targets (0 to 100)
-            
+
         Returns:
             targ: Our selected target.
     """

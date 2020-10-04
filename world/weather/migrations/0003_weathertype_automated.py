@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('weather', '0002_auto_20181027_1823'),
+        ("weather", "0002_auto_20181027_1823"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='weathertype',
-            name='automated',
-            field=models.BooleanField(default=True, verbose_name=b'Automated'),
+            model_name="weathertype",
+            name="automated",
+            field=models.BooleanField(default=True, verbose_name=b"Automated"),
         ),
     ]

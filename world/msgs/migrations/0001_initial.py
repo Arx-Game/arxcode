@@ -17,15 +17,37 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Inform',
+            name="Inform",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('message', models.TextField(verbose_name='Information sent to players')),
-                ('date_sent', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('week', models.PositiveSmallIntegerField(blank=0, db_index=True, default=0)),
-                ('is_unread', models.BooleanField(default=True)),
-                ('category', models.CharField(blank=True, max_length=80, null=True)),
-                ('player', models.ForeignKey(blank=True, on_delete=django.db.models.deletion.CASCADE, related_name='informs', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "message",
+                    models.TextField(verbose_name="Information sent to players"),
+                ),
+                ("date_sent", models.DateTimeField(auto_now_add=True, db_index=True)),
+                (
+                    "week",
+                    models.PositiveSmallIntegerField(blank=0, db_index=True, default=0),
+                ),
+                ("is_unread", models.BooleanField(default=True)),
+                ("category", models.CharField(blank=True, max_length=80, null=True)),
+                (
+                    "player",
+                    models.ForeignKey(
+                        blank=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="informs",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

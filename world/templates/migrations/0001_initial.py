@@ -12,48 +12,98 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('character', '0025_storyemit_orgs'),
-        ('objects', '0009_remove_objectdb_db_player'),
+        ("character", "0025_storyemit_orgs"),
+        ("objects", "0009_remove_objectdb_db_player"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Template',
+            name="Template",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('desc', models.TextField()),
-                ('access_level', models.CharField(choices=[(b'PR', b'PRIVATE'), (b'RS', b'RESTRICTED'), (b'OP', b'OPEN')], default=b'PR', max_length=2)),
-                ('attribution', models.CharField(max_length=60)),
-                ('apply_attribution', models.BooleanField(default=False)),
-                ('title', models.CharField(max_length=255)),
-                ('applied_to', models.ManyToManyField(blank=True, to='objects.ObjectDB')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("desc", models.TextField()),
+                (
+                    "access_level",
+                    models.CharField(
+                        choices=[
+                            (b"PR", b"PRIVATE"),
+                            (b"RS", b"RESTRICTED"),
+                            (b"OP", b"OPEN"),
+                        ],
+                        default=b"PR",
+                        max_length=2,
+                    ),
+                ),
+                ("attribution", models.CharField(max_length=60)),
+                ("apply_attribution", models.BooleanField(default=False)),
+                ("title", models.CharField(max_length=255)),
+                (
+                    "applied_to",
+                    models.ManyToManyField(blank=True, to="objects.ObjectDB"),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
             managers=[
-                ('accessible', django.db.models.manager.Manager()),
+                ("accessible", django.db.models.manager.Manager()),
             ],
         ),
         migrations.CreateModel(
-            name='TemplateGrantee',
+            name="TemplateGrantee",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('grantee', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='character.RosterEntry')),
-                ('template', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='templates.Template')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "grantee",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="character.RosterEntry",
+                    ),
+                ),
+                (
+                    "template",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="templates.Template",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='template',
-            name='grantees',
-            field=models.ManyToManyField(blank=True, through='templates.TemplateGrantee', to='character.RosterEntry'),
+            model_name="template",
+            name="grantees",
+            field=models.ManyToManyField(
+                blank=True,
+                through="templates.TemplateGrantee",
+                to="character.RosterEntry",
+            ),
         ),
         migrations.AddField(
-            model_name='template',
-            name='owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='templates', to='character.PlayerAccount'),
+            model_name="template",
+            name="owner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="templates",
+                to="character.PlayerAccount",
+            ),
         ),
     ]

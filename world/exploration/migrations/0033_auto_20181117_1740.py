@@ -8,19 +8,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('objects', '0009_remove_objectdb_db_player'),
-        ('exploration', '0032_shardhavenlayoutexit_override'),
+        ("objects", "0009_remove_objectdb_db_player"),
+        ("exploration", "0032_shardhavenlayoutexit_override"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='last_visited',
+            model_name="shardhavenlayoutsquare",
+            name="last_visited",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='visitors',
-            field=models.ManyToManyField(related_name='_shardhavenlayoutsquare_visitors_+', to='objects.ObjectDB'),
+            model_name="shardhavenlayoutsquare",
+            name="visitors",
+            field=models.ManyToManyField(
+                related_name="_shardhavenlayoutsquare_visitors_+", to="objects.ObjectDB"
+            ),
         ),
     ]

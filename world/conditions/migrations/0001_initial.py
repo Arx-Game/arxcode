@@ -11,46 +11,231 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('objects', '0009_remove_objectdb_db_player'),
+        ("objects", "0009_remove_objectdb_db_player"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='EffectTrigger',
+            name="EffectTrigger",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('priority', models.PositiveSmallIntegerField(default=0, help_text='Only highest priority triggers are executed.')),
-                ('trigger_event', models.PositiveSmallIntegerField(choices=[(0, 'On Other Entry'), (1, 'On Other Depart'), (2, 'On Taking Damage'), (3, 'On Inflicting Damage'), (4, 'On Dying'), (5, 'On Pickup'), (6, 'On Use'), (7, 'On Being Healed')], default=0)),
-                ('conditional_check', models.PositiveSmallIntegerField(choices=[(0, 'Prestige Rank'), (1, 'Prestige Value'), (2, 'Social Rank'), (4, 'Org Name and Rank Range'), (5, 'Current Health %'), (6, 'Change Amount')], default=0)),
-                ('min_value', models.IntegerField(blank=True, help_text='Minimum value for trigger. Leave blank for tag names.', null=True)),
-                ('max_value', models.IntegerField(blank=True, help_text='Max value for trigger. Leave blank for tag names.', null=True)),
-                ('text_value', models.CharField(blank=True, help_text='Names of orgs, tags, etc. Leave blank if not applicable.', max_length=200, null=True)),
-                ('required_time', models.PositiveSmallIntegerField(choices=[(0, 'Any Time'), (1, 'Only Morning'), (2, 'Only Afternoon'), (3, 'Only Evening'), (4, 'Only Night'), (5, 'Only Day')], default=0, help_text='Time of day when the trigger works, if any.')),
-                ('negated_check', models.BooleanField(default=False, help_text='Whether this trigger applies to all objects that do not meet the trigger check.')),
-                ('room_msg', models.TextField(blank=True, help_text="If the trigger is on a room, send this message to everyone in the room. If it's on a character, send it to their location.")),
-                ('target_msg', models.TextField(blank=True, help_text='Private message sent to the target who triggered this.')),
-                ('additional_effects', models.TextField(blank=True, help_text='Parsed string of function_name: args, kwargs.')),
-                ('object', models.ForeignKey(help_text='The object this trigger is on. For example, a room checking others entering it.', on_delete=django.db.models.deletion.CASCADE, related_name='triggers', to='objects.ObjectDB')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "priority",
+                    models.PositiveSmallIntegerField(
+                        default=0,
+                        help_text="Only highest priority triggers are executed.",
+                    ),
+                ),
+                (
+                    "trigger_event",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "On Other Entry"),
+                            (1, "On Other Depart"),
+                            (2, "On Taking Damage"),
+                            (3, "On Inflicting Damage"),
+                            (4, "On Dying"),
+                            (5, "On Pickup"),
+                            (6, "On Use"),
+                            (7, "On Being Healed"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                (
+                    "conditional_check",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "Prestige Rank"),
+                            (1, "Prestige Value"),
+                            (2, "Social Rank"),
+                            (4, "Org Name and Rank Range"),
+                            (5, "Current Health %"),
+                            (6, "Change Amount"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                (
+                    "min_value",
+                    models.IntegerField(
+                        blank=True,
+                        help_text="Minimum value for trigger. Leave blank for tag names.",
+                        null=True,
+                    ),
+                ),
+                (
+                    "max_value",
+                    models.IntegerField(
+                        blank=True,
+                        help_text="Max value for trigger. Leave blank for tag names.",
+                        null=True,
+                    ),
+                ),
+                (
+                    "text_value",
+                    models.CharField(
+                        blank=True,
+                        help_text="Names of orgs, tags, etc. Leave blank if not applicable.",
+                        max_length=200,
+                        null=True,
+                    ),
+                ),
+                (
+                    "required_time",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "Any Time"),
+                            (1, "Only Morning"),
+                            (2, "Only Afternoon"),
+                            (3, "Only Evening"),
+                            (4, "Only Night"),
+                            (5, "Only Day"),
+                        ],
+                        default=0,
+                        help_text="Time of day when the trigger works, if any.",
+                    ),
+                ),
+                (
+                    "negated_check",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Whether this trigger applies to all objects that do not meet the trigger check.",
+                    ),
+                ),
+                (
+                    "room_msg",
+                    models.TextField(
+                        blank=True,
+                        help_text="If the trigger is on a room, send this message to everyone in the room. If it's on a character, send it to their location.",
+                    ),
+                ),
+                (
+                    "target_msg",
+                    models.TextField(
+                        blank=True,
+                        help_text="Private message sent to the target who triggered this.",
+                    ),
+                ),
+                (
+                    "additional_effects",
+                    models.TextField(
+                        blank=True,
+                        help_text="Parsed string of function_name: args, kwargs.",
+                    ),
+                ),
+                (
+                    "object",
+                    models.ForeignKey(
+                        help_text="The object this trigger is on. For example, a room checking others entering it.",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="triggers",
+                        to="objects.ObjectDB",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='RollModifier',
+            name="RollModifier",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('value', models.IntegerField(default=0)),
-                ('user_tag', models.CharField(blank=True, help_text='Only applies if user has a tag by this name.', max_length=80)),
-                ('target_tag', models.CharField(blank=True, help_text='Only applies if target has a tag by this name.', max_length=80)),
-                ('check', models.PositiveSmallIntegerField(choices=[(0, 'Any'), (1, 'Attack'), (2, 'Damage'), (3, 'Defense'), (4, 'Heal'), (5, 'Stealth'), (6, 'Any Combat'), (7, 'Perception'), (8, 'Crafting'), (9, 'Investigation'), (10, 'Casting'), (11, 'Channeling'), (12, 'Weaving'), (13, 'Beseeching'), (14, 'Any Physical'), (15, 'Any Mental'), (16, 'Any Social'), (17, 'Any Mystical')], default=0)),
-                ('stat', models.CharField(blank=True, help_text='Only applies for checks with this stat.', max_length=40)),
-                ('skill', models.CharField(blank=True, help_text='Only applies for checks with this skill.', max_length=40)),
-                ('ability', models.CharField(blank=True, help_text='Only applies for checks with this ability.', max_length=40)),
-                ('object', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='modifiers', to='objects.ObjectDB')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("value", models.IntegerField(default=0)),
+                (
+                    "user_tag",
+                    models.CharField(
+                        blank=True,
+                        help_text="Only applies if user has a tag by this name.",
+                        max_length=80,
+                    ),
+                ),
+                (
+                    "target_tag",
+                    models.CharField(
+                        blank=True,
+                        help_text="Only applies if target has a tag by this name.",
+                        max_length=80,
+                    ),
+                ),
+                (
+                    "check",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "Any"),
+                            (1, "Attack"),
+                            (2, "Damage"),
+                            (3, "Defense"),
+                            (4, "Heal"),
+                            (5, "Stealth"),
+                            (6, "Any Combat"),
+                            (7, "Perception"),
+                            (8, "Crafting"),
+                            (9, "Investigation"),
+                            (10, "Casting"),
+                            (11, "Channeling"),
+                            (12, "Weaving"),
+                            (13, "Beseeching"),
+                            (14, "Any Physical"),
+                            (15, "Any Mental"),
+                            (16, "Any Social"),
+                            (17, "Any Mystical"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                (
+                    "stat",
+                    models.CharField(
+                        blank=True,
+                        help_text="Only applies for checks with this stat.",
+                        max_length=40,
+                    ),
+                ),
+                (
+                    "skill",
+                    models.CharField(
+                        blank=True,
+                        help_text="Only applies for checks with this skill.",
+                        max_length=40,
+                    ),
+                ),
+                (
+                    "ability",
+                    models.CharField(
+                        blank=True,
+                        help_text="Only applies for checks with this ability.",
+                        max_length=40,
+                    ),
+                ),
+                (
+                    "object",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="modifiers",
+                        to="objects.ObjectDB",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 class RunDateMixin(object):
     """Mixin for checking remaining time"""
+
     @property
     def time_remaining(self):
         """

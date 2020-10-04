@@ -1,12 +1,18 @@
 from commands.base import ArxCommand
 from world.stat_checks.models import DifficultyRating, DamageRating
-from world.stat_checks.check_maker import BaseCheckMaker, ContestedCheckMaker, SimpleRoll, OpposingRolls
+from world.stat_checks.check_maker import (
+    BaseCheckMaker,
+    ContestedCheckMaker,
+    SimpleRoll,
+    OpposingRolls,
+)
 
 
 class CmdStatCheck(ArxCommand):
     """
     CmdStatCheck is a replacement for the previous CmdDiceCheck command.
     """
+
     key = "check"
     aliases = ["roll"]
     locks = "cmd:all()"
@@ -38,9 +44,11 @@ class CmdStatCheck(ArxCommand):
 
     def do_normal_check(self):
         stat, skill, rating = self.get_check_values_from_args(
-            self.args,
-            "Usage: stat [+ skill] at <difficulty rating>")
-        BaseCheckMaker.perform_check_for_character(self.caller, stat=stat, skill=skill, rating=rating)
+            self.args, "Usage: stat [+ skill] at <difficulty rating>"
+        )
+        BaseCheckMaker.perform_check_for_character(
+            self.caller, stat=stat, skill=skill, rating=rating
+        )
 
     def get_check_values_from_args(self, args, syntax):
         try:
@@ -51,7 +59,9 @@ class CmdStatCheck(ArxCommand):
         rating_string = rating_string.strip()
         rating = DifficultyRating.get_instance_by_name(rating_string)
         if not rating:
-            raise self.error_class(f"'{rating_string}' is not a valid difficulty rating.")
+            raise self.error_class(
+                f"'{rating_string}' is not a valid difficulty rating."
+            )
         return stat, skill, rating
 
     @staticmethod
@@ -70,24 +80,31 @@ class CmdStatCheck(ArxCommand):
             raise self.error_class("You are not GMing an event in this room.")
         characters = []
         if "here" in self.switches:
-            characters = [ob for ob in self.caller.location.contents if ob.is_character and ob != self.caller]
+            characters = [
+                ob
+                for ob in self.caller.location.contents
+                if ob.is_character and ob != self.caller
+            ]
             stat, skill, rating = self.get_check_values_from_args(
-                self.args,
-                "Usage: stat [+ skill] at <difficulty rating>")
+                self.args, "Usage: stat [+ skill] at <difficulty rating>"
+            )
         else:
             if not self.rhs:
-                raise self.error_class("You must specify the names of characters for the contest.")
+                raise self.error_class(
+                    "You must specify the names of characters for the contest."
+                )
             for name in self.lhslist:
                 character = self.search(name)
                 if not character:
                     return
                 characters.append(character)
             stat, skill, rating = self.get_check_values_from_args(
-                self.rhs,
-                "Usage: stat [+ skill] at <difficulty rating>")
+                self.rhs, "Usage: stat [+ skill] at <difficulty rating>"
+            )
         prefix = f"{self.caller} has called for a check of {SimpleRoll.get_check_string(stat, skill, rating)}."
-        ContestedCheckMaker.perform_contested_check(characters, self.caller, prefix, stat=stat, skill=skill,
-                                                    rating=rating)
+        ContestedCheckMaker.perform_contested_check(
+            characters, self.caller, prefix, stat=stat, skill=skill, rating=rating
+        )
 
     def do_opposing_checks(self):
         if not self.rhs:
@@ -106,7 +123,9 @@ class CmdStatCheck(ArxCommand):
         rolls = []
         for arg in args:
             stat, skill = self.get_stat_and_skill_from_args(arg[1])
-            rolls.append(SimpleRoll(character=arg[0], stat=stat, skill=skill, rating=rating))
+            rolls.append(
+                SimpleRoll(character=arg[0], stat=stat, skill=skill, rating=rating)
+            )
         OpposingRolls(rolls[0], rolls[1], self.caller).announce()
 
 
@@ -114,6 +133,7 @@ class CmdHarm(ArxCommand):
     """
     CmdHarm is a new replacement for the older, deprecated harm command.
     """
+
     key = "new_harm"
     locks = "cmd:all()"
 

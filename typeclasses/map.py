@@ -3,16 +3,18 @@ Maps.
 """
 from typeclasses.objects import Object
 
-_CALLER_ICON = '{gXX{n'
-_BLANK_SQUARE = '  '
-_DEST_ICON = '{rXX{n'
+_CALLER_ICON = "{gXX{n"
+_BLANK_SQUARE = "  "
+_DEST_ICON = "{rXX{n"
 
 
 class Map(Object):
     """
     A map. Redo this as a table later
     """
+
     default_desc = "A map that holds data about a particular grid area."
+
     def at_object_creation(self):
         """
         Run at Map creation.
@@ -27,13 +29,12 @@ class Map(Object):
         self.at_init()
 
     def get_icon(self, origin_room, x, y, destination=None):
-        room = self.db.rooms.get((x,y), None)
+        room = self.db.rooms.get((x, y), None)
         if not room:
             return _BLANK_SQUARE
         if room == origin_room:
             return _CALLER_ICON
-        if (destination and destination.db.x_coord == x
-            and destination.db.y_coord == y):
+        if destination and destination.db.x_coord == x and destination.db.y_coord == y:
             return _DEST_ICON
         return room.db.map_icon or _BLANK_SQUARE
 
@@ -63,6 +64,5 @@ class Map(Object):
             self.db.max_y = y
         if y < self.db.min_y:
             self.db.min_y = y
-        self.db.rooms[(x,y)] = room
+        self.db.rooms[(x, y)] = room
         room.db.map = self
-        

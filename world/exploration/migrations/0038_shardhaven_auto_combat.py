@@ -8,13 +8,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0037_shardhaven_weight_no_treasure_backtrack'),
+        ("exploration", "0037_shardhaven_weight_no_treasure_backtrack"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhaven',
-            name='auto_combat',
-            field=models.BooleanField(default=False, verbose_name=b'Manage Combat Automatically'),
+            model_name="shardhaven",
+            name="auto_combat",
+            field=models.BooleanField(
+                default=False, verbose_name=b"Manage Combat Automatically"
+            ),
         ),
     ]

@@ -10,6 +10,7 @@ class Mask(Wearable):
     Wearable mask that replaces name with 'Someone wearing <short desc> mask'.
     Also grants a temp_desc. Charges equal to quality, loses a charge when worn.
     """
+
     def at_object_creation(self):
         """
         Run at Wearable creation.
@@ -32,7 +33,9 @@ class Mask(Wearable):
         self.wear_mask(wearer)
         self.degrade_mask()
         if wearer.additional_desc:
-            wearer.msg("{yYou currently have a +tempdesc set, which you may want to remove with +tempdesc.{n")
+            wearer.msg(
+                "{yYou currently have a +tempdesc set, which you may want to remove with +tempdesc.{n"
+            )
         super(Mask, self).at_post_wear(wearer)
 
     def degrade_mask(self):
@@ -63,9 +66,11 @@ class DisguiseKit(Consumable):
     """
     morestoof
     """
+
     def check_target(self, target, caller):
         """
         Determines if a target is valid.
         """
         from evennia.utils.utils import inherits_from
+
         return inherits_from(target, self.valid_typeclass_path)

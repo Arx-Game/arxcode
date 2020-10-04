@@ -9,49 +9,88 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0031_auto_20180804_2115'),
-        ('objects', '0009_remove_objectdb_db_player'),
-        ('fashion', '0001_initial'),
+        ("dominion", "0031_auto_20180804_2115"),
+        ("objects", "0009_remove_objectdb_db_player"),
+        ("fashion", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='FashionOutfit',
+            name="FashionOutfit",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=80, unique=True)),
-                ('db_date_created', models.DateTimeField(auto_now_add=True)),
-                ('archived', models.BooleanField(default=False)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=80, unique=True)),
+                ("db_date_created", models.DateTimeField(auto_now_add=True)),
+                ("archived", models.BooleanField(default=False)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='ModusOrnamenta',
+            name="ModusOrnamenta",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('slot', models.CharField(blank=True, max_length=80, null=True)),
-                ('fashion_item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='objects.ObjectDB')),
-                ('fashion_outfit', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='fashion.FashionOutfit')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("slot", models.CharField(blank=True, max_length=80, null=True)),
+                (
+                    "fashion_item",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="objects.ObjectDB",
+                    ),
+                ),
+                (
+                    "fashion_outfit",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="fashion.FashionOutfit",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='fashionoutfit',
-            name='fashion_items',
-            field=models.ManyToManyField(blank=True, through='fashion.ModusOrnamenta', to='objects.ObjectDB'),
+            model_name="fashionoutfit",
+            name="fashion_items",
+            field=models.ManyToManyField(
+                blank=True, through="fashion.ModusOrnamenta", to="objects.ObjectDB"
+            ),
         ),
         migrations.AddField(
-            model_name='fashionoutfit',
-            name='owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='fashion_outfits', to='dominion.PlayerOrNpc'),
+            model_name="fashionoutfit",
+            name="owner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="fashion_outfits",
+                to="dominion.PlayerOrNpc",
+            ),
         ),
         migrations.AddField(
-            model_name='fashionsnapshot',
-            name='outfit',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='fashion_snapshots', to='fashion.FashionOutfit'),
+            model_name="fashionsnapshot",
+            name="outfit",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="fashion_snapshots",
+                to="fashion.FashionOutfit",
+            ),
         ),
     ]

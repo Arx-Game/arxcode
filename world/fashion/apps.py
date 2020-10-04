@@ -5,4 +5,4 @@ from django.apps import AppConfig
 
 
 class FashionConfig(AppConfig):
-    name = 'world.fashion'
+    name = "world.fashion"

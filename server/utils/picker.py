@@ -2,7 +2,6 @@ import random
 
 
 class WeightedPicker(object):
-
     def __init__(self):
         self.choices = []
 

@@ -1,7 +1,14 @@
 from .conditional_parser import ConditionalHandler
 from web.character.models import Clue
 from evennia.objects.models import ObjectDB
-from .models import ClueCollection, MagicBucket, Effect, Practitioner, Alignment, Affinity
+from .models import (
+    ClueCollection,
+    MagicBucket,
+    Effect,
+    Practitioner,
+    Alignment,
+    Affinity,
+)
 from server.utils.arx_utils import inform_staff
 import json
 import sys
@@ -16,7 +23,7 @@ class CodedEffect(object):
         if not serialized_dict:
             return None
 
-        target_class_name = serialized_dict['__class']
+        target_class_name = serialized_dict["__class"]
         if not target_class_name:
             return None
 
@@ -24,7 +31,7 @@ class CodedEffect(object):
         if not target_class:
             return None
 
-        del serialized_dict['__class']
+        del serialized_dict["__class"]
         return target_class(**serialized_dict)
 
     @classmethod
@@ -32,9 +39,22 @@ class CodedEffect(object):
         serialized_dict = json.loads(serialized_string)
         return cls.load(serialized_dict)
 
-    def __init__(self, lead=None, participants=None, target_string=None, target_obj=None,
-                 parameters=None, conditions=None, strength=10, quiet=False, successes=0,
-                 performed=False, finalized=False, alignment=None, affinity=None):
+    def __init__(
+        self,
+        lead=None,
+        participants=None,
+        target_string=None,
+        target_obj=None,
+        parameters=None,
+        conditions=None,
+        strength=10,
+        quiet=False,
+        successes=0,
+        performed=False,
+        finalized=False,
+        alignment=None,
+        affinity=None,
+    ):
 
         if isinstance(lead, int):
             self.lead = Practitioner.by_id(lead)
@@ -94,8 +114,12 @@ class CodedEffect(object):
         return None
 
     def valid_conditions(self):
-        require = self.conditions.check(self.lead, self.target_obj, "require", default=True)
-        prohibit = self.conditions.check(self.lead, self.target_obj, "prohibit", default=False)
+        require = self.conditions.check(
+            self.lead, self.target_obj, "require", default=True
+        )
+        prohibit = self.conditions.check(
+            self.lead, self.target_obj, "prohibit", default=False
+        )
 
         return require and not prohibit
 
@@ -107,8 +131,13 @@ class CodedEffect(object):
     def msg_room(self, text, guaranteed=False, mundane=False):
         if not self.quiet:
             for obj in self.lead.location.contents:
-                if hasattr(obj, 'msg_magic'):
-                    obj.msg_magic(text, strength=self.strength, guaranteed=guaranteed, mundane=mundane)
+                if hasattr(obj, "msg_magic"):
+                    obj.msg_magic(
+                        text,
+                        strength=self.strength,
+                        guaranteed=guaranteed,
+                        mundane=mundane,
+                    )
 
     def results_string(self):
         return None
@@ -132,42 +161,41 @@ class CodedEffect(object):
         if not result:
             result = {}
 
-        result['__class'] = self.__class__.__name__
+        result["__class"] = self.__class__.__name__
 
         if self.lead:
-            result['lead'] = self.lead.id
+            result["lead"] = self.lead.id
 
-        result['participants'] = [part.id for part in self.participants]
+        result["participants"] = [part.id for part in self.participants]
 
         if self.target_string:
-            result['target_string'] = self.target_string
+            result["target_string"] = self.target_string
 
         if self.target_obj:
-            result['target_obj'] = self.target_obj.id
+            result["target_obj"] = self.target_obj.id
 
         if self.parameters:
-            result['parameters'] = self.parameters
+            result["parameters"] = self.parameters
 
         if self.conditions:
-            result['conditions'] = str(self.conditions)
+            result["conditions"] = str(self.conditions)
 
         if self.affinity:
-            result['affinity'] = self.affinity.id
+            result["affinity"] = self.affinity.id
 
         if self.alignment:
-            result['alignment'] = self.alignment.id
+            result["alignment"] = self.alignment.id
 
-        result['strength'] = self.strength
-        result['quiet'] = self.quiet
-        result['successes'] = self.successes
-        result['performed'] = self.performed
-        result['finalized'] = self.finalized
+        result["strength"] = self.strength
+        result["quiet"] = self.quiet
+        result["successes"] = self.successes
+        result["performed"] = self.performed
+        result["finalized"] = self.finalized
 
         return json.dumps(result)
 
 
 class SightEffect(CodedEffect):
-
     def __init__(self, sight_result=None, *args, **kwargs):
         super(SightEffect, self).__init__(*args, **kwargs)
         self.sight_result = sight_result
@@ -193,7 +221,11 @@ class SightEffect(CodedEffect):
     def finalize(self):
         super(SightEffect, self).finalize()
 
-        self.msg("Gazing at {}, you perceive: {}".format(self.target_obj.name, self.sight_result))
+        self.msg(
+            "Gazing at {}, you perceive: {}".format(
+                self.target_obj.name, self.sight_result
+            )
+        )
 
     def results_string(self):
         if not self.performed:
@@ -206,13 +238,12 @@ class SightEffect(CodedEffect):
             result = {}
 
         if self.sight_result:
-            result['sight_result'] = self.sight_result
+            result["sight_result"] = self.sight_result
 
         return super(SightEffect, self).serialize(result)
 
 
 class ClueCollectionEffect(CodedEffect):
-
     def __init__(self, *args, **kwargs):
         super(ClueCollectionEffect, self).__init__(*args, **kwargs)
         self.cached_clue = None
@@ -280,11 +311,12 @@ class ClueCollectionEffect(CodedEffect):
             self.target_collection.save()
 
     def results_string(self):
-        return "'{}' added to collection '{}'.".format(self.target_clue.name, self.target_collection.name)
+        return "'{}' added to collection '{}'.".format(
+            self.target_clue.name, self.target_collection.name
+        )
 
 
 class BucketEffect(CodedEffect):
-
     def __init__(self, final_value=None, *args, **kwargs):
         super(BucketEffect, self).__init__(*args, **kwargs)
         self.cached_bucket = None
@@ -358,14 +390,16 @@ class BucketEffect(CodedEffect):
         if not self.performed:
             return None
 
-        return "{} added to bucket '{}'.".format(self.final_value, self.target_bucket.name)
+        return "{} added to bucket '{}'.".format(
+            self.final_value, self.target_bucket.name
+        )
 
     def serialize(self, result=None):
         if not result:
             result = {}
 
         if self.final_value:
-            result['final_value'] = self.final_value
+            result["final_value"] = self.final_value
 
         return super(BucketEffect, self).serialize(result)
 
@@ -400,6 +434,7 @@ class DamageEffect(CodedEffect):
     def perform(self):
         """Rolls the damage we'll do"""
         from random import randint
+
         super(DamageEffect, self).perform()
         if self.parameters:
             params = self.parameters.split(",")
@@ -410,19 +445,31 @@ class DamageEffect(CodedEffect):
             if "fake_damage" in params:
                 self.real_damage = False
             if "aoe" in params:
-                self.targets = list(set(self.lead.character.combat.state.targets + self.targets))
+                self.targets = list(
+                    set(self.lead.character.combat.state.targets + self.targets)
+                )
         self.real_damage = self.real_damage and self.combat.ndb.affect_real_damage
         self.can_kill = self.can_kill and self.real_damage
         # big range. So very minor spell of strength 10 does between 2-44 damage.
-        self.damage = randint(self.strength//4, (self.strength + 1) * 4)
-        self.attack_tags = [str(ob) for ob in (self.alignment, self.affinity) if ob] + ["magic"]
+        self.damage = randint(self.strength // 4, (self.strength + 1) * 4)
+        self.attack_tags = [str(ob) for ob in (self.alignment, self.affinity) if ob] + [
+            "magic"
+        ]
 
     def finalize(self):
         from typeclasses.scripts.combat.attacks import Attack
+
         super(DamageEffect, self).finalize()
-        attack = Attack(targets=self.targets, affect_real_dmg=self.real_damage, damage=self.damage,
-                        use_mitigation=self.use_mitigation, attack_tags=self.attack_tags,
-                        can_kill=self.can_kill, story=self.message, inflictor=self.lead.character)
+        attack = Attack(
+            targets=self.targets,
+            affect_real_dmg=self.real_damage,
+            damage=self.damage,
+            use_mitigation=self.use_mitigation,
+            attack_tags=self.attack_tags,
+            can_kill=self.can_kill,
+            story=self.message,
+            inflictor=self.lead.character,
+        )
         attack.execute()
 
 
@@ -440,14 +487,18 @@ class AnimaRitualEffect(CodedEffect):
 
     def check_for_other_errors(self):
         if len(self.story) < self.MIN_LENGTH:
-            return ("That's too short for a story of your ritual. " 
-                    "Please enter a story at least %s characters long." % self.MIN_LENGTH)
+            return (
+                "That's too short for a story of your ritual. "
+                "Please enter a story at least %s characters long." % self.MIN_LENGTH
+            )
 
     def perform(self):
         super(AnimaRitualEffect, self).perform()
         num_rituals = self.lead.anima_rituals_this_week + 1
-        self.final_value = self.strength/num_rituals
-        inform_staff("Anima Ritual story by %s: %s" % (self.lead.character.key, self.story))
+        self.final_value = self.strength / num_rituals
+        inform_staff(
+            "Anima Ritual story by %s: %s" % (self.lead.character.key, self.story)
+        )
 
     def finalize(self):
         super(AnimaRitualEffect, self).finalize()
@@ -456,6 +507,7 @@ class AnimaRitualEffect(CodedEffect):
 
     def results_string(self):
         return "{} gains {} anima.".format(self.lead.character, self.final_value)
+
 
 # TODO: All the other handlers, gods help me.
 

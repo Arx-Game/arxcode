@@ -27,7 +27,7 @@ class CombatHandler(object):
     self.block_flee - anyone we're stopping from fleeing
     self.covering_targs - who we're helping flee
     self.covered_by - people who are helping us flee
-    
+
     Stuff about how we attack:
     self.can_be_blocked, self.can_be_dodged, self.can_be_parried - all about our attack type
     opposites are self.can_block, self.can_dodge, self.can_parry.
@@ -36,6 +36,7 @@ class CombatHandler(object):
     self.can_cleave - first attack affects all targets
     self.switch_chance - percent chance of switching targets
     """
+
     def __init__(self, character):
         self.state = None
         self.char = character
@@ -55,7 +56,7 @@ class CombatHandler(object):
             self.plural_name = character.name
             self.switch_chance = 0
         self.shield = character.db.shield
-        if hasattr(character, 'weapondata'):
+        if hasattr(character, "weapondata"):
             self.setup_weapon(character.weapondata)
         else:
             self.setup_weapon()
@@ -112,23 +113,23 @@ class CombatHandler(object):
         self.weapon = weapon
         if weapon:  # various optional weapon fields w/default values
             self.combat_style = self.char.db.combat_style or "melee"
-            self.attack_skill = self.weapon.get('attack_skill', 'brawl')
-            self.attack_stat = self.weapon.get('attack_stat', 'dexterity')
-            self.damage_stat = self.weapon.get('damage_stat', 'strength')
-            self.weapon_damage = self.weapon.get('weapon_damage', 0)
-            self.attack_type = self.weapon.get('attack_type', 'melee')
-            self.can_be_parried = self.weapon.get('can_be_parried', True)
-            self.can_be_blocked = self.weapon.get('can_be_blocked', True)
-            self.can_be_dodged = self.weapon.get('can_be_dodged', True)
-            self.can_parry = self.weapon.get('can_parry', True)
-            self.can_riposte = self.weapon.get('can_riposte', True)
-            self.difficulty_mod = self.weapon.get('difficulty_mod', 0)
+            self.attack_skill = self.weapon.get("attack_skill", "brawl")
+            self.attack_stat = self.weapon.get("attack_stat", "dexterity")
+            self.damage_stat = self.weapon.get("damage_stat", "strength")
+            self.weapon_damage = self.weapon.get("weapon_damage", 0)
+            self.attack_type = self.weapon.get("attack_type", "melee")
+            self.can_be_parried = self.weapon.get("can_be_parried", True)
+            self.can_be_blocked = self.weapon.get("can_be_blocked", True)
+            self.can_be_dodged = self.weapon.get("can_be_dodged", True)
+            self.can_parry = self.weapon.get("can_parry", True)
+            self.can_riposte = self.weapon.get("can_riposte", True)
+            self.difficulty_mod = self.weapon.get("difficulty_mod", 0)
             if self.shield:
                 self.can_block = self.shield.db.can_block or False
             else:
                 self.can_block = False
             self.can_dodge = True
-            self._flat_damage_bonus = self.weapon.get('flat_damage', 0)
+            self._flat_damage_bonus = self.weapon.get("flat_damage", 0)
             # self.reach = self.weapon.get('reach', 1)
             # self.minimum_range = self.weapon.get('minimum_range', 0)
         else:  # unarmed combat
@@ -142,7 +143,9 @@ class CombatHandler(object):
             self.can_be_blocked = True
             self.can_be_dodged = True
             self.can_parry = False
-            self.can_riposte = True  # can't block swords with hands, but can punch someone
+            self.can_riposte = (
+                True  # can't block swords with hands, but can punch someone
+            )
             self.can_block = False
             self.can_dodge = True
             # possibly use these in future
@@ -167,27 +170,37 @@ class CombatHandler(object):
         except AttributeError:
             armor_penalty = 0
         fdiff += armor_penalty
-        diff_mod = "{g%s{n" % self.difficulty_mod if self.difficulty_mod < 0 else "{r%s{n" % self.difficulty_mod
+        diff_mod = (
+            "{g%s{n" % self.difficulty_mod
+            if self.difficulty_mod < 0
+            else "{r%s{n" % self.difficulty_mod
+        )
         atk_mod = self.attack_modifier
         atk_modifier_string = "Attack Roll Mod: "
-        atk_modifier_string += "{g%s{n" % atk_mod if atk_mod >= 0 else "{r%s{n" % atk_mod
+        atk_modifier_string += (
+            "{g%s{n" % atk_mod if atk_mod >= 0 else "{r%s{n" % atk_mod
+        )
         def_mod = self.defense_modifier
         def_modifier_string = "Defense Roll Mod: "
-        def_modifier_string += "{g%s{n" % def_mod if def_mod >= 0 else "{r%s{n" % def_mod
-        smsg = \
-            """
+        def_modifier_string += (
+            "{g%s{n" % def_mod if def_mod >= 0 else "{r%s{n" % def_mod
+        )
+        smsg = """
                     {wStatus{n
 {w==================================================================={n
 {wHealth:{n %(hp)-25s {wFatigue Level:{n %(fatigue)-20s
 {wDifficulty of Fatigue Rolls:{n %(fdiff)-4s {wStatus:{n %(status)-20s
 {wCombat Stance:{n %(stance)-25s
 {wPenalty to rolls from wounds:{n %(wound)s
-           """ % {'hp': hp, 'fatigue': self.state.fatigue_penalty if self.state else 0, 'fdiff': fdiff,
-                  'status': self.state.status if self.state else "active", 'stance': self.stance,
-                  'wound': self.wound_penalty,
-                  }
-        omsg = \
-            """
+           """ % {
+            "hp": hp,
+            "fatigue": self.state.fatigue_penalty if self.state else 0,
+            "fdiff": fdiff,
+            "status": self.state.status if self.state else "active",
+            "stance": self.stance,
+            "wound": self.wound_penalty,
+        }
+        omsg = """
                     {wOffensive stats{n
 {w==================================================================={n
 {wWeapon:{n %(weapon)-20s
@@ -197,29 +210,46 @@ class CombatHandler(object):
 {wDifficulty Mod:{n %(dmod)-20s {wCan Be Parried:{n %(bparried)-20s
 {wCan Be Blocked:{n %(bblocked)-16s {wCan Be Dodged:{n %(bdodged)-20s
 {w%(atkmodstring)-20s
-           """ % {'weapon': weapon, 'weapon_damage': self.weapon_damage, 'astat': self.attack_stat,
-                  'dstat': self.damage_stat, 'askill': self.attack_skill, 'atype': self.attack_type,
-                  'dmod': diff_mod, 'bparried': self.can_be_parried,
-                  'bblocked': self.can_be_blocked, 'bdodged': self.can_be_dodged,
-                  'flat': self.flat_damage_bonus, 'atkmodstring': atk_modifier_string,
-                  }
-        dmsg = \
-            """
+           """ % {
+            "weapon": weapon,
+            "weapon_damage": self.weapon_damage,
+            "astat": self.attack_stat,
+            "dstat": self.damage_stat,
+            "askill": self.attack_skill,
+            "atype": self.attack_type,
+            "dmod": diff_mod,
+            "bparried": self.can_be_parried,
+            "bblocked": self.can_be_blocked,
+            "bdodged": self.can_be_dodged,
+            "flat": self.flat_damage_bonus,
+            "atkmodstring": atk_modifier_string,
+        }
+        dmsg = """
                     {wDefensive stats{n
 {w==================================================================={n
 {wMitigation:{n %(mit)-20s {wPenalty to Fatigue Rolls:{n %(apen)s
 {wCan Parry:{n %(cparry)-21s {wCan Riposte:{n %(criposte)s
 {wCan Block:{n %(cblock)-21s {wCan Dodge:{n %(cdodge)s
 {w%(defmodstring)-36s {wSoak Rating:{n %(soak)s""" % {
-                'mit': self.armor, 'defmodstring': def_modifier_string,
-                'apen': armor_penalty, 'cparry': self.can_parry,
-                'criposte': self.can_riposte, 'cblock': self.can_block,
-                'cdodge': self.can_dodge, 'soak': self.soak}
+            "mit": self.armor,
+            "defmodstring": def_modifier_string,
+            "apen": armor_penalty,
+            "cparry": self.can_parry,
+            "criposte": self.can_riposte,
+            "cblock": self.can_block,
+            "cdodge": self.can_dodge,
+            "soak": self.soak,
+        }
         if self.can_parry:
-            dmsg += "\n{wParry Skill:{n %-19s {wParry Stat:{n %s" % (self.attack_skill, self.attack_stat)
+            dmsg += "\n{wParry Skill:{n %-19s {wParry Stat:{n %s" % (
+                self.attack_skill,
+                self.attack_stat,
+            )
         if self.can_dodge:
-            dmsg += "\n{wDodge Skill:{n %-19s {wDodge Stat:{n %s" % (self.char.traits.get_skill_value("dodge"),
-                                                                     "dexterity")
+            dmsg += "\n{wDodge Skill:{n %-19s {wDodge Stat:{n %s" % (
+                self.char.traits.get_skill_value("dodge"),
+                "dexterity",
+            )
             dmsg += "\n{wDodge Penalty:{n %s" % self.dodge_penalty
         msg = smsg + omsg + dmsg
         return msg
@@ -259,11 +289,11 @@ class CombatHandler(object):
     def singular_name(self):
         """Single name for multinpcs"""
         return self.base_name
-        
+
     @property
     def modifier_tags(self):
         """Returns tags for our attack or that they're physical and mundane"""
-        tags = self.char.modifier_tags + self.weapon.get('modifier_tags', [])
+        tags = self.char.modifier_tags + self.weapon.get("modifier_tags", [])
         return tags or ["mundane"]
 
     @property
@@ -273,19 +303,23 @@ class CombatHandler(object):
         1 per 10% damage. So over +10 diff if we're holding on from uncon.
         """
         # if we're a multi-npc, only the damaged one gets wound penalties
-        if self.state and self.multiple and self.state.remaining_attacks != self.state.num_attacks:
+        if (
+            self.state
+            and self.multiple
+            and self.state.remaining_attacks != self.state.num_attacks
+        ):
             return 0
         # noinspection PyBroadException
         try:
             dmg = self.char.db.damage or 0
             base = int((dmg * 100.0) / (self.char.max_hp * 10.0))
-            base -= (self.char.boss_rating * 10)
+            base -= self.char.boss_rating * 10
             if base < 0:
                 base = 0
             return base
         except Exception:
             return 0
-            
+
     @property
     def armor(self):
         """Base character armor plus anything from state"""
@@ -293,7 +327,7 @@ class CombatHandler(object):
         if self.state:
             value += self.state.mitigation_modifier
         return value
-    
+
     @property
     def flat_damage_bonus(self):
         """Flat damage bonus from weapon plus anything from state"""
@@ -306,7 +340,7 @@ class CombatHandler(object):
     def attack_modifier(self):
         """Our current attack modifier, including temporary modifiers from our combat state, if any."""
         value = self.char.attack_modifier
-        value -= (self.wound_penalty/2)
+        value -= self.wound_penalty / 2
         if self.state:
             value += self.state.total_attack_modifier
         return value
@@ -347,7 +381,7 @@ class CombatHandler(object):
         self.can_cleave = not self.can_cleave
         if caller:
             caller.msg("%s has cleaving set to: %s" % (self, self.can_cleave))
-            
+
     def set_switch_chance(self, val, caller=None):
         """Sets the chance for an npc to switch targets between multiple attacks."""
         try:
@@ -357,7 +391,10 @@ class CombatHandler(object):
             self.switch_chance = val
             msg = "%s will switch targets %s percent of the time." % (self, val)
         except ValueError:
-            msg = "Use a number between 0-100 to adjust chance of switching targets for %s." % self
+            msg = (
+                "Use a number between 0-100 to adjust chance of switching targets for %s."
+                % self
+            )
         if caller:
             caller.msg(msg)
 
@@ -392,9 +429,12 @@ class CombatHandler(object):
         are negative values, as they reduce difficulties to 0 or less.
         """
         from .attacks import Attack
+
         if self.combat:
-            kwargs['risk'] = self.combat.ndb.risk
-        kwargs['armor_pierce_bonus'] = self.armor_pierce_modifier + kwargs.get('armor_pierce_bonus', 0)
+            kwargs["risk"] = self.combat.ndb.risk
+        kwargs["armor_pierce_bonus"] = self.armor_pierce_modifier + kwargs.get(
+            "armor_pierce_bonus", 0
+        )
         attack = Attack(*args, **kwargs)
         is_riposte = kwargs.get("is_riposte", False)
         try:
@@ -407,7 +447,9 @@ class CombatHandler(object):
         if self.state:
             self.state.lost_turn_counter += attack.lost_turn_penalty
         free_attack = kwargs.get("free_attack", False)
-        if not free_attack and self.state:  # situations where a character gets a 'free' attack
+        if (
+            not free_attack and self.state
+        ):  # situations where a character gets a 'free' attack
             self.state.take_action(self.state.remaining_attacks)
             if self.state:  # could have left combat based on that action
                 self.state.roll_fatigue()
@@ -418,7 +460,7 @@ class CombatHandler(object):
         if self.state:
             return self.state.get_defenders()
         return self.char.db.defenders
-                    
+
     def do_flank(self, target, sneaking=False, invis=False, attack_guard=True):
         """
         Attempts to circle around a character. If successful, we get an
@@ -427,8 +469,10 @@ class CombatHandler(object):
         attacker = self.char
         combat = self.combat
         defenders = self.get_defenders()
-        message = "%s attempts to move around %s to attack them while they are vulnerable. " % (attacker.name,
-                                                                                                target.name)
+        message = (
+            "%s attempts to move around %s to attack them while they are vulnerable. "
+            % (attacker.name, target.name)
+        )
         if defenders:
             # guards, have to go through them first
             for guard in defenders:
@@ -439,22 +483,34 @@ class CombatHandler(object):
                         combat.msg(message)
                         combat.next_character_turn()
                         return
-                    message += "%s stops %s but is attacked." % (guard.name, attacker.name)
+                    message += "%s stops %s but is attacked." % (
+                        guard.name,
+                        attacker.name,
+                    )
                     combat.msg(message)
                     def_pen = -5 + combat_settings.STANCE_DEF_MOD[g_fite.stance]
-                    self.do_attack(guard, attacker=attacker, attack_penalty=5, defense_penalty=def_pen)
+                    self.do_attack(
+                        guard,
+                        attacker=attacker,
+                        attack_penalty=5,
+                        defense_penalty=def_pen,
+                    )
                     return
         t_fite = target.combat
         if t_fite.sense_ambush(attacker, sneaking, invis) > 0:
             message += "%s moves in time to not be vulnerable." % target
             combat.msg(message)
             def_pen = -5 + combat_settings.STANCE_DEF_MOD[t_fite.stance]
-            self.do_attack(target, attacker=attacker, attack_penalty=5, defense_penalty=def_pen)
+            self.do_attack(
+                target, attacker=attacker, attack_penalty=5, defense_penalty=def_pen
+            )
             return
         message += "They succeed."
         self.msg(message)
         def_pen = 5 + combat_settings.STANCE_DEF_MOD[t_fite.stance]
-        self.do_attack(target, attacker=attacker, attack_penalty=-5, defense_penalty=def_pen)
+        self.do_attack(
+            target, attacker=attacker, attack_penalty=-5, defense_penalty=def_pen
+        )
 
     def change_stance(self, new_stance):
         """

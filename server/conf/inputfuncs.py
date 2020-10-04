@@ -28,7 +28,9 @@ as argument.
 
 from evennia.commands.cmdhandler import cmdhandler
 from evennia.server.inputfuncs import _IDLE_COMMAND
+
 # All global functions are inputfuncs available to process inputs
+
 
 def json(session, *args, **kwargs):
     """
@@ -43,8 +45,8 @@ def json(session, *args, **kwargs):
 
     cmd = args[0] if args else None
 
-    #explicitly check for None since cmd can be an empty string, which is
-    #also valid
+    # explicitly check for None since cmd can be an empty string, which is
+    # also valid
     if cmd is None:
         return
     # this is treated as a command input
@@ -56,12 +58,14 @@ def json(session, *args, **kwargs):
         # nick replacement
         puppet = session.puppet
         if puppet:
-            cmd = puppet.nicks.nickreplace(cmd,
-                          categories=("inputline", "channel"), include_player=True)
+            cmd = puppet.nicks.nickreplace(
+                cmd, categories=("inputline", "channel"), include_player=True
+            )
         else:
-            cmd = session.player.nicks.nickreplace(cmd,
-                        categories=("inputline", "channel"), include_player=False)
+            cmd = session.player.nicks.nickreplace(
+                cmd, categories=("inputline", "channel"), include_player=False
+            )
 
-    kwargs['json'] = True
+    kwargs["json"] = True
     cmdhandler(session, cmd, callertype="session", session=session, **kwargs)
     session.update_session_counters()

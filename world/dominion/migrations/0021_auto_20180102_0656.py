@@ -8,24 +8,24 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0020_auto_20180102_0655'),
+        ("dominion", "0020_auto_20180102_0655"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='domain',
-            name='land',
+            model_name="domain",
+            name="land",
         ),
         migrations.RemoveField(
-            model_name='landmark',
-            name='land',
+            model_name="landmark",
+            name="land",
         ),
         migrations.RemoveField(
-            model_name='plotroom',
-            name='land',
+            model_name="plotroom",
+            name="land",
         ),
         migrations.RemoveField(
-            model_name='shardhaven',
-            name='land',
+            model_name="shardhaven",
+            name="land",
         ),
     ]

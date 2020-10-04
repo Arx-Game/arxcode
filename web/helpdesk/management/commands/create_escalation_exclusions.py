@@ -25,41 +25,46 @@ class Command(BaseCommand):
         BaseCommand.__init__(self)
 
         self.option_list += (
+            make_option("--days", "-d", help="Days of week (monday, tuesday, etc)"),
             make_option(
-                '--days', '-d',
-                help='Days of week (monday, tuesday, etc)'),
-            make_option(
-                '--occurrences', '-o',
-                type='int',
+                "--occurrences",
+                "-o",
+                type="int",
                 default=1,
-                help='Occurrences: How many weeks ahead to exclude this day'),
+                help="Occurrences: How many weeks ahead to exclude this day",
+            ),
             make_option(
-                '--queues', '-q',
-                help='Queues to include (default: all). Use queue slugs'),
+                "--queues",
+                "-q",
+                help="Queues to include (default: all). Use queue slugs",
+            ),
             make_option(
-                '--escalate-verbosely', '-x',
-                action='store_true',
+                "--escalate-verbosely",
+                "-x",
+                action="store_true",
                 default=False,
-                help='Display a list of dates excluded'),
-            )
+                help="Display a list of dates excluded",
+            ),
+        )
 
     def handle(self, *args, **options):
-        days = options['days']
-        occurrences = options['occurrences']
+        days = options["days"]
+        occurrences = options["occurrences"]
         verbose = False
-        queue_slugs = options['queues']
+        queue_slugs = options["queues"]
         queues = []
 
-        if options['escalate-verbosely']:
+        if options["escalate-verbosely"]:
             verbose = True
 
         # this should already be handled by optparse
-        if not occurrences: occurrences = 1
+        if not occurrences:
+            occurrences = 1
         if not (days and occurrences):
-            raise CommandError('One or more occurrences must be specified.')
+            raise CommandError("One or more occurrences must be specified.")
 
         if queue_slugs is not None:
-            queue_set = queue_slugs.split(',')
+            queue_set = queue_slugs.split(",")
             for queue in queue_set:
                 try:
                     q = Queue.objects.get(slug__exact=queue)
@@ -67,22 +72,24 @@ class Command(BaseCommand):
                     raise CommandError("Queue %s does not exist." % queue)
                 queues.append(q)
 
-        create_exclusions(days=days, occurrences=occurrences, verbose=verbose, queues=queues)
+        create_exclusions(
+            days=days, occurrences=occurrences, verbose=verbose, queues=queues
+        )
 
 
 day_names = {
-    'monday': 0,
-    'tuesday': 1,
-    'wednesday': 2,
-    'thursday': 3,
-    'friday': 4,
-    'saturday': 5,
-    'sunday': 6,
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+    "saturday": 5,
+    "sunday": 6,
 }
 
 
 def create_exclusions(days, occurrences, verbose, queues):
-    days = days.split(',')
+    days = days.split(",")
     for day in days:
         day_name = day
         day = day_names[day]
@@ -91,7 +98,9 @@ def create_exclusions(days, occurrences, verbose, queues):
         while i < occurrences:
             if day == workdate.weekday():
                 if EscalationExclusion.objects.filter(date=workdate).count() == 0:
-                    esc = EscalationExclusion(name='Auto Exclusion for %s' % day_name, date=workdate)
+                    esc = EscalationExclusion(
+                        name="Auto Exclusion for %s" % day_name, date=workdate
+                    )
                     esc.save()
 
                     if verbose:
@@ -114,10 +123,12 @@ def usage():
     print " --verbose, -v: Display a list of dates excluded"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # This script can be run from the command-line or via Django's manage.py.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'd:o:q:v', ['days=', 'occurrences=', 'verbose', 'queues='])
+        opts, args = getopt.getopt(
+            sys.argv[1:], "d:o:q:v", ["days=", "occurrences=", "verbose", "queues="]
+        )
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -129,22 +140,23 @@ if __name__ == '__main__':
     queues = []
 
     for o, a in opts:
-        if o in ('-x', '--escalate-verbosely'):
+        if o in ("-x", "--escalate-verbosely"):
             verbose = True
-        if o in ('-d', '--days'):
+        if o in ("-d", "--days"):
             days = a
-        if o in ('-q', '--queues'):
+        if o in ("-q", "--queues"):
             queue_slugs = a
-        if o in ('-o', '--occurrences'):
+        if o in ("-o", "--occurrences"):
             occurrences = int(a)
 
-    if not occurrences: occurrences = 1
+    if not occurrences:
+        occurrences = 1
     if not (days and occurrences):
         usage()
         sys.exit(2)
 
     if queue_slugs is not None:
-        queue_set = queue_slugs.split(',')
+        queue_set = queue_slugs.split(",")
         for queue in queue_set:
             try:
                 q = Queue.objects.get(slug__exact=queue)
@@ -153,4 +165,6 @@ if __name__ == '__main__':
                 sys.exit(2)
             queues.append(q)
 
-    create_exclusions(days=days, occurrences=occurrences, verbose=verbose, queues=queues)
+    create_exclusions(
+        days=days, occurrences=occurrences, verbose=verbose, queues=queues
+    )

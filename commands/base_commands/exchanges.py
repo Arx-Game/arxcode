@@ -13,6 +13,7 @@ class TradeError(Exception):
 class PersonalTradeInProgress:
     HEADER_MSG = "|w[|nPersonal Trade|w]|n "
     FAIL_MSG = "Could not finish the exchange."
+
     def __init__(self, caller, target):
         self.caller = caller
         self.target = target
@@ -39,7 +40,9 @@ class PersonalTradeInProgress:
         for trader in (caller, target):
             if trader.ndb.personal_trade_in_progress:
                 if trader != caller:
-                    target.msg(f"{cls.HEADER_MSG}{caller} wants to trade, but you have a trade in progress.")
+                    target.msg(
+                        f"{cls.HEADER_MSG}{caller} wants to trade, but you have a trade in progress."
+                    )
                 raise TradeError(f"{trader} has a trade already in progress.")
         trade = cls(caller, target)
         trade.message_participants(
@@ -54,13 +57,22 @@ class PersonalTradeInProgress:
     def display_trade(self):
         "Returns a string about the overall state of the trade."
         msg = self.HEADER_MSG + "\n".join(
-            (self.assemble_manifest(self.caller), self.assemble_manifest(self.target),
-             (self.assemble_statement(self.caller) + self.assemble_statement(self.target))))
+            (
+                self.assemble_manifest(self.caller),
+                self.assemble_manifest(self.target),
+                (
+                    self.assemble_statement(self.caller)
+                    + self.assemble_statement(self.target)
+                ),
+            )
+        )
         return text_box(msg)
 
     def assemble_manifest(self, trader):
         "Returns a string about what this trader is offering."
-        money = f"|c{self.silver[trader]}|n silver" if self.silver[trader] else "no money"
+        money = (
+            f"|c{self.silver[trader]}|n silver" if self.silver[trader] else "no money"
+        )
         txt = f"{self.names[trader]} offers {money} and"
         items = [str(ob) for ob in self.items[trader]]
         if items:
@@ -142,7 +154,9 @@ class PersonalTradeInProgress:
         "Resets agreements if a trader cannot afford their offered silver."
         for trader in (self.caller, self.target):
             if self.silver[trader] > trader.currency:
-                self.reset_agreements(f"{self.names[trader]} does not have enough silver to complete the trade.")
+                self.reset_agreements(
+                    f"{self.names[trader]} does not have enough silver to complete the trade."
+                )
                 raise TradeError(self.FAIL_MSG)
 
     def check_can_move_items(self):
@@ -200,6 +214,7 @@ class CmdTrade(ArxCommand):
     order to complete the exchange. Display the current offer by
     using 'trade' command with no args or switches.
     """
+
     key = "trade"
     locks = "cmd:all()"
 
@@ -247,6 +262,7 @@ class CmdGive(ArxCommand):
     placing it in their inventory. give/resource does not require
     you to be in the same room.
     """
+
     key = "give"
     locks = "cmd:all()"
 
@@ -283,7 +299,9 @@ class CmdGive(ArxCommand):
         if "mats" in self.switches:
             lhslist = self.lhs.split(",")
             try:
-                mat = caller.player_ob.Dominion.assets.materials.get(type__name__iexact=lhslist[0])
+                mat = caller.player_ob.Dominion.assets.materials.get(
+                    type__name__iexact=lhslist[0]
+                )
                 amount = int(lhslist[1])
                 if amount < 1:
                     raise ValueError
@@ -333,8 +351,10 @@ class CmdGive(ArxCommand):
             target.player_ob.Dominion.assets.save()
             caller.player_ob.Dominion.assets.save()
             caller.msg("You give %s %s resources to %s." % (amount, rtype, target))
-            target.player_ob.inform("%s has given %s %s resources to you." % (caller, amount, rtype),
-                                    category="Resources")
+            target.player_ob.inform(
+                "%s has given %s %s resources to you." % (caller, amount, rtype),
+                category="Resources",
+            )
             return
         if args_are_currency(self.lhs):
             arglist = self.lhs.split()

@@ -11,14 +11,21 @@ from server.utils import arx_more
 from server.utils.arx_utils import dict_from_choices_field
 from server.utils.exceptions import ActionSubmissionError
 from web.character.models import Clue, Revelation
-from world.dominion.plots.models import (Plot, PlotAction, PlotActionAssistant, ActionOOCQuestion,
-                                         ActionRequirement, PlotUpdate)
+from world.dominion.plots.models import (
+    Plot,
+    PlotAction,
+    PlotActionAssistant,
+    ActionOOCQuestion,
+    ActionRequirement,
+    PlotUpdate,
+)
 from world.magic.models import Spell, SkillNode
 
 
 # noinspection PyUnresolvedReferences
 class ActionCommandMixin(object):
     """Mixin for shared methods between player @action command and staff @gm command."""
+
     def set_action_field(self, action, field_name, value, verbose_name=None):
         """Sets a field in a model with a value and provides command feedback."""
         setattr(action, field_name, value)
@@ -52,7 +59,7 @@ class ActionCommandMixin(object):
 class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     """
     A character's story actions that a GM responds to.
-    
+
     Usage:
         @action/newaction [<crisis #>=]<story of action>
         @action/tldr <action #>=<title>
@@ -74,7 +81,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         @action/toggletraitor <action #>
         @action/toggleattend <action #>
         @action/noscene <action #>
-        
+
     Creating /newaction costs Action Points (ap). Requires 'tldr' which is a
     short summary in a few words of the action, a category, stat/skill for
     the dice check (just pick whatever might be plausible, GMs can adjust it
@@ -85,20 +92,20 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     to accomplish. Use /submit after all options, when ready for GM review. GMs
     may require more info or ask you to edit with /setaction and /submit again.
     Categories: combat, scouting, support, diplomacy, sabotage, research.
-    
+
     With /invite you ask others to assist your action. They use /setaction or
-    /cancel, and require all the same fields except category. A covert action 
+    /cancel, and require all the same fields except category. A covert action
     can be added with /setsecret. Optional /traitor (and /toggletraitor) switch
-    makes your dice roll detract from goal. With /setcrisis this becomes your 
+    makes your dice roll detract from goal. With /setcrisis this becomes your
     response to a Crisis. Allocate resources with /add by specifying a type
-    (ap, army, social, silver, etc.) and amount, or the ID# of your army. The 
-    /makepublic switch allows everyone to see your action after a GM publishes 
+    (ap, army, social, silver, etc.) and amount, or the ID# of your army. The
+    /makepublic switch allows everyone to see your action after a GM publishes
     an outcome. If you prefer offscreen resolution, use /noscene toggle. To
     ask questions for GMs, use /question.
-    
+
     Using /toggleattend switches whether your character is physically present,
-    or arranging for the action's occurance in other ways. One action may be 
-    attended per crisis update; all others must be passive to represent 
+    or arranging for the action's occurance in other ways. One action may be
+    attended per crisis update; all others must be passive to represent
     simultaneous response by everyone involved. Up to 5 attendees are allowed
     per crisis response action, unless it is /noscene.
 
@@ -112,6 +119,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     or rfr. You then specify either the amount of resource to add or the ID
     of the entity required which your character has access to.
     """
+
     key = "@action"
     locks = "cmd:all()"
     help_category = "Story"
@@ -119,11 +127,30 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     aliases = ["@actions", "+storyrequest"]
     action_categories = dict_from_choices_field(PlotAction, "CATEGORY_CHOICES")
     requires_draft_switches = ("invite", "setcrisis", "readycheck")
-    requires_editable_switches = ("roll", "tldr", "title", "category", "submit", "invite",
-                                  "setaction", "setcrisis", "add", "toggletraitor", "toggleattend",
-                                  "ooc_intent", "setsecret")
+    requires_editable_switches = (
+        "roll",
+        "tldr",
+        "title",
+        "category",
+        "submit",
+        "invite",
+        "setaction",
+        "setcrisis",
+        "add",
+        "toggletraitor",
+        "toggleattend",
+        "ooc_intent",
+        "setsecret",
+    )
     requires_unpublished_switches = ("question", "cancel", "noscene")
-    requires_owner_switches = ("invite", "makepublic", "category", "setcrisis", "noscene", "readycheck")
+    requires_owner_switches = (
+        "invite",
+        "makepublic",
+        "category",
+        "setcrisis",
+        "noscene",
+        "readycheck",
+    )
 
     @property
     def dompc(self):
@@ -133,8 +160,11 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     @property
     def actions_and_invites(self):
         """Lists non-cancelled actions for creator and those invited to it"""
-        return PlotAction.objects.filter(Q(dompc=self.dompc) | Q(assistants=self.dompc)).exclude(
-            status=PlotAction.CANCELLED).distinct()
+        return (
+            PlotAction.objects.filter(Q(dompc=self.dompc) | Q(assistants=self.dompc))
+            .exclude(status=PlotAction.CANCELLED)
+            .distinct()
+        )
 
     # noinspection PyUnusedLocal
     def get_help(self, caller, cmdset):
@@ -147,10 +177,15 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         msg += """
     You are permitted {w%s{n actions and {w%s{n assists every 60 days, and have currently
     taken {w%s{n actions and {w%s{n assists. Assists can be made instead of actions, and
-    assists over %s count toward the action cap.""" % (max_actions, max_assists, recent_actions.count(),
-                                                       recent_assists.count(), max_assists)
+    assists over %s count toward the action cap.""" % (
+            max_actions,
+            max_assists,
+            recent_actions.count(),
+            recent_assists.count(),
+            max_assists,
+        )
         return msg
-    
+
     def func(self):
         """Executes @action command"""
         try:
@@ -180,14 +215,14 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
                 self.msg("Invalid switch. See 'help @action'.")
         except self.error_class as err:
             self.msg(err)
-            
+
     def check_valid_switch_for_action_type(self, action):
         """
         Checks if the specified switches require the main action, and if so, whether our action is the main action.
-        
+
             Args:
                 action (PlotAction or PlotActionAssistant): action or assisting action
-                
+
             Returns:
                 True or False for whether we're okay to proceed.
         """
@@ -197,14 +232,14 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return True
         self.msg("Only the action leader can use that switch.")
         return False
-        
+
     def make_public(self, action):
         """Makes an action public knowledge"""
         try:
             action.make_public()
         except ActionSubmissionError as err:
             self.msg(err)
-    
+
     def do_requires_draft_switches(self, action):
         """Executes switches that require the action to be in Draft status"""
         if not action.status == PlotAction.DRAFT:
@@ -215,7 +250,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return self.set_crisis(action)
         elif "readycheck" in self.switches:
             return self.ready_check(action)
-    
+
     def do_requires_editable_switches(self, action):
         """Executes switches that requires the action to be in an editable state"""
         if not action.editable and not action.main_action.editable:
@@ -240,7 +275,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return self.set_ooc_intent(action)
         elif "setsecret" in self.switches:
             return self.set_secret_action(action)
-        
+
     def do_requires_unpublished_switches(self, action):
         """Executes switches that require the action to not be Published"""
         if action.status in (PlotAction.PUBLISHED, PlotAction.PENDING_PUBLISH):
@@ -249,21 +284,28 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return self.cancel_action(action)
         elif "noscene" in self.switches:
             return self.toggle_noscene(action)
-            
+
     def send_no_edits_msg(self):
         """Tells the caller they can't edit the action."""
         self.msg("You cannot edit that action at this time.")
-        
+
     def send_too_late_msg(self):
         """Tells the caller that they could only do that in Draft mode"""
         self.msg("Can only be done while the action is in Draft status.")
-            
+
     def list_actions(self):
         """Prints a table of the actions we've taken"""
         table = EvTable("ID", "Crisis", "Date", "Owner", "Status")
         actions = self.actions_and_invites
-        attending = list(actions.filter(Q(dompc=self.dompc, attending=True) | Q(assisting_actions__dompc=self.dompc,
-                                                                                assisting_actions__attending=True)))
+        attending = list(
+            actions.filter(
+                Q(dompc=self.dompc, attending=True)
+                | Q(
+                    assisting_actions__dompc=self.dompc,
+                    assisting_actions__attending=True,
+                )
+            )
+        )
         for action in actions:
             date = "--"
             if action.date_submitted:
@@ -271,22 +313,31 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
 
             def color_unsubmitted(string):
                 """Colors the status display for assisting actions of the player that aren't ready to submit"""
-                if action.status == PlotAction.DRAFT and action.check_unready_assistant(self.dompc):
+                if (
+                    action.status == PlotAction.DRAFT
+                    and action.check_unready_assistant(self.dompc)
+                ):
                     return "|r%s|n" % string
                 return string
+
             is_attending = action in attending
             id_str = "{w*%s{n" % action.id if is_attending else str(action.id)
-            table.add_row(id_str, str(action.plot)[:20], date, str(action.dompc),
-                          color_unsubmitted(action.get_status_display()))
+            table.add_row(
+                id_str,
+                str(action.plot)[:20],
+                date,
+                str(action.dompc),
+                color_unsubmitted(action.get_status_display()),
+            )
         msg = "\nActions you're attending will be highlighted with {w*{n."
         self.msg(str(table) + msg)
-    
+
     def send_no_args_msg(self, noun):
         """Sends failure message about what they're missing."""
         if not noun:
             noun = "args"
         self.msg("You need to include %s." % noun)
-    
+
     def new_action(self):
         """Create a new action."""
         if not self.args:
@@ -303,21 +354,28 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         if not self.can_create(crisis):
             return
         diff = PlotAction.NORMAL_DIFFICULTY
-        action = self.dompc.actions.create(actions=actions, plot=crisis, stat_used="", skill_used="", difficulty=diff)
-        self.msg("You have drafted a new action {w(#%s){n%s: %s" % (action.id, crisis_msg, actions))
-        self.msg("Please note that you cannot invite players to an action once it is submitted.")
+        action = self.dompc.actions.create(
+            actions=actions, plot=crisis, stat_used="", skill_used="", difficulty=diff
+        )
+        self.msg(
+            "You have drafted a new action {w(#%s){n%s: %s"
+            % (action.id, crisis_msg, actions)
+        )
+        self.msg(
+            "Please note that you cannot invite players to an action once it is submitted."
+        )
         if crisis:
             self.warn_crisis_omnipresence(action)
-    
+
     def get_action(self, arg):
         """Returns an action we are involved in from ID# args.
-        
-            Args:
-                arg (str): String to use to find the ID of the crisis action.
-                
-            Returns:
-                A CrisisAction or a CrisisActionAssistant depending if the caller is the owner of the main action or
-                an assistant.
+
+        Args:
+            arg (str): String to use to find the ID of the crisis action.
+
+        Returns:
+            A CrisisAction or a CrisisActionAssistant depending if the caller is the owner of the main action or
+            an assistant.
         """
         try:
             dompc = self.dompc
@@ -330,18 +388,20 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         except (PlotAction.DoesNotExist, ValueError):
             self.msg("No action found by that ID.")
             self.list_actions()
-    
+
     def get_my_actions(self, crisis=False, assists=False):
         """Returns caller's actions."""
         dompc = self.dompc
         if not assists:
             actions = dompc.actions.all()
         else:
-            actions = PlotAction.objects.filter(Q(dompc=dompc) | Q(assistants=dompc)).distinct()
+            actions = PlotAction.objects.filter(
+                Q(dompc=dompc) | Q(assistants=dompc)
+            ).distinct()
         if not crisis:
             actions = actions.filter(plot__isnull=True)
         return actions
-    
+
     def get_valid_crisis(self, name_or_id):
         """Gets crisis they can participate in that matches name or ID"""
         try:
@@ -351,20 +411,23 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return qs.get(name__iexact=name_or_id)
         except Plot.DoesNotExist:
             self.msg("No crisis found by that name or ID.")
-    
+
     def can_create(self, crisis=None):
         """Checks criteria for creating a new action."""
         if crisis and not self.can_set_crisis(crisis):
             return False
         my_draft = self.get_my_actions().filter(status=PlotAction.DRAFT).last()
         if my_draft:
-            self.msg("You have drafted an action which needs to be submitted or canceled: %s" % my_draft.id)
+            self.msg(
+                "You have drafted an action which needs to be submitted or canceled: %s"
+                % my_draft.id
+            )
             return False
         if not self.caller.pay_action_points(PlotAction.BASE_AP_COST):
             self.msg("You do not have enough action points.")
             return False
         return True
-        
+
     def can_set_crisis(self, crisis):
         """Checks criteria for linking to a Crisis."""
         try:
@@ -373,7 +436,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             self.msg(err)
             return False
         return True
-        
+
     def set_category(self, action):
         """Sets the category for an action"""
         if not action.is_main_action:
@@ -384,13 +447,16 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         category_names = self.action_categories.keys()
         if self.rhs not in category_names:
             category_names = sorted(set(ob.lower() for ob in category_names))
-            self.send_no_args_msg("one of these categories: %s" % ", ".join(category_names))
+            self.send_no_args_msg(
+                "one of these categories: %s" % ", ".join(category_names)
+            )
             return
         self.set_action_field(action, "category", self.action_categories[self.rhs])
-      
+
     def set_roll(self, action):
         """Sets a stat and skill for action or assistant"""
         from world.stats_and_skills import VALID_SKILLS, VALID_STATS
+
         try:
             stat, skill = self.rhslist
             stat = stat.lower()
@@ -409,8 +475,10 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     def add_required_value(self, action):
         """Adds a resource based on arguments"""
         if len(self.rhslist) < 2:
-            self.send_no_args_msg("a resource type such as 'economic' or 'ap' and the amount."
-                                  " Or 'army' and an army ID#")
+            self.send_no_args_msg(
+                "a resource type such as 'economic' or 'ap' and the amount."
+                " Or 'army' and an army ID#"
+            )
             return
         try:
             r_type = self.rhslist[0].lower()
@@ -420,14 +488,27 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return
         explanation = ""
         if r_type == "clue":
-            value = self.get_by_name_or_id(Clue, value, filter_kwargs={"characters": self.caller.roster})
+            value = self.get_by_name_or_id(
+                Clue, value, filter_kwargs={"characters": self.caller.roster}
+            )
         if r_type == "revelation":
-            value = self.get_by_name_or_id(Revelation, value, filter_kwargs={"characters": self.caller.roster})
+            value = self.get_by_name_or_id(
+                Revelation, value, filter_kwargs={"characters": self.caller.roster}
+            )
         if r_type == "spell":
-            value = self.get_by_name_or_id(Spell, value, filter_kwargs={"practitioner__character": self.caller.char_ob})
+            value = self.get_by_name_or_id(
+                Spell,
+                value,
+                filter_kwargs={"practitioner__character": self.caller.char_ob},
+            )
         if r_type == "skillnode":
-            value = self.get_by_name_or_id(SkillNode, value,
-                                           filter_kwargs={"known_by__practitioner__character": self.caller.char_ob})
+            value = self.get_by_name_or_id(
+                SkillNode,
+                value,
+                filter_kwargs={
+                    "known_by__practitioner__character": self.caller.char_ob
+                },
+            )
         if r_type == "item":
             value = self.caller.char_ob.search(value)
             if not value:
@@ -437,7 +518,9 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             try:
                 explanation = self.rhslist[2]
             except IndexError:
-                self.fail("You must provide an explanation of why the RFR is relevant for this requirement.")
+                self.fail(
+                    "You must provide an explanation of why the RFR is relevant for this requirement."
+                )
         try:
             action.add_required_resource(r_type, value, explanation)
         except ActionSubmissionError as err:
@@ -448,8 +531,11 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
                 return
             else:
                 totals = action.view_total_requirements_msg()
-                self.msg("{c%s{n %s added. {wAction #%d %s" % (value, r_type, action.main_action.id, totals))
-        
+                self.msg(
+                    "{c%s{n %s added. {wAction #%d %s"
+                    % (value, r_type, action.main_action.id, totals)
+                )
+
     def set_topic(self, action):
         """Sets the topic for an action"""
         if not self.rhs:
@@ -458,7 +544,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             self.send_no_args_msg("a shorter title; aim for under 80 characters")
             return
         return self.set_action_field(action, "topic", self.rhs)
-      
+
     def set_ooc_intent(self, action):
         """
         Sets our ooc intent, or if we're already submitted and have an intent set, it asks a question.
@@ -476,12 +562,12 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return
         action.ask_question(self.rhs)
         self.msg("You have submitted a question: %s" % self.rhs)
-        
+
     def cancel_action(self, action):
         """Cancels the action"""
         action.cancel()
         self.msg("Action cancelled.")
-        
+
     def submit_action(self, action):
         """I love a bishi. He too will submit."""
         try:
@@ -490,14 +576,17 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             self.msg(err)
         else:
             self.msg("You have submitted your action.")
-            
+
     def toggle_noscene(self, action):
         """Toggles whether they prefer the action get offscreen resolution"""
         action.prefer_offscreen = not action.prefer_offscreen
         action.save()
         color = "{r" if action.prefer_offscreen else "{w"
-        self.msg("Preference for offscreen resolution set to: %s%s" % (color, action.prefer_offscreen))
-    
+        self.msg(
+            "Preference for offscreen resolution set to: %s%s"
+            % (color, action.prefer_offscreen)
+        )
+
     def toggle_traitor(self, action):
         """Toggles whether they're working against the main action/crisis"""
         action.traitor = not action.traitor
@@ -516,7 +605,9 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
                 self.msg(err)
                 return
             else:
-                self.msg("%s now has your assistance: %s" % (action.plot_action, self.rhs))
+                self.msg(
+                    "%s now has your assistance: %s" % (action.plot_action, self.rhs)
+                )
         else:
             self.set_action_field(action, "actions", self.rhs)
         if action.plot:
@@ -526,28 +617,30 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         """Sets a secret story of what they're doing in the action"""
         if not self.rhs:
             return self.send_no_args_msg("a story of your secret actions")
-        self.set_action_field(action, "secret_actions", self.rhs, verbose_name="Secret actions")
-            
+        self.set_action_field(
+            action, "secret_actions", self.rhs, verbose_name="Secret actions"
+        )
+
     def warn_crisis_overcrowd(self, action):
         """Warns that too many people are attending"""
         try:
             action.check_plot_overcrowd()
         except ActionSubmissionError as err:
             self.msg("{yWarning:{n %s" % err)
-                
+
     def warn_crisis_omnipresence(self, action):
         """Warns that they're already doing stuff for the crisis"""
         try:
             action.check_plot_omnipresence()
         except ActionSubmissionError as err:
             self.msg("{yWarning:{n %s" % err)
-    
+
     def do_passive_warnings(self, action):
         """Delivers warnings of what would make submission fail"""
-        self.warn_crisis_omnipresence(action) 
+        self.warn_crisis_omnipresence(action)
         if not action.prefer_offscreen:
             self.warn_crisis_overcrowd(action)
-    
+
     def set_crisis(self, action):
         """Sets the crisis for the action"""
         if not self.rhs:
@@ -571,8 +664,11 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         if not unready:
             self.msg("All invited assistants are currently ready.")
         else:
-            self.msg("The following assistants aren't ready: %s" % ", ".join(str(ob.author) for ob in unready))
-                
+            self.msg(
+                "The following assistants aren't ready: %s"
+                % ", ".join(str(ob.author) for ob in unready)
+            )
+
     def toggle_attend(self, action):
         """Toggles whether they're attending the action in-person, onscreen"""
         if action.attending:
@@ -585,13 +681,15 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         except ActionSubmissionError as err:
             self.msg(err)
             return
-        self.msg("You have marked yourself as physically being present for that action.")
+        self.msg(
+            "You have marked yourself as physically being present for that action."
+        )
 
 
 class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
     """
     Allows you to resolve character actions for GMing
-    
+
     Usage:
         Commands for viewing actions:
         @gm [<action #> or <character or alias> or <crisis name> or <gm name>]
@@ -608,11 +706,11 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         @gm/stat <action #>[,assistant name]=<stat>
         @gm/skill <action #>[,assistant name]=<skill>
         @gm/diff <action #>=<difficulty # or hard | normal | easy>
-        
+
         Commands for answering questions or requiring player response:
         @gm/ooc[/allowedit] <action #>[,assistant name]=<answer to OOC question>
         @gm/markanswered <action #>
-        
+
         Commands for action administration:
         @gm/publish <action #>[=<story>]
         @gm/markpending <action #>
@@ -663,22 +761,53 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
     players to then create a new crisis action if the crisis is not resolved and
     a new date is set.
     """
+
     key = "@gm"
     locks = "cmd:perm(builders)"
     help_category = "GMing"
-    list_switches = ("old", "pending", "draft", "cancelled", "needgm", "needplayer", "search")
-    gming_switches = ("story", "secretstory", "check", "checkall", "stat", "skill", "diff")
+    list_switches = (
+        "old",
+        "pending",
+        "draft",
+        "cancelled",
+        "needgm",
+        "needplayer",
+        "search",
+    )
+    gming_switches = (
+        "story",
+        "secretstory",
+        "check",
+        "checkall",
+        "stat",
+        "skill",
+        "diff",
+    )
     followup_switches = ("ooc", "markanswered")
-    admin_switches = ("publish", "markpending", "cancel", "assign", "gemit", "allowedit", "invite",
-                      "togglefree", "addrequirement")
-    difficulties = {"easy": PlotAction.EASY_DIFFICULTY, "normal": PlotAction.NORMAL_DIFFICULTY,
-                    "hard": PlotAction.HARD_DIFFICULTY}
-    
+    admin_switches = (
+        "publish",
+        "markpending",
+        "cancel",
+        "assign",
+        "gemit",
+        "allowedit",
+        "invite",
+        "togglefree",
+        "addrequirement",
+    )
+    difficulties = {
+        "easy": PlotAction.EASY_DIFFICULTY,
+        "normal": PlotAction.NORMAL_DIFFICULTY,
+        "hard": PlotAction.HARD_DIFFICULTY,
+    }
+
     def func(self):
         """Executes the @gm command"""
         try:
-            if not self.args or ((not self.switches or self.check_switches(self.list_switches))
-                                 and not self.args.isdigit()):
+            if not self.args or (
+                (not self.switches or self.check_switches(self.list_switches))
+                and not self.args.isdigit()
+            ):
                 return self.list_actions()
             try:
                 action = PlotAction.objects.get(id=self.lhslist[0])
@@ -698,17 +827,23 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         except self.error_class as err:
             return self.msg(err)
         self.msg("Invalid switch.")
-            
+
     def list_actions(self):
         """Lists the actions for the matching queryset"""
         qs = self.get_queryset_from_switches()
-        table = EvTable("{wID", "{wplayer", "{wtldr", "{wdate", "{wcrisis", width=78, border="cells")
+        table = EvTable(
+            "{wID", "{wplayer", "{wtldr", "{wdate", "{wcrisis", width=78, border="cells"
+        )
         for action in qs:
             if action.unanswered_questions:
                 action_id = "{c*%s{n" % action.id
             else:
                 action_id = action.id
-            date = action.date_submitted.strftime("%m/%d") if action.date_submitted else "----"
+            date = (
+                action.date_submitted.strftime("%m/%d")
+                if action.date_submitted
+                else "----"
+            )
             table.add_row(action_id, action.dompc, action.topic, date, action.plot)
         table.reformat_column(0, width=9)
         table.reformat_column(1, width=10)
@@ -716,7 +851,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         table.reformat_column(3, width=8)
         table.reformat_column(4, width=14)
         arx_more.msg(self.caller, str(table), justify_kwargs=False, pages_by_char=True)
-    
+
     def get_queryset_from_switches(self):
         """Filters the queryset of actions based on given options from switches/args"""
         old_status = PlotAction.PUBLISHED
@@ -737,27 +872,43 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         elif "cancelled" in self.switches:
             qs = qs.filter(status=cancelled_status)
         elif "search" in self.switches:
-            qs = qs.filter(Q(story__icontains=self.args) |
-                           Q(actions__icontains=self.args) |
-                           Q(secret_actions__icontains=self.args) |
-                           Q(assisting_actions__actions__icontains=self.args) |
-                           Q(assisting_actions__secret_actions__icontains=self.args))
+            qs = qs.filter(
+                Q(story__icontains=self.args)
+                | Q(actions__icontains=self.args)
+                | Q(secret_actions__icontains=self.args)
+                | Q(assisting_actions__actions__icontains=self.args)
+                | Q(assisting_actions__secret_actions__icontains=self.args)
+            )
         else:
-            unanswered_questions = ActionOOCQuestion.objects.filter(answers__isnull=True,
-                                                                    mark_answered=False).exclude(is_intent=True)
-            qs = qs.filter(Q(questions__in=unanswered_questions) |
-                           ~Q(status__in=(old_status, draft_status, cancelled_status, pending_status)))
+            unanswered_questions = ActionOOCQuestion.objects.filter(
+                answers__isnull=True, mark_answered=False
+            ).exclude(is_intent=True)
+            qs = qs.filter(
+                Q(questions__in=unanswered_questions)
+                | ~Q(
+                    status__in=(
+                        old_status,
+                        draft_status,
+                        cancelled_status,
+                        pending_status,
+                    )
+                )
+            )
         if "mine" in self.switches:
             qs = qs.filter(gm=self.caller)
         elif not self.args and "everyone" not in self.switches:
             qs = qs.filter(gm__isnull=True)
         if self.args and "search" not in self.switches:
             name = self.args
-            qs = qs.filter(Q(plot__name__iexact=name) | Q(dompc__player__username__iexact=name) |
-                           Q(category__iexact=name) | Q(assistants__player__username__iexact=name) |
-                           Q(gm__username__iexact=name))
-        return qs.distinct().order_by('date_submitted')
-        
+            qs = qs.filter(
+                Q(plot__name__iexact=name)
+                | Q(dompc__player__username__iexact=name)
+                | Q(category__iexact=name)
+                | Q(assistants__player__username__iexact=name)
+                | Q(gm__username__iexact=name)
+            )
+        return qs.distinct().order_by("date_submitted")
+
     def do_gming(self, action):
         """Do changes to the action that are based on GMing it"""
         if "story" in self.switches:
@@ -776,7 +927,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             return self.set_action_field(action, "stat", self.rhs)
         if "skill" in self.switches:
             return self.set_action_field(action, "skill", self.rhs)
-            
+
     def do_checks(self, action):
         """Make rolls for the action"""
         if "checkall" in self.switches:
@@ -792,7 +943,9 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
                 return
             else:
                 try:
-                    action = self.replace_action_with_assistant_if_provided(action, name)
+                    action = self.replace_action_with_assistant_if_provided(
+                        action, name
+                    )
                     if not action:
                         return
                     result = action.do_roll(stat=stat, skill=skill, difficulty=diff)
@@ -802,7 +955,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
                     self.msg(err)
                     return
         self.msg("The new outcome value for the overall action is: %s" % outcome)
-    
+
     def set_difficulty(self, action):
         """Sets difficulty of rolls forthe action"""
         if self.rhs in self.difficulties:
@@ -811,10 +964,13 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             try:
                 value = int(self.rhs)
             except (TypeError, ValueError):
-                self.msg("Difficulty must be a number or %s." % ", ".join(self.difficulties.keys()))
+                self.msg(
+                    "Difficulty must be a number or %s."
+                    % ", ".join(self.difficulties.keys())
+                )
                 return
         self.set_action_field(action, "difficulty", value)
-            
+
     def replace_action_with_assistant_if_provided(self, action, name=None):
         """Gets an assisting action instead"""
         if not name:
@@ -828,7 +984,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             return action.assisting_actions.get(dompc__player__username__iexact=name)
         except PlotActionAssistant.DoesNotExist:
             self.msg("No assistant by that name.")
-    
+
     def do_followup(self, action):
         """Follows up on an OOC question"""
         action = self.replace_action_with_assistant_if_provided(action)
@@ -848,7 +1004,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         """Marks a question as answered"""
         action.mark_answered(gm=self.caller)
         self.msg("You have marked the questions as answered.")
-    
+
     def do_admin(self, action):
         """Do various administrative tasks for an action"""
         if "publish" in self.switches:
@@ -869,24 +1025,26 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             return self.invite_assistant(action)
         if "addrequirement" in self.switches:
             return self.add_requirement(action)
-        
+
     def publish_action(self, action):
         """Publishes an action, marking it as resolved and telling players the outcome"""
         if self.rhs:
             if action.story:
-                self.msg("That story already has an action written. To prevent accidental overwrites, please change "
-                         "it manually and then /publish without additional arguments.")
+                self.msg(
+                    "That story already has an action written. To prevent accidental overwrites, please change "
+                    "it manually and then /publish without additional arguments."
+                )
                 return
             action.story = self.rhs
             action.save()
         action.send(caller=self.caller)
         self.msg("You have published the action and sent the players informs.")
-        
+
     def cancel_action(self, action):
         """Cancels an action, refunding players and marking it as cancelled"""
         action.cancel()
         self.msg("Action cancelled.")
-    
+
     def assign_action(self, action):
         """Assigns an action to a GM"""
         player = None
@@ -896,10 +1054,11 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
                 return
         self.set_action_field(action, "gm", player)
         self.msg("GM for the action set to %s" % player)
-    
+
     def do_gemit_for_action(self, action):
         """Makes a gemit(game announcement) for a given action"""
         from server.utils.arx_utils import create_gemit_and_post
+
         actions = [action]
         for id_num in self.lhslist[1:]:
             try:
@@ -919,7 +1078,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             action_object.gemit = gemit
             action_object.send(caller=self.caller)
         self.msg("StoryEmit created.")
-    
+
     def toggle_editable(self, action):
         """Toggles whether an action is editable or not"""
         action = self.replace_action_with_assistant_if_provided(action)
@@ -929,7 +1088,9 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         action.save()
         if action.editable:
             action.inform("Your action is now editable and changes are required.")
-            self.msg("You have made their action editable and the player has been informed.")
+            self.msg(
+                "You have made their action editable and the player has been informed."
+            )
         else:
             self.msg("Their action is no longer editable.")
 
@@ -941,8 +1102,12 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         action.free_action = not action.free_action
         action.save()
         if action.free_action:
-            action.inform("Your action is now a free action and will not count towards your maximum.")
-            self.msg("You have made their action free and the player has been informed.")
+            action.inform(
+                "Your action is now a free action and will not count towards your maximum."
+            )
+            self.msg(
+                "You have made their action free and the player has been informed."
+            )
         else:
             self.msg("Their action is no longer free.")
 
@@ -966,7 +1131,9 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             except (TypeError, ValueError):
                 self.fail("Value must be a positive number.")
             try:
-                requirement_type = ActionRequirement.get_choice_constant_from_string(r_type)
+                requirement_type = ActionRequirement.get_choice_constant_from_string(
+                    r_type
+                )
             except KeyError:
                 self.fail("Must be a valid resource type")
         elif "clue" in self.switches:

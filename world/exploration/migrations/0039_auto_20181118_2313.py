@@ -8,23 +8,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0038_shardhaven_auto_combat'),
+        ("exploration", "0038_shardhaven_auto_combat"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='modified_diff_at',
+            model_name="shardhavenobstacle",
+            name="modified_diff_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='modified_diff_by',
+            model_name="shardhavenobstacle",
+            name="modified_diff_by",
             field=models.SmallIntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='modified_diff_reason',
+            model_name="shardhavenobstacle",
+            name="modified_diff_reason",
             field=models.CharField(blank=True, max_length=80, null=True),
         ),
     ]

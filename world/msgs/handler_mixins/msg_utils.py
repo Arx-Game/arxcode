@@ -16,6 +16,7 @@ def lazy_import_from_str(clsname):
         The Msg proxy class we want to get from the name.
     """
     from evennia.utils.utils import class_from_module
+
     if clsname in _cached_lazy_imports:
         return _cached_lazy_imports[clsname]
     cls = class_from_module("world.msgs.models." + clsname)
@@ -31,4 +32,4 @@ def get_initial_queryset(clsname):
             clsname (str): Name of class from .models to import
     """
     cls = lazy_import_from_str(clsname)
-    return cls.objects.all().order_by('-db_date_created')
+    return cls.objects.all().order_by("-db_date_created")

@@ -7,7 +7,9 @@ class NamePaginator(object):
 
     # noinspection PyUnusedLocal
     # noinspection PyProtectedMember
-    def __init__(self, queryset, paginate_by=25, orphans=0, allow_empty_first_page=True):
+    def __init__(
+        self, queryset, paginate_by=25, orphans=0, allow_empty_first_page=True
+    ):
         # We ignore allow_empty_first_page and orphans, just here for compliance
         self.pages = []
         self.object_list = queryset
@@ -21,7 +23,7 @@ class NamePaginator(object):
             if queryset and obj._meta.ordering:
                 obj_str = str(getattr(obj, obj._meta.ordering[0]))
             else:
-                if hasattr(obj, 'key'):
+                if hasattr(obj, "key"):
                     obj_str = str(obj.key)
                 else:
                     obj_str = str(obj)
@@ -51,16 +53,21 @@ class NamePaginator(object):
                 current_page.add([], letter)
                 continue
 
-            sub_list = chunks[letter]  # the items in object_list starting with this letter
+            sub_list = chunks[
+                letter
+            ]  # the items in object_list starting with this letter
 
             new_page_count = len(sub_list) + current_page.count
             # first, check to see if sub_list will fit or it needs to go onto a new page.
             # if assigning this list will cause the page to overflow...
             # and an underflow is closer to per_page than an overflow...
             # and the page isn't empty (which means len(sub_list) > per_page)...
-            if new_page_count > paginate_by and \
-                    abs(paginate_by - current_page.count) < abs(paginate_by - new_page_count) and \
-                    current_page.count > 0:
+            if (
+                new_page_count > paginate_by
+                and abs(paginate_by - current_page.count)
+                < abs(paginate_by - new_page_count)
+                and current_page.count > 0
+            ):
                 # make a new page
                 self.pages.append(current_page)
                 current_page = NamePage(self)
@@ -76,7 +83,7 @@ class NamePaginator(object):
         if len(self.pages) == 0:
             return None
         elif 0 < num <= len(self.pages):
-            return self.pages[num-1]
+            return self.pages[num - 1]
         else:
             raise InvalidPage
 
@@ -143,4 +150,4 @@ class NamePage(object):
         if self.start_letter == self.end_letter:
             return self.start_letter
         else:
-            return '%c-%c' % (self.start_letter, self.end_letter)
+            return "%c-%c" % (self.start_letter, self.end_letter)

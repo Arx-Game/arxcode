@@ -19,7 +19,9 @@ def get_caller_outfit_from_args(caller, args):
     try:
         return caller.player_ob.Dominion.fashion_outfits.get(name__icontains=args)
     except Outfit.MultipleObjectsReturned:
-        not_found = "'%s' refers to more than one outfit; please be more specific." % args
+        not_found = (
+            "'%s' refers to more than one outfit; please be more specific." % args
+        )
         try:
             return caller.player_ob.Dominion.fashion_outfits.get(name__iexact=args)
         except (Outfit.MultipleObjectsReturned, Outfit.DoesNotExist):
@@ -57,6 +59,7 @@ class CmdFashionOutfit(ArxCommand):
 
     Other commands that utilize outfits: Wear, Model, Get, Put
     """
+
     key = "outfit"
     aliases = ["outfits"]
     help_category = "social"
@@ -64,6 +67,7 @@ class CmdFashionOutfit(ArxCommand):
 
     def func(self):
         try:
+
             def get_outfit():
                 return get_caller_outfit_from_args(self.caller, self.args)
 
@@ -89,11 +93,19 @@ class CmdFashionOutfit(ArxCommand):
             outfit = get_caller_outfit_from_args(self.caller, self.args)
             msg = outfit.table_display
         else:
-            outfits = self.caller.dompc.fashion_outfits.filter(archived=archived).order_by('name')
+            outfits = self.caller.dompc.fashion_outfits.filter(
+                archived=archived
+            ).order_by("name")
             if len(outfits) < 1:
                 status = "archived " if archived else ""
-                alt = "regular 'outfits'" if archived else "creating one, or 'outfits/archives'"
-                raise FashionError("No %soutfits to display! Try %s instead." % (status, alt))
+                alt = (
+                    "regular 'outfits'"
+                    if archived
+                    else "creating one, or 'outfits/archives'"
+                )
+                raise FashionError(
+                    "No %soutfits to display! Try %s instead." % (status, alt)
+                )
             outfit_header = "%sOutfit" % ("Archived " if archived else "")
             # TODO: event & vote columns
             table = PrettyTable(("Created", outfit_header, "Appraisal/Buzz"))
@@ -107,13 +119,18 @@ class CmdFashionOutfit(ArxCommand):
         """Create outfit object, add equipment to it, then display result."""
         if not self.args:
             raise FashionError("Cannot create your shiny new outfit without a name.")
-        others = self.caller.player_ob.Dominion.fashion_outfits.filter(name__iexact=self.args)
+        others = self.caller.player_ob.Dominion.fashion_outfits.filter(
+            name__iexact=self.args
+        )
         if others.exists():
             raise FashionError("You own an outfit named '%s' already." % self.args)
         worn = list(self.caller.worn)
         weapons = list(self.caller.wielded) + list(self.caller.sheathed)
         if not worn and not weapons:
-            raise FashionError("Emperor %s's New Clothes? Put something on and try again." % self.caller.player)
+            raise FashionError(
+                "Emperor %s's New Clothes? Put something on and try again."
+                % self.caller.player
+            )
         outfit = Outfit.objects.create(name=self.args, owner=self.caller.dompc)
         for weapon in weapons:
             slot = "primary weapon" if weapon.is_wielded else "sheathed weapon"
@@ -162,10 +179,19 @@ class CmdFashionModel(ArxCommand):
     scenes), you can use the @settings command to turn on ignore_model_emit.
     (See help @settings for more information.)
     """
+
     key = "model"
     aliases = ["models"]
     help_category = "social"
-    leaderboard_switches = ("designer", "designers", "org", "orgs", "model", "models", "all")
+    leaderboard_switches = (
+        "designer",
+        "designers",
+        "org",
+        "orgs",
+        "model",
+        "models",
+        "all",
+    )
 
     def func(self):
         """Execute model command"""
@@ -226,15 +252,25 @@ class CmdFashionModel(ArxCommand):
     def view_leaderboards(self):
         """Views table of fashion leaders"""
         from django.db.models import Sum, Count, Avg, F, IntegerField
-        pretty_headers = ["Fashion Model", "Fame", "Items", "Avg Item Fame"]  # default for top 20 models
+
+        pretty_headers = [
+            "Fashion Model",
+            "Fame",
+            "Items",
+            "Avg Item Fame",
+        ]  # default for top 20 models
 
         def get_queryset(manager, group_by_string, fame_divisor):
             """Teeny helper function for getting annotated queryset"""
-            return (manager.values_list(group_by_string)
-                           .annotate(total_fame=Sum(F('fame')/fame_divisor))
-                           .annotate(Count('id'))
-                           .annotate(avg=Avg(F('fame')/fame_divisor, output_field=IntegerField()))
-                           .order_by('-total_fame'))
+            return (
+                manager.values_list(group_by_string)
+                .annotate(total_fame=Sum(F("fame") / fame_divisor))
+                .annotate(Count("id"))
+                .annotate(
+                    avg=Avg(F("fame") / fame_divisor, output_field=IntegerField())
+                )
+                .order_by("-total_fame")
+            )
 
         if "designer" in self.switches or "designers" in self.switches:
             if self.args:
@@ -243,23 +279,36 @@ class CmdFashionModel(ArxCommand):
                     return
                 pretty_headers[0] = "%s Model" % designer
                 designer = designer.Dominion
-                qs = get_queryset(designer.designer_snapshots, 'fashion_model__player__username',
-                                  Snapshot.DESIGNER_FAME_DIVISOR)
+                qs = get_queryset(
+                    designer.designer_snapshots,
+                    "fashion_model__player__username",
+                    Snapshot.DESIGNER_FAME_DIVISOR,
+                )
             else:
                 pretty_headers[0] = "Designer"
-                qs = get_queryset(Snapshot.objects, 'designer__player__username', Snapshot.DESIGNER_FAME_DIVISOR)
+                qs = get_queryset(
+                    Snapshot.objects,
+                    "designer__player__username",
+                    Snapshot.DESIGNER_FAME_DIVISOR,
+                )
         elif "org" in self.switches or "orgs" in self.switches:
             if self.args:
                 org = Organization.objects.get_public_org(self.args, self.caller)
                 if not org:
                     return
                 pretty_headers[0] = "%s Model" % org
-                qs = get_queryset(org.fashion_snapshots, 'fashion_model__player__username', Snapshot.ORG_FAME_DIVISOR)
+                qs = get_queryset(
+                    org.fashion_snapshots,
+                    "fashion_model__player__username",
+                    Snapshot.ORG_FAME_DIVISOR,
+                )
             else:
                 pretty_headers[0] = "Organization"
-                qs = get_queryset(Snapshot.objects, 'org__name', Snapshot.ORG_FAME_DIVISOR)
+                qs = get_queryset(
+                    Snapshot.objects, "org__name", Snapshot.ORG_FAME_DIVISOR
+                )
         else:  # Models by fame
-            qs = get_queryset(Snapshot.objects, 'fashion_model__player__username', 1)
+            qs = get_queryset(Snapshot.objects, "fashion_model__player__username", 1)
         qs = qs[:20] if "all" not in self.switches else qs
         if not qs:
             raise FashionError("Nothing was found.")
@@ -278,19 +327,28 @@ class CmdFashionModel(ArxCommand):
     def check_recency(self, org=None):
         """Raises an error if we've modelled too recently"""
         from evennia.scripts.models import ScriptDB
+
         maximum = ServerConfig.objects.conf(key="MAX_FASHION_PER_WEEK")
         if not maximum:
             return
         try:
-            last_cron = ScriptDB.objects.get(db_key="Weekly Update").db.run_date - timedelta(days=7)
+            last_cron = ScriptDB.objects.get(
+                db_key="Weekly Update"
+            ).db.run_date - timedelta(days=7)
         except (ScriptDB.DoesNotExist, ValueError, TypeError):
             last_cron = datetime.now() - timedelta(days=7)
         qs = self.caller.dompc.fashion_snapshots
         if qs.filter(db_date_created__gte=last_cron).count() >= maximum:
-            raise FashionError("You may only model up to %s items a week before the public tires of you." % maximum)
+            raise FashionError(
+                "You may only model up to %s items a week before the public tires of you."
+                % maximum
+            )
         if org:
             if qs.filter(db_date_created__gte=last_cron, org=org):
-                raise FashionError("You have displayed fashion too recently for %s to bring them more acclaim." % org)
+                raise FashionError(
+                    "You have displayed fashion too recently for %s to bring them more acclaim."
+                    % org
+                )
 
 
 class CmdAdminFashion(ArxCommand):
@@ -304,6 +362,7 @@ class CmdAdminFashion(ArxCommand):
     item was modeled. /Delete will remove all status awarded, refund AP,
     and delete the snapshot, effectively reversing the model command.
     """
+
     key = "@admin_fashion"
     help_category = "admin"
     locks = "cmd:perm(Wizards)"
@@ -325,6 +384,7 @@ class CmdAdminFashion(ArxCommand):
     def display_item_snapshots(self):
         """displays snapshots"""
         from evennia.objects.models import ObjectDB
+
         try:
             item = ObjectDB.objects.get(id=self.args)
         except ObjectDB.DoesNotExist:
@@ -332,7 +392,10 @@ class CmdAdminFashion(ArxCommand):
         snapshots = item.fashion_snapshots.all()
         if not snapshots:
             raise FashionError("No snapshot exists for %s." % item)
-        self.msg("%s snapshot: %s" % (item, ", ".join(ob.id + " by " + ob.fashion_model for ob in snapshots)))
+        self.msg(
+            "%s snapshot: %s"
+            % (item, ", ".join(ob.id + " by " + ob.fashion_model for ob in snapshots))
+        )
 
     def reverse_snapshot(self, snapshot_id):
         """reverses snapshots"""

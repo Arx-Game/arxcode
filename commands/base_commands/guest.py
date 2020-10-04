@@ -22,84 +22,218 @@ from unidecode import unidecode
 
 from commands.base import ArxPlayerCommand
 from server.utils.arx_utils import inform_staff, check_break
-from world.stats_and_skills import (get_partial_match, get_skill_cost,
-                                    CRAFTING_ABILITIES, VALID_SKILLS,
-                                    VALID_STATS, )
+from world.stats_and_skills import (
+    get_partial_match,
+    get_skill_cost,
+    CRAFTING_ABILITIES,
+    VALID_SKILLS,
+    VALID_STATS,
+)
 
 # limit symbol import for API
-__all__ = ("CmdGuestLook", "CmdGuestCharCreate", "CmdGuestPrompt", "CmdGuestAddInput", "census_of_fealty",
-           "setup_voc")
+__all__ = (
+    "CmdGuestLook",
+    "CmdGuestCharCreate",
+    "CmdGuestPrompt",
+    "CmdGuestAddInput",
+    "census_of_fealty",
+    "setup_voc",
+)
 CMD_NOINPUT = syscmdkeys.CMD_NOINPUT
 CMD_NOMATCH = syscmdkeys.CMD_NOMATCH
-_vocations_ = ("noble", "courtier", "charlatan", "soldier", "knight", "priest", "merchant",
-               "criminal", "artisan", "scholar", "lawyer", "steward", "commoner",
-               "jeweler", "tailor", "weaponsmith", "armorsmith", "leatherworker",
-               "apothecary", "carpenter")
-_stage3_fields_ = ("concept", "gender", "age", "fealty", "family", "religion", "desc", "personality", "background",
-                   "marital_status", "quote", "birthday", "social_rank", "skintone", "eyecolor", "haircolor", "height")
-_valid_fealty_ = ("Crownsworn", "Grayson", "Pravus", "Redrain", "Thrax", "Valardin", "Velenosa")
+_vocations_ = (
+    "noble",
+    "courtier",
+    "charlatan",
+    "soldier",
+    "knight",
+    "priest",
+    "merchant",
+    "criminal",
+    "artisan",
+    "scholar",
+    "lawyer",
+    "steward",
+    "commoner",
+    "jeweler",
+    "tailor",
+    "weaponsmith",
+    "armorsmith",
+    "leatherworker",
+    "apothecary",
+    "carpenter",
+)
+_stage3_fields_ = (
+    "concept",
+    "gender",
+    "age",
+    "fealty",
+    "family",
+    "religion",
+    "desc",
+    "personality",
+    "background",
+    "marital_status",
+    "quote",
+    "birthday",
+    "social_rank",
+    "skintone",
+    "eyecolor",
+    "haircolor",
+    "height",
+)
+_valid_fealty_ = (
+    "Crownsworn",
+    "Grayson",
+    "Pravus",
+    "Redrain",
+    "Thrax",
+    "Valardin",
+    "Velenosa",
+)
 _stage3_optional_ = ("real_concept", "real_age")
 # Minimum and maximum ages players can set for starting characters
 _min_age_ = 18
 _max_age_ = 65
 # We have 12 stats. no more than two at 5. tuple is in the following order:
 # (strength,dexterity,stamina,charm,command,composure,intellect,perception,wits,mana,luck,willpower)
-_voc_start_stats_ = {"noble":          (3, 3, 3,  4, 5, 4,  3, 3, 2,  2, 2, 2),
-                     "courtier":       (2, 2, 2,  5, 4, 5,  3, 3, 4,  2, 2, 2),
-                     "charlatan":      (2, 2, 2,  4, 3, 5,  3, 4, 4,  3, 3, 1),
-                     "soldier":        (5, 4, 5,  2, 3, 4,  2, 2, 3,  2, 2, 2),
-                     "knight":         (4, 4, 4,  3, 4, 4,  2, 2, 3,  2, 2, 2),
-                     "priest":         (2, 2, 2,  4, 5, 4,  3, 3, 2,  3, 3, 3),
-                     "merchant":       (2, 2, 2,  4, 3, 4,  3, 4, 3,  2, 3, 4),
-                     "criminal":       (4, 4, 4,  3, 3, 3,  3, 3, 3,  2, 2, 2),
-                     "tailor":         (2, 2, 2,  3, 3, 3,  4, 4, 4,  3, 3, 3),
-                     "artisan":        (2, 2, 2,  3, 3, 3,  4, 4, 4,  3, 3, 3),
-                     "weaponsmith":    (4, 4, 4,  3, 3, 3,  2, 2, 2,  3, 3, 3),
-                     "armorsmith":     (4, 4, 4,  3, 3, 3,  2, 2, 2,  3, 3, 3),
-                     "leatherworker":  (4, 4, 4,  3, 3, 3,  2, 2, 2,  3, 3, 3),
-                     "apothecary":     (2, 2, 2,  3, 3, 3,  4, 4, 4,  3, 3, 3),
-                     "carpenter":      (4, 4, 4,  3, 3, 3,  2, 2, 2,  3, 3, 3),
-                     "jeweler":        (2, 2, 2,  3, 3, 3,  4, 4, 4,  3, 3, 3),
-                     "scholar":        (2, 2, 2,  3, 3, 3,  5, 5, 4,  2, 2, 3),
-                     "lawyer":         (2, 2, 2,  3, 3, 3,  5, 5, 4,  2, 2, 3),
-                     "steward":        (3, 3, 3,  3, 3, 3,  4, 4, 4,  2, 2, 2),
-                     "commoner":       (4, 3, 4,  3, 2, 3,  2, 3, 4,  2, 4, 2)}
+_voc_start_stats_ = {
+    "noble": (3, 3, 3, 4, 5, 4, 3, 3, 2, 2, 2, 2),
+    "courtier": (2, 2, 2, 5, 4, 5, 3, 3, 4, 2, 2, 2),
+    "charlatan": (2, 2, 2, 4, 3, 5, 3, 4, 4, 3, 3, 1),
+    "soldier": (5, 4, 5, 2, 3, 4, 2, 2, 3, 2, 2, 2),
+    "knight": (4, 4, 4, 3, 4, 4, 2, 2, 3, 2, 2, 2),
+    "priest": (2, 2, 2, 4, 5, 4, 3, 3, 2, 3, 3, 3),
+    "merchant": (2, 2, 2, 4, 3, 4, 3, 4, 3, 2, 3, 4),
+    "criminal": (4, 4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2),
+    "tailor": (2, 2, 2, 3, 3, 3, 4, 4, 4, 3, 3, 3),
+    "artisan": (2, 2, 2, 3, 3, 3, 4, 4, 4, 3, 3, 3),
+    "weaponsmith": (4, 4, 4, 3, 3, 3, 2, 2, 2, 3, 3, 3),
+    "armorsmith": (4, 4, 4, 3, 3, 3, 2, 2, 2, 3, 3, 3),
+    "leatherworker": (4, 4, 4, 3, 3, 3, 2, 2, 2, 3, 3, 3),
+    "apothecary": (2, 2, 2, 3, 3, 3, 4, 4, 4, 3, 3, 3),
+    "carpenter": (4, 4, 4, 3, 3, 3, 2, 2, 2, 3, 3, 3),
+    "jeweler": (2, 2, 2, 3, 3, 3, 4, 4, 4, 3, 3, 3),
+    "scholar": (2, 2, 2, 3, 3, 3, 5, 5, 4, 2, 2, 3),
+    "lawyer": (2, 2, 2, 3, 3, 3, 5, 5, 4, 2, 2, 3),
+    "steward": (3, 3, 3, 3, 3, 3, 4, 4, 4, 2, 2, 2),
+    "commoner": (4, 3, 4, 3, 2, 3, 2, 3, 4, 2, 4, 2),
+}
 # 20 points for skills
-_voc_start_skills_ = {"noble": {"diplomacy": 3, "leadership": 3, "etiquette": 2,
-                                "law": 1, "ride": 1,
-                                "manipulation": 1, "empathy": 1, "war": 1},
-                      "courtier": {"diplomacy": 1, "etiquette": 3, "manipulation": 2,
-                                   "empathy": 2, "seduction": 3, "propaganda": 1},
-                      "charlatan": {"legerdemain": 3, "manipulation": 3, "empathy": 1,
-                                    "streetwise": 3, "occult": 1},
-                      "soldier": {"medium wpn": 3, "brawl": 1, "dodge": 1,
-                                  "archery": 1, "survival": 1},
-                      "knight": {"medium wpn": 3, "dodge": 1, "war": 1, "etiquette": 1,
-                                 "ride": 2, "leadership": 1},
-                      "lawyer": {"law": 4, "etiquette": 1, "empathy": 2, "manipulation": 2,
-                                 "teaching": 1, "investigation": 1, "linguistics": 1},
-                      "priest": {"theology": 3, "occult": 2, "medicine": 3,
-                                 "empathy": 1, "leadership": 1, "propaganda": 2},
-                      "merchant": {"economics": 3, "streetwise": 2, "manipulation": 1,
-                                   "haggling": 4, },
-                      "criminal": {"stealth": 1, "streetwise": 2,
-                                   "small wpn": 2, "brawl": 2, "dodge": 1, "legerdemain": 1},
-                      "artisan": {"smithing": 2, "alchemy": 2, "sewing": 2, "tanning": 2, "haggling": 1,
-                                  "propaganda": 1, "streetwise": 1, "teaching": 1, "woodworking": 2,
-                                  "etiquette": 1},
-                      "tailor": {"sewing": 4, "teaching": 2, "haggling": 1},
-                      "weaponsmith": {"smithing": 4, "brawl": 1, "haggling": 1},
-                      "armorsmith": {"smithing": 4, "brawl": 1, "haggling": 1},
-                      "leatherworker": {"tanning": 4, "brawl": 1, "haggling": 1},
-                      "apothecary": {"alchemy": 4, "teaching": 2, "haggling": 1},
-                      "carpenter": {"woodworking": 4, "brawl": 1, "haggling": 1},
-                      "jeweler": {"smithing": 4, "teaching": 2, "haggling": 1},
-                      "scholar": {"medicine": 3, "occult": 2, "agriculture": 1, "economics": 1,
-                                  "teaching": 3, "theology": 1, "law": 1, "etiquette": 1},
-                      "steward": {"stewardship": 4, "economics": 1, "etiquette": 2, "law": 2,
-                                  "agriculture": 2},
-                      "commoner": {"streetwise": 2, "stealth": 1, "brawl": 1, "athletics": 1, "survival": 2,
-                                   "investigation": 1, "dodge": 1, "occult": 1, "haggling": 1}}
+_voc_start_skills_ = {
+    "noble": {
+        "diplomacy": 3,
+        "leadership": 3,
+        "etiquette": 2,
+        "law": 1,
+        "ride": 1,
+        "manipulation": 1,
+        "empathy": 1,
+        "war": 1,
+    },
+    "courtier": {
+        "diplomacy": 1,
+        "etiquette": 3,
+        "manipulation": 2,
+        "empathy": 2,
+        "seduction": 3,
+        "propaganda": 1,
+    },
+    "charlatan": {
+        "legerdemain": 3,
+        "manipulation": 3,
+        "empathy": 1,
+        "streetwise": 3,
+        "occult": 1,
+    },
+    "soldier": {"medium wpn": 3, "brawl": 1, "dodge": 1, "archery": 1, "survival": 1},
+    "knight": {
+        "medium wpn": 3,
+        "dodge": 1,
+        "war": 1,
+        "etiquette": 1,
+        "ride": 2,
+        "leadership": 1,
+    },
+    "lawyer": {
+        "law": 4,
+        "etiquette": 1,
+        "empathy": 2,
+        "manipulation": 2,
+        "teaching": 1,
+        "investigation": 1,
+        "linguistics": 1,
+    },
+    "priest": {
+        "theology": 3,
+        "occult": 2,
+        "medicine": 3,
+        "empathy": 1,
+        "leadership": 1,
+        "propaganda": 2,
+    },
+    "merchant": {
+        "economics": 3,
+        "streetwise": 2,
+        "manipulation": 1,
+        "haggling": 4,
+    },
+    "criminal": {
+        "stealth": 1,
+        "streetwise": 2,
+        "small wpn": 2,
+        "brawl": 2,
+        "dodge": 1,
+        "legerdemain": 1,
+    },
+    "artisan": {
+        "smithing": 2,
+        "alchemy": 2,
+        "sewing": 2,
+        "tanning": 2,
+        "haggling": 1,
+        "propaganda": 1,
+        "streetwise": 1,
+        "teaching": 1,
+        "woodworking": 2,
+        "etiquette": 1,
+    },
+    "tailor": {"sewing": 4, "teaching": 2, "haggling": 1},
+    "weaponsmith": {"smithing": 4, "brawl": 1, "haggling": 1},
+    "armorsmith": {"smithing": 4, "brawl": 1, "haggling": 1},
+    "leatherworker": {"tanning": 4, "brawl": 1, "haggling": 1},
+    "apothecary": {"alchemy": 4, "teaching": 2, "haggling": 1},
+    "carpenter": {"woodworking": 4, "brawl": 1, "haggling": 1},
+    "jeweler": {"smithing": 4, "teaching": 2, "haggling": 1},
+    "scholar": {
+        "medicine": 3,
+        "occult": 2,
+        "agriculture": 1,
+        "economics": 1,
+        "teaching": 3,
+        "theology": 1,
+        "law": 1,
+        "etiquette": 1,
+    },
+    "steward": {
+        "stewardship": 4,
+        "economics": 1,
+        "etiquette": 2,
+        "law": 2,
+        "agriculture": 2,
+    },
+    "commoner": {
+        "streetwise": 2,
+        "stealth": 1,
+        "brawl": 1,
+        "athletics": 1,
+        "survival": 2,
+        "investigation": 1,
+        "dodge": 1,
+        "occult": 1,
+        "haggling": 1,
+    },
+}
 
 
 def setup_voc(char, args):
@@ -125,6 +259,7 @@ def get_total_skill_points():
 
 def get_bonus_skill_points():
     from evennia.server.models import ServerConfig
+
     return ServerConfig.objects.conf("CHARGEN_BONUS_SKILL_POINTS", default=0)
 
 
@@ -134,28 +269,39 @@ CONCEPT_MAX_LEN = 30
 DESC_MIN_LEN = 300
 DESC_MAX_LEN = 1400
 
-XP_BONUS_BY_SRANK = {2: 0,
-                     3: 20,
-                     4: 40,
-                     5: 60,
-                     6: 80,
-                     7: 120,
-                     8: 160,
-                     9: 200,
-                     }
+XP_BONUS_BY_SRANK = {
+    2: 0,
+    3: 20,
+    4: 40,
+    5: 60,
+    6: 80,
+    7: 120,
+    8: 160,
+    9: 200,
+}
 
 XP_BONUS_BY_POP = 1
 
 
 def census_of_fealty():
     """Returns dict of fealty name to number of active players"""
-    fealties = {"Valardin": 0, "Velenosa": 0, "Grayson": 0, "Crownsworn": 0, "Thrax": 0, "Redrain": 0, "Pravus": 0}
+    fealties = {
+        "Valardin": 0,
+        "Velenosa": 0,
+        "Grayson": 0,
+        "Crownsworn": 0,
+        "Thrax": 0,
+        "Redrain": 0,
+        "Pravus": 0,
+    }
     from typeclasses.characters import Character
+
     for char in Character.objects.filter(roster__roster__name="Active"):
         fealty = (char.db.fealty or "").capitalize()
         if fealty in fealties:
             fealties[fealty] += 1
     from collections import OrderedDict
+
     # return an OrderedDict of lowest to highest population of fealites
     return OrderedDict(sorted(fealties.items(), key=lambda k: k[1]))
 
@@ -175,24 +321,23 @@ def award_bonus_by_fealty(fealty):
 def award_bonus_by_age(age):
     """Awards bonus xp for older characters"""
     try:
-        bonus = (age - 15)/4
+        bonus = (age - 15) / 4
         if age > 20:
-            bonus += (age - 20)
+            bonus += age - 20
         if age > 30:
-            bonus += (age - 30)
+            bonus += age - 30
         if age > 40:
-            bonus += (age - 40)
+            bonus += age - 40
         if age > 50:
-            bonus += (age - 50)
+            bonus += age - 50
         if age > 60:
-            bonus += (age - 60)
+            bonus += age - 60
     except (TypeError, ValueError):
         bonus = 0
     return bonus
 
 
-STAGE0 = \
-       """
+STAGE0 = """
 Welcome to {cArx{n, a text based fantasy roleplaying game, similar in design
 to many other MUSH based games. Arx is a game of intrigue and adventure,
 politics and deeply woven stories, allowing players to enter the ongoing
@@ -223,8 +368,7 @@ The guest channel exists to help new players with
 the process of requesting or generating their characters - to speak in it,
 please type '{wguest {c<message>{n'.
        """
-STAGE1 = \
-       """
+STAGE1 = """
 To start with, choose a unique name for your character that consists of a
 single word of only letters - no spaces, numbers, or special characters.
 
@@ -236,8 +380,7 @@ but commands such as 'look' would be executed by 'look donrai'.
 To choose a name, please use {w'@add/name {c<name>'{n. Names may only consist
 of letters, and should generally be between 4-12 characters in length.
        """
-STAGE2 = \
-       """
+STAGE2 = """
 A vocation describes your character's occupation. A number of sample
 vocations have been prepared, but you are not limited to them. You may
 choose either one of the sample vocations, or create your own with
@@ -249,8 +392,7 @@ any. Each sample vocation has a pre-generated list of stats and skills,
 which can be modified in a following step. Creating a new vocation will
 require you to set them manually.
        """
-STAGE3 = \
-       """
+STAGE3 = """
 In this step, you'll create all the details of your character's starting
 story. This will let you define who they are now, what their previous
 history was, and the overall character concept by defining fields on your
@@ -277,8 +419,7 @@ skip this stage with '{w@add/skip{n', though the mandatory fields must be
 filled in with the appropriate '{w@add{n' commands before you are able to
 submit your character.
        """
-STAGE4 = \
-       """
+STAGE4 = """
 You may now adjust the starting skills and stats of your character if you
 wish, or submit your character for approval if you're satisfied with how
 everything looks. To add or remove skills or stats, use '{wadd/stat{n' or
@@ -304,8 +445,7 @@ please tell us why you'd like to claim this character. For example:
 '{w@add/submit She's awesome, and I'm awesome, so this is the
 character I think I should play.{n
        """
-STAGE5 = \
-       """
+STAGE5 = """
 Thank you for submitting your character. If you provided an email, then
 you should receive an email response after GMs review your application.
 If you didn't submit an email, GMs will send you a page/tell after they've
@@ -318,11 +458,20 @@ name you chose for the character and the password you will be provided.
 
 def stage_title(stage):
     """Helper function for setting the title bar of a stage"""
-    stage_txt = ("Name", "Vocation", "Character Design and Details",
-                 "Stats and Skills", "All Done: Thank You!")
-    stage_cmd = ("{w@add/name <character name>{n", "{w@add/vocation <character's vocation>{n",
-                 "{w@add/<field name> <value>", "{w@add/<stat or skill> <stat or skill name>=<+ or -><new value>{n",
-                 "{w@add/submit <application notes>")
+    stage_txt = (
+        "Name",
+        "Vocation",
+        "Character Design and Details",
+        "Stats and Skills",
+        "All Done: Thank You!",
+    )
+    stage_cmd = (
+        "{w@add/name <character name>{n",
+        "{w@add/vocation <character's vocation>{n",
+        "{w@add/<field name> <value>",
+        "{w@add/<stat or skill> <stat or skill name>=<+ or -><new value>{n",
+        "{w@add/submit <application notes>",
+    )
     msg = "{wStep %s: %s" % (stage, stage_txt[stage - 1])
     msg += "\n%s" % (stage_cmd[stage - 1])
     return msg
@@ -336,6 +485,7 @@ class CmdGuestPrompt(ArxPlayerCommand):
     the arguments. If not, then it's a normal mismatch and we should
     provide a guest-specific help text.
     """
+
     key = CMD_NOMATCH
     locks = "cmd:all()"
     auto_help = False
@@ -343,11 +493,15 @@ class CmdGuestPrompt(ArxPlayerCommand):
     def func(self):
         """"Execute the command"""
         caller = self.caller
-        caller.msg(utils.fill("%rInvalid command. To see a list of valid commands, " +
-                              "please type '{whelp{n'. To ask for assistance, please " +
-                              "type '{wguest{n <message>'. To see the current menu, " +
-                              "please type '{wlook{n'. To add a field to a character you " +
-                              "are creating, please use the '{w@add{n' command."))
+        caller.msg(
+            utils.fill(
+                "%rInvalid command. To see a list of valid commands, "
+                + "please type '{whelp{n'. To ask for assistance, please "
+                + "type '{wguest{n <message>'. To see the current menu, "
+                + "please type '{wlook{n'. To add a field to a character you "
+                + "are creating, please use the '{w@add{n' command."
+            )
+        )
         return
 
 
@@ -388,8 +542,10 @@ class CmdGuestLook(ArxPlayerCommand):
                 caller.msg(STAGE1)
                 caller.ndb.seen_stage1_intro = True
             else:
-                caller.msg("To choose a name, please use {w'@add/name <name>'{n. Names may only consist " +
-                           "of letters, and should generally be between 4-12 characters in length.")
+                caller.msg(
+                    "To choose a name, please use {w'@add/name <name>'{n. Names may only consist "
+                    + "of letters, and should generally be between 4-12 characters in length."
+                )
             return
         if stage == 2:
             caller.msg(stage_title(stage))
@@ -399,10 +555,12 @@ class CmdGuestLook(ArxPlayerCommand):
             vocs = [item.capitalize() for item in _vocations_]
             vocs = ", ".join(vocs)
             caller.msg("Sample vocations: {w%s{n" % vocs)
-            caller.msg("Please {w@add/vocation{n one of the above vocations, for example:\n" +
-                       "{w@add/vocation soldier{n\n" +
-                       "Or create a new one with {w@add/newvocation{n, for example:\n" +
-                       "{w@add/newvocation farmer{n\n")
+            caller.msg(
+                "Please {w@add/vocation{n one of the above vocations, for example:\n"
+                + "{w@add/vocation soldier{n\n"
+                + "Or create a new one with {w@add/newvocation{n, for example:\n"
+                + "{w@add/newvocation farmer{n\n"
+            )
             caller.msg("To see the progress of your character, type '{w@sheet{n'.")
             return
         if stage == 3:
@@ -415,25 +573,37 @@ class CmdGuestLook(ArxPlayerCommand):
                 def_txt = ", ".join(list(_stage3_fields_))
                 caller.msg("Your @sheet has completed: {w%s{n" % def_txt)
                 def_txt = ", ".join(list(_stage3_optional_))
-                caller.msg("Optional fields that can be changed with @add if you wish: {w%s{n" % def_txt)
+                caller.msg(
+                    "Optional fields that can be changed with @add if you wish: {w%s{n"
+                    % def_txt
+                )
                 caller.db.tutorial_stage = 4
                 char.player_ob.db.tutorial_stage = caller.db.tutorial_stage
                 caller.execute_cmd("look")
                 return
-            caller.msg("\nTo add a field, '{w@add/<field> <value>'{n. For example,\n" +
-                       "{w@add/concept Surly Assassin{n would add your character's concept.\n")
+            caller.msg(
+                "\nTo add a field, '{w@add/<field> <value>'{n. For example,\n"
+                + "{w@add/concept Surly Assassin{n would add your character's concept.\n"
+            )
             def_txt = set(_stage3_fields_) - set(unfinished)
             def_txt = ", ".join(list(def_txt))
             if def_txt:
                 caller.msg("Your @sheet has completed: {w%s{n" % def_txt)
             unfinished = ", ".join(list(unfinished))
             optional = ", ".join(list(_stage3_optional_))
-            caller.msg("%s still needs to '{w@add{n' the following fields: {w%s{n" % (char.key.capitalize(),
-                                                                                      unfinished))
-            caller.msg("%s can also add these optional fields: {w%s{n" % (char.key.capitalize(), optional))
+            caller.msg(
+                "%s still needs to '{w@add{n' the following fields: {w%s{n"
+                % (char.key.capitalize(), unfinished)
+            )
+            caller.msg(
+                "%s can also add these optional fields: {w%s{n"
+                % (char.key.capitalize(), optional)
+            )
             mssg = "For clarification on any field and an explanation for just what a field means,"
             mssg += " type '{whelp character{n' for a list of the fields, and '{whelp <field name>{n'"
-            mssg += " for a detailed explanation on what a field means for your character."
+            mssg += (
+                " for a detailed explanation on what a field means for your character."
+            )
             caller.msg(mssg)
             return
         if stage == 4:
@@ -451,7 +621,10 @@ class CmdGuestLook(ArxPlayerCommand):
                     skill_pts = 0
                 if not stat_pts:
                     stat_pts = 0
-                caller.msg("\nYou have {w%s{n stat points and {w%s{n skill points to spend." % (stat_pts, skill_pts))
+                caller.msg(
+                    "\nYou have {w%s{n stat points and {w%s{n skill points to spend."
+                    % (stat_pts, skill_pts)
+                )
                 stat_str = "{wCurrent stats:{n "
                 for stat in VALID_STATS:
                     val = char.traits.get_stat_value(stat)
@@ -463,16 +636,22 @@ class CmdGuestLook(ArxPlayerCommand):
                 for skill, value in sorted(char.traits.skills.items()):
                     skill_str += " {c" + skill + "{n: {w" + str(value) + "{n\t"
                 caller.msg(skill_str)
-                caller.msg("""
+                caller.msg(
+                    """
 To see a list of skills, enter '{whelp skills{n', with a description of each
 under '{whelp {c<skill name>{n'. Stats cost 1 point regardless of their current
 rank, while skills cost 1 point per rank for non-combat skills, and 2
 points per rank for combat skills. So to raise melee from 4 to 5 would
-cost 10 skill points.""")
-                caller.msg("Please use {w@add/stat{n or {w@add/skill{n to change any stat or skill, " +
-                           "or {w@add/submit <any notes you wish to add about your application>{n " +
-                           "to finish.")
-                caller.msg("Examples: '{w@add/stat strength=+1{n', {w@add/skill dodge=-1{n'")
+cost 10 skill points."""
+                )
+                caller.msg(
+                    "Please use {w@add/stat{n or {w@add/skill{n to change any stat or skill, "
+                    + "or {w@add/submit <any notes you wish to add about your application>{n "
+                    + "to finish."
+                )
+                caller.msg(
+                    "Examples: '{w@add/stat strength=+1{n', {w@add/skill dodge=-1{n'"
+                )
             return
         if stage == 5:
             caller.msg(stage_title(stage))
@@ -494,6 +673,7 @@ class CmdGuestCharCreate(ArxPlayerCommand):
     the character creation process, you can resume it by using the
     same email address the next time you log in.
     """
+
     key = "@charcreate"
     locks = "cmd:all()"
     help_category = "General"
@@ -505,41 +685,60 @@ class CmdGuestCharCreate(ArxPlayerCommand):
         # see if we've already defined email with @add/email
         email = player.ndb.email or self.lhs.lower()
         if not utils.validate_email_address(email):
-            self.msg("\n{w@charcreate{n expects an email address to be entered with it. " +
-                     "This allows you to resume a previous unfinished character by " +
-                     "entering the same email address, and for your character to be " +
-                     "approved while offline, with the password emailed to the address " +
-                     "provided.")
+            self.msg(
+                "\n{w@charcreate{n expects an email address to be entered with it. "
+                + "This allows you to resume a previous unfinished character by "
+                + "entering the same email address, and for your character to be "
+                + "approved while offline, with the password emailed to the address "
+                + "provided."
+            )
             return
         if check_break(player, checking_character_creation=True):
-            self.msg("Staff are currently on break, and making original characters has been disabled until the "
-                     "break ends. You can still apply to play roster characters until that time, or wait until "
-                     "the break is over.")
+            self.msg(
+                "Staff are currently on break, and making original characters has been disabled until the "
+                "break ends. You can still apply to play roster characters until that time, or wait until "
+                "the break is over."
+            )
             return
         # we check email address to see if it matches an existing unfinished character
         from web.character.models import RosterEntry
+
         try:
             try:
-                entry = RosterEntry.objects.get(roster__name="Incomplete",
-                                                player__email=email)
-                self.msg("{wFound an unfinished character with the provided email address. "
-                         "Resuming that session.{n")
+                entry = RosterEntry.objects.get(
+                    roster__name="Incomplete", player__email=email
+                )
+                self.msg(
+                    "{wFound an unfinished character with the provided email address. "
+                    "Resuming that session.{n"
+                )
             except RosterEntry.MultipleObjectsReturned:
-                entries = RosterEntry.objects.filter(roster__name="Incomplete",
-                                                     player__email=email).order_by('player__date_joined')
+                entries = RosterEntry.objects.filter(
+                    roster__name="Incomplete", player__email=email
+                ).order_by("player__date_joined")
                 if not self.rhs:
-                    self.msg("Found %s incomplete characters with that email address." % entries.count())
-                    self.msg("Please @charcreate <email>=<number> to selection one, where <number> is "
-                             "a number from 1 to %s, where 1 is the oldest character." % entries.count())
+                    self.msg(
+                        "Found %s incomplete characters with that email address."
+                        % entries.count()
+                    )
+                    self.msg(
+                        "Please @charcreate <email>=<number> to selection one, where <number> is "
+                        "a number from 1 to %s, where 1 is the oldest character."
+                        % entries.count()
+                    )
                     return
                 try:
                     index = int(self.rhs) - 1
                     entry = entries[index]
                 except (ValueError, TypeError, IndexError):
-                    self.msg("Please select a number from 1 to "
-                             "%s, where 1 is the oldest character." % entries.count())
+                    self.msg(
+                        "Please select a number from 1 to "
+                        "%s, where 1 is the oldest character." % entries.count()
+                    )
                     return
-                self.msg("Choosing entry number %s out of the ones for that email." % index)
+                self.msg(
+                    "Choosing entry number %s out of the ones for that email." % index
+                )
             new_character = entry.character
             stage = new_character.player_ob.db.tutorial_stage
             if not stage:
@@ -560,21 +759,28 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                 typeclass = settings.BASE_CHARACTER_TYPECLASS
                 permissions = settings.PERMISSION_ACCOUNT_DEFAULT
                 # Some placeholder values for utils.create, will be overwritten later
-                playername = email+'_player'
+                playername = email + "_player"
                 # Make sure the playername is unique
                 num_tries = 0
                 while search.search_account(playername):
                     num_tries += 1
                     playername += str(num_tries)
-                password = email+'_default_password'
-                new_player = create.create_account(playername, email, password, permissions=permissions)
-                new_character = create.create_object(typeclass, key=email,
-                                                     location=default_home,
-                                                     home=default_home,
-                                                     permissions=permissions)
+                password = email + "_default_password"
+                new_player = create.create_account(
+                    playername, email, password, permissions=permissions
+                )
+                new_character = create.create_object(
+                    typeclass,
+                    key=email,
+                    location=default_home,
+                    home=default_home,
+                    permissions=permissions,
+                )
                 # only allow creator (and immortals) to puppet this char
-                new_character.locks.add("puppet:id(%i) or pid(%i) or perm(Immortals) or pperm(Immortals)" %
-                                        (new_character.id, new_player.id))
+                new_character.locks.add(
+                    "puppet:id(%i) or pid(%i) or perm(Immortals) or pperm(Immortals)"
+                    % (new_character.id, new_player.id)
+                )
                 # noinspection PyProtectedMember
                 new_player.db._playable_characters.append(new_character)
                 new_player.db._last_puppet = new_character
@@ -589,15 +795,21 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                 new_character.save()
                 try:
                     from web.character.models import Roster
+
                     incom = Roster.objects.incomplete
                     incom.entries.create(character=new_character, player=new_player)
                 except Exception as err:
                     print("Error in adding character to roster for guest: %s" % err)
                     traceback.print_exc()
             except Exception as err:
-                print("Error in creating a character/player combination for guest: %s" % err)
-                player.msg("Something went wrong during the character/player startup process." +
-                           " Please tell an admin to look into it.")
+                print(
+                    "Error in creating a character/player combination for guest: %s"
+                    % err
+                )
+                player.msg(
+                    "Something went wrong during the character/player startup process."
+                    + " Please tell an admin to look into it."
+                )
                 traceback.print_exc()
                 return
             player.db.char = new_character
@@ -640,8 +852,10 @@ class CmdGuestAddInput(ArxPlayerCommand):
         """Sets the name for the character in stage 1"""
         char = caller.db.char
         if not args:
-            caller.msg("Enter a unique first name for your character with the '{w@add/name{n' command.\n" +
-                       "Ex: {w@add/name Robert{n")
+            caller.msg(
+                "Enter a unique first name for your character with the '{w@add/name{n' command.\n"
+                + "Ex: {w@add/name Robert{n"
+            )
             return
         # check to see if name is taken
         # sanity checks
@@ -655,9 +869,13 @@ class CmdGuestAddInput(ArxPlayerCommand):
             caller.msg(string)
             return
         # strip excessive spaces in playername
-        if AccountDB.objects.filter(username__iexact=playername).exclude(id=char.player_ob.id):
+        if AccountDB.objects.filter(username__iexact=playername).exclude(
+            id=char.player_ob.id
+        ):
             # player already exists (we also ignore capitalization here)
-            caller.msg("Sorry, there is already a player with the name '%s'." % playername)
+            caller.msg(
+                "Sorry, there is already a player with the name '%s'." % playername
+            )
             return
         # everything's fine, username is unique and valid
         char.player_ob.key = playername
@@ -674,8 +892,10 @@ class CmdGuestAddInput(ArxPlayerCommand):
         """Sets the vocation of the character in stage 2"""
         char = caller.db.char
         if not args:
-            caller.msg("Enter your vocation with '{w@add/vocation <vocation name>{n'. You may either choose one " +
-                       "of the vocations provided, or create one of your own with '{w@add/newvocation <vocation>{n.")
+            caller.msg(
+                "Enter your vocation with '{w@add/vocation <vocation name>{n'. You may either choose one "
+                + "of the vocations provided, or create one of your own with '{w@add/newvocation <vocation>{n."
+            )
             return
         args = args.lower().strip()
 
@@ -684,9 +904,11 @@ class CmdGuestAddInput(ArxPlayerCommand):
             char.traits.wipe_all_skills()
             char.traits.wipe_all_abilities()
 
-        if 'newvocation' in switches:
+        if "newvocation" in switches:
             if args in _vocations_:
-                caller.msg("Selected one of the default vocations. Please use 'vocation' rather than 'newvocation.")
+                caller.msg(
+                    "Selected one of the default vocations. Please use 'vocation' rather than 'newvocation."
+                )
                 return
             char.db.vocation = args
             # set up default stats/skills for a new vocation here
@@ -695,10 +917,12 @@ class CmdGuestAddInput(ArxPlayerCommand):
                 char.traits.set_stat_value(stat, 2)
             char.attributes.add("skill_points", get_total_skill_points())
             char.attributes.add("stat_points", STAT_POINTS)
-        elif 'vocation' in switches:
+        elif "vocation" in switches:
             if args not in _vocations_:
-                caller.msg("Argument does not match any of the sample vocations. If you meant to create a new " +
-                           "vocation, please use the '{w@add/newvocation{n' command.")
+                caller.msg(
+                    "Argument does not match any of the sample vocations. If you meant to create a new "
+                    + "vocation, please use the '{w@add/newvocation{n' command."
+                )
                 return
             char.db.vocation = args
             # setup voc will wipe any previous skills, replace em
@@ -715,27 +939,31 @@ class CmdGuestAddInput(ArxPlayerCommand):
         """Sets background attributes for the character in stage 3 - fleshing them out"""
         char = caller.db.char
         if not args:
-            caller.msg("{w@add/<field>{n must have a value after a space. Examples:\n" +
-                       "{w@add/gender{n, ex: {w@add/gender female{n\n" +
-                       "{w@add/age{n, ex: {w@add/age 25{n\n" +
-                       "{w@add/fealty{n, ex: {w@add/fealty Velenosa{n\n" +
-                       "{w@add/family{n, ex: {w@add/family Whisper{n\n" +
-                       "{w@add/religion{n, ex: {w@add/religion Pantheon{n\n" +
-                       "{w@add/desc{n, ex: {w@add/desc A severe girl with blue eyes...{n\n" +
-                       "{w@add/concept{n, ex: {w@add/concept Humorless Handmaiden{n\n" +
-                       "{w@add/background{n, ex: {w@add/background She was of humble birth..." +
-                       "{w@add/social_rank{n, ex: {w@add/social_rank 8")
+            caller.msg(
+                "{w@add/<field>{n must have a value after a space. Examples:\n"
+                + "{w@add/gender{n, ex: {w@add/gender female{n\n"
+                + "{w@add/age{n, ex: {w@add/age 25{n\n"
+                + "{w@add/fealty{n, ex: {w@add/fealty Velenosa{n\n"
+                + "{w@add/family{n, ex: {w@add/family Whisper{n\n"
+                + "{w@add/religion{n, ex: {w@add/religion Pantheon{n\n"
+                + "{w@add/desc{n, ex: {w@add/desc A severe girl with blue eyes...{n\n"
+                + "{w@add/concept{n, ex: {w@add/concept Humorless Handmaiden{n\n"
+                + "{w@add/background{n, ex: {w@add/background She was of humble birth..."
+                + "{w@add/social_rank{n, ex: {w@add/social_rank 8"
+            )
             return
         # if switches is a list, convert it to a string
         if not isinstance(switches, str):
             switches = switches[0]
         if switches not in list(_stage3_fields_) + list(_stage3_optional_):
-            caller.msg("{w@add/<switch>{n must be one of the following: %s" % (list(_stage3_fields_) +
-                                                                               list(_stage3_optional_)))
+            caller.msg(
+                "{w@add/<switch>{n must be one of the following: %s"
+                % (list(_stage3_fields_) + list(_stage3_optional_))
+            )
             return
-        if 'age' == switches:
+        if "age" == switches:
             if not args.isdigit():
-                caller.msg('Age must be given a number.')
+                caller.msg("Age must be given a number.")
                 return
             args = int(args)
             if not (_min_age_ <= args <= _max_age_):
@@ -745,7 +973,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             msg = "For having the age of %s, you will receive %s " % (args, bonus)
             msg += "bonus xp after character creation."
             caller.msg(msg)
-        if 'birthday' in switches:
+        if "birthday" in switches:
             arglist = args.split("/")
             arglist = [x for x in arglist if x.isdigit()]
             if not arglist or len(arglist) != 2:
@@ -757,18 +985,20 @@ class CmdGuestAddInput(ArxPlayerCommand):
             if not 0 < int(arglist[1]) < 31:
                 caller.msg("The day of a character's birth must be between 1 to 30.")
                 return
-        if 'fealty' in switches:
+        if "fealty" in switches:
             args = args.capitalize()
             if args not in _valid_fealty_:
                 fealties = ", ".join(_valid_fealty_)
-                caller.msg("The argument for fealty must be one of the following: {w%s{n"
-                           % fealties)
+                caller.msg(
+                    "The argument for fealty must be one of the following: {w%s{n"
+                    % fealties
+                )
                 return
             bonus = award_bonus_by_fealty(args)
             msg = "For having the fealty of %s, you will receive %s " % (args, bonus)
             msg += "bonus xp after character creation."
             caller.msg(msg)
-        if 'social_rank' in switches:
+        if "social_rank" in switches:
             args = args.strip()
             if not args.isdigit():
                 caller.msg("Social rank must be a number.")
@@ -778,17 +1008,26 @@ class CmdGuestAddInput(ArxPlayerCommand):
                 caller.msg("Social rank must be between 2 and 9.")
                 return
             bonus = XP_BONUS_BY_SRANK.get(args, 0)
-            caller.msg("For starting at a social rank of " +
-                       "%s, you will receive %s bonus experience after character creation." % (args, bonus))
-        if 'personality' in switches:
+            caller.msg(
+                "For starting at a social rank of "
+                + "%s, you will receive %s bonus experience after character creation."
+                % (args, bonus)
+            )
+        if "personality" in switches:
             if not (DESC_MAX_LEN > len(args) > DESC_MIN_LEN):
-                caller.msg("Personality length must be between %s and %s characters." % (DESC_MIN_LEN, DESC_MAX_LEN))
+                caller.msg(
+                    "Personality length must be between %s and %s characters."
+                    % (DESC_MIN_LEN, DESC_MAX_LEN)
+                )
                 caller.msg("Current length was: %s" % len(args))
                 return
-        if 'desc' in switches:
+        if "desc" in switches:
             # desc is no longer an attribute, so it is a special case
             if not (DESC_MAX_LEN > len(args) > DESC_MIN_LEN):
-                caller.msg("Description length must be between %s and %s characters." % (DESC_MIN_LEN, DESC_MAX_LEN))
+                caller.msg(
+                    "Description length must be between %s and %s characters."
+                    % (DESC_MIN_LEN, DESC_MAX_LEN)
+                )
                 caller.msg("Current length was: %s" % len(args))
                 return
             char.desc = args
@@ -797,19 +1036,27 @@ class CmdGuestAddInput(ArxPlayerCommand):
             char.attributes.add(switches, args)
         caller.msg("\n{c%s{n set to: {w%s{n" % (switches.capitalize(), args))
         # check off the list of stage 4 values left to define
-        unfinished_values = char.attributes.get('unfinished_values')
+        unfinished_values = char.attributes.get("unfinished_values")
         if unfinished_values:
             unfinished_values.discard(switches)
         if unfinished_values:
-            char.attributes.add('unfinished_values', unfinished_values)
+            char.attributes.add("unfinished_values", unfinished_values)
             unfinished_values = ", ".join(list(unfinished_values))
-            caller.msg("%s still has to '{w@add{n': {w%s{n" % (char.key.capitalize(), unfinished_values))
-            caller.msg("Can also add optional fields: {w%s{n" % ", ".join(option for option in list(_stage3_optional_)))
+            caller.msg(
+                "%s still has to '{w@add{n': {w%s{n"
+                % (char.key.capitalize(), unfinished_values)
+            )
+            caller.msg(
+                "Can also add optional fields: {w%s{n"
+                % ", ".join(option for option in list(_stage3_optional_))
+            )
             return
         else:  # all done
             caller.msg("All background values are now defined.")
-            caller.msg("You may still add optional fields: {w%s{n" % ", ".join(option for option in
-                                                                               list(_stage3_optional_)))
+            caller.msg(
+                "You may still add optional fields: {w%s{n"
+                % ", ".join(option for option in list(_stage3_optional_))
+            )
             if caller.db.tutorial_stage == 3:
                 caller.db.tutorial_stage += 1
                 char.player_ob.db.tutorial_stage = caller.db.tutorial_stage
@@ -821,31 +1068,43 @@ class CmdGuestAddInput(ArxPlayerCommand):
         """Set stats/skills in stage 4"""
         char = caller.db.char
         if not args:
-            caller.msg("Add or remove stats/skills by {w@add/[stat or skill] <statname>=<+ or -><value>{n")
+            caller.msg(
+                "Add or remove stats/skills by {w@add/[stat or skill] <statname>=<+ or -><value>{n"
+            )
             return
         if not rhs or not lhs:
-            caller.msg(utils.fill("%rThe syntax for adding or removing skills requires an '='" +
-                                  " between the stat or skill" +
-                                  "you are adjusting and the value you are changing it by. For example:" +
-                                  "%r%r%t%t{w@add/stat strength=+1{n%r%r would raise your character's strength " +
-                                  "score by 1, provided you have the available points to do so, and it " +
-                                  "does not take the stat over its maximum value."))
+            caller.msg(
+                utils.fill(
+                    "%rThe syntax for adding or removing skills requires an '='"
+                    + " between the stat or skill"
+                    + "you are adjusting and the value you are changing it by. For example:"
+                    + "%r%r%t%t{w@add/stat strength=+1{n%r%r would raise your character's strength "
+                    + "score by 1, provided you have the available points to do so, and it "
+                    + "does not take the stat over its maximum value."
+                )
+            )
             return
         lhs = lhs.strip().lower()
         try:
             val = int(rhs)
         except ValueError:
-            caller.msg("The value you give after the '=' must be a positive or negative number.")
+            caller.msg(
+                "The value you give after the '=' must be a positive or negative number."
+            )
             return
 
         def check_points(character, arguments, value, category):
             """helper function to see if we can add or remove the points"""
             char.traits.initialize_skills()
             if not (category == "skill" or category == "stat"):
-                character.msg("Error: Invalid category for check_points. 'stat' or 'skill' expected.")
+                character.msg(
+                    "Error: Invalid category for check_points. 'stat' or 'skill' expected."
+                )
                 return False
             if value == 0:
-                character.msg("Please enter a value other than 0 when adding or removing points.")
+                character.msg(
+                    "Please enter a value other than 0 when adding or removing points."
+                )
                 return False
             # check if we have enough points for the operation
             avail_pts = char.attributes.get(category + "_points")
@@ -855,15 +1114,23 @@ class CmdGuestAddInput(ArxPlayerCommand):
                 cost = value
             else:
                 # xp values are 10 times higher than skill points, so we must convert.
-                cost = get_skill_cost(char, arguments, adjust_value=value, check_teacher=False, unmodified=True)
+                cost = get_skill_cost(
+                    char,
+                    arguments,
+                    adjust_value=value,
+                    check_teacher=False,
+                    unmodified=True,
+                )
                 cost /= 10
             if cost > avail_pts:
-                character.msg("You do not have enough available %s points. Remove points from a %s first." % (category,
-                                                                                                              category))
+                character.msg(
+                    "You do not have enough available %s points. Remove points from a %s first."
+                    % (category, category)
+                )
                 return False
             # check the current value of the stat we want to modify, see if it'll be within allowed bounds
             # stats have a minimum of 1, skills have a minimum of 0
-            if category == 'stat':
+            if category == "stat":
                 current_val = char.traits.get_stat_value(arguments)
             else:
                 current_val = char.traits.get_skill_value(arguments)
@@ -877,38 +1144,49 @@ class CmdGuestAddInput(ArxPlayerCommand):
                 a_min = 0
             a_max = 5
             if not (a_min <= current_val + value <= a_max):
-                character.msg("The new value cannot be less than " +
-                              "%s or greater than %s. Please try a different value." % (a_min, a_max))
+                character.msg(
+                    "The new value cannot be less than "
+                    + "%s or greater than %s. Please try a different value."
+                    % (a_min, a_max)
+                )
                 return False
             new_val = current_val + value
-            if category == 'stat' and new_val == a_max:
+            if category == "stat" and new_val == a_max:
                 # check how many stats we have at maximum. We only allow 2
                 num_max_stats = 0
                 for stat in VALID_STATS:
                     if char.traits.get_stat_value(stat) == 5:
                         num_max_stats += 1
                 if num_max_stats >= 2:
-                    character.msg("Sorry, only a maximum of two stats are allowed to start at 5.")
+                    character.msg(
+                        "Sorry, only a maximum of two stats are allowed to start at 5."
+                    )
                     return False
             avail_pts -= cost
-            if category == 'stat':
+            if category == "stat":
                 char.traits.set_stat_value(arguments, new_val)
-            elif category == 'skill':
+            elif category == "skill":
                 char.traits.set_skill_value(arguments, new_val)
             char.attributes.add(category + "_points", avail_pts)
-            character.msg("\n{c%s{n has been set to {w%s{n. You now have {w%s{n points remaining for {w%s{n." % (
-                arguments.capitalize(), new_val, avail_pts, category + "s"))
+            character.msg(
+                "\n{c%s{n has been set to {w%s{n. You now have {w%s{n points remaining for {w%s{n."
+                % (arguments.capitalize(), new_val, avail_pts, category + "s")
+            )
             return True
 
         if "stat" in switches:
             if lhs not in VALID_STATS:
                 matches = get_partial_match(lhs, "stat")
                 if not matches:
-                    caller.msg("No stat matches the value you entered. Please enter its name again.")
+                    caller.msg(
+                        "No stat matches the value you entered. Please enter its name again."
+                    )
                     return
                 if len(matches) > 1:
-                    caller.msg("The word you typed for 'stat' matched more than one attribute. " +
-                               "Please re-enter with more letters.")
+                    caller.msg(
+                        "The word you typed for 'stat' matched more than one attribute. "
+                        + "Please re-enter with more letters."
+                    )
                     return
                 # we found a single unique match, set it to the right keyword
                 lhs = matches[0]
@@ -920,11 +1198,15 @@ class CmdGuestAddInput(ArxPlayerCommand):
             if lhs not in VALID_SKILLS:
                 matches = get_partial_match(lhs, "skill")
                 if not matches:
-                    caller.msg("No skill matches the value you entered. Please enter its name again.")
+                    caller.msg(
+                        "No skill matches the value you entered. Please enter its name again."
+                    )
                     return
                 if len(matches) > 1:
-                    caller.msg("The word you typed for 'skill' matched more than one skill." +
-                               " Please re-enter with more letters.")
+                    caller.msg(
+                        "The word you typed for 'skill' matched more than one skill."
+                        + " Please re-enter with more letters."
+                    )
                     return
                 # we found a single unique match, set it to the right keyword
                 lhs = matches[0]
@@ -937,21 +1219,28 @@ class CmdGuestAddInput(ArxPlayerCommand):
     def do_stage_5(caller, args):
         """Handle submission/written application"""
         if not args or len(args) < 78:
-            caller.msg("Please write a more detailed application for your character. " +
-                       "Your application should state how you intend to RP your character, " +
-                       "your preferences in stories, the type of RP you want to seek out or " +
-                       "create, etc.")
+            caller.msg(
+                "Please write a more detailed application for your character. "
+                + "Your application should state how you intend to RP your character, "
+                + "your preferences in stories, the type of RP you want to seek out or "
+                + "create, etc."
+            )
             return
         from commands.base_commands.jobs import get_apps_manager
+
         char = caller.db.char
         # check if we're ready yet
         if char.db.skill_points or char.db.stat_points:
-            caller.msg("You still have available skill or stat points to assign. " +
-                       "Please assign them all before you submit your character.")
+            caller.msg(
+                "You still have available skill or stat points to assign. "
+                + "Please assign them all before you submit your character."
+            )
             return
         unfinished_values = char.db.unfinished_values
         if unfinished_values:
-            caller.msg("You still must define the following fields: %s" % unfinished_values)
+            caller.msg(
+                "You still must define the following fields: %s" % unfinished_values
+            )
             return
         # finish up
         apps = get_apps_manager()
@@ -973,42 +1262,64 @@ class CmdGuestAddInput(ArxPlayerCommand):
             char.db.xp = xp_bonus
         except Exception:
             import traceback
+
             traceback.print_exc()
             caller.msg("Something went wrong when awarding starting xp. Logging error.")
-        xp_msg = "Based on your character's social rank of %s and their fealty, you will " % srank
-        xp_msg += "enter the game with %s xp. You will be able to spend them " % char.db.xp
+        xp_msg = (
+            "Based on your character's social rank of %s and their fealty, you will "
+            % srank
+        )
+        xp_msg += (
+            "enter the game with %s xp. You will be able to spend them " % char.db.xp
+        )
         xp_msg += "with the {wxp/spend{n command."
         caller.msg(xp_msg)
 
-        message = "{wNewly created character application by [%s] for %s" % (caller.key.capitalize(),
-                                                                            char.key.capitalize())
-        if char.player_ob.email == 'dummy@dummy.com' or char.player_ob.email == 'none':
+        message = "{wNewly created character application by [%s] for %s" % (
+            caller.key.capitalize(),
+            char.key.capitalize(),
+        )
+        if char.player_ob.email == "dummy@dummy.com" or char.player_ob.email == "none":
             # notify GMs that the player is finished and waiting on approval
-            message += ". The guest has not provided an email, and will be awaiting approval."
-            message += "\nTo approve this character, manually set @userpassword of the player "
+            message += (
+                ". The guest has not provided an email, and will be awaiting approval."
+            )
+            message += (
+                "\nTo approve this character, manually set @userpassword of the player "
+            )
             message += "and inform the guest of the new password."
             if args:
                 message += "Player added the following to their application: %s" % args
             caller.msg("Thank you for submitting your character for approval.")
-            caller.msg("The GMs will review your character and page you the password if it is approved.")
-            caller.msg("When the character is approved, log back in to ArxMUSH and use" +
-                       " 'connect <name> <password>' to play.")
+            caller.msg(
+                "The GMs will review your character and page you the password if it is approved."
+            )
+            caller.msg(
+                "When the character is approved, log back in to ArxMUSH and use"
+                + " 'connect <name> <password>' to play."
+            )
         else:
             if not args:
                 args = "No message"
             email = char.player_ob.email
             apps.add_app(char, email, args)
             caller.msg("Thank you for submitting your character for approval.")
-            caller.msg("GMs will review your character, and notify you via the email you provided.")
-            caller.msg("If the GMs feel anything in your character needs to be changed, " +
-                       "they will work with you to adjust your character for play.")
+            caller.msg(
+                "GMs will review your character, and notify you via the email you provided."
+            )
+            caller.msg(
+                "If the GMs feel anything in your character needs to be changed, "
+                + "they will work with you to adjust your character for play."
+            )
         inform_staff(message)
         try:
             from world.dominion.setup_utils import starting_money
+
             money = starting_money(srank) or 0
-            char.db.currency = money/10
+            char.db.currency = money / 10
         except (ValueError, TypeError, AttributeError):
             import traceback
+
             traceback.print_exc()
             char.db.currency = 0
 
@@ -1021,20 +1332,26 @@ class CmdGuestAddInput(ArxPlayerCommand):
         # convert any strange diacritics to english
         args = unidecode(args)
         if args != self.args:
-            caller.msg("{wEncountered non-ascii characters. Converting unicode to ascii text.{n")
+            caller.msg(
+                "{wEncountered non-ascii characters. Converting unicode to ascii text.{n"
+            )
         switches = self.switches
         # if we're at stage 5, we no longer allow the player to retroactively change
         # anything about the character. It's frozen until the character is approved or
         # rejected
         if stage == 5:
-            caller.msg("Your character is currently pending approval and cannot be changed.")
+            caller.msg(
+                "Your character is currently pending approval and cannot be changed."
+            )
             return
         if not switches:
-            caller.msg("All uses of the {w@add{n command require you to add a 'switch' after @add to identify " +
-                       "what field you're adding to your character sheet.\n"
-                       "For example: {w@add/name Robert{n\nOr: {w@add/vocation criminal{n")
+            caller.msg(
+                "All uses of the {w@add{n command require you to add a 'switch' after @add to identify "
+                + "what field you're adding to your character sheet.\n"
+                "For example: {w@add/name Robert{n\nOr: {w@add/vocation criminal{n"
+            )
             return
-        if 'email' in switches:
+        if "email" in switches:
             if not args:
                 caller.msg("You must supply an email address when setting your email.")
                 return
@@ -1047,28 +1364,32 @@ class CmdGuestAddInput(ArxPlayerCommand):
             caller.msg("Email set to %s" % args)
             return
         if not stage or not char:
-            caller.msg("{w@add{n is used during character creation. To start character creation, " +
-                       "use {w@charcreate <email address>{n")
+            caller.msg(
+                "{w@add{n is used during character creation. To start character creation, "
+                + "use {w@charcreate <email address>{n"
+            )
             return
-        if 'skip' in switches:
+        if "skip" in switches:
             if stage == 3:
                 caller.db.tutorial_stage += 1
                 char.player_ob.db.tutorial_stage = caller.db.tutorial_stage
                 caller.execute_cmd("look")
                 return
-        if stage == 1 or 'name' in switches:
+        if stage == 1 or "name" in switches:
             self.do_stage_1(caller, args)
             return
-        elif stage == 2 or 'vocation' in switches or 'newvocation' in switches:
+        elif stage == 2 or "vocation" in switches or "newvocation" in switches:
             self.do_stage_2(caller, args, switches)
             return
-        elif stage == 3 or (set(switches) & (set(_stage3_fields_) | set(_stage3_optional_))):
+        elif stage == 3 or (
+            set(switches) & (set(_stage3_fields_) | set(_stage3_optional_))
+        ):
             self.do_stage_3(caller, args, switches)
             return
-        elif 'submit' in switches:
+        elif "submit" in switches:
             self.do_stage_5(caller, args)
             return
-        elif stage == 4 or 'stat' in switches or 'skill' in switches:
+        elif stage == 4 or "stat" in switches or "skill" in switches:
             self.do_stage_4(caller, args, switches, self.lhs, self.rhs)
             return
         caller.msg("Unexpected state error.")

@@ -8,13 +8,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0036_shardhaven_weight_no_monster_backtrack'),
+        ("exploration", "0036_shardhaven_weight_no_monster_backtrack"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhaven',
-            name='weight_no_treasure_backtrack',
-            field=models.PositiveSmallIntegerField(default=50, verbose_name=b'No Treasure Weight on Backtrack'),
+            model_name="shardhaven",
+            name="weight_no_treasure_backtrack",
+            field=models.PositiveSmallIntegerField(
+                default=50, verbose_name=b"No Treasure Weight on Backtrack"
+            ),
         ),
     ]

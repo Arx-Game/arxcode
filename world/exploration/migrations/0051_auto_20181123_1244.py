@@ -8,18 +8,24 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0050_auto_20181123_1233'),
+        ("exploration", "0050_auto_20181123_1233"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='peekable_closed',
-            field=models.BooleanField(default=False, help_text=b"Can people see through this exit before it's been passed?"),
+            model_name="shardhavenobstacle",
+            name="peekable_closed",
+            field=models.BooleanField(
+                default=False,
+                help_text=b"Can people see through this exit before it's been passed?",
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='peekable_open',
-            field=models.BooleanField(default=True, help_text=b"Can people see through this exit when it's been passed?"),
+            model_name="shardhavenobstacle",
+            name="peekable_open",
+            field=models.BooleanField(
+                default=True,
+                help_text=b"Can people see through this exit when it's been passed?",
+            ),
         ),
     ]

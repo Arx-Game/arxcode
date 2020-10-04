@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0028_auto_20181115_2119'),
+        ("exploration", "0028_auto_20181115_2119"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='clue_success',
+            model_name="shardhavenobstacle",
+            name="clue_success",
             field=models.TextField(blank=True, null=True),
         ),
     ]

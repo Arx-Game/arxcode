@@ -8,18 +8,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0021_auto_20180102_0656'),
+        ("dominion", "0021_auto_20180102_0656"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='crisisaction',
-            name='free_action',
+            model_name="crisisaction",
+            name="free_action",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='crisisactionassistant',
-            name='free_action',
+            model_name="crisisactionassistant",
+            name="free_action",
             field=models.BooleanField(default=False),
         ),
     ]

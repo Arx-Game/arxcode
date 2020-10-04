@@ -45,6 +45,7 @@ class CmdGoals(RewardRPToolUseMixin, ArxCommand):
     character's goal, you would submit a goals/rfr to ask for staff ruling on
     any game results. You may submit an rfr once every 30 days.
     """
+
     key = "goals"
     aliases = ["goal"]
     field_switches = ("summary", "description", "scope", "status", "ooc_notes", "plot")
@@ -97,9 +98,11 @@ class CmdGoals(RewardRPToolUseMixin, ArxCommand):
             if not desc:
                 raise ValueError
         except ValueError:
-            raise CommandError('You must provide a summary and a description of your goal.')
+            raise CommandError(
+                "You must provide a summary and a description of your goal."
+            )
         goal = self.goals.create(summary=summary, description=desc)
-        self.msg('You have created a new goal: ID #%s.' % goal.id)
+        self.msg("You have created a new goal: ID #%s." % goal.id)
 
     def update_goal_field(self, goal):
         """Updates a field for a goal"""
@@ -128,27 +131,46 @@ class CmdGoals(RewardRPToolUseMixin, ArxCommand):
     def request_review(self, goal):
         """Submits a ticket asking for a review of progress toward their goal"""
         from datetime import datetime, timedelta
+
         past_thirty_days = datetime.now() - timedelta(days=30)
-        recent = GoalUpdate.objects.filter(goal__in=self.goals.all(), db_date_created__gt=past_thirty_days).first()
+        recent = GoalUpdate.objects.filter(
+            goal__in=self.goals.all(), db_date_created__gt=past_thirty_days
+        ).first()
         beat = None
         if recent:
-            raise CommandError("You submitted a request for review for goal %s too recently." % recent.goal.id)
+            raise CommandError(
+                "You submitted a request for review for goal %s too recently."
+                % recent.goal.id
+            )
         try:
             summary, ooc_message = self.rhs.split("/")
         except (AttributeError, ValueError):
-            raise CommandError("You must provide both a short story summary of what your character did or attempted to "
-                               "do in order to make progress toward their goal, and an OOC message to staff, telling "
-                               "them of your intent for results you would like and anything else that seems "
-                               "relevant.")
+            raise CommandError(
+                "You must provide both a short story summary of what your character did or attempted to "
+                "do in order to make progress toward their goal, and an OOC message to staff, telling "
+                "them of your intent for results you would like and anything else that seems "
+                "relevant."
+            )
         if len(self.lhslist) > 1:
             try:
-                beat = PlotUpdate.objects.filter(plot__in=self.caller.dompc.plots.all()).get(id=self.lhslist[1])
+                beat = PlotUpdate.objects.filter(
+                    plot__in=self.caller.dompc.plots.all()
+                ).get(id=self.lhslist[1])
             except (PlotUpdate.DoesNotExist, ValueError):
                 raise CommandError("No beat by that ID.")
         update = goal.updates.create(beat=beat, player_summary=summary)
-        ticket = create_ticket(self.caller.player_ob, self.rhs, plot=goal.plot, beat=beat, goal_update=update,
-                               queue_slug="Goals")
-        self.msg("You have sent in a request for review for goal %s. Ticket ID is %s." % (goal.id, ticket.id))
+        ticket = create_ticket(
+            self.caller.player_ob,
+            self.rhs,
+            plot=goal.plot,
+            beat=beat,
+            goal_update=update,
+            queue_slug="Goals",
+        )
+        self.msg(
+            "You have sent in a request for review for goal %s. Ticket ID is %s."
+            % (goal.id, ticket.id)
+        )
 
 
 class CmdGMGoals(ArxCommand):
@@ -164,6 +186,7 @@ class CmdGMGoals(ArxCommand):
     their goals. gmgoals/close allows you to close a ticket and write the
     result they get for the GoalUpdate.
     """
+
     key = "gmgoals"
     aliases = ["gmgoal"]
     locks = "cmd:perm(builders)"
@@ -192,7 +215,11 @@ class CmdGMGoals(ArxCommand):
         """List tickets for goalupdates"""
         table = EvTable("{wID{n", "{wPlayer{n", "{wGoal{n")
         for ticket in self.tickets:
-            table.add_row(ticket.id, str(ticket.submitting_player), ticket.goal_update.goal.summary)
+            table.add_row(
+                ticket.id,
+                str(ticket.submitting_player),
+                ticket.goal_update.goal.summary,
+            )
         self.msg(str(table))
 
     def close_ticket(self, ticket):
@@ -201,7 +228,9 @@ class CmdGMGoals(ArxCommand):
             raise CommandError("You must provide a result.")
         update = ticket.goal_update
         if update.result:
-            raise CommandError("Update already has a result written. Close the ticket with @job.")
+            raise CommandError(
+                "Update already has a result written. Close the ticket with @job."
+            )
         update.result = self.rhs
         update.save()
         resolve_ticket(self.caller.player_ob, ticket, "Result: %s" % self.rhs)

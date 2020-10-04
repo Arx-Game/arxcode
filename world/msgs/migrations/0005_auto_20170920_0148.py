@@ -10,39 +10,53 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0012_auto_20170920_0148'),
+        ("dominion", "0012_auto_20170920_0148"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('msgs', '0004_comment_journal_messenger_post_rumor_vision'),
+        ("msgs", "0004_comment_journal_messenger_post_rumor_vision"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='inform',
-            name='is_unread',
+            model_name="inform",
+            name="is_unread",
         ),
         migrations.AddField(
-            model_name='inform',
-            name='important',
+            model_name="inform",
+            name="important",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='inform',
-            name='organization',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='informs', to='dominion.Organization'),
+            model_name="inform",
+            name="organization",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="informs",
+                to="dominion.Organization",
+            ),
         ),
         migrations.AddField(
-            model_name='inform',
-            name='read_by',
-            field=models.ManyToManyField(blank=True, related_name='read_informs', to=settings.AUTH_USER_MODEL),
+            model_name="inform",
+            name="read_by",
+            field=models.ManyToManyField(
+                blank=True, related_name="read_informs", to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AlterField(
-            model_name='inform',
-            name='message',
-            field=models.TextField(verbose_name=b'Information sent to player or org'),
+            model_name="inform",
+            name="message",
+            field=models.TextField(verbose_name=b"Information sent to player or org"),
         ),
         migrations.AlterField(
-            model_name='inform',
-            name='player',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='informs', to=settings.AUTH_USER_MODEL),
+            model_name="inform",
+            name="player",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="informs",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

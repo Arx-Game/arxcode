@@ -20,12 +20,13 @@ def validate_name(name, formatting=True, not_player=True):
         player_conflict = False
     else:
         from evennia.accounts.models import AccountDB
+
         player_conflict = AccountDB.objects.filter(username__iexact=name)
     if player_conflict:
         return None
     if formatting:
-        return re.findall('^[\-\w\'{\[,|%=_ ]+$', name)
-    return re.findall('^[\w\']+$', name)
+        return re.findall("^[\-\w'{\[,|%=_ ]+$", name)
+    return re.findall("^[\w']+$", name)
 
 
 def inform_staff(message, post=False, subject=None, quiet=settings.DEBUG):
@@ -39,20 +40,25 @@ def inform_staff(message, post=False, subject=None, quiet=settings.DEBUG):
             quiet: Whether to print errors that are encountered
     """
     from evennia.comms.models import ChannelDB
+
     try:
         wizchan = ChannelDB.objects.get(db_key__iexact="staffinfo")
         now = time_now().strftime("%H:%M")
         wizchan.tempmsg("{r[%s]:{n %s" % (now, message))
         if post:
             from typeclasses.bulletin_board.bboard import BBoard
+
             board = BBoard.objects.get(db_key__iexact="Jobs")
             subject = subject or "Staff Activity"
             if post is not True:
                 message = post
-            board.bb_post(poster_obj=None, msg=message, subject=subject, poster_name="Staff")
+            board.bb_post(
+                poster_obj=None, msg=message, subject=subject, poster_name="Staff"
+            )
     except Exception as err:
         if not quiet:
             print("ERROR when attempting utils.inform_staff() : %s" % err)
+
 
 def inform_guides(message, post=False, subject=None, quiet=settings.DEBUG):
     """
@@ -64,27 +70,30 @@ def inform_guides(message, post=False, subject=None, quiet=settings.DEBUG):
             quiet: Whether to print errors that are encountered
     """
     from evennia.comms.models import ChannelDB
+
     try:
         guide_chan = ChannelDB.objects.get(db_key__iexact="Guides")
         now = time_now().strftime("%H:%M")
         guide_chan.tempmsg("{r[%s]:{n %s" % (now, message))
         if post:
             from typeclasses.bulletin_board.bboard import BBoard
+
             board = BBoard.objects.get(db_key__iexact="Jobs")
             subject = subject or "Staff Activity"
             if post is not True:
                 message = post
-            board.bb_post(poster_obj=None, msg=message, subject=subject, poster_name="Staff")
+            board.bb_post(
+                poster_obj=None, msg=message, subject=subject, poster_name="Staff"
+            )
     except Exception as err:
         if not quiet:
             print("ERROR when attempting utils.inform_guides() : %s" % err)
 
 
-
-
 def setup_log(logfile):
     """Sets up a log file"""
     import logging
+
     file_handle = logging.FileHandler(logfile)
     formatter = logging.Formatter(fmt=settings.LOG_FORMAT, datefmt=settings.DATE_FORMAT)
     file_handle.setFormatter(formatter)
@@ -102,16 +111,18 @@ def get_date(game_time=None):
     format is 'M/D/YEAR AR'
     """
     from typeclasses.scripts import gametime
+
     time = gametime.gametime(game_time=game_time, format=True)
     month, day, year = time[1] + 1, time[3] + 1, time[0] + 1001
-    day += (time[2] * 7)
-    date = ("%s/%s/%s AR" % (month, day, year))
+    day += time[2] * 7
+    date = "%s/%s/%s AR" % (month, day, year)
     return date
 
 
 def get_week(use_default=settings.DEBUG, default=1):
     """Gets the current week for dominion."""
     from evennia.scripts.models import ScriptDB
+
     try:
         weekly = ScriptDB.objects.get(db_key="Weekly Update")
     except ScriptDB.DoesNotExist:
@@ -126,6 +137,7 @@ def time_now(aware=False):
     """Gets naive or aware datetime."""
     if aware:
         from django.utils import timezone
+
         return timezone.localtime(timezone.now())
     # naive datetime
     return datetime.now()
@@ -176,41 +188,66 @@ def sub_old_ansi(text):
     """Replacing old ansi with newer evennia markup strings"""
     if not text:
         return ""
-    text = text.replace('%r', '|/')
-    text = text.replace('%R', '|/')
-    text = text.replace('%t', '|-')
-    text = text.replace('%T', '|-')
-    text = text.replace('%b', '|_')
-    text = text.replace('%cr', '|r')
-    text = text.replace('%cR', '|[R')
-    text = text.replace('%cg', '|g')
-    text = text.replace('%cG', '|[G')
-    text = text.replace('%cy', '|!Y')
-    text = text.replace('%cY', '|[Y')
-    text = text.replace('%cb', '|!B')
-    text = text.replace('%cB', '|[B')
-    text = text.replace('%cm', '|!M')
-    text = text.replace('%cM', '|[M')
-    text = text.replace('%cc', '|!C')
-    text = text.replace('%cC', '|[C')
-    text = text.replace('%cw', '|!W')
-    text = text.replace('%cW', '|[W')
-    text = text.replace('%cx', '|!X')
-    text = text.replace('%cX', '|[X')
-    text = text.replace('%ch', '|h')
-    text = text.replace('%cn', '|n')
+    text = text.replace("%r", "|/")
+    text = text.replace("%R", "|/")
+    text = text.replace("%t", "|-")
+    text = text.replace("%T", "|-")
+    text = text.replace("%b", "|_")
+    text = text.replace("%cr", "|r")
+    text = text.replace("%cR", "|[R")
+    text = text.replace("%cg", "|g")
+    text = text.replace("%cG", "|[G")
+    text = text.replace("%cy", "|!Y")
+    text = text.replace("%cY", "|[Y")
+    text = text.replace("%cb", "|!B")
+    text = text.replace("%cB", "|[B")
+    text = text.replace("%cm", "|!M")
+    text = text.replace("%cM", "|[M")
+    text = text.replace("%cc", "|!C")
+    text = text.replace("%cC", "|[C")
+    text = text.replace("%cw", "|!W")
+    text = text.replace("%cW", "|[W")
+    text = text.replace("%cx", "|!X")
+    text = text.replace("%cX", "|[X")
+    text = text.replace("%ch", "|h")
+    text = text.replace("%cn", "|n")
     return text
 
 
 def strip_ansi(text):
     """Stripping out old ansi from a string"""
     from evennia.utils.ansi import strip_ansi
+
     text = strip_ansi(text)
-    text = text.replace('%r', '').replace('%R', '').replace('%t', '').replace('%T', '').replace('%b', '')
-    text = text.replace('%cr', '').replace('%cR', '').replace('%cg', '').replace('%cG', '').replace('%cy', '')
-    text = text.replace('%cY', '').replace('%cb', '').replace('%cB', '').replace('%cm', '').replace('%cM', '')
-    text = text.replace('%cc', '').replace('%cC', '').replace('%cw', '').replace('%cW', '').replace('%cx', '')
-    text = text.replace('%cX', '').replace('%ch', '').replace('%cn', '')
+    text = (
+        text.replace("%r", "")
+        .replace("%R", "")
+        .replace("%t", "")
+        .replace("%T", "")
+        .replace("%b", "")
+    )
+    text = (
+        text.replace("%cr", "")
+        .replace("%cR", "")
+        .replace("%cg", "")
+        .replace("%cG", "")
+        .replace("%cy", "")
+    )
+    text = (
+        text.replace("%cY", "")
+        .replace("%cb", "")
+        .replace("%cB", "")
+        .replace("%cm", "")
+        .replace("%cM", "")
+    )
+    text = (
+        text.replace("%cc", "")
+        .replace("%cC", "")
+        .replace("%cw", "")
+        .replace("%cW", "")
+        .replace("%cx", "")
+    )
+    text = text.replace("%cX", "").replace("%ch", "").replace("%cn", "")
     return text
 
 
@@ -218,6 +255,7 @@ def broadcast(txt, format_announcement=True):
     """Broadcasting a message to the server"""
     from evennia.server.sessionhandler import SESSION_HANDLER
     from evennia.scripts.models import ScriptDB
+
     if format_announcement:
         txt = "{wServer Announcement{n: %s" % txt
     txt = sub_old_ansi(txt)
@@ -244,12 +282,13 @@ def raw(text):
     returning the escaped string.
     """
     from evennia.utils.ansi import raw as evennia_raw
+
     if not text:
         return ""
     # get Evennia codes from the Arx-specific codes
     text = sub_old_ansi(text)
     # if any were turned into newlines, we substitute the code
-    text = text.replace('\n', '|/')
+    text = text.replace("\n", "|/")
     # escape all of them
     text = evennia_raw(text)
     return text
@@ -269,7 +308,10 @@ def check_break(caller=None, checking_character_creation=False):
     if passed along as args, then return True.
     """
     from evennia.server.models import ServerConfig
-    allow_character_creation = ServerConfig.objects.conf("allow_character_creation_on_break")
+
+    allow_character_creation = ServerConfig.objects.conf(
+        "allow_character_creation_on_break"
+    )
     end_date = ServerConfig.objects.conf("end_break_date")
     if checking_character_creation and allow_character_creation:
         return False
@@ -286,8 +328,15 @@ def check_break(caller=None, checking_character_creation=False):
 def delete_empty_tags():
     """Deletes any tag that isn't currently connected to any objects."""
     from evennia.typeclasses.tags import Tag
-    empty = Tag.objects.filter(objectdb__isnull=True, accountdb__isnull=True, msg__isnull=True, helpentry__isnull=True,
-                               scriptdb__isnull=True, channeldb__isnull=True)
+
+    empty = Tag.objects.filter(
+        objectdb__isnull=True,
+        accountdb__isnull=True,
+        msg__isnull=True,
+        helpentry__isnull=True,
+        scriptdb__isnull=True,
+        channeldb__isnull=True,
+    )
     empty.delete()
 
 
@@ -301,6 +350,7 @@ def trainer_diagnostics(trainer):
         String of diagnostic information about trainer and its attributes.
     """
     from django.core.exceptions import ObjectDoesNotExist
+
     msg = "%s: id: %s" % (repr(trainer), id(trainer))
 
     def get_attr_value(attr_name):
@@ -312,6 +362,7 @@ def trainer_diagnostics(trainer):
         except (AttributeError, ObjectDoesNotExist):
             ret += "no value"
         return ret
+
     msg += get_attr_value("currently_training")
     msg += get_attr_value("num_trained")
     return msg
@@ -357,6 +408,7 @@ def reset_to_default_channels(player):
         player: AccountDB object to reset
     """
     from typeclasses.channels import Channel
+
     disconnect_all_channels(player)
     required_channels = Channel.objects.filter(db_key__in=("Info", "Public"))
     for req_channel in required_channels:
@@ -372,7 +424,7 @@ def post_roster_dompc_cleanup(player):
         dompc = player.Dominion
     except AttributeError:
         return
-    settings,created=dompc.petition_settings.get_or_create()
+    settings, created = dompc.petition_settings.get_or_create()
     settings.cleanup()
     dompc.proteges.clear()
     dompc.patron = None
@@ -406,7 +458,16 @@ def caller_change_field(caller, obj, field, value, field_name=None):
     caller.msg("%s changed from %s to %s." % (field_name, old, value))
 
 
-def create_arx_message(senderobj, message, channels=None, receivers=None, locks=None, header=None, cls=None, tags=None):
+def create_arx_message(
+    senderobj,
+    message,
+    channels=None,
+    receivers=None,
+    locks=None,
+    header=None,
+    cls=None,
+    tags=None,
+):
     """
     Create a new communication Msg. Msgs represent a unit of
     database-persistent communication between entites. If a proxy class is
@@ -432,8 +493,10 @@ def create_arx_message(senderobj, message, channels=None, receivers=None, locks=
         limit this as desired.
     """
     from evennia.utils.utils import make_iter
+
     if not cls:
         from evennia.comms.models import Msg
+
         cls = Msg
     if not message:
         # we don't allow empty messages.
@@ -474,23 +537,29 @@ def cache_safe_update(queryset, **kwargs):
 
 def text_box(text):
     """Encloses characters in a cute little text box"""
-    boxchars = '\n{w' + '*' * 70 + '{n\n'
+    boxchars = "\n{w" + "*" * 70 + "{n\n"
     return boxchars + text + boxchars
 
 
-def create_gemit_and_post(msg, caller, episode_name=None, synopsis=None, orgs_list=None):
+def create_gemit_and_post(
+    msg, caller, episode_name=None, synopsis=None, orgs_list=None
+):
     """Creates a new StoryEmit and an accompanying episode if specified, then broadcasts it."""
     # current story
     from web.character.models import Story, Episode, StoryEmit
-    story = Story.objects.latest('start_date')
+
+    story = Story.objects.latest("start_date")
     chapter = story.current_chapter
     if episode_name:
         date = datetime.now()
-        episode = Episode.objects.create(name=episode_name, date=date, chapter=chapter, synopsis=synopsis)
+        episode = Episode.objects.create(
+            name=episode_name, date=date, chapter=chapter, synopsis=synopsis
+        )
     else:
-        episode = Episode.objects.latest('date')
-    gemit = StoryEmit.objects.create(episode=episode, chapter=chapter, text=msg,
-                                     sender=caller)
+        episode = Episode.objects.latest("date")
+    gemit = StoryEmit.objects.create(
+        episode=episode, chapter=chapter, text=msg, sender=caller
+    )
     if orgs_list:
         gemit.orgs.add(*orgs_list)
         caller.msg("Announcing to %s ...\n%s" % (list_to_string(orgs_list), msg))
@@ -506,16 +575,19 @@ def broadcast_msg_and_post(msg, caller, episode_name=None):
     # save this non-formatted version for posting to BB
     post_msg = msg
     # format msg for logs and announcement
-    box_chars = '\n{w' + '*' * 70 + '{n\n'
+    box_chars = "\n{w" + "*" * 70 + "{n\n"
     msg = box_chars + msg + box_chars
     broadcast(msg, format_announcement=False)
     # get board and post
     from typeclasses.bulletin_board.bboard import BBoard
+
     bboard = BBoard.objects.get(db_key__iexact="story updates")
     subject = "Story Update"
     if episode_name:
         subject = "Episode: %s" % episode_name
-    bboard.bb_post(poster_obj=caller, msg=post_msg, subject=subject, poster_name="Story")
+    bboard.bb_post(
+        poster_obj=caller, msg=post_msg, subject=subject, poster_name="Story"
+    )
 
 
 def dict_from_choices_field(cls, field_name, include_uppercase=True):
@@ -523,7 +595,9 @@ def dict_from_choices_field(cls, field_name, include_uppercase=True):
     choices_tuple = getattr(cls, field_name)
     lower_case_dict = {string.lower(): integer for integer, string in choices_tuple}
     if include_uppercase:
-        upper_case_dict = {string.capitalize(): integer for integer, string in choices_tuple}
+        upper_case_dict = {
+            string.capitalize(): integer for integer, string in choices_tuple
+        }
         lower_case_dict.update(upper_case_dict)
     return lower_case_dict
 
@@ -541,11 +615,14 @@ def passthrough_properties(field_name, *property_names):
     Returns:
         A function that acts as a decorator for the class which attaches the properties to it.
     """
+
     def wrapped(cls):
         """Wrapper around a class decorated with the properties"""
         for name in property_names:
+
             def generate_property(prop_name):
                 """Helper function to generate the getter/setter functions for each property"""
+
                 def get_func(self):
                     """Getter function for the property"""
                     parent = getattr(self, field_name)
@@ -555,9 +632,12 @@ def passthrough_properties(field_name, *property_names):
                     """Setter function for the property"""
                     parent = getattr(self, field_name)
                     setattr(parent, prop_name, value)
+
                 setattr(cls, prop_name, property(get_func, set_func))
+
             generate_property(name)
         return cls
+
     return wrapped
 
 
@@ -566,11 +646,12 @@ def lowercase_kwargs(*kwarg_names, **defaults):
     Decorator for converting given kwargs that are list of strings to lowercase, and optionally appending a
     default value.
     """
-    default_append = defaults.get('default_append', None)
+    default_append = defaults.get("default_append", None)
     from functools import wraps
 
     def wrapper(func):
         """The actual decorator that we'll return"""
+
         @wraps(func)
         def wrapped(*args, **kwargs):
             """The wrapped function"""
@@ -581,7 +662,9 @@ def lowercase_kwargs(*kwarg_names, **defaults):
                     if default_append is not None:
                         kwargs[kwarg].append(default_append)
             return func(*args, **kwargs)
+
         return wrapped
+
     return wrapper
 
 
@@ -592,6 +675,7 @@ def fix_broken_attributes(broken_object):
     """
     from ast import literal_eval
     from evennia.utils.dbserialize import from_pickle
+
     for attr in broken_object.attributes.all():
         try:
             attr.value = from_pickle(literal_eval(attr.value))
@@ -635,12 +719,16 @@ def list_to_string(inlist, endsep="and", addquote=False):
         return ""
     if addquote:
         if len(inlist) == 1:
-            return "\"%s\"" % inlist[0]
-        return ", ".join("\"%s\"" % v for v in inlist[:-1]) + "%s %s" % (endsep, "\"%s\"" % inlist[-1])
+            return '"%s"' % inlist[0]
+        return ", ".join('"%s"' % v for v in inlist[:-1]) + "%s %s" % (
+            endsep,
+            '"%s"' % inlist[-1],
+        )
     else:
         if len(inlist) == 1:
             return str(inlist[0])
         return ", ".join(str(v) for v in inlist[:-1]) + "%s %s" % (endsep, inlist[-1])
+
 
 def queryset_to_string(qset):
     """
@@ -688,7 +776,6 @@ def qslist_to_string(qslist):
     return message
 
 
-
 class CachedProperty(object):
     """
     Pretty similar to django's cached_property, but will be used for the CachedPropertiesMixin for models
@@ -697,7 +784,7 @@ class CachedProperty(object):
 
     def __init__(self, func, name=None):
         self.func = func
-        self.__doc__ = getattr(func, '__doc__')
+        self.__doc__ = getattr(func, "__doc__")
         self.name = name or func.__name__
 
     def __get__(self, instance, cls=None):
@@ -731,7 +818,7 @@ class CachedPropertiesMixin(object):
 
 def a_or_an(word):
 
-    if word[:1].lower() in ['a', 'e', 'i', 'o', 'u']:
+    if word[:1].lower() in ["a", "e", "i", "o", "u"]:
         return "an"
 
     return "a"
@@ -751,6 +838,7 @@ def commafy(string_list):
 # noinspection PyPep8Naming
 class classproperty(object):
     """Descriptor for making a property that always goes off the class, not the instance."""
+
     def __init__(self, getter):
         """
         Args:
@@ -778,9 +866,10 @@ def get_full_url(url):
     site.
     Args:
         url: A partial url from a few, like '/namespace/view/'
-        
+
     Returns:
         A full url, like "http://www.example.com/namespace/view/"
     """
     from django.contrib.sites.models import Site
+
     return "http://%s%s" % (Site.objects.get_current(), url)

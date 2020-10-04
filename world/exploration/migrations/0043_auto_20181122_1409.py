@@ -9,28 +9,54 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0035_auto_20180831_0922'),
-        ('exploration', '0042_auto_20181122_1357'),
+        ("dominion", "0035_auto_20180831_0922"),
+        ("exploration", "0042_auto_20181122_1357"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='MonsterCraftingDrops',
+            name="MonsterCraftingDrops",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('weight', models.PositiveSmallIntegerField(default=10)),
-                ('min_quantity', models.PositiveSmallIntegerField(default=1)),
-                ('max_quantity', models.PositiveSmallIntegerField(default=1)),
-                ('material', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='dominion.CraftingMaterialType')),
-                ('monster', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='crafting_drops', to='exploration.Monster')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("weight", models.PositiveSmallIntegerField(default=10)),
+                ("min_quantity", models.PositiveSmallIntegerField(default=1)),
+                ("max_quantity", models.PositiveSmallIntegerField(default=1)),
+                (
+                    "material",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="dominion.CraftingMaterialType",
+                    ),
+                ),
+                (
+                    "monster",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="crafting_drops",
+                        to="exploration.Monster",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AlterField(
-            model_name='shardhavenpuzzleobjectloot',
-            name='puzzle',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='object_drops', to='exploration.ShardhavenPuzzle'),
+            model_name="shardhavenpuzzleobjectloot",
+            name="puzzle",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="object_drops",
+                to="exploration.ShardhavenPuzzle",
+            ),
         ),
     ]

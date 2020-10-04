@@ -48,20 +48,25 @@ def start_fight_at_room(room, caller=None, exclude_list=None):
     else:
         caller_string = "A non-player"
         announce_exclude = exclude_list
-    inform_staff("{wCombat:{n {c%s{n started a fight in room {w%s{n." % (caller_string, room.id))
-    room.msg_contents("{rA fight has broken out here. Use @spectate_combat to watch, or +fight to join.",
-                      exclude=announce_exclude)
+    inform_staff(
+        "{wCombat:{n {c%s{n started a fight in room {w%s{n." % (caller_string, room.id)
+    )
+    room.msg_contents(
+        "{rA fight has broken out here. Use @spectate_combat to watch, or +fight to join.",
+        exclude=announce_exclude,
+    )
     return cscript
 
 
 class CombatCommand(ArxCommand):
     """Command that requires that we're in combat to execute it. Ensures any other requirements are met."""
+
     exclusive_phase = None
     combat = None
 
     def at_pre_cmd(self):
         """
-        Precursor to parsing switches, this will ensure combat exists, is not shutting down, and 
+        Precursor to parsing switches, this will ensure combat exists, is not shutting down, and
         makes sure we are part of it. Returning True aborts the command sequence.
         """
         try:
@@ -69,12 +74,19 @@ class CombatCommand(ArxCommand):
             location = self.caller.location
             self.combat = location.ndb.combat_manager
             caller_combat = self.caller.combat.state.combat
-            if self.combat != caller_combat or self.caller.combat.state not in self.combat.ndb.combatants:
+            if (
+                self.combat != caller_combat
+                or self.caller.combat.state not in self.combat.ndb.combatants
+            ):
                 raise AttributeError
             if self.combat.ndb.shutting_down:
-                raise combat_settings.CombatError("Combat is shutting down so this command will not work.")
+                raise combat_settings.CombatError(
+                    "Combat is shutting down so this command will not work."
+                )
             if self.exclusive_phase and self.exclusive_phase != self.combat.ndb.phase:
-                raise combat_settings.CombatError("Wrong combat phase for this command.")
+                raise combat_settings.CombatError(
+                    "Wrong combat phase for this command."
+                )
         except AttributeError:
             self.msg("Not participating in a fight at your location.")
             stupid_prize = True
@@ -82,10 +94,11 @@ class CombatCommand(ArxCommand):
             self.msg(err)
             stupid_prize = True
         return stupid_prize
-    
+
 
 class CombatCmdSet(CmdSet):
     """CmdSet for players who are currently engaging in combat."""
+
     key = "CombatCmdSet"
     priority = 20
     duplicates = False
@@ -116,7 +129,7 @@ class CombatCmdSet(CmdSet):
         self.add(CmdCancelAction())
         self.add(CmdSurrender())
         self.add(CmdSpecialAction())
-        
+
 
 """
 -------------------------------------------------------------------
@@ -146,6 +159,7 @@ class CmdStartCombat(ArxCommand):
 
     To end combat, use +end_combat.
     """
+
     key = "+fight"
     aliases = ["fight"]
     locks = "cmd:all()"
@@ -160,8 +174,10 @@ class CmdStartCombat(ArxCommand):
         cscript = room.ndb.combat_manager
         if not self.args:
             if not cscript or not cscript.ndb.combatants:
-                caller.msg("No one else is fighting here. To start a new " +
-                           "fight, {w+fight <character>{n")
+                caller.msg(
+                    "No one else is fighting here. To start a new "
+                    + "fight, {w+fight <character>{n"
+                )
                 return
             caller.msg(cscript.add_combatant(caller, caller))
             return
@@ -173,7 +189,7 @@ class CmdStartCombat(ArxCommand):
         if not oblist:
             caller.msg("No one found by the names you provided.")
             return
-        oblist = [ob for ob in oblist if hasattr(ob, 'attackable') and ob.attackable]
+        oblist = [ob for ob in oblist if hasattr(ob, "attackable") and ob.attackable]
         if not oblist:
             self.msg("No one attackable by the names you provided.")
             return
@@ -206,6 +222,7 @@ class CmdAutoattack(ArxCommand):
     for it to proceed, as a check against AFK, and so that combat
     doesn't instantly resolve when all characters are autoattacking.
     """
+
     key = "+autoattack"
     aliases = ["autoattack", "auto"]
     locks = "cmd:all()"
@@ -245,6 +262,7 @@ class CmdProtect(ArxCommand):
     You may only focus on defending one character at a time. To stop
     guarding a character, use the /stop switch.
     """
+
     key = "+protect"
     aliases = ["+defend"]
     locks = "cmd:all()"
@@ -277,8 +295,10 @@ class CmdProtect(ArxCommand):
             caller.msg("You weren't guarding anyone.")
             return
         if current:
-            caller.msg("You are currently guarding %s. To guard someone else, first use {w+protect/stop{n." %
-                       current.name)
+            caller.msg(
+                "You are currently guarding %s. To guard someone else, first use {w+protect/stop{n."
+                % current.name
+            )
             return
         if not self.args:
             caller.msg("Protect who?")
@@ -288,8 +308,10 @@ class CmdProtect(ArxCommand):
             caller.msg("Couldn't find anyone to guard.")
             return
         if not to_guard.attackable:
-            caller.msg("Your target is currently not attackable and " +
-                       "does not need a guard.")
+            caller.msg(
+                "Your target is currently not attackable and "
+                + "does not need a guard."
+            )
             return
         # all checks succeeded. Start guarding
         caller.db.guarding = to_guard
@@ -344,7 +366,7 @@ def check_targ(caller, target, verb="Attack"):
     if not target:
         caller.msg("%s who?" % verb)
         return False
-    if not hasattr(target, 'attackable') or not target.attackable:
+    if not hasattr(target, "attackable") or not target.attackable:
         caller.msg("%s is not attackable and cannot enter combat." % target.name)
         return False
     combat = target.combat.combat
@@ -352,8 +374,12 @@ def check_targ(caller, target, verb="Attack"):
         caller.msg("They are not in combat.")
         return False
     if not combat.check_character_is_combatant(caller) and verb != "Admin":
-        raise combat_settings.CombatError("Target check for combat(s) that should not exist.")
+        raise combat_settings.CombatError(
+            "Target check for combat(s) that should not exist."
+        )
     return True
+
+
 # --------------------------------------------------------
 
 
@@ -369,6 +395,7 @@ class CmdEndCombat(CombatCommand):
     the only other choice is to {wcontinue{n to begin the combat round,
     or mark non-participating characters as afk.
     """
+
     key = "+end_combat"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -390,6 +417,7 @@ class CmdSurrender(CombatCommand):
     Asks to leave the fight. The /deny switch rejects a character's ability to
     surrender. Both are toggles.
     """
+
     key = "surrender"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -426,7 +454,7 @@ class CmdAttack(CombatCommand):
           attack/critical <character>[=difficulty]
           attack/accuracy <character>[=advantage]
           attack/flub <character>[=to-hit penalty,damage penalty]
-          
+
     An attempt to attack a given character that is in combat with you. If
     the character has defenders, you will be forced to attack one of them
     instead. The /only switch has you attempt to bypass defenders and only
@@ -442,6 +470,7 @@ class CmdAttack(CombatCommand):
     The /flub switch allows you to attach penalties to hit and/or damage
     to intentionally make a poor attack.
     """
+
     key = "attack"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -473,9 +502,13 @@ class CmdAttack(CombatCommand):
         dmg_penalty = 0
         msg = "{rYou attack %s.{n " % targ
         if defenders:
-            if "only" in self.switches:  # we're doing a called shot at a protected target
+            if (
+                "only" in self.switches
+            ):  # we're doing a called shot at a protected target
                 if not self.can_bypass:
-                    caller.msg("You cannot bypass defenders with the 'only' switch when trying to kill.")
+                    caller.msg(
+                        "You cannot bypass defenders with the 'only' switch when trying to kill."
+                    )
                     return
                 attack_penalty += 15 * len(defenders)
             else:  # bodyguard to the rescue!
@@ -506,30 +539,39 @@ class CmdAttack(CombatCommand):
             try:
                 attack_penalty, dmg_penalty = [abs(int(num)) for num in self.rhslist]
             except (TypeError, ValueError):
-                self.msg("You must specify both a to-hit and damage penalty, though they can be 0.")
+                self.msg(
+                    "You must specify both a to-hit and damage penalty, though they can be 0."
+                )
                 return
             MAX = 500
             if attack_penalty > MAX or dmg_penalty > MAX:
                 self.msg("Maximum flub value is %d." % MAX)
                 return
-            msg += "Adjusting your attack with a to-hit penalty of %d and damage penalty of %d." % (attack_penalty,
-                                                                                                    dmg_penalty)
+            msg += (
+                "Adjusting your attack with a to-hit penalty of %d and damage penalty of %d."
+                % (attack_penalty, dmg_penalty)
+            )
         this_round = combat.ndb.rounds
         do_ready = not caller.combat.state.ready
         qtype = "kill" if can_kill else "attack"
-        caller.combat.state.set_queued_action(qtype, targ, msg, attack_penalty, dmg_penalty, do_ready)
+        caller.combat.state.set_queued_action(
+            qtype, targ, msg, attack_penalty, dmg_penalty, do_ready
+        )
         # check if their participation in combat ended after it set them to be ready
         if not combat or combat.ndb.shutting_down or not caller.combat.state:
             return
         # check if this is queue-for-turn-later, ELSE we're going to immediately use our turn.
         if combat.ndb.phase != 2 or combat.ndb.active_character != caller:
-            if this_round == combat.ndb.rounds and caller.combat.state.remaining_attacks > 0:
+            if (
+                this_round == combat.ndb.rounds
+                and caller.combat.state.remaining_attacks > 0
+            ):
                 caller.msg("{wQueuing action for your turn:{n %s" % msg)
         else:
             result = caller.combat.state.do_turn_actions()
             if not result:
                 raise combat_settings.CombatError("Beep boop, attac fail.")
-            
+
 
 class CmdSlay(CmdAttack):
     """
@@ -543,11 +585,12 @@ class CmdSlay(CmdAttack):
     accidental deaths are realistic, we feel they aren't very compelling
     from a narrative standpoint. You cannot finish off a character until
     any characters defending them are similarly incapacitated.
-    
+
     Characters that are flagged as NPCs do not have this protection, and
     may be killed via +attack in hilarious training accidents and the
     like. This command uses the same switches as 'attack'.
     """
+
     key = "+coupdegrace"
     aliases = ["kill"]
     locks = "cmd:all()"
@@ -564,14 +607,15 @@ class CmdReadyTurn(CombatCommand):
         ready
 
     When in the setup phase of combat, 'continue' or 'ready' will mark you
-    as being ready to move on to the combat round. 
-    
+    as being ready to move on to the combat round.
+
     Combat is turn-based without any timers to ensure that players have
     adequate time in order to roleplay during fights. This is not a license
     to attempt to stall to avoid consequences in RP, however, and trying
     to freeze combat by not taking your turn or marking yourself ready is
     very strictly prohibited.
     """
+
     key = "continue"
     aliases = ["ready"]
     locks = "cmd:all()"
@@ -593,6 +637,7 @@ class CmdPassTurn(CombatCommand):
     defer your turn until everyone else has been offered a chance to
     go.
     """
+
     key = "pass"
     aliases = ["delay"]
     help_category = "Combat"
@@ -619,6 +664,7 @@ class CmdCancelAction(CombatCommand):
 
     Cancels any current action that you have queued up.
     """
+
     key = "cancel"
     help_category = "Combat"
 
@@ -642,6 +688,7 @@ class CmdFlee(CombatCommand):
     and if no one successfully stops you before your next turn,
     you execute 'flee <exit>' again to leave.
     """
+
     key = "flee"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -676,6 +723,7 @@ class CmdFlank(CombatCommand):
     and refrain from attacking guards if you're spotted. Otherwise,
     you will attack the guard who stops you by default.
     """
+
     key = "flank"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -696,7 +744,9 @@ class CmdFlank(CombatCommand):
         # Check whether we attack guards
         attack_guards = "only" not in self.switches
         # to do later - adding in sneaking/invisibility into game
-        caller.combat.do_flank(targ, sneaking=False, invis=False, attack_guard=attack_guards)
+        caller.combat.do_flank(
+            targ, sneaking=False, invis=False, attack_guard=attack_guards
+        )
         return
 
 
@@ -715,6 +765,7 @@ class CmdCombatStance(ArxCommand):
     turn. Unlike most combat settings, stance is actually persistent between
     fights if not changed.
     """
+
     key = "stance"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -727,7 +778,9 @@ class CmdCombatStance(ArxCommand):
             return
         elif self.args not in combat_settings.COMBAT_STANCES:
             message = "Your stance must be one of the following: "
-            message += "{w%s{n" % list_to_string(sorted(combat_settings.COMBAT_STANCES), endsep="or")
+            message += "{w%s{n" % list_to_string(
+                sorted(combat_settings.COMBAT_STANCES), endsep="or"
+            )
             caller.msg(message)
             return
         combat = check_combat(caller)
@@ -743,12 +796,13 @@ class CmdCatch(CombatCommand):
     Attempt to stop someone from running
     Usage:
         catch <character>
-        
+
     Attempts to maneuver your character to block another character from
     fleeing. You can only attempt to catch one character at a time, though
     you may declare your intent at any time, before a character decides
     whether they would wish to attempt to run or not.
     """
+
     key = "catch"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -768,13 +822,14 @@ class CmdCoverRetreat(CombatCommand):
     Usage:
         cover <character>[,<character2>,<character3>...]
         cover/stop [<character>, <character2>...]
-        
+
     Cover has your character declare your intent to remain behind and fight
     others while you cover the retreat of one or more characters. Covering
     a retreat does not take your action for the round, but prevents you
     from fleeing yourself and imposes a difficulty penalty on attacks due
     to the distraction.
     """
+
     key = "cover"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -806,7 +861,7 @@ class CmdVoteAFK(CombatCommand):
     Voting a character 'away from keyboard' to remove them from combat.
     Usage:
         +vote_afk <character>
-        
+
     People have to go AFK sometimes. It's a game, and RL has to take priority.
     Unfortunately, with turn-based combat, that can mean you can wait a long
     time for someone to take their turn. If it's someone's turn and they're
@@ -815,6 +870,7 @@ class CmdVoteAFK(CombatCommand):
     to kick them. Voting must be unanimous by all except the player in who
     is being voted upon.
     """
+
     key = "+vote_afk"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -840,9 +896,10 @@ class CmdCombatStats(ArxCommand):
     Usage:
         +combatstats
         +combatstats/view <character> - GM-only usage
-        
+
     Displays your combat stats.
     """
+
     key = "+combatstats"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -862,40 +919,43 @@ class CmdCombatStats(ArxCommand):
         fighter = char.combat
         msg = "\n{c%s{w's Combat Stats\n" % char
         self.msg(msg + fighter.display_stats())
-    
-    
+
+
 class CmdSpecialAction(CombatCommand):
     """
-    Take special action in combat 
+    Take special action in combat
     Usage:
         @specialaction
         @specialaction/preset <number of GM declared action>
         @specialaction <description of what you're doing>
-        
+
     Declares intent to take an action in a GM'd combat. This allows players to
     either select a type of action that a GM has declared available, or to
     specify their own action.
     """
+
     key = "@specialaction"
     locks = "cmd:all()"
     help_category = "Combat"
-    
+
     def func(self):
         """Executes SpecialAction command"""
         combat = self.combat
         if not combat.managed_mode:
-            self.msg("Special actions can only be taken when combat has a presiding GM.")
+            self.msg(
+                "Special actions can only be taken when combat has a presiding GM."
+            )
             return
         if not self.args:
             return self.list_actions(combat)
         if "preset" in self.switches:
             return self.do_preset_action(combat)
         return self.do_special_action(combat)
-        
+
     def list_actions(self, combat):
         """Lists available GM actions, any action caller is taking"""
         self.msg(combat.list_special_actions())
-    
+
     def do_preset_action(self, combat):
         """Selects an action defined by a GM"""
         try:
@@ -906,13 +966,13 @@ class CmdSpecialAction(CombatCommand):
         else:
             self.caller.combat.state.take_preset_action(action)
             self.msg("Queued %s." % action)
-    
+
     def do_special_action(self, combat):
         """Defines an action that the player wishes to do"""
         self.caller.combat.state.take_unique_action(self.args)
         self.msg("Set yourself to take the following action: %s" % self.args)
-    
-    
+
+
 """
 ----------------------------------------------------
 These commands will all be a part of the staff
@@ -930,6 +990,7 @@ class CmdObserveCombat(ArxCommand):
             @spectate_combat/stop
     Enters combat if it is present in your current location.
     """
+
     key = "@spectate_combat"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -965,6 +1026,7 @@ class CmdFightStatus(ArxCommand):
 
     Displays status of fight at your room.
     """
+
     key = "+combatstatus"
     aliases = ["+fightstatus", "+cs"]
     locks = "cmd:all()"
@@ -1011,10 +1073,17 @@ class CmdAdminCombat(ArxCommand):
     fight completely. /startfight will automatically add you as an observer,
     otherwise use +specate_combat to watch.
     """
+
     key = "@admin_combat"
     locks = "cmd:perm(admin_combat) or perm(Wizards)"
     help_category = "Combat"
-    modifier_categories = ("attack", "defense", "mitigation", "damage", "special_action")
+    modifier_categories = (
+        "attack",
+        "defense",
+        "mitigation",
+        "damage",
+        "special_action",
+    )
 
     def func(self):
         """Execute command."""
@@ -1051,10 +1120,14 @@ class CmdAdminCombat(ArxCommand):
         if "risk" in switches:
             from server.utils.arx_utils import dict_from_choices_field
             from world.dominion.models import RPEvent
+
             try:
                 choice = dict_from_choices_field(RPEvent, "RISK_CHOICES")[self.args]
             except KeyError:
-                self.msg("Invalid choice: %s" % ", ".join(ob[1] for ob in RPEvent.RISK_CHOICES))
+                self.msg(
+                    "Invalid choice: %s"
+                    % ", ".join(ob[1] for ob in RPEvent.RISK_CHOICES)
+                )
                 return
             combat.ndb.risk = choice
             self.msg("Risk level set to %s (%s)." % (self.args, choice))
@@ -1101,7 +1174,7 @@ class CmdAdminCombat(ArxCommand):
             return self.add_to_initiative_list(targ, combat)
         else:
             caller.msg("Invalid switch or missing arg.")
-            
+
     def display_or_set_modifiers(self, target):
         """Displays or sets a temporary modifier to target character for this combat"""
         if not target.combat.state:
@@ -1117,17 +1190,21 @@ class CmdAdminCombat(ArxCommand):
             if mod_type.lower() not in self.modifier_categories:
                 raise IndexError
         except (IndexError, ValueError):
-            self.msg("Value must be a number, and modifier must be one of the following: %s"
-                     % ", ".join(self.modifier_categories))
+            self.msg(
+                "Value must be a number, and modifier must be one of the following: %s"
+                % ", ".join(self.modifier_categories)
+            )
         else:
             setattr(target.combat.state, mod_type + "_modifier", value)
             self.display_modifiers(target)
-            
+
     def display_modifiers(self, target):
         """Displays temporary modifiers for this combat for target character"""
         msg = "Modifiers for %s:\n" % target
-        msg += ", ".join("%s: %s" % (mod_name, getattr(target.combat.state, mod_name + "_modifier"))
-                         for mod_name in self.modifier_categories)
+        msg += ", ".join(
+            "%s: %s" % (mod_name, getattr(target.combat.state, mod_name + "_modifier"))
+            for mod_name in self.modifier_categories
+        )
         self.msg(msg)
 
     def start_fight(self):
@@ -1138,11 +1215,11 @@ class CmdAdminCombat(ArxCommand):
             return
         combat = start_fight_at_room(self.caller.location, self.caller)
         combat.add_observer(self.caller)
-        
+
     def add_combatant(self, target, combat):
         """
         Adds a character to the combat.
-        
+
             Args:
                 target: character we're adding
                 combat: combat we're adding them to
@@ -1154,7 +1231,7 @@ class CmdAdminCombat(ArxCommand):
             return
         combat.add_combatant(target, reset=True)
         self.msg("Added %s." % target)
-        
+
     def add_special_action(self, combat):
         """Adds an action to the combat"""
         if not self.lhs:
@@ -1165,7 +1242,7 @@ class CmdAdminCombat(ArxCommand):
             return
         combat.add_special_action(self.lhs, stat, skill, difficulty)
         self.msg(combat.list_special_actions())
-        
+
     def get_check(self):
         """Get check we're going to require character to make from args"""
         skill = None
@@ -1179,7 +1256,7 @@ class CmdAdminCombat(ArxCommand):
             self.msg("Must provide a stat and difficulty.")
             return None, None, None
         return stat, skill, difficulty
-        
+
     def remove_special_action(self, combat):
         """Removes an action from the combat."""
         try:
@@ -1188,21 +1265,23 @@ class CmdAdminCombat(ArxCommand):
         except (TypeError, ValueError, IndexError):
             msg = "No action by that number.\n"
         self.msg(msg + combat.list_special_actions())
-        
+
     def list_rolls(self, combat):
         """List all rolls characters have made for special actions"""
         self.msg(combat.list_rolls_for_special_actions())
         combat.ndb.gm_afk_counter = 0
-    
+
     def next_turn(self, combat):
         """Marks current character turn as done and go to next character"""
         if combat.ndb.phase == 1:
-            self.msg("Currently in setup phase. Use /readyall to advance to next phase.")
+            self.msg(
+                "Currently in setup phase. Use /readyall to advance to next phase."
+            )
             return
         self.msg("Advancing to next character.")
         combat.next_character_turn()
         combat.ndb.gm_afk_counter = 0
-    
+
     def make_check_for_character(self, character, combat):
         """Makes a check for a character's special action."""
         stat, skill, difficulty = self.get_check()
@@ -1212,7 +1291,7 @@ class CmdAdminCombat(ArxCommand):
             self.add_combatant(character, combat)
         character.combat.state.do_check(stat, skill, difficulty)
         combat.ndb.gm_afk_counter = 0
-    
+
     def make_all_checks_for_action(self, combat):
         """Makes checks for every character doing a given GM-defined special action."""
         try:
@@ -1224,16 +1303,20 @@ class CmdAdminCombat(ArxCommand):
             self.msg("Making all checks for %s." % action)
             combat.make_all_checks_for_special_action(action)
         combat.ndb.gm_afk_counter = 0
-    
+
     def toggle_managed_mode(self, combat):
         """Toggles whether combat will pause at each character."""
         combat.managed_mode = not combat.managed_mode
         if combat.managed_mode:
             # make sure the caller is in the list of GMs
             combat.add_gm(self.caller)
-            self.msg("Combat is now in managed mode, and will pause before each character to allow for rolls.")
+            self.msg(
+                "Combat is now in managed mode, and will pause before each character to allow for rolls."
+            )
         else:
-            self.msg("Combat is no longer in managed mode, and will automatically execute actions without pausing.")
+            self.msg(
+                "Combat is no longer in managed mode, and will automatically execute actions without pausing."
+            )
         combat.ndb.gm_afk_counter = 0
 
     def add_to_initiative_list(self, character, combat):
@@ -1246,16 +1329,18 @@ class CmdAdminCombat(ArxCommand):
         combat.ndb.initiative_list.append(character.combat.state)
         self.msg("Giving %s an action at the end of initiative list." % character)
         combat.ndb.gm_afk_counter = 0
-    
+
     def execute_current_action(self, combat):
         """Causes currently selected character's action to execute."""
         character = combat.ndb.active_character
         try:
             character.combat.state.do_roll_for_special_action()
         except AttributeError:
-            self.msg("Could not roll for that character. Not their turn or no special action defined.")
+            self.msg(
+                "Could not roll for that character. Not their turn or no special action defined."
+            )
         combat.ndb.gm_afk_counter = 0
-            
+
     def force_action(self, character, combat):
         """Sets the action of the current character."""
         self.msg("Forcing %s to: %s" % (character, self.rhs))
@@ -1271,11 +1356,11 @@ class CmdCreateAntagonist(ArxCommand):
         @spawn
         @spawn <ID #>[=<Spawn Message>]
         @spawn/dismiss <monster>
-        
+
     Creation:
         @spawn/boss <name>=<boss rating>,<threat>
         @spawn/mooks <name>=<quantity>,<threat>
-        
+
     Customization:
         @spawn/name <ID #>=<new name>
         @spawn/desc <ID #>=<new description>
@@ -1285,13 +1370,14 @@ class CmdCreateAntagonist(ArxCommand):
         @spawn/mirror <ID #>=<player character>
 
     Created npc antagonists to use. NPCs are created with a threat value which
-    controls the base values of all their skills: A threat 5 group of mooks 
-    will all have 5s in weapon skills, for example. Mooks are intended to be a 
+    controls the base values of all their skills: A threat 5 group of mooks
+    will all have 5s in weapon skills, for example. Mooks are intended to be a
     group of mobs with a quantity that you specify, while a boss can be a much
-    tougher individual mob. A boss rating is a hugely impactful stat that 
-    greatly increases the health and damage of an npc. Expect for boss rating 
+    tougher individual mob. A boss rating is a hugely impactful stat that
+    greatly increases the health and damage of an npc. Expect for boss rating
     of 5 to one-shot most npcs.
     """
+
     key = "@spawn"
     locks = "cmd:perm(spawn) or perm(Builders)"
     help_category = "GMing"
@@ -1299,13 +1385,23 @@ class CmdCreateAntagonist(ArxCommand):
     BOSS = "typeclasses.npcs.npc.Npc"
     ntype = 0  # guard combat_type used by default
     creation_switches = ("boss", "mook", "mooks")
-    customization_switches = ("name", "desc", "description", "threat", "boss_rating", 
-                              "quantity", "mirror", "darklink")
-    
+    customization_switches = (
+        "name",
+        "desc",
+        "description",
+        "threat",
+        "boss_rating",
+        "quantity",
+        "mirror",
+        "darklink",
+    )
+
     @property
     def npc_queryset(self):
         """Queryset for spawned npcs"""
-        return ObjectDB.objects.filter(Q(db_typeclass_path=self.MOOKS) | Q(db_typeclass_path=self.BOSS))
+        return ObjectDB.objects.filter(
+            Q(db_typeclass_path=self.MOOKS) | Q(db_typeclass_path=self.BOSS)
+        )
 
     def func(self):
         """Execute command."""
@@ -1321,23 +1417,31 @@ class CmdCreateAntagonist(ArxCommand):
             return self.spawn_npc(npc)
         elif self.check_switches(self.customization_switches):
             return self.customize_spawned_npc(npc)
-        elif 'dismiss' in self.switches:
+        elif "dismiss" in self.switches:
             return self.dismiss_spawned_npc(npc)
         self.msg("Invalid switch.")
-    
+
     def list_available_spawns(self):
         """Displays table of available spawn npcs"""
         ntypes = npc_types.npc_templates.keys()
         npcs = self.npc_queryset
         self.msg("Valid npc types: %s" % ", ".join(ntypes))
-        table = evtable.EvTable("ID", "Name", "Type", "Amt", "Threat", "Location", width=78)
+        table = evtable.EvTable(
+            "ID", "Name", "Type", "Amt", "Threat", "Location", width=78
+        )
         for npc in npcs:
             ntype = npc_types.get_npc_singular_name(npc.db.npc_type)
             num = npc.db.num_living if ntype.lower() != "champion" else "Unique"
-            table.add_row(npc.id, npc.key or "None", ntype, num,
-                          npc.db.npc_quality, npc.location.id if npc.location else None)
-        self.msg(str(table), options={'box': True})
-        
+            table.add_row(
+                npc.id,
+                npc.key or "None",
+                ntype,
+                num,
+                npc.db.npc_quality,
+                npc.location.id if npc.location else None,
+            )
+        self.msg(str(table), options={"box": True})
+
     def create_new_spawn(self):
         """Creates a new boss or group of mooks."""
         name = self.lhs
@@ -1356,10 +1460,10 @@ class CmdCreateAntagonist(ArxCommand):
             npc = create.create_object(key=name, typeclass=self.MOOKS)
             qty = value
             msg += "mooks with quantity of %s " % qty
-        msg +=  "and threat of %s." % threat
+        msg += "and threat of %s." % threat
         npc.setup_npc(self.ntype, threat, qty, sing_name=name, plural_name=name)
         self.msg(msg)
-    
+
     def get_npc(self, args):
         """Gets an npc by ID"""
         try:
@@ -1370,17 +1474,19 @@ class CmdCreateAntagonist(ArxCommand):
             self.msg("No npc by that ID.")
         except ObjectDB.MultipleObjectsReturned:
             self.msg("More than one match for %s." % args)
-            
+
     def spawn_npc(self, npc):
         """Spawns the npc if it isn't already in game"""
         if npc.location:
-            self.msg("That is not an inactive npc. Dismiss it, or create a new npc instead.")
+            self.msg(
+                "That is not an inactive npc. Dismiss it, or create a new npc instead."
+            )
             return
         npc.location = self.caller.location
         self.msg("You spawn %s." % npc)
         if self.rhs:
             self.caller.location.msg_contents(self.rhs)
-    
+
     def customize_spawned_npc(self, npc):
         if not self.rhs:
             self.msg("This switch requires some form of argument.")
@@ -1399,14 +1505,14 @@ class CmdCreateAntagonist(ArxCommand):
             pass
         elif "quantity" in self.switches:
             return self.adjust_spawn_quantity(npc)
-    
+
     def dismiss_spawned_npc(self, npc):
-        if not hasattr(npc, 'dismiss'):
+        if not hasattr(npc, "dismiss"):
             self.msg("Invalid target - you cannot dismiss that.")
             return
         npc.dismiss()
         self.msg("Dismissed %s." % npc)
-    
+
     def mirror_character(self, npc):
         """Copies a player character's stats to an NPC."""
         character = self.caller.search(self.rhs)
@@ -1414,17 +1520,17 @@ class CmdCreateAntagonist(ArxCommand):
             self.msg("No character found. Use #ID if they're not in the room.")
             return
         npc.traits.mirror_physical_stats_and_skills(character)
-    
+
     def adjust_spawn_name(self, npc):
         oldname = str(npc)
         kwarg_type = "sing"
         if npc.db_typeclass_path == self.MOOKS:
             kwarg_type = "plural"
         kwarg_type += "_name"
-        kwargs = { kwarg_type: self.rhs }
+        kwargs = {kwarg_type: self.rhs}
         npc.set_npc_new_name(**kwargs)
         self.msg("Renamed %s to: %s" % (oldname, self.rhs))
-        
+
     def adjust_spawn_threat(self, npc):
         try:
             npc.setup_stats(self.ntype, int(self.rhs))
@@ -1432,7 +1538,7 @@ class CmdCreateAntagonist(ArxCommand):
             self.msg("Threat must be a number.")
         else:
             self.msg("%s threat set to %s." % (npc, self.rhs))
-    
+
     def adjust_spawn_quantity(self, npc):
         try:
             npc.db.num_living = int(self.rhs)
@@ -1453,11 +1559,12 @@ class CmdHarm(ArxCommand):
         @harm/noarmor <same as above>
         @harm/global <same as above - GM-Only usage>
 
-    Causes damage to characters. If /mercy switch is used, a character cannot 
+    Causes damage to characters. If /mercy switch is used, a character cannot
     be killed by the attack, only further damaged.
     <Message> is broadcast to the room. If /private switch is used, <message>
     is sent only to the characters involved.
     """
+
     key = "@harm"
     locks = "cmd:all()"
     help_category = "GMing"
@@ -1480,7 +1587,9 @@ class CmdHarm(ArxCommand):
             self.msg("Must provide at least one character = number for damage amount.")
             return
         victims = []
-        global_search = "global" in self.switches and self.caller.check_permstring("builders")
+        global_search = "global" in self.switches and self.caller.check_permstring(
+            "builders"
+        )
         for arg in self.lhslist:
             victim = self.caller.search(arg, global_search=global_search)
             if victim:
@@ -1492,20 +1601,31 @@ class CmdHarm(ArxCommand):
         if not victims:
             return
         from typeclasses.scripts.combat.attacks import Attack
+
         use_mitigation = "noarmor" not in self.switches
         can_kill = "mercy" not in self.switches
         private = "private" in self.switches
-        attack = Attack(targets=victims, affect_real_dmg=True, damage=damage, use_mitigation=use_mitigation, 
-                        can_kill=can_kill, private=private, story=message, inflictor=self.caller)
+        attack = Attack(
+            targets=victims,
+            affect_real_dmg=True,
+            damage=damage,
+            use_mitigation=use_mitigation,
+            can_kill=can_kill,
+            private=private,
+            story=message,
+            inflictor=self.caller,
+        )
         try:
             attack.execute()
         except combat_settings.CombatError as err:
             self.msg(err)
         else:
             if damage > 0:
-                inform_staff("{c%s{n used @harm for %s damage on %s." % (self.caller, damage, 
-                                                                         list_to_string(victims)))
-        
+                inform_staff(
+                    "{c%s{n used @harm for %s damage on %s."
+                    % (self.caller, damage, list_to_string(victims))
+                )
+
     def can_harm_others(self):
         """Checks if the caller can harm other players"""
         return self.caller.check_staff_or_gm()
@@ -1525,6 +1645,7 @@ class CmdHeal(ArxCommand):
     if they have been knocked unconscious. You must have permission
     to attempt to heal someone, which is granted via the /permit switch.
     """
+
     key = "+heal"
     locks = "cmd:all()"
     help_category = "Combat"
@@ -1532,7 +1653,9 @@ class CmdHeal(ArxCommand):
     def func(self):
         """Execute command."""
         caller = self.caller
-        global_search = "global" in self.switches and caller.check_permstring("builders")
+        global_search = "global" in self.switches and caller.check_permstring(
+            "builders"
+        )
         targ = caller.search(self.lhs, global_search=global_search)
         if not targ:
             return
@@ -1545,7 +1668,11 @@ class CmdHeal(ArxCommand):
             return
         event = caller.location.event
         if "gmallow" in self.switches:
-            if not event or caller.player.Dominion not in event.gms.all() and not caller.check_permstring("builders"):
+            if (
+                not event
+                or caller.player.Dominion not in event.gms.all()
+                and not caller.check_permstring("builders")
+            ):
                 self.msg("This may only be used by the GM of an event.")
                 return
             modifier = 0
@@ -1557,7 +1684,10 @@ class CmdHeal(ArxCommand):
                     return
             targ.ndb.healing_gm_allow = modifier
             noun = "bonus" if modifier > 0 else "penalty"
-            self.msg("You have allowed %s to use +heal, with a %s to their roll of %s." % (targ, noun, abs(modifier)))
+            self.msg(
+                "You have allowed %s to use +heal, with a %s to their roll of %s."
+                % (targ, noun, abs(modifier))
+            )
             return
         if not caller.conscious:
             self.msg("You must be awake to heal.")
@@ -1565,7 +1695,7 @@ class CmdHeal(ArxCommand):
         if not targ.dmg:
             caller.msg("%s does not require any medical attention." % targ)
             return
-        if not hasattr(targ, 'recovery_test'):
+        if not hasattr(targ, "recovery_test"):
             caller.msg("%s is not capable of being healed." % targ)
             return
         combat = check_combat(caller, quiet=True)
@@ -1574,12 +1704,15 @@ class CmdHeal(ArxCommand):
                 caller.msg("You cannot heal someone in combat.")
                 return
         if event and event.gms.all() and caller.ndb.healing_gm_allow is None:
-            self.msg("There is an event here and you have not been granted GM permission to use +heal.")
+            self.msg(
+                "There is an event here and you have not been granted GM permission to use +heal."
+            )
             return
         aid_given = caller.db.administered_aid or {}
         # timestamp of aid time
         aid_time = aid_given.get(targ.id, 0)
         import time
+
         timediff = time.time() - aid_time
         if timediff < 3600:
             caller.msg("You have assisted them too recently.")
@@ -1587,8 +1720,14 @@ class CmdHeal(ArxCommand):
             return
         permits = caller.ndb.healing_permits or set()
         if targ.player and targ not in permits:
-            self.msg("%s has not granted you permission to heal them. Have them use +heal/permit." % targ)
-            targ.msg("%s wants to heal you, but isn't permitted. You can let them with +heal/permit." % caller)
+            self.msg(
+                "%s has not granted you permission to heal them. Have them use +heal/permit."
+                % targ
+            )
+            targ.msg(
+                "%s wants to heal you, but isn't permitted. You can let them with +heal/permit."
+                % caller
+            )
             return
         # record healing timestamp
         aid_given[targ.id] = time.time()
@@ -1617,12 +1756,22 @@ class CmdHeal(ArxCommand):
                 blessed = 0
             keep = blessed + caller.traits.get_skill_value("medicine") + 2
             modifier += 5 * blessed
-            heal_roll = do_dice_check(caller, stat_list=["mana", "intellect"], skill="medicine",
-                                      difficulty=15-modifier, keep_override=keep)
+            heal_roll = do_dice_check(
+                caller,
+                stat_list=["mana", "intellect"],
+                skill="medicine",
+                difficulty=15 - modifier,
+                keep_override=keep,
+            )
         else:
-            heal_roll = do_dice_check(caller, stat="intellect", skill="medicine", difficulty=15-modifier)
+            heal_roll = do_dice_check(
+                caller, stat="intellect", skill="medicine", difficulty=15 - modifier
+            )
         caller.msg("You rolled a %s on your heal roll." % heal_roll)
-        targ.msg("%s tends to your wounds, rolling %s on their heal roll." % (caller, heal_roll))
+        targ.msg(
+            "%s tends to your wounds, rolling %s on their heal roll."
+            % (caller, heal_roll)
+        )
         script = targ.scripts.get("Recovery")
         if script:
             script = script[0]
@@ -1640,6 +1789,7 @@ class CmdStandYoAssUp(ArxCommand):
     Heals a puny mortal and wakes them up. Use /noheal if you just wanna wake
     them but want them to remain injured.
     """
+
     key = "+standyoassup"
     locks = "cmd:perm(wizards)"
     help_category = "GMing"
@@ -1654,6 +1804,9 @@ class CmdStandYoAssUp(ArxCommand):
         if "noheal" not in self.switches:
             targ.dmg = 0
             targ.msg("You have been healed.")
-            caller.msg("You heal %s because they're a sissy mortal who needs everything done for them." % targ)
+            caller.msg(
+                "You heal %s because they're a sissy mortal who needs everything done for them."
+                % targ
+            )
         targ.wake_up()
         return

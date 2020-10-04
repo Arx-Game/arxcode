@@ -15,23 +15,23 @@ def fix_notes(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0042_auto_20181216_1658'),
+        ("dominion", "0042_auto_20181216_1658"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='member',
-            name='desc',
+            model_name="member",
+            name="desc",
             field=models.TextField(blank=True),
         ),
         migrations.AlterField(
-            model_name='member',
-            name='officer_notes',
+            model_name="member",
+            name="officer_notes",
             field=models.TextField(blank=True),
         ),
         migrations.AlterField(
-            model_name='member',
-            name='public_notes',
+            model_name="member",
+            name="public_notes",
             field=models.TextField(blank=True),
         ),
         migrations.RunPython(fix_notes),

@@ -1,7 +1,12 @@
 from random import randint
 
 from world.conditions.modifiers_handlers import ModifierHandler
-from world.stat_checks.models import DifficultyRating, RollResult, StatWeight, NaturalRollType
+from world.stat_checks.models import (
+    DifficultyRating,
+    RollResult,
+    StatWeight,
+    NaturalRollType,
+)
 
 
 TIE_THRESHOLD = 5
@@ -14,7 +19,9 @@ def check_rolls_tied(roll1, roll2, tie_value=TIE_THRESHOLD):
 
 
 class SimpleRoll:
-    def __init__(self, character=None, stat=None, skill=None, rating: DifficultyRating = None):
+    def __init__(
+        self, character=None, stat=None, skill=None, rating: DifficultyRating = None
+    ):
         self.character = character
         self.stat = stat
         self.skill = skill
@@ -37,7 +44,9 @@ class SimpleRoll:
         self.result_value = val
         # we use our raw roll and modified toll to determine if our roll is special
         self.natural_roll_type = self.check_for_crit_or_botch()
-        self.roll_result = RollResult.get_instance_for_roll(val, natural_roll_type=self.natural_roll_type)
+        self.roll_result = RollResult.get_instance_for_roll(
+            val, natural_roll_type=self.natural_roll_type
+        )
         self.result_message = self.roll_result.render(**self.get_context())
 
     def get_context(self) -> dict:
@@ -48,9 +57,14 @@ class SimpleRoll:
                 crit = self.natural_roll_type
             else:
                 botch = self.natural_roll_type
-        return {"character": self.character, "roll": self.result_value,
-                "result": self.roll_result, "natural_roll_type": self.natural_roll_type,
-                "crit": crit, "botch": botch}
+        return {
+            "character": self.character,
+            "roll": self.result_value,
+            "result": self.roll_result,
+            "natural_roll_type": self.natural_roll_type,
+            "crit": crit,
+            "botch": botch,
+        }
 
     @classmethod
     def get_check_string(cls, stat, skill, rating):
@@ -70,7 +84,9 @@ class SimpleRoll:
         return f"{self.roll_prefix}. {self.result_message}"
 
     def announce_to_room(self):
-        self.character.msg_location_or_contents(self.roll_message, options={"roll": True})
+        self.character.msg_location_or_contents(
+            self.roll_message, options={"roll": True}
+        )
 
     def get_roll_value_for_stat(self) -> int:
         """
@@ -131,6 +147,7 @@ class BaseCheckMaker:
 
 class RollResults:
     """Class for ranking the results of rolls, listing ties"""
+
     tie_threshold = TIE_THRESHOLD
 
     def __init__(self, rolls):
@@ -143,7 +160,9 @@ class RollResults:
             is_tie = False
             if self.results:
                 last_results = self.results[-1]
-                if last_results and check_rolls_tied(last_results[0], roll, self.tie_threshold):
+                if last_results and check_rolls_tied(
+                    last_results[0], roll, self.tie_threshold
+                ):
                     is_tie = True
             if is_tie:
                 self.results[-1].append(roll)
@@ -199,7 +218,9 @@ class OpposingRolls:
     def announce(self):
         self.roll1.execute()
         self.roll2.execute()
-        rolls = sorted([self.roll1, self.roll2], key=lambda x: x.result_value, reverse=True)
+        rolls = sorted(
+            [self.roll1, self.roll2], key=lambda x: x.result_value, reverse=True
+        )
         if check_rolls_tied(self.roll1, self.roll2):
             result = "The rolls are tied."
         else:

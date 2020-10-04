@@ -111,13 +111,21 @@ class CombatManager(BaseScript):
         self.ndb.combatants = []  # those actively involved in fight
         self.ndb.observers = []  # sent combat data, but cannot act
         self.ndb.combat_location = self.obj  # room of the fight
-        self.ndb.initiative_list = []  # CharacterCombatData of characters in order of initiative
+        self.ndb.initiative_list = (
+            []
+        )  # CharacterCombatData of characters in order of initiative
         self.ndb.active_character = None  # who is currently acting during phase 2
         self.ndb.phase = 1
-        self.ndb.afk_check = []  # characters who are flagged afk until they take an action
+        self.ndb.afk_check = (
+            []
+        )  # characters who are flagged afk until they take an action
         self.ndb.votes_to_end = []  # if all characters vote yes, combat ends
-        self.ndb.flee_success = []  # if we're here, the character is allowed to flee on their turn
-        self.ndb.fleeing = []  # if we're here, they're attempting to flee but haven't rolled yet
+        self.ndb.flee_success = (
+            []
+        )  # if we're here, the character is allowed to flee on their turn
+        self.ndb.fleeing = (
+            []
+        )  # if we're here, they're attempting to flee but haven't rolled yet
         self.ndb.ready = []  # those ready for phase 2
         self.ndb.not_ready = []  # not ready for phase 2
         self.ndb.surrender_list = []  # peoeple trying to surrender
@@ -179,9 +187,11 @@ class CombatManager(BaseScript):
         Displays intro message of combat to character
         """
         if not combatant:
-            msg = fill("{mYou are now in observer mode for a fight. {n" +
-                       "Most combat commands will not function. To " +
-                       "join the fight, use the {w+fight{n command.")
+            msg = fill(
+                "{mYou are now in observer mode for a fight. {n"
+                + "Most combat commands will not function. To "
+                + "join the fight, use the {w+fight{n command."
+            )
         else:
             msg = "{rEntering combat mode.{n\n"
             msg += "\n\n" + fill(COMBAT_INTRO)
@@ -216,12 +226,16 @@ class CombatManager(BaseScript):
     def build_status_table(self):
         """Builds a table of the status of combatants"""
         combatants = sorted(self.ndb.combatants)
-        table = PrettyTable(["{wCombatant{n", "{wDamage{n", "{wFatigue{n", "{wAction{n", "{wReady?{n"])
+        table = PrettyTable(
+            ["{wCombatant{n", "{wDamage{n", "{wFatigue{n", "{wAction{n", "{wReady?{n"]
+        )
         for state in combatants:
             name = state.combat_handler.name
             dmg = state.character.get_wound_descriptor(state.character.dmg)
             fatigue = str(state.fatigue_penalty)
-            action = "None" if not state.queued_action else state.queued_action.table_str
+            action = (
+                "None" if not state.queued_action else state.queued_action.table_str
+            )
             rdy = "yes" if state.ready else "{rno{n"
             table.add_row([name, dmg, fatigue, action, rdy])
         self.ndb.status_table = table
@@ -336,16 +350,27 @@ class CombatManager(BaseScript):
         if not self or not self.pk or self.ndb.shutting_down:
             self.end_combat()
             return True
-        if not self.ndb.combatants and not self.ndb.initializing and self.managed_mode_permits_ending():
+        if (
+            not self.ndb.combatants
+            and not self.ndb.initializing
+            and self.managed_mode_permits_ending()
+        ):
             self.msg("No combatants found. Exiting.")
             self.end_combat()
             return True
         active_combatants = [ob for ob in self.ndb.combatants if ob.conscious]
-        active_fighters = [ob for ob in active_combatants if not (ob.automated and ob.queued_action and
-                                                                  ob.queued_action.qtype == "Pass")]
+        active_fighters = [
+            ob
+            for ob in active_combatants
+            if not (
+                ob.automated and ob.queued_action and ob.queued_action.qtype == "Pass"
+            )
+        ]
         if not active_fighters and not self.ndb.initializing:
             if self.managed_mode_permits_ending():
-                self.msg("All combatants are incapacitated or automated npcs who are passing their turn. Exiting.")
+                self.msg(
+                    "All combatants are incapacitated or automated npcs who are passing their turn. Exiting."
+                )
                 self.end_combat()
                 return True
 
@@ -384,6 +409,7 @@ class CombatManager(BaseScript):
                 self.start_phase_2()
             except ValueError:
                 import traceback
+
                 traceback.print_exc()
                 self.end_combat()
 
@@ -401,41 +427,56 @@ class CombatManager(BaseScript):
             checking_char.msg("You cannot vote yourself AFK to leave combat.")
             return
         if self.ndb.phase == 1 and char_to_check.combat.state.ready:
-            checking_char.msg("That character is ready to proceed " +
-                              "with combat. They are not holding up the fight.")
+            checking_char.msg(
+                "That character is ready to proceed "
+                + "with combat. They are not holding up the fight."
+            )
             return
         if self.ndb.phase == 2 and not self.ndb.active_character == char_to_check:
-            checking_char.msg("It is not their turn to act. You may only " +
-                              "vote them AFK if they are holding up the fight.")
+            checking_char.msg(
+                "It is not their turn to act. You may only "
+                + "vote them AFK if they are holding up the fight."
+            )
             return
         if char_to_check not in self.ndb.afk_check:
             msg = "{w%s is checking if you are AFK. Please take" % checking_char.name
             msg += " an action within a few minutes.{n"
             char_to_check.msg(msg)
-            checking_char.msg("You have nudged %s to take an action." % char_to_check.name)
+            checking_char.msg(
+                "You have nudged %s to take an action." % char_to_check.name
+            )
             self.ndb.afk_check.append(char_to_check)
             char_to_check.combat.state.afk_timer = time.time()  # current time
             return
         # character is in the AFK list. Check if they've been gone long enough to vote against
         elapsed_time = time.time() - char_to_check.combat.state.afk_timer
         if elapsed_time < MAX_AFK:
-            msg = "It has been %s since %s was first checked for " % (elapsed_time, char_to_check.name)
-            msg += "AFK. They have %s seconds to respond before " % (MAX_AFK - elapsed_time)
+            msg = "It has been %s since %s was first checked for " % (
+                elapsed_time,
+                char_to_check.name,
+            )
+            msg += "AFK. They have %s seconds to respond before " % (
+                MAX_AFK - elapsed_time
+            )
             msg += "votes can be lodged against them to remove them from combat."
             checking_char.msg(msg)
             return
         # record votes. if we have enough votes, boot 'em.
         votes = char_to_check.combat.state.votes_to_kick
         if checking_char in votes:
-            checking_char.msg("You have already voted for their removal. Every other player " +
-                              "except for %s must vote for their removal." % char_to_check.name)
+            checking_char.msg(
+                "You have already voted for their removal. Every other player "
+                + "except for %s must vote for their removal." % char_to_check.name
+            )
             return
         votes.append(checking_char)
         if len(votes) >= len(self.ndb.combatants) - 1:
             self.msg("Removing %s from combat due to inactivity." % char_to_check.name)
             self.move_to_observer(char_to_check)
             return
-        char_to_check.msg("A vote has been lodged for your removal from combat due to inactivity.")
+        char_to_check.msg(
+            "A vote has been lodged for your removal from combat due to inactivity."
+        )
 
     def remove_afk(self, character):
         """
@@ -533,10 +574,11 @@ class CombatManager(BaseScript):
         fighter_states = self.ndb.combatants
         for fighter in fighter_states:
             fighter.roll_initiative()
-        self.ndb.initiative_list = sorted([data for data in fighter_states
-                                           if data.can_act],
-                                          key=attrgetter('initiative', 'tiebreaker'),
-                                          reverse=True)
+        self.ndb.initiative_list = sorted(
+            [data for data in fighter_states if data.can_act],
+            key=attrgetter("initiative", "tiebreaker"),
+            reverse=True,
+        )
 
     def get_initiative_list(self):
         """Displays who the acting character is and the remaining order"""
@@ -545,7 +587,9 @@ class CombatManager(BaseScript):
         if acting_char:
             msg += "{wIt is {c%s's {wturn.{n " % acting_char.name
         if self.ndb.initiative_list:
-            msg += "{wTurn order for remaining characters:{n %s" % list_to_string(self.ndb.initiative_list)
+            msg += "{wTurn order for remaining characters:{n %s" % list_to_string(
+                self.ndb.initiative_list
+            )
         return msg
 
     def next_character_turn(self):
@@ -558,7 +602,11 @@ class CombatManager(BaseScript):
             return
         if self.ndb.phase != 2:
             return
-        self.ndb.initiative_list = [ob for ob in self.ndb.initiative_list if ob.can_act and ob.remaining_attacks > 0]
+        self.ndb.initiative_list = [
+            ob
+            for ob in self.ndb.initiative_list
+            if ob.can_act and ob.remaining_attacks > 0
+        ]
         if not self.ndb.initiative_list:
             self.start_phase_1()
             self.display_phase_status_to_all()
@@ -568,12 +616,16 @@ class CombatManager(BaseScript):
         self.ndb.active_character = acting_char
         # check if they went LD, teleported, or something
         if acting_char.location != self.ndb.combat_location:
-            self.msg("%s is no longer here. Removing them from combat." % acting_char.name)
+            self.msg(
+                "%s is no longer here. Removing them from combat." % acting_char.name
+            )
             self.remove_combatant(acting_char)
             return self.next_character_turn()
         # For when we put in subdue/hostage code
         elif not character_state.can_act:
-            acting_char.msg("It would be your turn, but you cannot act. Passing your turn.")
+            acting_char.msg(
+                "It would be your turn, but you cannot act. Passing your turn."
+            )
             self.msg("%s cannot act." % acting_char.name, exclude=[acting_char])
             return self.next_character_turn()
         # turns lost from botches or other effects
@@ -581,23 +633,32 @@ class CombatManager(BaseScript):
             character_state.remaining_attacks -= 1
             character_state.lost_turn_counter -= 1
             if character_state.remaining_attacks == 0:
-                acting_char.msg("It would be your turn, but you are recovering from a botch. Passing.")
-                self.msg("%s is recovering from a botch and loses their turn." % acting_char.name,
-                         exclude=[acting_char])
+                acting_char.msg(
+                    "It would be your turn, but you are recovering from a botch. Passing."
+                )
+                self.msg(
+                    "%s is recovering from a botch and loses their turn."
+                    % acting_char.name,
+                    exclude=[acting_char],
+                )
                 return self.next_character_turn()
-        self.msg("{wIt is now{n {c%s's{n {wturn.{n" % acting_char.name, exclude=[acting_char])
+        self.msg(
+            "{wIt is now{n {c%s's{n {wturn.{n" % acting_char.name, exclude=[acting_char]
+        )
         if self.managed_mode:
             return self.send_managed_mode_prompt()
         result = character_state.do_turn_actions()
         if not result and self.ndb.phase == 2:
-            mssg = dedent("""
+            mssg = dedent(
+                """
             It is now {wyour turn{n to act in combat. Please give a little time to make
             sure other players have finished their poses or emits before you select
             an action. For your character's action, you may either pass your turn
             with the {wpass{n command, or execute a command like {wattack{n. Once you
             have executed your command, control will pass to the next character, but
             please describe the results of your action with appropriate poses.
-            """)
+            """
+            )
             acting_char.msg(mssg)
 
     def start_phase_1(self):
@@ -680,9 +741,13 @@ class CombatManager(BaseScript):
         """
         state = character.combat.state
         if state not in self.ndb.combatants:
-            raise combat_settings.CombatError("Only participants in the fight may vote to end it.")
+            raise combat_settings.CombatError(
+                "Only participants in the fight may vote to end it."
+            )
         elif state in self.ndb.votes_to_end:
-            raise combat_settings.CombatError("You have already voted to end the fight.")
+            raise combat_settings.CombatError(
+                "You have already voted to end the fight."
+            )
         else:
             self.ndb.votes_to_end.append(state)
 
@@ -698,7 +763,9 @@ class CombatManager(BaseScript):
     @property
     def not_voted(self):
         """List of combat states who voted to end"""
-        not_voted = [ob for ob in self.ndb.combatants if ob and ob not in self.ndb.votes_to_end]
+        not_voted = [
+            ob for ob in self.ndb.combatants if ob and ob not in self.ndb.votes_to_end
+        ]
         # only let conscious people vote
         not_voted = [ob for ob in not_voted if ob.can_fight and not ob.wants_to_end]
         return not_voted
@@ -708,7 +775,9 @@ class CombatManager(BaseScript):
         """Get string of any who have voted to end, and who still has to vote for combat to end"""
         mess = ""
         if self.ndb.votes_to_end:
-            mess += "{wCurrently voting to end combat:{n %s\n" % list_to_string(self.ndb.votes_to_end)
+            mess += "{wCurrently voting to end combat:{n %s\n" % list_to_string(
+                self.ndb.votes_to_end
+            )
             mess += "{wFor the fight to end, the following characters must also use +end_combat:{n "
             mess += "%s" % list_to_string(self.not_voted)
         return mess
@@ -729,6 +798,7 @@ class CombatManager(BaseScript):
             self.stop()  # delete script
         except Exception:
             import traceback
+
             traceback.print_exc()
 
     @property
@@ -782,15 +852,21 @@ class CombatManager(BaseScript):
     def add_special_action(self, name, stat="", skill="", difficulty=15):
         """Adds a new special action recognized by the combat that players can choose to do"""
         from .special_actions import ActionByGM
-        self.special_actions.append(ActionByGM(combat=self, name=name, stat=stat, skill=skill,
-                                               difficulty=difficulty))
+
+        self.special_actions.append(
+            ActionByGM(
+                combat=self, name=name, stat=stat, skill=skill, difficulty=difficulty
+            )
+        )
 
     def list_special_actions(self):
         """Gets string display of GM-defined special actions"""
         msg = "Current Actions:\n"
         table = PrettyTable(["#", "Name", "Stat", "Skill", "Difficulty"])
         for num, action in enumerate(self.special_actions, 1):
-            table.add_row([num, action.name, action.stat, action.skill, action.difficulty])
+            table.add_row(
+                [num, action.name, action.stat, action.skill, action.difficulty]
+            )
         return msg + str(table)
 
     def list_rolls_for_special_actions(self):
@@ -799,7 +875,13 @@ class CombatManager(BaseScript):
         actions = [ob for ob in actions if ob.special_action in self.special_actions]
         table = PrettyTable(["Name", "Action", "Roll"])
         for action in actions:
-            table.add_row([str(action.character), str(action.special_action), action.display_roll()])
+            table.add_row(
+                [
+                    str(action.character),
+                    str(action.special_action),
+                    action.display_roll(),
+                ]
+            )
         return str(table)
 
     def get_current_and_queued_actions(self):
@@ -811,7 +893,11 @@ class CombatManager(BaseScript):
 
     def make_all_checks_for_special_action(self, special_action):
         """Given a special action, make checks for all corresponding queued actions"""
-        pc_actions = [ob for ob in self.get_current_and_queued_actions() if ob.special_action == special_action]
+        pc_actions = [
+            ob
+            for ob in self.get_current_and_queued_actions()
+            if ob.special_action == special_action
+        ]
         special_action.make_checks(pc_actions)
 
     @property
@@ -826,7 +912,10 @@ class CombatManager(BaseScript):
     def send_managed_mode_prompt(self):
         """Notifies GMs that we're waiting on them to evaluate the character's turn."""
         character = self.ndb.active_character
-        msg = "%s's current action: %s\n" % (character, character.combat.state.get_action_description())
+        msg = "%s's current action: %s\n" % (
+            character,
+            character.combat.state.get_action_description(),
+        )
         msg += "Use @admin_combat/roll to make a check, /execute to perform their action, and /next to mark resolved."
         self.msg_gms(msg)
 

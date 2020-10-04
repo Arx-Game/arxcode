@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0022_auto_20181114_2224'),
+        ("exploration", "0022_auto_20181114_2224"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='generatedlootfragment',
-            name='text',
+            model_name="generatedlootfragment",
+            name="text",
             field=models.CharField(max_length=45),
         ),
     ]

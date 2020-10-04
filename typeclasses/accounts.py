@@ -99,6 +99,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
      at_server_shutdown()
 
     """
+
     def __str__(self):
         return self.name
 
@@ -111,7 +112,9 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         like configuration values etc.
         """
         # set an (empty) attribute holding the characters this player has
-        lockstring = "attrread:perm(Wizards);attredit:perm(Wizards);attrcreate:perm(Wizards)"
+        lockstring = (
+            "attrread:perm(Wizards);attredit:perm(Wizards);attrcreate:perm(Wizards)"
+        )
         self.attributes.add("_playable_characters", [], lockstring=lockstring)
         self.db.mails = []
         self.db.readmails = set()
@@ -132,10 +135,12 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         self.announce_informs()
         pending = self.db.pending_messages or []
         for msg in pending:
-            self.msg(msg, options={'box': True})
+            self.msg(msg, options={"box": True})
         self.attributes.remove("pending_messages")
         if self.assigned_to.filter(status=1, priority__lte=5):
-            self.msg("{yYou have unresolved tickets assigned to you. Use @job/mine to view them.{n")
+            self.msg(
+                "{yYou have unresolved tickets assigned to you. Use @job/mine to view them.{n"
+            )
         self.check_motd()
         self.check_petitions()
         # in this mode we should have only one character available. We
@@ -151,6 +156,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
 
         try:
             from commands.base_commands.bboards import get_unread_posts
+
             get_unread_posts(self)
         except Exception:
             pass
@@ -160,6 +166,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
                 self.roster.save()
             if self.roster.roster.name == "Inactive":
                 from web.character.models import Roster
+
                 try:
                     active = Roster.objects.active
                     self.roster.roster = active
@@ -170,7 +177,10 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             if self.sessions.count() == 1:
                 if not self.db.hide_from_watch:
                     for watcher in watched_by:
-                        watcher.msg("{wA player you are watching, {c%s{w, has connected.{n" % self)
+                        watcher.msg(
+                            "{wA player you are watching, {c%s{w, has connected.{n"
+                            % self
+                        )
                 self.db.afk = ""
         except AttributeError:
             pass
@@ -182,13 +192,19 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         try:
             unread = self.informs.filter(read_by__isnull=True).count()
             if unread:
-                msg += "{w*** You have %s unread informs. Use @informs to read them. ***{n\n" % unread
+                msg += (
+                    "{w*** You have %s unread informs. Use @informs to read them. ***{n\n"
+                    % unread
+                )
             for org in self.current_orgs:
                 if not org.access(self, "informs"):
                     continue
                 unread = org.informs.exclude(read_by=self).count()
                 if unread:
-                    msg += "{w*** You have %s unread informs for %s. ***{n\n" % (unread, org)
+                    msg += "{w*** You have %s unread informs for %s. ***{n\n" % (
+                        unread,
+                        org,
+                    )
         except Exception:
             pass
         if msg:
@@ -213,6 +229,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         Sends a mail message to player.
         """
         from django.utils import timezone
+
         sentdate = timezone.now().strftime("%x %X")
         mail = (sender, subject, message, sentdate, receivers)
         if not self.db.mails:
@@ -222,7 +239,10 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             from_str = " from {c%s{y" % sender.capitalize()
         else:
             from_str = ""
-        self.msg("{yYou have new mail%s. Use {w'mail %s' {yto read it.{n" % (from_str, len(self.db.mails)))
+        self.msg(
+            "{yYou have new mail%s. Use {w'mail %s' {yto read it.{n"
+            % (from_str, len(self.db.mails))
+        )
         self.tags.add("new_mail")
 
     def get_fancy_name(self):
@@ -232,12 +252,13 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     # noinspection PyAttributeOutsideInit
     def set_name(self, value):
         self.key = value
+
     name = property(get_fancy_name, set_name)
 
     def send_or_queue_msg(self, message):
         """Sends a message to us if we're online or queues it for later"""
         if self.is_connected:
-            self.msg(message, options={'box': True})
+            self.msg(message, options={"box": True})
             return
         pending = self.db.pending_messages or []
         pending.append(message)
@@ -322,6 +343,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             False if we were able to spend, True otherwise
         """
         from django.core.exceptions import ObjectDoesNotExist
+
         assets = self.assets
         try:
             if amount < 0:
@@ -352,7 +374,10 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             if self.roster.action_points < amt:
                 return False
             self.roster.action_points -= amt
-            if self.roster.action_points > self.roster.max_action_points and not can_go_over_cap:
+            if (
+                self.roster.action_points > self.roster.max_action_points
+                and not can_go_over_cap
+            ):
                 self.roster.action_points = self.roster.max_action_points
             self.roster.save()
             if amt > 0:
@@ -360,8 +385,10 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             else:
                 verb = "gain"
                 amt = abs(amt)
-            self.msg("{wYou %s %s action points and have %s remaining this week.{n" % (verb, amt,
-                                                                                       self.roster.action_points))
+            self.msg(
+                "{wYou %s %s action points and have %s remaining this week.{n"
+                % (verb, amt, self.roster.action_points)
+            )
             return True
         except AttributeError:
             return False
@@ -395,14 +422,17 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             watched_by = self.char_ob and self.char_ob.db.watched_by or []
             if watched_by and not self.db.hide_from_watch:
                 for watcher in watched_by:
-                    watcher.msg("{wA player you are watching, {c%s{w, has disconnected.{n" % self.key.capitalize())
+                    watcher.msg(
+                        "{wA player you are watching, {c%s{w, has disconnected.{n"
+                        % self.key.capitalize()
+                    )
             self.previous_log = self.current_log
             self.current_log = []
             self.db.lookingforrp = False
             temp_muted = self.db.temp_mute_list or []
             for channel in temp_muted:
                 channel.unmute(self)
-            self.attributes.remove('temp_mute_list')
+            self.attributes.remove("temp_mute_list")
             try:
                 self.char_ob.nattributes.clear()
             except AttributeError:
@@ -412,11 +442,16 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     def log_message(self, from_obj, text):
         """Logs messages if we're not in private for this session"""
         from evennia.utils.utils import make_iter
+
         if not self.tags.get("private_mode"):
             text = text.strip()
             from_obj = make_iter(from_obj)[0]
             tup = (from_obj, text)
-            if tup not in self.current_log and from_obj != self and from_obj != self.char_ob:
+            if (
+                tup not in self.current_log
+                and from_obj != self
+                and from_obj != self.char_ob
+            ):
                 self.current_log.append((from_obj, text))
 
     @property
@@ -456,7 +491,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         """Reports a player for GM attention"""
         charob = player.char_ob
         log = []
-        for line in (list(self.previous_log) + list(self.current_log)):
+        for line in list(self.previous_log) + list(self.current_log):
             if line[0] == charob or line[0] == player:
                 log.append(line)
         self.flagged_log = log
@@ -479,6 +514,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     def clues_shared_modifier_seed(self):
         """Seed value for clue sharing costs"""
         from world.stats_and_skills import SOCIAL_SKILLS, SOCIAL_STATS
+
         seed = 0
         pc = self.char_ob
         for stat in SOCIAL_STATS:
@@ -491,20 +527,24 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     @property
     def clue_cost(self):
         """Total cost for clues"""
-        return int(100.0/float(self.clues_shared_modifier_seed + 1)) + 1
+        return int(100.0 / float(self.clues_shared_modifier_seed + 1)) + 1
 
     @property
     def participated_actions(self):
         """Actions we participated in"""
         from world.dominion.models import PlotAction
         from django.db.models import Q
+
         dompc = self.Dominion
-        return PlotAction.objects.filter(Q(assistants=dompc) | Q(dompc=dompc)).distinct()
+        return PlotAction.objects.filter(
+            Q(assistants=dompc) | Q(dompc=dompc)
+        ).distinct()
 
     @property
     def past_participated_actions(self):
         """Actions we participated in previously"""
         from world.dominion.models import PlotAction
+
         return self.participated_actions.filter(status=PlotAction.PUBLISHED).distinct()
 
     def show_online(self, caller, check_puppet=False):
@@ -558,11 +598,13 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     def get_current_praises_and_condemns(self):
         """Current praises given by this player character"""
         from server.utils.arx_utils import get_week
+
         return self.Dominion.praises_given.filter(week=get_week())
 
     def check_motd(self):
         """Checks for a message of the day and sends it to us."""
         from evennia.server.models import ServerConfig
+
         motd = ServerConfig.objects.conf(key="MESSAGE_OF_THE_DAY")
         msg = ""
         if motd:
@@ -581,7 +623,10 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             unread = self.Dominion.petitionparticipation_set.filter(unread_posts=True)
             if unread:
                 unread_ids = [str(ob.petition.id) for ob in unread]
-                self.msg("{wThe following petitions have unread messages:{n %s" % ", ".join(unread_ids))
+                self.msg(
+                    "{wThe following petitions have unread messages:{n %s"
+                    % ", ".join(unread_ids)
+                )
         except AttributeError:
             pass
 
@@ -598,16 +643,23 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         from evennia.utils import logger
         from evennia.comms.models import ChannelDB
         from django.utils import timezone
+
         global _MUDINFO_CHANNEL
         if not _MUDINFO_CHANNEL:
             try:
-                _MUDINFO_CHANNEL = ChannelDB.objects.filter(db_key=settings.CHANNEL_MUDINFO["key"])[
-                    0
-                ]
+                _MUDINFO_CHANNEL = ChannelDB.objects.filter(
+                    db_key=settings.CHANNEL_MUDINFO["key"]
+                )[0]
             except Exception:
                 logger.log_trace()
         now = timezone.now()
-        now = "%02i-%02i-%02i(%02i:%02i)" % (now.year, now.month, now.day, now.hour, now.minute)
+        now = "%02i-%02i-%02i(%02i:%02i)" % (
+            now.year,
+            now.month,
+            now.day,
+            now.hour,
+            now.minute,
+        )
         if _MUDINFO_CHANNEL:
             _MUDINFO_CHANNEL.tempmsg(f"[{_MUDINFO_CHANNEL.key}, {now}]: {message}")
         else:

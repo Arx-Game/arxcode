@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('weather', '0001_initial'),
+        ("weather", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='weatheremit',
-            name='weight',
-            field=models.PositiveIntegerField(default=10, verbose_name=b'Weight'),
+            model_name="weatheremit",
+            name="weight",
+            field=models.PositiveIntegerField(default=10, verbose_name=b"Weight"),
         ),
     ]

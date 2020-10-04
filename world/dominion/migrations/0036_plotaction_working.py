@@ -9,14 +9,20 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('magic', '0007_auto_20181202_2052'),
-        ('dominion', '0035_auto_20180831_0922'),
+        ("magic", "0007_auto_20181202_2052"),
+        ("dominion", "0035_auto_20180831_0922"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='plotaction',
-            name='working',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='action', to='magic.Working'),
+            model_name="plotaction",
+            name="working",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="action",
+                to="magic.Working",
+            ),
         ),
     ]

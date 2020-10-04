@@ -8,19 +8,43 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0018_auto_20181114_2025'),
+        ("exploration", "0018_auto_20181114_2025"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='GeneratedLootFragment',
+            name="GeneratedLootFragment",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('fragment_type', models.PositiveSmallIntegerField(choices=[(0, 'Adjective'), (1, 'Bauble Material'), (2, 'Type of Item'), (3, 'Name fragment (first)'), (4, 'Name fragment (second)'), (5, 'Name fragment (prefix)'), (6, 'Small Weapon Type'), (7, 'Medium Weapon Type'), (8, 'Huge Weapon Type')], default=0)),
-                ('text', models.CharField(max_length=25)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "fragment_type",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "Adjective"),
+                            (1, "Bauble Material"),
+                            (2, "Type of Item"),
+                            (3, "Name fragment (first)"),
+                            (4, "Name fragment (second)"),
+                            (5, "Name fragment (prefix)"),
+                            (6, "Small Weapon Type"),
+                            (7, "Medium Weapon Type"),
+                            (8, "Huge Weapon Type"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                ("text", models.CharField(max_length=25)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

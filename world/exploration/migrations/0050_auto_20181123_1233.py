@@ -8,18 +8,25 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0049_auto_20181123_0105'),
+        ("exploration", "0049_auto_20181123_0105"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='short_desc',
-            field=models.CharField(blank=True, help_text=b"A short description of this obstacle, like 'labyrinth of mirrors'.", max_length=40, null=True),
+            model_name="shardhavenobstacle",
+            name="short_desc",
+            field=models.CharField(
+                blank=True,
+                help_text=b"A short description of this obstacle, like 'labyrinth of mirrors'.",
+                max_length=40,
+                null=True,
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenpuzzle',
-            name='num_drops',
-            field=models.PositiveSmallIntegerField(default=1, help_text=b'How many treasures should this puzzle drop?'),
+            model_name="shardhavenpuzzle",
+            name="num_drops",
+            field=models.PositiveSmallIntegerField(
+                default=1, help_text=b"How many treasures should this puzzle drop?"
+            ),
         ),
     ]

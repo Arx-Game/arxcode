@@ -8,20 +8,28 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0013_auto_20171029_1416'),
+        ("dominion", "0013_auto_20171029_1416"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='actionoocquestion',
-            name='mark_answered',
+            model_name="actionoocquestion",
+            name="mark_answered",
             field=models.BooleanField(default=False),
         ),
         migrations.AlterField(
-            model_name='crisisaction',
-            name='status',
-            field=models.PositiveSmallIntegerField(choices=[
-                (0, 'Draft'), (1, 'Needs Player Input'), (2, 'Needs GM Input'), (3, 'Cancelled'),
-                (4, 'Pending Resolution'), (5, 'Resolved')], default=0),
+            model_name="crisisaction",
+            name="status",
+            field=models.PositiveSmallIntegerField(
+                choices=[
+                    (0, "Draft"),
+                    (1, "Needs Player Input"),
+                    (2, "Needs GM Input"),
+                    (3, "Cancelled"),
+                    (4, "Pending Resolution"),
+                    (5, "Resolved"),
+                ],
+                default=0,
+            ),
         ),
     ]
