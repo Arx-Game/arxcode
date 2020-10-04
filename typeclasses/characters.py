@@ -1086,7 +1086,10 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     @property
     def dompc(self):
         """Returns our Dominion object"""
-        return self.player_ob.Dominion
+        try:
+            return self.player_ob.Dominion
+        except AttributeError:
+            return None
 
     @property
     def secrets(self):
@@ -1107,3 +1110,13 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     @property
     def char_ob(self):
         return self
+
+    def check_staff_or_gm(self):
+        if self.check_permstring("builders"):
+            return True
+        if not self.location or not self.dompc:
+            return False
+        event = self.location.event
+        if not event:
+            return False
+        return self.dompc in event.gms.all()

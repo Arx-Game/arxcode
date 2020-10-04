@@ -6,6 +6,7 @@ from world import stats_and_skills
 from world.roll import Roll
 from world.dominion.models import Agent
 
+
 class CmdDiceString(ArxCommand):
     """
     @dicestring
@@ -37,12 +38,13 @@ class CmdDiceString(ArxCommand):
 
 class CmdDiceCheck(ArxCommand):
     """
-    @check
+    Note: Deprecated, will be removed eventually. Use new @check
+    @oldcheck
 
     Usage:
-      @check <stat>[+<skill>][ at <difficulty number>][=receivers]
-      @check/flub <same as above>
-      @check/retainer[/flub] <retainer id>|<same as above>
+      @oldcheck <stat>[+<skill>][ at <difficulty number>][=receivers]
+      @oldcheck/flub <same as above>
+      @oldcheck/retainer[/flub] <retainer id>|<same as above>
 
     Performs a stat/skill check for your character, generally to
     determine success in an attempted action. For example, if you
@@ -62,8 +64,8 @@ class CmdDiceCheck(ArxCommand):
     skill of 2 may find it relatively easy.
     """
 
-    key = "check"
-    aliases = ['+roll']
+    key = "oldcheck"
+    aliases = ['oldroll']
     locks = "cmd:all()"
 
     def func(self):

@@ -158,6 +158,7 @@ try:
     from world.magic import magic_commands
 except Exception as err:
     print("<<ERROR>>: Error encountered in magic commands: %s" % err)
+from world.stat_checks import check_commands
 
 from evennia.commands.cmdset import CmdSet
 
@@ -182,6 +183,7 @@ class OOCCmdSet(CmdSet):
         self.add(rolling.CmdDiceString())
         self.add(rolling.CmdDiceCheck())
         self.add(rolling.CmdSpoofCheck())
+        self.add(check_commands.CmdStatCheck())
         self.add(general.CmdBriefMode())
         self.add(general.CmdTidyUp())
         self.add(extended_room.CmdGameTime())
