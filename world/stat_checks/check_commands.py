@@ -7,8 +7,8 @@ class CmdStatCheck(ArxCommand):
     """
     CmdStatCheck is a replacement for the previous CmdDiceCheck command.
     """
-    key = "newcheck"
-    aliases = ["newroll"]
+    key = "check"
+    aliases = ["roll"]
     locks = "cmd:all()"
 
     def get_help(self, caller, cmdset):
