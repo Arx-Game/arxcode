@@ -9,28 +9,40 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0046_shardhavenpuzzle_name'),
+        ("exploration", "0046_shardhavenpuzzle_name"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='monster',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='exploration.Monster'),
+            model_name="shardhavenlayoutsquare",
+            name="monster",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="exploration.Monster",
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='monster_defeated',
+            model_name="shardhavenlayoutsquare",
+            name="monster_defeated",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='puzzle',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='exploration.ShardhavenPuzzle'),
+            model_name="shardhavenlayoutsquare",
+            name="puzzle",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="exploration.ShardhavenPuzzle",
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='puzzle_solved',
+            model_name="shardhavenlayoutsquare",
+            name="puzzle_solved",
             field=models.BooleanField(default=False),
         ),
     ]

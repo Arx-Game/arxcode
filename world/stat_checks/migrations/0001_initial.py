@@ -32,20 +32,42 @@ def add_defaults(apps, schema_editor):
     StatWeight.objects.create(stat_type=5, level=1, weight=25)
     StatWeight.objects.create(stat_type=6, level=1, weight=100)
     RollResult = apps.get_model("stat_checks", "RollResult")
-    RollResult.objects.create(name="marginally successful", value=0, template="{{character}} is |240{{result}}|n.")
-    RollResult.objects.create(name="successful", value=16, template="{{character}} is |g{{result}}|n.")
-    RollResult.objects.create(name="spectacularly successful", value=51,
-                              template="|542{% if crit %}{{ crit|title }}! {% endif %}{{character}} is {{result}}|n.")
-    RollResult.objects.create(name="inhumanly successful", value=151,
-                              template="|542{% if crit %}{{ crit|title }}! {% endif %}{{character}} is "
-                                       "{{result}} in a way that defies expectations.|n")
-    RollResult.objects.create(name="marginally fails", value=-15, template="{{character}} |512{{result}}|n.")
-    RollResult.objects.create(name="fails", value=-60, template="{{character}} |r{{result}}|n.")
-    RollResult.objects.create(name="catastrophically fails", value=-160,
-                              template="{% if botch %}{{ botch|title }}! {% endif %}{{character}} |505{{result}}|n.")
-    RollResult.objects.create(name="simply outclassed", value=-260,
-                              template="|505{% if botch %}{{ botch|title }}! {% endif %}{{character}} is {{result}}. "
-                                       "This is monumentally beyond them and the result is ruinous.|n.")
+    RollResult.objects.create(
+        name="marginally successful",
+        value=0,
+        template="{{character}} is |240{{result}}|n.",
+    )
+    RollResult.objects.create(
+        name="successful", value=16, template="{{character}} is |g{{result}}|n."
+    )
+    RollResult.objects.create(
+        name="spectacularly successful",
+        value=51,
+        template="|542{% if crit %}{{ crit|title }}! {% endif %}{{character}} is {{result}}|n.",
+    )
+    RollResult.objects.create(
+        name="inhumanly successful",
+        value=151,
+        template="|542{% if crit %}{{ crit|title }}! {% endif %}{{character}} is "
+        "{{result}} in a way that defies expectations.|n",
+    )
+    RollResult.objects.create(
+        name="marginally fails", value=-15, template="{{character}} |512{{result}}|n."
+    )
+    RollResult.objects.create(
+        name="fails", value=-60, template="{{character}} |r{{result}}|n."
+    )
+    RollResult.objects.create(
+        name="catastrophically fails",
+        value=-160,
+        template="{% if botch %}{{ botch|title }}! {% endif %}{{character}} |505{{result}}|n.",
+    )
+    RollResult.objects.create(
+        name="simply outclassed",
+        value=-260,
+        template="|505{% if botch %}{{ botch|title }}! {% endif %}{{character}} is {{result}}. "
+        "This is monumentally beyond them and the result is ruinous.|n.",
+    )
     NaturalRollType = apps.get_model("stat_checks", "NaturalRollType")
     NaturalRollType.objects.create(name="critical success", value=96, result_shift=1)
     NaturalRollType.objects.create(name="botch", value=5, value_type=1, result_shift=-1)
@@ -63,84 +85,183 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='DifficultyRating',
+            name="DifficultyRating",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=150, unique=True)),
-                ('value', models.SmallIntegerField(unique=True,
-                                                   verbose_name='minimum value for this difficulty range/rating')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=150, unique=True)),
+                (
+                    "value",
+                    models.SmallIntegerField(
+                        unique=True,
+                        verbose_name="minimum value for this difficulty range/rating",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='NaturalRollType',
+            name="NaturalRollType",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=150, unique=True)),
-                ('value', models.SmallIntegerField(unique=True,
-                                                   verbose_name='minimum value for this difficulty range/rating')),
-                ('value_type', models.PositiveSmallIntegerField(choices=[(0, 'lower bound'), (1, 'upper bound')],
-                                                                default=0, help_text="If this is a lower bound, then rolls higher than value are of this type. If it's an upper bound, then rolls lower than it are of this type. It finds the closest boundary for the roll. So for example, you could have 'crit' of value 95, and then a higher crit called 'super crit' with a lower bound of 98, for 98-100 rolls.", verbose_name='The type of boundary for value')),
-                ('result_shift',
-                 models.SmallIntegerField(default=0,
-                                          help_text="The number of levels to shift the result by, whether up or down. 1"
-                                                    " for a crit would shift the result up by 1, such that a normal "
-                                                    "success turns into the level above normal. Use negative numbers "
-                                                    "for a botch/fumble (which should have an upper bound value "
-                                                    "type).")),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=150, unique=True)),
+                (
+                    "value",
+                    models.SmallIntegerField(
+                        unique=True,
+                        verbose_name="minimum value for this difficulty range/rating",
+                    ),
+                ),
+                (
+                    "value_type",
+                    models.PositiveSmallIntegerField(
+                        choices=[(0, "lower bound"), (1, "upper bound")],
+                        default=0,
+                        help_text="If this is a lower bound, then rolls higher than value are of this type. If it's an upper bound, then rolls lower than it are of this type. It finds the closest boundary for the roll. So for example, you could have 'crit' of value 95, and then a higher crit called 'super crit' with a lower bound of 98, for 98-100 rolls.",
+                        verbose_name="The type of boundary for value",
+                    ),
+                ),
+                (
+                    "result_shift",
+                    models.SmallIntegerField(
+                        default=0,
+                        help_text="The number of levels to shift the result by, whether up or down. 1"
+                        " for a crit would shift the result up by 1, such that a normal "
+                        "success turns into the level above normal. Use negative numbers "
+                        "for a botch/fumble (which should have an upper bound value "
+                        "type).",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='RollResult',
+            name="RollResult",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=150, unique=True)),
-                ('value', models.SmallIntegerField(unique=True,
-                                                   verbose_name='minimum value for this difficulty range/rating')),
-                ('template', models.TextField(help_text="A jinja2 template string that will be output with the message for this result. 'character' is the context variable for the roller: eg: '{{character}} fumbles.'")),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=150, unique=True)),
+                (
+                    "value",
+                    models.SmallIntegerField(
+                        unique=True,
+                        verbose_name="minimum value for this difficulty range/rating",
+                    ),
+                ),
+                (
+                    "template",
+                    models.TextField(
+                        help_text="A jinja2 template string that will be output with the message for this result. 'character' is the context variable for the roller: eg: '{{character}} fumbles.'"
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='StatWeight',
+            name="StatWeight",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('stat_type', models.PositiveSmallIntegerField(choices=[(0, 'skill'), (1, 'stat'), (2, 'ability'),
-                                                                        (3, 'knack'), (4, 'stat with no skill'),
-                                                                        (5, 'health for stamina'),
-                                                                        (6, 'health for boss rating')], default=0)),
-                ('level', models.PositiveSmallIntegerField(default=0, help_text='Set the level for the minimum rating in the stat for this weight to be used. With the default of 0 and no other weights set for this type, all levels of the type of stat (stat, skill, etc) will add a linear amount rather than curving.', verbose_name='minimum level of stat for this weight')),
-                ('weight', models.SmallIntegerField(default=1, help_text='This is the multiplier for how much to add to a roll for a stat/skill of at least this level, until it encounters a higher level value you assign. For example, a StatWeight(stat_type=STAT, level=0, weight=1) would give +1 for each level of the stat. If you added a StatWeight(stat_type=STAT, level=6, weight=10), then if they have a stat of 7 they would get 5 + 20.', verbose_name='weight for this level of the stat')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "stat_type",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "skill"),
+                            (1, "stat"),
+                            (2, "ability"),
+                            (3, "knack"),
+                            (4, "stat with no skill"),
+                            (5, "health for stamina"),
+                            (6, "health for boss rating"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                (
+                    "level",
+                    models.PositiveSmallIntegerField(
+                        default=0,
+                        help_text="Set the level for the minimum rating in the stat for this weight to be used. With the default of 0 and no other weights set for this type, all levels of the type of stat (stat, skill, etc) will add a linear amount rather than curving.",
+                        verbose_name="minimum level of stat for this weight",
+                    ),
+                ),
+                (
+                    "weight",
+                    models.SmallIntegerField(
+                        default=1,
+                        help_text="This is the multiplier for how much to add to a roll for a stat/skill of at least this level, until it encounters a higher level value you assign. For example, a StatWeight(stat_type=STAT, level=0, weight=1) would give +1 for each level of the stat. If you added a StatWeight(stat_type=STAT, level=6, weight=10), then if they have a stat of 7 they would get 5 + 20.",
+                        verbose_name="weight for this level of the stat",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='DamageRating',
+            name="DamageRating",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=150, unique=True)),
-                ('value', models.SmallIntegerField(verbose_name='minimum damage')),
-                ('max_value', models.SmallIntegerField(verbose_name='maximum damage')),
-                ('armor_cap', models.SmallIntegerField(
-                    help_text='Percent of damage armor can prevent. 100 means armor can completely negate the attack.')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=150, unique=True)),
+                ("value", models.SmallIntegerField(verbose_name="minimum damage")),
+                ("max_value", models.SmallIntegerField(verbose_name="maximum damage")),
+                (
+                    "armor_cap",
+                    models.SmallIntegerField(
+                        help_text="Percent of damage armor can prevent. 100 means armor can completely negate the attack."
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
-        migrations.RunPython(add_defaults, migrations.RunPython.noop)
+        migrations.RunPython(add_defaults, migrations.RunPython.noop),
     ]

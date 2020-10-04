@@ -32,14 +32,24 @@ def create_plot_pitch(desc, gm_notes, name, parent_plot, summary, player_ob):
     Returns:
         The pitch, which is a Ticket object
     """
-    plot = Plot.objects.create(name=name, headline=summary, desc=desc, parent_plot=parent_plot,
-                               usage=Plot.PITCH, public=False)
+    plot = Plot.objects.create(
+        name=name,
+        headline=summary,
+        desc=desc,
+        parent_plot=parent_plot,
+        usage=Plot.PITCH,
+        public=False,
+    )
 
-    plot.dompc_involvement.create(dompc=player_ob.Dominion, admin_status=PCPlotInvolvement.SUBMITTER)
+    plot.dompc_involvement.create(
+        dompc=player_ob.Dominion, admin_status=PCPlotInvolvement.SUBMITTER
+    )
     title = "Pitch: %s" % plot
     if parent_plot:
         title += " (%s)" % parent_plot
-    ticket = create_ticket(player_ob, gm_notes, queue_slug="PRP", optional_title=title, plot=plot)
+    ticket = create_ticket(
+        player_ob, gm_notes, queue_slug="PRP", optional_title=title, plot=plot
+    )
     return ticket
 
 
@@ -113,27 +123,48 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
     to pursue the plot. If they invite and you accept, /rewardrecruiter
     grants xp to you both. See your invitations with plots/invitations.
     """
+
     key = "+plots"
     aliases = ["+plot"]
     help_category = "Story"
-    admin_switches = ("storyhook", "rfr", "invite", "invitation", "perm", "cast", "tag", "close")
+    admin_switches = (
+        "storyhook",
+        "rfr",
+        "invite",
+        "invitation",
+        "perm",
+        "cast",
+        "tag",
+        "close",
+    )
     recruited_xp = 1
     help_entry_tags = ["plots", "goals"]
 
     @property
     def invitations(self):
         """Invitations for the caller"""
-        return self.caller.dompc.plot_involvement.filter(activity_status=PCPlotInvolvement.INVITED)
+        return self.caller.dompc.plot_involvement.filter(
+            activity_status=PCPlotInvolvement.INVITED
+        )
 
     @property
     def involvement_queryset(self):
-        return (self.caller.dompc.plot_involvement.exclude(activity_status__gte=PCPlotInvolvement.LEFT)
-                                                  .exclude(plot__usage=Plot.CRISIS).distinct())
+        return (
+            self.caller.dompc.plot_involvement.exclude(
+                activity_status__gte=PCPlotInvolvement.LEFT
+            )
+            .exclude(plot__usage=Plot.CRISIS)
+            .distinct()
+        )
 
     def func(self):
         """Executes plot command"""
         try:
-            if not self.switches or "old" in self.switches or "timeline" in self.switches:
+            if (
+                not self.switches
+                or "old" in self.switches
+                or "timeline" in self.switches
+            ):
                 self.do_plot_displays()
             elif "createbeat" in self.switches:
                 self.create_beat()
@@ -145,7 +176,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
                 self.view_our_tagged_stuff()
             elif self.check_switches(self.admin_switches):
                 self.do_admin_switches()
-            elif self.check_switches(("accept", "outstanding", "invitations", "invites")):
+            elif self.check_switches(
+                ("accept", "outstanding", "invitations", "invites")
+            ):
                 self.accept_invitation()
             elif "leave" in self.switches:
                 self.leave_plot()
@@ -174,9 +207,14 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         """Lists all plots available to caller"""
         old = "old" in self.switches
         qs = self.involvement_queryset.filter(plot__resolved=old).distinct()
-        table = PrettyTable(["|w{}Plot (ID)|n".format("Resolved " if old else ""), "|wInvolvement|n"])
+        table = PrettyTable(
+            ["|w{}Plot (ID)|n".format("Resolved " if old else ""), "|wInvolvement|n"]
+        )
         for involvement in qs:
-            if involvement.activity_status in (involvement.INVITED, involvement.HAS_RP_HOOK):
+            if involvement.activity_status in (
+                involvement.INVITED,
+                involvement.HAS_RP_HOOK,
+            ):
                 color = "|y"
             else:
                 color = ""
@@ -187,13 +225,17 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
 
     def view_plot(self):
         """Views a given plot"""
-        involvement = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.PLAYER, allow_old=True)
+        involvement = self.get_involvement_by_plot_id(
+            required_permission=PCPlotInvolvement.PLAYER, allow_old=True
+        )
         if "timeline" in self.switches:
             self.msg(involvement.plot.display_timeline())
         else:
             self.msg(involvement.display_plot_involvement())
 
-    def get_involvement_by_plot_id(self, required_permission=PCPlotInvolvement.OWNER, plot_id=None, allow_old=False):
+    def get_involvement_by_plot_id(
+        self, required_permission=PCPlotInvolvement.OWNER, plot_id=None, allow_old=False
+    ):
         """Gets one of caller's plot-involvement object based on plot ID"""
         try:
             if not plot_id:
@@ -209,7 +251,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
 
     def view_beat(self):
         """Views a beat for a plot"""
-        plot = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.PLAYER).plot
+        plot = self.get_involvement_by_plot_id(
+            required_permission=PCPlotInvolvement.PLAYER
+        ).plot
         try:
             beat = plot.beats.get(id=self.rhs)
         except (PlotUpdate.DoesNotExist, ValueError):
@@ -229,7 +273,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
 
     def create_beat(self):
         """Creates a beat for a plot."""
-        involvement = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.GM)
+        involvement = self.get_involvement_by_plot_id(
+            required_permission=PCPlotInvolvement.GM
+        )
         desc, ooc_notes = self.split_ic_from_ooc()
         plot = involvement.plot
         beat = plot.updates.create(desc=desc, ooc_notes=ooc_notes, date=datetime.now())
@@ -243,8 +289,12 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
             raise CommandError("Edit the beat with what?")
         if ooc_notes and beat.ooc_notes:  # appends a new ooc note
             ooc_notes = "{0}\n{1}".format(beat.ooc_notes, ooc_notes)
-        prompt_msg = ("|w[Proposed Edit to Beat #{}]|n {}\n{}\n|yIf this appears correct, repeat command to "
-                      "confirm and continue.|n".format(beat.id, desc or beat.desc, ooc_notes or beat.ooc_notes))
+        prompt_msg = (
+            "|w[Proposed Edit to Beat #{}]|n {}\n{}\n|yIf this appears correct, repeat command to "
+            "confirm and continue.|n".format(
+                beat.id, desc or beat.desc, ooc_notes or beat.ooc_notes
+            )
+        )
         if self.confirm_command("edit_beat", desc, prompt_msg):
             beat.desc = desc or beat.desc
             beat.ooc_notes = ooc_notes or beat.ooc_notes
@@ -256,7 +306,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         try:
             desc, ooc_notes = self.rhs.split("/")
         except (ValueError, AttributeError):
-            raise CommandError("Please use / only to divide IC summary from OOC notes. Usage: <#>=<IC>/<OOC>")
+            raise CommandError(
+                "Please use / only to divide IC summary from OOC notes. Usage: <#>=<IC>/<OOC>"
+            )
         if not allow_blank_desc and (not desc or len(desc) < 10):
             raise CommandError("Please have a slightly longer IC summary.")
         if ooc_notes:
@@ -320,7 +372,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
                 oldbeat.delete()
         added_obj.beat = beat
         added_obj.save()
-        self.msg("You have added %s to beat(ID: %d) of %s." % (added_obj, beat.id, beat.plot))
+        self.msg(
+            "You have added %s to beat(ID: %d) of %s." % (added_obj, beat.id, beat.plot)
+        )
 
     def get_beat(self, beat_id, cast_access=False):
         """Gets a beat for a plot by its ID"""
@@ -329,7 +383,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         elif cast_access:
             qs = PlotUpdate.objects.filter(plot_id__in=self.caller.dompc.active_plots)
         else:
-            qs = PlotUpdate.objects.filter(plot_id__in=self.caller.dompc.plots_we_can_gm)
+            qs = PlotUpdate.objects.filter(
+                plot_id__in=self.caller.dompc.plots_we_can_gm
+            )
         try:
             beat = qs.get(id=beat_id)
         except (PlotUpdate.DoesNotExist, ValueError):
@@ -346,7 +402,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
                 name, attr = self.rhs.split("/")
             except (AttributeError, ValueError):
                 if self.check_switches(("perm", "cast")):
-                    raise CommandError("You must specify both a name and %s-level." % self.switches[0])
+                    raise CommandError(
+                        "You must specify both a name and %s-level." % self.switches[0]
+                    )
                 else:  # attr being a blank string means story being wiped
                     name = self.rhs or ""
             if "storyhook" in self.switches:
@@ -370,18 +428,27 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
                 elif perm == "extra":
                     new_cast = PCPlotInvolvement.EXTRA
                 else:
-                    err = ("You entered '%s'. Valid permission levels: gm, player, or recruiter. "
-                           "Valid cast options: required, main, supporting, or extra." % attr)
+                    err = (
+                        "You entered '%s'. Valid permission levels: gm, player, or recruiter. "
+                        "Valid cast options: required, main, supporting, or extra."
+                        % attr
+                    )
                     raise CommandError(err)
-            plot = self.get_involvement_by_plot_id(required_permission=access_level).plot
+            plot = self.get_involvement_by_plot_id(
+                required_permission=access_level
+            ).plot
             self.change_permission_or_set_story(plot, name, new_perm, new_cast, story)
         elif self.check_switches(("invite", "invitation")):
             if not self.args:
                 return self.msg(self.list_invitations())
-            plot = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.RECRUITER).plot
+            plot = self.get_involvement_by_plot_id(
+                required_permission=PCPlotInvolvement.RECRUITER
+            ).plot
             self.invite_to_plot(plot)
         elif self.check_switches(("rfr", "tag", "close")):
-            plot = self.get_involvement_by_plot_id(required_permission=PCPlotInvolvement.GM, allow_old=True).plot
+            plot = self.get_involvement_by_plot_id(
+                required_permission=PCPlotInvolvement.GM, allow_old=True
+            ).plot
             if "rfr" in self.switches:
                 self.request_for_review(plot)
             elif "close" in self.switches:
@@ -389,7 +456,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
             else:
                 self.tag_plot_or_beat(plot)
 
-    def change_permission_or_set_story(self, plot, pc_name, new_perm=None, new_cast=None, story=None):
+    def change_permission_or_set_story(
+        self, plot, pc_name, new_perm=None, new_cast=None, story=None
+    ):
         """Changes permissions for a plot for a participant or set their recruiter story"""
         involvement = self.get_involvement_by_plot_object(plot, pc_name)
         success = ["You have "]
@@ -397,25 +466,43 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         if new_perm is not None:
             if involvement.admin_status == PCPlotInvolvement.OWNER:
                 raise CommandError("Owners cannot have their admin permission changed.")
-            if involvement.cast_status < PCPlotInvolvement.SUPPORTING_CAST and new_perm == PCPlotInvolvement.GM:
+            if (
+                involvement.cast_status < PCPlotInvolvement.SUPPORTING_CAST
+                and new_perm == PCPlotInvolvement.GM
+            ):
                 raise CommandError(gm_err)
             involvement.admin_status = new_perm
-            success.append("marked %s as a %s." % (involvement.dompc, involvement.get_admin_status_display()))
+            success.append(
+                "marked %s as a %s."
+                % (involvement.dompc, involvement.get_admin_status_display())
+            )
         elif new_cast is not None:
-            if new_cast < PCPlotInvolvement.SUPPORTING_CAST and involvement.admin_status == PCPlotInvolvement.GM:
+            if (
+                new_cast < PCPlotInvolvement.SUPPORTING_CAST
+                and involvement.admin_status == PCPlotInvolvement.GM
+            ):
                 raise CommandError(gm_err)
             involvement.cast_status = new_cast
-            success.append("added %s to the plot's %s members." % (involvement.dompc,
-                                                                   involvement.get_cast_status_display()))
+            success.append(
+                "added %s to the plot's %s members."
+                % (involvement.dompc, involvement.get_cast_status_display())
+            )
         else:
             if story:
                 if involvement.admin_status == PCPlotInvolvement.PLAYER:
-                    raise CommandError("They must be set as a recruiter to have a story hook set for how "
-                                       "someone wanting to become involved in the plot might have heard of them.")
-                success.append("set %s's story hook that contacts can see to: %s" % (involvement, story))
+                    raise CommandError(
+                        "They must be set as a recruiter to have a story hook set for how "
+                        "someone wanting to become involved in the plot might have heard of them."
+                    )
+                success.append(
+                    "set %s's story hook that contacts can see to: %s"
+                    % (involvement, story)
+                )
             else:
                 if involvement.admin_status == PCPlotInvolvement.RECRUITER:
-                    raise CommandError("You cannot remove their hook while they are flagged as a recruiter.")
+                    raise CommandError(
+                        "You cannot remove their hook while they are flagged as a recruiter."
+                    )
                 success.append("removed %s's story hook." % involvement)
             involvement.recruiter_story = story
         involvement.save()
@@ -433,9 +520,13 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
             CommandError if no involvement is found
         """
         try:
-            involvement = plot.dompc_involvement.get(dompc__player__username__iexact=pc_name)
+            involvement = plot.dompc_involvement.get(
+                dompc__player__username__iexact=pc_name
+            )
         except PCPlotInvolvement.DoesNotExist:
-            raise self.error_class("No one is involved in your plot by the name '%s'." % pc_name)
+            raise self.error_class(
+                "No one is involved in your plot by the name '%s'." % pc_name
+            )
         return involvement
 
     def invite_to_plot(self, plot: Plot):
@@ -456,7 +547,14 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         if len(self.lhslist) > 1:
             beat = self.get_beat(self.lhslist[1])
         title = "RFR: %s" % plot
-        create_ticket(self.caller.player_ob, self.rhs, queue_slug="PRP", optional_title=title, plot=plot, beat=beat)
+        create_ticket(
+            self.caller.player_ob,
+            self.rhs,
+            queue_slug="PRP",
+            optional_title=title,
+            plot=plot,
+            beat=beat,
+        )
         self.msg("You have submitted a new ticket for %s." % plot)
 
     def close_plot(self, plot: Plot):
@@ -481,6 +579,7 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
     def get_tag(self, tag_text=None):
         """Searches for a tag."""
         from web.character.models import SearchTag
+
         if not tag_text:
             raise CommandError("What tag are we using?")
         return self.get_by_name_or_id(SearchTag, tag_text)
@@ -495,19 +594,25 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
 
     def accept_invitation(self):
         """Accepts an invitation to a plot"""
-        if not self.lhs or self.check_switches(("outstanding", "invites", "invitations")):
+        if not self.lhs or self.check_switches(
+            ("outstanding", "invites", "invitations")
+        ):
             return self.msg(self.list_invitations())
         try:
             invite = self.invitations.get(plot_id=self.lhs)
         except (PCPlotInvolvement.DoesNotExist, ValueError):
-            raise CommandError("No invitation by that ID.\n%s" % self.list_invitations())
+            raise CommandError(
+                "No invitation by that ID.\n%s" % self.list_invitations()
+            )
         invite.accept_invitation(self.rhs)
         self.msg("You have joined %s (Plot ID: %s)" % (invite.plot, invite.plot.id))
 
     def list_invitations(self):
         """Returns text of all their invitations to plots"""
         invites = self.invitations
-        return "|wOutstanding invitations:|n %s" % ", ".join(str(ob.plot_id) for ob in invites)
+        return "|wOutstanding invitations:|n %s" % ", ".join(
+            str(ob.plot_id) for ob in invites
+        )
 
     def leave_plot(self):
         """Marks us inactive on a plot or deletes an invitation"""
@@ -522,11 +627,17 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         try:
             name, summary, desc, gm_notes = self.lhs.split("/", 3)
         except ValueError:
-            raise CommandError("You must provide a name, a one-line summary, desc, and notes for GMs separated by '/'.")
+            raise CommandError(
+                "You must provide a name, a one-line summary, desc, and notes for GMs separated by '/'."
+            )
         parent_plot = None
         if self.rhs:
-            parent_plot = self.get_involvement_by_plot_id(PCPlotInvolvement.PLAYER, plot_id=self.rhs).plot
-        ticket = create_plot_pitch(desc, gm_notes, name, parent_plot, summary, self.caller.player_ob)
+            parent_plot = self.get_involvement_by_plot_id(
+                PCPlotInvolvement.PLAYER, plot_id=self.rhs
+            ).plot
+        ticket = create_plot_pitch(
+            desc, gm_notes, name, parent_plot, summary, self.caller.player_ob
+        )
         self.msg("You made a pitch to staff for a new plot. Ticket ID: %s." % ticket.id)
 
     def find_contact(self):
@@ -536,7 +647,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         except (ValueError, KeyError, TypeError):
             raise CommandError("You do not have a secret by that number.")
         msg = "People you can talk to for more plot involvement with your secret:\n"
-        for recruiter in secret.clue.recruiters.exclude(plot__in=self.caller.dompc.active_plots).distinct():
+        for recruiter in secret.clue.recruiters.exclude(
+            plot__in=self.caller.dompc.active_plots
+        ).distinct():
             msg += "\n{c%s{n: %s\n" % (str(recruiter), recruiter.recruiter_story)
         self.msg(msg)
 
@@ -544,7 +657,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         """Gives credit to the person who recruited us to a plot, giving xp to both"""
         involvement = self.get_involvement_by_plot_id(PCPlotInvolvement.PLAYER)
         if involvement.activity_status != PCPlotInvolvement.ACTIVE:
-            raise CommandError("You must have joined the plot to reward your recruiter.")
+            raise CommandError(
+                "You must have joined the plot to reward your recruiter."
+            )
         if involvement.recruited_by:
             raise CommandError("You have already rewarded a recruiter.")
         targ = self.get_involvement_by_plot_object(involvement.plot, self.rhs)
@@ -555,10 +670,14 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         involvement.save()
         targ = targ.dompc.player.roster.character
         targ.adjust_xp(xp)
-        targ.player_ob.inform("You have been marked as the recruiter of %s for plot %s, and gained %s xp." % (
-            involvement, involvement.plot, xp))
+        targ.player_ob.inform(
+            "You have been marked as the recruiter of %s for plot %s, and gained %s xp."
+            % (involvement, involvement.plot, xp)
+        )
         self.caller.adjust_xp(self.recruited_xp)
-        self.msg("You have marked %s as your recruiter. You have both gained xp." % targ.key)
+        self.msg(
+            "You have marked %s as your recruiter. You have both gained xp." % targ.key
+        )
 
     def add_clue(self):
         """Adds a clue to an existing plot"""
@@ -566,7 +685,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         try:
             clue_id, notes = self.rhs.split("/", 1)
         except (AttributeError, ValueError):
-            raise CommandError("You must include a clue ID and notes of how the clue is related to the plot.")
+            raise CommandError(
+                "You must include a clue ID and notes of how the clue is related to the plot."
+            )
         try:
             clue = self.caller.roster.clues.get(id=clue_id)
         except (Clue.DoesNotExist, TypeError, ValueError):
@@ -584,7 +705,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
         try:
             rev_id, notes = self.rhs.split("/", 1)
         except (AttributeError, ValueError):
-            raise CommandError("You must include a revelation ID and notes of how the clue is related to the plot.")
+            raise CommandError(
+                "You must include a revelation ID and notes of how the clue is related to the plot."
+            )
         try:
             revelation = self.caller.roster.revelations.get(id=rev_id)
         except (Clue.DoesNotExist, TypeError, ValueError):
@@ -594,7 +717,9 @@ class CmdPlots(RewardRPToolUseMixin, ArxCommand):
             raise CommandError("That revelation is already related to that plot.")
         rev_plot_inv.gm_notes = notes
         rev_plot_inv.save()
-        self.msg("You have associated revelation '%s' with plot '%s'." % (revelation, plot))
+        self.msg(
+            "You have associated revelation '%s' with plot '%s'." % (revelation, plot)
+        )
 
     def add_theory(self):
         """Adds a theory to an existing plot"""
@@ -635,6 +760,7 @@ class CmdGMPlots(ArxCommand):
                     /clue <plot ID>=<clue ID>/<desc of relationship>
             /connect supports /revelation, /org same as /clue
     """
+
     key = "@gmplots"
     help_category = "GMing"
     locks = "cmd: perm(builders)"
@@ -646,12 +772,18 @@ class CmdGMPlots(ArxCommand):
     @property
     def pitches(self):
         """Tickets for PRP pitches"""
-        return Ticket.objects.filter(queue__slug="PRP", plot__usage=Plot.PITCH, status=Ticket.OPEN_STATUS)
+        return Ticket.objects.filter(
+            queue__slug="PRP", plot__usage=Plot.PITCH, status=Ticket.OPEN_STATUS
+        )
 
     @property
     def requests_for_review(self):
         """Tickets for RFR"""
-        return Ticket.objects.filter(queue__slug="PRP", status=Ticket.OPEN_STATUS, plot__usage=Plot.PLAYER_RUN_PLOT)
+        return Ticket.objects.filter(
+            queue__slug="PRP",
+            status=Ticket.OPEN_STATUS,
+            plot__usage=Plot.PLAYER_RUN_PLOT,
+        )
 
     def func(self):
         """Executes gmplots command"""
@@ -660,7 +792,9 @@ class CmdGMPlots(ArxCommand):
                 return self.view_plots()
             elif "create" in self.switches:
                 return self.create_plot()
-            elif self.check_switches(self.plot_switches) or self.check_switches(self.beat_objects):
+            elif self.check_switches(self.plot_switches) or self.check_switches(
+                self.beat_objects
+            ):
                 return self.do_plot_switches()
             elif self.check_switches(self.ticket_switches):
                 return self.do_ticket_switches()
@@ -675,8 +809,13 @@ class CmdGMPlots(ArxCommand):
             old = "old" in self.switches
             recruiting = "recruiting" in self.switches
             only_open = "all" not in self.switches and not old and not recruiting
-            self.msg(str(Plot.objects.view_plots_table(old=old, only_open_tickets=only_open,
-                                                       only_recruiting=recruiting)))
+            self.msg(
+                str(
+                    Plot.objects.view_plots_table(
+                        old=old, only_open_tickets=only_open, only_recruiting=recruiting
+                    )
+                )
+            )
         else:
             plot = self.get_by_name_or_id(Plot, self.lhs)
             if "timeline" in self.switches:
@@ -690,13 +829,24 @@ class CmdGMPlots(ArxCommand):
         try:
             name, summary, desc = self.lhs.split("/")
         except (AttributeError, ValueError):
-            raise CommandError("Must include a name, summary, and a description for the plot.")
+            raise CommandError(
+                "Must include a name, summary, and a description for the plot."
+            )
         if self.rhs:
             parent = self.get_by_name_or_id(Plot, self.rhs)
-        plot = Plot.objects.create(name=name, desc=desc, parent_plot=parent, usage=Plot.GM_PLOT,
-                                   start_date=datetime.now(), headline=summary)
+        plot = Plot.objects.create(
+            name=name,
+            desc=desc,
+            parent_plot=parent,
+            usage=Plot.GM_PLOT,
+            start_date=datetime.now(),
+            headline=summary,
+        )
         if parent:
-            self.msg("You have created a new subplot of %s: %s (#%s)." % (parent, plot, plot.id))
+            self.msg(
+                "You have created a new subplot of %s: %s (#%s)."
+                % (parent, plot, plot.id)
+            )
         else:
             self.msg("You have created a new gm plot: %s (#%s)." % (plot, plot.id))
 
@@ -705,12 +855,20 @@ class CmdGMPlots(ArxCommand):
         plot = self.get_by_name_or_id(Plot, self.lhs)
         if "end" in self.switches:
             return self.end_plot(plot)
-        if "addbeat" in self.switches or "adb" in self.switches or self.check_switches(self.beat_objects):
+        if (
+            "addbeat" in self.switches
+            or "adb" in self.switches
+            or self.check_switches(self.beat_objects)
+        ):
             return self.add_beat(plot)
         if "participation" in self.switches:
-            return self.set_property_for_dompc(plot, "cast_status", "CAST_STATUS_CHOICES")
+            return self.set_property_for_dompc(
+                plot, "cast_status", "CAST_STATUS_CHOICES"
+            )
         if "perm" in self.switches:
-            return self.set_property_for_dompc(plot, "admin_status", "ADMIN_STATUS_CHOICES")
+            return self.set_property_for_dompc(
+                plot, "admin_status", "ADMIN_STATUS_CHOICES"
+            )
         if "connect" in self.switches:
             return self.connect_to_plot(plot)
 
@@ -729,6 +887,7 @@ class CmdGMPlots(ArxCommand):
         """Adds a beat to a plot"""
         from web.character.models import Episode
         from django.core.exceptions import ObjectDoesNotExist
+
         obj = None
         try:
             if self.check_switches(self.beat_objects):
@@ -740,18 +899,27 @@ class CmdGMPlots(ArxCommand):
                 else:  # action
                     obj = PlotAction.objects.get(id=object_id)
                     if obj.plot and obj.plot != plot:
-                        raise CommandError("That action is already assigned to a different plot.")
+                        raise CommandError(
+                            "That action is already assigned to a different plot."
+                        )
                     obj.plot = plot
                 if obj.beat:
-                    raise CommandError("That object was already associated with beat #%s." % obj.beat.id)
+                    raise CommandError(
+                        "That object was already associated with beat #%s."
+                        % obj.beat.id
+                    )
             elif "other" in self.switches:
                 story, notes = self.get_beat_objects(get_related_id=False)
             else:
-                raise CommandError("You must include the switch of the cause:"
-                                   " /rpevent, /action, /flashback, or /other.")
+                raise CommandError(
+                    "You must include the switch of the cause:"
+                    " /rpevent, /action, /flashback, or /other."
+                )
         except ObjectDoesNotExist:
             raise CommandError("Did not find an object by that ID.")
-        update = plot.updates.create(episode=Episode.objects.last(), desc=story, gm_notes=notes)
+        update = plot.updates.create(
+            episode=Episode.objects.last(), desc=story, gm_notes=notes
+        )
         msg = "You have created a new beat for plot %s." % plot
         if obj:
             obj.beat = update
@@ -788,11 +956,16 @@ class CmdGMPlots(ArxCommand):
         involvement, _ = plot.dompc_involvement.get_or_create(dompc=dompc)
         setattr(involvement, field, choice_value)
         involvement.save()
-        self.msg("You have set %s as a %s in %s." % (dompc, getattr(involvement, "get_%s_display" % field)(), plot))
+        self.msg(
+            "You have set %s as a %s in %s."
+            % (dompc, getattr(involvement, "get_%s_display" % field)(), plot)
+        )
 
     def do_ticket_switches(self):
         """Ticket switches, which often wind up in ditches"""
-        queryset = self.pitches if "pitches" in self.switches else self.requests_for_review
+        queryset = (
+            self.pitches if "pitches" in self.switches else self.requests_for_review
+        )
         if not self.args:
             return self.display_tickets(queryset)
         try:
@@ -827,7 +1000,14 @@ class CmdGMPlots(ArxCommand):
         """Displays table of plot pitches"""
         table = PrettyTable(["ID", "Submitter", "Name", "Parent"])
         for pitch in queryset:
-            table.add_row([pitch.id, str(pitch.submitting_player), pitch.plot.name, str(pitch.plot.parent_plot)])
+            table.add_row(
+                [
+                    pitch.id,
+                    str(pitch.submitting_player),
+                    pitch.plot.name,
+                    str(pitch.plot.parent_plot),
+                ]
+            )
         self.msg(str(table))
 
     def add_followup(self, pitch):
@@ -841,11 +1021,15 @@ class CmdGMPlots(ArxCommand):
         plot = pitch.plot
         plot.usage = Plot.PLAYER_RUN_PLOT
         plot.save()
-        for pc in plot.dompc_involvement.filter(admin_status=PCPlotInvolvement.SUBMITTER):
+        for pc in plot.dompc_involvement.filter(
+            admin_status=PCPlotInvolvement.SUBMITTER
+        ):
             pc.admin_status = PCPlotInvolvement.OWNER
             pc.save()
-        self.msg("You have approved the pitch. %s is now active with %s as the owner." % (pitch.plot,
-                                                                                          pitch.submitting_player))
+        self.msg(
+            "You have approved the pitch. %s is now active with %s as the owner."
+            % (pitch.plot, pitch.submitting_player)
+        )
 
     def decline_pitch(self, pitch):
         """Declines a pitch. Deletes it and closes the ticket"""
@@ -862,11 +1046,15 @@ class CmdGMPlots(ArxCommand):
         try:
             name, gm_notes = self.rhs.split("/")
         except (AttributeError, ValueError):
-            raise CommandError("You must include a target and notes on how they're connected to the plot.")
+            raise CommandError(
+                "You must include a target and notes on how they're connected to the plot."
+            )
         if "char" in self.switches:
             target = self.dompc_search(name)
             involvement, created = plot.dompc_involvement.get_or_create(dompc=target)
-            if created:  # if they're only connected by GM note, they shouldn't know they're connected
+            if (
+                created
+            ):  # if they're only connected by GM note, they shouldn't know they're connected
                 involvement.activity_status = PCPlotInvolvement.NOT_ADDED
                 involvement.cast_status = PCPlotInvolvement.TANGENTIAL
         elif "clue" in self.switches:
@@ -874,12 +1062,16 @@ class CmdGMPlots(ArxCommand):
             involvement, _ = plot.clue_involvement.get_or_create(clue=target)
         elif "revelation" in self.switches:
             target = self.get_by_name_or_id(Revelation, name)
-            involvement, _ = plot.revelation_involvement.get_or_create(revelation=target)
+            involvement, _ = plot.revelation_involvement.get_or_create(
+                revelation=target
+            )
         elif "org" in self.switches:
             target = self.get_by_name_or_id(Organization, name)
             involvement, _ = plot.org_involvement.get_or_create(org=target)
         else:
-            raise CommandError("You must include the type of object to connect: char, clue, revelation, org.")
+            raise CommandError(
+                "You must include the type of object to connect: char, clue, revelation, org."
+            )
         if involvement.gm_notes:
             involvement.gm_notes += "\n"
         involvement.gm_notes += gm_notes
@@ -895,6 +1087,7 @@ class CmdStoryCoordinators(ArxPlayerCommand):
     story/old <org name>
     story/org <org name>
     """
+
     key = "story"
     locks = "cmd:perm(builders)"
     help_category = "GMing"
@@ -913,13 +1106,15 @@ class CmdStoryCoordinators(ArxPlayerCommand):
         targ = self.search(self.args)
         if not targ:
             return
-        orgs = Organization.objects.filter(members__in=targ.active_memberships.filter(story_coordinator=True))
+        orgs = Organization.objects.filter(
+            members__in=targ.active_memberships.filter(story_coordinator=True)
+        )
         plots = Plot.objects.filter(resolved=False, orgs__in=orgs).distinct()
         plot_display = "\n".join([plot.display_involvement() for plot in plots])
         self.msg(f"Plots for {targ}:\n{plot_display}")
 
     def display_resolved_plots_for_org(self):
-        plots = self.get_plots_for_org().order_by('start_date')
+        plots = self.get_plots_for_org().order_by("start_date")
         plot_display = ", ".join([f"{plot.name_and_id}" for plot in plots])
         self.msg(f"Resolved plots for {self.args}: {plot_display}")
 

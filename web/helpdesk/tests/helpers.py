@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 from importlib import reload
+
 try:
     from django.contrib.auth import get_user_model
 except ImportError:
@@ -9,11 +10,13 @@ else:
     User = get_user_model()
 
 
-def get_staff_user(username='helpdesk.staff', password='password'):
+def get_staff_user(username="helpdesk.staff", password="password"):
     try:
         user = User.objects.get(username=username)
     except User.DoesNotExist:
-        user = User.objects.create_user(username=username, password=password, email='staff@example.com')
+        user = User.objects.create_user(
+            username=username, password=password, email="staff@example.com"
+        )
         user.is_staff = True
         user.save()
     else:

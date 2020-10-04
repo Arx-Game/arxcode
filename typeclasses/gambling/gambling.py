@@ -9,6 +9,7 @@ class Dice(Object):
     """
     Class for placed objects that allow the 'tabletalk' command.
     """
+
     default_desc = "A set of five dice. It looks like someone could {wroll{n them."
 
     def at_object_creation(self):

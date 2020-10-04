@@ -8,12 +8,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('msgs', '0001_initial'),
+        ("msgs", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterModelTable(
-            name='inform',
-            table='comms_inform',
+            name="inform",
+            table="comms_inform",
         ),
     ]

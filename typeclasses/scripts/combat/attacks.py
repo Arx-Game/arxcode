@@ -57,19 +57,54 @@ class Attack(object):
     parried, and dodged unless explicitly set to False for those values. So bear in mind that
     'None' doesn't necessarily mean 'False' in this case.
     """
+
     AUTO_HIT = 9999
 
     # noinspection PyUnusedLocal
-    def __init__(self, target=None, attacker=None, attack_penalty=0, defense_penalty=0,
-                 dmg_penalty=0, allow_botch=None, free_attack=False, targets=None,
-                 attacker_name=None, combat=None, stance=None, prev_targ=None,
-                 can_cleave=False, switch_chance=None, affect_real_dmg=None, can_be_parried=None,
-                 lost_turn_penalty=0, atk_modifiers=0, difficulty_mod=0,
-                 attack_stat="", attack_skill="", can_be_blocked=None, can_be_dodged=None,
-                 attack_stat_value=0, attack_skill_value=0, use_mitigation=True, can_kill=True,
-                 is_riposte=None, damage=None, private=None, inflictor=None, story=None,
-                 attack_tags=None, modifiers_override=None, remaining_attacks=None, damage_stat=None,
-                 armor_pierce_bonus=None, risk=None, attacker_is_npc=False, *args, **kwargs):
+    def __init__(
+        self,
+        target=None,
+        attacker=None,
+        attack_penalty=0,
+        defense_penalty=0,
+        dmg_penalty=0,
+        allow_botch=None,
+        free_attack=False,
+        targets=None,
+        attacker_name=None,
+        combat=None,
+        stance=None,
+        prev_targ=None,
+        can_cleave=False,
+        switch_chance=None,
+        affect_real_dmg=None,
+        can_be_parried=None,
+        lost_turn_penalty=0,
+        atk_modifiers=0,
+        difficulty_mod=0,
+        attack_stat="",
+        attack_skill="",
+        can_be_blocked=None,
+        can_be_dodged=None,
+        attack_stat_value=0,
+        attack_skill_value=0,
+        use_mitigation=True,
+        can_kill=True,
+        is_riposte=None,
+        damage=None,
+        private=None,
+        inflictor=None,
+        story=None,
+        attack_tags=None,
+        modifiers_override=None,
+        remaining_attacks=None,
+        damage_stat=None,
+        armor_pierce_bonus=None,
+        risk=None,
+        attacker_is_npc=False,
+        *args,
+        **kwargs
+    ):
 
         self.attacker = attacker
         if attacker:
@@ -79,19 +114,40 @@ class Attack(object):
             self.state = attacker.combat.state
             self.prev_targ = prev_targ or self.state and self.state.prev_targ
             self.cleaving = can_cleave or attacker.combat.can_cleave
-            self.switch_chance = switch_chance if switch_chance is not None else attacker.combat.switch_chance
-            self.affect_real_dmg = (affect_real_dmg if affect_real_dmg is not None
-                                    else self.combat and self.combat.ndb.affect_real_dmg)
-            self.can_be_parried = can_be_parried if can_be_parried is not None else attacker.combat.can_be_parried
-            self.can_be_dodged = can_be_dodged if can_be_dodged is not None else attacker.combat.can_be_dodged
-            self.can_be_blocked = can_be_blocked if can_be_blocked is not None else attacker.combat.can_be_blocked
+            self.switch_chance = (
+                switch_chance
+                if switch_chance is not None
+                else attacker.combat.switch_chance
+            )
+            self.affect_real_dmg = (
+                affect_real_dmg
+                if affect_real_dmg is not None
+                else self.combat and self.combat.ndb.affect_real_dmg
+            )
+            self.can_be_parried = (
+                can_be_parried
+                if can_be_parried is not None
+                else attacker.combat.can_be_parried
+            )
+            self.can_be_dodged = (
+                can_be_dodged
+                if can_be_dodged is not None
+                else attacker.combat.can_be_dodged
+            )
+            self.can_be_blocked = (
+                can_be_blocked
+                if can_be_blocked is not None
+                else attacker.combat.can_be_blocked
+            )
             self.targets = targets or self.state and self.state.targets
             self.atk_modifiers = atk_modifiers or attacker.combat.attack_modifier
             self.difficulty_mod = difficulty_mod or attacker.combat.difficulty_mod
             self.attack_stat = attack_stat or attacker.combat.attack_stat
             self.attack_skill = attack_skill or attacker.combat.attack_skill
             self.attack_tags = attack_tags or attacker.combat.modifier_tags
-            self.remaining_attacks = remaining_attacks or (self.state and self.state.remaining_attacks) or 1
+            self.remaining_attacks = (
+                remaining_attacks or (self.state and self.state.remaining_attacks) or 1
+            )
             self.damage_stat = damage_stat or attacker.combat.damage_stat
             self.allow_botch = allow_botch if allow_botch is not None else True
         else:
@@ -114,7 +170,7 @@ class Attack(object):
             self.attack_skill = attack_skill
             self.attack_stat_value = attack_stat_value
             self.attack_skill_value = attack_skill_value
-            self.attack_tags = attack_tags or ['physical', 'mundane']
+            self.attack_tags = attack_tags or ["physical", "mundane"]
             self.remaining_attacks = remaining_attacks or 1
             self.damage_stat = damage_stat
             self.allow_botch = allow_botch if allow_botch is not None else False
@@ -140,6 +196,7 @@ class Attack(object):
         self.attacker_is_npc = attacker_is_npc
         if risk is None:
             from world.dominion.models import RPEvent
+
             self.risk = RPEvent.NORMAL_RISK
         else:
             self.risk = risk
@@ -213,12 +270,20 @@ class Attack(object):
                 outcome = target.combat.state.last_defense_method or "miss"
             elif result > -16:  # a hit!
                 dmgmult = 1.0 if autohit else self.get_dmgmult(result)
-                damage, mit_msg = self.calculate_damage(target, result, self.dmg_penalty, dmgmult)
+                damage, mit_msg = self.calculate_damage(
+                    target, result, self.dmg_penalty, dmgmult
+                )
                 color = "{r" if damage else ""
                 if autohit:
-                    wound_desc = "unharmed" if damage <= 0 else "harmed%s" % self.build_dmg_msg(target, damage)
+                    wound_desc = (
+                        "unharmed"
+                        if damage <= 0
+                        else "harmed%s" % self.build_dmg_msg(target, damage)
+                    )
                 else:
-                    wound_desc = self.granulate_hit_adjective(dmgmult) + self.build_dmg_msg(target, damage)
+                    wound_desc = self.granulate_hit_adjective(
+                        dmgmult
+                    ) + self.build_dmg_msg(target, damage)
                 outcome = "%s%s{n" % (color, wound_desc)
                 # record that they took damage, but don't apply it yet
                 if damage > 0:
@@ -237,7 +302,10 @@ class Attack(object):
                 dmg_msg = " (%d)" % damage if damage else ""
                 outcome_summary = "%d vs %d: %s%s" % (a_roll, d_roll, outcome, dmg_msg)
                 target_outcome_summary = outcome_summary + ". " + mit_msg
-                target.msg("%sYOU and rolled %s" % (attack_prefix, target_outcome_summary), options={'roll': True})
+                target.msg(
+                    "%sYOU and rolled %s" % (attack_prefix, target_outcome_summary),
+                    options={"roll": True},
+                )
                 hits_and_misses[target].append(outcome)
             attacker_summaries.append("{c%s{n %s" % (target, outcome_summary))
         # For both combat & non-combat attacks, the attacker sees rolls & dmg of each target.
@@ -292,12 +360,22 @@ class Attack(object):
 
     def build_attack_list(self):
         """Who are we killing, again? Oh everyone? Fun! --Emerald"""
-        attack_list = self.targets if self.cleaving and not self.free_attack else [self.target]
-        if not self.free_attack and self.switch_chance and (self.remaining_attacks - 1) > 0:
+        attack_list = (
+            self.targets if self.cleaving and not self.free_attack else [self.target]
+        )
+        if (
+            not self.free_attack
+            and self.switch_chance
+            and (self.remaining_attacks - 1) > 0
+        ):
             from .utils import npc_target_choice
+
             for _ in range(self.remaining_attacks - 1):
-                attack_list.append(npc_target_choice(self.target, self.targets, self.prev_targ,
-                                                     self.switch_chance))
+                attack_list.append(
+                    npc_target_choice(
+                        self.target, self.targets, self.prev_targ, self.switch_chance
+                    )
+                )
         return attack_list
 
     def get_modifier(self, target, check_type):
@@ -331,8 +409,12 @@ class Attack(object):
         diff += penalty
         diff += self.difficulty_mod
         if not autohit:
-            roll = do_dice_check(self.attacker, stat=self.attack_stat, skill=self.attack_skill,
-                                 difficulty=diff)
+            roll = do_dice_check(
+                self.attacker,
+                stat=self.attack_stat,
+                skill=self.attack_skill,
+                difficulty=diff,
+            )
         else:
             roll_object = Roll()
             roll_object.character_name = self.attacker_name
@@ -346,7 +428,7 @@ class Attack(object):
         if self.attacker_is_npc:
             roll = self.modify_difficulty_by_risk(roll)
         if roll > 2:
-            roll = (roll//2) + randint(0, (roll//2))
+            roll = (roll // 2) + randint(0, (roll // 2))
         if not autohit:
             roll += self.get_modifier(target, RollModifier.ATTACK)
         return roll
@@ -365,10 +447,17 @@ class Attack(object):
                 if not target.conscious:
                     can_riposte = False
                 if can_riposte and target and botcher:
-                    riposte_attack = target.combat.do_attack(target=botcher, attacker=target, allow_botch=False,
-                                                             free_attack=True, is_riposte=True)
+                    riposte_attack = target.combat.do_attack(
+                        target=botcher,
+                        attacker=target,
+                        allow_botch=False,
+                        free_attack=True,
+                        is_riposte=True,
+                    )
                 else:
-                    self.lost_turn_penalty = 1  # Not += because cleave might accumulate a bunch
+                    self.lost_turn_penalty = (
+                        1  # Not += because cleave might accumulate a bunch
+                    )
         return riposte_attack
 
     @staticmethod
@@ -396,24 +485,30 @@ class Attack(object):
         def change_total(current_total, new_roll):
             """Helper function to change total of defense rolls"""
             if new_roll >= 2:
-                new_roll = (new_roll//2) + randint(0, (new_roll//2))
+                new_roll = (new_roll // 2) + randint(0, (new_roll // 2))
             if not current_total:
                 current_total = new_roll
             elif new_roll > 0:
                 if current_total > new_roll:
-                    current_total += new_roll//2
+                    current_total += new_roll // 2
                 else:
-                    current_total = (current_total//2) + new_roll
+                    current_total = (current_total // 2) + new_roll
             elif new_roll > current_total:
-                current_total = (current_total + new_roll)//2
+                current_total = (current_total + new_roll) // 2
             return current_total, new_roll
 
         if self.can_be_parried and defense.can_parry:
             parry_diff = diff + 10
-            parry_roll = int(do_dice_check(target, stat=defense.attack_stat, skill=self.attack_skill,
-                                           difficulty=parry_diff))
+            parry_roll = int(
+                do_dice_check(
+                    target,
+                    stat=defense.attack_stat,
+                    skill=self.attack_skill,
+                    difficulty=parry_diff,
+                )
+            )
             if parry_roll > 1:
-                parry_roll = (parry_roll//2) + randint(0, (parry_roll//2))
+                parry_roll = (parry_roll // 2) + randint(0, (parry_roll // 2))
             total = parry_roll
         else:
             parry_roll = -1000
@@ -422,7 +517,11 @@ class Attack(object):
                 block_diff = diff + defense.dodge_penalty
             except (AttributeError, TypeError, ValueError):
                 block_diff = diff
-            block_roll = int(do_dice_check(target, stat="dexterity", skill="dodge", difficulty=block_diff))
+            block_roll = int(
+                do_dice_check(
+                    target, stat="dexterity", skill="dodge", difficulty=block_diff
+                )
+            )
             total, block_roll = change_total(total, block_roll)
         else:
             block_roll = -1000
@@ -433,7 +532,11 @@ class Attack(object):
                 dodge_diff += defense.dodge_penalty
             except (AttributeError, TypeError, ValueError):
                 pass
-            dodge_roll = int(do_dice_check(target, stat="dexterity", skill="dodge", difficulty=dodge_diff))
+            dodge_roll = int(
+                do_dice_check(
+                    target, stat="dexterity", skill="dodge", difficulty=dodge_diff
+                )
+            )
             total, dodge_roll = change_total(total, dodge_roll)
         else:
             dodge_roll = -1000
@@ -455,15 +558,21 @@ class Attack(object):
         """
         keep_dice = self.handler.weapon_damage + 1
         try:
-            keep_dice += self.attacker.attributes.get(self.damage_stat)//2
+            keep_dice += self.attacker.attributes.get(self.damage_stat) // 2
         except (TypeError, AttributeError, ValueError):
             pass
         if keep_dice < 3:
             keep_dice = 3
         diff = 0  # base difficulty before mods
         diff += penalty
-        damage = do_dice_check(self.attacker, stat=self.handler.damage_stat, stat_keep=True, difficulty=diff,
-                               bonus_dice=self.handler.weapon_damage, keep_override=keep_dice)
+        damage = do_dice_check(
+            self.attacker,
+            stat=self.handler.damage_stat,
+            stat_keep=True,
+            difficulty=diff,
+            bonus_dice=self.handler.weapon_damage,
+            keep_override=keep_dice,
+        )
         damage += self.handler.flat_damage_bonus
         if dmgmult > 1.0:  # if dmg is enhanced, it is done pre-mitigation
             damage = int(damage * dmgmult)
@@ -472,7 +581,7 @@ class Attack(object):
         if damage <= 0:
             damage = 1
         # 3/4ths of our damage is purely random
-        damage = damage//4 + randint(0, ((damage * 3)//4)+1)
+        damage = damage // 4 + randint(0, ((damage * 3) // 4) + 1)
         damage += self.get_modifier(target, RollModifier.DAMAGE)
         return damage
 
@@ -486,10 +595,10 @@ class Attack(object):
         else:
             armor = target.db.armor_class or 0
         # our soak is sta+willpower+survival
-        armor += randint(0, (target.combat.soak * 2)+1)
+        armor += randint(0, (target.combat.soak * 2) + 1)
         # if the resulting difference of attack/defense rolls is huge, like
         # for unconsciousness, armor is zilched. TODO: Maybe change this?
-        result -= (target.armor_resilience - self.armor_pierce_bonus)
+        result -= target.armor_resilience - self.armor_pierce_bonus
         if result > 0:
             armor -= result
         if armor <= 0:
@@ -497,7 +606,7 @@ class Attack(object):
         if armor < 2:
             return randint(0, armor)
         # half of our armor is random
-        return (armor//2) + randint(0, (armor//2))
+        return (armor // 2) + randint(0, (armor // 2))
 
     def calculate_damage(self, target, result=0, dmg_penalty=0, dmgmult=1.0):
         """
@@ -515,8 +624,13 @@ class Attack(object):
             if new_dmg < 0:
                 new_dmg = 0
             riposte = "riposte " if self.is_riposte else ""
-            mit_msg = "Your armor mitigated %d of the %sdamage." % (dmg - new_dmg, riposte)
-            if riposte:  # otherwise, riposte mitigation messages would be lost to the void
+            mit_msg = "Your armor mitigated %d of the %sdamage." % (
+                dmg - new_dmg,
+                riposte,
+            )
+            if (
+                riposte
+            ):  # otherwise, riposte mitigation messages would be lost to the void
                 target.msg(mit_msg)
             dmg = new_dmg
         if dmgmult < 1.0:  # if dmg is reduced, it is done post-mitigation
@@ -555,18 +669,28 @@ class Attack(object):
         # max hp is (stamina * 10) + 10
         max_hp = victim.max_hp
         # apply AE damage to multinpcs if we're cleaving
-        if self.cleaving and hasattr(victim, 'ae_dmg'):
+        if self.cleaving and hasattr(victim, "ae_dmg"):
             victim.ae_dmg += dmg
-        victim.change_health(-dmg, quiet=True, affect_real_dmg=affect_real_dmg, wake=False)
-        grace_period = False  # one round delay between incapacitation and death for PCs if allowed
+        victim.change_health(
+            -dmg, quiet=True, affect_real_dmg=affect_real_dmg, wake=False
+        )
+        grace_period = (
+            False  # one round delay between incapacitation and death for PCs if allowed
+        )
         if victim.dmg > max_hp:
             # if we're not incapacitated, we start making checks for it
             if victim.conscious and not victim.sleepless:
                 # check is sta + willpower against % dmg past uncon to stay conscious
                 if not glass_jaw:
-                    diff = int((float(victim.dmg - max_hp)/max_hp) * 100)
-                    consc_check = do_dice_check(victim, stat_list=["stamina", "willpower"], skill="survival",
-                                                stat_keep=True, difficulty=diff, quiet=False)
+                    diff = int((float(victim.dmg - max_hp) / max_hp) * 100)
+                    consc_check = do_dice_check(
+                        victim,
+                        stat_list=["stamina", "willpower"],
+                        skill="survival",
+                        stat_keep=True,
+                        difficulty=diff,
+                        quiet=False,
+                    )
                 else:
                     consc_check = -1
                 if consc_check >= 0:
@@ -578,18 +702,32 @@ class Attack(object):
                     knock_uncon = True
                 # for PCs who were knocked unconscious this round
                 if not is_npc and not grace_period and not allow_one_shot:
-                    grace_period = True  # if allow_one_shot is off, we can't be killed yet
+                    grace_period = (
+                        True  # if allow_one_shot is off, we can't be killed yet
+                    )
             # PC/NPC who was already unconscious before attack, or an NPC who was knocked unconscious by our attack
             if not grace_period:  # we are allowed to kill the character
                 dt = victim.death_threshold
-                diff = int((float(victim.dmg - int(dt * max_hp))/int(dt * max_hp)) * 100)
+                diff = int(
+                    (float(victim.dmg - int(dt * max_hp)) / int(dt * max_hp)) * 100
+                )
                 if affect_real_dmg and not is_npc and not glass_jaw:
                     diff = self.modify_difficulty_by_risk(diff)
                 if diff < 0:
                     diff = 0
                 # npcs always die. Sucks for them.
-                if not glass_jaw and do_dice_check(victim, stat_list=["stamina", "willpower"], skill="survival",
-                                                   stat_keep=True, difficulty=diff, quiet=False) >= 0:
+                if (
+                    not glass_jaw
+                    and do_dice_check(
+                        victim,
+                        stat_list=["stamina", "willpower"],
+                        skill="survival",
+                        stat_keep=True,
+                        difficulty=diff,
+                        quiet=False,
+                    )
+                    >= 0
+                ):
                     message = "%s remains alive, but close to death." % victim
                     if victim.combat.multiple:
                         # was incapacitated but not killed, but out of fight and now we're on another targ
@@ -608,9 +746,11 @@ class Attack(object):
                     else:
                         knock_uncon = True
         if loc and message:
-            loc.msg_contents(message, options={'roll': True})
+            loc.msg_contents(message, options={"roll": True})
         if knock_uncon:
-            victim.fall_asleep(uncon=True, verb="incapacitated", affect_real_dmg=affect_real_dmg)
+            victim.fall_asleep(
+                uncon=True, verb="incapacitated", affect_real_dmg=affect_real_dmg
+            )
         if kill:
             victim.death_process(affect_real_dmg=affect_real_dmg)
         if victim.combat.multiple:
@@ -655,21 +795,25 @@ class Attack(object):
     def send_story_to_combat(self):
         """Walrus says Story or GTFO."""
         if self.combat:
-            self.combat.msg(self.story, options={'roll': True})
+            self.combat.msg(self.story, options={"roll": True})
         else:
             raise WalrusJudgement
 
     def send_message_to_target(self, target, summary, mit_msg):
         """Sends individual message to a target or their location, or sends them an inform."""
-        message = self.story + self.story_spacer + "%d inflicted and {c%s{n %s." % (self.damage, target, summary)
+        message = (
+            self.story
+            + self.story_spacer
+            + "%d inflicted and {c%s{n %s." % (self.damage, target, summary)
+        )
         if mit_msg and (self.private or not target.location):
             message = message + " " + mit_msg
         if not target.location:
             target.player_ob.inform(message, category="Damage")
         elif self.private:
-            target.msg(message, options={'roll': True})
+            target.msg(message, options={"roll": True})
         else:
-            target.location.msg_contents(message, options={'roll': True})
+            target.location.msg_contents(message, options={"roll": True})
             if mit_msg:
                 target.msg(mit_msg)
 
@@ -691,7 +835,18 @@ class Attack(object):
         and Bill -32 vs 17: riposte for minor damage.'
         """
         if self.inflictor:
-            self.inflictor.msg("%s%sYou inflict %s. %s." % (self.story, self.story_spacer, self.damage,
-                               list_to_string(attacker_summaries)), options={'roll': True})
+            self.inflictor.msg(
+                "%s%sYou inflict %s. %s."
+                % (
+                    self.story,
+                    self.story_spacer,
+                    self.damage,
+                    list_to_string(attacker_summaries),
+                ),
+                options={"roll": True},
+            )
         elif self.attacker:
-            self.attacker.msg("YOU attack %s." % list_to_string(attacker_summaries), options={'roll': True})
+            self.attacker.msg(
+                "YOU attack %s." % list_to_string(attacker_summaries),
+                options={"roll": True},
+            )

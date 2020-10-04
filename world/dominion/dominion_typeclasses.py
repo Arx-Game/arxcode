@@ -3,7 +3,6 @@ from .models import CraftingMaterialType, CraftingMaterials
 
 
 class CraftingMaterialObject(DefaultObject):
-
     @property
     def material_type(self):
         if not self.db.material_type:
@@ -11,7 +10,10 @@ class CraftingMaterialObject(DefaultObject):
         try:
             material = CraftingMaterialType.objects.get(id=self.db.material_type)
             return material
-        except (CraftingMaterialType.DoesNotExist, CraftingMaterialType.MultipleObjectsReturned):
+        except (
+            CraftingMaterialType.DoesNotExist,
+            CraftingMaterialType.MultipleObjectsReturned,
+        ):
             return None
 
     @property
@@ -32,7 +34,9 @@ class CraftingMaterialObject(DefaultObject):
 
         material_records = owner.materials.filter(type=material)
         if material_records.count() == 0:
-            record = CraftingMaterials(type=material, amount=self.db.quantity, owner=owner)
+            record = CraftingMaterials(
+                type=material, amount=self.db.quantity, owner=owner
+            )
             record.save()
         else:
             record = material_records.all().first()

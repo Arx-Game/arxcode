@@ -18,10 +18,30 @@ from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
 from . import setup_utils
 from web.character.models import Clue
-from world.dominion.models import (Region, Land, PlayerOrNpc, ClueForOrg, Reputation, AssetOwner, Organization, Member,
-                                   SphereOfInfluence, InfluenceCategory, PlotRoom, Plot, PCPlotInvolvement)
+from world.dominion.models import (
+    Region,
+    Land,
+    PlayerOrNpc,
+    ClueForOrg,
+    Reputation,
+    AssetOwner,
+    Organization,
+    Member,
+    SphereOfInfluence,
+    InfluenceCategory,
+    PlotRoom,
+    Plot,
+    PCPlotInvolvement,
+)
 
-from world.dominion.domain.models import MilitaryUnit, Army, Domain, Castle, Ruler, Minister
+from world.dominion.domain.models import (
+    MilitaryUnit,
+    Army,
+    Domain,
+    Castle,
+    Ruler,
+    Minister,
+)
 
 from .unit_types import type_from_str
 from world.stats_and_skills import do_dice_check
@@ -33,6 +53,7 @@ BASE_CASTLE_COST = 4000
 
 
 # ---------------------Admin commands-------------------------------------------------
+
 
 class CmdAdmDomain(ArxPlayerCommand):
     """
@@ -86,18 +107,40 @@ class CmdAdmDomain(ArxPlayerCommand):
       amount_plundered - amount stolen from them this week
       income_modifier - default 100 for normal production
     """
+
     key = "@admin_domain"
     locks = "cmd:perm(Wizards)"
-    aliases = ["@admin_domains", "@admdomain", "@admdomains", "@adm_domain", "@adm_domains"]
+    aliases = [
+        "@admin_domains",
+        "@admdomain",
+        "@admdomains",
+        "@adm_domain",
+        "@adm_domains",
+    ]
     help_category = "Dominion"
 
     def func(self):
         caller = self.caller
         try:
             if not self.args:
-                pcdomains = ", ".join((repr(dom) for dom in Domain.objects.filter(ruler__castellan__isnull=False)))
-                npcdomains = ", ".join((repr(dom) for dom in Domain.objects.filter(ruler__castellan__player__isnull=True)))
-                caller.msg("|wPlayer domains:|n %s\n|wNPC domains:|n %s" % (pcdomains, npcdomains))
+                pcdomains = ", ".join(
+                    (
+                        repr(dom)
+                        for dom in Domain.objects.filter(ruler__castellan__isnull=False)
+                    )
+                )
+                npcdomains = ", ".join(
+                    (
+                        repr(dom)
+                        for dom in Domain.objects.filter(
+                            ruler__castellan__player__isnull=True
+                        )
+                    )
+                )
+                caller.msg(
+                    "|wPlayer domains:|n %s\n|wNPC domains:|n %s"
+                    % (pcdomains, npcdomains)
+                )
                 return
             if "npc_create" in self.switches:
                 org = self.get_by_name_or_id(Organization, self.lhs)
@@ -105,7 +148,9 @@ class CmdAdmDomain(ArxPlayerCommand):
                     name, srank = self.rhslist
                     srank = int(srank)
                 except (TypeError, ValueError):
-                    raise self.error_class("Usage: <org>=<npc group name>, <social rank #>")
+                    raise self.error_class(
+                        "Usage: <org>=<npc group name>, <social rank #>"
+                    )
                 if srank > 6 or srank < 2:
                     raise self.error_class("Social rank should be in the range of 2-6.")
                 liege = org.assets.estate
@@ -114,7 +159,9 @@ class CmdAdmDomain(ArxPlayerCommand):
                 except AttributeError:
                     raise self.error_class("Liege '%s' does not have a domain." % liege)
                 try:
-                    setup_utils.setup_dom_for_npc(name, int(srank), region=region, liege=liege)
+                    setup_utils.setup_dom_for_npc(
+                        name, int(srank), region=region, liege=liege
+                    )
                 except ValueError as err:
                     raise self.error_class(err)
                 caller.msg("NPC house created: %s" % name)
@@ -143,25 +190,47 @@ class CmdAdmDomain(ArxPlayerCommand):
                     srank = int(srank)
                     region = Region.objects.get(name__iexact=region)
                 except ValueError:
-                    caller.msg("Character's Social rank must be a number. It was %s." % srank)
+                    caller.msg(
+                        "Character's Social rank must be a number. It was %s." % srank
+                    )
                     return
                 except Region.DoesNotExist:
                     caller.msg("No region found of name %s." % self.rhslist[0])
-                    caller.msg("List of regions: %s" % ", ".join(str(region) for region in Region.objects.all()))
+                    caller.msg(
+                        "List of regions: %s"
+                        % ", ".join(str(region) for region in Region.objects.all())
+                    )
                     return
                 # we will only create an npc liege if our social rank is 4 or higher
                 create_liege = srank > 3
                 # The player has no Dominion object, so we must create it.
-                if not hasattr(player, 'Dominion'):
-                    caller.msg("Creating a new domain of rank %s for %s." % (srank, char))
-                    dom = setup_utils.setup_dom_for_char(char, create_dompc=True, create_assets=True,
-                                                         region=region, srank=srank, create_liege=create_liege)
+                if not hasattr(player, "Dominion"):
+                    caller.msg(
+                        "Creating a new domain of rank %s for %s." % (srank, char)
+                    )
+                    dom = setup_utils.setup_dom_for_char(
+                        char,
+                        create_dompc=True,
+                        create_assets=True,
+                        region=region,
+                        srank=srank,
+                        create_liege=create_liege,
+                    )
                 # Has a dominion object, so just set up the domain
                 else:
-                    needs_assets = not hasattr(player.Dominion, 'assets')
-                    caller.msg("Setting up Dominion for player %s, and creating a new domain of rank %s." % (char, srank))
-                    dom = setup_utils.setup_dom_for_char(char, create_dompc=False, create_assets=needs_assets,
-                                                         region=region, srank=srank, create_liege=create_liege)
+                    needs_assets = not hasattr(player.Dominion, "assets")
+                    caller.msg(
+                        "Setting up Dominion for player %s, and creating a new domain of rank %s."
+                        % (char, srank)
+                    )
+                    dom = setup_utils.setup_dom_for_char(
+                        char,
+                        create_dompc=False,
+                        create_assets=needs_assets,
+                        region=region,
+                        srank=srank,
+                        create_liege=create_liege,
+                    )
                 if not dom:
                     caller.msg("Dominion failed to create a new domain.")
                     return
@@ -194,10 +263,17 @@ class CmdAdmDomain(ArxPlayerCommand):
                             dom.ruler.save()
                     except (Organization.DoesNotExist, AttributeError):
                         caller.msg("Dominion could not find a suitable liege.")
-                caller.msg("New Domain #%s created: %s in land square: %s" % (dom.id, str(dom), str(dom.land)))
+                caller.msg(
+                    "New Domain #%s created: %s in land square: %s"
+                    % (dom.id, str(dom), str(dom.land))
+                )
                 return
-            if ("transferowner" in self.switches or "transferrule" in self.switches
-                    or "replacevassal" in self.switches or "createvassal" in self.switches):
+            if (
+                "transferowner" in self.switches
+                or "transferrule" in self.switches
+                or "replacevassal" in self.switches
+                or "createvassal" in self.switches
+            ):
                 # usage: @admin_domain/transfer receiver=domain_id
                 if not self.rhs or not self.lhs:
                     caller.msg("Usage: @admin_domain/transfer receiver=domain's id")
@@ -222,11 +298,14 @@ class CmdAdmDomain(ArxPlayerCommand):
                 if "createvassal" in self.switches:
                     try:
                         region = dom.land.region
-                        setup_utils.setup_dom_for_char(player.char_ob, liege_domain=dom, region=region)
+                        setup_utils.setup_dom_for_char(
+                            player.char_ob, liege_domain=dom, region=region
+                        )
                         caller.msg("Vassal created.")
                     except Exception as err:
                         caller.msg(err)
                         import traceback
+
                         traceback.print_exc()
                     return
                 if "replacevassal" in self.switches:
@@ -236,9 +315,10 @@ class CmdAdmDomain(ArxPlayerCommand):
                     except Exception as err:
                         caller.msg(err)
                         import traceback
+
                         traceback.print_exc()
                     return
-                if not hasattr(player, 'Dominion'):
+                if not hasattr(player, "Dominion"):
                     dompc = setup_utils.setup_dom_for_char(player.char_ob)
                 else:
                     dompc = player.Dominion
@@ -248,7 +328,7 @@ class CmdAdmDomain(ArxPlayerCommand):
                         house = Organization.objects.get(name__iexact=family)
                         owner = house.assets
                         # if the organization's AssetOwner has no Ruler object
-                        if hasattr(owner, 'estate'):
+                        if hasattr(owner, "estate"):
                             ruler = owner.estate
                         else:
                             ruler = Ruler.objects.create(house=owner, castellan=dompc)
@@ -297,7 +377,7 @@ class CmdAdmDomain(ArxPlayerCommand):
                         caller.msg("More than one match for %s: %s" % (self.args, err))
                         return
                 else:
-                    if not hasattr(player, 'Dominion'):
+                    if not hasattr(player, "Dominion"):
                         caller.msg("%s has no Dominion object." % player)
                         return
                     dompc = player.Dominion
@@ -309,29 +389,48 @@ class CmdAdmDomain(ArxPlayerCommand):
                 family = None
                 if player.char_ob and player.char_ob.db.family:
                     family = player.char_ob.db.family
-                if hasattr(dompc, 'ruler'):
-                    ruled = ", ".join(str(ob) for ob in Domain.objects.filter(ruler_id=dompc.ruler.id))
+                if hasattr(dompc, "ruler"):
+                    ruled = ", ".join(
+                        str(ob) for ob in Domain.objects.filter(ruler_id=dompc.ruler.id)
+                    )
                 if player.char_ob and player.char_ob.db.family:
-                    owned = ", ".join(str(ob) for ob in Domain.objects.filter(
-                        ruler__house__organization_owner__name__iexact=family))
+                    owned = ", ".join(
+                        str(ob)
+                        for ob in Domain.objects.filter(
+                            ruler__house__organization_owner__name__iexact=family
+                        )
+                    )
                 caller.msg("{wDomains ruled by {c%s{n: %s" % (dompc, ruled))
-                caller.msg("{wDomains owned directly by {c%s {wfamily{n: %s" % (family, owned))
+                caller.msg(
+                    "{wDomains owned directly by {c%s {wfamily{n: %s" % (family, owned)
+                )
                 return
             if "list" in self.switches:
                 valid_fealty = ("Grayson", "Velenosa", "Redrain", "Valardin", "Thrax")
                 fealty = self.args.capitalize()
                 if fealty not in valid_fealty:
-                    caller.msg("Listing by fealty must be in %s, you provided %s." % (valid_fealty, fealty))
+                    caller.msg(
+                        "Listing by fealty must be in %s, you provided %s."
+                        % (valid_fealty, fealty)
+                    )
                     return
-                house = Ruler.objects.filter(house__organization_owner__name__iexact=fealty)
+                house = Ruler.objects.filter(
+                    house__organization_owner__name__iexact=fealty
+                )
                 if not house:
                     caller.msg("No matches for %s." % fealty)
                     return
                 house = house[0]
                 caller.msg("{wDomains of %s{n" % fealty)
-                caller.msg("{wDirect holdings:{n %s" % ", ".join(str(ob) for ob in house.holdings.all()))
+                caller.msg(
+                    "{wDirect holdings:{n %s"
+                    % ", ".join(str(ob) for ob in house.holdings.all())
+                )
                 if house.vassals.all():
-                    caller.msg("{wDirect vassals of %s:{n %s" % (fealty, ", ".join(str(ob) for ob in house.vassals.all())))
+                    caller.msg(
+                        "{wDirect vassals of %s:{n %s"
+                        % (fealty, ", ".join(str(ob) for ob in house.vassals.all()))
+                    )
                 pcdomlist = []
                 for pc in AccountDB.objects.filter(Dominion__ruler__isnull=False):
                     if pc.char_ob and pc.char_ob.db.fealty == fealty:
@@ -339,7 +438,10 @@ class CmdAdmDomain(ArxPlayerCommand):
                             for dom in pc.Dominion.ruler.holdings.all():
                                 pcdomlist.append(dom)
                 if pcdomlist:
-                    caller.msg("{wPlayer domains under %s:{n %s" % (fealty, ", ".join(str(ob) for ob in pcdomlist)))
+                    caller.msg(
+                        "{wPlayer domains under %s:{n %s"
+                        % (fealty, ", ".join(str(ob) for ob in pcdomlist))
+                    )
                     return
                 return
             if "move" in self.switches:
@@ -360,12 +462,17 @@ class CmdAdmDomain(ArxPlayerCommand):
                     caller.msg("No land with coords (%s,%s)." % (x, y))
                     return
                 if land.free_area < dom.area:
-                    caller.msg("%s only has %s free area, need %s." % (str(land), land.free_area, dom.area))
+                    caller.msg(
+                        "%s only has %s free area, need %s."
+                        % (str(land), land.free_area, dom.area)
+                    )
                     return
                 old = dom.land
                 dom.land = land
                 dom.save()
-                caller.msg("Domain %s moved from %s to %s." % (str(dom), str(old), str(land)))
+                caller.msg(
+                    "Domain %s moved from %s to %s." % (str(dom), str(old), str(land))
+                )
                 return
             # after this point, self.lhs must be the domain
             if not self.lhs:
@@ -387,7 +494,10 @@ class CmdAdmDomain(ArxPlayerCommand):
                     house = Organization.objects.get(name__iexact=self.rhs)
                     estate = house.assets.estate
                 except (Organization.DoesNotExist, AttributeError):
-                    caller.msg("Family %s does not exist or has not been set up properly." % self.rhs)
+                    caller.msg(
+                        "Family %s does not exist or has not been set up properly."
+                        % self.rhs
+                    )
                     return
                 caller_change_field(caller, dom.ruler, "liege", estate)
                 return
@@ -403,15 +513,34 @@ class CmdAdmDomain(ArxPlayerCommand):
                 return
             # after this point, we're matching the switches to fields in the domain
             # to change them
-            attr_switches = ("name", "desc", "title", "area", "stored_food", "tax_rate",
-                             "num_mines", "num_lumber_yards", "num_mills", "num_housing",
-                             "num_farms", "unassigned_serfs", "slave_labor_percentage",
-                             "mining_serfs", "lumber_serfs", "farming_serfs", "mill_serfs",
-                             "lawlessness", "amount_plundered", "income_modifier")
+            attr_switches = (
+                "name",
+                "desc",
+                "title",
+                "area",
+                "stored_food",
+                "tax_rate",
+                "num_mines",
+                "num_lumber_yards",
+                "num_mills",
+                "num_housing",
+                "num_farms",
+                "unassigned_serfs",
+                "slave_labor_percentage",
+                "mining_serfs",
+                "lumber_serfs",
+                "farming_serfs",
+                "mill_serfs",
+                "lawlessness",
+                "amount_plundered",
+                "income_modifier",
+            )
             switches = [switch for switch in self.switches if switch in attr_switches]
             if not switches:
-                caller.msg("All switches must be in the following: %s. You passed %s." % (str(attr_switches),
-                                                                                          str(self.switches)))
+                caller.msg(
+                    "All switches must be in the following: %s. You passed %s."
+                    % (str(attr_switches), str(self.switches))
+                )
                 return
             if not self.rhs:
                 caller.msg("You must pass a value to change the domain field to.")
@@ -444,6 +573,7 @@ class CmdAdmCastle(ArxPlayerCommand):
         @admin_castle/level castle_id=level
         @admin_castle/transfer castle_id=new domain_id
     """
+
     key = "@admin_castle"
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
@@ -505,6 +635,7 @@ class CmdAdmArmy(ArxPlayerCommand):
         @admin_army/owner army_id=organization
         @admin_army/move army_id=(x,y)
     """
+
     key = "@admin_army"
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
@@ -545,22 +676,36 @@ class CmdAdmArmy(ArxPlayerCommand):
             caller_change_field(caller, army, "desc", self.rhs)
             return
         if "unit" in self.switches:
-            u_types = ("infantry", "cavalry", "pike", "archers", "warships", "siege weapons")
+            u_types = (
+                "infantry",
+                "cavalry",
+                "pike",
+                "archers",
+                "warships",
+                "siege weapons",
+            )
             try:
                 utype = self.rhslist[0].lower()
                 quantity = int(self.rhslist[1])
                 level = int(self.rhslist[2])
                 equip = int(self.rhslist[3])
             except IndexError:
-                caller.msg("Needs four arguments: type of unit, amount of troops, training level, equipment level.")
+                caller.msg(
+                    "Needs four arguments: type of unit, amount of troops, training level, equipment level."
+                )
                 caller.msg("Example usage: @admdomain/unit 5=infantry,300,1,1")
                 return
             except (TypeError, ValueError):
-                caller.msg("Amount of troops, training level, and equipment level must all be numbers.")
+                caller.msg(
+                    "Amount of troops, training level, and equipment level must all be numbers."
+                )
                 caller.msg("Example usage: @admdomain/unit 5=infantry,300,1,1")
                 return
             if utype not in u_types:
-                caller.msg("The first argument after = must be one of the following: %s" % str(u_types))
+                caller.msg(
+                    "The first argument after = must be one of the following: %s"
+                    % str(u_types)
+                )
                 return
             utype = type_from_str(utype)
             unit = army.find_unit(utype)
@@ -571,7 +716,9 @@ class CmdAdmArmy(ArxPlayerCommand):
                 if quantity <= 0:
                     caller.msg("Cannot create a unit without troops.")
                     return
-                unit = army.create(unit_type=utype, quantity=quantity, level=level, equipment=equip)
+                unit = army.create(
+                    unit_type=utype, quantity=quantity, level=level, equipment=equip
+                )
             else:
                 if quantity <= 0:
                     unit.delete()
@@ -586,7 +733,9 @@ class CmdAdmArmy(ArxPlayerCommand):
             return
         if "owner" in self.switches:
             try:
-                owner = AssetOwner.objects.get(organization_owner__name__iexact=self.rhs)
+                owner = AssetOwner.objects.get(
+                    organization_owner__name__iexact=self.rhs
+                )
             except (AssetOwner.DoesNotExist, ValueError, TypeError):
                 caller.msg("No org/family by name of %s." % self.rhs)
                 return
@@ -630,6 +779,7 @@ class CmdAdmAssets(ArxPlayerCommand):
     The /player and /org tags display AssetOwner lists
     that correspond to players and organizations, respectively.
     """
+
     key = "@admin_assets"
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
@@ -640,9 +790,13 @@ class CmdAdmAssets(ArxPlayerCommand):
         if args.isdigit():
             owner = AssetOwner.objects.get(id=int(args))
         else:
-            player_matches = AssetOwner.objects.filter(player__player__username__iexact=args)
+            player_matches = AssetOwner.objects.filter(
+                player__player__username__iexact=args
+            )
             npc_matches = AssetOwner.objects.filter(player__npc_name__iexact=args)
-            org_matches = AssetOwner.objects.filter(organization_owner__name__iexact=args)
+            org_matches = AssetOwner.objects.filter(
+                organization_owner__name__iexact=args
+            )
             if player_matches:
                 owner = player_matches[0]
             elif npc_matches:
@@ -657,15 +811,23 @@ class CmdAdmAssets(ArxPlayerCommand):
         """Prints out an asset owner based on args"""
         try:
             if "player" in self.switches:
-                owner = AssetOwner.objects.get(player__player__username__iexact=self.args)
+                owner = AssetOwner.objects.get(
+                    player__player__username__iexact=self.args
+                )
             else:
-                owner = AssetOwner.objects.get(organization_owner__name__iexact=self.args)
+                owner = AssetOwner.objects.get(
+                    organization_owner__name__iexact=self.args
+                )
         except (AssetOwner.DoesNotExist, AssetOwner.MultipleObjectsReturned):
             self.msg("No unique match for %s." % self.args)
-            other_matches = AssetOwner.objects.filter(Q(player__player__username__icontains=self.args) |
-                                                      Q(organization_owner__name__icontains=self.args))
+            other_matches = AssetOwner.objects.filter(
+                Q(player__player__username__icontains=self.args)
+                | Q(organization_owner__name__icontains=self.args)
+            )
             if other_matches:
-                self.msg("Other matches: %s" % ", ".join(repr(ob) for ob in other_matches))
+                self.msg(
+                    "Other matches: %s" % ", ".join(repr(ob) for ob in other_matches)
+                )
         else:
             self.msg("Owner: %r" % owner)
 
@@ -675,15 +837,15 @@ class CmdAdmAssets(ArxPlayerCommand):
             assets = ", ".join(repr(owner) for owner in AssetOwner.objects.all())
             caller.msg(assets)
             return
-        if 'player' in self.switches or 'org' in self.switches:
+        if "player" in self.switches or "org" in self.switches:
             return self.print_owner()
         if "setup" in self.switches:
             player = caller.search(self.lhs)
             if not player:
                 return
-            nodom = not hasattr(player, 'Dominion')
+            nodom = not hasattr(player, "Dominion")
             if not nodom:
-                noassets = not hasattr(player.Dominion, 'assets')
+                noassets = not hasattr(player.Dominion, "assets")
             else:
                 noassets = True
             setup_utils.setup_dom_for_char(player.char_ob, nodom, noassets)
@@ -695,7 +857,7 @@ class CmdAdmAssets(ArxPlayerCommand):
             caller.msg("No assetowner found for %s." % self.lhs)
             return
         if not self.rhs:
-            caller.msg(owner.display(), options={'box': True})
+            caller.msg(owner.display(), options={"box": True})
             return
         if "money" in self.switches or not self.switches:
             try:
@@ -715,8 +877,13 @@ class CmdAdmAssets(ArxPlayerCommand):
                 tar.vault += amt
                 owner.save()
                 tar.save()
-                caller.msg("%s: %s, %s: %s before transfer." % (owner, old, tar, tarold))
-                caller.msg("%s: %s, %s: %s after transfer of %s." % (owner, owner.vault, tar, tar.vault, amt))
+                caller.msg(
+                    "%s: %s, %s: %s before transfer." % (owner, old, tar, tarold)
+                )
+                caller.msg(
+                    "%s: %s, %s: %s after transfer of %s."
+                    % (owner, owner.vault, tar, tar.vault, amt)
+                )
                 return
             except AssetOwner.DoesNotExist:
                 caller.msg("Could not find an owner of id %s." % tar)
@@ -737,16 +904,23 @@ class CmdAdmAssets(ArxPlayerCommand):
             affected = owner.adjust_prestige(value, reason=message)
             caller.msg("You have adjusted %s's prestige by %s." % (owner, value))
             for obj in affected:
-                obj.msg("%s adjusted %s's prestige by %s for the following reason: %s" % (caller, owner,
-                                                                                          value, message))
+                obj.msg(
+                    "%s adjusted %s's prestige by %s for the following reason: %s"
+                    % (caller, owner, value, message)
+                )
             # post to a board about it
             from typeclasses.bulletin_board.bboard import BBoard
+
             board = BBoard.objects.get(db_key="Prestige Changes")
             msg = "{wName:{n %s\n" % str(owner)
             msg += "{wAdjustment:{n %s\n" % value
             msg += "{wGM:{n %s\n" % caller.key.capitalize()
             msg += "{wReason:{n %s\n" % message
-            board.bb_post(poster_obj=caller, msg=msg, subject="Prestige Change for %s" % str(owner))
+            board.bb_post(
+                poster_obj=caller,
+                msg=msg,
+                subject="Prestige Change for %s" % str(owner),
+            )
 
 
 class CmdAdmOrganization(ArxPlayerCommand):
@@ -774,6 +948,7 @@ class CmdAdmOrganization(ArxPlayerCommand):
     Allows you to change or control organizations. Orgs can be accessed either by
     their ID number or name. /setup creates a board and channel for them.
     """
+
     key = "@admin_org"
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
@@ -789,7 +964,10 @@ class CmdAdmOrganization(ArxPlayerCommand):
             cat = InfluenceCategory.objects.get(name__iexact=name)
         except InfluenceCategory.DoesNotExist:
             self.msg("No InfluenceCategory by that name.")
-            self.msg("Valid ones are: %s" % ", ".join(ob.name for ob in InfluenceCategory.objects.all()))
+            self.msg(
+                "Valid ones are: %s"
+                % ", ".join(ob.name for ob in InfluenceCategory.objects.all())
+            )
             return
         try:
             sphere = org.spheres.get(category=cat)
@@ -803,18 +981,26 @@ class CmdAdmOrganization(ArxPlayerCommand):
         try:
             caller = self.caller
             if not self.args:
-                if 'all' in self.switches:
+                if "all" in self.switches:
                     orgs = ", ".join(repr(org) for org in Organization.objects.all())
                 else:
-                    orgs = ", ".join(repr(org) for org in Organization.objects.all()
-                                     if org.members.filter(player__player__isnull=False))
+                    orgs = ", ".join(
+                        repr(org)
+                        for org in Organization.objects.all()
+                        if org.members.filter(player__player__isnull=False)
+                    )
                 caller.msg("{wOrganizations:{n %s" % orgs)
                 return
-            if 'create' in self.switches:
+            if "create" in self.switches:
                 if self.lhs.isdigit():
-                    raise CommandError("Organization name must be a name, not a number.")
+                    raise CommandError(
+                        "Organization name must be a name, not a number."
+                    )
                 from .setup_utils import org_lockstring
-                org = Organization.objects.create(name=self.lhs, lock_storage=org_lockstring)
+
+                org = Organization.objects.create(
+                    name=self.lhs, lock_storage=org_lockstring
+                )
                 # create Org's asset owner also
                 AssetOwner.objects.create(organization_owner=org)
                 caller.msg("Created organization %s." % org)
@@ -824,17 +1010,17 @@ class CmdAdmOrganization(ArxPlayerCommand):
                 caller.msg(org.display(show_all=True))
                 return
             # already found an existing org
-            if 'create' in self.switches:
+            if "create" in self.switches:
                 caller.msg("Organization %s already exists." % org)
                 return
-            if 'setup' in self.switches:
+            if "setup" in self.switches:
                 org.setup()
                 self.msg("Created board and channel for %s." % org)
                 return
-            if 'members' in self.switches:
+            if "members" in self.switches:
                 caller.msg(org.display_members(show_all=True))
                 return
-            if 'boot' in self.switches:
+            if "boot" in self.switches:
                 try:
                     member = org.members.get(player__player__username__iexact=self.rhs)
                     caller.msg("%s removed from %s." % (str(member), str(org)))
@@ -843,13 +1029,13 @@ class CmdAdmOrganization(ArxPlayerCommand):
                 except Member.DoesNotExist:
                     caller.msg("Could not remove member #%s." % self.rhs)
                     return
-            if 'desc' in self.switches:
+            if "desc" in self.switches:
                 caller_change_field(caller, org, "desc", self.rhs)
                 return
-            if 'name' in self.switches:
+            if "name" in self.switches:
                 caller_change_field(caller, org, "name", self.rhs)
                 return
-            if 'add' in self.switches:
+            if "add" in self.switches:
                 try:
                     if len(self.rhslist) > 1:
                         player = caller.search(self.rhslist[0])
@@ -871,40 +1057,47 @@ class CmdAdmOrganization(ArxPlayerCommand):
                         caller.msg("%s is already a member." % match)
                         return
                     secret = org.secret
-                    member = dompc.memberships.create(organization=org, rank=rank, secret=secret)
+                    member = dompc.memberships.create(
+                        organization=org, rank=rank, secret=secret
+                    )
                     caller.msg("%s added to %s at rank %s." % (dompc, org, rank))
                     member.setup()
                     return
                 except (AttributeError, ValueError, TypeError):
-                    caller.msg("Could not add %s. May need to run @admin_assets/setup on them." % self.rhs)
+                    caller.msg(
+                        "Could not add %s. May need to run @admin_assets/setup on them."
+                        % self.rhs
+                    )
                     return
-            if 'title' in self.switches or 'femaletitle' in self.switches:
-                male = 'femaletitle' not in self.switches
+            if "title" in self.switches or "femaletitle" in self.switches:
+                male = "femaletitle" not in self.switches
                 try:
                     rank, name = int(self.rhslist[0]), self.rhslist[1]
                 except (ValueError, TypeError, IndexError):
                     caller.msg("Invalid usage.")
                     return
                 if male:
-                    setattr(org, 'rank_%s_male' % rank, name)
+                    setattr(org, "rank_%s_male" % rank, name)
                     org.save()
                 else:
-                    setattr(org, 'rank_%s_female' % rank, name)
+                    setattr(org, "rank_%s_female" % rank, name)
                     org.save()
                 caller.msg("Rank %s title changed to %s." % (rank, name))
                 return
-            if 'setrank' in self.switches:
+            if "setrank" in self.switches:
                 try:
-                    member = Member.objects.get(organization_id=org.id,
-                                                player__player__username__iexact=self.rhslist[0])
+                    member = Member.objects.get(
+                        organization_id=org.id,
+                        player__player__username__iexact=self.rhslist[0],
+                    )
                     caller_change_field(caller, member, "rank", int(self.rhslist[1]))
                 except Member.DoesNotExist:
                     caller.msg("No member found by name of %s." % self.rhslist[0])
                 except (ValueError, TypeError, AttributeError, KeyError):
                     caller.msg("Usage: @admorg/set_rank <org> = <player>, <1-10>")
-            if 'setinfluence' in self.switches:
+            if "setinfluence" in self.switches:
                 self.set_influence(org)
-            if 'cptasks' in self.switches:
+            if "cptasks" in self.switches:
                 org2 = self.get_by_name_or_id(Organization, self.rhs)
                 current_tasks = org.tasks.all()
                 tasks = org2.tasks.all().exclude(id__in=current_tasks)
@@ -914,7 +1107,7 @@ class CmdAdmOrganization(ArxPlayerCommand):
                     bulk_list.append(OrgTaskModel(organization=org, task=task))
                 OrgTaskModel.objects.bulk_create(bulk_list)
                 self.msg("Tasks copied from %s to %s." % (org2, org))
-            if 'addclue' in self.switches:
+            if "addclue" in self.switches:
                 try:
                     clue = Clue.objects.get(id=self.rhs)
                 except Clue.DoesNotExist:
@@ -931,10 +1124,10 @@ class CmdAdmOrganization(ArxPlayerCommand):
                 share_str = str(clue)
                 targ_type = "clue"
                 briefing_type = "/briefing"
-                text = "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s." % (caller.char_ob,
-                                                                                               targ_type, share_str,
-                                                                                               org,
-                                                                                               briefing_type)
+                text = (
+                    "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s."
+                    % (caller.char_ob, targ_type, share_str, org, briefing_type)
+                )
                 org.inform(text, category)
                 self.msg("Added clue {w%s{n to {c%s{n" % (clue, org))
             if "addsc" in self.switches or "rmsc" in self.switches:
@@ -973,6 +1166,7 @@ class CmdAdmFamily(ArxPlayerCommand):
     replacenpc switch allows you to replace a Dominion npc with
     a player.
     """
+
     key = "@admin_family"
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
@@ -983,10 +1177,15 @@ class CmdAdmFamily(ArxPlayerCommand):
         npcs = PlayerOrNpc.objects.filter(npc_name__iexact=args)
         matches = list(set(list(pcs) + list(npcs)))
         if not matches:
-            self.msg("No matches found for %s. They may not be added to Dominion." % args)
+            self.msg(
+                "No matches found for %s. They may not be added to Dominion." % args
+            )
             return
         if len(matches) > 1:
-            self.msg("Too many matches for %s: %s." % (args, ", ".join(str(ob) for ob in matches)))
+            self.msg(
+                "Too many matches for %s: %s."
+                % (args, ", ".join(str(ob) for ob in matches))
+            )
             return
         return matches[0]
 
@@ -1003,7 +1202,11 @@ class CmdAdmFamily(ArxPlayerCommand):
             caller.msg("Family of %s:" % char)
             caller.msg(char.display_immediate_family())
             return
-        if "createparent" in self.switches or "createchild" in self.switches or "createspouse" in self.switches:
+        if (
+            "createparent" in self.switches
+            or "createchild" in self.switches
+            or "createspouse" in self.switches
+        ):
             if PlayerOrNpc.objects.filter(npc_name=self.rhs):
                 caller.msg("An npc with that name already exists.")
                 return
@@ -1023,11 +1226,16 @@ class CmdAdmFamily(ArxPlayerCommand):
             player = caller.search(self.rhs)
             if hasattr(player, "Dominion"):
                 caller.msg("Error. The player %s has Dominion set up." % player)
-                caller.msg("This means we'd have two PlayerOrNpc objects, and one of them has to be deleted.")
+                caller.msg(
+                    "This means we'd have two PlayerOrNpc objects, and one of them has to be deleted."
+                )
                 caller.msg("Get the administrator to resolve this.")
                 return
             if char.player:
-                caller.msg("%s already has %s defined as their player. Aborting." % (char, char.player))
+                caller.msg(
+                    "%s already has %s defined as their player. Aborting."
+                    % (char, char.player)
+                )
                 return
             char.player = player
             char.npc_name = None
@@ -1036,7 +1244,7 @@ class CmdAdmFamily(ArxPlayerCommand):
             return
         if "alive" in self.switches:
             rhs = self.rhs.lower()
-            alive = rhs != 'false'
+            alive = rhs != "false"
             char.alive = alive
             char.save()
             caller.msg("%s alive status has been set to %s." % (char, alive))
@@ -1091,11 +1299,20 @@ class CmdSetRoom(ArxCommand):
     into that room for it to work properly. @ex each exit to get its id,
     and then use them like '@setroom/home bob=374,375,352'.
     """
+
     key = "@setroom"
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
-    allowed_switches = ("barracks", "market", "bank", "rumormill", "home",
-                        "homeaddowner", "homermowner", "none")
+    allowed_switches = (
+        "barracks",
+        "market",
+        "bank",
+        "rumormill",
+        "home",
+        "homeaddowner",
+        "homermowner",
+        "none",
+    )
     MARKETCMD = "commands.cmdsets.market.MarketCmdSet"
     BANKCMD = "commands.cmdsets.bank.BankCmdSet"
     RUMORCMD = "commands.cmdsets.rumor.RumorCmdSet"
@@ -1105,7 +1322,9 @@ class CmdSetRoom(ArxCommand):
         default_home = ObjectDB.objects.get(id=13)
         caller = self.caller
         if not (set(self.switches) & set(self.allowed_switches)):
-            caller.msg("Please select one of the following: %s" % str(self.allowed_switches))
+            caller.msg(
+                "Please select one of the following: %s" % str(self.allowed_switches)
+            )
             return
         loc = caller.location
         if not loc or loc.typeclass_path != settings.BASE_ROOM_TYPECLASS:
@@ -1113,17 +1332,26 @@ class CmdSetRoom(ArxCommand):
             return
         if "barracks" in self.switches:
             if not self.args:
-                caller.msg("Valid owners: %s" % ", ".join(str(owner.owner) for owner in AssetOwner.objects.all()))
+                caller.msg(
+                    "Valid owners: %s"
+                    % ", ".join(str(owner.owner) for owner in AssetOwner.objects.all())
+                )
                 return
-            players = AssetOwner.objects.filter(player__player__username__iexact=self.args)
+            players = AssetOwner.objects.filter(
+                player__player__username__iexact=self.args
+            )
             npcs = AssetOwner.objects.filter(player__npc_name__iexact=self.args)
             orgs = AssetOwner.objects.filter(organization_owner__name__iexact=self.args)
             matches = players | npcs | orgs
             if len(matches) > 1:
-                caller.msg("Too many matches: %s" % ", ".join(owner.owner for owner in matches))
+                caller.msg(
+                    "Too many matches: %s" % ", ".join(owner.owner for owner in matches)
+                )
                 return
             if not matches:
-                caller.msg("No matches found. If you entered a player's name, they may not be set up for Dominion.")
+                caller.msg(
+                    "No matches found. If you entered a player's name, they may not be set up for Dominion."
+                )
                 return
             owner = matches[0]
             tagname = str(owner.owner) + "_barracks"
@@ -1177,7 +1405,11 @@ class CmdSetRoom(ArxCommand):
             loc.tags.add("bank")
             caller.msg("%s now has bank commands." % loc)
             return
-        if "home" in self.switches or "homeaddowner" in self.switches or "homermowner" in self.switches:
+        if (
+            "home" in self.switches
+            or "homeaddowner" in self.switches
+            or "homermowner" in self.switches
+        ):
             owners = loc.db.owners or []
             targs = []
             rmkeys = []
@@ -1238,29 +1470,49 @@ class CmdSetRoom(ArxCommand):
             valid_entrances = list(ObjectDB.objects.filter(db_destination=loc))
             invalid = [ent for ent in entrances if ent not in valid_entrances]
             if invalid:
-                caller.msg("Some of the entrances do not connect to this room: %s" % ", ".join(str(ob)
-                                                                                               for ob in invalid))
-                caller.msg("Valid entrances are: %s" % ", ".join(str(ob.id) for ob in valid_entrances))
+                caller.msg(
+                    "Some of the entrances do not connect to this room: %s"
+                    % ", ".join(str(ob) for ob in invalid)
+                )
+                caller.msg(
+                    "Valid entrances are: %s"
+                    % ", ".join(str(ob.id) for ob in valid_entrances)
+                )
                 return
             for ent in entrances:
                 ent.locks.add("usekey: perm(builders) or roomkey(%s)" % loc.id)
             if entrances:
-                caller.msg("Setup entrances: %s" % ", ".join(str(ent) for ent in entrances))
+                caller.msg(
+                    "Setup entrances: %s" % ", ".join(str(ent) for ent in entrances)
+                )
                 old_entrances = loc.db.entrances or []
                 old_entrances = [ob for ob in old_entrances if ob not in entrances]
                 for ob in old_entrances:
                     ob.locks.add("usekey: perm(builders)")
                 if old_entrances:
-                    caller.msg("Removed these old exits: %s" % ", ".join(str(ent) for ent in old_entrances))
+                    caller.msg(
+                        "Removed these old exits: %s"
+                        % ", ".join(str(ent) for ent in old_entrances)
+                    )
                 loc.db.entrances = entrances
             else:
                 if loc.db.entrances:
                     entrances = loc.db.entrances
-                    caller.msg("Current entrances are: %s" % ", ".join(str(ob.id) for ob in entrances))
-                    caller.msg("Valid entrances are: %s" % ", ".join(str(ob.id) for ob in valid_entrances))
-                caller.msg("No entrances set. To change this, run the command again with valid entrances.")
+                    caller.msg(
+                        "Current entrances are: %s"
+                        % ", ".join(str(ob.id) for ob in entrances)
+                    )
+                    caller.msg(
+                        "Valid entrances are: %s"
+                        % ", ".join(str(ob.id) for ob in valid_entrances)
+                    )
+                caller.msg(
+                    "No entrances set. To change this, run the command again with valid entrances."
+                )
                 if not entrances:
-                    caller.msg("This room will initialize itself to all entrances the first time +home is used.")
+                    caller.msg(
+                        "This room will initialize itself to all entrances the first time +home is used."
+                    )
             if "HomeCmdSet" in [ob.key for ob in loc.cmdset.all()]:
                 caller.msg("This place is already a home.")
                 return
@@ -1282,19 +1534,34 @@ class CmdDomain(ArxPlayerCommand):
 
     Minister categories: {}
     """
+
     key = "@domain"
     locks = "cmd:all()"
     help_category = "Dominion"
     aliases = ["@domains"]
-    valid_categories = ("farming", "income", "loyalty", "population", "productivity", "upkeep", "warfare")
-    minister_dict = dict((key.lower(), value) for (value, key) in Minister.MINISTER_TYPES)
+    valid_categories = (
+        "farming",
+        "income",
+        "loyalty",
+        "population",
+        "productivity",
+        "upkeep",
+        "warfare",
+    )
+    minister_dict = dict(
+        (key.lower(), value) for (value, key) in Minister.MINISTER_TYPES
+    )
 
     def get_help(self, caller, cmdset):
         return self.__doc__.format(", ".join(self.valid_categories))
 
     @property
     def orgs(self):
-        return [org for org in self.caller.Dominion.current_orgs if org.access(self.caller, "command")]
+        return [
+            org
+            for org in self.caller.Dominion.current_orgs
+            if org.access(self.caller, "command")
+        ]
 
     @property
     def org_domains(self):
@@ -1318,21 +1585,32 @@ class CmdDomain(ArxPlayerCommand):
     def list_domains(self):
         table = EvTable("ID", "Domain", "House", "Castellan", "Ministers", width=78)
         for domain in self.domains:
-            table.add_row(domain.id, domain.name, domain.ruler.house, domain.ruler.castellan,
-                          ", ".join(str(ob.player) for ob in domain.ruler.ministers.all()))
+            table.add_row(
+                domain.id,
+                domain.name,
+                domain.ruler.house,
+                domain.ruler.castellan,
+                ", ".join(str(ob.player) for ob in domain.ruler.ministers.all()),
+            )
         self.msg(str(table))
 
     def check_member(self, domain, player):
         player.refresh_from_db()
         if domain.ruler.house.organization_owner not in player.current_orgs:
             self.msg("%s is not a member of %s." % (player, domain.ruler.house))
-            self.msg("current orgs: %s" % ", ".join(ob.name for ob in player.current_orgs
-                                                    if self.caller == player.player))
+            self.msg(
+                "current orgs: %s"
+                % ", ".join(
+                    ob.name
+                    for ob in player.current_orgs
+                    if self.caller == player.player
+                )
+            )
             return False
         return True
 
     def busy_check(self, dompc):
-        if dompc.appointments.all() or getattr(dompc, 'ruler', None):
+        if dompc.appointments.all() or getattr(dompc, "ruler", None):
             self.msg("They are already holding an office, and cannot hold another.")
             return True
         return False
@@ -1397,7 +1675,9 @@ class CmdDomain(ArxPlayerCommand):
                 minister.save()
             except Minister.DoesNotExist:
                 dom.ruler.ministers.create(player=dompc, category=category)
-            self.msg("%s's Minister of %s set to be %s." % (dom, self.rhslist[1], dompc))
+            self.msg(
+                "%s's Minister of %s set to be %s." % (dom, self.rhslist[1], dompc)
+            )
             return
         if "resign" in self.switches:
             if dom in self.ruled_domains:
@@ -1414,7 +1694,9 @@ class CmdDomain(ArxPlayerCommand):
             return
         if "strip" in self.switches or "title" in self.switches:
             if dom not in (self.org_domains | self.ruled_domains).distinct():
-                self.msg("You do not have the authority to strip someone of their position or grant a title.")
+                self.msg(
+                    "You do not have the authority to strip someone of their position or grant a title."
+                )
                 return
             if "strip" in self.switches:
                 rhs = self.rhs
@@ -1435,7 +1717,9 @@ class CmdDomain(ArxPlayerCommand):
                     minister.delete()
                     self.msg("You have removed %s as a minister." % dompc)
                 except Minister.DoesNotExist:
-                    self.msg("They are neither a minister nor castellan for that domain.")
+                    self.msg(
+                        "They are neither a minister nor castellan for that domain."
+                    )
                 return
             else:
                 try:
@@ -1444,7 +1728,9 @@ class CmdDomain(ArxPlayerCommand):
                     minister.save()
                     self.msg("Setting title of %s to be: %s" % (dompc, self.rhslist[1]))
                 except Minister.DoesNotExist:
-                    self.msg("They are neither a minister nor castellan for that domain.")
+                    self.msg(
+                        "They are neither a minister nor castellan for that domain."
+                    )
                 return
         self.msg("Invalid switch.")
 
@@ -1481,6 +1767,7 @@ class CmdArmy(ArxPlayerCommand):
     asking someone to generate propaganda first bestows an XP bonus. Keeping
     an army's morale high is essential.
     """
+
     key = "@army"
     locks = "cmd:all()"
     help_category = "Dominion"
@@ -1488,7 +1775,7 @@ class CmdArmy(ArxPlayerCommand):
 
     def display_armies(self):
         caller = self.caller
-        if not hasattr(caller, 'Dominion'):
+        if not hasattr(caller, "Dominion"):
             caller.msg("You have no armies to command.")
             return
         my_orgs = caller.Dominion.current_orgs
@@ -1500,7 +1787,9 @@ class CmdArmy(ArxPlayerCommand):
         caller.msg("Armies Owned: %s" % ", ".join(str(ob) for ob in owned))
         caller.msg("Provisional Armies: %s" % ", ".join(str(ob) for ob in temp_owned))
         caller.msg("Org-Owned Armies: %s" % ", ".join(str(ob) for ob in org_owned))
-        caller.msg("Provisional Org Armies: %s" % ", ".join(str(ob) for ob in temp_org_owned))
+        caller.msg(
+            "Provisional Org Armies: %s" % ", ".join(str(ob) for ob in temp_org_owned)
+        )
         caller.msg("Armies You Command: %s" % ", ".join(str(ob) for ob in commanded))
 
     def find_army(self, args):
@@ -1548,7 +1837,9 @@ class CmdArmy(ArxPlayerCommand):
 
     def check_army_has_space(self, army):
         if army.at_capacity:
-            self.msg("The army is full. Its units must be transferred to a different army or combined first.")
+            self.msg(
+                "The army is full. Its units must be transferred to a different army or combined first."
+            )
             return False
         return True
 
@@ -1557,6 +1848,7 @@ class CmdArmy(ArxPlayerCommand):
         Views stats for a unit class determined from our args.
         """
         from .unit_types import cls_from_str, print_unit_names
+
         cls = cls_from_str(self.args)
         if not cls:
             self.msg("{wValid types:{n %s" % print_unit_names())
@@ -1600,16 +1892,29 @@ class CmdArmy(ArxPlayerCommand):
             if not self.caller.pay_action_points(ap + base):
                 self.msg("You do not have enough action points.")
                 return
-            result = do_dice_check(self.caller.char_ob, difficulty=60 - ap, stat="charm", skill="propaganda",
-                                   quiet=False)
+            result = do_dice_check(
+                self.caller.char_ob,
+                difficulty=60 - ap,
+                stat="charm",
+                skill="propaganda",
+                quiet=False,
+            )
             if result <= 0:
-                self.msg("Your efforts at propaganda were not successful in helping recruitment.")
+                self.msg(
+                    "Your efforts at propaganda were not successful in helping recruitment."
+                )
                 return
             prop_dict = target.db.propaganda_mods or {}
             prop_dict[self.caller] = result
             target.db.propaganda_mods = prop_dict
-            target.inform("%s has added a result of %s to propaganda for recruitment." % (self.caller, result))
-            self.msg("You add a result of %s for propaganda to help %s's recruitment." % (result, target))
+            target.inform(
+                "%s has added a result of %s to propaganda for recruitment."
+                % (self.caller, result)
+            )
+            self.msg(
+                "You add a result of %s for propaganda to help %s's recruitment."
+                % (result, target)
+            )
             return
         if "create" in self.switches:
             # get owner for army from self.lhs
@@ -1623,8 +1928,9 @@ class CmdArmy(ArxPlayerCommand):
             if not name:
                 caller.msg("The army needs a name.")
                 return
-            if not org.access(caller, "army") and not dompc.appointments.filter(category=Minister.WARFARE,
-                                                                                ruler__house=org.assets):
+            if not org.access(caller, "army") and not dompc.appointments.filter(
+                category=Minister.WARFARE, ruler__house=org.assets
+            ):
                 caller.msg("You don't hold rank in %s for building armies." % org)
                 return
             # create army
@@ -1666,7 +1972,9 @@ class CmdArmy(ArxPlayerCommand):
                     unit.quantity -= qty
                     unit.save()
                     self.msg(
-                        "%s of unit %s are now discharged from service, and %s remain." % (qty, unit.id, unit.quantity))
+                        "%s of unit %s are now discharged from service, and %s remain."
+                        % (qty, unit.id, unit.quantity)
+                    )
                     return
                 if not self.check_army_has_space(unit.army):
                     return
@@ -1674,7 +1982,10 @@ class CmdArmy(ArxPlayerCommand):
                     self.msg("You cannot split the entirety of a unit.")
                     return
                 unit.split(qty)
-                self.msg("Splitting unit %s. %s will go to a new unit and %s remain." % (unit.id, qty, unit.quantity))
+                self.msg(
+                    "Splitting unit %s. %s will go to a new unit and %s remain."
+                    % (unit.id, qty, unit.quantity)
+                )
                 return
             if "transfer" in self.switches:
                 army = self.find_army(self.rhs)
@@ -1706,7 +2017,9 @@ class CmdArmy(ArxPlayerCommand):
         if "morale" in self.switches:
             pass
         if not army.can_change(caller):
-            self.msg("You do not meet the required permission check for 'army' for the army's owner.")
+            self.msg(
+                "You do not meet the required permission check for 'army' for the army's owner."
+            )
             self.msg("Org permissions can be set with org/perm and a minimum rank.")
             return
         if "dissolve" in self.switches:
@@ -1716,7 +2029,11 @@ class CmdArmy(ArxPlayerCommand):
             army.delete()
             self.msg("Army disbanded.")
             return
-        if "rename" in self.switches or "desc" in self.switches or "name" in self.switches:
+        if (
+            "rename" in self.switches
+            or "desc" in self.switches
+            or "name" in self.switches
+        ):
             if not self.rhs:
                 self.msg("Change it how?")
                 return
@@ -1744,13 +2061,18 @@ class CmdArmy(ArxPlayerCommand):
             # get unit_types cls from the string they specify
             cls = army.get_unit_class(self.rhslist[0])
             if not cls:
-                self.msg("Found no unit types for this army called %s." % self.rhslist[0])
+                self.msg(
+                    "Found no unit types for this army called %s." % self.rhslist[0]
+                )
                 return
             # use the cls to determine the total cost
             cost = cls.hiring_cost * qty
             if self.caller.ndb.army_cost_check != cost:
                 self.caller.ndb.army_cost_check = cost
-                self.msg("Cost will be %s military resources, use command again to confirm." % cost)
+                self.msg(
+                    "Cost will be %s military resources, use command again to confirm."
+                    % cost
+                )
                 return
             self.caller.ndb.army_cost_check = None
             if army.owner.military < cost:
@@ -1760,10 +2082,17 @@ class CmdArmy(ArxPlayerCommand):
             army.owner.save()
             prop_dict = self.caller.db.propaganda_mods or {}
             bonus = sum(prop_dict.values())
-            unit = army.units.create(unit_type=cls.id, origin=army.owner.organization_owner, quantity=qty)
-            self.msg("Successfully hired %s unit of %s for army: %s." % (self.rhslist[0], qty, army))
+            unit = army.units.create(
+                unit_type=cls.id, origin=army.owner.organization_owner, quantity=qty
+            )
+            self.msg(
+                "Successfully hired %s unit of %s for army: %s."
+                % (self.rhslist[0], qty, army)
+            )
             unit.gain_xp(bonus)
-            self.msg("Unit %s has gained %s xp divided among its members." % (unit.id, bonus))
+            self.msg(
+                "Unit %s has gained %s xp divided among its members." % (unit.id, bonus)
+            )
             self.caller.attributes.remove("propaganda_mods")
             return
         if "general" in self.switches:
@@ -1790,7 +2119,9 @@ class CmdArmy(ArxPlayerCommand):
                 if not temp_owner:
                     return
                 temp_owner = temp_owner.Dominion
-            self.msg("You grant temporary control of army: %s to %s" % (army, temp_owner))
+            self.msg(
+                "You grant temporary control of army: %s to %s" % (army, temp_owner)
+            )
             army.change_temp_owner(self.caller, temp_owner.assets)
             return
         if "recall" in self.switches:
@@ -1842,14 +2173,33 @@ class CmdOrganization(ArxPlayerCommand):
     Oathlands=Valardin to learn that clue yourself, or the name of
     another player to brief them on the clue.
     """
+
     key = "@org"
     locks = "cmd:all()"
     help_category = "Dominion"
-    org_locks = ("edit", "boot", "withdraw", "setrank", "invite",
-                 "setruler", "view", "guards", "build", "briefing",
-                 "declarations", "army", "informs", "transactions",
-                 "viewassets", "memberdesc", "motd", "admin_petition",
-                 "view_petition", "recipe", "remove_plots")
+    org_locks = (
+        "edit",
+        "boot",
+        "withdraw",
+        "setrank",
+        "invite",
+        "setruler",
+        "view",
+        "guards",
+        "build",
+        "briefing",
+        "declarations",
+        "army",
+        "informs",
+        "transactions",
+        "viewassets",
+        "memberdesc",
+        "motd",
+        "admin_petition",
+        "view_petition",
+        "recipe",
+        "remove_plots",
+    )
 
     @staticmethod
     def get_org_and_member(caller, myorgs, args):
@@ -1879,7 +2229,7 @@ class CmdOrganization(ArxPlayerCommand):
             else:
                 olock = "rank(%s)" % org.default_access_rank
             table.add_row([lock, olock])
-        caller.msg(str(table), options={'box': True})
+        caller.msg(str(table), options={"box": True})
 
     def display_permtypes(self):
         self.msg("Type must be one of the following: %s" % ", ".join(self.org_locks))
@@ -1905,30 +2255,39 @@ class CmdOrganization(ArxPlayerCommand):
 
     def func(self):
         caller = self.caller
-        myorgs = Organization.objects.filter(Q(members__player__player=caller)
-                                             & Q(members__deguilded=False))
-        if 'motd' in self.switches:
+        myorgs = Organization.objects.filter(
+            Q(members__player__player=caller) & Q(members__deguilded=False)
+        )
+        if "motd" in self.switches:
             return self.set_motd(myorgs)
-        if 'briefing' in self.switches or 'theorybriefing' in self.switches:
+        if "briefing" in self.switches or "theorybriefing" in self.switches:
             org = self.get_org_from_myorgs(myorgs)
             if not org:
                 return
             try:
                 targname, clue_name_or_theory_id = self.lhs.split("/", 1)
             except (TypeError, ValueError, IndexError):
-                self.msg("You must specify the name of a character and a clue. Ex: bob/secrets of haberdashery")
+                self.msg(
+                    "You must specify the name of a character and a clue. Ex: bob/secrets of haberdashery"
+                )
                 return
             try:
-                tarmember = org.active_members.get(player__player__username__iexact=targname)
+                tarmember = org.active_members.get(
+                    player__player__username__iexact=targname
+                )
             except Member.DoesNotExist:
-                self.msg("There is no active member in %s by the name %s." % (org, targname))
+                self.msg(
+                    "There is no active member in %s by the name %s." % (org, targname)
+                )
                 return
             entry = tarmember.player.player.roster
             entry.refresh_from_db()
             if tarmember.player.player.char_ob.location != self.caller.char_ob.location:
                 self.msg("You must be in the same room to brief them.")
-                self.msg("Please actually have roleplay about briefing things - "
-                         "a 'clue dump' without context is against the rules.")
+                self.msg(
+                    "Please actually have roleplay about briefing things - "
+                    "a 'clue dump' without context is against the rules."
+                )
                 return
 
             def check_clues_or_theories(check_type):
@@ -1957,6 +2316,7 @@ class CmdOrganization(ArxPlayerCommand):
                     to the caller.
                 """
                 from web.character.models import Clue, Theory
+
                 plural = "clues" if check_type == "clue" else "theories"
                 queryset = getattr(org, plural).all()
                 attr = "id"
@@ -1967,8 +2327,19 @@ class CmdOrganization(ArxPlayerCommand):
                         attr = "name"
                         return queryset.get(name__iexact=clue_name_or_theory_id)
                 except (Clue.DoesNotExist, Theory.DoesNotExist, ValueError):
-                    self.msg("%s does not know of a %s named %s." % (org, check_type, clue_name_or_theory_id))
-                    self.msg("Org %s: %s" % (plural, ", ".join(str(getattr(qs_obj, attr)) for qs_obj in queryset)))
+                    self.msg(
+                        "%s does not know of a %s named %s."
+                        % (org, check_type, clue_name_or_theory_id)
+                    )
+                    self.msg(
+                        "Org %s: %s"
+                        % (
+                            plural,
+                            ", ".join(
+                                str(getattr(qs_obj, attr)) for qs_obj in queryset
+                            ),
+                        )
+                    )
                     return
 
             if "briefing" in self.switches:
@@ -1978,12 +2349,15 @@ class CmdOrganization(ArxPlayerCommand):
                 if not clue:
                     return
                 cost = (caller.clue_cost // (org.social_modifier + 4)) + 1
-                if not org.access(caller, 'briefing'):
+                if not org.access(caller, "briefing"):
                     self.msg("You do not have permissions to do a briefing.")
                     return
                 if caller.ndb.briefing_cost_warning != org:
                     caller.ndb.briefing_cost_warning = org
-                    self.msg("The cost of the briefing will be %s. Execute the command again to brief them." % cost)
+                    self.msg(
+                        "The cost of the briefing will be %s. Execute the command again to brief them."
+                        % cost
+                    )
                     return
                 caller.ndb.briefing_cost_warning = None
                 # check if they don't need this at all
@@ -2012,18 +2386,23 @@ class CmdOrganization(ArxPlayerCommand):
                 share_type = "theory"
                 cmd_string = "@theories %d" % theory.id
                 share_str = theory
-            text = "You've been briefed and learned a %s. Use {w%s{n to view them: %s" % (share_type, cmd_string,
-                                                                                          share_str)
-            tarmember.player.player.msg("%s has briefed you on %s's secrets." % (caller.char_ob, org))
+            text = (
+                "You've been briefed and learned a %s. Use {w%s{n to view them: %s"
+                % (share_type, cmd_string, share_str)
+            )
+            tarmember.player.player.msg(
+                "%s has briefed you on %s's secrets." % (caller.char_ob, org)
+            )
             tarmember.player.player.inform(text, category="%s briefing" % org)
             self.msg("You have briefed %s on your organization's secrets." % tarmember)
             return
-        if 'addclue' in self.switches or 'addtheory' in self.switches:
+        if "addclue" in self.switches or "addtheory" in self.switches:
             from web.character.models import ClueDiscovery
+
             org = self.get_org_from_myorgs(myorgs)
             if not org:
                 return
-            if 'addclue' in self.switches:
+            if "addclue" in self.switches:
                 try:
                     clue = caller.roster.clues.get(id=self.lhs)
                 except (ClueDiscovery.DoesNotExist, ValueError):
@@ -2038,8 +2417,12 @@ class CmdOrganization(ArxPlayerCommand):
                 cost = 20 - (2 * org.social_modifier)
                 if cost < 1:
                     cost = 1
-                prompt_msg = "The cost will be %s. Execute the command again to pay it." % cost
-                if not self.confirm_command("org_clue_cost", "%s_%s" % (org, clue.id), prompt_msg):
+                prompt_msg = (
+                    "The cost will be %s. Execute the command again to pay it." % cost
+                )
+                if not self.confirm_command(
+                    "org_clue_cost", "%s_%s" % (org, clue.id), prompt_msg
+                ):
                     return
                 if not caller.pay_action_points(cost):
                     self.msg("You cannot afford to pay %s AP." % cost)
@@ -2051,9 +2434,14 @@ class CmdOrganization(ArxPlayerCommand):
                 briefing_type = "/briefing"
             else:
                 from web.character.models import Theory
+
                 try:
-                    theories = set(caller.editable_theories.all()) | set(caller.created_theories.all())
-                    theory = Theory.objects.filter(id__in=(ob.id for ob in theories)).get(id=self.lhs)
+                    theories = set(caller.editable_theories.all()) | set(
+                        caller.created_theories.all()
+                    )
+                    theory = Theory.objects.filter(
+                        id__in=(ob.id for ob in theories)
+                    ).get(id=self.lhs)
                 except (Theory.DoesNotExist, ValueError):
                     self.msg("No theory by that ID found.")
                     return
@@ -2065,16 +2453,19 @@ class CmdOrganization(ArxPlayerCommand):
                 share_str = "%s (#%s)" % (theory, theory.id)
                 targ_type = "theory"
                 briefing_type = "/theorybriefing"
-            text = "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s." % (caller.char_ob,
-                                                                                           targ_type, share_str, org,
-                                                                                           briefing_type)
+            text = (
+                "%s has shared the %s {w%s{n to {c%s{n. It can now be used in a %s."
+                % (caller.char_ob, targ_type, share_str, org, briefing_type)
+            )
             org.inform(text, category)
             return
         if "plots" in self.switches:
             org = self.get_org_from_myorgs(myorgs, self.args)
             if not org:
                 return
-            plot_display = org.display_plots_to_player(self.caller, resolved="old" in self.switches)
+            plot_display = org.display_plots_to_player(
+                self.caller, resolved="old" in self.switches
+            )
             self.msg(f"Plots:\n{plot_display}")
             return
         if "addplot" in self.switches or "rmplot" in self.switches:
@@ -2114,7 +2505,7 @@ class CmdOrganization(ArxPlayerCommand):
                 org.remove_plot(plot)
                 self.msg("Plot removed.")
             return
-        if 'accept' in self.switches:
+        if "accept" in self.switches:
             org = caller.ndb.orginvite
             if not org:
                 caller.msg("You have no current invitations.")
@@ -2125,21 +2516,28 @@ class CmdOrganization(ArxPlayerCommand):
                 return
 
             for alt in caller.roster.alts:
-                altorgs = Organization.objects.filter(Q(members__player__player=alt.player)
-                                                      & Q(members__deguilded=False))
+                altorgs = Organization.objects.filter(
+                    Q(members__player__player=alt.player) & Q(members__deguilded=False)
+                )
                 if org in altorgs:
-                    inform_staff("{r%s has joined %s, but their alt %s is already a member.{n" % (caller, org, alt))
+                    inform_staff(
+                        "{r%s has joined %s, but their alt %s is already a member.{n"
+                        % (caller, org, alt)
+                    )
 
             # check if they were previously booted out, then we just have them rejoin
             try:
-                member = caller.Dominion.memberships.get(Q(deguilded=True)
-                                                         & Q(organization=org))
+                member = caller.Dominion.memberships.get(
+                    Q(deguilded=True) & Q(organization=org)
+                )
                 member.deguilded = False
                 member.rank = 10
                 member.save()
             except Member.DoesNotExist:
                 secret = org.secret
-                member = caller.Dominion.memberships.create(organization=org, secret=secret)
+                member = caller.Dominion.memberships.create(
+                    organization=org, secret=secret
+                )
             try:
                 if org.category != "noble" or member.rank < 5:
                     caller.Dominion.reputations.get(organization=org).wipe_favor()
@@ -2151,7 +2549,7 @@ class CmdOrganization(ArxPlayerCommand):
             member.setup()
             caller.ndb.orginvite = None
             return
-        if 'decline' in self.switches:
+        if "decline" in self.switches:
             org = caller.ndb.orginvite
             if not org:
                 caller.msg("You have no current invitations.")
@@ -2168,26 +2566,42 @@ class CmdOrganization(ArxPlayerCommand):
                     self.disp_org_locks(caller, myorgs[0])
                     return
                 member = caller.Dominion.memberships.get(organization=myorgs[0])
-                display_clues = myorgs[0].access(caller, "briefing") or caller.check_permstring("builders")
-                caller.msg(myorgs[0].display(member, display_clues=display_clues), options={'box': True})
+                display_clues = myorgs[0].access(
+                    caller, "briefing"
+                ) or caller.check_permstring("builders")
+                caller.msg(
+                    myorgs[0].display(member, display_clues=display_clues),
+                    options={"box": True},
+                )
                 return
             caller.msg("Your organizations: %s" % ", ".join(org.name for org in myorgs))
             return
         if not self.switches:
             try:
                 org, member = self.get_org_and_member(caller, myorgs, self.lhs)
-                display_clues = org.access(caller, "briefing") or caller.check_permstring("builders")
-                caller.msg(org.display(member, display_clues=display_clues), options={'box': True})
+                display_clues = org.access(
+                    caller, "briefing"
+                ) or caller.check_permstring("builders")
+                caller.msg(
+                    org.display(member, display_clues=display_clues),
+                    options={"box": True},
+                )
                 return
             except Organization.DoesNotExist:
-                caller.msg("You are not a member of any organization named %s." % self.lhs)
+                caller.msg(
+                    "You are not a member of any organization named %s." % self.lhs
+                )
                 return
         player = None
-        if not ('perm' in self.switches or 'rankname' in self.switches or 'addclue' in self.switches):
+        if not (
+            "perm" in self.switches
+            or "rankname" in self.switches
+            or "addclue" in self.switches
+        ):
             player = caller.search(self.lhs)
             if not player:
                 return
-        if 'setdesc' in self.switches:
+        if "setdesc" in self.switches:
             if len(myorgs) < 2:
                 # if they supplied the org even though they don't have to
                 rhs = self.rhs
@@ -2197,19 +2611,26 @@ class CmdOrganization(ArxPlayerCommand):
                 org = myorgs[0]
             else:
                 if len(self.rhslist) < 2:
-                    caller.msg("You belong to more than one organization, so must supply both rank number and" +
-                               " the organization name.")
+                    caller.msg(
+                        "You belong to more than one organization, so must supply both rank number and"
+                        + " the organization name."
+                    )
                     return
                 try:
-                    org, member = self.get_org_and_member(caller, myorgs, self.rhslist[1])
+                    org, member = self.get_org_and_member(
+                        caller, myorgs, self.rhslist[1]
+                    )
                     new_desc = self.rhslist[0] or ""
                 except Organization.DoesNotExist:
-                    caller.msg("You are not a member of any organization named %s." % self.rhslist[1])
+                    caller.msg(
+                        "You are not a member of any organization named %s."
+                        % self.rhslist[1]
+                    )
                     return
                 except (ValueError, TypeError, AttributeError, KeyError):
                     caller.msg("Invalid syntax. @org/memberdesc player=desc,orgname")
                     return
-            if not org.access(caller, 'memberdesc'):
+            if not org.access(caller, "memberdesc"):
                 caller.msg("You do not have permission to set member descriptions.")
                 return
             tarmember = self.get_member_from_player(org, player)
@@ -2223,9 +2644,13 @@ class CmdOrganization(ArxPlayerCommand):
             else:
                 caller.msg("%s has had their org desc cleared." % player)
             return
-        if 'setrank' in self.switches or 'perm' in self.switches or 'rankname' in self.switches:
+        if (
+            "setrank" in self.switches
+            or "perm" in self.switches
+            or "rankname" in self.switches
+        ):
             if not self.rhs:
-                if 'perm' in self.switches:
+                if "perm" in self.switches:
                     try:
                         org, member = self.get_org_and_member(caller, myorgs, self.lhs)
                         self.disp_org_locks(caller, org)
@@ -2249,14 +2674,21 @@ class CmdOrganization(ArxPlayerCommand):
                 member = caller.Dominion.memberships.get(organization=org)
             else:
                 if len(self.rhslist) < 2:
-                    caller.msg("You belong to more than one organization, so must supply both rank number and" +
-                               " the organization name.")
+                    caller.msg(
+                        "You belong to more than one organization, so must supply both rank number and"
+                        + " the organization name."
+                    )
                     return
                 try:
-                    org, member = self.get_org_and_member(caller, myorgs, self.rhslist[1])
+                    org, member = self.get_org_and_member(
+                        caller, myorgs, self.rhslist[1]
+                    )
                     rank = int(self.rhslist[0])
                 except Organization.DoesNotExist:
-                    caller.msg("You are not a member of any organization named %s." % self.rhslist[1])
+                    caller.msg(
+                        "You are not a member of any organization named %s."
+                        % self.rhslist[1]
+                    )
                     return
                 except (ValueError, TypeError, AttributeError, KeyError):
                     caller.msg("Invalid syntax. @org/setrank player=rank,orgname")
@@ -2265,21 +2697,23 @@ class CmdOrganization(ArxPlayerCommand):
                 caller.msg("Rank must be between 1 and 10.")
                 return
             # setting permissions
-            if 'perm' in self.switches:
+            if "perm" in self.switches:
                 ltype = self.lhs.lower() if self.lhs else ""
                 if ltype not in self.org_locks:
                     self.display_permtypes()
                     return
-                if not org.access(caller, 'edit'):
+                if not org.access(caller, "edit"):
                     caller.msg("You do not have permission to edit permissions.")
                     return
                 org.locks.add("%s:rank(%s)" % (ltype, rank))
                 org.save()
-                caller.msg("Permission %s set to require rank %s or higher." % (ltype, rank))
+                caller.msg(
+                    "Permission %s set to require rank %s or higher." % (ltype, rank)
+                )
                 return
-            if 'rankname' in self.switches:
+            if "rankname" in self.switches:
                 rankname = self.lhs
-                if not org.access(caller, 'edit'):
+                if not org.access(caller, "edit"):
                     caller.msg("You do not have permission to edit rank names.")
                     return
                 maleonly = femaleonly = False
@@ -2290,14 +2724,20 @@ class CmdOrganization(ArxPlayerCommand):
                         femaleonly = True
                 if not femaleonly:
                     setattr(org, "rank_%s_male" % rank, rankname)
-                    caller.msg("Title for rank %s male characters set to: %s" % (rank, rankname))
+                    caller.msg(
+                        "Title for rank %s male characters set to: %s"
+                        % (rank, rankname)
+                    )
                 if not maleonly:
                     setattr(org, "rank_%s_female" % rank, rankname)
-                    caller.msg("Title for rank %s female characters set to: %s" % (rank, rankname))
+                    caller.msg(
+                        "Title for rank %s female characters set to: %s"
+                        % (rank, rankname)
+                    )
                 org.save()
                 return
             # 'setrank' now
-            if not org.access(caller, 'setrank'):
+            if not org.access(caller, "setrank"):
                 caller.msg("You do not have permission to change ranks.")
                 return
             # this check also prevents promoting yourself
@@ -2309,7 +2749,9 @@ class CmdOrganization(ArxPlayerCommand):
                 return
             # can demote yourself, but otherwise only people lower than yourself
             if tarmember.rank <= member.rank and tarmember != member:
-                caller.msg("You cannot change the rank of someone equal to you or higher.")
+                caller.msg(
+                    "You cannot change the rank of someone equal to you or higher."
+                )
                 return
             if tarmember.rank <= 2 < rank and tarmember != member:
                 caller.msg("Only staff can demote leaders.")
@@ -2328,7 +2770,9 @@ class CmdOrganization(ArxPlayerCommand):
         # other switches can omit the org name if we're only a member of one org
         if not self.rhs:
             if len(myorgs) > 1:
-                caller.msg("You belong to more than one organization and must give its name.")
+                caller.msg(
+                    "You belong to more than one organization and must give its name."
+                )
                 return
             if not myorgs:
                 caller.msg("You are not in any organizations.")
@@ -2339,38 +2783,45 @@ class CmdOrganization(ArxPlayerCommand):
             try:
                 org, member = self.get_org_and_member(caller, myorgs, self.rhs)
             except Organization.DoesNotExist:
-                caller.msg("You are not a member of any organization named %s." % self.rhs)
+                caller.msg(
+                    "You are not a member of any organization named %s." % self.rhs
+                )
                 return
-        if 'invite' in self.switches:
-            if not org.access(caller, 'invite'):
+        if "invite" in self.switches:
+            if not org.access(caller, "invite"):
                 caller.msg("You do not have permission to invite new members.")
                 return
-            if Member.objects.filter(Q(deguilded=False)
-                                     & Q(organization=org)
-                                     & Q(player__player=player)).exists():
+            if Member.objects.filter(
+                Q(deguilded=False) & Q(organization=org) & Q(player__player=player)
+            ).exists():
                 caller.msg("They are already a member of your organization.")
                 return
             char = player.char_ob
-            if not hasattr(player, 'Dominion'):
+            if not hasattr(player, "Dominion"):
                 setup_utils.setup_dom_for_char(char)
             if not player.is_connected:
                 caller.msg("%s must be logged in to be invited." % player)
                 return
             if player.ndb.orginvite:
-                caller.msg("Player already has an outstanding invite they must accept or decline.")
+                caller.msg(
+                    "Player already has an outstanding invite they must accept or decline."
+                )
                 return
             player.ndb.orginvite = org
             caller.msg("You have invited %s to %s." % (player, org.name))
             msg = "You have been invited to join %s.\n" % org.name
-            msg += "To accept, type {w@org/accept %s{n. To decline, type {worg/decline %s{n." % (org.name, org.name)
+            msg += (
+                "To accept, type {w@org/accept %s{n. To decline, type {worg/decline %s{n."
+                % (org.name, org.name)
+            )
             player.inform(msg, category="Invitation")
             return
         tarmember = self.get_member_from_player(org, player)
         if not tarmember:
             return
-        if 'boot' in self.switches:
+        if "boot" in self.switches:
             if tarmember != member:
-                if not org.access(caller, 'boot'):
+                if not org.access(caller, "boot"):
                     caller.msg("You do not have permission to boot players.")
                     return
                 if tarmember.rank <= member.rank:
@@ -2382,17 +2833,19 @@ class CmdOrganization(ArxPlayerCommand):
             tarmember.fake_delete()
             caller.msg("Booted %s from %s." % (player, org))
             player.msg("You have been removed from %s." % org)
-            inform_staff("%s has been removed from {c%s{n by %s." % (player, org, caller))
+            inform_staff(
+                "%s has been removed from {c%s{n by %s." % (player, org, caller)
+            )
             return
-        if 'memberview' in self.switches:
-            if org.secret and not org.access(caller, 'view'):
+        if "memberview" in self.switches:
+            if org.secret and not org.access(caller, "view"):
                 caller.msg("You do not have permission to view players.")
                 return
             caller.msg("{wMember info for {c%s{n" % tarmember)
             caller.msg(tarmember.display())
             return
-        if 'secret' in self.switches:
-            if not org.access(caller, 'setrank'):
+        if "secret" in self.switches:
+            if not org.access(caller, "setrank"):
                 caller.msg("You do not have permission to change member status.")
                 return
             member = caller.Dominion.memberships.get(organization=org)
@@ -2403,16 +2856,23 @@ class CmdOrganization(ArxPlayerCommand):
             tarmember.save()
             caller.msg("Their secret status is now %s" % tarmember.secret)
             return
-        if 'setruler' in self.switches:
-            if not org.access(caller, 'setruler'):
-                caller.msg("You do not have permission to set who handles ruling of your organization's estates.")
+        if "setruler" in self.switches:
+            if not org.access(caller, "setruler"):
+                caller.msg(
+                    "You do not have permission to set who handles ruling of your organization's estates."
+                )
                 return
             targ = tarmember.player
             # if the character is already a ruler, they'd violate unique constraint to be reassigned
             try:
                 ruler_check = targ.ruler
-                caller.msg("%s is already acting as a ruler. Tell them to abdicate." % targ)
-                targ.player.msg("You cannot be assigned as a ruler while you are acting as %s's ruler." % ruler_check)
+                caller.msg(
+                    "%s is already acting as a ruler. Tell them to abdicate." % targ
+                )
+                targ.player.msg(
+                    "You cannot be assigned as a ruler while you are acting as %s's ruler."
+                    % ruler_check
+                )
                 return
             except Ruler.DoesNotExist:
                 pass
@@ -2425,9 +2885,15 @@ class CmdOrganization(ArxPlayerCommand):
             ruler.castellan = targ
             ruler.save()
             if old:
-                caller.msg("Command of armies and holdings has passed from %s to %s." % (old, player))
+                caller.msg(
+                    "Command of armies and holdings has passed from %s to %s."
+                    % (old, player)
+                )
                 return
-            caller.msg("%s has been placed in command of all of the armies and holdings of %s." % (player, org))
+            caller.msg(
+                "%s has been placed in command of all of the armies and holdings of %s."
+                % (player, org)
+            )
             return
         self.msg("Invalid switch.")
 
@@ -2453,6 +2919,7 @@ class CmdFamily(ArxPlayerCommand):
     Displays family information about a given character, if
     available.
     """
+
     key = "@family"
     locks = "cmd:all()"
     help_category = "Dominion"
@@ -2464,6 +2931,7 @@ class CmdFamily(ArxPlayerCommand):
             show_private = True
         else:
             from typeclasses.accounts import Account
+
             try:
                 player = Account.objects.get(username__iexact=self.args)
             except (Account.DoesNotExist, Account.MultipleObjectsReturned):
@@ -2504,7 +2972,7 @@ max_proteges = {
     6: 2,
     7: 1,
     8: 1,
-    }
+}
 
 
 class CmdPatronage(ArxPlayerCommand):
@@ -2522,6 +2990,7 @@ class CmdPatronage(ArxPlayerCommand):
 
     Displays and manages patronage.
     """
+
     key = "@patronage"
     locks = "cmd:all()"
     help_category = "Dominion"
@@ -2556,7 +3025,9 @@ class CmdPatronage(ArxPlayerCommand):
             return False
         diff = 1
         if our_rank + diff > targ_rank:
-            self.msg("Your social rank must be at least %d higher than your target." % diff)
+            self.msg(
+                "Your social rank must be at least %d higher than your target." % diff
+            )
             return False
         return True
 
@@ -2567,7 +3038,7 @@ class CmdPatronage(ArxPlayerCommand):
         except AttributeError:
             dompc = setup_utils.setup_dom_for_char(self.caller.char_ob)
         if not self.args and not self.switches:
-            caller.msg(self.display_patronage(dompc), options={'box': True})
+            caller.msg(self.display_patronage(dompc), options={"box": True})
             return
         if self.args:
             player = caller.search(self.args)
@@ -2582,7 +3053,7 @@ class CmdPatronage(ArxPlayerCommand):
             except AttributeError:
                 tdompc = setup_utils.setup_dom_for_char(char)
             if not self.switches:
-                caller.msg(self.display_patronage(tdompc), options={'box': True})
+                caller.msg(self.display_patronage(tdompc), options={"box": True})
                 return
             if "addprotege" in self.switches:
                 if not player.is_connected:
@@ -2595,7 +3066,9 @@ class CmdPatronage(ArxPlayerCommand):
                 psrank = caller.char_ob.db.social_rank
                 max_p = max_proteges.get(psrank, 0)
                 if num >= max_p:
-                    caller.msg("You already have the maximum number of proteges for your social rank.")
+                    caller.msg(
+                        "You already have the maximum number of proteges for your social rank."
+                    )
                     return
                 if not self.check_social_rank_difference(char):
                     return
@@ -2603,7 +3076,10 @@ class CmdPatronage(ArxPlayerCommand):
                 msg = "{c%s {wwants to become your patron. " % caller.key.capitalize()
                 msg += " Use @patronage/accept to accept {wthis offer, or @patronage/reject to reject it.{n"
                 player.msg(msg)
-                caller.msg("{wYou have extended the offer of patronage to {c%s{n." % player.key.capitalize())
+                caller.msg(
+                    "{wYou have extended the offer of patronage to {c%s{n."
+                    % player.key.capitalize()
+                )
                 return
             if "dismiss" in self.switches:
                 if tdompc not in dompc.proteges.all():
@@ -2611,22 +3087,27 @@ class CmdPatronage(ArxPlayerCommand):
                     return
                 dompc.proteges.remove(tdompc)
                 caller.msg("{c%s {wis no longer one of your proteges.{n" % char)
-                player.msg("{c%s {wis no longer your patron.{n" % caller.key.capitalize())
+                player.msg(
+                    "{c%s {wis no longer your patron.{n" % caller.key.capitalize()
+                )
                 return
             caller.msg("Unrecognized switch.")
             return
         pending = caller.ndb.pending_patron
-        if 'accept' in self.switches:
+        if "accept" in self.switches:
             if not pending:
                 caller.msg("You have no pending invitation.")
                 return
             dompc.patron = pending.Dominion
             dompc.save()
             caller.msg("{c%s {wis now your patron.{n" % pending.key.capitalize())
-            pending.msg("{c%s {whas accepted your patronage, and is now your protege.{n" % caller.key.capitalize())
+            pending.msg(
+                "{c%s {whas accepted your patronage, and is now your protege.{n"
+                % caller.key.capitalize()
+            )
             caller.ndb.pending_patron = None
             return
-        if 'reject' in self.switches:
+        if "reject" in self.switches:
             if not pending:
                 caller.msg("You have no pending invitation.")
                 return
@@ -2634,13 +3115,19 @@ class CmdPatronage(ArxPlayerCommand):
             pending.msg("%s has declined your patronage." % caller.key.capitalize())
             caller.ndb.pending_patron = None
             return
-        if 'abandon' in self.switches:
+        if "abandon" in self.switches:
             old = dompc.patron
             if old:
                 dompc.patron = None
                 dompc.save()
-                old.player.msg("{c%s {rhas abandoned your patronage, and is no longer your protege.{n" % dompc)
-                caller.msg("{rYou have abandoned {c%s{r's patronage, and are no longer their protege.{n" % old)
+                old.player.msg(
+                    "{c%s {rhas abandoned your patronage, and is no longer your protege.{n"
+                    % dompc
+                )
+                caller.msg(
+                    "{rYou have abandoned {c%s{r's patronage, and are no longer their protege.{n"
+                    % old
+                )
             else:
                 caller.msg("You don't have a patron.")
             return
@@ -2672,6 +3159,7 @@ class CmdWork(ArxPlayerCommand):
     increases results, and the roller is whoever has higher skill.
     Workers who possess knacks are considered with priority.
     """
+
     key = "work"
     help_category = "Dominion"
     locks = "cmd:all()"
@@ -2707,7 +3195,9 @@ class CmdWork(ArxPlayerCommand):
     def get_member(self, org_name):
         """Gets membership from an org"""
         try:
-            return self.dompc.memberships.get(deguilded=False, organization__name__iexact=org_name)
+            return self.dompc.memberships.get(
+                deguilded=False, organization__name__iexact=org_name
+            )
         except Member.DoesNotExist:
             raise CommandError("No match for an org by the name: %s." % org_name)
 
@@ -2737,11 +3227,14 @@ class CmdWork(ArxPlayerCommand):
                 raise ValueError
         except (TypeError, ValueError, IndexError):
             raise CommandError("You must specify at least 10 resources to invest.")
-        member.invest(resource_type=res_type, ap_cost=5, protege=protege, resources=amount)
+        member.invest(
+            resource_type=res_type, ap_cost=5, protege=protege, resources=amount
+        )
 
     def do_score(self):
         """Lists scoreboard for members"""
         from django.db.models import ExpressionWrapper, IntegerField
+
         if not self.caller.is_staff:
             org = self.get_member(org_name=self.lhs).organization
             if org.secret:
@@ -2753,19 +3246,26 @@ class CmdWork(ArxPlayerCommand):
             except Organization.DoesNotExist:
                 raise CommandError("Bad name for org: %s" % self.lhs)
             qs = org.active_members
-        members = (qs.annotate(combined=ExpressionWrapper(F('work_total') + F('investment_total'),
-                                                          output_field=IntegerField()))
-                     .exclude(combined__lte=0)
-                     .values_list('player__player__username', 'work_total', 'investment_total', 'combined')
-                     .order_by('-combined'))
+        members = (
+            qs.annotate(
+                combined=ExpressionWrapper(
+                    F("work_total") + F("investment_total"), output_field=IntegerField()
+                )
+            )
+            .exclude(combined__lte=0)
+            .values_list(
+                "player__player__username", "work_total", "investment_total", "combined"
+            )
+            .order_by("-combined")
+        )
         table = PrettyTable(["Member", "Total Work", "Total Invested", "Combined"])
-        table.align="r"
+        table.align = "r"
         for member in members:
             member = [member[0].capitalize()] + list(member[1:])
             member = list(member)
-            member[1]="{:,}".format(member[1])
-            member[2]="{:,}".format(member[2])
-            member[3]="{:,}".format(member[3])
+            member[1] = "{:,}".format(member[1])
+            member[2] = "{:,}".format(member[2])
+            member[3] = "{:,}".format(member[3])
             table.add_row(member)
         self.msg(str(table))
 
@@ -2802,6 +3302,7 @@ class CmdPlotRoom(ArxCommand):
 
     These plotrooms can be used with @cal/plotroom when creating a calendar event.
     """
+
     key = "@plotroom"
     locks = "cmd:all()"
     help_category = "Dominion"
@@ -2850,8 +3351,13 @@ class CmdPlotRoom(ArxCommand):
 
             table = EvTable("", "Region", "Name", "Creator", "Public")
             for room in rooms:
-                table.add_row(room.id, room.get_region_name(), room.name, room.creator,
-                              room.public and "X" or "")
+                table.add_row(
+                    room.id,
+                    room.get_region_name(),
+                    room.name,
+                    room.creator,
+                    room.public and "X" or "",
+                )
 
             self.msg(table)
 
@@ -2862,15 +3368,19 @@ class CmdPlotRoom(ArxCommand):
             try:
                 room_id = int(self.args)
             except ValueError:
-                rooms = PlotRoom.objects.filter(Q(name__icontains=self.args) &
-                                                (Q(creator=owner) | Q(public=True)))
+                rooms = PlotRoom.objects.filter(
+                    Q(name__icontains=self.args) & (Q(creator=owner) | Q(public=True))
+                )
                 if not rooms:
                     self.msg("Could not find a room matching " + self.args)
                     return
                 if len(rooms) > 1:
                     self.msg("Found multiple matching rooms:")
                     for outroom in rooms:
-                        self.msg("  %s (%s)" % (outroom.name, outroom.get_detailed_region_name()))
+                        self.msg(
+                            "  %s (%s)"
+                            % (outroom.name, outroom.get_detailed_region_name())
+                        )
                     return
                 room = rooms[0]
 
@@ -2964,7 +3474,7 @@ class CmdPlotRoom(ArxCommand):
                 self.msg("No room setup to cancel.")
                 return
 
-            self.caller.attributes.remove('plotroom_form')
+            self.caller.attributes.remove("plotroom_form")
             self.msg("Room creation cancelled.")
 
         elif "finish" in self.switches:
@@ -2996,11 +3506,18 @@ class CmdPlotRoom(ArxCommand):
                 self.msg("Internal error: invalid domain.  Contact Tehom or Pax!")
                 return
 
-            room = PlotRoom(name=name, description=desc, public=public, domain=domain,
-                            location=domain.location, wilderness=wilderness, creator=owner)
+            room = PlotRoom(
+                name=name,
+                description=desc,
+                public=public,
+                domain=domain,
+                location=domain.location,
+                wilderness=wilderness,
+                creator=owner,
+            )
             room.save()
             self.msg("Saved room %d." % room.id)
-            self.caller.attributes.remove('plotroom_form')
+            self.caller.attributes.remove("plotroom_form")
 
         else:
             self.msg("Invalid usage.")
@@ -3011,6 +3528,7 @@ class CmdCleanupDomain(ArxPlayerCommand):
     This is a temporary one-off command that will clean out the old NPC domains
     and orgs.  It should be run only once!
     """
+
     key = "@onetimedomaincleanup"
     locks = "cmd:perm(Wizards)"
     help_category = "Dominion"
@@ -3018,29 +3536,41 @@ class CmdCleanupDomain(ArxPlayerCommand):
     def delete_and_report(self, name, qs):
         self.msg("Deleting NPC %s..." % name)
         output = qs.delete()
-        output = "Total: %s, %s" % (output[0], ", ".join("%s: %s" % (key, value) for key, value in output[1].items()))
+        output = "Total: %s, %s" % (
+            output[0],
+            ", ".join("%s: %s" % (key, value) for key, value in output[1].items()),
+        )
         self.msg("Deleted: %s" % output)
 
     def func(self):
-        domains = Domain.objects \
-            .filter(ruler__house__organization_owner__members__player__player__isnull=True).distinct()
+        domains = Domain.objects.filter(
+            ruler__house__organization_owner__members__player__player__isnull=True
+        ).distinct()
         self.delete_and_report("domains", domains)
 
-        assetowners = AssetOwner.objects.filter(organization_owner__isnull=False)\
-            .filter(organization_owner__members__player__player__isnull=True).distinct()
+        assetowners = (
+            AssetOwner.objects.filter(organization_owner__isnull=False)
+            .filter(organization_owner__members__player__player__isnull=True)
+            .distinct()
+        )
         self.delete_and_report("organization asset owners", assetowners)
 
-        npc_asset_owners = AssetOwner.objects.filter(organization_owner__isnull=True,
-                                                     player__player__isnull=True).distinct()
+        npc_asset_owners = AssetOwner.objects.filter(
+            organization_owner__isnull=True, player__player__isnull=True
+        ).distinct()
         self.delete_and_report("PlayerOrNpc asset owners", npc_asset_owners)
 
         armies = Army.objects.filter(owner__isnull=True).distinct()
         self.delete_and_report("armies", armies)
 
-        rulers = Ruler.objects.filter(house__organization_owner__members__player__player__isnull=True).distinct()
+        rulers = Ruler.objects.filter(
+            house__organization_owner__members__player__player__isnull=True
+        ).distinct()
         self.delete_and_report("rulers", rulers)
 
-        orgs = Organization.objects.filter(members__player__player__isnull=True).distinct()
+        orgs = Organization.objects.filter(
+            members__player__player__isnull=True
+        ).distinct()
         MilitaryUnit.objects.filter(origin__in=orgs).update(origin=None)
         self.delete_and_report("organizations", orgs)
 

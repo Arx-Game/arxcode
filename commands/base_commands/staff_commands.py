@@ -14,12 +14,30 @@ from evennia.server.models import ServerConfig
 from evennia.typeclasses.tags import Tag
 from evennia.scripts.models import ScriptDB
 
-from server.utils.arx_utils import inform_staff, broadcast, create_gemit_and_post, list_to_string
+from server.utils.arx_utils import (
+    inform_staff,
+    broadcast,
+    create_gemit_and_post,
+    list_to_string,
+)
 from server.utils.prettytable import PrettyTable
 from server.utils.exceptions import CommandError
 from commands.base import ArxCommand, ArxPlayerCommand
-from web.character.models import Clue, SearchTag, Revelation, StoryEmit, Flashback, CluePlotInvolvement
-from world.dominion.models import Organization, RPEvent, Propriety, AssetOwner, PrestigeCategory
+from web.character.models import (
+    Clue,
+    SearchTag,
+    Revelation,
+    StoryEmit,
+    Flashback,
+    CluePlotInvolvement,
+)
+from world.dominion.models import (
+    Organization,
+    RPEvent,
+    Propriety,
+    AssetOwner,
+    PrestigeCategory,
+)
 from world.dominion.plots.models import Plot, PlotAction
 from typeclasses.characters import Character
 
@@ -49,11 +67,15 @@ class CmdHome(ArxCommand):
         guards = caller.db.assigned_guards or []
         if not caller.check_permstring("builders"):
             if cscript:
-                caller.msg("You cannot use home to leave a room where a combat is occurring.")
+                caller.msg(
+                    "You cannot use home to leave a room where a combat is occurring."
+                )
                 return
-            if 'private' in room.tags.all():
+            if "private" in room.tags.all():
                 if len([ob for ob in room.contents if ob.player]) > 1:
-                    caller.msg("You cannot use home to leave a private room if you are not alone.")
+                    caller.msg(
+                        "You cannot use home to leave a private room if you are not alone."
+                    )
                     return
         if not home:
             caller.msg("You have no home!")
@@ -62,12 +84,12 @@ class CmdHome(ArxCommand):
         elif not caller.conscious:
             caller.msg("You must be conscious to go home.")
         else:
-            mapping = {'secret': True}
+            mapping = {"secret": True}
             caller.move_to(home, mapping=mapping)
             caller.msg("There's no place like home ...")
             for guard in guards:
                 if guard.location:
-                    if 'stationary_guard' not in guard.tags.all():
+                    if "stationary_guard" not in guard.tags.all():
                         guard.summon()
                 else:
                     guard.db.docked = home
@@ -91,6 +113,7 @@ class CmdGemit(ArxPlayerCommand):
     default. The org switch messages online members, informs offline
     members, and makes an org bboard post.
     """
+
     key = "@gemit"
     locks = "cmd:perm(gemit) or perm(Wizards)"
     help_category = "GMing"
@@ -115,7 +138,9 @@ class CmdGemit(ArxPlayerCommand):
                 if len(lhslist) > 1:
                     synopsis = lhslist[1]
                 if not episode_name or not msg:
-                    raise CommandError("You must give a name & message for the new episode.")
+                    raise CommandError(
+                        "You must give a name & message for the new episode."
+                    )
                 create_gemit_and_post(msg, self.caller, episode_name, synopsis)
             else:
                 orgs_list = None
@@ -128,7 +153,9 @@ class CmdGemit(ArxPlayerCommand):
                         try:
                             org = Organization.objects.get(name__iexact=arg)
                         except Organization.DoesNotExist:
-                            raise CommandError("No organization named '%s' was found." % arg)
+                            raise CommandError(
+                                "No organization named '%s' was found." % arg
+                            )
                         else:
                             orgs_list.append(org)
                 else:
@@ -149,6 +176,7 @@ class CmdWall(ArxCommand):
     This command should be used to send OOC broadcasts,
     while @gemit is used for IC global messages.
     """
+
     key = "@wall"
     locks = "cmd:perm(wall) or perm(Wizards)"
     help_category = "Admin"
@@ -158,7 +186,7 @@ class CmdWall(ArxCommand):
         if not self.args:
             self.msg("Usage: @wall <message>")
             return
-        message = "%s shouts \"%s\"" % (self.caller.name, self.args)
+        message = '%s shouts "%s"' % (self.caller.name, self.args)
         self.msg("Announcing to all connected players ...")
         SESSIONS.announce_all(message)
 
@@ -174,6 +202,7 @@ class CmdResurrect(ArxCommand):
     in your own location, or with an * before the name, it will
     resurrect the primary character of a player of the given name.
     """
+
     key = "@resurrect"
     locks = "cmd:perm(resurrect) or perm(Wizards)"
     help_category = "GMing"
@@ -193,7 +222,7 @@ class CmdResurrect(ArxCommand):
             # found a player, get the character
             if obj:
                 obj = obj.char_ob
-        if not obj or not hasattr(obj, 'resurrect'):
+        if not obj or not hasattr(obj, "resurrect"):
             caller.msg("No character found by that name.")
             return
         obj.resurrect()
@@ -211,6 +240,7 @@ class CmdKill(ArxCommand):
     in your own location, or with an * before the name, it will
     resurrect the primary character of a player of the given name.
     """
+
     key = "@kill"
     locks = "cmd:perm(kill) or perm(Wizards)"
     help_category = "GMing"
@@ -250,6 +280,7 @@ class CmdForce(ArxCommand):
     that have no player object. With the /char switch, this searches for
     the character of a given player name, who may be anywhere.
     """
+
     key = "@force"
     locks = "cmd:perm(force) or perm(Builders)"
     help_category = "GMing"
@@ -270,13 +301,15 @@ class CmdForce(ArxCommand):
         if not char:
             caller.msg("No character found.")
             return
-        if not char.access(caller, 'edit'):
+        if not char.access(caller, "edit"):
             caller.msg("You don't have 'edit' permission for %s." % char)
             return
         char.execute_cmd(self.rhs)
         caller.msg("Forced %s to execute the command '%s'." % (char, self.rhs))
         if char.player_ob:
-            inform_staff("%s forced %s to execute the command '%s'." % (caller, char, self.rhs))
+            inform_staff(
+                "%s forced %s to execute the command '%s'." % (caller, char, self.rhs)
+            )
 
 
 class CmdRestore(ArxPlayerCommand):
@@ -290,6 +323,7 @@ class CmdRestore(ArxPlayerCommand):
 
     Undeletes an object or player
     """
+
     key = "@restore"
     locks = "cmd:perm(restore) or perm(Wizards)"
     help_category = "Admin"
@@ -298,9 +332,15 @@ class CmdRestore(ArxPlayerCommand):
         """Implements command"""
         caller = self.caller
         if not self.args:
-            dplayers = [str(ob) for ob in AccountDB.objects.filter(is_active=False) if not ob.is_guest()]
-            dobjs = ["%s (ID:%s)" % (ob.key, ob.id) for ob in ObjectDB.objects.filter(
-                db_tags__db_key__iexact="deleted")]
+            dplayers = [
+                str(ob)
+                for ob in AccountDB.objects.filter(is_active=False)
+                if not ob.is_guest()
+            ]
+            dobjs = [
+                "%s (ID:%s)" % (ob.key, ob.id)
+                for ob in ObjectDB.objects.filter(db_tags__db_key__iexact="deleted")
+            ]
             caller.msg("Deleted players: %s" % ", ".join(dplayers))
             caller.msg("Deleted objects: %s" % ", ".join(dobjs))
             return
@@ -326,7 +366,10 @@ class CmdRestore(ArxPlayerCommand):
                 targ.move_to(char)
                 caller.msg("%s moved to your character object." % targ)
                 return
-            caller.msg("You do not have a character object to move %s to. Use @tel to return it to the game." % targ)
+            caller.msg(
+                "You do not have a character object to move %s to. Use @tel to return it to the game."
+                % targ
+            )
             return
         except (ObjectDB.DoesNotExist, ValueError):
             caller.msg("No object found for ID %s." % self.args)
@@ -343,6 +386,7 @@ class CmdPurgeJunk(ArxPlayerCommand):
 
     Permanently removes a deleted item from the database
     """
+
     key = "@purgejunk"
     locks = "cmd:perm(restore) or perm(Immortals)"
     help_category = "Admin"
@@ -351,9 +395,15 @@ class CmdPurgeJunk(ArxPlayerCommand):
         """Implements command"""
         caller = self.caller
         if not self.args:
-            dplayers = [str(ob) for ob in AccountDB.objects.filter(is_active=False) if not ob.is_guest()]
-            dobjs = ["%s (ID:%s)" % (ob.key, ob.id) for ob in ObjectDB.objects.filter(
-                db_tags__db_key__iexact="deleted")]
+            dplayers = [
+                str(ob)
+                for ob in AccountDB.objects.filter(is_active=False)
+                if not ob.is_guest()
+            ]
+            dobjs = [
+                "%s (ID:%s)" % (ob.key, ob.id)
+                for ob in ObjectDB.objects.filter(db_tags__db_key__iexact="deleted")
+            ]
             caller.msg("Deleted players: %s" % ", ".join(dplayers))
             caller.msg("Deleted objects: %s" % ", ".join(dobjs))
             return
@@ -362,10 +412,14 @@ class CmdPurgeJunk(ArxPlayerCommand):
             if "deleted" not in str(targ.tags).split(","):
                 caller.msg("%s does not appear to be deleted." % targ)
                 return
-            if (targ.typeclass_path == settings.BASE_CHARACTER_TYPECLASS or
-                    targ.typeclass_path == settings.BASE_ROOM_TYPECLASS):
-                caller.msg("Rooms or characters cannot be deleted with this command. " +
-                           "Must be removed via shell script for safety.")
+            if (
+                targ.typeclass_path == settings.BASE_CHARACTER_TYPECLASS
+                or targ.typeclass_path == settings.BASE_ROOM_TYPECLASS
+            ):
+                caller.msg(
+                    "Rooms or characters cannot be deleted with this command. "
+                    + "Must be removed via shell script for safety."
+                )
                 return
             targ.delete()
             inform_staff("%s purged item ID %s from the database" % (caller, self.args))
@@ -385,6 +439,7 @@ class CmdSendVision(ArxPlayerCommand):
 
     Send a vision with the appropriate text to a given character.
     """
+
     key = "sendvision"
     aliases = ["sendvisions", "sendclue"]
     locks = "cmd:perm(sendvision) or perm(Wizards)"
@@ -418,7 +473,10 @@ class CmdSendVision(ArxPlayerCommand):
             for targ in targlist:
                 try:
                     targ.roster.discover_clue(clue, message=msg)
-                    targ.inform("A new clue has been sent to you. Use @clues to view it.", category="Clue Discovery")
+                    targ.inform(
+                        "A new clue has been sent to you. Use @clues to view it.",
+                        category="Clue Discovery",
+                    )
                 except AttributeError:
                     continue
             self.msg("Clues sent to: %s" % ", ".join(str(ob) for ob in targlist))
@@ -442,8 +500,13 @@ class CmdSendVision(ArxPlayerCommand):
             vision_object = char.messages.add_vision(msg, caller, name, vision_object)
             header = "{rYou have experienced a vision!{n\n%s" % msg
             targ.send_or_queue_msg(header)
-            targ.inform("Your character has experienced a vision. Use @sheet/visions to view it.", category="Vision")
-        caller.msg("Vision added to %s: %s" % (", ".join(str(ob) for ob in targlist), msg))
+            targ.inform(
+                "Your character has experienced a vision. Use @sheet/visions to view it.",
+                category="Vision",
+            )
+        caller.msg(
+            "Vision added to %s: %s" % (", ".join(str(ob) for ob in targlist), msg)
+        )
         return
 
 
@@ -459,6 +522,7 @@ class CmdAskStaff(ArxPlayerCommand):
     staff who are paying attention. If you want to submit a question
     that will get a response later, use +request.
     """
+
     key = "@askstaff"
 
     locks = "cmd:all()"
@@ -484,6 +548,7 @@ class CmdListStaff(ArxPlayerCommand):
 
     Lists staff that are currently online.
     """
+
     key = "+staff"
 
     locks = "cmd:all()"
@@ -496,6 +561,7 @@ class CmdListStaff(ArxPlayerCommand):
         table = evtable.EvTable("{wName{n", "{wRole{n", "{wIdle{n", width=78)
         for ob in staff:
             from .overrides import CmdWho
+
             if ob.tags.get("hidden_staff") or ob.db.hide_from_watch:
                 continue
             timestr = CmdWho.get_idlestr(ob.idle_time)
@@ -526,15 +592,19 @@ class CmdCcolor(ArxPlayerCommand):
             self.msg("Usage: @ccolor <channelname>=<color code>")
             return
         from evennia.commands.default import comms
+
         channel = comms.find_channel(caller, self.lhs)
         if not channel:
             self.msg("Could not find channel %s." % self.args)
             return
-        if not channel.access(caller, 'control'):
+        if not channel.access(caller, "control"):
             self.msg("You are not allowed to do that.")
             return
         channel.db.colorstr = self.rhs
-        caller.msg("Channel will now look like this: %s[%s]{n" % (channel.db.colorstr, channel.key))
+        caller.msg(
+            "Channel will now look like this: %s[%s]{n"
+            % (channel.db.colorstr, channel.key)
+        )
         return
 
 
@@ -549,6 +619,7 @@ class CmdAdjustReputation(ArxPlayerCommand):
 
     Adjusts a player's affection/respect with a given org.
     """
+
     key = "@adjustreputation"
     help_category = "GMing"
     locks = "cmd:perm(Wizards)"
@@ -566,12 +637,16 @@ class CmdAdjustReputation(ArxPlayerCommand):
 
         self.msg("{wReputation Form:{n")
         for player in rep_form[0].keys():
-            change_string = ", ".join("%s: Affection: %s Respect: %s" % (
-                org, values[0], values[1]) for org, values in rep_form[0][player].items())
+            change_string = ", ".join(
+                "%s: Affection: %s Respect: %s" % (org, values[0], values[1])
+                for org, values in rep_form[0][player].items()
+            )
             self.msg("{wPlayer{n: %s {wChanges{n: %s" % (player, change_string))
         self.msg("{wSubject{n %s" % subject)
         self.msg("{wPost:{n %s" % post)
-        self.msg("Warning - form saved in memory only. Use /finish to avoid losing it in reloads.")
+        self.msg(
+            "Warning - form saved in memory only. Use /finish to avoid losing it in reloads."
+        )
 
     def do_finish(self):
         """Applies the changes from the finished form"""
@@ -591,11 +666,14 @@ class CmdAdjustReputation(ArxPlayerCommand):
             for org in change_dict:
                 affection, respect = change_dict[org]
                 player.gain_reputation(org, affection, respect)
-                inform_staff("%s has adjusted %s's reputation with %s: %s/%s" % (
-                    self.caller, player, org, affection, respect))
+                inform_staff(
+                    "%s has adjusted %s's reputation with %s: %s/%s"
+                    % (self.caller, player, org, affection, respect)
+                )
             character_list.append(player.player.char_ob)
         # post changes
         from typeclasses.bulletin_board.bboard import BBoard
+
         board = BBoard.objects.get(db_key__iexact="vox populi")
         post_list = post_msg.split("/")
         if len(post_list) < 2:
@@ -624,10 +702,16 @@ class CmdAdjustReputation(ArxPlayerCommand):
             player_list = [ob.Dominion for ob in player_list if ob]
             if not player_list:
                 return
-            org, affection, respect = self.rhslist[0], int(self.rhslist[1]), int(self.rhslist[2])
+            org, affection, respect = (
+                self.rhslist[0],
+                int(self.rhslist[1]),
+                int(self.rhslist[2]),
+            )
             org = Organization.objects.get(name__iexact=org)
         except IndexError:
-            self.msg("Need a list of players on left side, and org, affection, and respect on right side.")
+            self.msg(
+                "Need a list of players on left side, and org, affection, and respect on right side."
+            )
             return
         except (TypeError, ValueError):
             self.msg("Affection and Respect must be numbers.")
@@ -684,6 +768,7 @@ class CmdGMDisguise(ArxCommand):
             @disguise/desc object=<temp desc>
             @disguise/remove <object>
     """
+
     key = "@disguise"
     help_category = "GMing"
     locks = "cmd:perm(Wizards)"
@@ -737,6 +822,7 @@ class CmdViewLog(ArxPlayerCommand):
     If you wish to wipe all current logs stored on your character, you can use the
     /purge command.
     """
+
     key = "@view_log"
     help_category = "Admin"
     locks = "cmd:all()"
@@ -745,13 +831,16 @@ class CmdViewLog(ArxPlayerCommand):
         """Views a log for a player"""
         msg = ""
         for line in log:
+
             def get_name(ob):
                 """Formats their name"""
                 if self.caller.check_permstring("builder"):
                     return ob.key
                 return ob.name
+
             msg += "{wFrom: {c%s {wMsg:{n %s\n" % (get_name(line[0]), line[1])
         from server.utils import arx_more
+
         arx_more.msg(self.caller, msg)
 
     def view_flagged_log(self, player):
@@ -777,8 +866,10 @@ class CmdViewLog(ArxPlayerCommand):
                 return
             self.caller.report_player(targ)
             self.msg("Flagging that log for review.")
-            inform_staff("%s has reported %s for bad behavior. Please use @view_log to check it out." % (
-                self.caller, targ))
+            inform_staff(
+                "%s has reported %s for bad behavior. Please use @view_log to check it out."
+                % (self.caller, targ)
+            )
             return
         if self.caller.check_permstring("immortals"):
             targ = self.caller.search(self.args)
@@ -818,6 +909,7 @@ class CmdSetLanguages(ArxPlayerCommand):
 
     Views and sets languages. All players are said to speak common.
     """
+
     key = "@admin_languages"
     help_category = "GMing"
     locks = "cmd:perm(Wizards)"
@@ -825,11 +917,14 @@ class CmdSetLanguages(ArxPlayerCommand):
     @property
     def valid_languages(self):
         """Gets queryset of all current valid languages, which are Tags"""
-        return Tag.objects.filter(db_category="languages").order_by('db_key')
+        return Tag.objects.filter(db_category="languages").order_by("db_key")
 
     def list_valid_languages(self):
         """Lists all current valid languages"""
-        self.msg("Valid languages: %s" % ", ".join(ob.db_key.title() for ob in self.valid_languages))
+        self.msg(
+            "Valid languages: %s"
+            % ", ".join(ob.db_key.title() for ob in self.valid_languages)
+        )
 
     def func(self):
         """Executes admin languages command"""
@@ -840,14 +935,21 @@ class CmdSetLanguages(ArxPlayerCommand):
             if Tag.objects.filter(db_key__iexact=self.args, db_category="languages"):
                 self.msg("Language already exists.")
                 return
-            tag = Tag.objects.create(db_key=self.args.lower(), db_category="languages", db_model="objectdb")
+            tag = Tag.objects.create(
+                db_key=self.args.lower(), db_category="languages", db_model="objectdb"
+            )
             self.msg("Created the new language: %s" % tag.db_key)
             return
         if "listfluent" in self.switches:
             from typeclasses.characters import Character
-            chars = Character.objects.filter(db_tags__db_key__iexact=self.args,
-                                             db_tags__db_category="languages")
-            self.msg("Characters who can speak %s: %s" % (self.args, ", ".join(str(ob) for ob in chars)))
+
+            chars = Character.objects.filter(
+                db_tags__db_key__iexact=self.args, db_tags__db_category="languages"
+            )
+            self.msg(
+                "Characters who can speak %s: %s"
+                % (self.args, ", ".join(str(ob) for ob in chars))
+            )
             return
         if not self.valid_languages.filter(db_key__iexact=self.rhs):
             self.msg("%s is not a valid language." % self.rhs)
@@ -884,6 +986,7 @@ class CmdGMEvent(ArxCommand):
     Once started, you can use @cal commands to do things like change the
     roomdesc and so on with the appropriate switches, if you choose.
     """
+
     key = "@gmevent"
     locks = "cmd:perm(builders) or tag(story_npc)"
     help_category = "GMing"
@@ -895,9 +998,13 @@ class CmdGMEvent(ArxCommand):
             if not form:
                 self.msg("You are not yet creating an event. Use /create to make one.")
                 return
-            self.msg("You will create an event named '%s' when you use /start." % form[0])
+            self.msg(
+                "You will create an event named '%s' when you use /start." % form[0]
+            )
             self.msg("It will have the description: %s" % form[1])
-            self.msg("If you wish to change anything, just use /create again. To abort, use /cancel.")
+            self.msg(
+                "If you wish to change anything, just use /create again. To abort, use /cancel."
+            )
             return
         if "cancel" in self.switches:
             self.caller.attributes.remove("gm_event_form")
@@ -915,19 +1022,31 @@ class CmdGMEvent(ArxCommand):
             return
         if "start" in self.switches:
             from datetime import datetime
+
             if not form or len(form) < 2:
-                self.msg("You have not created an event yet. Use /create then /start it.")
+                self.msg(
+                    "You have not created an event yet. Use /create then /start it."
+                )
                 return
             name, desc = form[0], form[1]
             date = datetime.now()
             loc = self.caller.location
-            events = self.caller.player_ob.Dominion.events_gmd.filter(finished=False, gm_event=True, location=loc)
+            events = self.caller.player_ob.Dominion.events_gmd.filter(
+                finished=False, gm_event=True, location=loc
+            )
             if events:
                 self.msg("You are already GMing an event in this room.")
                 return
             dompc = self.caller.player_ob.Dominion
-            event = RPEvent.objects.create(name=name, date=date, desc=desc, location=loc,
-                                           public_event=False, celebration_tier=0, gm_event=True)
+            event = RPEvent.objects.create(
+                name=name,
+                date=date,
+                desc=desc,
+                location=loc,
+                public_event=False,
+                celebration_tier=0,
+                gm_event=True,
+            )
             event.add_host(dompc, main_host=True)
             event.add_gm(dompc)
             event_manager = ScriptDB.objects.get(db_key="Event Manager")
@@ -937,8 +1056,11 @@ class CmdGMEvent(ArxCommand):
             return
         if "stop" in self.switches:
             from datetime import datetime
+
             now = datetime.now()
-            events = self.caller.player_ob.Dominion.events_gmd.filter(finished=False, gm_event=True, date__lte=now)
+            events = self.caller.player_ob.Dominion.events_gmd.filter(
+                finished=False, gm_event=True, date__lte=now
+            )
             if not events:
                 self.msg("You are not currently GMing any events.")
                 return
@@ -996,13 +1118,33 @@ class CmdGMNotes(ArxCommand):
     Connect secrets to plots with /hook, which lets characters see recruiter
     messages to plan their RP approach to a plot.
     """
+
     key = "@gmnotes"
     aliases = ["@gmnote"]
     locks = "cmd: perm(builders)"
     help_category = "GMing"
-    taggables = ("clue", "revelation", "crisis", "action", "gemit", "rpevent", "flashback",
-                 "clues", "revelations", "crises", "actions", "gemits", "storyemit", "storyemits", "rpevents",
-                 "rpe", "flashbacks", "plot", "plots", "objectdb")
+    taggables = (
+        "clue",
+        "revelation",
+        "crisis",
+        "action",
+        "gemit",
+        "rpevent",
+        "flashback",
+        "clues",
+        "revelations",
+        "crises",
+        "actions",
+        "gemits",
+        "storyemit",
+        "storyemits",
+        "rpevents",
+        "rpe",
+        "flashbacks",
+        "plot",
+        "plots",
+        "objectdb",
+    )
 
     def func(self):
         """Executes the GMNotes command"""
@@ -1080,7 +1222,7 @@ class CmdGMNotes(ArxCommand):
 
     def list_all_tags(self):
         """Displays all tags."""
-        all_tags = SearchTag.objects.values_list('id', 'name')
+        all_tags = SearchTag.objects.values_list("id", "name")
         # yo dawg I heard you like tags so I put some tags in your tags
         msg = "ALL OF THE TAGS: "
         msg += list_to_string(["%s (#%s)" % (ob[1], ob[0]) for ob in all_tags])
@@ -1090,29 +1232,44 @@ class CmdGMNotes(ArxCommand):
         """Creates a new tag with args as its name."""
         others = SearchTag.objects.filter(name__iexact=self.args)
         if others:
-            raise CommandError("Cannot create; tag already exists: %s (tag #%s)" % (others[0], others[0].id))
+            raise CommandError(
+                "Cannot create; tag already exists: %s (tag #%s)"
+                % (others[0], others[0].id)
+            )
         SearchTag.objects.create(name=self.args)
         self.msg("Tag created for '%s'!" % self.args)
 
     def list_needy_characters(self):
         """Lists characters yet to be involved with secrets, or plots."""
         chars = Character.objects.filter(roster__roster__name="Active")
-        neediest = chars.filter(Q(roster__player__Dominion__plots__isnull=True)).distinct()
+        neediest = chars.filter(
+            Q(roster__player__Dominion__plots__isnull=True)
+        ).distinct()
         chars = chars.exclude(id__in=neediest)
         needier = chars.filter(clues__isnull=True).distinct()
         chars = chars.exclude(id__in=needier)
-        needy = chars.exclude(roster__player__Dominion__plots__resolved=False).distinct()
+        needy = chars.exclude(
+            roster__player__Dominion__plots__resolved=False
+        ).distinct()
         if any((neediest, needier, needy)):
             msg = "|wCharacters in need.|n These lists cascade, meaning a name will only appear in "
             msg += "its highest category of need.\n"
             if neediest:
-                msg += "|yNever in a plot:|n %s\n" % list_to_string([ob.key for ob in neediest])
+                msg += "|yNever in a plot:|n %s\n" % list_to_string(
+                    [ob.key for ob in neediest]
+                )
             if needier:
-                msg += "|yWithout secrets:|n %s\n" % list_to_string([ob.key for ob in needier])
+                msg += "|yWithout secrets:|n %s\n" % list_to_string(
+                    [ob.key for ob in needier]
+                )
             if needy:
-                msg += "|yOnly in resolved plots:|n %s" % list_to_string([ob.key for ob in needy])
+                msg += "|yOnly in resolved plots:|n %s" % list_to_string(
+                    [ob.key for ob in needy]
+                )
         else:
-            msg = "|gThank you, hero! But our characters-in-need are in another castle.|n"
+            msg = (
+                "|gThank you, hero! But our characters-in-need are in another castle.|n"
+            )
         self.msg(msg)
 
     def list_tagged_characters(self):
@@ -1132,9 +1289,16 @@ class CmdGMNotes(ArxCommand):
         Uses switches to decide which class of object to look for, then tags
         (or removes tag from) an object of that class.
         """
-        if len(self.switches) < 2 or not self.lhs or not self.rhs or not self.check_switches(self.taggables):
-            usage = ("Usage: @gmnotes/tag/<class type> <ID or name>=<tag name>\n"
-                     "Class types: clue, revelation, plot, action, gemit, rpevent, flashback, objectdb.")
+        if (
+            len(self.switches) < 2
+            or not self.lhs
+            or not self.rhs
+            or not self.check_switches(self.taggables)
+        ):
+            usage = (
+                "Usage: @gmnotes/tag/<class type> <ID or name>=<tag name>\n"
+                "Class types: clue, revelation, plot, action, gemit, rpevent, flashback, objectdb."
+            )
             raise CommandError(usage)
         tag = self.get_tag(self.rhs)
         # don't like that thing. No sir.
@@ -1152,7 +1316,10 @@ class CmdGMNotes(ArxCommand):
         """Will request confirmation before deleting a populated tag."""
         tag = self.get_tag(self.args)
         tag_display = tag.display_tagged_objects()
-        confirm_msg = "%s\n|yRepeat command to delete the '%s' tag anyway.|n" % (tag_display, tag)
+        confirm_msg = "%s\n|yRepeat command to delete the '%s' tag anyway.|n" % (
+            tag_display,
+            tag,
+        )
         if tag_display and not self.confirm_command("delete_tag", tag, confirm_msg):
             return
         else:
@@ -1161,6 +1328,7 @@ class CmdGMNotes(ArxCommand):
 
     def view_revelation_tables(self):
         """Table of all revelations, or clues comprising a specified revelation."""
+
         def get_gmnote(thing):
             gm_notes = thing.gm_notes or ""
             if gm_notes and len(gm_notes) > 20:
@@ -1170,26 +1338,38 @@ class CmdGMNotes(ArxCommand):
         if self.args:
             rev = self.get_taggable_thing(self.args, "revelation")
             table = PrettyTable(["|w%s|n" % rev, "About", "Disco", "GM Notes"])
-            clues = rev.clues.annotate(disco=Count('discoveries', distinct=True)).order_by('clue_type')
+            clues = rev.clues.annotate(
+                disco=Count("discoveries", distinct=True)
+            ).order_by("clue_type")
             if not clues:
                 raise CommandError("No clues exist for %s." % rev)
             for clue in clues:
                 gmnote = get_gmnote(clue)
                 if clue.clue_type == Clue.CHARACTER_SECRET:
-                    clue_type = clue.tangible_object.key if clue.tangible_object else "secret"
+                    clue_type = (
+                        clue.tangible_object.key if clue.tangible_object else "secret"
+                    )
                 elif clue.clue_type == Clue.VISION:
                     clue_type = "vision"
                 else:
                     clue_type = "lore"
                 table.add_row([clue.name, clue_type, clue.disco, gmnote])
         else:
-            secrets = Subquery(Clue.objects.filter(clue_type=Clue.CHARACTER_SECRET, revelations=OuterRef('id'))
-                                           .values('revelations')
-                                           .annotate(cnt=Count('id'))
-                                           .values('cnt'), output_field=IntegerField())
-            revs = (Revelation.objects.annotate(clue_total=Count('clues_used', distinct=True))
-                                      .annotate(secret_total=secrets))
-            table = PrettyTable(["{w#{n", "{wRevelation{n", "{wClu{n", "{wSecrt{n", "{wGM Notes{n"])
+            secrets = Subquery(
+                Clue.objects.filter(
+                    clue_type=Clue.CHARACTER_SECRET, revelations=OuterRef("id")
+                )
+                .values("revelations")
+                .annotate(cnt=Count("id"))
+                .values("cnt"),
+                output_field=IntegerField(),
+            )
+            revs = Revelation.objects.annotate(
+                clue_total=Count("clues_used", distinct=True)
+            ).annotate(secret_total=secrets)
+            table = PrettyTable(
+                ["{w#{n", "{wRevelation{n", "{wClu{n", "{wSecrt{n", "{wGM Notes{n"]
+            )
             for r in revs:
                 gmnote = get_gmnote(r)
                 table.add_row([r.id, r.name, r.clue_total, r.secret_total, gmnote])
@@ -1203,12 +1383,17 @@ class CmdGMNotes(ArxCommand):
         if self.args:
             plot = self.get_taggable_thing(self.args, "plot")
             rev_involvements = plot.revelation_involvement.all()
-            clue_involvements = plot.clue_involvement.all().order_by('-access')
+            clue_involvements = plot.clue_involvement.all().order_by("-access")
             title = " tied to %s|w:|n" % plot
             msg = ""
             if rev_involvements:
                 msg += "|wREVELATIONS%s\n" % title
-                msg += "\n".join(["|w[%s|w]|n %s" % (ob.revelation, ob.gm_notes) for ob in rev_involvements])
+                msg += "\n".join(
+                    [
+                        "|w[%s|w]|n %s" % (ob.revelation, ob.gm_notes)
+                        for ob in rev_involvements
+                    ]
+                )
                 msg += "\n"
             if clue_involvements:
                 gr_col, bl_col = "|g", "|035"
@@ -1220,11 +1405,19 @@ class CmdGMNotes(ArxCommand):
                         color = bl_col
                     else:
                         color = "|w"
-                    return "%s[%s%s]|n (#%s) %s" % (color, involvement.clue, color, involvement.clue.id,
-                                                    involvement.gm_notes)
+                    return "%s[%s%s]|n (#%s) %s" % (
+                        color,
+                        involvement.clue,
+                        color,
+                        involvement.clue.id,
+                        involvement.gm_notes,
+                    )
 
                 msg += "|wCLUES%s " % title
-                msg += "(%sGrants access|n, %sProvides hook|n, |wNeutral|n)\n" % (gr_col, bl_col)
+                msg += "(%sGrants access|n, %sProvides hook|n, |wNeutral|n)\n" % (
+                    gr_col,
+                    bl_col,
+                )
                 msg += "\n".join([get_details(ob) for ob in clue_involvements])
             self.msg(msg)
         else:
@@ -1242,14 +1435,18 @@ class CmdGMNotes(ArxCommand):
             else:
                 raise ValueError
         except ValueError:
-            raise CommandError("Please include Topic and GM notes for your quick clue: "
-                               "<topic>/<GMnotes>[=<target>]")
+            raise CommandError(
+                "Please include Topic and GM notes for your quick clue: "
+                "<topic>/<GMnotes>[=<target>]"
+            )
         targ = None
         if self.rhs:
             targ = self.search(self.rhs, global_search=True)
         author = self.caller.roster
         name = "PLACEHOLDER by %s: %s" % (author, topic)
-        clue = Clue.objects.create(name=name, gm_notes=gm_notes, author=author, tangible_object=targ)
+        clue = Clue.objects.create(
+            name=name, gm_notes=gm_notes, author=author, tangible_object=targ
+        )
         msg = "Created placeholder for '%s' (clue #%s)." % (topic, clue.id)
         if gm_notes:
             msg += " GM Notes: %s" % gm_notes
@@ -1261,7 +1458,9 @@ class CmdGMNotes(ArxCommand):
         tangible object. Character is auto-granted discovery of this clue.
         """
         if not len(self.lhslist) == 2 or not self.rhs:
-            raise CommandError("Usage: <character>,<revelation name or #>=<IC message>/<GMnote>")
+            raise CommandError(
+                "Usage: <character>,<revelation name or #>=<IC message>/<GMnote>"
+            )
         character = self.character_search(self.lhslist[0])
         revelation = self.get_taggable_thing(self.lhslist[1], "revelation")
         desc, gm_notes = self.rhs, ""
@@ -1271,15 +1470,26 @@ class CmdGMNotes(ArxCommand):
             desc = desc.split("/%s" % gm_notes)[0]
         num_secrets = character.clues.filter(clue_type=Clue.CHARACTER_SECRET).count()
         name = "Secret #%s of %s" % (num_secrets + 1, character.db_key)
-        cloo = Clue.objects.create(name=name, tangible_object=character, author=self.caller.roster, desc=desc,
-                                   gm_notes=gm_notes, clue_type=Clue.CHARACTER_SECRET)
+        cloo = Clue.objects.create(
+            name=name,
+            tangible_object=character,
+            author=self.caller.roster,
+            desc=desc,
+            gm_notes=gm_notes,
+            clue_type=Clue.CHARACTER_SECRET,
+        )
         cloo.usage.create(revelation=revelation, required_for_revelation=False, tier=99)
-        character.roster.discover_clue(cloo, method="GM granted", message="%s has a secret!" % character.db_key)
+        character.roster.discover_clue(
+            cloo, method="GM granted", message="%s has a secret!" % character.db_key
+        )
         msg = "|w[Clue #%s] %s:|n %s\n" % (cloo.id, cloo.name, cloo.desc)
         if gm_notes:
             msg += "|wGM Notes:|n %s\n" % gm_notes
-        msg += "|wCreated a secret for |c%s|w related to revelation #%s '%s'.|n" % (character.db_key,
-                                                                                    revelation.id, revelation)
+        msg += "|wCreated a secret for |c%s|w related to revelation #%s '%s'.|n" % (
+            character.db_key,
+            revelation.id,
+            revelation,
+        )
         self.msg(msg)
 
     def hook_secret_to_plot(self):
@@ -1288,26 +1498,47 @@ class CmdGMNotes(ArxCommand):
         to the dompc of the character designated as the clue's tangible_object.
         """
         if not len(self.lhslist) == 2:
-            raise CommandError("Usage: @gmnotes/hook <secret #ID>,<plot #ID>[=<gm notes>]")
+            raise CommandError(
+                "Usage: @gmnotes/hook <secret #ID>,<plot #ID>[=<gm notes>]"
+            )
         secret = self.get_taggable_thing(self.lhslist[0], "secret")
         plot = self.get_taggable_thing(self.lhslist[1], "plot")
         gm_notes = self.rhs if self.rhs else ""
-        content_str = "secret '%s' (#%s) and plot '%s' (#%s)" % (secret, secret.id, plot, plot.id)
+        content_str = "secret '%s' (#%s) and plot '%s' (#%s)" % (
+            secret,
+            secret.id,
+            plot,
+            plot.id,
+        )
         if plot.clue_involvement.filter(clue=secret).exists():
-            raise CommandError("Hook failed; one exists between %s already." % content_str)
+            raise CommandError(
+                "Hook failed; one exists between %s already." % content_str
+            )
         dompc = secret.tangible_object.dompc
         if dompc in plot.dompcs.all():
             raise CommandError("They already are involved in the plot.")
-        plot.clue_involvement.create(clue=secret, gm_notes=gm_notes, access=CluePlotInvolvement.HOOKED)
-        inf_msg = "Your %s are now connected! Use plots/findcontact to decide how you will " % content_str
+        plot.clue_involvement.create(
+            clue=secret, gm_notes=gm_notes, access=CluePlotInvolvement.HOOKED
+        )
+        inf_msg = (
+            "Your %s are now connected! Use plots/findcontact to decide how you will "
+            % content_str
+        )
         inf_msg += "approach a contact and get involved."
-        secret.tangible_object.dompc.inform(message=inf_msg, category="Plot Hook", append=True)
+        secret.tangible_object.dompc.inform(
+            message=inf_msg, category="Plot Hook", append=True
+        )
         msg = "Created a plot hook for %s." % content_str
         if gm_notes:
             msg += " GM Notes: %s" % gm_notes
         self.msg(msg)
-        msg_for_plot = "%s has had a hook created for the plot %s. " % (secret.tangible_object, plot)
-        msg_for_plot += "They can use plots/findcontact to see the recruiter_story written for any "
+        msg_for_plot = "%s has had a hook created for the plot %s. " % (
+            secret.tangible_object,
+            plot,
+        )
+        msg_for_plot += (
+            "They can use plots/findcontact to see the recruiter_story written for any "
+        )
         msg_for_plot += "character marked on your plot as a recruiter or above, which are intended to "
         msg_for_plot += "as in-character justifications on how they could have heard your character is "
         msg_for_plot += "involved to arrange a scene. Feel free to reach out to them first if you like."
@@ -1336,12 +1567,13 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
         @admin_journal/reveal_black <character>=<entry #>
         @admin_journal/hide_black <character>=<entry #>
     """
+
     key = "@admin_journal"
     aliases = ["@admin_journals"]
     locks = "cmd: perm(builders)"
     help_category = "Admin"
     black_switches = ("convert_to_white", "reveal_black", "hide_black")
-    conversion_switches = black_switches + ('convert_to_black',)
+    conversion_switches = black_switches + ("convert_to_black",)
 
     def journal_index(self, character, j_list):
         """Displays table of journals for character"""
@@ -1384,6 +1616,7 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
         charob = player.char_ob
         if not self.switches:
             from commands.base_commands.roster import display_relationships
+
             display_relationships(self.caller, charob, show_hidden=True)
             self.display_white(charob)
             self.display_black(charob)
@@ -1394,7 +1627,9 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
             if not target:
                 return
             target = target.char_ob
-            charob.messages.convert_short_rel_to_long_rel(target, rel_type, "black" not in self.switches)
+            charob.messages.convert_short_rel_to_long_rel(
+                target, rel_type, "black" not in self.switches
+            )
             self.msg("{rDone.{n")
             return
         if "cancel" in self.switches:
@@ -1406,18 +1641,27 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
             if not self.caller.check_permstring("wizards"):
                 self.msg("Need Wizard or higher permissions.")
                 return
-            journals = charob.messages.white_journal if "black" not in self.switches else charob.messages.black_journal
+            journals = (
+                charob.messages.white_journal
+                if "black" not in self.switches
+                else charob.messages.black_journal
+            )
             entry = self.get_entry(journals)
             if not entry:
                 return
             if not self.caller.ndb.confirm_msg_delete:
                 self.caller.ndb.confirm_msg_delete = entry
-                self.msg("{rEntry selected for deletion. To delete, repeat command. Otherwise cancel.")
+                self.msg(
+                    "{rEntry selected for deletion. To delete, repeat command. Otherwise cancel."
+                )
                 self.msg("{rSelected entry:{n %s" % entry.db_message)
                 return
             if self.caller.ndb.confirm_msg_delete != entry:
                 self.msg("{rEntries did not match.")
-                self.msg("{rSelected originally:{n %s" % self.caller.ndb.confirm_msg_delete.db_message)
+                self.msg(
+                    "{rSelected originally:{n %s"
+                    % self.caller.ndb.confirm_msg_delete.db_message
+                )
                 self.msg("{rSelected this time:{n %s" % entry.db_message)
                 return
             charob.messages.delete_journal(entry)
@@ -1439,16 +1683,28 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
             self.msg("{rConverted.{n")
             if "convert_to_black" in self.switches:
                 charob.messages.convert_to_black(entry)
-                inform_staff("%s moved %s's journal to black:\n%s" % (self.caller, charob, entry.db_message))
+                inform_staff(
+                    "%s moved %s's journal to black:\n%s"
+                    % (self.caller, charob, entry.db_message)
+                )
             elif "convert_to_white" in self.switches:
                 charob.messages.convert_to_white(entry)
-                inform_staff("%s moved %s's journal to white:\n%s" % (self.caller, charob, entry.db_message))
+                inform_staff(
+                    "%s moved %s's journal to white:\n%s"
+                    % (self.caller, charob, entry.db_message)
+                )
             elif "reveal_black" in self.switches:
                 entry.reveal_black_journal()
-                inform_staff("%s made %s's black journal public:\n%s" % (self.caller, charob, entry.db_message))
+                inform_staff(
+                    "%s made %s's black journal public:\n%s"
+                    % (self.caller, charob, entry.db_message)
+                )
             elif "hide_black" in self.switches:
                 entry.hide_black_journal()
-                inform_staff("%s made %s's black journal private:\n%s" % (self.caller, charob, entry.db_message))
+                inform_staff(
+                    "%s made %s's black journal private:\n%s"
+                    % (self.caller, charob, entry.db_message)
+                )
             self.caller.ndb.confirm_msg_convert = None
             return
         self.msg("Invalid switch.")
@@ -1465,7 +1721,10 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
         try:
             return journal[int(self.rhs) - 1]
         except (TypeError, ValueError, IndexError):
-            self.msg("You tried to get journal %s, but there are only %s entries." % (self.rhs, len(journal)))
+            self.msg(
+                "You tried to get journal %s, but there are only %s entries."
+                % (self.rhs, len(journal))
+            )
 
     def confirm_entry_conversion(self, entry):
         """
@@ -1479,14 +1738,21 @@ class CmdJournalAdminForDummies(ArxPlayerCommand):
         """
         if not self.caller.ndb.confirm_msg_convert:
             self.caller.ndb.confirm_msg_convert = entry
-            self.msg("{rEntry selected for conversion. To convert, repeat command. Otherwise cancel.")
+            self.msg(
+                "{rEntry selected for conversion. To convert, repeat command. Otherwise cancel."
+            )
             self.msg("{rSelected entry:{n %s" % entry.db_message)
             return False
         if self.caller.ndb.confirm_msg_convert != entry:
             self.msg("{rEntries did not match.")
-            self.msg("{rSelected originally:{n %s" % self.caller.ndb.confirm_msg_convert.db_message)
+            self.msg(
+                "{rSelected originally:{n %s"
+                % self.caller.ndb.confirm_msg_convert.db_message
+            )
             self.msg("{rSelected this time:{n %s" % entry.db_message)
-            self.msg("Previous selection cleared. You can select it again, for reals this time, then confirm.")
+            self.msg(
+                "Previous selection cleared. You can select it again, for reals this time, then confirm."
+            )
             self.caller.ndb.confirm_msg_convert = None
             return False
         return True
@@ -1499,6 +1765,7 @@ class CmdTransferKeys(ArxPlayerCommand):
         Usage:
             @transferkeys <source>=<target>
     """
+
     key = "@transferkeys"
     locks = "cmd: perm(builders)"
     help_category = "Building"
@@ -1537,6 +1804,7 @@ class CmdAdminKey(ArxCommand):
         @admin_key/rm/room <character>=<room>
         @admin_key/rm/chest <character>=<chest>
     """
+
     key = "@admin_key"
     aliases = ["@admin_keys"]
     locks = "cmd: perm(builders)"
@@ -1546,8 +1814,13 @@ class CmdAdminKey(ArxCommand):
         """Displays keys for pc"""
         chest_keys = pc.db.chestkeylist or []
         room_keys = pc.db.keylist or []
-        self.msg("\n{c%s's {wchest keys:{n %s" % (pc, ", ".join(str(ob) for ob in chest_keys)))
-        self.msg("\n{c%s's {wroom keys:{n %s" % (pc, ", ".join(str(ob) for ob in room_keys)))
+        self.msg(
+            "\n{c%s's {wchest keys:{n %s"
+            % (pc, ", ".join(str(ob) for ob in chest_keys))
+        )
+        self.msg(
+            "\n{c%s's {wroom keys:{n %s" % (pc, ", ".join(str(ob) for ob in room_keys))
+        )
 
     def func(self):
         """Executes admin_key command"""
@@ -1555,6 +1828,7 @@ class CmdAdminKey(ArxCommand):
         from typeclasses.characters import Character
         from typeclasses.wearable.wearable import WearableContainer
         from typeclasses.containers.container import Container
+
         pc = self.caller.search(self.lhs, global_search=True, typeclass=Character)
         if not pc:
             return
@@ -1579,7 +1853,9 @@ class CmdAdminKey(ArxCommand):
             self.msg("{rRemoved.")
             return
         if "chest" in self.switches:
-            chest = self.caller.search(self.rhs, global_search=True, typeclass=[Container, WearableContainer])
+            chest = self.caller.search(
+                self.rhs, global_search=True, typeclass=[Container, WearableContainer]
+            )
             if not chest:
                 return
             if "add" in self.switches:
@@ -1606,6 +1882,7 @@ class CmdRelocateExit(ArxCommand):
     with @tel, this also makes the reverse exit in the room this
     exit points to now correctly point to the new room.
     """
+
     key = "@relocate_exit"
     locks = "cmd: perm(builders)"
     help_category = "Building"
@@ -1613,6 +1890,7 @@ class CmdRelocateExit(ArxCommand):
     def func(self):
         """Executes relocate exit command"""
         from typeclasses.rooms import ArxRoom
+
         exit_obj = self.caller.search(self.lhs)
         if not exit_obj:
             return
@@ -1632,6 +1910,7 @@ class CmdAdminTitles(ArxPlayerCommand):
         @admin_titles/add <character>=<title>
         @admin_titles/remove <character>=#
     """
+
     key = "@admin_titles"
     aliases = ["@admin_title"]
     locks = "cmd: perm(builders)"
@@ -1640,7 +1919,9 @@ class CmdAdminTitles(ArxPlayerCommand):
     def display_titles(self, targ):
         """Displays list of titles for targ"""
         titles = targ.db.titles or []
-        title_list = ["{w%s){n %s" % (ob[0], ob[1]) for ob in enumerate(titles, start=1)]
+        title_list = [
+            "{w%s){n %s" % (ob[0], ob[1]) for ob in enumerate(titles, start=1)
+        ]
         self.msg("%s's titles: %s" % (targ, "; ".join(title_list)))
 
     def func(self):
@@ -1681,6 +1962,7 @@ class CmdAdminWrit(ArxPlayerCommand):
         @admin_writ/set <character>=<holder>,<value>,<notes>
         @admin_writ/remove <character>=<holder>
     """
+
     key = "@admin_writ"
     aliases = ["@admin_writs"]
     help_category = "GMing"
@@ -1704,8 +1986,11 @@ class CmdAdminWrit(ArxPlayerCommand):
         writs = targ.db.writs or {}
         if not self.rhs:
             from evennia.utils.evtable import EvTable
+
             self.msg("{wWrits of %s{n" % targ)
-            table = EvTable("{wMaster{n", "{wValue{n", "{wNotes{n", width=78, border="cells")
+            table = EvTable(
+                "{wMaster{n", "{wValue{n", "{wNotes{n", width=78, border="cells"
+            )
             for holder, writ in writs.items():
                 table.add_row(holder.capitalize(), writ[0], writ[1])
             table.reformat_column(0, width=15)
@@ -1727,7 +2012,10 @@ class CmdAdminWrit(ArxPlayerCommand):
             writs[holder] = [value, notes]
             targ.db.writs = writs
             targ.tags.add("has_writ")
-            self.msg("%s's writ to %s set to a value of %s, notes: %s" % (targ.key, holder, value, notes))
+            self.msg(
+                "%s's writ to %s set to a value of %s, notes: %s"
+                % (targ.key, holder, value, notes)
+            )
             return
         if "remove" in self.switches:
             holder = self.rhs.lower()
@@ -1758,6 +2046,7 @@ class CmdAdminBreak(ArxPlayerCommand):
     as long as the date is in the future. To end the break, set it to be the
     past.
     """
+
     key = "@admin_break"
     locks = "cmd: perm(builders)"
     help_category = "Admin"
@@ -1765,10 +2054,16 @@ class CmdAdminBreak(ArxPlayerCommand):
     def func(self):
         """Executes admin_break command"""
         from datetime import datetime
+
         if "toggle_allow_ocs" in self.switches:
-            new_value = not bool(ServerConfig.objects.conf("allow_character_creation_on_break"))
+            new_value = not bool(
+                ServerConfig.objects.conf("allow_character_creation_on_break")
+            )
             ServerConfig.objects.conf("allow_character_creation_on_break", new_value)
-            self.msg("Allowing character creation during break has been set to %s." % new_value)
+            self.msg(
+                "Allowing character creation during break has been set to %s."
+                % new_value
+            )
             return
         if not self.args:
             self.display_break_date()
@@ -1803,15 +2098,18 @@ class CmdSetServerConfig(ArxPlayerCommand):
     Sets configuration values for the server, such as a global MOTD,
     income modifier for Dominion, etc.
     """
+
     key = "setconfig"
     help_category = "Admin"
     locks = "cmd: perm(wizards)"
-    shorthand_to_real_keys = {"motd": "MESSAGE_OF_THE_DAY",
-                              "income": "GLOBAL_INCOME_MOD",
-                              "ap transfers disabled": "DISABLE_AP_TRANSFER",
-                              "cg bonus skill points": "CHARGEN_BONUS_SKILL_POINTS",
-                              "new clue ap cost": "NEW_CLUE_AP_COST",
-                              "material cost multiplier": "MATERIAL_COST_MULTIPLIER"}
+    shorthand_to_real_keys = {
+        "motd": "MESSAGE_OF_THE_DAY",
+        "income": "GLOBAL_INCOME_MOD",
+        "ap transfers disabled": "DISABLE_AP_TRANSFER",
+        "cg bonus skill points": "CHARGEN_BONUS_SKILL_POINTS",
+        "new clue ap cost": "NEW_CLUE_AP_COST",
+        "material cost multiplier": "MATERIAL_COST_MULTIPLIER",
+    }
     valid_keys = sorted(shorthand_to_real_keys.keys())
 
     def get_help(self, caller, cmdset):
@@ -1826,7 +2124,9 @@ class CmdSetServerConfig(ArxPlayerCommand):
             if not self.args:
                 return self.list_config_values()
             if "del" in self.switches or "delete" in self.switches:
-                ServerConfig.objects.conf(key=self.shorthand_to_real_keys[self.lhs], delete=True)
+                ServerConfig.objects.conf(
+                    key=self.shorthand_to_real_keys[self.lhs], delete=True
+                )
                 return self.list_config_values()
             self.set_server_config_value()
         except CommandError as err:
@@ -1840,11 +2140,13 @@ class CmdSetServerConfig(ArxPlayerCommand):
             if not quiet:
                 self.msg("Cannot convert to number. Using Default income value.")
             from world.dominion.domain.models import DEFAULT_GLOBAL_INCOME_MOD
+
             return DEFAULT_GLOBAL_INCOME_MOD
 
     def list_config_values(self):
         """Prints table of config values"""
         from evennia.utils.evtable import EvTable
+
         table = EvTable("key", "value", width=78)
         for key in self.valid_keys:
             val = ServerConfig.objects.conf(key=self.shorthand_to_real_keys[key])
@@ -1895,6 +2197,7 @@ class CmdAdminPropriety(ArxPlayerCommand):
         admin_propriety/add <tag>=<char, org, char2, char3, org2, etc>
         admin_propriety/remove <tag>=<char, org, char2, char3, org2, etc>
     """
+
     key = "admin_propriety"
     locks = "cmd: perm(builders)"
     help_category = "Admin"
@@ -1916,13 +2219,19 @@ class CmdAdminPropriety(ArxPlayerCommand):
 
     def list_tags(self):
         """Lists tags with their values"""
-        tags = Propriety.objects.values_list('name', 'percentage')
-        self.msg("|wPropriety Tags:|n %s" % ", ".join("%s(%s)" % (tag[0], tag[1]) for tag in tags))
+        tags = Propriety.objects.values_list("name", "percentage")
+        self.msg(
+            "|wPropriety Tags:|n %s"
+            % ", ".join("%s(%s)" % (tag[0], tag[1]) for tag in tags)
+        )
 
     def list_tag(self):
         """Lists characters with a given tag"""
         tag = self.get_tag()
-        self.msg("Entities with %s tag: %s" % (tag, ", ".join(str(ob) for ob in tag.owners.all())))
+        self.msg(
+            "Entities with %s tag: %s"
+            % (tag, ", ".join(str(ob) for ob in tag.owners.all()))
+        )
 
     def get_tag(self):
         """Gets a given propriety tag"""
@@ -1947,7 +2256,9 @@ class CmdAdminPropriety(ArxPlayerCommand):
         tag = self.get_tag()
         query = Q()
         for name in self.rhslist:
-            query |= Q(player__player__username__iexact=name) | Q(organization_owner__name__iexact=name)
+            query |= Q(player__player__username__iexact=name) | Q(
+                organization_owner__name__iexact=name
+            )
         owners = list(AssetOwner.objects.filter(query))
         if not owners:
             raise CommandError("No assetowners found by those names.")
@@ -1967,6 +2278,7 @@ class CmdAdjustFame(ArxPlayerCommand):
         adjustfame <character1>[,<char2>,...]=<amount>[/category[/reason[/longreason]]]
         adjustlegend <char1>[,<char2>,...]=<amount>[/category[/reason[/longreason]]]
     """
+
     key = "adjustfame"
     aliases = ["adjustlegend"]
     locks = "cmd: perm(wizards)"
@@ -1993,8 +2305,13 @@ class CmdAdjustFame(ArxPlayerCommand):
             if len(rhs_items) >= 2:
                 if len(rhs_items[1]) > 0:
                     try:
-                        adjust_category = PrestigeCategory.objects.get(name__iexact=rhs_items[1])
-                    except (PrestigeCategory.DoesNotExist, PrestigeCategory.MultipleObjectsReturned):
+                        adjust_category = PrestigeCategory.objects.get(
+                            name__iexact=rhs_items[1]
+                        )
+                    except (
+                        PrestigeCategory.DoesNotExist,
+                        PrestigeCategory.MultipleObjectsReturned,
+                    ):
                         raise CommandError("That is not a valid prestige category.")
 
             reason = None
@@ -2009,9 +2326,19 @@ class CmdAdjustFame(ArxPlayerCommand):
 
             for targ in targets:
                 if attr == "fame":
-                    targ.adjust_prestige(amount, category=adjust_category, reason=reason, long_reason=long_reason)
+                    targ.adjust_prestige(
+                        amount,
+                        category=adjust_category,
+                        reason=reason,
+                        long_reason=long_reason,
+                    )
                 else:
-                    targ.adjust_legend(amount, category=adjust_category, reason=reason, long_reason=long_reason)
+                    targ.adjust_legend(
+                        amount,
+                        category=adjust_category,
+                        reason=reason,
+                        long_reason=long_reason,
+                    )
                 targ.save()
             names = ", ".join(str(ob) for ob in targets)
             msg = "Adjusted %s for %s by %s" % (attr, names, amount)

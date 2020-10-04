@@ -17,6 +17,7 @@ class CmdDiceString(ArxCommand):
     Customizes a message you see whenever any character does a @check,
     in order to ensure that it is a real @check and not a pose.
     """
+
     key = "@dicestring"
     locks = "cmd:all()"
 
@@ -65,7 +66,7 @@ class CmdDiceCheck(ArxCommand):
     """
 
     key = "oldcheck"
-    aliases = ['oldroll']
+    aliases = ["oldroll"]
     locks = "cmd:all()"
 
     def func(self):
@@ -77,12 +78,16 @@ class CmdDiceCheck(ArxCommand):
 
         if not self.args:
             if is_retainer:
-                caller.msg("Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
+                caller.msg(
+                    "Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]"
+                )
                 return
             else:
-                caller.msg("Usage: @check <stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
+                caller.msg(
+                    "Usage: @check <stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]"
+                )
                 return
- 
+
         args = self.lhs if self.rhs else self.args
         args = args.lower()
         quiet = bool(self.rhs)
@@ -103,33 +108,41 @@ class CmdDiceCheck(ArxCommand):
             caller.msg("No retainer found with ID %s." % retainer_id)
             return
 
-        stats_and_skills.do_dice_check(caller=caller, retainer=retainer, stat=stat, skill=skill, difficulty=difficulty, quiet=quiet, flub=flub)
-        
+        stats_and_skills.do_dice_check(
+            caller=caller,
+            retainer=retainer,
+            stat=stat,
+            skill=skill,
+            difficulty=difficulty,
+            quiet=quiet,
+            flub=flub,
+        )
+
         if quiet:
             self._send_quiet_roll_msg()
-
 
     def _extract_retainer_id(self, args: str) -> (str, int):
         """
         Extracts retainer's ID number from args.
 
         Args must be of the form '<id>|<stat>[+<skill>][ at <difficulty number>]'
-        
+
         Returns retainer's ID and '<stat>[+<skill>][ at <difficulty number>]'
         """
         split_str = args.split("|")
-        
-        # If player uses negative number or = on accident (ie - split of | fails)
-        if not split_str[0].lstrip('-').isdigit() or len(split_str) < 2:
-            raise ValueError("Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]")
 
-        if split_str[0].lstrip('-').isdigit() and not int(split_str[0]) > 0:
+        # If player uses negative number or = on accident (ie - split of | fails)
+        if not split_str[0].lstrip("-").isdigit() or len(split_str) < 2:
+            raise ValueError(
+                "Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]"
+            )
+
+        if split_str[0].lstrip("-").isdigit() and not int(split_str[0]) > 0:
             raise ValueError("Retainer ID must be a positive number.")
 
         retainer_id = int(split_str[0])
 
         return split_str[1], retainer_id
-
 
     def _extract_difficulty(self, args: str) -> (str, int):
         """
@@ -137,21 +150,25 @@ class CmdDiceCheck(ArxCommand):
         to be DIFF_DEFAULT.
 
         Args must be of the form '<stat>[+<skill>][ at <difficulty number>]'
-        
+
         Returns difficulty and '<stat>[+<skill>]'
         """
         difficulty = stats_and_skills.DIFF_DEFAULT
         maximum_difference = 100
 
         # if args contains ' at ', then we split into halves. otherwise it's default difficulty
-        split_str = args.split(' at ')
+        split_str = args.split(" at ")
         if len(split_str) > 1:
-            if not split_str[1].isdigit() or not 0 < int(split_str[1]) < maximum_difference:
-                raise ValueError("Difficulty must be a number between 1 and %s." % maximum_difference)
+            if (
+                not split_str[1].isdigit()
+                or not 0 < int(split_str[1]) < maximum_difference
+            ):
+                raise ValueError(
+                    "Difficulty must be a number between 1 and %s." % maximum_difference
+                )
             difficulty = int(split_str[1])
-        
-        return split_str[0], difficulty
 
+        return split_str[0], difficulty
 
     def _extract_stat_skill(self, args: str) -> (str, str):
         """
@@ -168,7 +185,9 @@ class CmdDiceCheck(ArxCommand):
 
         matches = stats_and_skills.get_partial_match(stat, "stat")
         if not matches or len(matches) > 1:
-            raise ValueError("There must be one unique match for a character stat. Please check spelling and try again.")
+            raise ValueError(
+                "There must be one unique match for a character stat. Please check spelling and try again."
+            )
         # get unique string that matches stat
         stat = matches[0]
 
@@ -179,13 +198,16 @@ class CmdDiceCheck(ArxCommand):
                 if skill in self.caller.traits.skills:
                     matches = [skill]
                 else:
-                    raise ValueError("No matches for a skill by that name. Check spelling and try again.")
+                    raise ValueError(
+                        "No matches for a skill by that name. Check spelling and try again."
+                    )
             if len(matches) > 1:
-                raise ValueError("There must be one unique match for a character skill. Please check spelling and try again.")
+                raise ValueError(
+                    "There must be one unique match for a character skill. Please check spelling and try again."
+                )
             skill = matches[0]
 
         return stat, skill
-
 
     def _send_quiet_roll_msg(self):
         """
@@ -195,20 +217,27 @@ class CmdDiceCheck(ArxCommand):
 
         namelist = []
         roll_msg = "|w[Private Roll]|n " + Roll.build_msg(self.caller.ndb.last_roll)
-        if self.rhs.lower() in ("me", "self", str(self.caller).lower(), str(self.caller.key).lower()):
+        if self.rhs.lower() in (
+            "me",
+            "self",
+            str(self.caller).lower(),
+            str(self.caller.key).lower(),
+        ):
             namelist.append("self-only")
         else:  # send roll message to each recipient
             for name in self.rhs.split(","):
                 recipient = self.caller.search(name.strip(), use_nicks=True)
                 if recipient:
                     namelist.append(name.strip())
-                    recipient.msg(roll_msg, options={'roll':True})
+                    recipient.msg(roll_msg, options={"roll": True})
         roll_msg += " (Shared with: %s)" % ", ".join(namelist)
-        self.caller.msg(roll_msg, options={'roll':True})
+        self.caller.msg(roll_msg, options={"roll": True})
         # GMs always get to see rolls.
-        staff_list = [x for x in self.caller.location.contents if x.check_permstring("Builders")]
+        staff_list = [
+            x for x in self.caller.location.contents if x.check_permstring("Builders")
+        ]
         for gm in staff_list:
-            gm.msg(roll_msg, options={'roll':True})
+            gm.msg(roll_msg, options={"roll": True})
 
 
 class CmdSpoofCheck(ArxCommand):
@@ -246,14 +275,26 @@ class CmdSpoofCheck(ArxCommand):
         maximum_difference = 100
         crit = "can_crit" in self.switches
         flub = "flub" in self.switches
-        roll = Roll(can_crit=crit, quiet=False, announce_room=self.caller.location, announce_values=True, flub=flub)
+        roll = Roll(
+            can_crit=crit,
+            quiet=False,
+            announce_room=self.caller.location,
+            announce_values=True,
+            flub=flub,
+        )
         try:
             # rest of the command here. PS, I love you. <3
             # checks to see if difficulty exists. PPS Love you too!
-            args_list = self.args.lower().split(' at ')
+            args_list = self.args.lower().split(" at ")
             if len(args_list) > 1:
-                if not args_list[1].isdigit() or not 0 < int(args_list[1]) < maximum_difference:
-                    self.msg("Difficulty must be a number between 1 and %s." % maximum_difference)
+                if (
+                    not args_list[1].isdigit()
+                    or not 0 < int(args_list[1]) < maximum_difference
+                ):
+                    self.msg(
+                        "Difficulty must be a number between 1 and %s."
+                        % maximum_difference
+                    )
                     return
                 difficulty = int(args_list[1])
                 roll.difficulty = difficulty
@@ -277,5 +318,7 @@ class CmdSpoofCheck(ArxCommand):
             # Just so you know, you are beautiful and I love you. <3
             roll.roll()
         except IndexError:
-            self.msg("usage: @gmcheck <stat>/<value>[+<skill>/<value>] at <difficulty number>")
+            self.msg(
+                "usage: @gmcheck <stat>/<value>[+<skill>/<value>] at <difficulty number>"
+            )
             return

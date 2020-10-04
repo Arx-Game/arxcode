@@ -15,6 +15,7 @@ RUMOR_LIFETIME = 30
 
 class RumorCmdSet(CmdSet):
     """CmdSet for a market."""
+
     key = "RumorCmdSet"
     priority = 101
     duplicates = False
@@ -54,27 +55,38 @@ class CmdGossip(ArxCommand):
     Use gossip/story to read about a story that's been circulating around
     in recent weeks.
     """
+
     key = "gossip"
     locks = "cmd:all()"
     help_category = "Rumormill"
 
     @staticmethod
     def investigate(rumor, caller, diff):
-        result = do_dice_check(caller, stat="perception", skill="investigation", difficulty=diff)
+        result = do_dice_check(
+            caller, stat="perception", skill="investigation", difficulty=diff
+        )
         if result > 0:
             senders = rumor.db_sender_objects.all()
             return senders
 
     @staticmethod
     def intimidate(caller, diff):
-        result = do_dice_check(caller, stat="command", skill="intimidation", difficulty=diff)
+        result = do_dice_check(
+            caller, stat="command", skill="intimidation", difficulty=diff
+        )
         if result > 0:
             return True
         return False
 
     def disp_rumors(self, caller, rumors, add_heard=True):
-        table = evtable.EvTable("{w#{n", "{w%s{n" % self.key.capitalize(),
-                                border="cells", width=78, align="l", justify=True)
+        table = evtable.EvTable(
+            "{w#{n",
+            "{w%s{n" % self.key.capitalize(),
+            border="cells",
+            width=78,
+            align="l",
+            justify=True,
+        )
         x = 0
         heard_rumors = caller.ndb.heard_rumors or []
         week = get_week()
@@ -91,17 +103,21 @@ class CmdGossip(ArxCommand):
         msg = "{w%s{n" % self.key.capitalize().center(78)
         msg += "\n"
         msg += str(table)
-        stories = AssignedTask.objects.filter(finished=True, week__gte=week-3, observer_text__isnull=False)
+        stories = AssignedTask.objects.filter(
+            finished=True, week__gte=week - 3, observer_text__isnull=False
+        )
         if stories:
             msg += "\n"
             msg += "{wOther Rumors{n".center(78)
             msg += "\n"
-            table = evtable.EvTable("{wRumored Story #{n", "{wWeek{n", border="cells", width=78)
+            table = evtable.EvTable(
+                "{wRumored Story #{n", "{wWeek{n", border="cells", width=78
+            )
             for story in stories:
                 table.add_row(story.id, story.week)
             msg += str(table)
         return arx_more.msg(caller, msg, justify_kwargs=False)
-    
+
     def get_room_rumors(self):
         loc = self.caller.location
         return getattr(loc.messages, self.key)
@@ -220,14 +236,22 @@ class CmdRumor(CmdGossip):
     this location. Use rumors/story to read stories that have been
     circulating about in rumors in recent weeks.
     """
+
     key = "rumors"
     aliases = ["rumor"]
     locks = "cmd:all()"
     help_category = "Rumormill"
 
     def disp_rumors(self, caller, rumors, add_heard=True):
-        table = evtable.EvTable("{w#{n", "{wTopic{n", "{w%s{n" % self.key.capitalize(),
-                                border="cells", width=78, align="l", justify=True)
+        table = evtable.EvTable(
+            "{w#{n",
+            "{wTopic{n",
+            "{w%s{n" % self.key.capitalize(),
+            border="cells",
+            width=78,
+            align="l",
+            justify=True,
+        )
         x = 0
         week = get_week()
         heard_rumors = caller.ndb.heard_rumors or []
@@ -248,17 +272,21 @@ class CmdRumor(CmdGossip):
         msg = "{w%s{n" % self.key.capitalize().center(78)
         msg += "\n"
         msg += str(table)
-        stories = AssignedTask.objects.filter(finished=True, week__gte=week-3, observer_text__isnull=False)
+        stories = AssignedTask.objects.filter(
+            finished=True, week__gte=week - 3, observer_text__isnull=False
+        )
         if stories:
             msg += "\n"
             msg += "{wOther Rumors{n".center(78)
             msg += "\n"
-            table = evtable.EvTable("{wRumored Story #{n", "{wWeek{n", border="cells", width=78)
+            table = evtable.EvTable(
+                "{wRumored Story #{n", "{wWeek{n", border="cells", width=78
+            )
             for story in stories:
                 table.add_row(story.id, story.week)
             msg += str(table)
         return arx_more.msg(caller, msg, justify_kwargs=False)
-    
+
     def func(self):
         self.msg("Currently disabled.")
         return

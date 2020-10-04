@@ -23,6 +23,7 @@ def get_movement_message(verb, place):
         article = "the "
     return "You %s %s%s." % (verb, article, place.key)
 
+
 # ------------------------------------------------------------
 # Commands defined for places
 # ------------------------------------------------------------
@@ -42,6 +43,7 @@ class CmdJoin(ArxCommand):
 
     To leave, use 'depart'.
     """
+
     key = "join"
     locks = "cmd:all()"
     help_category = "Social"
@@ -50,7 +52,7 @@ class CmdJoin(ArxCommand):
         """Implements command"""
         caller = self.caller
         places = caller.location.db.places
-        table = caller.db.sitting_at_table       
+        table = caller.db.sitting_at_table
         args = self.args
         if not args or not args.strip("#").strip().isdigit():
             caller.msg("Usage: {wjoin <place #>{n")
@@ -75,7 +77,7 @@ class CmdJoin(ArxCommand):
         table.join(caller)
         caller.msg(get_movement_message("join", table))
 
-        
+
 class CmdListPlaces(ArxCommand):
     """
     Lists places in current room for private chat
@@ -89,6 +91,7 @@ class CmdListPlaces(ArxCommand):
     will require you to join a place once more. To leave a place, use
     'depart'.
     """
+
     key = "places"
     locks = "cmd:all()"
     help_category = "Social"
@@ -123,6 +126,7 @@ class DefaultCmdSet(CmdSet):
     bring it back. It's added to the object
     using obj.cmdset.add_default().
     """
+
     key = "PlacesDefault"
     # if we have multiple wearable objects, just keep
     # one cmdset, ditch others
@@ -134,7 +138,7 @@ class DefaultCmdSet(CmdSet):
         """Init the cmdset"""
         self.add(CmdJoin())
         self.add(CmdListPlaces())
-        
+
 
 class SittingCmdSet(CmdSet):
     """
@@ -145,6 +149,7 @@ class SittingCmdSet(CmdSet):
     bring it back. It's added to the object
     using obj.cmdset.add_default().
     """
+
     key = "SittingCmdSet"
     # if we have multiple wearable objects, just keep
     # one cmdset, ditch others
@@ -169,6 +174,7 @@ class CmdDepart(ArxCommand):
     cause you to leave automatically. To see available places,
     use 'places'. To join a place, use 'join'.
     """
+
     key = "depart"
     locks = "cmd:all()"
     help_category = "Social"
@@ -195,11 +201,12 @@ class CmdTableTalk(ArxCommand):
     Sends a message to your current table. You may pose at the table by
     starting a message with ':' or ';'. ':' has a space after your name,
     while ';' does not. So ':waves' is 'Bob waves', while ';s waves' is
-    'Bobs waves'. A table emit '|' does not add your name, so be sure to 
+    'Bobs waves'. A table emit '|' does not add your name, so be sure to
     identify yourself somehow in your text.
 
     To leave a place, use 'depart'.
     """
+
     key = "tt"
     locks = "cmd:all()"
     help_category = "Social"
@@ -222,17 +229,17 @@ class CmdTableTalk(ArxCommand):
 
         is_ooc = False
         msg_type = table.TT_SAY
-        options = {'is_pose': True}
+        options = {"is_pose": True}
 
         # If /ooc was used
         ooc_string = ""
         if "ooc" in self.switches:
             options = {}
             ooc_string = "|w(OOC)|n "
-            is_ooc=True
+            is_ooc = True
 
         # If highlighting color for caller
-        highlight = caller.player_ob.db.highlight_place        
+        highlight = caller.player_ob.db.highlight_place
         if highlight:
             place_color = caller.char_ob.db.place_color or ""
         else:
@@ -250,14 +257,25 @@ class CmdTableTalk(ArxCommand):
             else:
                 # send message as a pose
                 msg_type = table.TT_POSE
-            
+
         # If tt "say" msg, send to caller as "you say" then everyone else as "caller.name says"
         if msg_type == table.TT_SAY:
-            you_msg = "{ooc}At the {place_color}{place_name}|n, you say, \"{msg}\""
-            you_msg = you_msg.format(ooc=ooc_string, place_color=place_color, place_name=table.key, msg=args)
+            you_msg = '{ooc}At the {place_color}{place_name}|n, you say, "{msg}"'
+            you_msg = you_msg.format(
+                ooc=ooc_string, place_color=place_color, place_name=table.key, msg=args
+            )
 
             caller.msg(you_msg, options=options, from_obj=caller)
-            table.tt_msg(args, from_obj=caller, exclude=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)
+            table.tt_msg(
+                args,
+                from_obj=caller,
+                exclude=caller,
+                msg_type=msg_type,
+                is_ooc=is_ooc,
+                options=options,
+            )
         else:
             # Otherwise, it's a pose or emit so send it to everyone as a pose/emit.
-            table.tt_msg(msg, from_obj=caller, msg_type=msg_type, is_ooc=is_ooc, options=options)
+            table.tt_msg(
+                msg, from_obj=caller, msg_type=msg_type, is_ooc=is_ooc, options=options
+            )

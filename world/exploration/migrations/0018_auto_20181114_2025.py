@@ -8,28 +8,43 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0017_auto_20181113_2303'),
+        ("exploration", "0017_auto_20181113_2303"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhaven',
-            name='taint_level',
-            field=models.PositiveSmallIntegerField(default=1, help_text='How much abyssal taint does this shardhaven have, on a scale of 1 to 10.'),
+            model_name="shardhaven",
+            name="taint_level",
+            field=models.PositiveSmallIntegerField(
+                default=1,
+                help_text="How much abyssal taint does this shardhaven have, on a scale of 1 to 10.",
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='description',
-            field=models.TextField(blank=True, help_text='A description to use for this square instead of the generated one.', null=True),
+            model_name="shardhavenlayoutsquare",
+            name="description",
+            field=models.TextField(
+                blank=True,
+                help_text="A description to use for this square instead of the generated one.",
+                null=True,
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='name',
-            field=models.CharField(blank=True, help_text='A name to use for this square instead of the tile name.', max_length=30, null=True),
+            model_name="shardhavenlayoutsquare",
+            name="name",
+            field=models.CharField(
+                blank=True,
+                help_text="A name to use for this square instead of the tile name.",
+                max_length=30,
+                null=True,
+            ),
         ),
         migrations.AddField(
-            model_name='shardhavenmoodfragment',
-            name='taint_level',
-            field=models.PositiveSmallIntegerField(default=1, help_text='This mood fragment will only appear in shardhavens with this much or more abyssal taint.'),
+            model_name="shardhavenmoodfragment",
+            name="taint_level",
+            field=models.PositiveSmallIntegerField(
+                default=1,
+                help_text="This mood fragment will only appear in shardhavens with this much or more abyssal taint.",
+            ),
         ),
     ]

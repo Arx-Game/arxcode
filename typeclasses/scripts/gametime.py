@@ -37,8 +37,11 @@ class GameTime(Script):
         Internal function to upgrade from the old gametime script
         """
         from evennia.utils import logger
+
         if not ServerConfig.objects.conf(key="run_time", default=None):
-            logger.log_info("Upgrading or configuring gametime as ServerConfig value...")
+            logger.log_info(
+                "Upgrading or configuring gametime as ServerConfig value..."
+            )
             run_time = self.attributes.get("run_time", default=0.0)
             ServerConfig.objects.conf(key="run_time", value=run_time)
         if not self.attributes.has("intervals"):
@@ -56,12 +59,18 @@ class GameTime(Script):
         :param multiplier: The multiplier.
         :return:
         """
-        tdict = {'run': runtime, 'game': gametime, "multiplier": multiplier, "real": time.time()}
+        tdict = {
+            "run": runtime,
+            "game": gametime,
+            "multiplier": multiplier,
+            "real": time.time(),
+        }
         times = list(self.intervals)
         times.append(tdict)
         self.attributes.add("intervals", times)
 
         from evennia.utils import logger
+
         logger.log_info("Gametime: Marked new time {}".format(tdict))
 
     @property
@@ -87,7 +96,7 @@ class GameTime(Script):
             return 0, 0, 2.0
 
         tdict = self.intervals[-1]
-        return tdict['run'], tdict['game'], tdict['multiplier']
+        return tdict["run"], tdict["game"], tdict["multiplier"]
 
     @property
     def runtime(self):
@@ -139,6 +148,7 @@ class GameTime(Script):
                 self.at_start()
         except Exception:
             from evennia.utils import logger
+
             logger.log_trace()
 
     def at_start(self):
@@ -151,13 +161,16 @@ class GameTime(Script):
         self._upgrade()
         SERVER_RUNTIME = ServerConfig.objects.conf("run_time")
         from evennia.utils import logger
-        if self.attributes.has("check_run_time_since") or not self.attributes.has("runtime_marks"):
+
+        if self.attributes.has("check_run_time_since") or not self.attributes.has(
+            "runtime_marks"
+        ):
             last_realtime = self.attributes.get("check_run_time_since") or 0
             self.attributes.remove("check_run_time_since")
             if time.time() - last_realtime > 300:
                 runtime_marks = self.runtime_marks
-                runtime_marks.append({'runtime': self.runtime, 'realtime': time.time()})
-                self.attributes.add('runtime_marks', runtime_marks)
+                runtime_marks.append({"runtime": self.runtime, "realtime": time.time()})
+                self.attributes.add("runtime_marks", runtime_marks)
 
     def at_server_shutdown(self):
         """
@@ -182,6 +195,7 @@ def get_script():
     :return:
     """
     from evennia.scripts.models import ScriptDB
+
     try:
         script = ScriptDB.objects.get(db_key=GAMETIME_SCRIPT_NAME)
         return script
@@ -191,7 +205,8 @@ def get_script():
 
 # Legacy definitions
 
-def _format(seconds, *divisors) :
+
+def _format(seconds, *divisors):
     """
     Helper function. Creates a tuple of even dividends given
     a range of divisors.
@@ -289,10 +304,10 @@ def runtime_to_gametime(runtime, format=False):
     last_gametime = 0
     last_timescale = 2
     for interval in reversed(intervals):
-        if interval['run'] < runtime:
-            last_runtime = interval['run']
-            last_gametime = interval['game']
-            last_timescale = interval['multiplier']
+        if interval["run"] < runtime:
+            last_runtime = interval["run"]
+            last_gametime = interval["game"]
+            last_timescale = interval["multiplier"]
 
     timediff = runtime - last_runtime
     game_time = last_gametime + (timediff * last_timescale)
@@ -309,7 +324,9 @@ def closest_journal(realtime_secs):
     result = None
     target = datetime.datetime.fromtimestamp(realtime_secs)
     target2 = datetime.datetime.fromtimestamp(realtime_secs - 86400)
-    results = Journal.objects.filter(db_date_created__lte=target,db_date_created__gte=target2).order_by('-db_date_created')
+    results = Journal.objects.filter(
+        db_date_created__lte=target, db_date_created__gte=target2
+    ).order_by("-db_date_created")
     if results.count() > 0:
         result = results[0]
 
@@ -326,19 +343,19 @@ def realtime_to_gametime(realtime_secs, format=False):
 
     # Try to find better default
     for mark in reversed(script.intervals):
-        if mark['real'] < realtime_secs:
-            last_runtime = mark['run']
-            last_realtime = mark['real']
+        if mark["real"] < realtime_secs:
+            last_runtime = mark["run"]
+            last_realtime = mark["real"]
 
     for mark in reversed(runtime_marks):
-        if mark['realtime'] < realtime_secs:
-            last_realtime = mark['realtime']
-            last_runtime = mark['runtime']
+        if mark["realtime"] < realtime_secs:
+            last_realtime = mark["realtime"]
+            last_runtime = mark["runtime"]
 
     if last_runtime == 0:
         journal = closest_journal(realtime_secs)
         if journal is not None:
-            journal_ic_date = journal.parse_header().get('date')
+            journal_ic_date = journal.parse_header().get("date")
             journal_ic_date = journal_ic_date.replace(" AR", "")
             journal_date_elements = journal_ic_date.split("/")
             base_realtime = time.mktime(journal.db_date_created.timetuple())

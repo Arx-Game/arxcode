@@ -8,13 +8,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0022_auto_20171226_0208'),
+        ("character", "0022_auto_20171226_0208"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='clue',
-            name='gm_notes',
-            field=models.TextField(blank=True, help_text='Notes visible only to staff/GMs about this clue', verbose_name='GM Notes'),
+            model_name="clue",
+            name="gm_notes",
+            field=models.TextField(
+                blank=True,
+                help_text="Notes visible only to staff/GMs about this clue",
+                verbose_name="GM Notes",
+            ),
         ),
     ]

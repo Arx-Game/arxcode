@@ -12,6 +12,7 @@ class Perfume(Consumable):
     """
     Perfume.
     """
+
     default_desc = "This is a pleasant, lingering scent."
 
     @property
@@ -30,6 +31,7 @@ class Perfume(Consumable):
     def quality_prefix(self):
         recipe_id = self.db.recipe
         from world.dominion.models import CraftingRecipe
+
         try:
             recipe = CraftingRecipe.objects.get(id=recipe_id)
         except CraftingRecipe.DoesNotExist:

@@ -8,13 +8,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0013_auto_20181111_2025'),
+        ("exploration", "0013_auto_20181111_2025"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenobstacle',
-            name='haven_types',
-            field=models.ManyToManyField(blank=True, related_name='_shardhavenobstacle_haven_types_+', to='exploration.ShardhavenType'),
+            model_name="shardhavenobstacle",
+            name="haven_types",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="_shardhavenobstacle_haven_types_+",
+                to="exploration.ShardhavenType",
+            ),
         ),
     ]

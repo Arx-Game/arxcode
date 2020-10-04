@@ -9,7 +9,15 @@ class Paxfield(object):
     This is the base class from which all Paxfields descend.
     """
 
-    def __init__(self, key=None, full_name=None, default=None, required=False, help_text=None, priority=0):
+    def __init__(
+        self,
+        key=None,
+        full_name=None,
+        default=None,
+        required=False,
+        help_text=None,
+        priority=0,
+    ):
         self._key = key
         self._full_name = full_name
         self._help_text = help_text
@@ -25,7 +33,9 @@ class Paxfield(object):
             serialization_dict[self.key] = self.get()
 
     def validate(self, caller=None):
-        return False, "{} is a base field that should never have been added.".format(self.full_name)
+        return False, "{} is a base field that should never have been added.".format(
+            self.full_name
+        )
 
     def set(self, value, caller=None):
         pass
@@ -70,7 +80,9 @@ class TextField(Paxfield):
     a regex against which it can be validated
     """
 
-    def __init__(self, max_length=None, regex=None, required=False, default=None, **kwargs):
+    def __init__(
+        self, max_length=None, regex=None, required=False, default=None, **kwargs
+    ):
         super(TextField, self).__init__(**kwargs)
         self._max_length = max_length
         self._validator = regex
@@ -94,22 +106,28 @@ class TextField(Paxfield):
 
     def validate(self, caller=None):
         if self.required and not self.get():
-            return False, "Required field {} was not provided.  {}".format(self.full_name, self.help_text or "")
+            return False, "Required field {} was not provided.  {}".format(
+                self.full_name, self.help_text or ""
+            )
 
         if self.get() and (self._max_length and len(self.get()) > self._max_length):
-            return False, "{} was longer than {} characters.".format(self.full_name, self._max_length)
+            return False, "{} was longer than {} characters.".format(
+                self.full_name, self._max_length
+            )
 
         if self._validator:
             result = re.match(self._validator, self.get())
             if not result:
-                return False, "{} had an invalid value.  {}".format(self.full_name, self.help_text or "")
+                return False, "{} had an invalid value.  {}".format(
+                    self.full_name, self.help_text or ""
+                )
 
         return True, None
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
         if self._max_length is None or self._max_length > 120:
             return django.forms.CharField(widget=django.forms.Textarea, **options)
         else:
@@ -117,7 +135,6 @@ class TextField(Paxfield):
 
 
 class IntegerField(Paxfield):
-
     def __init__(self, min_value=None, max_value=None, **kwargs):
         super(IntegerField, self).__init__(**kwargs)
         self._min_value = min_value
@@ -139,29 +156,36 @@ class IntegerField(Paxfield):
             self._value = int(value)
             return self.validate(caller=caller)
         except ValueError:
-            return False, "{} must be an integer value. {}".format(self.full_name, self.help_text or "")
+            return False, "{} must be an integer value. {}".format(
+                self.full_name, self.help_text or ""
+            )
 
     def validate(self, caller=None):
         if self.required and not self.get():
-            return False, "Required field {} was not provided. {}".format(self.full_name, self.help_text)
+            return False, "Required field {} was not provided. {}".format(
+                self.full_name, self.help_text
+            )
 
         if self._min_value and self.get() < self._min_value:
-            return False, "{} was below the minimum value of {}. {}".format(self.full_name, self._min_value, self.help_text or "")
+            return False, "{} was below the minimum value of {}. {}".format(
+                self.full_name, self._min_value, self.help_text or ""
+            )
 
         if self._max_value and self.get() > self._max_value:
-            return False, "{} was above the maximum value of {}. {}".format(self.full_name, self._max_value, self.help_text or "")
+            return False, "{} was above the maximum value of {}. {}".format(
+                self.full_name, self._max_value, self.help_text or ""
+            )
 
         return True, None
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
         return django.forms.IntegerField(**options)
 
 
 class BooleanField(Paxfield):
-
     def __init__(self, **kwargs):
         super(BooleanField, self).__init__(**kwargs)
         self._value = None
@@ -186,7 +210,9 @@ class BooleanField(Paxfield):
             self._value = False
             return True, None
         else:
-            return False, "{} must be a yes/no value. {}".format(self.full_name, self.help_text or "")
+            return False, "{} must be a yes/no value. {}".format(
+                self.full_name, self.help_text or ""
+            )
 
     @staticmethod
     def get_display_params():
@@ -194,17 +220,18 @@ class BooleanField(Paxfield):
 
     def validate(self, caller=None):
         if self.required and self.get() is None:
-            return False, "Required field {} was left blank. {}".format(self.full_name, self.help_text or "")
+            return False, "Required field {} was left blank. {}".format(
+                self.full_name, self.help_text or ""
+            )
 
         return True, None
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name, 'required': False}
+        options = {"label": self.full_name, "required": False}
         return django.forms.BooleanField(**options)
 
 
 class ChoiceField(Paxfield):
-
     def __init__(self, choices=None, **kwargs):
         super(ChoiceField, self).__init__(**kwargs)
         self._choices = choices
@@ -227,7 +254,9 @@ class ChoiceField(Paxfield):
 
         choices = [str(c[1]) for c in self._choices]
         choice_list = ", ".join(choices)
-        return False, "{} must be one of the following values: {}.  {}".format(self.full_name, choice_list, self.help_text or "")
+        return False, "{} must be one of the following values: {}.  {}".format(
+            self.full_name, choice_list, self.help_text or ""
+        )
 
     def get_display(self):
         if self.get() is None:
@@ -245,15 +274,17 @@ class ChoiceField(Paxfield):
 
     def validate(self, caller=None):
         if self.required and self.get() is None:
-            return False, "Required field {} was left blank. {}".format(self.full_name, self.help_text or "")
+            return False, "Required field {} was left blank. {}".format(
+                self.full_name, self.help_text or ""
+            )
 
         return True, ""
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
-        options['choices'] = self._choices
+            options["required"] = self.required
+        options["choices"] = self._choices
         return django.forms.ChoiceField(**options)
 
 
@@ -270,6 +301,7 @@ class CharacterListField(Paxfield):
 
     def _get_character(self, args):
         from typeclasses.characters import Character
+
         try:
             if self._allow_npc:
                 return Character.objects.get(db_key__iexact=args)
@@ -280,6 +312,7 @@ class CharacterListField(Paxfield):
 
     def _get_character_by_id(self, args):
         from typeclasses.characters import Character
+
         try:
             key = int(args)
             if self._allow_npc:
@@ -295,7 +328,7 @@ class CharacterListField(Paxfield):
             self._value = None
             return True, None
 
-        if hasattr(value, 'split'):
+        if hasattr(value, "split"):
             value_list = value.split(",")
         else:
             value_list = value
@@ -333,12 +366,14 @@ class CharacterListField(Paxfield):
 
     def validate(self, caller=None):
         if self.required and not self.get():
-            return False, "Required field {} was not provided.  {}".format(self.full_name, self.help_text or "")
+            return False, "Required field {} was not provided.  {}".format(
+                self.full_name, self.help_text or ""
+            )
 
         return True, None
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
         return django.forms.CharField(**options)

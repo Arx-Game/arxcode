@@ -8,14 +8,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0035_auto_20180831_0922'),
-        ('character', '0031_auto_20181116_1219'),
+        ("dominion", "0035_auto_20180831_0922"),
+        ("character", "0031_auto_20181116_1219"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='theory',
-            name='plots',
-            field=models.ManyToManyField(blank=True, related_name='theories', to='dominion.Plot'),
+            model_name="theory",
+            name="plots",
+            field=models.ManyToManyField(
+                blank=True, related_name="theories", to="dominion.Plot"
+            ),
         ),
     ]

@@ -4,9 +4,24 @@ A basic inform, as well as other in-game messages.
 from django.conf import settings
 from django.db import models
 from evennia.comms.models import Msg
-from .managers import (JournalManager, WhiteJournalManager, BlackJournalManager, MessengerManager, WHITE_TAG, BLACK_TAG,
-                       RELATIONSHIP_TAG, MESSENGER_TAG, GOSSIP_TAG, RUMOR_TAG, POST_TAG,
-                       PostManager, RumorManager, PRESERVE_TAG, TAG_CATEGORY, REVEALED_BLACK_TAG)
+from .managers import (
+    JournalManager,
+    WhiteJournalManager,
+    BlackJournalManager,
+    MessengerManager,
+    WHITE_TAG,
+    BLACK_TAG,
+    RELATIONSHIP_TAG,
+    MESSENGER_TAG,
+    GOSSIP_TAG,
+    RUMOR_TAG,
+    POST_TAG,
+    PostManager,
+    RumorManager,
+    PRESERVE_TAG,
+    TAG_CATEGORY,
+    REVEALED_BLACK_TAG,
+)
 
 
 # ------------------------------------------------------------
@@ -14,6 +29,7 @@ from .managers import (JournalManager, WhiteJournalManager, BlackJournalManager,
 # Inform
 #
 # ------------------------------------------------------------
+
 
 class Inform(models.Model):
     """
@@ -32,16 +48,29 @@ class Inform(models.Model):
         is_unread - Whether the player has read the inform
         week - The # of the week during which this inform was created.
     """
-    player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="informs", blank=True, null=True,
-                               on_delete=models.CASCADE)
-    organization = models.ForeignKey("dominion.Organization", related_name="informs", blank=True, null=True,
-                                     on_delete=models.CASCADE)
+
+    player = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="informs",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    organization = models.ForeignKey(
+        "dominion.Organization",
+        related_name="informs",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
     message = models.TextField("Information sent to player or org")
     # send date
     date_sent = models.DateTimeField(editable=False, auto_now_add=True, db_index=True)
     # the week # of the maintenance cycle during which this inform was created
     week = models.PositiveSmallIntegerField(default=0, blank=0, db_index=True)
-    read_by = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="read_informs")
+    read_by = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="read_informs"
+    )
     # allow for different types of informs/reports
     category = models.CharField(blank=True, null=True, max_length=80)
     # let them mark important messages for saving
@@ -76,6 +105,7 @@ class MarkReadMixin(object):
     """
     Proxy method for Msg that adds a few methods that most uses in Arx will share in common.
     """
+
     def mark_read(self, player):
         """
         Mark this Msg object as read by the player
@@ -94,7 +124,7 @@ class MarkReadMixin(object):
 
     def check_read(self, player):
         return self.db_receivers_accounts.filter(id=player.id)
-        
+
     def parse_header(self):
         """
         Given a message object, return a dictionary of the different
@@ -105,18 +135,29 @@ class MarkReadMixin(object):
             return {}
         hlist = header.split(";")
         keyvalpairs = [pair.split(":") for pair in hlist]
-        keydict = {pair[0].strip(): pair[1].strip() for pair in keyvalpairs if len(pair) == 2}
+        keydict = {
+            pair[0].strip(): pair[1].strip() for pair in keyvalpairs if len(pair) == 2
+        }
         return keydict
 
     @property
     def event(self):
         from world.dominion.models import RPEvent
         from evennia.typeclasses.tags import Tag
+
         try:
-            tag = self.db_tags.get(db_key__isnull=False, db_data__isnull=False, db_category="event")
+            tag = self.db_tags.get(
+                db_key__isnull=False, db_data__isnull=False, db_category="event"
+            )
             return RPEvent.objects.get(id=tag.db_data)
-        except (Tag.DoesNotExist, Tag.MultipleObjectsReturned, AttributeError,
-                TypeError, ValueError, RPEvent.DoesNotExist):
+        except (
+            Tag.DoesNotExist,
+            Tag.MultipleObjectsReturned,
+            AttributeError,
+            TypeError,
+            ValueError,
+            RPEvent.DoesNotExist,
+        ):
             return None
 
     @property
@@ -135,7 +176,7 @@ class MarkReadMixin(object):
         else:
             real_name = "Unknown Sender"
         header = self.parse_header()
-        fake_name = header.get('spoofed_name', None) or ""
+        fake_name = header.get("spoofed_name", None) or ""
         if not fake_name:
             return real_name
         if viewer.check_permstring("builders"):
@@ -145,7 +186,7 @@ class MarkReadMixin(object):
     @property
     def ic_date(self):
         header = self.parse_header()
-        return header.get('date', None) or ""
+        return header.get("date", None) or ""
 
 
 # different proxy classes for Msg objects
@@ -153,8 +194,10 @@ class Journal(MarkReadMixin, Msg):
     """
     Proxy model for Msg that represents an in-game journal written by a Character.
     """
+
     class Meta:
         proxy = True
+
     objects = JournalManager()
     white_journals = WhiteJournalManager()
     black_journals = BlackJournalManager()
@@ -208,7 +251,7 @@ class Journal(MarkReadMixin, Msg):
     def remove_black_locks(self):
         """Removes the lock for black journals"""
         self.locks.add("read: all()")
-        
+
     def convert_to_black(self):
         """Converts this journal to a black journal"""
         self.db_header = self.db_header.replace("white", "black")
@@ -246,8 +289,10 @@ class Messenger(MarkReadMixin, Msg):
     """
     Proxy model for Msg that represents an in-game messenger sent by a Character.
     """
+
     class Meta:
         proxy = True
+
     objects = MessengerManager()
 
     @property
@@ -271,8 +316,10 @@ class Rumor(MarkReadMixin, Msg):
     """
     Proxy model for Msg that represents an in-game rumor written by a Character.
     """
+
     class Meta:
         proxy = True
+
     objects = RumorManager()
 
 
@@ -280,14 +327,17 @@ class Post(MarkReadMixin, Msg):
     """
     Proxy model for Msg that represents an ooc bulletin board post.
     """
+
     class Meta:
         proxy = True
+
     objects = PostManager()
 
     @property
     def bulletin_board(self):
         """Returns the bulletin board this post is attached to"""
         from typeclasses.bulletin_board.bboard import BBoard
+
         result = self.db_receivers_objects.filter(db_typeclass_path=BBoard.path).first()
 
         if result is None:
@@ -302,11 +352,15 @@ class Post(MarkReadMixin, Msg):
             return self.db_sender_external
         sender = ""
         if self.db_sender_accounts.exists():
-            sender += ", ".join(str(ob).capitalize() for ob in self.db_sender_accounts.all())
+            sender += ", ".join(
+                str(ob).capitalize() for ob in self.db_sender_accounts.all()
+            )
         if self.db_sender_objects.exists():
             if sender:
                 sender += ", "
-            sender += ", ".join(str(ob).capitalize() for ob in self.db_sender_objects.all())
+            sender += ", ".join(
+                str(ob).capitalize() for ob in self.db_sender_objects.all()
+            )
         if not sender:
             sender = "No One"
         return sender

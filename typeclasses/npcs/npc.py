@@ -21,13 +21,34 @@ command, it then summons guards for that player character.
 
 """
 from typeclasses.characters import Character
-from .npc_types import (get_npc_stats, get_npc_desc, get_npc_skills,
-                        get_npc_singular_name, get_npc_plural_name, get_npc_weapon,
-                        get_armor_bonus, get_hp_bonus, primary_stats,
-                        assistant_skills, spy_skills, get_npc_stat_cap, check_passive_guard,
-                        COMBAT_TYPES, get_innate_abilities, ABILITY_COSTS, ANIMAL, SMALL_ANIMAL)
-from world.stats_and_skills import (do_dice_check, get_stat_cost, get_skill_cost,
-                                    PHYSICAL_STATS, MENTAL_STATS, SOCIAL_STATS)
+from .npc_types import (
+    get_npc_stats,
+    get_npc_desc,
+    get_npc_skills,
+    get_npc_singular_name,
+    get_npc_plural_name,
+    get_npc_weapon,
+    get_armor_bonus,
+    get_hp_bonus,
+    primary_stats,
+    assistant_skills,
+    spy_skills,
+    get_npc_stat_cap,
+    check_passive_guard,
+    COMBAT_TYPES,
+    get_innate_abilities,
+    ABILITY_COSTS,
+    ANIMAL,
+    SMALL_ANIMAL,
+)
+from world.stats_and_skills import (
+    do_dice_check,
+    get_stat_cost,
+    get_skill_cost,
+    PHYSICAL_STATS,
+    MENTAL_STATS,
+    SOCIAL_STATS,
+)
 import time
 
 
@@ -36,6 +57,7 @@ class Npc(Character):
     NPC objects
 
     """
+
     ATK_MOD = 30
     DEF_MOD = -30
     # ------------------------------------------------
@@ -77,6 +99,7 @@ class Npc(Character):
             self.db.passive_guard = False
             if self.combat.state:
                 self.combat.state.wants_to_end = False
+
     passive = property(_get_passive, _set_passive)
 
     @property
@@ -122,7 +145,9 @@ class Npc(Character):
         else:
             self.db.sleep_status = "asleep"
         if self.location and not quiet:
-            self.location.msg_contents("%s%s falls %s." % (self.name, reason, self.db.sleep_status))
+            self.location.msg_contents(
+                "%s%s falls %s." % (self.name, reason, self.db.sleep_status)
+            )
 
     def wake_up(self, quiet=False):
         """
@@ -139,7 +164,7 @@ class Npc(Character):
         name = self.name
         if self.db.health_status == "dead":
             return "%s is currently dead." % name
-        wound = float(self.dmg)/float(self.max_hp)
+        wound = float(self.dmg) / float(self.max_hp)
         if wound <= 0:
             msg = "%s is in perfect health." % name
         elif 0 < wound <= 0.1:
@@ -190,7 +215,9 @@ class Npc(Character):
         The difficulty is supplied by the calling function.
         Target can be included for additional situational
         """
-        roll = do_dice_check(self, stat="perception", stat_keep=True, difficulty=difficulty)
+        roll = do_dice_check(
+            self, stat="perception", stat_keep=True, difficulty=difficulty
+        )
         return roll
 
     def get_fakeweapon(self, force_update=False):
@@ -237,10 +264,12 @@ class Npc(Character):
     # ------------------------------------------------
     def _get_npc_type(self):
         return self.db.npc_type or 0
+
     npc_type = property(_get_npc_type)
 
     def _get_quality(self):
         return self.db.npc_quality or 0
+
     quality = property(_get_quality)
 
     @property
@@ -269,12 +298,22 @@ class Npc(Character):
             return self.quantity
         return 0
 
-    def setup_npc(self, ntype=0, threat=0, num=1, sing_name=None, plural_name=None, desc=None, keepold=False):
+    def setup_npc(
+        self,
+        ntype=0,
+        threat=0,
+        num=1,
+        sing_name=None,
+        plural_name=None,
+        desc=None,
+        keepold=False,
+    ):
         self.db.damage = 0
         self.db.health_status = "alive"
         self.db.sleep_status = "awake"
 
         from commands.cmdsets import death
+
         self.cmdset.delete(death.DeathCmdSet)
 
         # if we don't
@@ -332,12 +371,14 @@ class MultiNpc(Npc):
         num = 1
         if self.ae_dmg >= self.max_hp:
             num = self.quantity
-            message = "{r%s have all died.{n" % get_npc_plural_name(self._get_npc_type())
+            message = "{r%s have all died.{n" % get_npc_plural_name(
+                self._get_npc_type()
+            )
         else:
             message = "{r%s has died.{n" % get_npc_singular_name(self._get_npc_type())
         if self.location:
             self.location.msg_contents(message)
-        if kwargs.get('affect_real_dmg', True):
+        if kwargs.get("affect_real_dmg", True):
             self.multideath(num=num, death=True)
             self.real_dmg = self.ae_dmg
         else:
@@ -351,9 +392,15 @@ class MultiNpc(Npc):
         """
         reason = " is %s and " % verb if verb else ""
         if self.location:
-            self.location.msg_contents("{w%s%s falls %s.{n" % (get_npc_singular_name(self._get_npc_type()),
-                                                               reason, "unconscious" if uncon else "asleep"))
-        if kwargs.get('affect_real_dmg', True):
+            self.location.msg_contents(
+                "{w%s%s falls %s.{n"
+                % (
+                    get_npc_singular_name(self._get_npc_type()),
+                    reason,
+                    "unconscious" if uncon else "asleep",
+                )
+            )
+        if kwargs.get("affect_real_dmg", True):
             self.multideath(num=1, death=False)
         else:
             self.temp_losses += 1
@@ -376,7 +423,16 @@ class MultiNpc(Npc):
                 self.key = "%s %s" % (self.db.num_living, noun)
         self.save()
 
-    def setup_npc(self, ntype=0, threat=0, num=1, sing_name=None, plural_name=None, desc=None, keepold=False):
+    def setup_npc(
+        self,
+        ntype=0,
+        threat=0,
+        num=1,
+        sing_name=None,
+        plural_name=None,
+        desc=None,
+        keepold=False,
+    ):
         self.db.num_living = num
         self.db.num_dead = 0
         self.db.num_incap = 0
@@ -419,7 +475,6 @@ class MultiNpc(Npc):
 
 # noinspection PyAttributeOutsideInit
 class AgentMixin(object):
-
     @property
     def desc(self):
         return self.agent.desc
@@ -442,11 +497,14 @@ class AgentMixin(object):
             guarding_name = "None"
         msg = self.assignment_string(guarding_name)
         if not guarding or (caller and guarding == caller.char_ob):
-            msg += " {wLocation:{n %s" % (self.location or self.db.docked or "Home Barracks")
+            msg += " {wLocation:{n %s" % (
+                self.location or self.db.docked or "Home Barracks"
+            )
         return msg
 
-    def setup_agent(self  # type: Retainer or Agent
-                    ):
+    def setup_agent(
+        self,  # type: Retainer or Agent
+    ):
         """
         We'll set up our stats based on the type given by our agent class.
         """
@@ -459,8 +517,9 @@ class AgentMixin(object):
         self.setup_npc(ntype=atype, threat=quality, num=agent.quantity, desc=desc)
         self.db.passive_guard = check_passive_guard(atype)
 
-    def setup_locks(self  # type: Retainer or Agent
-                    ):
+    def setup_locks(
+        self,  # type: Retainer or Agent
+    ):
         # base lock - the 'command' lock string
         lockfunc = ["command: %s", "desc: %s"]
         player_owner = None
@@ -486,8 +545,10 @@ class AgentMixin(object):
             # note that this will replace any currently defined 'command' lock
             self.locks.add(lock)
 
-    def assign(self,  # type: Retainer or Agent
-               targ):
+    def assign(
+        self,  # type: Retainer or Agent
+        targ,
+    ):
         """
         When given a Character as targ, we add ourselves to their list of
         guards, saved as an Attribute in the character object.
@@ -504,13 +565,16 @@ class AgentMixin(object):
             self.agentob.save()
 
     @property
-    def guarding(self  # type: Retainer or Agent
-                 ):
+    def guarding(
+        self,  # type: Retainer or Agent
+    ):
         return self.db.guarding
 
     @guarding.setter
-    def guarding(self,  # type: Retainer or Agent
-                 val):
+    def guarding(
+        self,  # type: Retainer or Agent
+        val,
+    ):
         if not val:
             self.attributes.remove("guarding")
             return
@@ -519,8 +583,9 @@ class AgentMixin(object):
     def start_guarding(self, val):
         self.guarding = val
 
-    def stop_guarding(self  # type: Retainer or Agent
-                      ):
+    def stop_guarding(
+        self,  # type: Retainer or Agent
+    ):
         targ = self.guarding
         if targ:
             targ.remove_guard(self)
@@ -539,8 +604,9 @@ class AgentMixin(object):
     def setup_name(self):
         self.name = self.agent.colored_name or self.agent.name
 
-    def unassign(self  # type: Retainer or Agent
-                 ):
+    def unassign(
+        self,  # type: Retainer or Agent
+    ):
         """
         When unassigned from the Character we were guarding, we remove
         ourselves from their guards list and then call unassign in our
@@ -555,18 +621,24 @@ class AgentMixin(object):
 
     def _get_quality(self):
         return self.agent.quality or 0
+
     npc_type = property(_get_npc_type)
     quality = property(_get_quality)
 
-    def stop_follow(self,  # type: Retainer or Agent
-                    dismiss=True, unassigning=False):
+    def stop_follow(
+        self,  # type: Retainer or Agent
+        dismiss=True,
+        unassigning=False,
+    ):
         super(AgentMixin, self).stop_follow()
         # if we're not being unassigned, we dock them. otherwise, they're gone
         if dismiss:
             self.dismiss(dock=not unassigning)
 
-    def summon(self,  # type: Retainer or Agent
-               summoner=None):
+    def summon(
+        self,  # type: Retainer or Agent
+        summoner=None,
+    ):
         """
         Have these guards appear to defend the character. This should generally only be
         called in a location that permits it, such as their house barracks, or in a
@@ -575,16 +647,22 @@ class AgentMixin(object):
         if not summoner:
             summoner = self.db.guarding
         loc = summoner.location
-        mapping = {'secret': True}
+        mapping = {"secret": True}
         self.move_to(loc, mapping=mapping)
         self.follow(self.db.guarding)
         docked_loc = self.db.docked
-        if docked_loc and docked_loc.db.docked_guards and self in docked_loc.db.docked_guards:
+        if (
+            docked_loc
+            and docked_loc.db.docked_guards
+            and self in docked_loc.db.docked_guards
+        ):
             docked_loc.db.docked_guards.remove(self)
         self.db.docked = None
 
-    def dismiss(self,  # type: Retainer or Agent
-                dock=True):
+    def dismiss(
+        self,  # type: Retainer or Agent
+        dock=True,
+    ):
         """
         Dismisses our guards. If they're not being dismissed permanently, then
         we dock them at the location they last occupied, saving it as an attribute.
@@ -608,17 +686,25 @@ class AgentMixin(object):
         if self.ndb.combat_manager:
             self.ndb.combat_manager.remove_combatant(self)
 
-    def at_init(self  # type: Retainer or Agent
-                ):
+    def at_init(
+        self,  # type: Retainer or Agent
+    ):
         try:
-            if self.location and self.db.guarding and self.db.guarding.location == self.location:
+            if (
+                self.location
+                and self.db.guarding
+                and self.db.guarding.location == self.location
+            ):
                 self.follow(self.db.guarding)
         except AttributeError:
             import traceback
+
             traceback.print_exc()
 
-    def get_stat_cost(self,  # type: Retainer or Agent
-                      attr):
+    def get_stat_cost(
+        self,  # type: Retainer or Agent
+        attr,
+    ):
         """
         Get the cost of a stat based on our current
         rating and the type of agent we are.
@@ -688,8 +774,9 @@ class AgentMixin(object):
         return self.agent.quality - 1
 
     @property
-    def agent(self  # type: Retainer or Agent
-              ):
+    def agent(
+        self,  # type: Retainer or Agent
+    ):
         """
         Returns the agent type that this object belongs to.
         """
@@ -706,8 +793,9 @@ class AgentMixin(object):
         return "teaching"
 
     @property
-    def species(self  # type: Retainer or Agent
-                ):
+    def species(
+        self,  # type: Retainer or Agent
+    ):
         if "animal" in self.agent.type_str:
             default = "animal"
         else:
@@ -723,14 +811,15 @@ class AgentMixin(object):
         self.owner.inform_owner(text, category="Agents")
 
     @property
-    def weaponized(self  # type: Retainer or Agent
-                   ):
+    def weaponized(
+        self,  # type: Retainer or Agent
+    ):
         if self.npc_type in COMBAT_TYPES:
             return True
         if self.weapons_hidden:
             return False
         try:
-            if self.weapondata.get('weapon_damage', 1) > 2:
+            if self.weapondata.get("weapon_damage", 1) > 2:
                 return True
         except (AttributeError, KeyError):
             return False
@@ -760,23 +849,29 @@ class AgentMixin(object):
         self.db.xp_training_cap = value
 
     @property
-    def xp_transfer_cap(self  # type: Retainer or Agent
-                        ):
+    def xp_transfer_cap(
+        self,  # type: Retainer or Agent
+    ):
         return self.db.xp_transfer_cap or 0
 
     @xp_transfer_cap.setter
-    def xp_transfer_cap(self,  # type: Retainer or Agent
-                        value):
+    def xp_transfer_cap(
+        self,  # type: Retainer or Agent
+        value,
+    ):
         self.db.xp_transfer_cap = value
 
     @property
-    def conditioning(self  # type: Retainer or Agent
-                     ):
+    def conditioning(
+        self,  # type: Retainer or Agent
+    ):
         return self.db.conditioning_for_training or 0
 
     @conditioning.setter
-    def conditioning(self,  # type: Retainer or Agent
-                     value):
+    def conditioning(
+        self,  # type: Retainer or Agent
+        value,
+    ):
         self.db.conditioning_for_training = value
 
 
@@ -785,7 +880,16 @@ class Retainer(AgentMixin, Npc):
     DEF_MOD = 0
 
     # noinspection PyUnusedLocal
-    def setup_npc(self, ntype=0, threat=0, num=1, sing_name=None, plural_name=None, desc=None, keepold=False):
+    def setup_npc(
+        self,
+        ntype=0,
+        threat=0,
+        num=1,
+        sing_name=None,
+        plural_name=None,
+        desc=None,
+        keepold=False,
+    ):
         self.db.damage = 0
         self.db.health_status = "alive"
         self.db.sleep_status = "awake"
@@ -820,26 +924,36 @@ class Retainer(AgentMixin, Npc):
             trainer.msg("You must have %s skill to train them." % self.training_skill)
             return False
         if self.uses_training_cap and self.xp_training_cap <= 0:
-            trainer.msg("They need more xp transferred to them before they can benefit from training.")
+            trainer.msg(
+                "They need more xp transferred to them before they can benefit from training."
+            )
             return False
         return super(Retainer, self).can_be_trained_by(trainer)
 
     def post_training(self, trainer, trainer_msg="", targ_msg="", ap_spent=0, **kwargs):
         # if post_training works, then we proceed with training the agent
-        if super(Retainer, self).post_training(trainer, trainer_msg=trainer_msg, targ_msg=targ_msg):
+        if super(Retainer, self).post_training(
+            trainer, trainer_msg=trainer_msg, targ_msg=targ_msg
+        ):
             currently_training = trainer.db.currently_training or []
             if self not in currently_training:
                 # this should not be possible. Nonetheless, it has happened.
                 from server.utils.arx_utils import trainer_diagnostics
-                raise RuntimeError("Error: Training list not properly updated: %s" % trainer_diagnostics(trainer))
+
+                raise RuntimeError(
+                    "Error: Training list not properly updated: %s"
+                    % trainer_diagnostics(trainer)
+                )
             self.train_agent(trainer, ap_spent)
         else:
-            raise RuntimeError("Somehow, post_training was not called or did not return a value.")
+            raise RuntimeError(
+                "Somehow, post_training was not called or did not return a value."
+            )
 
     @property
     def training_difficulty(self):
         difficulty_multiplier = 0.75 if self.training_skill == "animal ken" else 1
-        unspent_xp_penalty = self.agent.xp/2 - (self.agent.quality * 15)
+        unspent_xp_penalty = self.agent.xp / 2 - (self.agent.quality * 15)
         if unspent_xp_penalty < 0:
             unspent_xp_penalty = 0
         agent_level_penalty = self.agent.quality * 5
@@ -859,16 +973,28 @@ class Retainer(AgentMixin, Npc):
         use_real_name = self.location != trainer.location
         name = trainer.key if use_real_name else str(trainer)
         self.conditioning += conditioning
-        roll = do_dice_check(trainer, stat="command", skill=self.training_skill, difficulty=self.training_difficulty,
-                             quiet=False, use_real_name=use_real_name)
+        roll = do_dice_check(
+            trainer,
+            stat="command",
+            skill=self.training_skill,
+            difficulty=self.training_difficulty,
+            quiet=False,
+            use_real_name=use_real_name,
+        )
         if roll < 0:
             trainer.msg("You have failed to teach them anything.")
-            msg = "%s has attempted to train %s, but utterly failed to teach them anything." % (name, self)
+            msg = (
+                "%s has attempted to train %s, but utterly failed to teach them anything."
+                % (name, self)
+            )
         else:
             if self.uses_training_cap:
                 if roll > self.xp_training_cap:
                     roll = self.xp_training_cap
-                    trainer.msg("You were limited by %s's training cap, and could only give them %s xp." % (self, roll))
+                    trainer.msg(
+                        "You were limited by %s's training cap, and could only give them %s xp."
+                        % (self, roll)
+                    )
                 self.xp_training_cap -= roll
             self.agent.xp += roll
             self.agent.save()
@@ -942,12 +1068,14 @@ class Agent(AgentMixin, MultiNpc):
         num = 1
         if self.ae_dmg >= self.max_hp:
             num = self.quantity
-            message = "{r%s have all died.{n" % get_npc_plural_name(self._get_npc_type())
+            message = "{r%s have all died.{n" % get_npc_plural_name(
+                self._get_npc_type()
+            )
         else:
             message = "{r%s has died.{n" % get_npc_singular_name(self._get_npc_type())
         if self.location:
             self.location.msg_contents(message)
-        if kwargs.get('affect_real_dmg', False):
+        if kwargs.get("affect_real_dmg", False):
             self.lose_agents(num=num, death=True)
             self.real_dmg = self.ae_dmg
         else:

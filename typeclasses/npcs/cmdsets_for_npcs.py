@@ -24,6 +24,7 @@ class CmdHugPoro(ArxCommand):
 
     You know you want to.
     """
+
     key = "hug poro"
     locks = "cmd:all()"
     help_category = "Poro-based commands"
@@ -31,10 +32,12 @@ class CmdHugPoro(ArxCommand):
     def func(self):
         """Implements command"""
         caller = self.caller
-        caller.location.msg_contents("%s hugs the poro, and it squeaks adorably." % caller)
+        caller.location.msg_contents(
+            "%s hugs the poro, and it squeaks adorably." % caller
+        )
         return
 
-        
+
 class PoroCmdSet(CmdSet):
     """
     The default cmdset always sits
@@ -44,6 +47,7 @@ class PoroCmdSet(CmdSet):
     bring it back. It's added to the object
     using obj.cmdset.add_default().
     """
+
     key = "Poro"
     # if we have multiple wearable objects, just keep
     # one cmdset, ditch others

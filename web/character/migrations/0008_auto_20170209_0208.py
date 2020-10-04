@@ -8,18 +8,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0007_auto_20170130_1437'),
+        ("character", "0007_auto_20170130_1437"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='investigation',
-            name='action_points',
-            field=models.PositiveSmallIntegerField(blank=0, default=0, help_text='How many action points spent by player/assistants.'),
+            model_name="investigation",
+            name="action_points",
+            field=models.PositiveSmallIntegerField(
+                blank=0,
+                default=0,
+                help_text="How many action points spent by player/assistants.",
+            ),
         ),
         migrations.AddField(
-            model_name='rosterentry',
-            name='action_points',
+            model_name="rosterentry",
+            name="action_points",
             field=models.SmallIntegerField(blank=100, default=100),
         ),
     ]

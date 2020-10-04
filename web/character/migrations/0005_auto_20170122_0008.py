@@ -8,32 +8,32 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0004_auto_20161217_0654'),
+        ("character", "0004_auto_20161217_0654"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='cluediscovery',
-            options={'verbose_name_plural': 'Clue Discoveries'},
+            name="cluediscovery",
+            options={"verbose_name_plural": "Clue Discoveries"},
         ),
         migrations.AlterModelOptions(
-            name='mysterydiscovery',
-            options={'verbose_name_plural': 'Mystery Discoveries'},
+            name="mysterydiscovery",
+            options={"verbose_name_plural": "Mystery Discoveries"},
         ),
         migrations.AlterModelOptions(
-            name='revelationdiscovery',
-            options={'verbose_name_plural': 'Revelation Discoveries'},
+            name="revelationdiscovery",
+            options={"verbose_name_plural": "Revelation Discoveries"},
         ),
         migrations.AlterUniqueTogether(
-            name='mysterydiscovery',
-            unique_together=set([('character', 'mystery')]),
+            name="mysterydiscovery",
+            unique_together=set([("character", "mystery")]),
         ),
         migrations.AlterUniqueTogether(
-            name='revelationdiscovery',
-            unique_together=set([('character', 'revelation')]),
+            name="revelationdiscovery",
+            unique_together=set([("character", "revelation")]),
         ),
         migrations.AlterUniqueTogether(
-            name='rosterentry',
-            unique_together=set([('player', 'character')]),
+            name="rosterentry",
+            unique_together=set([("player", "character")]),
         ),
     ]

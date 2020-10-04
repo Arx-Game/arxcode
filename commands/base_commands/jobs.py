@@ -63,6 +63,7 @@ class CmdJob(ArxPlayerCommand):
 
     To view other queues, use @bug, @code, @typo, or @prp.
     """
+
     key = "@job"
     aliases = ["@jobs", "@bug", "@code", "@typo", "@prp"]
     help_category = "Admin"
@@ -89,11 +90,13 @@ class CmdJob(ArxPlayerCommand):
 
     def display_open_tickets(self):
         """Display tickets based on commandline options"""
-        open_tickets = Ticket.objects.select_related('queue').filter(
-                                queue__in=self.queues_from_args
-                                ).exclude(
-                                status=Ticket.CLOSED_STATUS,
-                                )
+        open_tickets = (
+            Ticket.objects.select_related("queue")
+            .filter(queue__in=self.queues_from_args)
+            .exclude(
+                status=Ticket.CLOSED_STATUS,
+            )
+        )
         if "low" in self.switches:
             open_tickets = open_tickets.filter(priority__gt=5)
         else:
@@ -106,14 +109,20 @@ class CmdJob(ArxPlayerCommand):
         if not joblist:
             self.msg("No open tickets.")
             return
-        table = prettytable.PrettyTable(["{w#",
-                                         "{wPlayer",
-                                         "{wRequest",
-                                         "{wPriority/Q"])
+        table = prettytable.PrettyTable(
+            ["{w#", "{wPlayer", "{wRequest", "{wPriority/Q"]
+        )
         for ticket in joblist:
             color = "|r" if ticket.priority == 1 else ""
             q_category = "%s%s %s|n" % (color, ticket.priority, ticket.queue.slug)
-            table.add_row([str(ticket.id), str(ticket.submitting_player.key), str(ticket.title)[:20], q_category])
+            table.add_row(
+                [
+                    str(ticket.id),
+                    str(ticket.submitting_player.key),
+                    str(ticket.title)[:20],
+                    q_category,
+                ]
+            )
         self.msg("{wOpen Tickets:{n\n%s" % table)
 
     def func(self):
@@ -125,7 +134,7 @@ class CmdJob(ArxPlayerCommand):
             # list all open tickets
             self.display_open_tickets()
             return
-        if args and (not switches or 'old' in switches):
+        if args and (not switches or "old" in switches):
             # list individual ticket specified by args
             # ticket = [ticket_id, playob, request_string, date_submit, gm_ob, gm_notes, date_answer, optional_title]
             try:
@@ -142,43 +151,54 @@ class CmdJob(ArxPlayerCommand):
                 return
             caller.msg(ticket.display())
             return
-        if 'old' in switches and not args:
+        if "old" in switches and not args:
             # list closed tickets
             # closed & resolved tickets, assigned to current user
-            tickets_closed_resolved = Ticket.objects.select_related('queue').filter(
-                                        status__in=[Ticket.CLOSED_STATUS, Ticket.RESOLVED_STATUS]).filter(
-                queue__in=self.queues_from_args)
+            tickets_closed_resolved = (
+                Ticket.objects.select_related("queue")
+                .filter(status__in=[Ticket.CLOSED_STATUS, Ticket.RESOLVED_STATUS])
+                .filter(queue__in=self.queues_from_args)
+            )
             joblist = list(tickets_closed_resolved)
             if not joblist:
                 caller.msg("No closed tickets.")
                 return
             # get 20 most recent
             joblist = joblist[-20:]
-            table = prettytable.PrettyTable(["{w#",
-                                             "{wPlayer",
-                                             "{wRequest",
-                                             "{wQueue"])
+            table = prettytable.PrettyTable(["{w#", "{wPlayer", "{wRequest", "{wQueue"])
             for ticket in joblist:
-                table.add_row([str(ticket.id), str(ticket.submitting_player), str(ticket.title)[:20],
-                               ticket.queue.slug])
+                table.add_row(
+                    [
+                        str(ticket.id),
+                        str(ticket.submitting_player),
+                        str(ticket.title)[:20],
+                        ticket.queue.slug,
+                    ]
+                )
             caller.msg("{wClosed Tickets:{n\n%s" % table)
             return
-        if 'moreold' in switches:
+        if "moreold" in switches:
             # list closed tickets
-            tickets_closed_resolved = Ticket.objects.select_related('queue').filter(
-                status__in=[Ticket.CLOSED_STATUS, Ticket.RESOLVED_STATUS]).filter(
-                queue__in=self.queues_from_args).filter(id__gte=self.lhslist[0], id__lte=self.lhslist[1])
+            tickets_closed_resolved = (
+                Ticket.objects.select_related("queue")
+                .filter(status__in=[Ticket.CLOSED_STATUS, Ticket.RESOLVED_STATUS])
+                .filter(queue__in=self.queues_from_args)
+                .filter(id__gte=self.lhslist[0], id__lte=self.lhslist[1])
+            )
             joblist = list(tickets_closed_resolved)
             if not joblist:
                 caller.msg("No closed tickets.")
                 return
-            table = prettytable.PrettyTable(["{w#",
-                                             "{wPlayer",
-                                             "{wRequest",
-                                             "{wQueue"])
+            table = prettytable.PrettyTable(["{w#", "{wPlayer", "{wRequest", "{wQueue"])
             for ticket in joblist:
-                table.add_row([str(ticket.id), str(ticket.submitting_player), str(ticket.title)[:20],
-                               ticket.queue.slug])
+                table.add_row(
+                    [
+                        str(ticket.id),
+                        str(ticket.submitting_player),
+                        str(ticket.title)[:20],
+                        ticket.queue.slug,
+                    ]
+                )
             caller.msg("{wClosed Tickets:{n\n%s" % table)
             return
         try:
@@ -186,7 +206,7 @@ class CmdJob(ArxPlayerCommand):
         except (ValueError, Ticket.DoesNotExist):
             self.msg("No ticket found by that number.")
             return
-        if 'close' in switches:
+        if "close" in switches:
             # Closing a ticket. Check formatting first
             if not self.rhs:
                 caller.msg("Usage: @job/close <#>=<GM Notes>")
@@ -197,15 +217,17 @@ class CmdJob(ArxPlayerCommand):
             else:
                 caller.msg("Failed to close ticket #%s." % ticket.id)
                 return
-        if 'assign' in switches:
+        if "assign" in switches:
             player = self.caller.search(self.rhs) if self.rhs else None
             if not player:
                 return
             ticket.assigned_to = player
             ticket.save()
-            inform_staff("|w%s assigned ticket #%s to |c%s|w." % (caller, ticket.id, player))
+            inform_staff(
+                "|w%s assigned ticket #%s to |c%s|w." % (caller, ticket.id, player)
+            )
             return
-        if 'followup' in switches or 'update' in switches or "follow" in switches:
+        if "followup" in switches or "update" in switches or "follow" in switches:
             if not self.lhs or not self.rhs:
                 caller.msg("Usage: @job/followup <#>=<msg>")
                 return
@@ -214,10 +236,12 @@ class CmdJob(ArxPlayerCommand):
                 return
             caller.msg("Error in followup.")
             return
-        if 'move' in switches:
+        if "move" in switches:
             slugs = ", ".join([str(q.slug) for q in Queue.objects.all()])
             if not self.lhs or not self.rhs:
-                move_msg = "|wUsage:|n @job/move <#>=<queue> |wQueue options:|n %s" % slugs
+                move_msg = (
+                    "|wUsage:|n @job/move <#>=<queue> |wQueue options:|n %s" % slugs
+                )
                 self.msg(move_msg)
                 return
             try:
@@ -229,14 +253,16 @@ class CmdJob(ArxPlayerCommand):
             ticket.save()
             self.msg("Ticket %s is now in queue %s." % (ticket.id, queue))
             return
-        if 'delete' in switches or 'del' in switches:
+        if "delete" in switches or "del" in switches:
             if ticket.queue.slug == "Story":
-                self.msg("Cannot delete a storyaction. Please move it to a different queue first.")
+                self.msg(
+                    "Cannot delete a storyaction. Please move it to a different queue first."
+                )
                 return
             self.msg("Deleting ticket #%s." % ticket.id)
             ticket.delete()
             return
-        if 'priority' in switches:
+        if "priority" in switches:
             try:
                 ticket.priority = int(self.rhs)
             except (TypeError, ValueError):
@@ -281,9 +307,17 @@ class CmdRequest(ArxPlayerCommand):
 
     To make an IC action, use @action instead.
     """
+
     key = "request"
-    aliases = ["requests", "+911", "+ineedanadult",
-               "bug", "typo", "+featurerequest", "+prprequest"]
+    aliases = [
+        "requests",
+        "+911",
+        "+ineedanadult",
+        "bug",
+        "typo",
+        "+featurerequest",
+        "+prprequest",
+    ]
     help_category = "Admin"
     locks = "cmd:all()"
 
@@ -298,10 +332,14 @@ class CmdRequest(ArxPlayerCommand):
 
     def list_tickets(self):
         """List tickets for the caller"""
-        closed = self.tickets.filter(status__in=[Ticket.CLOSED_STATUS, Ticket.RESOLVED_STATUS])
+        closed = self.tickets.filter(
+            status__in=[Ticket.CLOSED_STATUS, Ticket.RESOLVED_STATUS]
+        )
         tickets = self.tickets.filter(status=Ticket.OPEN_STATUS)
         msg = "{wClosed tickets:{n %s" % ", ".join(str(ticket.id) for ticket in closed)
-        msg += "\n{wOpen tickets:{n %s" % ", ".join(str(ticket.id) for ticket in tickets)
+        msg += "\n{wOpen tickets:{n %s" % ", ".join(
+            str(ticket.id) for ticket in tickets
+        )
         msg += "\nUse {w+request <#>{n to view an individual ticket. "
         msg += "Use {w+request/followup <#>=<comment>{n to add a comment."
         self.msg(msg)
@@ -336,7 +374,7 @@ class CmdRequest(ArxPlayerCommand):
             caller.msg("Followup added.")
             return
         cmdstr = self.cmdstring.lower()
-        if cmdstr == '+911':
+        if cmdstr == "+911":
             priority = 1
         if not self.lhs:
             self.list_tickets()
@@ -366,14 +404,24 @@ class CmdRequest(ArxPlayerCommand):
             slug = "PRP"
         else:
             slug = settings.REQUEST_QUEUE_SLUG
-        new_ticket = helpdesk_api.create_ticket(caller, args, priority, queue_slug=slug, send_email=email,
-                                                optional_title=optional_title)
+        new_ticket = helpdesk_api.create_ticket(
+            caller,
+            args,
+            priority,
+            queue_slug=slug,
+            send_email=email,
+            optional_title=optional_title,
+        )
         if new_ticket:
-            caller.msg("Thank you for submitting a request to the GM staff. Your ticket (#%s) "
-                       "has been added to the queue." % new_ticket.id)
+            caller.msg(
+                "Thank you for submitting a request to the GM staff. Your ticket (#%s) "
+                "has been added to the queue." % new_ticket.id
+            )
             return
         else:
-            caller.msg("Ticket submission has failed for unknown reason. Please inform the administrators.")
+            caller.msg(
+                "Ticket submission has failed for unknown reason. Please inform the administrators."
+            )
             return
 
 
@@ -427,10 +475,7 @@ class CmdApp(ArxPlayerCommand):
                 return
             # app = [app_num, char_ob, email, date_submit, application_string,
             # gm_ob, date_answer, gm_notes, approval, pending]
-            table = prettytable.PrettyTable(["{w#",
-                                             "{wCharacter",
-                                             "{wEmail",
-                                             "{wDate"])
+            table = prettytable.PrettyTable(["{w#", "{wCharacter", "{wEmail", "{wDate"])
             for app in pend_list:
                 table.add_row([app[0], app[1].key.capitalize(), app[2], app[3]])
             caller.msg("{wApplications for Characters pending approval:\n%s" % table)
@@ -450,16 +495,13 @@ class CmdApp(ArxPlayerCommand):
                 return
             # app = [app_num, char_ob, email, date_submit, application_string, gm_ob,
             # date_answer, gm_notes, approval, pending]
-            table = prettytable.PrettyTable(["{w#",
-                                             "{wCharacter",
-                                             "{wEmail",
-                                             "{wDate"])
+            table = prettytable.PrettyTable(["{w#", "{wCharacter", "{wEmail", "{wDate"])
             for app in pend_list:
                 table.add_row([app[0], app[1].key.capitalize(), app[2], app[3]])
             caller.msg("{wPending applications for %s:\n%s" % (args, table))
             caller.msg("To view a specific application, @app <app number>")
             return
-        if args and args.isdigit() and (not switches or 'old' in switches):
+        if args and args.isdigit() and (not switches or "old" in switches):
             # '@app <#>
             # List a given ticket by
             app = apps.view_app(int(args))
@@ -471,7 +513,9 @@ class CmdApp(ArxPlayerCommand):
             caller.msg("{wCharacter:{n %s" % app[1].key.capitalize())
             caller.msg("{wApp Email:{n %s" % email)
             if alts:
-                caller.msg("{wCurrent characters:{n %s" % ", ".join(str(ob) for ob in alts))
+                caller.msg(
+                    "{wCurrent characters:{n %s" % ", ".join(str(ob) for ob in alts)
+                )
             caller.msg("{wDate Submitted:{n %s" % app[3])
             caller.msg("{wApplication:{n %s" % app[4])
             if not app[9]:
@@ -480,7 +524,7 @@ class CmdApp(ArxPlayerCommand):
                 caller.msg("{wGM Notes:{n %s" % app[7])
                 caller.msg("{wApproved:{n %s" % app[8])
             return
-        if 'approve' in switches:
+        if "approve" in switches:
             # @app/approve <#>=<notes>
             # mark a character as approved, then send an email to the player
             if not self.lhs or not self.rhs or not self.lhs.isdigit():
@@ -490,12 +534,15 @@ class CmdApp(ArxPlayerCommand):
             if apps.close_app(int(self.lhs), caller, self.rhs, True):
                 caller.msg("Application successfully approved.")
                 if app and app[1]:
-                    inform_staff("{w%s has approved %s's application.{n" % (caller.key.capitalize(),
-                                                                            app[1].key.capitalize()))
+                    inform_staff(
+                        "{w%s has approved %s's application.{n"
+                        % (caller.key.capitalize(), app[1].key.capitalize())
+                    )
                 try:
 
-                    entry = RosterEntry.objects.get(character__id=app[1].id,
-                                                    player__id=app[1].player_ob.id)
+                    entry = RosterEntry.objects.get(
+                        character__id=app[1].id, player__id=app[1].player_ob.id
+                    )
                     active_roster = Roster.objects.active
                     entry.roster = active_roster
                     try:
@@ -508,33 +555,53 @@ class CmdApp(ArxPlayerCommand):
                     entry.character.flush_from_cache(force=True)
                     entry.player.flush_from_cache(force=True)
                     from datetime import datetime
+
                     date = datetime.now()
-                    if not AccountHistory.objects.filter(entry=entry, account=account, end_date__isnull=True).exists():
-                        AccountHistory.objects.create(entry=entry, account=account, start_date=date)
+                    if not AccountHistory.objects.filter(
+                        entry=entry, account=account, end_date__isnull=True
+                    ).exists():
+                        AccountHistory.objects.create(
+                            entry=entry, account=account, start_date=date
+                        )
                     # make sure all their Attributes are clean for new player
-                    from server.utils.arx_utils import post_roster_cleanup, reset_to_default_channels
+                    from server.utils.arx_utils import (
+                        post_roster_cleanup,
+                        reset_to_default_channels,
+                    )
+
                     post_roster_cleanup(entry)
                     reset_to_default_channels(entry.player)
                     try:
                         from commands.cmdsets.starting_gear import setup_gear_for_char
+
                         if not entry.character:
                             raise ValueError("No character found for setup gear")
                         setup_gear_for_char(entry.character)
                     except ValueError:
                         traceback.print_exc()
-                except (RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned, Roster.DoesNotExist,
-                        Roster.MultipleObjectsReturned, AttributeError, ValueError, TypeError):
+                except (
+                    RosterEntry.DoesNotExist,
+                    RosterEntry.MultipleObjectsReturned,
+                    Roster.DoesNotExist,
+                    Roster.MultipleObjectsReturned,
+                    AttributeError,
+                    ValueError,
+                    TypeError,
+                ):
                     print("Error when attempting to mark closed application as active.")
                     traceback.print_exc()
                 try:
                     from world.dominion.setup_utils import setup_dom_for_char
+
                     setup_dom_for_char(app[1])
                 except (ValueError, TypeError):
                     # will throw an exception if Dominion already set up
                     pass
                 try:
                     bb = BBoard.objects.get(db_key__iexact="Roster Changes")
-                    msg = "%s now has a new player and is on the active roster." % app[1]
+                    msg = (
+                        "%s now has a new player and is on the active roster." % app[1]
+                    )
                     url = "http://play.arxmush.org" + app[1].get_absolute_url()
                     msg += "\nCharacter page: %s" % url
                     subject = "%s now active" % app[1]
@@ -545,14 +612,14 @@ class CmdApp(ArxPlayerCommand):
             else:
                 caller.msg("Application closure failed.")
                 return
-        if 'delete' in switches or 'del' in switches:
+        if "delete" in switches or "del" in switches:
             try:
                 apps.delete_app(caller, int(self.args))
                 return
             except (ValueError, TypeError):
                 caller.msg("Could not delete an app for value of %s." % self.args)
                 return
-        if 'deny' in switches:
+        if "deny" in switches:
             # @app/deny <#>=<notes>
             # mark a character as declined, then send an email to the player
             if not self.lhs or not self.rhs or not self.lhs.isdigit():
@@ -562,13 +629,15 @@ class CmdApp(ArxPlayerCommand):
                 caller.msg("Application successfully declined.")
                 app = apps.view_app(int(self.lhs))
                 if app and app[1]:
-                    inform_staff("{w%s has declined %s's application.{n" %
-                                 (caller.key.capitalize(), app[1].key.capitalize()))
+                    inform_staff(
+                        "{w%s has declined %s's application.{n"
+                        % (caller.key.capitalize(), app[1].key.capitalize())
+                    )
                 return
             else:
                 caller.msg("Application closure failed.")
                 return
-        if 'old' in switches:
+        if "old" in switches:
             # List all non-pending applications
             all_apps = apps.view_all_apps()
             if not all_apps:
@@ -584,24 +653,24 @@ class CmdApp(ArxPlayerCommand):
                 pend_list = pend_list[-20:]
             else:
                 try:
-                    pend_list = pend_list[-int(self.args):]
+                    pend_list = pend_list[-int(self.args) :]
                 except (TypeError, ValueError):
                     caller.msg("Could not display entries for that range.")
                     return
             # app = [app_num, char_ob, email, date_submit, application_string, gm_ob,
             #  date_answer, gm_notes, approval, pending]
-            table = prettytable.PrettyTable(["{w#",
-                                             "{wCharacter",
-                                             "{wEmail",
-                                             "{wDate",
-                                             "{wApproved"])
+            table = prettytable.PrettyTable(
+                ["{w#", "{wCharacter", "{wEmail", "{wDate", "{wApproved"]
+            )
             for app in pend_list:
-                table.add_row([app[0], app[1].key.capitalize(), app[2], app[3][:9], str(app[8])])
+                table.add_row(
+                    [app[0], app[1].key.capitalize(), app[2], app[3][:9], str(app[8])]
+                )
             caller.msg("{wOld/Closed applications for characters:\n%s" % table)
             caller.msg("To view a particular application, @app <app number>")
             return
             pass
-        if 'oldchar' in switches:
+        if "oldchar" in switches:
             apps_for_char = apps.view_all_apps_for_char(args)
             if not apps_for_char:
                 caller.msg("No applications found.")
@@ -612,32 +681,35 @@ class CmdApp(ArxPlayerCommand):
                 return
             # app = [app_num, char_ob, email, date_submit, application_string, gm_ob,
             # date_answer, gm_notes, approval, pending]
-            table = prettytable.PrettyTable(["{w#",
-                                             "{wCharacter",
-                                             "{wEmail",
-                                             "{wDate",
-                                             "{wGM",
-                                             "{wApproved"])
+            table = prettytable.PrettyTable(
+                ["{w#", "{wCharacter", "{wEmail", "{wDate", "{wGM", "{wApproved"]
+            )
             for app in pend_list:
-                table.add_row([app[0], app[1].key.capitalize(), app[2], app[3][:9], app[5].key, str(app[8])])
+                table.add_row(
+                    [
+                        app[0],
+                        app[1].key.capitalize(),
+                        app[2],
+                        app[3][:9],
+                        app[5].key,
+                        str(app[8]),
+                    ]
+                )
             caller.msg("{wOld/Closed applications for %s:\n%s" % (args, table))
             caller.msg("To view a particular application, @app <app number>")
             return
-        if 'email' in switches:
+        if "email" in switches:
             apps_for_email = apps.view_apps_for_email(args)
             if not apps_for_email:
                 caller.msg("No applications found.")
                 return
-            table = prettytable.PrettyTable(["{w#",
-                                             "{wCharacter",
-                                             "{wEmail",
-                                             "{wDate"])
+            table = prettytable.PrettyTable(["{w#", "{wCharacter", "{wEmail", "{wDate"])
             for app in apps_for_email:
                 table.add_row([app[0], app[1].key.capitalize(), app[2], app[3]])
             caller.msg("{wApplications for %s:\n%s" % (args, table))
             caller.msg("To view a particular application, @app <app number>")
             return
-        if 'fixemail' in switches:
+        if "fixemail" in switches:
             try:
                 if apps.fix_email(int(self.lhs), caller, self.rhs):
                     caller.msg("App email changed to %s." % self.rhs)
@@ -645,7 +717,7 @@ class CmdApp(ArxPlayerCommand):
             except (TypeError, ValueError, AttributeError):
                 caller.msg("Must provide an app # and an email address.")
                 return
-        if 'resend' in switches:
+        if "resend" in switches:
             try:
                 apps.resend(int(self.lhs), caller)
                 return

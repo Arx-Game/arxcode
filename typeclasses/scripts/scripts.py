@@ -93,6 +93,7 @@ class Script(DefaultScript):
       at_server_shutdown() - called at a full server shutdown.
 
     """
+
     def _step_errback(self, e):
         """
         Override to keep the user from getting useless script error, plus grabs
@@ -104,6 +105,7 @@ class Script(DefaultScript):
 
 class CheckSessions(Script):
     "Check sessions regularly."
+
     def at_script_creation(self):
         "Setup the script"
         self.key = "sys_session_check"
@@ -116,13 +118,14 @@ class CheckSessions(Script):
         global _SESSIONS
         if not _SESSIONS:
             from evennia.server.sessionhandler import SESSIONS as _SESSIONS
-        #print "session check!"
-        #print "ValidateSessions run"
+        # print "session check!"
+        # print "ValidateSessions run"
         _SESSIONS.validate_sessions()
 
 
 class ValidateScripts(Script):
     "Check script validation regularly"
+
     def at_script_creation(self):
         "Setup the script"
         self.key = "sys_scripts_validate"
@@ -132,12 +135,13 @@ class ValidateScripts(Script):
 
     def at_repeat(self):
         "called every hour"
-        #print "ValidateScripts run."
+        # print "ValidateScripts run."
         ScriptDB.objects.validate()
 
 
 class ValidateChannelHandler(Script):
     "Update the channelhandler to make sure it's in sync."
+
     def at_script_creation(self):
         "Setup the script"
         self.key = "sys_channels_validate"
@@ -147,5 +151,5 @@ class ValidateChannelHandler(Script):
 
     def at_repeat(self):
         "called every hour+"
-        #print "ValidateChannelHandler run."
+        # print "ValidateChannelHandler run."
         channelhandler.CHANNELHANDLER.update()

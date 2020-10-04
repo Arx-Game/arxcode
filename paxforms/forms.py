@@ -3,7 +3,6 @@ import django
 
 
 class Paxform(object):
-
     def __init__(self):
         if self.__class__.form_key is None:
             raise ValueError

@@ -35,24 +35,32 @@ def pending_magic_text():
 
 
 class ArxMagicTest(ArxTest):
-
     def setUp(self):
         super(ArxMagicTest, self).setUp()
-        self.alignment = Alignment.objects.create(name="Test", adjective="spectacular", alter_caster=False)
+        self.alignment = Alignment.objects.create(
+            name="Test", adjective="spectacular", alter_caster=False
+        )
         # travis keeps a copy of the Primal alignment created from migrations. Why? Because fuck you, that's why
         self.primal, _ = Alignment.objects.get_or_create(name="Primal")
         self.affinity = Affinity.objects.create(name="Light")
-        self.recipe = CraftingRecipe.objects.create(name="alaricite tester", desc="A test recipe.")
-        self.test_object = create.create_object(typeclass="typeclasses.objects.Object", key="Test Object",
-                                                nohome=True)
+        self.recipe = CraftingRecipe.objects.create(
+            name="alaricite tester", desc="A test recipe."
+        )
+        self.test_object = create.create_object(
+            typeclass="typeclasses.objects.Object", key="Test Object", nohome=True
+        )
         self.test_object.db.recipe = self.recipe.id
         self.test_object.db.alignment = self.alignment.id
         self.test_object.db.affinity = self.affinity.id
         self.test_object.db.quality_level = 10
         self.test_object.db.quantity = 1
 
-        self.practitioner = Practitioner.objects.create(character=self.char2, potential=100, anima=100,
-                                                        sigil_desc="a test pattern atop static")
+        self.practitioner = Practitioner.objects.create(
+            character=self.char2,
+            potential=100,
+            anima=100,
+            sigil_desc="a test pattern atop static",
+        )
         self.practitioner.notify_magic = override_notify_magic
         self.practitioner.check_perceive_magic = override_check_perceive_magic
         self.practitioner.roll_magic = override_roll_magic
@@ -61,13 +69,24 @@ class ArxMagicTest(ArxTest):
 
         self.char2.traits.set_stat_value("mana", 5)
         self.char2.traits.set_stat_value("intellect", 5)
-        self.char2.traits.skills = {'occult': 5}
+        self.char2.traits.skills = {"occult": 5}
         self.node = SkillNode.objects.create(name="Test Node")
-        self.effect = Effect.objects.create(name="Test Effect", target_type=Effect.TARGET_TYPE_EITHER,
-                                            coded_effect=Effect.CODED_SIGHT)
-        self.spell = Spell.objects.create(name="Test Spell", node=self.node, base_difficulty=10,
-                                          base_cost=10, auto_discover=True, required_resonance=10)
-        self.spell_effect = SpellEffect.objects.create(spell=self.spell, effect=self.effect, primary=True)
+        self.effect = Effect.objects.create(
+            name="Test Effect",
+            target_type=Effect.TARGET_TYPE_EITHER,
+            coded_effect=Effect.CODED_SIGHT,
+        )
+        self.spell = Spell.objects.create(
+            name="Test Spell",
+            node=self.node,
+            base_difficulty=10,
+            base_cost=10,
+            auto_discover=True,
+            required_resonance=10,
+        )
+        self.spell_effect = SpellEffect.objects.create(
+            spell=self.spell, effect=self.effect, primary=True
+        )
 
     def tearDown(self):
         self.test_object.delete()

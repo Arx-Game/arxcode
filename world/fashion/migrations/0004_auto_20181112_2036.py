@@ -8,19 +8,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('objects', '0009_remove_objectdb_db_player'),
-        ('fashion', '0003_auto_20180827_1613'),
+        ("objects", "0009_remove_objectdb_db_player"),
+        ("fashion", "0003_auto_20180827_1613"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='fashionsnapshot',
-            name='characters',
-            field=models.ManyToManyField(related_name='_fashionsnapshot_characters_+', to='objects.ObjectDB'),
+            model_name="fashionsnapshot",
+            name="characters",
+            field=models.ManyToManyField(
+                related_name="_fashionsnapshot_characters_+", to="objects.ObjectDB"
+            ),
         ),
         migrations.AddField(
-            model_name='fashionsnapshot',
-            name='multiplier',
+            model_name="fashionsnapshot",
+            name="multiplier",
             field=models.FloatField(default=1.0),
         ),
     ]

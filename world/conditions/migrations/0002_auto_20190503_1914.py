@@ -8,23 +8,32 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('conditions', '0001_initial'),
+        ("conditions", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='rollmodifier',
-            name='description',
-            field=models.TextField(blank=True, help_text='Description of why/how the modifier works'),
+            model_name="rollmodifier",
+            name="description",
+            field=models.TextField(
+                blank=True, help_text="Description of why/how the modifier works"
+            ),
         ),
         migrations.AddField(
-            model_name='rollmodifier',
-            name='modifier_type',
-            field=models.PositiveSmallIntegerField(choices=[(0, 'Modifier'), (1, 'Knack')], default=0),
+            model_name="rollmodifier",
+            name="modifier_type",
+            field=models.PositiveSmallIntegerField(
+                choices=[(0, "Modifier"), (1, "Knack")], default=0
+            ),
         ),
         migrations.AddField(
-            model_name='rollmodifier',
-            name='name',
-            field=models.CharField(blank=True, db_index=True, help_text='Name of the modifier, for knacks', max_length=80),
+            model_name="rollmodifier",
+            name="name",
+            field=models.CharField(
+                blank=True,
+                db_index=True,
+                help_text="Name of the modifier, for knacks",
+                max_length=80,
+            ),
         ),
     ]

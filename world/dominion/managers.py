@@ -28,38 +28,61 @@ class CrisisManager(Manager):
             qs = self.all()
         else:
             from .models import PCPlotInvolvement
+
             crises = Q(usage=self.model.CRISIS)
             # crisis is viewable if it's public, or they have the required clue
             crises &= Q(Q(public=True) | Q(required_clue__in=player.roster.clues.all()))
             plots = Q(usage__in=[self.model.PLAYER_RUN_PLOT, self.model.GM_PLOT])
             # plots are viewable only if they're a member
-            plots &= Q(dompc_involvement__activity_status__lte=PCPlotInvolvement.INVITED)
+            plots &= Q(
+                dompc_involvement__activity_status__lte=PCPlotInvolvement.INVITED
+            )
             plots &= Q(dompc_involvement__dompc__player=player)
             qs = self.filter(crises | plots).distinct()
         return qs
 
-    def view_plots_table(self, old=False, only_open_tickets=False, only_recruiting=False):
+    def view_plots_table(
+        self, old=False, only_open_tickets=False, only_recruiting=False
+    ):
         """Returns an EvTable chock full of spicy Plots."""
         from evennia.utils.evtable import EvTable
-        qs = self.filter(resolved=old).exclude(Q(usage=self.model.CRISIS) | Q(parent_plot__isnull=False)).distinct()
+
+        qs = (
+            self.filter(resolved=old)
+            .exclude(Q(usage=self.model.CRISIS) | Q(parent_plot__isnull=False))
+            .distinct()
+        )
         if only_open_tickets:
             from web.helpdesk.models import Ticket
+
             qs = qs.filter(tickets__status=Ticket.OPEN_STATUS)
         if only_recruiting:
             from .models import PCPlotInvolvement
-            qs = qs.filter(Q(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE)
-                           & Q(dompc_involvement__admin_status__gte=PCPlotInvolvement.RECRUITER)
-                           & ~Q(dompc_involvement__recruiter_story="")).distinct()
+
+            qs = qs.filter(
+                Q(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE)
+                & Q(dompc_involvement__admin_status__gte=PCPlotInvolvement.RECRUITER)
+                & ~Q(dompc_involvement__recruiter_story="")
+            ).distinct()
         alt_header = "Resolved " if old else ""
-        table = EvTable("|w#|n", "|w%sPlot (owner)|n" % alt_header, "|wSummary|n", width=78, border="cells")
+        table = EvTable(
+            "|w#|n",
+            "|w%sPlot (owner)|n" % alt_header,
+            "|wSummary|n",
+            width=78,
+            border="cells",
+        )
         for plot in qs:
+
             def get_plot_name_and_owner(plotmato):
                 owner = (" (%s)" % plotmato.first_owner) if plotmato.first_owner else ""
                 return "%s%s" % (str(plotmato), owner)
 
             def add_subplots_rows(subplot, color_num):
                 sub_name = get_plot_name_and_owner(subplot)
-                table.add_row("|%s35%s|n" % (color_num, subplot.id), sub_name, subplot.headline)
+                table.add_row(
+                    "|%s35%s|n" % (color_num, subplot.id), sub_name, subplot.headline
+                )
                 color_num += 1
                 if color_num > 5:
                     color_num = 0

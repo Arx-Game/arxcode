@@ -8,13 +8,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0029_shardhavenobstacle_clue_success'),
+        ("exploration", "0029_shardhavenobstacle_clue_success"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenobstacleroll',
-            name='pass_instantly',
-            field=models.BooleanField(default=False, verbose_name=b'Should a player immediately pass through the exit on success?'),
+            model_name="shardhavenobstacleroll",
+            name="pass_instantly",
+            field=models.BooleanField(
+                default=False,
+                verbose_name=b"Should a player immediately pass through the exit on success?",
+            ),
         ),
     ]

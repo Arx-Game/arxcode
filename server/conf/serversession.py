@@ -23,6 +23,7 @@ settings file:
 
 from evennia.server.serversession import ServerSession as BaseServerSession
 
+
 class ServerSession(BaseServerSession):
     """
     This class represents a player's session and is a template for
@@ -32,4 +33,5 @@ class ServerSession(BaseServerSession):
     to the game server. All communication between game and player goes
     through their session(s).
     """
+
     pass

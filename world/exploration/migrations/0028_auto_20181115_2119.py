@@ -9,13 +9,19 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0027_shardhavenobstacleroll_damage_splash'),
+        ("exploration", "0027_shardhavenobstacleroll_damage_splash"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='shardhavenlayout',
-            name='haven',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='layout', to='exploration.Shardhaven'),
+            model_name="shardhavenlayout",
+            name="haven",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="layout",
+                to="exploration.Shardhaven",
+            ),
         ),
     ]

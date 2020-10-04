@@ -9,42 +9,48 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0003_auto_20181105_1756'),
-        ('dominion', '0032_auto_20180831_0557'),
+        ("exploration", "0003_auto_20181105_1756"),
+        ("dominion", "0032_auto_20180831_0557"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='shardhaven',
-            name='discovered_by',
+            model_name="shardhaven",
+            name="discovered_by",
         ),
         migrations.RemoveField(
-            model_name='shardhaven',
-            name='haven_type',
+            model_name="shardhaven",
+            name="haven_type",
         ),
         migrations.RemoveField(
-            model_name='shardhaven',
-            name='location',
+            model_name="shardhaven",
+            name="location",
         ),
         migrations.RemoveField(
-            model_name='shardhavenclue',
-            name='clue',
+            model_name="shardhavenclue",
+            name="clue",
         ),
         migrations.RemoveField(
-            model_name='shardhavenclue',
-            name='shardhaven',
+            model_name="shardhavenclue",
+            name="shardhaven",
         ),
         migrations.RemoveField(
-            model_name='shardhavendiscovery',
-            name='player',
+            model_name="shardhavendiscovery",
+            name="player",
         ),
         migrations.RemoveField(
-            model_name='shardhavendiscovery',
-            name='shardhaven',
+            model_name="shardhavendiscovery",
+            name="shardhaven",
         ),
         migrations.AlterField(
-            model_name='plotroom',
-            name='shardhaven_type',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='tilesets', to='exploration.ShardhavenType'),
+            model_name="plotroom",
+            name="shardhaven_type",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="tilesets",
+                to="exploration.ShardhavenType",
+            ),
         ),
     ]

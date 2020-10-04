@@ -8,8 +8,11 @@ import django.db.models.deletion
 
 def create_alignments(apps, schema_editor):
     Alignment = apps.get_model("magic", "Alignment")
-    alignments = [Alignment(name="Primal", alter_caster=False), Alignment(name="Abyssal", alter_caster=True),
-                  Alignment(name="Elysian", alter_caster=True)]
+    alignments = [
+        Alignment(name="Primal", alter_caster=False),
+        Alignment(name="Abyssal", alter_caster=True),
+        Alignment(name="Elysian", alter_caster=True),
+    ]
     Alignment.objects.bulk_create(alignments)
 
 
@@ -32,438 +35,1058 @@ def migrate_alchemical_materials(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0035_auto_20180831_0922'),
-        ('objects', '0009_remove_objectdb_db_player'),
-        ('character', '0032_theory_plots'),
-        ('magic', '0004_alchemicalmaterial_plural_name'),
+        ("dominion", "0035_auto_20180831_0922"),
+        ("objects", "0009_remove_objectdb_db_player"),
+        ("character", "0032_theory_plots"),
+        ("magic", "0004_alchemicalmaterial_plural_name"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Alignment',
+            name="Alignment",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=20, unique=True)),
-                ('alter_caster', models.BooleanField(default=False)),
-                ('adjective', models.CharField(default=b'colorful', max_length=20)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=20, unique=True)),
+                ("alter_caster", models.BooleanField(default=False)),
+                ("adjective", models.CharField(default=b"colorful", max_length=20)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.RunPython(create_alignments),
         migrations.CreateModel(
-            name='Attunement',
+            name="Attunement",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('raw_attunement_level', models.FloatField(default=0.0)),
-                ('obj', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attuned_by', to='objects.ObjectDB')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("raw_attunement_level", models.FloatField(default=0.0)),
+                (
+                    "obj",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="attuned_by",
+                        to="objects.ObjectDB",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='ClueCollection',
+            name="ClueCollection",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=80)),
-                ('gm_notes', models.TextField(blank=True, null=True)),
-                ('clues', models.ManyToManyField(related_name='magic_collections', to='character.Clue')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=80)),
+                ("gm_notes", models.TextField(blank=True, null=True)),
+                (
+                    "clues",
+                    models.ManyToManyField(
+                        related_name="magic_collections", to="character.Clue"
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='Effect',
+            name="Effect",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=20)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('target_type', models.PositiveSmallIntegerField(choices=[(0, b'None'), (1, b'Self'), (2, b'Character'), (3, b'Object'), (4, b'Player or Object'), (5, b'Clue'), (6, b'Location'), (7, b'Retainer')], default=0)),
-                ('weave_usable', models.BooleanField(default=True)),
-                ('coded_effect', models.PositiveSmallIntegerField(choices=[(0, b'Sight'), (1, b'Add Clue to Collection'), (2, b'Add Successes to A Global Tally'), (3, b'Add to Primum Value of Object'), (4, b'Absorb Primum from an Object'), (5, b'Attune to Object, Player, or Agent'), (6, b'Boost a Stat'), (7, b'Ward a Location'), (9, b'Heal a Character'), (10, b'Simply Emits Flavor Text'), (11, b'Temporarily Reveal an Exploration Map'), (12, b'Apply a Combat Condition'), (13, b'Remove a Combat Condition'), (14, b'Apply a Combat Effect'), (15, b'Remove a Combat Effect'), (16, b'Change the Weather')], default=0)),
-                ('coded_params', models.CharField(blank=True, help_text=b'Parameters specific to the coded effect type.', max_length=255, null=True)),
-                ('base_difficulty', models.PositiveSmallIntegerField(default=70)),
-                ('base_cost', models.PositiveSmallIntegerField(default=500)),
-                ('required_favor', models.PositiveIntegerField(default=0, help_text=b'A base amount of favor required to weave this effect.')),
-                ('antagonistic', models.BooleanField(default=False, help_text=b'Is this effect harmful to the target?')),
-                ('want_opposed', models.BooleanField(default=False, help_text=b'Is this effect more effective when used on an opposed affinity? (If not, it will be more effective when used on the same affinity.)')),
-                ('conditions', models.CharField(blank=True, max_length=255, null=True)),
-                ('strength', models.PositiveSmallIntegerField(default=10)),
-                ('success_msg', models.TextField(blank=True, null=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=20)),
+                ("description", models.TextField(blank=True, null=True)),
+                (
+                    "target_type",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, b"None"),
+                            (1, b"Self"),
+                            (2, b"Character"),
+                            (3, b"Object"),
+                            (4, b"Player or Object"),
+                            (5, b"Clue"),
+                            (6, b"Location"),
+                            (7, b"Retainer"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                ("weave_usable", models.BooleanField(default=True)),
+                (
+                    "coded_effect",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, b"Sight"),
+                            (1, b"Add Clue to Collection"),
+                            (2, b"Add Successes to A Global Tally"),
+                            (3, b"Add to Primum Value of Object"),
+                            (4, b"Absorb Primum from an Object"),
+                            (5, b"Attune to Object, Player, or Agent"),
+                            (6, b"Boost a Stat"),
+                            (7, b"Ward a Location"),
+                            (9, b"Heal a Character"),
+                            (10, b"Simply Emits Flavor Text"),
+                            (11, b"Temporarily Reveal an Exploration Map"),
+                            (12, b"Apply a Combat Condition"),
+                            (13, b"Remove a Combat Condition"),
+                            (14, b"Apply a Combat Effect"),
+                            (15, b"Remove a Combat Effect"),
+                            (16, b"Change the Weather"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                (
+                    "coded_params",
+                    models.CharField(
+                        blank=True,
+                        help_text=b"Parameters specific to the coded effect type.",
+                        max_length=255,
+                        null=True,
+                    ),
+                ),
+                ("base_difficulty", models.PositiveSmallIntegerField(default=70)),
+                ("base_cost", models.PositiveSmallIntegerField(default=500)),
+                (
+                    "required_favor",
+                    models.PositiveIntegerField(
+                        default=0,
+                        help_text=b"A base amount of favor required to weave this effect.",
+                    ),
+                ),
+                (
+                    "antagonistic",
+                    models.BooleanField(
+                        default=False,
+                        help_text=b"Is this effect harmful to the target?",
+                    ),
+                ),
+                (
+                    "want_opposed",
+                    models.BooleanField(
+                        default=False,
+                        help_text=b"Is this effect more effective when used on an opposed affinity? (If not, it will be more effective when used on the same affinity.)",
+                    ),
+                ),
+                ("conditions", models.CharField(blank=True, max_length=255, null=True)),
+                ("strength", models.PositiveSmallIntegerField(default=10)),
+                ("success_msg", models.TextField(blank=True, null=True)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='FamiliarAttunement',
+            name="FamiliarAttunement",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('raw_attunement_level', models.FloatField(default=0.0)),
-                ('familiar', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='bondmates', to='dominion.Agent')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("raw_attunement_level", models.FloatField(default=0.0)),
+                (
+                    "familiar",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="bondmates",
+                        to="dominion.Agent",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='MagicBucket',
+            name="MagicBucket",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=80)),
-                ('gm_notes', models.TextField(blank=True, null=True)),
-                ('value', models.PositiveIntegerField(default=0)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=80)),
+                ("gm_notes", models.TextField(blank=True, null=True)),
+                ("value", models.PositiveIntegerField(default=0)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='Practitioner',
+            name="Practitioner",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('potential', models.PositiveIntegerField(default=1)),
-                ('anima', models.PositiveIntegerField(default=1)),
-                ('unspent_resonance', models.FloatField(default=0.0)),
-                ('stat', models.CharField(default=b'intellect', max_length=40)),
-                ('skill', models.CharField(default=b'occult', max_length=40)),
-                ('language', models.CharField(default=b'Arvani', help_text=b'The language in which this practitioner casts.', max_length=20)),
-                ('verb', models.CharField(default=b'chants', help_text=b"The verb (chants, sings, etc.) to describe this practitioner's casting style.", max_length=20)),
-                ('gesture', models.CharField(default=b'gestures expansively and energetically', help_text=b'Short descriptive fragment of how this practitioner casts.', max_length=255)),
-                ('sigil_desc', models.CharField(blank=True, help_text=b"What this person's magic looks for description as a signature (on wards and workings).", max_length=255, null=True)),
-                ('sigil_emit', models.TextField(blank=True, help_text=b"The emit that's shown to mage-sight when this practitioner works magic.", null=True)),
-                ('magic_desc_short', models.CharField(blank=True, help_text=b"A short description of someone's magic, to be included in a generated sentence", max_length=1024, null=True)),
-                ('magic_desc', models.TextField(blank=True, help_text=b'Additional text someone might see if they soulgaze this practitioner with high successes.', null=True)),
-                ('character', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='practitioner_record', to='objects.ObjectDB')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("potential", models.PositiveIntegerField(default=1)),
+                ("anima", models.PositiveIntegerField(default=1)),
+                ("unspent_resonance", models.FloatField(default=0.0)),
+                ("stat", models.CharField(default=b"intellect", max_length=40)),
+                ("skill", models.CharField(default=b"occult", max_length=40)),
+                (
+                    "language",
+                    models.CharField(
+                        default=b"Arvani",
+                        help_text=b"The language in which this practitioner casts.",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "verb",
+                    models.CharField(
+                        default=b"chants",
+                        help_text=b"The verb (chants, sings, etc.) to describe this practitioner's casting style.",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "gesture",
+                    models.CharField(
+                        default=b"gestures expansively and energetically",
+                        help_text=b"Short descriptive fragment of how this practitioner casts.",
+                        max_length=255,
+                    ),
+                ),
+                (
+                    "sigil_desc",
+                    models.CharField(
+                        blank=True,
+                        help_text=b"What this person's magic looks for description as a signature (on wards and workings).",
+                        max_length=255,
+                        null=True,
+                    ),
+                ),
+                (
+                    "sigil_emit",
+                    models.TextField(
+                        blank=True,
+                        help_text=b"The emit that's shown to mage-sight when this practitioner works magic.",
+                        null=True,
+                    ),
+                ),
+                (
+                    "magic_desc_short",
+                    models.CharField(
+                        blank=True,
+                        help_text=b"A short description of someone's magic, to be included in a generated sentence",
+                        max_length=1024,
+                        null=True,
+                    ),
+                ),
+                (
+                    "magic_desc",
+                    models.TextField(
+                        blank=True,
+                        help_text=b"Additional text someone might see if they soulgaze this practitioner with high successes.",
+                        null=True,
+                    ),
+                ),
+                (
+                    "character",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="practitioner_record",
+                        to="objects.ObjectDB",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='PractitionerAlignment',
+            name="PractitionerAlignment",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('value', models.PositiveIntegerField(default=0)),
-                ('alignment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='magic.Alignment')),
-                ('practitioner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='alignments', to='magic.Practitioner')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("value", models.PositiveIntegerField(default=0)),
+                (
+                    "alignment",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="magic.Alignment",
+                    ),
+                ),
+                (
+                    "practitioner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="alignments",
+                        to="magic.Practitioner",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='PractitionerEffect',
+            name="PractitionerEffect",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('learned_by', models.PositiveSmallIntegerField(choices=[(0, b'Staff Fiat'), (1, b'Teaching'), (2, b'Discovery')], default=0)),
-                ('learned_on', models.DateField(blank=True, null=True)),
-                ('learned_notes', models.CharField(blank=True, max_length=255, null=True)),
-                ('effect', models.ForeignKey(default=False, on_delete=django.db.models.deletion.CASCADE, related_name='known_by', to='magic.Effect')),
-                ('practitioner', models.ForeignKey(default=False, on_delete=django.db.models.deletion.CASCADE, related_name='effect_discoveries', to='magic.Practitioner')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "learned_by",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, b"Staff Fiat"),
+                            (1, b"Teaching"),
+                            (2, b"Discovery"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                ("learned_on", models.DateField(blank=True, null=True)),
+                (
+                    "learned_notes",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "effect",
+                    models.ForeignKey(
+                        default=False,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="known_by",
+                        to="magic.Effect",
+                    ),
+                ),
+                (
+                    "practitioner",
+                    models.ForeignKey(
+                        default=False,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="effect_discoveries",
+                        to="magic.Practitioner",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='PractitionerFavor',
+            name="PractitionerFavor",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('value', models.PositiveIntegerField(default=0)),
-                ('gm_notes', models.TextField(blank=True, null=True)),
-                ('alignment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='favored', to='magic.Alignment')),
-                ('practitioner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='favored_by', to='magic.Practitioner')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("value", models.PositiveIntegerField(default=0)),
+                ("gm_notes", models.TextField(blank=True, null=True)),
+                (
+                    "alignment",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="favored",
+                        to="magic.Alignment",
+                    ),
+                ),
+                (
+                    "practitioner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="favored_by",
+                        to="magic.Practitioner",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='PractitionerSpell',
+            name="PractitionerSpell",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('learned_by', models.PositiveSmallIntegerField(choices=[(0, b'Staff Fiat'), (1, b'Teaching'), (2, b'Discovery')], default=0)),
-                ('learned_on', models.DateField()),
-                ('learned_notes', models.CharField(blank=True, max_length=255, null=True)),
-                ('practitioner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='spell_discoveries', to='magic.Practitioner')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "learned_by",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, b"Staff Fiat"),
+                            (1, b"Teaching"),
+                            (2, b"Discovery"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                ("learned_on", models.DateField()),
+                (
+                    "learned_notes",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "practitioner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="spell_discoveries",
+                        to="magic.Practitioner",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='SkillNode',
+            name="SkillNode",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=40)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('eyes_open', models.BooleanField(default=False, help_text=b"If set, then having this node open means someone's eyes are opened.")),
-                ('auto_discover', models.BooleanField(default=False)),
-                ('required_resonance', models.PositiveSmallIntegerField(default=10)),
-                ('affinity_default', models.BooleanField(default=False, help_text=b'Does this node function as the default for this affinity in its tree?')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=40)),
+                ("description", models.TextField(blank=True, null=True)),
+                (
+                    "eyes_open",
+                    models.BooleanField(
+                        default=False,
+                        help_text=b"If set, then having this node open means someone's eyes are opened.",
+                    ),
+                ),
+                ("auto_discover", models.BooleanField(default=False)),
+                ("required_resonance", models.PositiveSmallIntegerField(default=10)),
+                (
+                    "affinity_default",
+                    models.BooleanField(
+                        default=False,
+                        help_text=b"Does this node function as the default for this affinity in its tree?",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='SkillNodeEffect',
+            name="SkillNodeEffect",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('auto_discover', models.BooleanField(default=False)),
-                ('required_resonance', models.PositiveSmallIntegerField(default=0)),
-                ('effect', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='node_records', to='magic.Effect')),
-                ('node', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='effect_records', to='magic.SkillNode')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("auto_discover", models.BooleanField(default=False)),
+                ("required_resonance", models.PositiveSmallIntegerField(default=0)),
+                (
+                    "effect",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="node_records",
+                        to="magic.Effect",
+                    ),
+                ),
+                (
+                    "node",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="effect_records",
+                        to="magic.SkillNode",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='SkillNodeResonance',
+            name="SkillNodeResonance",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('raw_resonance', models.FloatField(default=0.0)),
-                ('learned_by', models.PositiveSmallIntegerField(choices=[(0, b'Staff Fiat'), (1, b'Teaching'), (2, b'Discovery')], default=0)),
-                ('learned_on', models.DateField(blank=True, null=True)),
-                ('learned_notes', models.CharField(blank=True, max_length=255, null=True)),
-                ('teaching_multiplier', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('taught_by', models.CharField(blank=True, max_length=40, null=True)),
-                ('taught_on', models.DateTimeField(blank=True, null=True)),
-                ('node', models.ForeignKey(default=False, on_delete=django.db.models.deletion.CASCADE, related_name='known_by', to='magic.SkillNode')),
-                ('practitioner', models.ForeignKey(default=False, on_delete=django.db.models.deletion.CASCADE, related_name='node_resonances', to='magic.Practitioner')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("raw_resonance", models.FloatField(default=0.0)),
+                (
+                    "learned_by",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, b"Staff Fiat"),
+                            (1, b"Teaching"),
+                            (2, b"Discovery"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                ("learned_on", models.DateField(blank=True, null=True)),
+                (
+                    "learned_notes",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "teaching_multiplier",
+                    models.PositiveSmallIntegerField(blank=True, null=True),
+                ),
+                ("taught_by", models.CharField(blank=True, max_length=40, null=True)),
+                ("taught_on", models.DateTimeField(blank=True, null=True)),
+                (
+                    "node",
+                    models.ForeignKey(
+                        default=False,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="known_by",
+                        to="magic.SkillNode",
+                    ),
+                ),
+                (
+                    "practitioner",
+                    models.ForeignKey(
+                        default=False,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="node_resonances",
+                        to="magic.Practitioner",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Spell',
+            name="Spell",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=40)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('auto_discover', models.BooleanField(default=False)),
-                ('required_resonance', models.PositiveSmallIntegerField(default=1)),
-                ('required_favor', models.PositiveIntegerField(default=0, help_text=b'A base amount of favor required with Abyssal or Elysian to cast this spell.')),
-                ('base_difficulty', models.PositiveSmallIntegerField(default=50)),
-                ('base_cost', models.PositiveSmallIntegerField(default=50)),
-                ('extra_primum', models.PositiveSmallIntegerField(default=100, help_text=b"What percentage of a player's anima can they pull from external sources for this spell?  100% means they can pull exactly as much as their maximum anima.")),
-                ('success_msg', models.TextField(blank=True, null=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=40)),
+                ("description", models.TextField(blank=True, null=True)),
+                ("auto_discover", models.BooleanField(default=False)),
+                ("required_resonance", models.PositiveSmallIntegerField(default=1)),
+                (
+                    "required_favor",
+                    models.PositiveIntegerField(
+                        default=0,
+                        help_text=b"A base amount of favor required with Abyssal or Elysian to cast this spell.",
+                    ),
+                ),
+                ("base_difficulty", models.PositiveSmallIntegerField(default=50)),
+                ("base_cost", models.PositiveSmallIntegerField(default=50)),
+                (
+                    "extra_primum",
+                    models.PositiveSmallIntegerField(
+                        default=100,
+                        help_text=b"What percentage of a player's anima can they pull from external sources for this spell?  100% means they can pull exactly as much as their maximum anima.",
+                    ),
+                ),
+                ("success_msg", models.TextField(blank=True, null=True)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='SpellEffect',
+            name="SpellEffect",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('primary', models.BooleanField(default=False)),
-                ('effect', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Effect')),
-                ('spell', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='spell_effects', to='magic.Spell')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("primary", models.BooleanField(default=False)),
+                (
+                    "effect",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="magic.Effect",
+                    ),
+                ),
+                (
+                    "spell",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="spell_effects",
+                        to="magic.Spell",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Working',
+            name="Working",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('template', models.BooleanField(default=False)),
-                ('template_name', models.CharField(blank=True, max_length=40, null=True)),
-                ('quiet_level', models.PositiveSmallIntegerField(choices=[(0, b'None'), (1, b'Mundane'), (2, b'Total')], default=0)),
-                ('intent', models.TextField(blank=True, null=True)),
-                ('target_string', models.CharField(blank=True, max_length=60, null=True)),
-                ('econ', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('gm_cost', models.PositiveIntegerField(blank=True, null=True)),
-                ('gm_difficulty', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('primum_at_perform', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('total_successes', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('total_favor', models.PositiveIntegerField(blank=True, null=True)),
-                ('effects_result', models.TextField(blank=True, null=True)),
-                ('effects_description', models.TextField(blank=True, null=True)),
-                ('consequence_result', models.TextField(blank=True, null=True)),
-                ('consequence_description', models.TextField(blank=True, null=True)),
-                ('calculated', models.BooleanField(default=False)),
-                ('finalized', models.BooleanField(default=False)),
-                ('finalized_at', models.DateTimeField(blank=True, null=True)),
-                ('lead', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='workings', to='magic.Practitioner')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("template", models.BooleanField(default=False)),
+                (
+                    "template_name",
+                    models.CharField(blank=True, max_length=40, null=True),
+                ),
+                (
+                    "quiet_level",
+                    models.PositiveSmallIntegerField(
+                        choices=[(0, b"None"), (1, b"Mundane"), (2, b"Total")],
+                        default=0,
+                    ),
+                ),
+                ("intent", models.TextField(blank=True, null=True)),
+                (
+                    "target_string",
+                    models.CharField(blank=True, max_length=60, null=True),
+                ),
+                ("econ", models.PositiveSmallIntegerField(blank=True, null=True)),
+                ("gm_cost", models.PositiveIntegerField(blank=True, null=True)),
+                (
+                    "gm_difficulty",
+                    models.PositiveSmallIntegerField(blank=True, null=True),
+                ),
+                (
+                    "primum_at_perform",
+                    models.PositiveSmallIntegerField(blank=True, null=True),
+                ),
+                (
+                    "total_successes",
+                    models.PositiveSmallIntegerField(blank=True, null=True),
+                ),
+                ("total_favor", models.PositiveIntegerField(blank=True, null=True)),
+                ("effects_result", models.TextField(blank=True, null=True)),
+                ("effects_description", models.TextField(blank=True, null=True)),
+                ("consequence_result", models.TextField(blank=True, null=True)),
+                ("consequence_description", models.TextField(blank=True, null=True)),
+                ("calculated", models.BooleanField(default=False)),
+                ("finalized", models.BooleanField(default=False)),
+                ("finalized_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "lead",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="workings",
+                        to="magic.Practitioner",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='WorkingParticipant',
+            name="WorkingParticipant",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('accepted', models.BooleanField(default=False)),
-                ('drained', models.ManyToManyField(related_name='_workingparticipant_drained_+', to='objects.ObjectDB')),
-                ('familiar', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.FamiliarAttunement')),
-                ('practitioner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Practitioner')),
-                ('tool', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Attunement')),
-                ('working', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='participant_records', to='magic.Working')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("accepted", models.BooleanField(default=False)),
+                (
+                    "drained",
+                    models.ManyToManyField(
+                        related_name="_workingparticipant_drained_+",
+                        to="objects.ObjectDB",
+                    ),
+                ),
+                (
+                    "familiar",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="magic.FamiliarAttunement",
+                    ),
+                ),
+                (
+                    "practitioner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="magic.Practitioner",
+                    ),
+                ),
+                (
+                    "tool",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="magic.Attunement",
+                    ),
+                ),
+                (
+                    "working",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="participant_records",
+                        to="magic.Working",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='affinity',
-            name='opposed',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Affinity'),
+            model_name="affinity",
+            name="opposed",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Affinity",
+            ),
         ),
         migrations.AddField(
-            model_name='affinity',
-            name='rank1_desc',
-            field=models.CharField(default=b'spark', max_length=255),
+            model_name="affinity",
+            name="rank1_desc",
+            field=models.CharField(default=b"spark", max_length=255),
         ),
         migrations.AddField(
-            model_name='affinity',
-            name='rank2_desc',
-            field=models.CharField(default=b'glimmer', max_length=255),
+            model_name="affinity",
+            name="rank2_desc",
+            field=models.CharField(default=b"glimmer", max_length=255),
         ),
         migrations.AddField(
-            model_name='affinity',
-            name='rank3_desc',
-            field=models.CharField(default=b'glow', max_length=255),
+            model_name="affinity",
+            name="rank3_desc",
+            field=models.CharField(default=b"glow", max_length=255),
         ),
         migrations.AddField(
-            model_name='affinity',
-            name='rank4_desc',
-            field=models.CharField(default=b'light', max_length=255),
+            model_name="affinity",
+            name="rank4_desc",
+            field=models.CharField(default=b"light", max_length=255),
         ),
         migrations.AddField(
-            model_name='affinity',
-            name='rank5_desc',
-            field=models.CharField(default=b'brilliance', max_length=255),
+            model_name="affinity",
+            name="rank5_desc",
+            field=models.CharField(default=b"brilliance", max_length=255),
         ),
         migrations.AddField(
-            model_name='working',
-            name='practitioners',
-            field=models.ManyToManyField(related_name='assisted_workings', through='magic.WorkingParticipant', to='magic.Practitioner'),
+            model_name="working",
+            name="practitioners",
+            field=models.ManyToManyField(
+                related_name="assisted_workings",
+                through="magic.WorkingParticipant",
+                to="magic.Practitioner",
+            ),
         ),
         migrations.AddField(
-            model_name='working',
-            name='spell',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='magic.Spell'),
+            model_name="working",
+            name="spell",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="magic.Spell",
+            ),
         ),
         migrations.AddField(
-            model_name='working',
-            name='weave_affinity',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Affinity'),
+            model_name="working",
+            name="weave_affinity",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Affinity",
+            ),
         ),
         migrations.AddField(
-            model_name='working',
-            name='weave_alignment',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Alignment'),
+            model_name="working",
+            name="weave_alignment",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Alignment",
+            ),
         ),
         migrations.AddField(
-            model_name='working',
-            name='weave_effect',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Effect'),
+            model_name="working",
+            name="weave_effect",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Effect",
+            ),
         ),
         migrations.AddField(
-            model_name='spell',
-            name='affinity',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Affinity'),
+            model_name="spell",
+            name="affinity",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Affinity",
+            ),
         ),
         migrations.AddField(
-            model_name='spell',
-            name='alignment',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Alignment'),
+            model_name="spell",
+            name="alignment",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Alignment",
+            ),
         ),
         migrations.AddField(
-            model_name='spell',
-            name='effects',
-            field=models.ManyToManyField(related_name='_spell_effects_+', through='magic.SpellEffect', to='magic.Effect'),
+            model_name="spell",
+            name="effects",
+            field=models.ManyToManyField(
+                related_name="_spell_effects_+",
+                through="magic.SpellEffect",
+                to="magic.Effect",
+            ),
         ),
         migrations.AddField(
-            model_name='spell',
-            name='node',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='spells', to='magic.SkillNode'),
+            model_name="spell",
+            name="node",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="spells",
+                to="magic.SkillNode",
+            ),
         ),
         migrations.AddField(
-            model_name='skillnode',
-            name='affinity',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='nodes', to='magic.Affinity'),
+            model_name="skillnode",
+            name="affinity",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="nodes",
+                to="magic.Affinity",
+            ),
         ),
         migrations.AddField(
-            model_name='skillnode',
-            name='parent_node',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='child_nodes', to='magic.SkillNode'),
+            model_name="skillnode",
+            name="parent_node",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="child_nodes",
+                to="magic.SkillNode",
+            ),
         ),
         migrations.AddField(
-            model_name='skillnode',
-            name='related_effects',
-            field=models.ManyToManyField(related_name='nodes', through='magic.SkillNodeEffect', to='magic.Effect'),
+            model_name="skillnode",
+            name="related_effects",
+            field=models.ManyToManyField(
+                related_name="nodes", through="magic.SkillNodeEffect", to="magic.Effect"
+            ),
         ),
         migrations.AddField(
-            model_name='practitionerspell',
-            name='spell',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='known_by', to='magic.Spell'),
+            model_name="practitionerspell",
+            name="spell",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="known_by",
+                to="magic.Spell",
+            ),
         ),
         migrations.AddField(
-            model_name='practitioner',
-            name='effects',
-            field=models.ManyToManyField(through='magic.PractitionerEffect', to='magic.Effect'),
+            model_name="practitioner",
+            name="effects",
+            field=models.ManyToManyField(
+                through="magic.PractitionerEffect", to="magic.Effect"
+            ),
         ),
         migrations.AddField(
-            model_name='practitioner',
-            name='nodes',
-            field=models.ManyToManyField(through='magic.SkillNodeResonance', to='magic.SkillNode'),
+            model_name="practitioner",
+            name="nodes",
+            field=models.ManyToManyField(
+                through="magic.SkillNodeResonance", to="magic.SkillNode"
+            ),
         ),
         migrations.AddField(
-            model_name='practitioner',
-            name='raw_affinity',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Affinity'),
+            model_name="practitioner",
+            name="raw_affinity",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Affinity",
+            ),
         ),
         migrations.AddField(
-            model_name='practitioner',
-            name='raw_alignment',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Alignment'),
+            model_name="practitioner",
+            name="raw_alignment",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Alignment",
+            ),
         ),
         migrations.AddField(
-            model_name='practitioner',
-            name='spells',
-            field=models.ManyToManyField(through='magic.PractitionerSpell', to='magic.Spell'),
+            model_name="practitioner",
+            name="spells",
+            field=models.ManyToManyField(
+                through="magic.PractitionerSpell", to="magic.Spell"
+            ),
         ),
         migrations.AddField(
-            model_name='familiarattunement',
-            name='practitioner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='familiars', to='magic.Practitioner'),
+            model_name="familiarattunement",
+            name="practitioner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="familiars",
+                to="magic.Practitioner",
+            ),
         ),
         migrations.AddField(
-            model_name='effect',
-            name='affinity',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Affinity'),
+            model_name="effect",
+            name="affinity",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Affinity",
+            ),
         ),
         migrations.AddField(
-            model_name='attunement',
-            name='practitioner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attunements', to='magic.Practitioner'),
+            model_name="attunement",
+            name="practitioner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="attunements",
+                to="magic.Practitioner",
+            ),
         ),
         migrations.AddField(
-            model_name='alchemicalmaterial',
-            name='alignment',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Alignment'),
+            model_name="alchemicalmaterial",
+            name="alignment",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="magic.Alignment",
+            ),
         ),
         migrations.RunPython(migrate_alchemical_materials),
         migrations.RemoveField(
-            model_name='alchemicalmaterial',
-            name='magic_type',
+            model_name="alchemicalmaterial",
+            name="magic_type",
         ),
         migrations.AlterUniqueTogether(
-            name='spelleffect',
-            unique_together=set([('spell', 'effect')]),
+            name="spelleffect",
+            unique_together=set([("spell", "effect")]),
         ),
         migrations.AlterUniqueTogether(
-            name='skillnoderesonance',
-            unique_together=set([('practitioner', 'node')]),
+            name="skillnoderesonance",
+            unique_together=set([("practitioner", "node")]),
         ),
         migrations.AlterUniqueTogether(
-            name='skillnodeeffect',
-            unique_together=set([('node', 'effect')]),
+            name="skillnodeeffect",
+            unique_together=set([("node", "effect")]),
         ),
         migrations.AlterUniqueTogether(
-            name='practitionerspell',
-            unique_together=set([('practitioner', 'spell')]),
+            name="practitionerspell",
+            unique_together=set([("practitioner", "spell")]),
         ),
         migrations.AlterUniqueTogether(
-            name='practitionerfavor',
-            unique_together=set([('practitioner', 'alignment')]),
+            name="practitionerfavor",
+            unique_together=set([("practitioner", "alignment")]),
         ),
         migrations.AlterUniqueTogether(
-            name='practitionereffect',
-            unique_together=set([('practitioner', 'effect')]),
+            name="practitionereffect",
+            unique_together=set([("practitioner", "effect")]),
         ),
         migrations.AlterUniqueTogether(
-            name='practitioneralignment',
-            unique_together=set([('practitioner', 'alignment')]),
+            name="practitioneralignment",
+            unique_together=set([("practitioner", "alignment")]),
         ),
     ]

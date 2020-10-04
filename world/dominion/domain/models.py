@@ -32,25 +32,42 @@ class Minister(SharedMemoryModel):
     """
     A minister appointed to assist a ruler in a category.
     """
+
     POP, INCOME, FARMING, PRODUCTIVITY, UPKEEP, LOYALTY, WARFARE = range(7)
     MINISTER_TYPES = (
-        (POP, 'Population'),
-        (INCOME, 'Income'),
-        (FARMING, 'Farming'),
-        (PRODUCTIVITY, 'Productivity'),
-        (UPKEEP, 'Upkeep'),
-        (LOYALTY, 'Loyalty'),
-        (WARFARE, 'Warfare'),
-        )
+        (POP, "Population"),
+        (INCOME, "Income"),
+        (FARMING, "Farming"),
+        (PRODUCTIVITY, "Productivity"),
+        (UPKEEP, "Upkeep"),
+        (LOYALTY, "Loyalty"),
+        (WARFARE, "Warfare"),
+    )
     title = models.CharField(blank=True, null=True, max_length=255)
-    player = models.ForeignKey("PlayerOrNpc", related_name="appointments", blank=True, null=True, db_index=True,
-                               on_delete=models.CASCADE)
-    ruler = models.ForeignKey("Ruler", related_name="ministers", blank=True, null=True, db_index=True,
-                              on_delete=models.CASCADE)
+    player = models.ForeignKey(
+        "PlayerOrNpc",
+        related_name="appointments",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    ruler = models.ForeignKey(
+        "Ruler",
+        related_name="ministers",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     category = models.PositiveSmallIntegerField(choices=MINISTER_TYPES, default=INCOME)
 
     def __str__(self):
-        return "%s acting as %s minister for %s" % (self.player, self.get_category_display(), self.ruler)
+        return "%s acting as %s minister for %s" % (
+            self.player,
+            self.get_category_display(),
+            self.ruler,
+        )
 
     def clear_domain_cache(self):
         """Clears cache for the ruler of this minister"""
@@ -61,27 +78,66 @@ class Army(SharedMemoryModel):
     """
     Any collection of military units belonging to a given domain.
     """
+
     name = models.CharField(blank=True, null=True, max_length=80, db_index=True)
     desc = models.TextField(blank=True, null=True)
     # the domain that we obey the orders of. Not the same as who owns us, necessarily
-    domain = models.ForeignKey("Domain", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                               db_index=True)
+    domain = models.ForeignKey(
+        "Domain",
+        on_delete=models.SET_NULL,
+        related_name="armies",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     # current location of this army
-    land = models.ForeignKey("Land", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True)
+    land = models.ForeignKey(
+        "Land", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True
+    )
     # if the army is located as a castle garrison
-    castle = models.ForeignKey("Castle", on_delete=models.SET_NULL, related_name="garrison", blank=True, null=True)
+    castle = models.ForeignKey(
+        "Castle",
+        on_delete=models.SET_NULL,
+        related_name="garrison",
+        blank=True,
+        null=True,
+    )
     # The field leader of this army. Units under his command may have their own commanders
-    general = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                                db_index=True)
+    general = models.ForeignKey(
+        "PlayerOrNpc",
+        on_delete=models.SET_NULL,
+        related_name="armies",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     # an owner who may be the same person who owns the domain. Or not, in the case of mercs, sent reinforcements, etc
-    owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                              db_index=True)
+    owner = models.ForeignKey(
+        "AssetOwner",
+        on_delete=models.SET_NULL,
+        related_name="armies",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     # Someone giving orders for now, like a mercenary group's current employer
-    temp_owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="loaned_armies", blank=True,
-                                   null=True, db_index=True)
+    temp_owner = models.ForeignKey(
+        "AssetOwner",
+        on_delete=models.SET_NULL,
+        related_name="loaned_armies",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     # a relationship to self for smaller groups within the army
-    group = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="armies", blank=True, null=True,
-                              db_index=True)
+    group = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="armies",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     # food we're carrying with us on transports or whatever
     stored_food = models.PositiveSmallIntegerField(default=0, blank=0)
     # whether the army is starving. 0 = not starving, 1 = starting to starve, 2 = troops dying/deserting
@@ -92,6 +148,7 @@ class Army(SharedMemoryModel):
 
     class Meta:
         """Define Django meta options"""
+
         verbose_name_plural = "Armies"
 
     def display(self):
@@ -107,19 +164,38 @@ class Army(SharedMemoryModel):
         msg += "{wDomain{n: %s {wLocation{n: %s\n" % (self.domain, self.land)
         msg += "{wOwner{n: %s\n" % owner
         msg += "{wDescription{n: %s\n" % self.desc
-        msg += "{wMorale{n: %s {wFood{n: %s {wStarvation Level{n: %s {wPlunder{n: %s\n" % (self.morale, self.plunder,
-                                                                                           self.starvation_level,
-                                                                                           self.plunder)
+        msg += (
+            "{wMorale{n: %s {wFood{n: %s {wStarvation Level{n: %s {wPlunder{n: %s\n"
+            % (self.morale, self.plunder, self.starvation_level, self.plunder)
+        )
         msg += "{wUnits{n:\n"
         from evennia.utils.evtable import EvTable
-        table = EvTable("{wID{n", "{wCommander{n", "{wType{n", "{wAmt{n", "{wLvl{n", "{wEquip{n", "{wXP{n", width=78,
-                        border="cells")
+
+        table = EvTable(
+            "{wID{n",
+            "{wCommander{n",
+            "{wType{n",
+            "{wAmt{n",
+            "{wLvl{n",
+            "{wEquip{n",
+            "{wXP{n",
+            width=78,
+            border="cells",
+        )
         for unit in self.units.all():
             typestr = unit.type.capitalize()
             cmdstr = ""
             if unit.commander:
                 cmdstr = "{c%s{n" % unit.commander
-            table.add_row(unit.id, cmdstr, typestr, unit.quantity, unit.level, unit.equipment, unit.xp)
+            table.add_row(
+                unit.id,
+                cmdstr,
+                typestr,
+                unit.quantity,
+                unit.level,
+                unit.equipment,
+                unit.xp,
+            )
         msg += str(table)
         return msg
 
@@ -134,7 +210,9 @@ class Army(SharedMemoryModel):
         # checks player's access because our owner can be an Org
         if self.owner.access(player, "army"):
             return True
-        if player.Dominion.appointments.filter(category=Minister.WARFARE, ruler__house=self.owner):
+        if player.Dominion.appointments.filter(
+            category=Minister.WARFARE, ruler__house=self.owner
+        ):
             return True
         return False
 
@@ -152,7 +230,9 @@ class Army(SharedMemoryModel):
         # check player's access because temp owner can also be an org
         if self.temp_owner and self.temp_owner.access(player, "army"):
             return True
-        if self.temp_owner and dompc.appointments.filter(category=Minister.WARFARE, ruler__house=self.temp_owner):
+        if self.temp_owner and dompc.appointments.filter(
+            category=Minister.WARFARE, ruler__house=self.temp_owner
+        ):
             return True
         return False
 
@@ -167,8 +247,13 @@ class Army(SharedMemoryModel):
         if player.Dominion.units.filter(army=self):
             return True
         # checks if we're part of the org the army belongs to
-        if player.Dominion.memberships.filter(Q(deguilded=False) & (
-                    Q(organization__assets=self.owner) | Q(organization__assets=self.temp_owner))):
+        if player.Dominion.memberships.filter(
+            Q(deguilded=False)
+            & (
+                Q(organization__assets=self.owner)
+                | Q(organization__assets=self.temp_owner)
+            )
+        ):
             return True
 
     @property
@@ -178,8 +263,17 @@ class Army(SharedMemoryModel):
         """
         return self.orders.filter(complete=False)
 
-    def send_orders(self, player, order_type, target_domain=None, target_land=None, target_character=None,
-                    action=None, action_assist=None, assisting=None):
+    def send_orders(
+        self,
+        player,
+        order_type,
+        target_domain=None,
+        target_land=None,
+        target_character=None,
+        action=None,
+        action_assist=None,
+        assisting=None,
+    ):
         """
         Checks permission to send orders to an army, then records the category
         of orders and their target.
@@ -192,9 +286,15 @@ class Army(SharedMemoryModel):
         if self.pending_orders:
             player.msg("That army has pending orders that must be canceled first.")
             return
-        return self.orders.create(type=order_type, target_domain=target_domain, target_land=target_land,
-                                  target_character=target_character, action=action, action_assist=action_assist,
-                                  assisting=assisting)
+        return self.orders.create(
+            type=order_type,
+            target_domain=target_domain,
+            target_land=target_land,
+            target_character=target_character,
+            action=action,
+            action_assist=action_assist,
+            assisting=assisting,
+        )
 
     def find_unit(self, unit_type):
         """
@@ -217,11 +317,15 @@ class Army(SharedMemoryModel):
             general: a player object
         """
         if self.general:
-            self.general.inform("%s has relieved you from duty as general of army: %s." % (caller, self))
+            self.general.inform(
+                "%s has relieved you from duty as general of army: %s." % (caller, self)
+            )
         if general:
             self.general = general.Dominion
             self.save()
-            general.inform("%s has set you as the general of army: %s." % (caller, self))
+            general.inform(
+                "%s has set you as the general of army: %s." % (caller, self)
+            )
             return
         self.general = None
         self.save()
@@ -237,12 +341,16 @@ class Army(SharedMemoryModel):
             temp_owner: an AssetOwner
         """
         if self.temp_owner:
-            self.temp_owner.inform_owner("%s has retrieved an army that you temporarily controlled: %s." % (caller,
-                                                                                                            self))
+            self.temp_owner.inform_owner(
+                "%s has retrieved an army that you temporarily controlled: %s."
+                % (caller, self)
+            )
         self.temp_owner = temp_owner
         self.save()
         if temp_owner:
-            temp_owner.inform_owner("%s has given you temporary control of army: %s." % (caller, self))
+            temp_owner.inform_owner(
+                "%s has given you temporary control of army: %s." % (caller, self)
+            )
 
     @property
     def max_units(self):
@@ -384,8 +492,15 @@ class Army(SharedMemoryModel):
                 atkpc = self.domain.ruler.castellan
             if tdomain and tdomain.ruler and tdomain.ruler.castellan:
                 defpc = tdomain.ruler.castellan
-            battle = Battle(armies_atk=self, armies_def=e_armies, week=week,
-                            pc_atk=atkpc, pc_def=defpc, atk_domain=self.domain, def_domain=tdomain)
+            battle = Battle(
+                armies_atk=self,
+                armies_def=e_armies,
+                week=week,
+                pc_atk=atkpc,
+                pc_def=defpc,
+                atk_domain=self.domain,
+                def_domain=tdomain,
+            )
             result = battle.begin_combat()
             # returns True if result shows ATK_WIN, False otherwise
             return result == Battle.ATK_WIN
@@ -404,7 +519,7 @@ class Army(SharedMemoryModel):
 
     def pacify(self, target):
         """Puts down unreset"""
-        percent = float(self.quantity)/target.total_serfs
+        percent = float(self.quantity) / target.total_serfs
         percent *= 100
         percent = int(percent)
         target.lawlessness -= percent
@@ -424,7 +539,9 @@ class Army(SharedMemoryModel):
         other_domains = None
         # send remaining armies to other domains
         if target.ruler:
-            other_domains = Domain.objects.filter(ruler_id=target.ruler.id).exclude(id=target.id)
+            other_domains = Domain.objects.filter(ruler_id=target.ruler.id).exclude(
+                id=target.id
+            )
         if other_domains:
             for army in target.armies.all():
                 army.domain = other_domains[0]
@@ -449,7 +566,8 @@ class Army(SharedMemoryModel):
             ruler = self.domain.ruler
             if ruler:
                 bordering = Domain.objects.filter(land_id=target.land.id).filter(
-                    ruler_id=ruler.id)
+                    ruler_id=ruler.id
+                )
         # we have a bordering domain. We will annex/absorb the domain into it
         if bordering:
             if self.domain in bordering:
@@ -481,6 +599,7 @@ class Army(SharedMemoryModel):
         for unit in self.units.all():
             cost += unit.costs
         return cost
+
     costs = property(_get_costs)
 
     def _get_size(self):
@@ -491,6 +610,7 @@ class Army(SharedMemoryModel):
         for unit in self.units.all():
             size += unit.quantity
         return size
+
     size = property(_get_size)
 
     def __str__(self):
@@ -517,6 +637,7 @@ class Orders(SharedMemoryModel):
     orders, they must be separated into different armies. This will be handled
     by player commands for Dominion.
     """
+
     TRAIN = 1
     EXPLORE = 2
     RAID = 3
@@ -532,41 +653,80 @@ class Orders(SharedMemoryModel):
     CRISIS = 13
 
     ORDER_CHOICES = (
-        (TRAIN, 'Troop Training'),
-        (EXPLORE, 'Explore territory'),
-        (RAID, 'Raid Domain'),
-        (CONQUER, 'Conquer Domain'),
-        (ENFORCE_ORDER, 'Enforce Order'),
-        (BESIEGE, 'Besiege Castle'),
-        (MARCH, 'March'),
-        (DEFEND, 'Defend'),
+        (TRAIN, "Troop Training"),
+        (EXPLORE, "Explore territory"),
+        (RAID, "Raid Domain"),
+        (CONQUER, "Conquer Domain"),
+        (ENFORCE_ORDER, "Enforce Order"),
+        (BESIEGE, "Besiege Castle"),
+        (MARCH, "March"),
+        (DEFEND, "Defend"),
         # like killing bandits
-        (PATROL, 'Patrol'),
+        (PATROL, "Patrol"),
         # assisting other armies' orders
-        (ASSIST, 'Assist'),
+        (ASSIST, "Assist"),
         # restoring morale
-        (BOLSTER, 'Bolster Morale'),
-        (EQUIP, 'Upgrade Equipment'),
+        (BOLSTER, "Bolster Morale"),
+        (EQUIP, "Upgrade Equipment"),
         # using army in a crisis action
-        (CRISIS, 'Crisis Response'))
-    army = models.ForeignKey("Army", related_name="orders", null=True, blank=True, db_index=True,
-                             on_delete=models.CASCADE)
+        (CRISIS, "Crisis Response"),
+    )
+    army = models.ForeignKey(
+        "Army",
+        related_name="orders",
+        null=True,
+        blank=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     # for realm PVP and realm offense/defense
-    target_domain = models.ForeignKey("Domain", related_name="orders", null=True, blank=True, db_index=True,
-                                      on_delete=models.CASCADE)
+    target_domain = models.ForeignKey(
+        "Domain",
+        related_name="orders",
+        null=True,
+        blank=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     # for travel and exploration
-    target_land = models.ForeignKey("Land", related_name="orders", null=True, blank=True, on_delete=models.CASCADE)
+    target_land = models.ForeignKey(
+        "Land", related_name="orders", null=True, blank=True, on_delete=models.CASCADE
+    )
     # an individual's support for training, morale, equipment
-    target_character = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="orders", blank=True,
-                                         null=True, db_index=True)
+    target_character = models.ForeignKey(
+        "PlayerOrNpc",
+        on_delete=models.SET_NULL,
+        related_name="orders",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     # if we're targeting an action or asist. omg skorpins.
-    action = models.ForeignKey("PlotAction", related_name="orders", null=True, blank=True, db_index=True,
-                               on_delete=models.CASCADE)
-    action_assist = models.ForeignKey("PlotActionAssistant", related_name="orders", null=True, blank=True,
-                                      db_index=True, on_delete=models.CASCADE)
+    action = models.ForeignKey(
+        "PlotAction",
+        related_name="orders",
+        null=True,
+        blank=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    action_assist = models.ForeignKey(
+        "PlotActionAssistant",
+        related_name="orders",
+        null=True,
+        blank=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     # if we're assisting another army's orders
-    assisting = models.ForeignKey("self", related_name="assisting_orders", null=True, blank=True, db_index=True,
-                                  on_delete=models.CASCADE)
+    assisting = models.ForeignKey(
+        "self",
+        related_name="assisting_orders",
+        null=True,
+        blank=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     type = models.PositiveSmallIntegerField(choices=ORDER_CHOICES, default=TRAIN)
     coin_cost = models.PositiveIntegerField(default=0, blank=0)
     food_cost = models.PositiveIntegerField(default=0, blank=0)
@@ -576,6 +736,7 @@ class Orders(SharedMemoryModel):
 
     class Meta:
         """Define Django meta options"""
+
         verbose_name_plural = "Army Orders"
 
     def calculate_cost(self):
@@ -583,18 +744,21 @@ class Orders(SharedMemoryModel):
         Calculates cost for an action and assigns self.coin_cost
         """
         DIV = 100
-        costs = sum((ob.costs/DIV) + 1 for ob in self.units.all())
+        costs = sum((ob.costs / DIV) + 1 for ob in self.units.all())
         self.coin_cost = costs
         self.save()
 
     @property
     def troops_sent(self):
         """Returns display of troops being ordered"""
-        return ", ".join("%s %s" % (ob.quantity, ob.type) for ob in self.army.units.all())
+        return ", ".join(
+            "%s %s" % (ob.quantity, ob.type) for ob in self.army.units.all()
+        )
 
 
 class UnitTypeInfo(models.Model):
     """Abstract base class with information about military units"""
+
     INFANTRY = unit_constants.INFANTRY
     PIKE = unit_constants.PIKE
     CAVALRY = unit_constants.CAVALRY
@@ -606,18 +770,20 @@ class UnitTypeInfo(models.Model):
     COG = unit_constants.COG
 
     UNIT_CHOICES = (
-        (INFANTRY, 'Infantry'),
-        (PIKE, 'Pike'),
-        (CAVALRY, 'Cavalry'),
-        (ARCHERS, 'Archers'),
-        (LONGSHIP, 'Longship'),
-        (SIEGE_WEAPON, 'Siege Weapon'),
-        (GALLEY, 'Galley'),
-        (COG, 'Cog'),
-        (DROMOND, 'Dromond'),
-        )
+        (INFANTRY, "Infantry"),
+        (PIKE, "Pike"),
+        (CAVALRY, "Cavalry"),
+        (ARCHERS, "Archers"),
+        (LONGSHIP, "Longship"),
+        (SIEGE_WEAPON, "Siege Weapon"),
+        (GALLEY, "Galley"),
+        (COG, "Cog"),
+        (DROMOND, "Dromond"),
+    )
     # type will be used to derive units and their stats elsewhere
-    unit_type = models.PositiveSmallIntegerField(choices=UNIT_CHOICES, default=0, blank=0)
+    unit_type = models.PositiveSmallIntegerField(
+        choices=UNIT_CHOICES, default=0, blank=0
+    )
 
     class Meta:
         abstract = True
@@ -625,12 +791,19 @@ class UnitTypeInfo(models.Model):
 
 class OrgUnitModifiers(UnitTypeInfo):
     """Model that has modifiers from an org to make a special unit"""
-    org = models.ForeignKey('Organization', related_name="unit_mods", db_index=True, on_delete=models.CASCADE)
+
+    org = models.ForeignKey(
+        "Organization",
+        related_name="unit_mods",
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     mod = models.SmallIntegerField(default=0, blank=0)
     name = models.CharField(blank=True, null=True, max_length=80)
 
     class Meta:
         """Define Django meta options"""
+
         verbose_name_plural = "Unit Modifiers"
 
 
@@ -644,21 +817,51 @@ class MilitaryUnit(UnitTypeInfo):
     only need to store modifiers for a unit that are specific to it, modifiers it has
     accured.
     """
-    origin = models.ForeignKey('Organization', related_name='units', blank=True, null=True, db_index=True,
-                               on_delete=models.CASCADE)
-    commander = models.ForeignKey("PlayerOrNpc", on_delete=models.SET_NULL, related_name="units", blank=True, null=True)
-    army = models.ForeignKey("Army", related_name="units", blank=True, null=True, db_index=True,
-                             on_delete=models.CASCADE)
-    orders = models.ForeignKey("Orders", related_name="units", on_delete=models.SET_NULL, blank=True, null=True,
-                               db_index=True)
+
+    origin = models.ForeignKey(
+        "Organization",
+        related_name="units",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    commander = models.ForeignKey(
+        "PlayerOrNpc",
+        on_delete=models.SET_NULL,
+        related_name="units",
+        blank=True,
+        null=True,
+    )
+    army = models.ForeignKey(
+        "Army",
+        related_name="units",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    orders = models.ForeignKey(
+        "Orders",
+        related_name="units",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     quantity = models.PositiveSmallIntegerField(default=1, blank=1)
     level = models.PositiveSmallIntegerField(default=0, blank=0)
     equipment = models.PositiveSmallIntegerField(default=0, blank=0)
     # can go negative, such as when adding new recruits to a unit
     xp = models.SmallIntegerField(default=0, blank=0)
     # if a hostile area has bandits or whatever, we're not part of an army, just that
-    hostile_area = models.ForeignKey("HostileArea", on_delete=models.SET_NULL, related_name="units", blank=True,
-                                     null=True)
+    hostile_area = models.ForeignKey(
+        "HostileArea",
+        on_delete=models.SET_NULL,
+        related_name="units",
+        blank=True,
+        null=True,
+    )
 
     def display(self):
         """
@@ -667,8 +870,17 @@ class MilitaryUnit(UnitTypeInfo):
         cmdstr = ""
         if self.commander:
             cmdstr = "{c%s{n " % self.commander
-        msg = "{wID:{n#%s %s{wType{n: %-12s {wAmount{n: %-7s" % (self.id, cmdstr, self.type.capitalize(), self.quantity)
-        msg += " {wLevel{n: %s {wEquip{n: %s {wXP{n: %s" % (self.level, self.equipment, self.xp)
+        msg = "{wID:{n#%s %s{wType{n: %-12s {wAmount{n: %-7s" % (
+            self.id,
+            cmdstr,
+            self.type.capitalize(),
+            self.quantity,
+        )
+        msg += " {wLevel{n: %s {wEquip{n: %s {wXP{n: %s" % (
+            self.level,
+            self.equipment,
+            self.xp,
+        )
         return msg
 
     def change_commander(self, caller, commander):
@@ -683,11 +895,15 @@ class MilitaryUnit(UnitTypeInfo):
         """
         old_commander = self.commander
         if old_commander:
-            old_commander.inform("%s has relieved you of command of unit %s." % (caller, self.id))
+            old_commander.inform(
+                "%s has relieved you of command of unit %s." % (caller, self.id)
+            )
         if commander:
             self.commander = commander.Dominion
             self.save()
-            commander.inform("%s has set you in command of unit %s." % (caller, self.id))
+            commander.inform(
+                "%s has set you in command of unit %s." % (caller, self.id)
+            )
             return
         self.commander = None
         self.save()
@@ -703,9 +919,17 @@ class MilitaryUnit(UnitTypeInfo):
         """
         self.quantity -= qty
         self.save()
-        MilitaryUnit.objects.create(origin=self.origin, army=self.army, orders=self.orders, quantity=qty,
-                                    level=self.level, equipment=self.equipment, xp=self.xp,
-                                    hostile_area=self.hostile_area, unit_type=self.unit_type)
+        MilitaryUnit.objects.create(
+            origin=self.origin,
+            army=self.army,
+            orders=self.orders,
+            quantity=qty,
+            level=self.level,
+            equipment=self.equipment,
+            xp=self.xp,
+            hostile_area=self.hostile_area,
+            unit_type=self.unit_type,
+        )
 
     def decimate(self, amount=0.10):
         """
@@ -769,7 +993,9 @@ class MilitaryUnit(UnitTypeInfo):
             hunger = self.stats.food_upkeep
         except AttributeError:
             print("Type %s is not a recognized Military type!" % self.unit_type)
-            print("Warning. No food upkeep assigned to <MilitaryUnit - ID: %s>" % self.id)
+            print(
+                "Warning. No food upkeep assigned to <MilitaryUnit - ID: %s>" % self.id
+            )
             hunger = 0
         hunger *= self.quantity
         return hunger
@@ -782,6 +1008,7 @@ class MilitaryUnit(UnitTypeInfo):
             return self.stats.name.lower()
         except AttributeError:
             return "unknown type"
+
     type = property(_get_type_name)
 
     def __str__(self):
@@ -803,10 +1030,14 @@ class MilitaryUnit(UnitTypeInfo):
         Combine our units. get average of both worlds. Mediocrity wins!
         """
         total = self.quantity + target.quantity
-        self.level = ((self.level * self.quantity) + (target.level * target.quantity))/total
-        self.equipment = ((self.equipment * self.quantity) + (target.equipment * target.quantity))/total
+        self.level = (
+            (self.level * self.quantity) + (target.level * target.quantity)
+        ) / total
+        self.equipment = (
+            (self.equipment * self.quantity) + (target.equipment * target.quantity)
+        ) / total
         self.quantity = total
-        self.xp = ((self.quantity * self.xp) + (target.quantity * target.xp))/total
+        self.xp = ((self.quantity * self.xp) + (target.quantity * target.xp)) / total
         self.save()
         target.delete()
 
@@ -816,7 +1047,7 @@ class MilitaryUnit(UnitTypeInfo):
         Args:
             amount: int
         """
-        gain = int(round(float(amount)/self.quantity))
+        gain = int(round(float(amount) / self.quantity))
         # always gain at least 1 xp
         if gain < 1:
             gain = 1
@@ -841,12 +1072,24 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
     square. Conquering other domains inside the same Land square should annex
     them into a single domain.
     """
+
     # 'grid' square where our domain is. More than 1 domain can be on a square
-    location = models.ForeignKey('MapLocation', on_delete=models.SET_NULL, related_name='domains',
-                                 blank=True, null=True)
+    location = models.ForeignKey(
+        "MapLocation",
+        on_delete=models.SET_NULL,
+        related_name="domains",
+        blank=True,
+        null=True,
+    )
     # The house that rules this domain
-    ruler = models.ForeignKey('Ruler', on_delete=models.SET_NULL, related_name='holdings', blank=True, null=True,
-                              db_index=True)
+    ruler = models.ForeignKey(
+        "Ruler",
+        on_delete=models.SET_NULL,
+        related_name="holdings",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     # cosmetic info
     name = models.CharField(blank=True, null=True, max_length=80)
     desc = models.TextField(blank=True, null=True)
@@ -855,7 +1098,10 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
 
     # how much of the territory in our land square we control
     from django.core.validators import MaxValueValidator
-    area = models.PositiveSmallIntegerField(validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0)
+
+    area = models.PositiveSmallIntegerField(
+        validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0
+    )
 
     # granaries, food for emergencies, etc
     stored_food = models.PositiveIntegerField(default=0, blank=0)
@@ -899,7 +1145,7 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
 
     @CachedProperty
     def tax_income(self):
-        tax = float(self.tax_rate)/100.0
+        tax = float(self.tax_rate) / 100.0
         if tax > 1.00:
             tax = 1.00
         tax *= float(self.total_serfs)
@@ -925,7 +1171,7 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         if workers >= req:
             return 1.0
         # percentage of our efficiency
-        return workers/req
+        return workers / req
 
     def get_resource_income(self, building, workers):
         """Generates base income from resources"""
@@ -936,13 +1182,13 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
     def _get_mining_income(self):
         base = self.get_resource_income(self.num_mines, self.mining_serfs)
         if self.land:
-            base = (base * self.land.mine_mod)/100.0
+            base = (base * self.land.mine_mod) / 100.0
         return base
 
     def _get_lumber_income(self):
         base = self.get_resource_income(self.num_lumber_yards, self.lumber_serfs)
         if self.land:
-            base = (base * self.land.lumber_mod)/100.0
+            base = (base * self.land.lumber_mod) / 100.0
         return base
 
     def _get_mill_income(self):
@@ -972,12 +1218,15 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         floats, which we'll convert to an int once we're all done.
         """
         from evennia.server.models import ServerConfig
+
         amount = self.tax_income
         amount += self.mining_income
         amount += self.lumber_income
         amount += self.mill_income
-        amount = (amount * self.income_modifier)/100.0
-        global_mod = ServerConfig.objects.conf("GLOBAL_INCOME_MOD", default=DEFAULT_GLOBAL_INCOME_MOD)
+        amount = (amount * self.income_modifier) / 100.0
+        global_mod = ServerConfig.objects.conf(
+            "GLOBAL_INCOME_MOD", default=DEFAULT_GLOBAL_INCOME_MOD
+        )
         try:
             amount += int(amount * global_mod)
         except (TypeError, ValueError):
@@ -987,7 +1236,7 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         except AttributeError:
             pass
         if self.ruler and self.ruler.castellan:
-            bonus = self.get_bonus('income') * amount
+            bonus = self.get_bonus("income") * amount
             amount += bonus
         # we'll dump the remainder
         return int(amount)
@@ -1008,10 +1257,10 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         if self.slave_labor_percentage > 99:
             return 0
         cost = BASE_WORKER_COST * number
-        cost *= (100 - self.slave_labor_percentage)/100
+        cost *= (100 - self.slave_labor_percentage) / 100
         if self.ruler and self.ruler.castellan:
             # every point in upkeep skill reduces cost
-            reduction = 1.00 + self.get_bonus('upkeep')
+            reduction = 1.00 + self.get_bonus("upkeep")
             cost /= reduction
         return int(cost)
 
@@ -1040,9 +1289,12 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
                 transaction = self.ruler.house.debts.get(category="vassal taxes")
                 return transaction.weekly_amount
             except ObjectDoesNotExist:
-                amt = (self.total_income * self.liege_taxes)/100
-                self.ruler.house.debts.create(category="vassal taxes", receiver=self.ruler.liege.house,
-                                              weekly_amount=amt)
+                amt = (self.total_income * self.liege_taxes) / 100
+                self.ruler.house.debts.create(
+                    category="vassal taxes",
+                    receiver=self.ruler.liege.house,
+                    weekly_amount=amt,
+                )
                 return amt
         return 0
 
@@ -1056,8 +1308,11 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
             if transaction.receiver != self.ruler.liege.house:
                 transaction.receiver = self.ruler.liege.house
         except ObjectDoesNotExist:
-            transaction = self.ruler.house.debts.create(category="vassal taxes", receiver=self.ruler.liege.house,
-                                                        weekly_amount=amt)
+            transaction = self.ruler.house.debts.create(
+                category="vassal taxes",
+                receiver=self.ruler.liege.house,
+                weekly_amount=amt,
+            )
         transaction.weekly_amount = amt
         transaction.save()
 
@@ -1068,7 +1323,7 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         mod = self.required_worker_mod(self.num_farms, self.farming_serfs)
         amount = (self.num_farms * FOOD_PER_FARM) * mod
         if self.ruler and self.ruler.castellan:
-            bonus = self.get_bonus('farming') * amount
+            bonus = self.get_bonus("farming") * amount
             amount += bonus
         return int(amount)
 
@@ -1089,7 +1344,9 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         """
         How many serfs are currently working on a field.
         """
-        return self.mill_serfs + self.mining_serfs + self.farming_serfs + self.lumber_serfs
+        return (
+            self.mill_serfs + self.mining_serfs + self.farming_serfs + self.lumber_serfs
+        )
 
     def _get_total_serfs(self):
         """
@@ -1120,7 +1377,12 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
                 self.save()
                 return
             # gotta kill more
-            worker_types = ["farming_serfs", "mining_serfs", "mill_serfs", "lumber_serfs"]
+            worker_types = [
+                "farming_serfs",
+                "mining_serfs",
+                "mill_serfs",
+                "lumber_serfs",
+            ]
             # sort it from most to least
             worker_types.sort(key=lambda x: getattr(self, x), reverse=True)
             worker_type = worker_types[0]
@@ -1140,7 +1402,7 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         An army has successfully pillaged us. Determine the economic impact.
         """
         print("%s plundered during week %s" % (self, week))
-        max_pillage = army.size/10
+        max_pillage = army.size / 10
         pillage = self.total_income
         if pillage > max_pillage:
             pillage = max_pillage
@@ -1210,9 +1472,9 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
             base_growth = 0
         else:  # bonuses for growth
             # bonus for having a lot of room to grow
-            bonus = float(self.max_pop)/self.total_serfs
+            bonus = float(self.max_pop) / self.total_serfs
             if self.ruler and self.ruler.castellan:
-                bonus += bonus * self.get_bonus('population')
+                bonus += bonus * self.get_bonus("population")
             bonus = int(bonus) + 1
             base_growth += bonus
         if self.lawlessness > 0:
@@ -1237,10 +1499,10 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
     liege_taxed_amt = property(_get_liege_taxed_amt)
 
     def __str__(self):
-        return "%s (#%s)" % (self.name or 'Unnamed Domain', self.id)
+        return "%s (#%s)" % (self.name or "Unnamed Domain", self.id)
 
     def __repr__(self):
-        return "<Domain (#%s): %s>" % (self.id, self.name or 'Unnamed')
+        return "<Domain (#%s): %s>" % (self.id, self.name or "Unnamed")
 
     def do_weekly_adjustment(self, week, report=None, npc=False):
         """
@@ -1300,28 +1562,51 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
         if ministers:
             mssg += "{wMinisters:{n\n"
             for minister in ministers:
-                mssg += "  {c%s{n   {wCategory:{n %s  {wTitle:{n %s\n" % (minister.player,
-                                                                          minister.get_category_display(),
-                                                                          minister.title)
+                mssg += "  {c%s{n   {wCategory:{n %s  {wTitle:{n %s\n" % (
+                    minister.player,
+                    minister.get_category_display(),
+                    minister.title,
+                )
         mssg += "{wDesc{n: %s\n" % self.desc
-        mssg += "{wArea{n: %s {wFarms{n: %s {wHousing{n: %s " % (self.area, self.num_farms, self.num_housing)
-        mssg += "{wMines{n: %s {wLumber{n: %s {wMills{n: %s\n" % (self.num_mines, self.num_lumber_yards, self.num_mills)
+        mssg += "{wArea{n: %s {wFarms{n: %s {wHousing{n: %s " % (
+            self.area,
+            self.num_farms,
+            self.num_housing,
+        )
+        mssg += "{wMines{n: %s {wLumber{n: %s {wMills{n: %s\n" % (
+            self.num_mines,
+            self.num_lumber_yards,
+            self.num_mills,
+        )
         mssg += "{wTotal serfs{n: %s " % self.total_serfs
-        mssg += "{wAssignments: Mines{n: %s {wMills{n: %s " % (self.mining_serfs, self.mill_serfs)
-        mssg += "{wLumber yards:{n %s {wFarms{n: %s\n" % (self.lumber_serfs, self.farming_serfs)
-        mssg += "{wTax Rate{n: %s {wLawlessness{n: %s " % (self.tax_rate, self.lawlessness)
-        mssg += "{wCosts{n: %s {wIncome{n: %s {wLiege's tax rate{n: %s\n" % (self.costs, self.total_income,
-                                                                             self.liege_taxes)
-        mssg += "{wFood Production{n: %s {wFood Consumption{n: %s {wStored Food{n: %s\n" % (self.food_production,
-                                                                                            self.food_consumption,
-                                                                                            self.stored_food)
-        frame = ("=" * 15)
+        mssg += "{wAssignments: Mines{n: %s {wMills{n: %s " % (
+            self.mining_serfs,
+            self.mill_serfs,
+        )
+        mssg += "{wLumber yards:{n %s {wFarms{n: %s\n" % (
+            self.lumber_serfs,
+            self.farming_serfs,
+        )
+        mssg += "{wTax Rate{n: %s {wLawlessness{n: %s " % (
+            self.tax_rate,
+            self.lawlessness,
+        )
+        mssg += "{wCosts{n: %s {wIncome{n: %s {wLiege's tax rate{n: %s\n" % (
+            self.costs,
+            self.total_income,
+            self.liege_taxes,
+        )
+        mssg += (
+            "{wFood Production{n: %s {wFood Consumption{n: %s {wStored Food{n: %s\n"
+            % (self.food_production, self.food_consumption, self.stored_food)
+        )
+        frame = "=" * 15
         mssg += "\n|w{0} Castles {0}|n".format(frame)
         for castle in self.castles.all():
-            mssg += ("\n" + castle.display())
+            mssg += "\n" + castle.display()
         mssg += "\n|w{0} Armies {0}|n".format(frame)
         for army in self.armies.all():
-            mssg += ("\n" + army.display())
+            mssg += "\n" + army.display()
         return mssg
 
     def clear_cached_properties(self):
@@ -1338,6 +1623,7 @@ class DomainProject(SharedMemoryModel):
     Construction projects with a domain. In general, each should take a week,
     but may come up with ones that would take more.
     """
+
     # project types
     BUILD_HOUSING = 1
     BUILD_FARMS = 2
@@ -1348,24 +1634,47 @@ class DomainProject(SharedMemoryModel):
     MUSTER_TROOPS = 7
     BUILD_TROOP_EQUIPMENT = 9
 
-    PROJECT_CHOICES = ((BUILD_HOUSING, 'Build Housing'),
-                       (BUILD_FARMS, 'Build Farms'),
-                       (BUILD_MINES, 'Build Mines'),
-                       (BUILD_MILLS, 'Build Mills'),
-                       (BUILD_DEFENSES, 'Build Defenses'),
-                       (BUILD_SIEGE_WEAPONS, 'Build Siege Weapons'),
-                       (MUSTER_TROOPS, 'Muster Troops'),
-                       (BUILD_TROOP_EQUIPMENT, 'Build Troop Equipment'),)
+    PROJECT_CHOICES = (
+        (BUILD_HOUSING, "Build Housing"),
+        (BUILD_FARMS, "Build Farms"),
+        (BUILD_MINES, "Build Mines"),
+        (BUILD_MILLS, "Build Mills"),
+        (BUILD_DEFENSES, "Build Defenses"),
+        (BUILD_SIEGE_WEAPONS, "Build Siege Weapons"),
+        (MUSTER_TROOPS, "Muster Troops"),
+        (BUILD_TROOP_EQUIPMENT, "Build Troop Equipment"),
+    )
 
-    type = models.PositiveSmallIntegerField(choices=PROJECT_CHOICES, default=BUILD_HOUSING)
+    type = models.PositiveSmallIntegerField(
+        choices=PROJECT_CHOICES, default=BUILD_HOUSING
+    )
     amount = models.PositiveSmallIntegerField(blank=1, default=1)
     unit_type = models.PositiveSmallIntegerField(default=1, blank=1)
     time_remaining = models.PositiveIntegerField(default=1, blank=1)
-    domain = models.ForeignKey("Domain", related_name="projects", blank=True, null=True, on_delete=models.CASCADE)
-    castle = models.ForeignKey("Castle", related_name="projects", blank=True, null=True, on_delete=models.CASCADE)
-    military = models.ForeignKey("Army", related_name="projects", blank=True, null=True, on_delete=models.CASCADE)
-    unit = models.ForeignKey("MilitaryUnit", related_name="projects", blank=True, null=True,
-                             on_delete=models.CASCADE)
+    domain = models.ForeignKey(
+        "Domain",
+        related_name="projects",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    castle = models.ForeignKey(
+        "Castle",
+        related_name="projects",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    military = models.ForeignKey(
+        "Army", related_name="projects", blank=True, null=True, on_delete=models.CASCADE
+    )
+    unit = models.ForeignKey(
+        "MilitaryUnit",
+        related_name="projects",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
 
     def advance_project(self, report=None, increment=1):
         """Makes progress on a project for a domain"""
@@ -1400,7 +1709,9 @@ class DomainProject(SharedMemoryModel):
                 existing_unit.quantity += self.amount
                 existing_unit.save()
             else:
-                self.military.units.create(unit_type=self.unit_type, quantity=self.amount)
+                self.military.units.create(
+                    unit_type=self.unit_type, quantity=self.amount
+                )
         if self.type == self.TRAIN_TROOPS:
             self.unit.train(self.amount)
         if self.type == self.BUILD_TROOP_EQUIPMENT:
@@ -1423,6 +1734,7 @@ class Castle(SharedMemoryModel):
     Currently, castles have no upkeep costs. Any costs for their garrison is paid
     by the domain that owns that army.
     """
+
     MOTTE_AND_BAILEY = 1
     TIMBER_CASTLE = 2
     STONE_CASTLE = 3
@@ -1431,14 +1743,21 @@ class Castle(SharedMemoryModel):
     EPIC_CASTLE = 6
 
     FORTIFICATION_CHOICES = (
-        (MOTTE_AND_BAILEY, 'Motte and Bailey'),
-        (TIMBER_CASTLE, 'Timber Castle'),
-        (STONE_CASTLE, 'Stone Castle'),
-        (CASTLE_WITH_CURTAIN_WALL, 'Castle with Curtain Wall'),
-        (FORTIFIED_CASTLE, 'Fortified Castle'),
-        (EPIC_CASTLE, 'Epic Castle'))
+        (MOTTE_AND_BAILEY, "Motte and Bailey"),
+        (TIMBER_CASTLE, "Timber Castle"),
+        (STONE_CASTLE, "Stone Castle"),
+        (CASTLE_WITH_CURTAIN_WALL, "Castle with Curtain Wall"),
+        (FORTIFIED_CASTLE, "Fortified Castle"),
+        (EPIC_CASTLE, "Epic Castle"),
+    )
     level = models.PositiveSmallIntegerField(default=MOTTE_AND_BAILEY)
-    domain = models.ForeignKey("Domain", related_name="castles", blank=True, null=True, on_delete=models.CASCADE)
+    domain = models.ForeignKey(
+        "Domain",
+        related_name="castles",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
     damage = models.PositiveSmallIntegerField(default=0, blank=0)
     # cosmetic info:
     name = models.CharField(null=True, blank=True, max_length=80)
@@ -1446,7 +1765,11 @@ class Castle(SharedMemoryModel):
 
     def display(self):
         """Returns formatted string for a castle's display"""
-        msg = "{wName{n: %s {wLevel{n: %s (%s)\n" % (self.name, self.level, self.get_level_display())
+        msg = "{wName{n: %s {wLevel{n: %s (%s)\n" % (
+            self.name,
+            self.level,
+            self.get_level_display(),
+        )
         msg += "{wDescription{n: %s\n" % self.desc
         return msg
 
@@ -1481,16 +1804,32 @@ class Ruler(SharedMemoryModel):
     from it - it's assumed to be an Organization. liege is how we establish
     the liege/vassal relationships between ruler objects.
     """
+
     # the person who's skills are used to govern the domain
-    castellan = models.OneToOneField("PlayerOrNpc", blank=True, null=True, on_delete=models.CASCADE)
+    castellan = models.OneToOneField(
+        "PlayerOrNpc", blank=True, null=True, on_delete=models.CASCADE
+    )
     # the house that owns the domain
-    house = models.OneToOneField("AssetOwner", on_delete=models.SET_NULL, related_name="estate", blank=True, null=True)
+    house = models.OneToOneField(
+        "AssetOwner",
+        on_delete=models.SET_NULL,
+        related_name="estate",
+        blank=True,
+        null=True,
+    )
     # a ruler object that this object owes its alliegance to
-    liege = models.ForeignKey("self", on_delete=models.SET_NULL, related_name="vassals", blank=True, null=True,
-                              db_index=True)
+    liege = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="vassals",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
 
     def _get_titles(self):
         return ", ".join(domain.title for domain in self.domains.all())
+
     titles = property(_get_titles)
 
     def __str__(self):
@@ -1530,7 +1869,11 @@ class Ruler(SharedMemoryModel):
                 category = Minister.PRODUCTIVITY
             minister = self.ministers.get(category=category)
             return getattr(minister.player, attr)
-        except (Minister.DoesNotExist, Minister.MultipleObjectsReturned, AttributeError):
+        except (
+            Minister.DoesNotExist,
+            Minister.MultipleObjectsReturned,
+            AttributeError,
+        ):
             return 0
 
     def ruler_skill(self, attr):
@@ -1549,14 +1892,19 @@ class Ruler(SharedMemoryModel):
         """Total silver we get from our vassals"""
         if not self.house:
             return 0
-        return sum(ob.weekly_amount for ob in self.house.incomes.filter(category="vassal taxes"))
+        return sum(
+            ob.weekly_amount
+            for ob in self.house.incomes.filter(category="vassal taxes")
+        )
 
     @property
     def liege_taxes(self):
         """Total silver we pay to our liege"""
         if not self.house:
             return 0
-        return sum(ob.weekly_amount for ob in self.house.debts.filter(category="vassal taxes"))
+        return sum(
+            ob.weekly_amount for ob in self.house.debts.filter(category="vassal taxes")
+        )
 
     def clear_domain_cache(self):
         """Clears cache for all domains under our rule"""

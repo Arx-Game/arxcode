@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0031_auto_20181116_2351'),
+        ("exploration", "0031_auto_20181116_2351"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenlayoutexit',
-            name='override',
+            model_name="shardhavenlayoutexit",
+            name="override",
             field=models.BooleanField(default=False),
         ),
     ]

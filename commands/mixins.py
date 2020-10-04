@@ -8,6 +8,7 @@ from django.db.models import Q
 
 class ArxCommmandMixin(object):
     """Mixin class for Arx commands"""
+
     error_class = CommandError
     help_entry_tags = []
 
@@ -29,6 +30,7 @@ class ArxCommmandMixin(object):
     def character_search(self, args, allow_npc=False):
         """Returns a Character object using given args."""
         from typeclasses.characters import Character
+
         try:
             if allow_npc:
                 return Character.objects.get(db_key__iexact=args)
@@ -40,11 +42,14 @@ class ArxCommmandMixin(object):
     def dompc_search(self, args, only_players=True):
         """Tries to find a PlayerOrNpc with name matching args."""
         from world.dominion.models import PlayerOrNpc
+
         try:
             if only_players:
                 return PlayerOrNpc.objects.get(player__username__iexact=args)
             try:
-                return PlayerOrNpc.objects.get(Q(player__username__iexact=args) | Q(npc_name__iexact=args))
+                return PlayerOrNpc.objects.get(
+                    Q(player__username__iexact=args) | Q(npc_name__iexact=args)
+                )
             except PlayerOrNpc.MultipleObjectsReturned:
                 return PlayerOrNpc.objects.get(player__username__iexact=args)
         except PlayerOrNpc.DoesNotExist:
@@ -55,9 +60,15 @@ class ArxCommmandMixin(object):
         """Whether caller has staff permissions"""
         return self.caller.check_permstring("builders")
 
-    def get_by_name_or_id(self, cls, args: str, field_name: str = "name",
-                          check_contains_first: bool = True, q_args: Union[Q, None] = None,
-                          filter_kwargs: Union[Dict, None] = None):
+    def get_by_name_or_id(
+        self,
+        cls,
+        args: str,
+        field_name: str = "name",
+        check_contains_first: bool = True,
+        q_args: Union[Q, None] = None,
+        filter_kwargs: Union[Dict, None] = None,
+    ):
         """Gets a given class by ID or a unique text field (default of 'name')"""
         err = "No %s found using '%s'." % (cls.__name__, args)
         qs = cls.objects.all().distinct()
@@ -74,7 +85,10 @@ class ArxCommmandMixin(object):
                         kwargs = {"%s__icontains" % field_name: args}
                         return qs.get(**kwargs)
                     except cls.MultipleObjectsReturned:
-                        err = "More than one %s found with '%s'; be specific." % (cls.__name__, args)
+                        err = "More than one %s found with '%s'; be specific." % (
+                            cls.__name__,
+                            args,
+                        )
                         try:
                             kwargs = {"%s__iexact" % field_name: args}
                             return qs.get(**kwargs)
@@ -93,7 +107,10 @@ class ArxCommmandMixin(object):
         try:
             return choice_dict[args.lower()]
         except KeyError:
-            raise self.error_class("Invalid Choice. Try one of the following: %s" % ", ".join(original_strings))
+            raise self.error_class(
+                "Invalid Choice. Try one of the following: %s"
+                % ", ".join(original_strings)
+            )
 
     def confirm_command(self, attr, val, prompt_msg):
         """
@@ -109,6 +126,7 @@ class ArxCommmandMixin(object):
                 it and prompt them for confirmation.
         """
         from datetime import date
+
         attr = "confirm_%s" % attr
         val = "%s_%s" % (val, date)
         if self.caller.nattributes.get(attr) == val:
@@ -118,11 +136,14 @@ class ArxCommmandMixin(object):
         self.msg(prompt_msg)
 
     def msg(self, text=None, to_obj=None, from_obj=None, session=None, **kwargs):
-        return super().msg(text=str(text), to_obj=to_obj, from_obj=from_obj, session=session, **kwargs)
+        return super().msg(
+            text=str(text), to_obj=to_obj, from_obj=from_obj, session=session, **kwargs
+        )
 
 
 class FormCommandMixin(object):
     """Mixin to have command act as a form"""
+
     form_class = None
     form_attribute = ""
     form_initial_kwargs = []
@@ -142,7 +163,10 @@ class FormCommandMixin(object):
     def display_form(self):
         form = self.form
         if not form:
-            self.msg("You are not presently creating a %s." % self.form_class.Meta.model.__name__)
+            self.msg(
+                "You are not presently creating a %s."
+                % self.form_class.Meta.model.__name__
+            )
             return
         self.msg(form.display())
 
@@ -168,6 +192,8 @@ class RewardRPToolUseMixin(object):
         if self.caller.char_ob.db.random_rp_command_this_week != key:
             return
         self.caller.char_ob.db.rp_command_used = key
-        self.msg("You have used '%s', your randomly selected RP Tool command for the week, and gained %s xp." % (
-            key, self.XP))
+        self.msg(
+            "You have used '%s', your randomly selected RP Tool command for the week, and gained %s xp."
+            % (key, self.XP)
+        )
         self.caller.char_ob.adjust_xp(self.XP)

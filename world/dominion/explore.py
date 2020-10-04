@@ -26,7 +26,7 @@ FARM = 2
 MILL = 3
 LUMBER = 4
 MINE = 5
-                
+
 
 class Exploration(object):
     def __init__(self, army, land, domain, week):
@@ -137,8 +137,10 @@ class Exploration(object):
                 area = max_area
             self.type = BANDITS
             bandit_domain = self.land.domains.create(name="Bandits", area=area)
-            bandit_army = bandit_domain.armies.create(name="Bandits", morale=80, land=self.land)
-            bandit_army.units.create(type=unit_types.INFANTRY, quantity=100*area)
+            bandit_army = bandit_domain.armies.create(
+                name="Bandits", morale=80, land=self.land
+            )
+            bandit_army.units.create(type=unit_types.INFANTRY, quantity=100 * area)
             self.victory = self.army.do_battle(bandit_domain, self.week)
         elif roll <= 100:
             area = random.randint(1, 20)
@@ -146,11 +148,16 @@ class Exploration(object):
                 area = max_area
             self.type = ABANDONED
             aban_domain = self.land.domains.create(name="Abandoned", area=area)
-            aban_army = aban_domain.armies.create(name="Abandoned", morale=80, land=self.land)
-            aban_army.units.create(type=unit_types.INFANTRY, quantity=100*area)
+            aban_army = aban_domain.armies.create(
+                name="Abandoned", morale=80, land=self.land
+            )
+            aban_army.units.create(type=unit_types.INFANTRY, quantity=100 * area)
             self.victory = self.army.do_battle(aban_domain, self.week)
         land.save()
         try:
             ExplorationReport(self.player, self)
         except Exception:
-            print("Could not generate exploration report for player %s." % str(self.player))
+            print(
+                "Could not generate exploration report for player %s."
+                % str(self.player)
+            )

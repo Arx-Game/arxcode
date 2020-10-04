@@ -8,13 +8,28 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0025_praiseorcondemn'),
+        ("dominion", "0025_praiseorcondemn"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='rpevent',
-            name='risk',
-            field=models.PositiveSmallIntegerField(choices=[(0, b'No Risk'), (1, b'Minimal Risk'), (2, b'Low Risk'), (3, b'Reduced Risk'), (4, b'Normal Risk'), (5, b'Slightly Elevated Risk'), (6, b'Moderately Elevated Risk'), (7, b'Highly Elevated Risk'), (8, b'Very High Risk'), (9, b'Extreme Risk'), (10, b'Suicidal Risk')], default=4),
+            model_name="rpevent",
+            name="risk",
+            field=models.PositiveSmallIntegerField(
+                choices=[
+                    (0, b"No Risk"),
+                    (1, b"Minimal Risk"),
+                    (2, b"Low Risk"),
+                    (3, b"Reduced Risk"),
+                    (4, b"Normal Risk"),
+                    (5, b"Slightly Elevated Risk"),
+                    (6, b"Moderately Elevated Risk"),
+                    (7, b"Highly Elevated Risk"),
+                    (8, b"Very High Risk"),
+                    (9, b"Extreme Risk"),
+                    (10, b"Suicidal Risk"),
+                ],
+                default=4,
+            ),
         ),
     ]

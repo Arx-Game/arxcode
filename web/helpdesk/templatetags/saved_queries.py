@@ -15,13 +15,19 @@ def saved_queries(user):
     if not user:
         return
     try:
-        user_saved_queries = SavedSearch.objects.filter(Q(user=user) | Q(shared__exact=True))
+        user_saved_queries = SavedSearch.objects.filter(
+            Q(user=user) | Q(shared__exact=True)
+        )
         return user_saved_queries
     except Exception as e:
         import sys
-        print("'saved_queries' template tag (django-helpdesk) crashed with following error:")
-        print(sys.stderr,  e)
-        return ''
+
+        print(
+            "'saved_queries' template tag (django-helpdesk) crashed with following error:"
+        )
+        print(sys.stderr, e)
+        return ""
+
 
 register = Library()
-register.filter('saved_queries', saved_queries)
+register.filter("saved_queries", saved_queries)

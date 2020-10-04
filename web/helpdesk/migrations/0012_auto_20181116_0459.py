@@ -9,19 +9,31 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0035_auto_20180831_0922'),
-        ('helpdesk', '0011_auto_20171109_2244'),
+        ("dominion", "0035_auto_20180831_0922"),
+        ("helpdesk", "0011_auto_20171109_2244"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='ticket',
-            name='beat',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='tickets', to='dominion.PlotUpdate'),
+            model_name="ticket",
+            name="beat",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="tickets",
+                to="dominion.PlotUpdate",
+            ),
         ),
         migrations.AddField(
-            model_name='ticket',
-            name='plot',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='tickets', to='dominion.Plot'),
+            model_name="ticket",
+            name="plot",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="tickets",
+                to="dominion.Plot",
+            ),
         ),
     ]

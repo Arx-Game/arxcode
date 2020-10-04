@@ -7,34 +7,148 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('magic', '0010_auto_20191228_1417'),
-        ('character', '0035_auto_20191228_1417'),
-        ('objects', '0011_auto_20191025_0831'),
-        ('dominion', '0046_auto_20191228_1417'),
+        ("magic", "0010_auto_20191228_1417"),
+        ("character", "0035_auto_20191228_1417"),
+        ("objects", "0011_auto_20191025_0831"),
+        ("dominion", "0046_auto_20191228_1417"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ActionRequirement',
+            name="ActionRequirement",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('requirement_type', models.PositiveSmallIntegerField(choices=[(0, 'silver'), (1, 'military resources'), (2, 'economic resources'), (3, 'social resources'), (4, 'action points'), (5, 'clue'), (6, 'revelation'), (7, 'magic skill node'), (8, 'spell'), (9, 'military forces'), (10, 'item'), (11, 'Other Requirement/Event')], default=0)),
-                ('total_required_amount', models.PositiveIntegerField(default=0, verbose_name='Amount for resources/AP')),
-                ('max_rate', models.PositiveIntegerField(default=0, verbose_name='If greater than 0, max amount that can be added per week')),
-                ('weekly_total', models.PositiveIntegerField(default=0, verbose_name='Amount added so far this week')),
-                ('requirement_text', models.TextField(blank=True, verbose_name='Specifies what you want the player to add for military forces or an event')),
-                ('explanation', models.TextField(blank=True, verbose_name='Explanation by fulfilling player of how the requirement is met')),
-                ('action', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='requirements', to='dominion.PlotAction')),
-                ('clue', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='character.Clue')),
-                ('fulfilled_by', models.ForeignKey(help_text='For non-amount clues, who satisfied the requirement', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='requirements_fulfilled', to='dominion.PlayerOrNpc')),
-                ('item', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='objects.ObjectDB')),
-                ('revelation', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='character.Revelation')),
-                ('rfr', models.ForeignKey(help_text='PlotUpdate that player specified to fill this requirement', null=True, on_delete=django.db.models.deletion.PROTECT, to='dominion.PlotUpdate')),
-                ('skill_node', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='magic.SkillNode')),
-                ('spell', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='magic.Spell')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "requirement_type",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "silver"),
+                            (1, "military resources"),
+                            (2, "economic resources"),
+                            (3, "social resources"),
+                            (4, "action points"),
+                            (5, "clue"),
+                            (6, "revelation"),
+                            (7, "magic skill node"),
+                            (8, "spell"),
+                            (9, "military forces"),
+                            (10, "item"),
+                            (11, "Other Requirement/Event"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                (
+                    "total_required_amount",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Amount for resources/AP"
+                    ),
+                ),
+                (
+                    "max_rate",
+                    models.PositiveIntegerField(
+                        default=0,
+                        verbose_name="If greater than 0, max amount that can be added per week",
+                    ),
+                ),
+                (
+                    "weekly_total",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Amount added so far this week"
+                    ),
+                ),
+                (
+                    "requirement_text",
+                    models.TextField(
+                        blank=True,
+                        verbose_name="Specifies what you want the player to add for military forces or an event",
+                    ),
+                ),
+                (
+                    "explanation",
+                    models.TextField(
+                        blank=True,
+                        verbose_name="Explanation by fulfilling player of how the requirement is met",
+                    ),
+                ),
+                (
+                    "action",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="requirements",
+                        to="dominion.PlotAction",
+                    ),
+                ),
+                (
+                    "clue",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="character.Clue",
+                    ),
+                ),
+                (
+                    "fulfilled_by",
+                    models.ForeignKey(
+                        help_text="For non-amount clues, who satisfied the requirement",
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="requirements_fulfilled",
+                        to="dominion.PlayerOrNpc",
+                    ),
+                ),
+                (
+                    "item",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="objects.ObjectDB",
+                    ),
+                ),
+                (
+                    "revelation",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="character.Revelation",
+                    ),
+                ),
+                (
+                    "rfr",
+                    models.ForeignKey(
+                        help_text="PlotUpdate that player specified to fill this requirement",
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to="dominion.PlotUpdate",
+                    ),
+                ),
+                (
+                    "skill_node",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="magic.SkillNode",
+                    ),
+                ),
+                (
+                    "spell",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="magic.Spell",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

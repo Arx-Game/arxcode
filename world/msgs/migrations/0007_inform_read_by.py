@@ -10,13 +10,15 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('msgs', '0006_remove_inform_read_by'),
+        ("msgs", "0006_remove_inform_read_by"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='inform',
-            name='read_by',
-            field=models.ManyToManyField(blank=True, related_name='read_informs', to=settings.AUTH_USER_MODEL),
+            model_name="inform",
+            name="read_by",
+            field=models.ManyToManyField(
+                blank=True, related_name="read_informs", to=settings.AUTH_USER_MODEL
+            ),
         ),
     ]

@@ -9,25 +9,31 @@ post as they like.
 from datetime import datetime
 from django.conf import settings
 from django.db import models
-from src.typeclasses.models import TypedObject, TagHandler, AttributeHandler, AliasHandler
+from src.typeclasses.models import (
+    TypedObject,
+    TagHandler,
+    AttributeHandler,
+    AliasHandler,
+)
 from src.utils.idmapper.models import SharedMemoryModel
 from src.locks.lockhandler import LockHandler
 from src.utils import logger
 from src.utils.utils import is_iter, to_str, crop, make_iter
 from game.gamesrc.objects.bulletin_board import managers
 
-__all__ = ("bboardDB")
+__all__ = "bboardDB"
 
 _GA = object.__getattribute__
 _SA = object.__setattr__
 _DA = object.__delattr__
 
 
-#------------------------------------------------------------
+# ------------------------------------------------------------
 #
 # bboard
 #
-#------------------------------------------------------------
+# ------------------------------------------------------------
+
 
 class bboardDB(TypedObject):
     """
@@ -46,7 +52,7 @@ class bboardDB(TypedObject):
     # Database manager
     objects = managers.BBoardManager()
 
-    #not currently set up to allow inheritance of new BBoard, can change later
+    # not currently set up to allow inheritance of new BBoard, can change later
     _typeclass_paths = "game.gamesrc.objects.bulletin_board.bboard.BBoard"
     _default_typeclass_path = "game.gamesrc.objects.bulletin_board.bboard.BBoard"
 
@@ -72,7 +78,7 @@ class bboardDB(TypedObject):
         "Clean out all connections to this bboard and delete it."
         super(bboardDB, self).delete()
 
-    def access(self, accessing_obj, access_type='read', default=False):
+    def access(self, accessing_obj, access_type="read", default=False):
         """
         Determines if another object has permission to access.
         accessing_obj - object trying to access this one
@@ -82,7 +88,7 @@ class bboardDB(TypedObject):
         return self.locks.check(accessing_obj, access_type=access_type, default=default)
 
     def post(self, pobj, msg, subject="No Subject", poster_name=None):
-        if access(pobj, access_type = 'write', default=False):
+        if access(pobj, access_type="write", default=False):
             return self.typeclass.bb_post(pobj, msg, subject, poster_name)
         else:
             return False

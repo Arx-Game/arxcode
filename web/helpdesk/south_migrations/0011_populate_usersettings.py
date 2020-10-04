@@ -11,6 +11,7 @@ def pickle_settings(data):
     """Pickling as defined at migration's creation time"""
     import cPickle
     from helpdesk.lib import b64encode
+
     return b64encode(cPickle.dumps(data))
 
 
@@ -21,10 +22,10 @@ def populate_usersettings(orm):
     when the UserSettings model doesn't already exist."""
 
     _User = get_user_model()
-    
+
     # Import historical version of models
-    User = orm[_User._meta.app_label+'.'+_User._meta.model_name]
-    UserSettings = orm["helpdesk"+'.'+"UserSettings"]
+    User = orm[_User._meta.app_label + "." + _User._meta.model_name]
+    UserSettings = orm["helpdesk" + "." + "UserSettings"]
     settings_pickled = pickle_settings(DEFAULT_USER_SETTINGS)
 
     for u in User.objects.all():
@@ -33,8 +34,8 @@ def populate_usersettings(orm):
         except UserSettings.DoesNotExist:
             UserSettings.objects.create(user=u, settings_pickled=settings_pickled)
 
-class Migration(DataMigration):
 
+class Migration(DataMigration):
     def forwards(self, orm):
         populate_usersettings(orm)
 
@@ -42,49 +43,148 @@ class Migration(DataMigration):
         pass
 
     models = {
-        'auth.group': {
-            'Meta': {'object_name': 'Group'},
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '80'}),
-            'permissions': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['auth.Permission']", 'symmetrical': 'False', 'blank': 'True'})
+        "auth.group": {
+            "Meta": {"object_name": "Group"},
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "name": (
+                "django.db.models.fields.CharField",
+                [],
+                {"unique": "True", "max_length": "80"},
+            ),
+            "permissions": (
+                "django.db.models.fields.related.ManyToManyField",
+                [],
+                {
+                    "to": u"orm['auth.Permission']",
+                    "symmetrical": "False",
+                    "blank": "True",
+                },
+            ),
         },
-        'auth.permission': {
-            'Meta': {'ordering': "('content_type__app_label', 'content_type__model', u'codename')", 'unique_together': "((u'content_type', u'codename'),)", 'object_name': 'Permission'},
-            'codename': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
-            'content_type': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['contenttypes.ContentType']"}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '50'})
+        "auth.permission": {
+            "Meta": {
+                "ordering": "('content_type__app_label', 'content_type__model', u'codename')",
+                "unique_together": "((u'content_type', u'codename'),)",
+                "object_name": "Permission",
+            },
+            "codename": (
+                "django.db.models.fields.CharField",
+                [],
+                {"max_length": "100"},
+            ),
+            "content_type": (
+                "django.db.models.fields.related.ForeignKey",
+                [],
+                {"to": u"orm['contenttypes.ContentType']"},
+            ),
+            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "name": ("django.db.models.fields.CharField", [], {"max_length": "50"}),
         },
-        u'auth.user': {
-            'Meta': {'object_name': 'User'},
-            'date_joined': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
-            'email': ('django.db.models.fields.EmailField', [], {'max_length': '75', 'blank': 'True'}),
-            'first_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
-            'groups': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "u'user_set'", 'blank': 'True', 'to': u"orm['auth.Group']"}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'is_active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
-            'is_staff': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'is_superuser': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'last_login': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
-            'last_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
-            'password': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
-            'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "u'user_set'", 'blank': 'True', 'to': u"orm['auth.Permission']"}),
-            'username': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '30'})
+        u"auth.user": {
+            "Meta": {"object_name": "User"},
+            "date_joined": (
+                "django.db.models.fields.DateTimeField",
+                [],
+                {"default": "datetime.datetime.now"},
+            ),
+            "email": (
+                "django.db.models.fields.EmailField",
+                [],
+                {"max_length": "75", "blank": "True"},
+            ),
+            "first_name": (
+                "django.db.models.fields.CharField",
+                [],
+                {"max_length": "30", "blank": "True"},
+            ),
+            "groups": (
+                "django.db.models.fields.related.ManyToManyField",
+                [],
+                {
+                    "symmetrical": "False",
+                    "related_name": "u'user_set'",
+                    "blank": "True",
+                    "to": u"orm['auth.Group']",
+                },
+            ),
+            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "is_active": (
+                "django.db.models.fields.BooleanField",
+                [],
+                {"default": "True"},
+            ),
+            "is_staff": (
+                "django.db.models.fields.BooleanField",
+                [],
+                {"default": "False"},
+            ),
+            "is_superuser": (
+                "django.db.models.fields.BooleanField",
+                [],
+                {"default": "False"},
+            ),
+            "last_login": (
+                "django.db.models.fields.DateTimeField",
+                [],
+                {"default": "datetime.datetime.now"},
+            ),
+            "last_name": (
+                "django.db.models.fields.CharField",
+                [],
+                {"max_length": "30", "blank": "True"},
+            ),
+            "password": (
+                "django.db.models.fields.CharField",
+                [],
+                {"max_length": "128"},
+            ),
+            "user_permissions": (
+                "django.db.models.fields.related.ManyToManyField",
+                [],
+                {
+                    "symmetrical": "False",
+                    "related_name": "u'user_set'",
+                    "blank": "True",
+                    "to": u"orm['auth.Permission']",
+                },
+            ),
+            "username": (
+                "django.db.models.fields.CharField",
+                [],
+                {"unique": "True", "max_length": "30"},
+            ),
         },
-        u'contenttypes.contenttype': {
-            'Meta': {'ordering': "('name',)", 'unique_together': "(('app_label', 'model'),)", 'object_name': 'ContentType', 'db_table': "'django_content_type'"},
-            'app_label': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
+        u"contenttypes.contenttype": {
+            "Meta": {
+                "ordering": "('name',)",
+                "unique_together": "(('app_label', 'model'),)",
+                "object_name": "ContentType",
+                "db_table": "'django_content_type'",
+            },
+            "app_label": (
+                "django.db.models.fields.CharField",
+                [],
+                {"max_length": "100"},
+            ),
+            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "model": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
+            "name": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
         },
-        u'helpdesk.usersettings': {
-            'Meta': {'object_name': 'UserSettings'},
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'settings_pickled': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
-            'user': ('django.db.models.fields.related.OneToOneField', [], {'to': u"orm['auth.User']", 'unique': 'True'})
-        }
+        u"helpdesk.usersettings": {
+            "Meta": {"object_name": "UserSettings"},
+            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "settings_pickled": (
+                "django.db.models.fields.TextField",
+                [],
+                {"null": "True", "blank": "True"},
+            ),
+            "user": (
+                "django.db.models.fields.related.OneToOneField",
+                [],
+                {"to": u"orm['auth.User']", "unique": "True"},
+            ),
+        },
     }
 
-    complete_apps = ['helpdesk']
+    complete_apps = ["helpdesk"]
     symmetrical = True

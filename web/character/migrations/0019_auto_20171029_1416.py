@@ -8,18 +8,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0018_auto_20170925_0515'),
+        ("character", "0018_auto_20170925_0515"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='investigation',
-            name='roll',
-            field=models.SmallIntegerField(blank=True, default=-9999, help_text='Current dice roll'),
+            model_name="investigation",
+            name="roll",
+            field=models.SmallIntegerField(
+                blank=True, default=-9999, help_text="Current dice roll"
+            ),
         ),
         migrations.AlterField(
-            model_name='investigation',
-            name='topic',
-            field=models.CharField(blank=True, help_text='Keywords or tldr or title', max_length=255),
+            model_name="investigation",
+            name="topic",
+            field=models.CharField(
+                blank=True, help_text="Keywords or tldr or title", max_length=255
+            ),
         ),
     ]

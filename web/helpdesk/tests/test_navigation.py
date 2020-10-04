@@ -23,12 +23,14 @@ class TestKBDisabled(TestCase):
 
     def test_navigation(self):
         """Test proper rendering of navigation.html by accessing the dashboard"""
-        self.client.login(username=get_staff_user().get_username(), password='password')
+        self.client.login(username=get_staff_user().get_username(), password="password")
         try:
-            response = self.client.get(reverse('helpdesk_dashboard'))
+            response = self.client.get(reverse("helpdesk_dashboard"))
         except NoReverseMatch as e:
-            if 'helpdesk_kb_index' in str(e):
-                self.fail("Please verify any unchecked references to helpdesk_kb_index (start with navigation.html)")
+            if "helpdesk_kb_index" in str(e):
+                self.fail(
+                    "Please verify any unchecked references to helpdesk_kb_index (start with navigation.html)"
+                )
             else:
                 raise
         else:

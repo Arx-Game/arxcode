@@ -10,22 +10,27 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('character', '0017_remove_theory_known_by'),
+        ("character", "0017_remove_theory_known_by"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='theory',
-            name='can_edit',
+            model_name="theory",
+            name="can_edit",
         ),
         migrations.RemoveField(
-            model_name='theory',
-            name='known_by2',
+            model_name="theory",
+            name="known_by2",
         ),
         migrations.AddField(
-            model_name='theory',
-            name='known_by',
-            field=models.ManyToManyField(blank=True, null=True, related_name='known_theories',
-                                         through='character.TheoryPermissions', to=settings.AUTH_USER_MODEL),
+            model_name="theory",
+            name="known_by",
+            field=models.ManyToManyField(
+                blank=True,
+                null=True,
+                related_name="known_theories",
+                through="character.TheoryPermissions",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

@@ -17,26 +17,35 @@ from typeclasses.scripts.combat.combat_settings import CombatError
 
 class FashionCommonMixins(SharedMemoryModel):
     """Abstract parent with common fashion methods"""
+
     class Meta:
         abstract = True
 
-    BUZZ_TYPES = ("little", "modest", "decent", "exceptional", "momentous", "legendary", "world-shaking")
+    BUZZ_TYPES = (
+        "little",
+        "modest",
+        "decent",
+        "exceptional",
+        "momentous",
+        "legendary",
+        "world-shaking",
+    )
     COLOR_TYPES = ("{n", "{355", "{453", "{542", "{530", "{520", "{510")
     # Emits use this %s order: fashion model, item/outfit, org, buzz_type
     EMIT_TYPES = (
         "Despite efforts made by %s, modeling %s on behalf of %s attracts %s notice.",
         "When %s models %s on behalf of %s, it gains %s attention from admiring onlookers.",
         "%s models %s on behalf of %s, gaining a %s number of admirers and significant compliments.",
-        "With talented modeling, %s displays %s around Arx, garnering flattering conversation and " +
-        "murmurs throughout the city about the fine choices made by %s for sponsoring someone with such %s taste.",
-        "As %s models %s around Arx, word spreads like wildfire over the city about their incredible fashion " +
-        "choices, attracting attention even beyond the city and gaining %s %s acclaim as well.",
-        "It's more than just fashion when %s shows off %s around Arx. Resonating with the people of Arvum, it " +
-        "becomes a statement on contemporary culture and the profound effect that %s has upon it - a %s event " +
-        "they'll be discussing for years to come.",
-        "Across Arvum and beyond, all the world hears about %s modeling %s. History will remember the abstruse " +
-        "impact that %s had upon fashion itself, on this %s occasion."
-        )
+        "With talented modeling, %s displays %s around Arx, garnering flattering conversation and "
+        + "murmurs throughout the city about the fine choices made by %s for sponsoring someone with such %s taste.",
+        "As %s models %s around Arx, word spreads like wildfire over the city about their incredible fashion "
+        + "choices, attracting attention even beyond the city and gaining %s %s acclaim as well.",
+        "It's more than just fashion when %s shows off %s around Arx. Resonating with the people of Arvum, it "
+        + "becomes a statement on contemporary culture and the profound effect that %s has upon it - a %s event "
+        + "they'll be discussing for years to come.",
+        "Across Arvum and beyond, all the world hears about %s modeling %s. History will remember the abstruse "
+        + "impact that %s had upon fashion itself, on this %s occasion.",
+    )
     BUZZIES = list(zip(BUZZ_TYPES, COLOR_TYPES, EMIT_TYPES))
 
     @staticmethod
@@ -103,6 +112,7 @@ class FashionCommonMixins(SharedMemoryModel):
         msg += buzzy[2] % (diva, thing, org, buzzy[0])
         if buzz_level > 4:
             from server.utils.arx_utils import inform_staff
+
             inform_staff(msg)
         return msg
 
@@ -112,10 +122,15 @@ class FashionOutfit(FashionCommonMixins):
     A collection of wearable and wieldable items that all fit on a character
     at the same time.
     """
+
     FAME_CAP = 5000000
     name = models.CharField(max_length=80, db_index=True)
-    owner = models.ForeignKey('dominion.PlayerOrNpc', related_name='fashion_outfits', on_delete=models.CASCADE)
-    fashion_items = models.ManyToManyField('objects.ObjectDB', through='ModusOrnamenta', blank=True)
+    owner = models.ForeignKey(
+        "dominion.PlayerOrNpc", related_name="fashion_outfits", on_delete=models.CASCADE
+    )
+    fashion_items = models.ManyToManyField(
+        "objects.ObjectDB", through="ModusOrnamenta", blank=True
+    )
     db_date_created = models.DateTimeField(auto_now_add=True)
     archived = models.BooleanField(default=False)
     # TODO: foreignkey to @cal events!
@@ -134,7 +149,9 @@ class FashionOutfit(FashionCommonMixins):
     def check_existence(self):
         """Deletes this outfit if none of its items exist."""
         if not self.fashion_items.exists():
-            self.owner_character.msg("Nothing remains of the outfit formerly known as '%s'." % self)
+            self.owner_character.msg(
+                "Nothing remains of the outfit formerly known as '%s'." % self
+            )
             self.delete()
 
     def delete(self, *args, **kwargs):
@@ -156,23 +173,36 @@ class FashionOutfit(FashionCommonMixins):
             raise EquipError(str(err) + "\nUndress failed. " + self.equipped_msg)
         except EquipError as err:
             pass
-        wield_err, wear_err, = "", ""
+        wield_err, wear_err, = (
+            "",
+            "",
+        )
         try:
-            to_wield = list(self.weapons.filter(modusornamenta__slot__istartswith='primary').distinct())
+            to_wield = list(
+                self.weapons.filter(
+                    modusornamenta__slot__istartswith="primary"
+                ).distinct()
+            )
             if to_wield:
                 self.owner_character.equip_or_remove("wield", list(to_wield))
         except EquipError as err:
             wield_err = str(err)
         try:
             to_wear = list(self.apparel)
-            sheathed = list(self.weapons.exclude(modusornamenta__slot__istartswith='primary').distinct())
+            sheathed = list(
+                self.weapons.exclude(
+                    modusornamenta__slot__istartswith="primary"
+                ).distinct()
+            )
             to_wear.extend(sheathed)
             if to_wear:
                 self.owner_character.equip_or_remove("wear", to_wear)
         except EquipError as err:
             wear_err = str(err)
         if wield_err or wear_err:
-            msg = "\n".join([ob for ob in (wield_err, wear_err, self.equipped_msg) if ob])
+            msg = "\n".join(
+                [ob for ob in (wield_err, wear_err, self.equipped_msg) if ob]
+            )
             raise EquipError(msg)
         else:
             self.owner_character.msg(self.equipped_msg)
@@ -180,7 +210,9 @@ class FashionOutfit(FashionCommonMixins):
     def remove(self):
         """Tries to remove all our fashion_items. Raises EquipErrors."""
         try:
-            self.owner_character.equip_or_remove("remove", list(self.fashion_items.all()))
+            self.owner_character.equip_or_remove(
+                "remove", list(self.fashion_items.all())
+            )
         except (CombatError, EquipError) as err:
             raise EquipError(err)
 
@@ -204,7 +236,9 @@ class FashionOutfit(FashionCommonMixins):
             skipped_msg += "\n|y"
             if valid_items:
                 self.owner.player.ndb.outfit_model_prompt = str(self)
-                skipped_msg += "Repeat command to model the %d remaining item(s)" % len(valid_items)
+                skipped_msg += "Repeat command to model the %d remaining item(s)" % len(
+                    valid_items
+                )
             else:
                 skipped_msg += "No valid items remain! Try modeling a different outfit"
             raise FashionError(skipped_msg + ".|n")
@@ -218,6 +252,7 @@ class FashionOutfit(FashionCommonMixins):
         all their fame is returned.
         """
         from world.fashion.mixins import FashionableMixins
+
         if self.modeled:
             raise FashionError("%s has already been modeled." % self)
         if not self.is_carried or not self.is_equipped:
@@ -225,7 +260,10 @@ class FashionOutfit(FashionCommonMixins):
         valid_items = self.check_outfit_fashion_ready()
         ap_cost = len(valid_items) * FashionableMixins.fashion_ap_cost
         if not self.owner.player.pay_action_points(ap_cost):
-            raise FashionError("It costs %d AP to model %s; you do not have enough energy." % (ap_cost, self))
+            raise FashionError(
+                "It costs %d AP to model %s; you do not have enough energy."
+                % (ap_cost, self)
+            )
         outfit_fame = 0
         for item in valid_items:
             outfit_fame += item.model_for_fashion(self.owner.player, org, outfit=self)
@@ -235,10 +273,13 @@ class FashionOutfit(FashionCommonMixins):
     def table_display(self):
         """A non-cached table of outfit items/locations, then model-info string."""
         from server.utils.prettytable import PrettyTable
+
         table = PrettyTable((str(self), "Slot", "Location"))
         modi = self.modusornamenta_set.all()
         for mo in modi:
-            table.add_row((str(mo.fashion_item), mo.slot or "", str(mo.fashion_item.location)))
+            table.add_row(
+                (str(mo.fashion_item), mo.slot or "", str(mo.fashion_item.location))
+            )
         msg = str(table)
         if self.modeled:
             msg += "\n" + self.model_info
@@ -249,8 +290,9 @@ class FashionOutfit(FashionCommonMixins):
     @property
     def list_display(self):
         """A cached string simply listing outfit components & model info."""
-        if not hasattr(self, '_cached_outfit_display'):
+        if not hasattr(self, "_cached_outfit_display"):
             from server.utils.arx_utils import list_to_string
+
             msg = "|w[|n" + str(self) + "|w]|n"
             weapons = list(self.weapons)
             apparel = list(self.apparel)
@@ -267,42 +309,44 @@ class FashionOutfit(FashionCommonMixins):
 
     @list_display.deleter
     def list_display(self):
-        if hasattr(self, '_cached_outfit_display'):
+        if hasattr(self, "_cached_outfit_display"):
             del self._cached_outfit_display
 
     @property
     def model_info(self):
         if self.modeled:
-            if not hasattr(self, '_cached_model_info'):
+            if not hasattr(self, "_cached_model_info"):
                 self._cached_model_info = self.fashion_snapshots.first().display
             return self._cached_model_info
 
     @model_info.deleter
     def model_info(self):
-        if hasattr(self, '_cached_model_info'):
+        if hasattr(self, "_cached_model_info"):
             del self._cached_model_info
 
     @property
     def modeled(self):
-        if not hasattr(self, '_cached_model_bool'):
+        if not hasattr(self, "_cached_model_bool"):
             self._cached_model_bool = bool(self.fashion_snapshots.exists())
         return self._cached_model_bool
 
     @modeled.deleter
     def modeled(self):
-        if hasattr(self, '_cached_model_bool'):
+        if hasattr(self, "_cached_model_bool"):
             del self._cached_model_bool
 
     @property
     def fame(self):
         if self.modeled:
-            if not hasattr(self, '_cached_fame'):
-                self._cached_fame = sum([ob.fame for ob in self.fashion_snapshots.all()])
+            if not hasattr(self, "_cached_fame"):
+                self._cached_fame = sum(
+                    [ob.fame for ob in self.fashion_snapshots.all()]
+                )
             return self._cached_fame
 
     @fame.deleter
     def fame(self):
-        if hasattr(self, '_cached_fame'):
+        if hasattr(self, "_cached_fame"):
             del self._cached_fame
 
     @property
@@ -335,25 +379,29 @@ class FashionOutfit(FashionCommonMixins):
         Cached queryset of this outfit's wielded/sheathed weapons, but not
         decorative weapons.
         """
-        if not hasattr(self, '_cached_weapons'):
-            self._cached_weapons = self.fashion_items.filter(modusornamenta__slot__iendswith='weapon').distinct()
+        if not hasattr(self, "_cached_weapons"):
+            self._cached_weapons = self.fashion_items.filter(
+                modusornamenta__slot__iendswith="weapon"
+            ).distinct()
         return self._cached_weapons
 
     @weapons.deleter
     def weapons(self):
-        if hasattr(self, '_cached_weapons'):
+        if hasattr(self, "_cached_weapons"):
             del self._cached_weapons
 
     @property
     def apparel(self):
         """cached queryset of this outfit's worn items. Not sheathed weapons."""
-        if not hasattr(self, '_cached_apparel'):
-            self._cached_apparel = self.fashion_items.exclude(modusornamenta__slot__iendswith='weapon').distinct()
+        if not hasattr(self, "_cached_apparel"):
+            self._cached_apparel = self.fashion_items.exclude(
+                modusornamenta__slot__iendswith="weapon"
+            ).distinct()
         return self._cached_apparel
 
     @apparel.deleter
     def apparel(self):
-        if hasattr(self, '_cached_apparel'):
+        if hasattr(self, "_cached_apparel"):
             del self._cached_apparel
 
     @property
@@ -385,8 +433,9 @@ class ModusOrnamenta(SharedMemoryModel):
     """
     The method of wearing an item in an outfit.
     """
-    fashion_outfit = models.ForeignKey('FashionOutfit', on_delete=models.CASCADE)
-    fashion_item = models.ForeignKey('objects.ObjectDB', on_delete=models.CASCADE)
+
+    fashion_outfit = models.ForeignKey("FashionOutfit", on_delete=models.CASCADE)
+    fashion_item = models.ForeignKey("objects.ObjectDB", on_delete=models.CASCADE)
     slot = models.CharField(max_length=80, blank=True, null=True)
 
 
@@ -395,30 +444,55 @@ class FashionSnapshot(FashionCommonMixins):
     The recorded moment when a piece of gear becomes a weapon
     of the fashionpocalypse.
     """
+
     FAME_CAP = 1500000
     ORG_FAME_DIVISOR = 2
     DESIGNER_FAME_DIVISOR = 4
     db_date_created = models.DateTimeField(auto_now_add=True)
-    fashion_item = models.ForeignKey('objects.ObjectDB', related_name='fashion_snapshots',
-                                     on_delete=models.SET_NULL, null=True)
-    fashion_model = models.ForeignKey('dominion.PlayerOrNpc', related_name='fashion_snapshots',
-                                      on_delete=models.SET_NULL, null=True)
-    org = models.ForeignKey('dominion.Organization', related_name='fashion_snapshots',
-                            on_delete=models.SET_NULL, null=True)
-    designer = models.ForeignKey('dominion.PlayerOrNpc', related_name='designer_snapshots',
-                                 on_delete=models.SET_NULL, null=True)
+    fashion_item = models.ForeignKey(
+        "objects.ObjectDB",
+        related_name="fashion_snapshots",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    fashion_model = models.ForeignKey(
+        "dominion.PlayerOrNpc",
+        related_name="fashion_snapshots",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    org = models.ForeignKey(
+        "dominion.Organization",
+        related_name="fashion_snapshots",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    designer = models.ForeignKey(
+        "dominion.PlayerOrNpc",
+        related_name="designer_snapshots",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     fame = models.IntegerField(default=0, blank=True)
-    outfit = models.ForeignKey('FashionOutfit', related_name='fashion_snapshots',
-                               on_delete=models.SET_NULL, null=True)
+    outfit = models.ForeignKey(
+        "FashionOutfit",
+        related_name="fashion_snapshots",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
 
     def __str__(self):
-        return str(self.fashion_item) if self.fashion_item else "[Snapshot #%d]" % self.id
+        return (
+            str(self.fashion_item) if self.fashion_item else "[Snapshot #%d]" % self.id
+        )
 
     @property
     def display(self):
         """The modeled info and 'buzz message' that appears on items."""
         displayed_fame = self.fame if not self.outfit else self.outfit.fame
-        msg = self.get_model_msg(self.fashion_model, self.org, self.db_date_created, displayed_fame)
+        msg = self.get_model_msg(
+            self.fashion_model, self.org, self.db_date_created, displayed_fame
+        )
         return msg
 
     def save(self, *args, **kwargs):
@@ -444,16 +518,22 @@ class FashionSnapshot(FashionCommonMixins):
         as someone who flubs the roll.
         """
         from world.stats_and_skills import do_dice_check
+
         char = self.fashion_model.player.char_ob
-        roll = do_dice_check(caller=char, stat="composure", skill="performance", difficulty=30)
+        roll = do_dice_check(
+            caller=char, stat="composure", skill="performance", difficulty=30
+        )
         roll = pow(max((roll + char.social_clout * 5), 1), 1.5)
-        percentage = max(roll/100.0, 0.01)
-        level_mod = self.fashion_item.recipe.level/6.0
+        percentage = max(roll / 100.0, 0.01)
+        level_mod = self.fashion_item.recipe.level / 6.0
         percentage *= max(level_mod, 0.01)
-        percentage *= max((self.fashion_item.quality_level/40.0), 0.01)
+        percentage *= max((self.fashion_item.quality_level / 40.0), 0.01)
         percentage = max(percentage, 0.2)
         # they get either their percentage of the item's worth, their modified roll, or 4, whichever is highest
-        self.fame = min(max(int(self.fashion_item.item_worth * percentage), max(int(roll), 4)), self.FAME_CAP)
+        self.fame = min(
+            max(int(self.fashion_item.item_worth * percentage), max(int(roll), 4)),
+            self.FAME_CAP,
+        )
         self.save()
 
     def apply_fame(self, reverse=False):
@@ -476,26 +556,32 @@ class FashionSnapshot(FashionCommonMixins):
         Informs clients when fame is earned, by using their AssetOwner method.
         """
         category = "fashion"
-        msg = "fame awarded from %s modeling %s." % (self.fashion_model, self.fashion_item)
+        msg = "fame awarded from %s modeling %s." % (
+            self.fashion_model,
+            self.fashion_item,
+        )
         if self.org_fame > 0:
             org_msg = "{{315{:,}{{n {}".format(self.org_fame, msg)
             self.org.assets.inform_owner(org_msg, category=category, append=True)
         if self.designer_fame > 0:
             designer_msg = "{{315{:,}{{n {}".format(self.designer_fame, msg)
-            self.designer.assets.inform_owner(designer_msg, category=category, append=True)
+            self.designer.assets.inform_owner(
+                designer_msg, category=category, append=True
+            )
 
     def reverse_snapshot(self):
         """Reverses the fame / action point effects of this snapshot"""
         from world.fashion.mixins import FashionableMixins
+
         self.apply_fame(reverse=True)
         self.fashion_model.player.pay_action_points(-FashionableMixins.fashion_ap_cost)
 
     @property
     def org_fame(self):
         """The portion of fame awarded to sponsoring org"""
-        return int(self.fame/self.ORG_FAME_DIVISOR)
+        return int(self.fame / self.ORG_FAME_DIVISOR)
 
     @property
     def designer_fame(self):
         """The portion of fame awarded to item designer."""
-        return int(self.fame/self.DESIGNER_FAME_DIVISOR)
+        return int(self.fame / self.DESIGNER_FAME_DIVISOR)

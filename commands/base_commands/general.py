@@ -14,7 +14,7 @@ from server.utils.arx_utils import raw, list_to_string
 from commands.base import ArxCommand, ArxPlayerCommand
 from commands.mixins import RewardRPToolUseMixin
 
-AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
+AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 1))
 
 
 class CmdBriefMode(ArxCommand):
@@ -27,6 +27,7 @@ class CmdBriefMode(ArxCommand):
     Toggles whether to display long room descriptions
     when moving through rooms.
     """
+
     key = "brief"
     locks = "cmd:all()"
     help_category = "Settings"
@@ -94,16 +95,36 @@ class CmdGameSettings(ArxPlayerCommand):
     /highlight_place enables highlighting for place names in poses.
     /place_color sets a color for place names (with highlight_place enabled).
     """
+
     key = "@settings"
     locks = "cmd:all()"
     help_category = "Settings"
     aliases = ["lrp"]
-    valid_switches = ('brief', 'posebreak', 'stripansinames', 'no_ascii', 'lrp', 'verbose_where',
-                      'afk', 'nomessengerpreview', 'bbaltread', 'ignore_messenger_notifications',
-                      'ignore_messenger_deliveries', 'newline_on_messages', 'private_mode',
-                      'ic_only', 'ignore_bboard_notifications', 'quote_color', 'name_color',
-                      'emit_label', 'ignore_weather', 'ignore_model_emits', "highlight_all_mentions",
-                      'highlight_place', 'place_color')
+    valid_switches = (
+        "brief",
+        "posebreak",
+        "stripansinames",
+        "no_ascii",
+        "lrp",
+        "verbose_where",
+        "afk",
+        "nomessengerpreview",
+        "bbaltread",
+        "ignore_messenger_notifications",
+        "ignore_messenger_deliveries",
+        "newline_on_messages",
+        "private_mode",
+        "ic_only",
+        "ignore_bboard_notifications",
+        "quote_color",
+        "name_color",
+        "emit_label",
+        "ignore_weather",
+        "ignore_model_emits",
+        "highlight_all_mentions",
+        "highlight_place",
+        "place_color",
+    )
 
     def func(self):
         """Executes setting command"""
@@ -184,7 +205,9 @@ class CmdGameSettings(ArxPlayerCommand):
         if "place_color" in switches:
             self.set_text_colors(char, "place_color")
             return
-        caller.msg("Invalid switch. Valid switches are: %s" % ", ".join(self.valid_switches))
+        caller.msg(
+            "Invalid switch. Valid switches are: %s" % ", ".join(self.valid_switches)
+        )
 
     def togglesetting(self, char, attr, tag=False):
         """Toggles a setting for the caller"""
@@ -209,7 +232,7 @@ class CmdGameSettings(ArxPlayerCommand):
         args = self.args
         if not args:
             char.attributes.remove(attr)
-            char.msg('Cleared %s setting.' % attr)
+            char.msg("Cleared %s setting." % attr)
         else:
             if not args.startswith(("|", "{")):
                 args = "|%s" % args
@@ -218,7 +241,9 @@ class CmdGameSettings(ArxPlayerCommand):
                 char.msg('Text in quotes will appear %s"like this."|n' % args)
             elif attr == "name_color":
                 char.db.name_color = args
-                char.msg('Mentions of your name will look like: %s%s|n' % (args, char.key))
+                char.msg(
+                    "Mentions of your name will look like: %s%s|n" % (args, char.key)
+                )
             elif attr == "place_color":
                 char.db.place_color = args
                 char.msg("Place names will look like %sthis|n." % args)
@@ -235,22 +260,29 @@ class CmdGlance(ArxCommand):
     Lets you see some information at a character in the same
     room as you.
     """
+
     key = "glance"
     locks = "cmd:all()"
     help_category = "Social"
 
     def send_glance_str(self, char):
         """Sends the string of glancing in the room to the caller"""
-        string = "\n{c%s{n\n%s\n%s" % (char.get_fancy_name(),
-                                       char.return_extras(self.caller),
-                                       char.get_health_appearance())
+        string = "\n{c%s{n\n%s\n%s" % (
+            char.get_fancy_name(),
+            char.return_extras(self.caller),
+            char.get_health_appearance(),
+        )
         self.msg(string)
 
     def func(self):
         """Executes glance command"""
         caller = self.caller
         if not self.args:
-            charlist = [ob for ob in caller.location.contents if ob != caller and hasattr(ob, 'return_extras')]
+            charlist = [
+                ob
+                for ob in caller.location.contents
+                if ob != caller and hasattr(ob, "return_extras")
+            ]
             if "pcs" in self.switches:
                 charlist = [ob for ob in charlist if ob.player]
         else:
@@ -281,6 +313,7 @@ class CmdShout(RewardRPToolUseMixin, ArxCommand):
     to the rooms connected to your current one, while
     shout/loudly sends farther than that. Use with care!
     """
+
     key = "shout"
     locks = "cmd:all()"
     help_category = "Social"
@@ -300,8 +333,9 @@ class CmdShout(RewardRPToolUseMixin, ArxCommand):
         from_dir = "from nearby"
         caller.msg('You shout, "%s"' % args)
         txt = '{c%s{n shouts %s%s, "%s"' % (caller.name, loudstr, from_dir, args)
-        caller.location.msg_contents(txt, exclude=caller, options={'shout': True,
-                                                                   'from_dir': from_dir})
+        caller.location.msg_contents(
+            txt, exclude=caller, options={"shout": True, "from_dir": from_dir}
+        )
         self.mark_command_used()
 
 
@@ -318,6 +352,7 @@ class CmdFollow(ArxCommand):
 
     To stop someone from following you, use 'ditch'.
     """
+
     key = "follow"
     locks = "cmd:all()"
     help_category = "Travel"
@@ -351,6 +386,7 @@ class CmdDitch(ArxCommand):
     Shakes off someone following you. Players can follow you through
     any locked door you have access to.
     """
+
     key = "ditch"
     locks = "cmd:all()"
     aliases = ["lose"]
@@ -367,7 +403,9 @@ class CmdDitch(ArxCommand):
         if args:
             matches = []
             for arg in self.lhslist:
-                obj = ObjectDB.objects.object_search(arg, exact=False, candidates=caller.ndb.followers)
+                obj = ObjectDB.objects.object_search(
+                    arg, exact=False, candidates=caller.ndb.followers
+                )
                 if obj:
                     matches.append(obj[0])
                 else:
@@ -395,6 +433,7 @@ class CmdLook(ArxCommand):
 
     Observes your location or objects in your vicinity.
     """
+
     key = "look"
     aliases = ["l", "ls"]
     locks = "cmd:all()"
@@ -417,7 +456,7 @@ class CmdLook(ArxCommand):
                 caller.msg("You have no location to look at!")
                 return
 
-        if not hasattr(looking_at_obj, 'return_appearance'):
+        if not hasattr(looking_at_obj, "return_appearance"):
             # this is likely due to us having a player instead
             looking_at_obj = looking_at_obj.character
         if not looking_at_obj.access(caller, "view"):
@@ -457,6 +496,7 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
     If no argument is given, you will get a list of your whispers from this
     session.
     """
+
     key = "whisper"
     aliases = ["mutter"]
     locks = "cmd:not pperm(page_banned)"
@@ -477,16 +517,18 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
             caller.ndb.whispers_received = []
         pages_we_got = caller.ndb.whispers_received
 
-        if 'last' in self.switches:
+        if "last" in self.switches:
             if pages_we_sent:
                 recv = ",".join(str(obj) for obj in pages_we_sent[-1].receivers)
-                self.msg("You last whispered {c%s{n:%s" % (recv, pages_we_sent[-1].message))
+                self.msg(
+                    "You last whispered {c%s{n:%s" % (recv, pages_we_sent[-1].message)
+                )
                 return
             else:
                 self.msg("You haven't whispered anyone yet.")
                 return
 
-        if not self.args or 'list' in self.switches:
+        if not self.args or "list" in self.switches:
             pages = list(pages_we_sent) + list(pages_we_got)
             pages.sort(key=lambda x: x.date_created)
 
@@ -503,11 +545,16 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
             else:
                 lastpages = pages
             template = "{w%s{n {c%s{n whispered to {c%s{n: %s"
-            lastpages = "\n ".join(template %
-                                   (utils.datetime_format(page.date_created),
-                                    ",".join(obj.name for obj in page.senders),
-                                    "{n,{c ".join([obj.name for obj in page.receivers]),
-                                    page.message) for page in lastpages)
+            lastpages = "\n ".join(
+                template
+                % (
+                    utils.datetime_format(page.date_created),
+                    ",".join(obj.name for obj in page.senders),
+                    "{n,{c ".join([obj.name for obj in page.receivers]),
+                    page.message,
+                )
+                for page in lastpages
+            )
 
             if lastpages:
                 string = "Your latest whispers:\n %s" % lastpages
@@ -521,10 +568,14 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
         lhslist = self.lhslist
         if not self.rhs:
             # MMO-type whisper. 'whisper <name> <target>'
-            arglist = self.args.lstrip().split(' ', 1)
+            arglist = self.args.lstrip().split(" ", 1)
             if len(arglist) < 2:
-                caller.msg("The MMO-style whisper format requires both a name and a message.")
-                caller.msg("To send a message to your last whispered character, use {wwhisper =<message>")
+                caller.msg(
+                    "The MMO-style whisper format requires both a name and a message."
+                )
+                caller.msg(
+                    "To send a message to your last whispered character, use {wwhisper =<message>"
+                )
                 return
             lhs = arglist[0]
             rhs = arglist[1]
@@ -546,15 +597,15 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
 
             if isinstance(receiver, string_types):
                 pobj = caller.search(receiver, use_nicks=True)
-            elif hasattr(receiver, 'character'):
+            elif hasattr(receiver, "character"):
                 pobj = receiver.character
-            elif hasattr(receiver, 'player'):
+            elif hasattr(receiver, "player"):
                 pobj = receiver
             else:
                 self.msg("Who do you want to whisper?")
                 return
             if pobj:
-                if hasattr(pobj, 'has_account') and not pobj.has_account:
+                if hasattr(pobj, "has_account") and not pobj.has_account:
                     self.msg("You may only send whispers to online characters.")
                 elif not pobj.location or pobj.location != caller.location:
                     self.msg("You may only whisper characters in the same room as you.")
@@ -568,10 +619,18 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
         mutter_text = ""
         # if message begins with a :, we assume it is a 'whisper-pose'
         if message.startswith(":"):
-            message = "%s {c%s{n %s" % ("Discreetly,", caller.name, message.strip(':').strip())
+            message = "%s {c%s{n %s" % (
+                "Discreetly,",
+                caller.name,
+                message.strip(":").strip(),
+            )
             is_a_whisper_pose = True
         elif message.startswith(";"):
-            message = "%s {c%s{n%s" % ("Discreetly,", caller.name, message.lstrip(';').strip())
+            message = "%s {c%s{n%s" % (
+                "Discreetly,",
+                caller.name,
+                message.lstrip(";").strip(),
+            )
             is_a_whisper_pose = True
         else:
             is_a_whisper_pose = False
@@ -587,27 +646,38 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
         rstrings = []
         for pobj in recobjs:
             otherobs = [ob for ob in recobjs if ob != pobj]
-            if not pobj.access(caller, 'tell'):
+            if not pobj.access(caller, "tell"):
                 rstrings.append("You are not allowed to page %s." % pobj)
                 continue
             if is_a_whisper_pose:
                 omessage = message
                 if otherobs:
-                    omessage = "(Also sent to %s.) %s" % (", ".join(ob.name for ob in otherobs), message)
-                pobj.msg(omessage, from_obj=caller, options={'is_pose': True})
+                    omessage = "(Also sent to %s.) %s" % (
+                        ", ".join(ob.name for ob in otherobs),
+                        message,
+                    )
+                pobj.msg(omessage, from_obj=caller, options={"is_pose": True})
             else:
                 if otherobs:
-                    myheader = header + " to {cyou{n and %s," % ", ".join("{c%s{n" % ob.name for ob in otherobs)
+                    myheader = header + " to {cyou{n and %s," % ", ".join(
+                        "{c%s{n" % ob.name for ob in otherobs
+                    )
                 else:
                     myheader = header
-                pobj.msg("%s %s" % (myheader, message), from_obj=caller, options={'is_pose': True})
+                pobj.msg(
+                    "%s %s" % (myheader, message),
+                    from_obj=caller,
+                    options={"is_pose": True},
+                )
             if not pobj.ndb.whispers_received:
                 pobj.ndb.whispers_received = []
             pobj.ndb.whispers_received.append(temp_message)
-            if hasattr(pobj, 'has_account') and not pobj.has_account:
+            if hasattr(pobj, "has_account") and not pobj.has_account:
                 received.append("{C%s{n" % pobj.name)
-                rstrings.append("%s is offline. They will see your message if they list their pages later." %
-                                received[-1])
+                rstrings.append(
+                    "%s is offline. They will see your message if they list their pages later."
+                    % received[-1]
+                )
             else:
                 received.append("{c%s{n" % pobj.name)
                 # afk = pobj.player_ob and pobj.player_ob.db.afk
@@ -623,6 +693,7 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
                 self.msg("You whispered to %s, %s" % (", ".join(received), message))
                 if "mutter" in self.switches or "mutter" in self.cmdstring:
                     from random import randint
+
                     word_list = rhs.split()
                     chosen = []
                     num_real = 0
@@ -637,7 +708,12 @@ class CmdWhisper(RewardRPToolUseMixin, ArxCommand):
                 if mutter_text:
                     emit_string = ' mutters, "%s{n"' % mutter_text
                     exclude = [caller] + recobjs
-                    caller.location.msg_action(self.caller, emit_string, options={'is_pose': True}, exclude=exclude)
+                    caller.location.msg_action(
+                        self.caller,
+                        emit_string,
+                        options={"is_pose": True},
+                        exclude=exclude,
+                    )
                     self.mark_command_used()
         caller.posecount += 1
 
@@ -674,15 +750,21 @@ class CmdPage(ArxPlayerCommand):
     """
 
     key = "page"
-    aliases = ['tell', 'p', 'pa', 'pag', 'ttell', 'reply']
+    aliases = ["tell", "p", "pa", "pag", "ttell", "reply"]
     locks = "cmd:not pperm(page_banned)"
     help_category = "Comms"
-    arg_regex = r'\/|\s|$'
+    arg_regex = r"\/|\s|$"
 
     def disp_allow(self):
         """Displays those we're allowing"""
-        self.msg("{wPeople on allow list:{n %s" % ", ".join(str(ob) for ob in self.caller.allow_list))
-        self.msg("{wPeople on block list:{n %s" % ", ".join(str(ob) for ob in self.caller.block_list))
+        self.msg(
+            "{wPeople on allow list:{n %s"
+            % ", ".join(str(ob) for ob in self.caller.allow_list)
+        )
+        self.msg(
+            "{wPeople on block list:{n %s"
+            % ", ".join(str(ob) for ob in self.caller.block_list)
+        )
 
     def func(self):
         """Implement function using the Msg methods"""
@@ -723,7 +805,7 @@ class CmdPage(ArxPlayerCommand):
             caller.ndb.pages_received = []
         pages_we_got = caller.ndb.pages_received
 
-        if 'last' in self.switches:
+        if "last" in self.switches:
             if pages_we_sent:
                 recv = ",".join(str(obj) for obj in pages_we_sent[-1].receivers)
                 self.msg("You last paged {c%s{n:%s" % (recv, pages_we_sent[-1].message))
@@ -731,7 +813,7 @@ class CmdPage(ArxPlayerCommand):
             else:
                 self.msg("You haven't paged anyone yet.")
                 return
-        if 'list' in self.switches or not self.raw:
+        if "list" in self.switches or not self.raw:
             pages = pages_we_sent + pages_we_got
             pages.sort(key=lambda x: x.date_created)
 
@@ -748,11 +830,16 @@ class CmdPage(ArxPlayerCommand):
             else:
                 lastpages = pages
             template = "{w%s{n {c%s{n paged to {c%s{n: %s"
-            lastpages = "\n ".join(template %
-                                   (utils.datetime_format(page.date_created),
-                                    ",".join(obj.name for obj in page.senders),
-                                    "{n,{c ".join([obj.name for obj in page.receivers]),
-                                    page.message) for page in lastpages)
+            lastpages = "\n ".join(
+                template
+                % (
+                    utils.datetime_format(page.date_created),
+                    ",".join(obj.name for obj in page.senders),
+                    "{n,{c ".join([obj.name for obj in page.receivers]),
+                    page.message,
+                )
+                for page in lastpages
+            )
 
             if lastpages:
                 string = "Your latest pages:\n %s" % lastpages
@@ -765,8 +852,8 @@ class CmdPage(ArxPlayerCommand):
         lhs = self.lhs
         rhs = self.rhs
         lhslist = self.lhslist
-        if cmdstr.startswith('tell'):
-            arglist = self.args.lstrip().split(' ', 1)
+        if cmdstr.startswith("tell"):
+            arglist = self.args.lstrip().split(" ", 1)
             if len(arglist) < 2:
                 caller.msg("The tell format requires both a name and a message.")
                 return
@@ -790,14 +877,14 @@ class CmdPage(ArxPlayerCommand):
             receivers = set(last_page.senders + last_page.receivers)
             receivers.discard(self.caller)
             rhs = self.args
-        elif (not lhs and rhs) or (self.args and not rhs) or cmdstr == 'ttell':
+        elif (not lhs and rhs) or (self.args and not rhs) or cmdstr == "ttell":
             # If there are no targets, then set the targets
             # to the last person we paged.
             # also take format of p <message> for last receiver
             if pages_we_sent:
                 receivers = pages_we_sent[-1].receivers
                 # if it's a 'tt' command, they can have '=' in a message body
-                if not rhs or cmdstr == 'ttell':
+                if not rhs or cmdstr == "ttell":
                     rhs = self.raw.lstrip()
             else:
                 self.msg("Who do you want to page?")
@@ -819,20 +906,23 @@ class CmdPage(ArxPlayerCommand):
             pobj = None
             if findpobj:
                 # Make certain this is a player object, not a character
-                if hasattr(findpobj, 'character'):
+                if hasattr(findpobj, "character"):
                     # players should always have is_connected, but just in case
-                    if not hasattr(findpobj, 'is_connected'):
+                    if not hasattr(findpobj, "is_connected"):
                         # only allow online tells
                         self.msg("%s is not online." % findpobj)
                         continue
                     elif findpobj.character:
-                        if hasattr(findpobj.character, 'player') and not findpobj.character.player:
+                        if (
+                            hasattr(findpobj.character, "player")
+                            and not findpobj.character.player
+                        ):
                             self.msg("%s is not online." % findpobj)
                         else:
                             pobj = findpobj.character
                     elif not findpobj.character:
                         # player is either OOC or offline. Find out which
-                        if hasattr(findpobj, 'is_connected') and findpobj.is_connected:
+                        if hasattr(findpobj, "is_connected") and findpobj.is_connected:
                             pobj = findpobj
                         else:
                             self.msg("%s is not online." % findpobj)
@@ -841,21 +931,31 @@ class CmdPage(ArxPlayerCommand):
                     self.msg("%s is not online." % findpobj)
                     continue
                 if findpobj in caller.block_list:
-                    self.msg("%s is in your block list and would not be able to reply to your page." % findpobj)
+                    self.msg(
+                        "%s is in your block list and would not be able to reply to your page."
+                        % findpobj
+                    )
                     continue
                 if caller.tags.get("chat_banned") and (
-                                caller not in findpobj.allow_list or findpobj not in caller.allow_list):
-                    self.msg("You cannot page if you are not in each other's allow lists.")
+                    caller not in findpobj.allow_list
+                    or findpobj not in caller.allow_list
+                ):
+                    self.msg(
+                        "You cannot page if you are not in each other's allow lists."
+                    )
                     continue
-                if ((findpobj.tags.get("ic_only") or caller in findpobj.block_list or findpobj.tags.get("chat_banned"))
-                        and not caller.check_permstring("builders")):
+                if (
+                    findpobj.tags.get("ic_only")
+                    or caller in findpobj.block_list
+                    or findpobj.tags.get("chat_banned")
+                ) and not caller.check_permstring("builders"):
                     if caller not in findpobj.allow_list:
                         self.msg("%s is IC only and cannot be sent pages." % findpobj)
                         continue
             else:
                 continue
             if pobj:
-                if hasattr(pobj, 'player') and pobj.player:
+                if hasattr(pobj, "player") and pobj.player:
                     pobj = pobj.player
                 recobjs.append(pobj)
 
@@ -876,9 +976,9 @@ class CmdPage(ArxPlayerCommand):
             if len(recobjs) > 1:
                 header = "From afar to %s:" % rec_names
             if message.startswith(":"):
-                message = "{c%s{n %s" % (caller, message.strip(':').strip())
+                message = "{c%s{n %s" % (caller, message.strip(":").strip())
             else:
-                message = "{c%s{n%s" % (caller, message.strip(';').strip())
+                message = "{c%s{n%s" % (caller, message.strip(";").strip())
 
         # create the temporary message object
         temp_message = TempMsg(senders=caller, receivers=recobjs, message=message)
@@ -888,7 +988,7 @@ class CmdPage(ArxPlayerCommand):
         received = []
         r_strings = []
         for pobj in recobjs:
-            if not pobj.access(caller, 'msg'):
+            if not pobj.access(caller, "msg"):
                 r_strings.append("You are not allowed to page %s." % pobj)
                 continue
             if "ic_only" in caller.tags.all() and pobj not in caller.allow_list:
@@ -896,14 +996,18 @@ class CmdPage(ArxPlayerCommand):
                 msg += "Allow them to send a page, or disable the IC Only @setting."
                 self.msg(msg)
                 continue
-            pobj.msg("%s %s" % (header, message), from_obj=caller, options={'log_msg': True})
+            pobj.msg(
+                "%s %s" % (header, message), from_obj=caller, options={"log_msg": True}
+            )
             if not pobj.ndb.pages_received:
                 pobj.ndb.pages_received = []
             pobj.ndb.pages_received.append(temp_message)
-            if hasattr(pobj, 'has_account') and not pobj.has_account:
+            if hasattr(pobj, "has_account") and not pobj.has_account:
                 received.append("{C%s{n" % pobj.name)
-                r_strings.append("%s is offline. They will see your message if they list their pages later." %
-                                 received[-1])
+                r_strings.append(
+                    "%s is offline. They will see your message if they list their pages later."
+                    % received[-1]
+                )
             else:
                 received.append("{c%s{n" % pobj.name.capitalize())
             afk = pobj.db.afk
@@ -941,7 +1045,9 @@ class CmdOOCSay(ArxCommand):
         speech = self.raw.lstrip()
 
         if not speech:
-            caller.msg("No message specified. If you wish to stop being IC, use @ooc instead.")
+            caller.msg(
+                "No message specified. If you wish to stop being IC, use @ooc instead."
+            )
             return
 
         oocpose = False
@@ -958,18 +1064,21 @@ class CmdOOCSay(ArxCommand):
 
         # Feedback for the object doing the talking.
         if not oocpose:
-            caller.msg('{y(OOC){n You say: %s{n' % speech)
+            caller.msg("{y(OOC){n You say: %s{n" % speech)
 
             # Build the string to emit to neighbors.
-            emit_string = '{y(OOC){n {c%s{n says: %s{n' % (caller.name, speech)
-            caller.location.msg_contents(emit_string, from_obj=caller,
-                                         exclude=caller, options=options)
+            emit_string = "{y(OOC){n {c%s{n says: %s{n" % (caller.name, speech)
+            caller.location.msg_contents(
+                emit_string, from_obj=caller, exclude=caller, options=options
+            )
         else:
             if nospace:
-                emit_string = '{y(OOC){n {c%s{n%s' % (caller.name, speech)
+                emit_string = "{y(OOC){n {c%s{n%s" % (caller.name, speech)
             else:
-                emit_string = '{y(OOC){n {c%s{n %s' % (caller.name, speech)
-            caller.location.msg_contents(emit_string, exclude=None, options=options, from_obj=caller)
+                emit_string = "{y(OOC){n {c%s{n %s" % (caller.name, speech)
+            caller.location.msg_contents(
+                emit_string, exclude=None, options=options, from_obj=caller
+            )
 
 
 # implement CmdMail. player.db.Mails is List of Mail
@@ -997,6 +1106,7 @@ class CmdMail(ArxPlayerCommand):
     Accesses in-game mail. Players may send, receive,
     or delete messages.
     """
+
     key = "@mail"
     aliases = ["mail", "+mail"]
     locks = "cmd:all()"
@@ -1006,13 +1116,23 @@ class CmdMail(ArxPlayerCommand):
         """Checks if we can send mail to that player"""
         caller = self.caller
         if pobj in caller.block_list:
-            self.msg("%s is in your block list and would not be able to reply to your mail." % pobj)
+            self.msg(
+                "%s is in your block list and would not be able to reply to your mail."
+                % pobj
+            )
             return
-        if caller.tags.get("chat_banned") and (caller not in pobj.allow_list or pobj not in caller.allow_list):
-            self.msg("You cannot mail someone unless you are in each others' allow lists.")
+        if caller.tags.get("chat_banned") and (
+            caller not in pobj.allow_list or pobj not in caller.allow_list
+        ):
+            self.msg(
+                "You cannot mail someone unless you are in each others' allow lists."
+            )
             return
-        if ((pobj.tags.get("ic_only") or caller in pobj.block_list or pobj.tags.get("chat_banned"))
-                and not caller.check_permstring("builders")):
+        if (
+            pobj.tags.get("ic_only")
+            or caller in pobj.block_list
+            or pobj.tags.get("chat_banned")
+        ) and not caller.check_permstring("builders"):
             if caller not in pobj.allow_list:
                 self.msg("%s is IC only and cannot be sent mail." % pobj)
                 return
@@ -1037,6 +1157,7 @@ class CmdMail(ArxPlayerCommand):
             subject = arglist[1]
         if "org" in self.switches:
             from world.dominion.models import Organization
+
             try:
                 org = Organization.objects.get(name__iexact=arglist[0])
             except Organization.DoesNotExist:
@@ -1054,7 +1175,7 @@ class CmdMail(ArxPlayerCommand):
                 receiver = receiver.strip()
                 pobj = caller.search(receiver, global_search=True)
                 # if we got a character instead of player, get their player
-                if hasattr(pobj, 'player') and pobj.player:
+                if hasattr(pobj, "player") and pobj.player:
                     pobj = pobj.player
                 # if we found a match
                 if pobj:
@@ -1090,9 +1211,7 @@ class CmdMail(ArxPlayerCommand):
             # if no argument and no switches, list all mail
             caller.tags.remove("new_mail")  # mark mail as read
             if not self.args or not self.lhs:
-                table = prettytable.PrettyTable(["{wMail #",
-                                                 "{wSender",
-                                                 "{wSubject"])
+                table = prettytable.PrettyTable(["{wMail #", "{wSender", "{wSubject"])
                 mail_number = 0
                 for mail in mails:
                     # list the mail
@@ -1105,7 +1224,9 @@ class CmdMail(ArxPlayerCommand):
                         col = "{w"
                     else:
                         col = "{n"
-                    table.add_row([col + str(this_number), col + str(sender), col + str(subject)])
+                    table.add_row(
+                        [col + str(this_number), col + str(sender), col + str(subject)]
+                    )
                 string = "{wMailbox:{n\n%s" % table
                 caller.msg(string)
                 return
@@ -1142,9 +1263,11 @@ class CmdMail(ArxPlayerCommand):
                     caller.db.readmails = read_mails
                 return
         if not self.args or not self.lhs:
-            caller.msg("Usage: mail[/switches] # or mail/quick [<name>/<subject>=<message>]")
+            caller.msg(
+                "Usage: mail[/switches] # or mail/quick [<name>/<subject>=<message>]"
+            )
             return
-        if 'delete' in switches or 'del' in self.switches:
+        if "delete" in switches or "del" in self.switches:
             try:
                 mail_number = int(self.args)
             except ValueError:
@@ -1158,7 +1281,7 @@ class CmdMail(ArxPlayerCommand):
             caller.db.readmails.discard(mail)
             caller.msg("Message deleted.")
             return
-        if 'quick' in switches or 'org' in switches:
+        if "quick" in switches or "org" in switches:
             self.send_mail()
             return
 
@@ -1177,6 +1300,7 @@ class CmdDirections(ArxCommand):
     heading. Please use @map to find a direct route otherwise. Your
     destination will be displayed as a red XX on the map.
     """
+
     key = "@directions"
     help_category = "Travel"
     locks = "cmd:all()"
@@ -1192,7 +1316,10 @@ class CmdDirections(ArxCommand):
                 caller.msg("You must give the name of a room.")
             return
         from typeclasses.rooms import ArxRoom
-        room = ArxRoom.objects.filter(db_key__icontains=self.args).exclude(db_tags__db_key="unmappable")[:10]
+
+        room = ArxRoom.objects.filter(db_key__icontains=self.args).exclude(
+            db_tags__db_key="unmappable"
+        )[:10]
         if len(room) > 1:
             exact = [ob for ob in room if self.args in ob.aliases.all()]
             if len(exact) == 1:
@@ -1206,12 +1333,16 @@ class CmdDirections(ArxCommand):
         if not room:
             caller.msg("No matches for %s." % self.args)
             return
-        caller.msg("Attempting to find where your destination is in relation to your position." +
-                   " Please use {w@map{n if the directions don't have a direct exit there.")
+        caller.msg(
+            "Attempting to find where your destination is in relation to your position."
+            + " Please use {w@map{n if the directions don't have a direct exit there."
+        )
         directions = caller.get_directions(room)
         if not directions:
-            caller.msg("You can't figure out how to get there from here. "
-                       "You may have to go someplace closer, like the City Center.")
+            caller.msg(
+                "You can't figure out how to get there from here. "
+                "You may have to go someplace closer, like the City Center."
+            )
             caller.ndb.waypoint = None
             return
         caller.msg("Your destination is through the %s." % directions)
@@ -1229,12 +1360,14 @@ class CmdPut(ArxCommand):
     Places an object you hold inside an unlocked
     container. (See 'help outfit' for outfit creation.)
     """
+
     key = "put"
     locks = "cmd:all()"
 
     def func(self):
         """Executes Put command"""
         from .overrides import args_are_currency
+
         caller = self.caller
 
         args = self.args.split(" in ", 1)
@@ -1250,6 +1383,7 @@ class CmdPut(ArxCommand):
             return
         if self.check_switches(("outfit", "outfits")):
             from world.fashion.exceptions import FashionError
+
             try:
                 obj_list = self.get_oblist_from_outfit(args[0])
             except FashionError as err:
@@ -1281,17 +1415,20 @@ class CmdPut(ArxCommand):
             if dest.volume + volume > max_volume:
                 caller.msg("No more room; {} won't fit.".format(obj))
                 continue
-            if not obj.access(caller, 'get'):
+            if not obj.access(caller, "get"):
                 caller.msg("You cannot move {}.".format(obj))
                 continue
             obj.move_to(dest)
             success.append(obj)
             from time import time
+
             obj.db.put_time = time()
         if success:
             success_str = "%s in %s" % (list_to_string(success), dest.name)
             caller.msg("You put %s." % success_str)
-            caller.location.msg_contents("%s puts %s." % (caller.name, success_str), exclude=caller)
+            caller.location.msg_contents(
+                "%s puts %s." % (caller.name, success_str), exclude=caller
+            )
         else:
             self.msg("Nothing moved.")
 
@@ -1304,6 +1441,7 @@ class CmdPut(ArxCommand):
                 destination (ObjectDB): What we're putting money in
         """
         from .overrides import money_from_args
+
         val, currency = money_from_args(args, self.caller)
         if val > currency:
             self.msg("You do not have enough money.")
@@ -1314,8 +1452,11 @@ class CmdPut(ArxCommand):
     def get_oblist_from_outfit(self, args):
         """Creates a list of objects or raises FashionError if no outfit found."""
         from world.fashion.fashion_commands import get_caller_outfit_from_args
+
         outfit = get_caller_outfit_from_args(self.caller, args)
-        obj_list = [ob for ob in outfit.fashion_items.all() if ob.location == self.caller]
+        obj_list = [
+            ob for ob in outfit.fashion_items.all() if ob.location == self.caller
+        ]
         return obj_list
 
 
@@ -1331,6 +1472,7 @@ class CmdGradient(ArxPlayerCommand):
     switch is specified, it will reverse colors halfway through the string.
     See @color xterm256 for a list of codes.
     """
+
     key = "@gradient"
     locks = "cmd: all()"
 
@@ -1339,7 +1481,7 @@ class CmdGradient(ArxPlayerCommand):
         """Gets step of the gradient"""
         if diff == 0:
             return 0
-        return length/diff
+        return length / diff
 
     def color_string(self, start, end, text):
         """Returns a colored string for the gradient"""
@@ -1351,10 +1493,13 @@ class CmdGradient(ArxPlayerCommand):
                 tag = "{{%s%s%s" % (str(r), str(g), str(b))
                 output += "%s%s" % (tag, text[x])
                 continue
-            diff = (end[0]-current[0], end[1]-current[1], end[2]-current[2])
+            diff = (end[0] - current[0], end[1] - current[1], end[2] - current[2])
             previous = current
-            step = (self.get_step(len(text), diff[0]), self.get_step(len(text), diff[1]), self.get_step(len(text),
-                                                                                                        diff[2]))
+            step = (
+                self.get_step(len(text), diff[0]),
+                self.get_step(len(text), diff[1]),
+                self.get_step(len(text), diff[2]),
+            )
             if step[0] and x % step[0] == 0:
                 if diff[0] > 1:
                     r += 1
@@ -1397,8 +1542,8 @@ class CmdGradient(ArxPlayerCommand):
         if not reverse:
             caller.msg(self.color_string(start, end, text))
             return
-        caller.msg(self.color_string(start, end, text[:len(text)//2]))
-        caller.msg(self.color_string(end, start, text[len(text)//2:]))
+        caller.msg(self.color_string(start, end, text[: len(text) // 2]))
+        caller.msg(self.color_string(end, start, text[len(text) // 2 :]))
 
 
 class CmdInform(ArxPlayerCommand):
@@ -1419,6 +1564,7 @@ class CmdInform(ArxPlayerCommand):
     Displays your informs. /shopminimum sets a minimum amount that must be paid
     before you are informed of activity in your shops.
     """
+
     key = "@inform"
     aliases = ["@informs"]
     locks = "cmd: all()"
@@ -1427,8 +1573,8 @@ class CmdInform(ArxPlayerCommand):
     def read_inform(self, inform):
         """Reads an inform for the caller"""
         msg = "\n{wCategory:{n %s\n" % inform.category
-        msg += "{w" + "-"*70 + "{n\n\n%s\n" % inform.message
-        self.msg(msg, options={'box': True})
+        msg += "{w" + "-" * 70 + "{n\n\n%s\n" % inform.message
+        self.msg(msg, options={"box": True})
         if self.caller not in inform.read_by.all():
             inform.read_by.add(self.caller)
 
@@ -1463,10 +1609,14 @@ class CmdInform(ArxPlayerCommand):
 
     def display_minimums(self, asset_owner):
         """Displays minimums for informs to be sent"""
-        table = evtable.EvTable("{wPurpose{n", "{wResource{n", "{wThreshold{n",  width=78, pad_width=0)
-        attrs = (("min_silver_for_inform", "silver", "shop/banking"),
-                 ("min_materials_for_inform", "materials", "banking"),
-                 ("min_resources_for_inform", "resources", "banking"))
+        table = evtable.EvTable(
+            "{wPurpose{n", "{wResource{n", "{wThreshold{n", width=78, pad_width=0
+        )
+        attrs = (
+            ("min_silver_for_inform", "silver", "shop/banking"),
+            ("min_materials_for_inform", "materials", "banking"),
+            ("min_resources_for_inform", "resources", "banking"),
+        )
         for attr, res, purp in attrs:
             val = getattr(asset_owner, attr)
             table.add_row(purp, res, "{:,}".format(val))
@@ -1480,6 +1630,7 @@ class CmdInform(ArxPlayerCommand):
         if "org" in self.switches:
             self.switches.remove("org")
             from world.dominion.models import Organization
+
             try:
                 lhsargs = lhs.split("/")
                 name = lhsargs[0]
@@ -1541,7 +1692,9 @@ class CmdInform(ArxPlayerCommand):
             self.msg("You have no messages from the game waiting for you.")
             return
         if not lhs:
-            table = evtable.EvTable("{w#{n", "{wCategory{n", "{wDate{n", width=78, pad_width=0)
+            table = evtable.EvTable(
+                "{w#{n", "{wCategory{n", "{wDate{n", width=78, pad_width=0
+            )
             x = 0
             read_informs = list(self.caller.read_informs.all())
             for info in informs:
@@ -1555,6 +1708,7 @@ class CmdInform(ArxPlayerCommand):
                         return "{w*%s{n" % ob_str
                     else:
                         return "{w%s{n" % ob_str
+
                 num = highlight(x, add_star=True)
                 cat = highlight(info.category)
                 date = highlight(info.date_sent.strftime("%x %X"))
@@ -1615,12 +1769,18 @@ class CmdInform(ArxPlayerCommand):
             return True
         if inform_target.access(self.caller, "transactions"):
             return True
-        self.msg("You do not have permission to set transactions/delete informs for %s." % inform_target)
+        self.msg(
+            "You do not have permission to set transactions/delete informs for %s."
+            % inform_target
+        )
         self.msg("This is controlled by the 'transaction' permission under @org/perm.")
 
     def toggle_important(self, inform_target, inform):
         """Toggles the importance of an inform"""
-        if not inform.important and inform_target.informs.filter(important=True).count() > 20:
+        if (
+            not inform.important
+            and inform_target.informs.filter(important=True).count() > 20
+        ):
             self.msg("You may only have 20 informs marked as important.")
             return
         inform.important = not inform.important
@@ -1637,6 +1797,7 @@ class CmdKeyring(ArxCommand):
 
     Checks your keys, or Removes a key.
     """
+
     key = "+keyring"
     locks = "cmd:all()"
 
@@ -1645,17 +1806,25 @@ class CmdKeyring(ArxCommand):
         caller = self.caller
         room_keys = caller.db.keylist or []
         # remove any duplicates and ensure only rooms are in keylist
-        room_keys = [ob for ob in set(room_keys) if hasattr(ob, 'is_room') and ob.is_room]
+        room_keys = [
+            ob for ob in set(room_keys) if hasattr(ob, "is_room") and ob.is_room
+        ]
         caller.db.keylist = room_keys
         chest_keys = caller.db.chestkeylist or []
         # remove any deleted objects
-        chest_keys = [ob for ob in chest_keys if hasattr(ob, 'tags') and "deleted" not in ob.tags.all()]
+        chest_keys = [
+            ob
+            for ob in chest_keys
+            if hasattr(ob, "tags") and "deleted" not in ob.tags.all()
+        ]
         chest_keys = list(set(chest_keys))
         caller.db.chestkeylist = chest_keys
         if "remove" in self.switches:
             old = set(room_keys + chest_keys)
             room_keys = [ob for ob in room_keys if ob.key.lower() != self.args.lower()]
-            chest_keys = [ob for ob in chest_keys if ob.key.lower() != self.args.lower()]
+            chest_keys = [
+                ob for ob in chest_keys if ob.key.lower() != self.args.lower()
+            ]
             caller.db.keylist = room_keys
             caller.db.chestkeylist = chest_keys
             removed = old - set(room_keys + chest_keys)
@@ -1676,6 +1845,7 @@ class CmdDump(ArxCommand):
 
     Dump will only work if the container is unlocked.
     """
+
     key = "dump"
     aliases = ["empty"]
     locks = "cmd:all()"
@@ -1706,8 +1876,11 @@ class CmdDump(ArxCommand):
         # Quietly move every object inside the container to container's location
         obj.transfer_all(loc, caller)
         caller.msg("You dump the contents of %s." % obj)
-        loc.msg_contents("%s dumps %s and spills its contents all over the floor." % (caller.name, obj),
-                         exclude=caller)
+        loc.msg_contents(
+            "%s dumps %s and spills its contents all over the floor."
+            % (caller.name, obj),
+            exclude=caller,
+        )
         return
 
 
@@ -1721,6 +1894,7 @@ class CmdLockObject(ArxCommand):
 
     Locks or unlocks an object for which you have a key.
     """
+
     key = "+lock"
     aliases = ["lock", "unlock", "+unlock"]
     locks = "cmd:all()"
@@ -1732,7 +1906,7 @@ class CmdLockObject(ArxCommand):
         obj = caller.search(self.args)
         if not obj:
             return
-        if hasattr(obj, 'lock_exit'):
+        if hasattr(obj, "lock_exit"):
             if verb == "lock":
                 obj.lock_exit(caller)
             else:
@@ -1757,6 +1931,7 @@ class CmdTidyUp(ArxCommand):
     one hour in your current room, provided that the room is
     public or a room you own.
     """
+
     key = "+tidy"
     aliases = ["+gohomeyouredrunk"]
     locks = "cmd:all()"
@@ -1771,6 +1946,7 @@ class CmdTidyUp(ArxCommand):
                 self.msg("This is a private room.")
                 return
         from typeclasses.characters import Character
+
         # can only boot Player Characters
         chars = Character.objects.filter(db_location=loc, roster__roster__name="Active")
         found = []
@@ -1788,4 +1964,7 @@ class CmdTidyUp(ArxCommand):
         if not found:
             self.msg("No characters were found to be idle.")
         else:
-            self.msg("The following characters were removed: %s" % ", ".join(ob.name for ob in found))
+            self.msg(
+                "The following characters were removed: %s"
+                % ", ".join(ob.name for ob in found)
+            )

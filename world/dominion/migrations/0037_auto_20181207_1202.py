@@ -9,13 +9,19 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0036_plotaction_working'),
+        ("dominion", "0036_plotaction_working"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='plotaction',
-            name='plot',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='actions', to='dominion.Plot'),
+            model_name="plotaction",
+            name="plot",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="actions",
+                to="dominion.Plot",
+            ),
         ),
     ]

@@ -7,13 +7,20 @@ of refactoring.
 """
 import random
 from typing import Dict, List
-from world.stats_and_skills import (VALID_SKILLS, VALID_STATS, VALID_ABILITIES,
-                                    CRAFTING_SKILLS, _parent_abilities_, DOM_SKILLS,
-                                    PHYSICAL_STATS)
+from world.stats_and_skills import (
+    VALID_SKILLS,
+    VALID_STATS,
+    VALID_ABILITIES,
+    CRAFTING_SKILLS,
+    _parent_abilities_,
+    DOM_SKILLS,
+    PHYSICAL_STATS,
+)
 
 
 class Trait:
     """Wrapper for traits, will later be replaced by a model"""
+
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -24,6 +31,7 @@ class Traitshandler:
     Handler that's instantiated with a character, which will then store the instance
     as a cached property on the character.
     """
+
     def __init__(self, character):
         self.character = character
 
@@ -58,7 +66,10 @@ class Traitshandler:
         """
         try:
             # get the highest trait from the list of skill names
-            return max([Trait(name, self.get_skill_value(name)) for name in namelist], key=lambda x: x.value)
+            return max(
+                [Trait(name, self.get_skill_value(name)) for name in namelist],
+                key=lambda x: x.value,
+            )
         except ValueError:
             # no match, get one at random
             return Trait(random.choice(namelist), 0)
@@ -176,14 +187,18 @@ class Traitshandler:
 
     def adjust_stat(self, field, value=1):
         if field not in VALID_STATS:
-            raise Exception("Error in adjust_stat: %s not found as a valid stat." % field)
+            raise Exception(
+                "Error in adjust_stat: %s not found as a valid stat." % field
+            )
         current = self.get_stat_value(field)
         self.set_stat_value(field, current + value)
         self.character.db.trainer = None
 
     def adjust_skill(self, field, value=1):
         if field not in VALID_SKILLS:
-            raise Exception("Error in adjust_skill: %s not found as a valid skill." % field)
+            raise Exception(
+                "Error in adjust_skill: %s not found as a valid skill." % field
+            )
         current = self.get_skill_value(field)
         self.set_skill_value(field, current + value)
         self.character.db.trainer = None
@@ -195,14 +210,18 @@ class Traitshandler:
 
     def adjust_ability(self, field, value=1):
         if field not in VALID_ABILITIES:
-            raise Exception("Error in adjust_ability: %s not found as a valid ability." % field)
+            raise Exception(
+                "Error in adjust_ability: %s not found as a valid ability." % field
+            )
         current = self.get_ability_value(field)
         self.set_ability_value(field, current + value)
         self.character.db.trainer = None
 
     def adjust_dom(self, field, value=1):
         if field not in DOM_SKILLS:
-            raise Exception("Error in adjust_dom: %s not found as a valid dominion skill." % field)
+            raise Exception(
+                "Error in adjust_dom: %s not found as a valid dominion skill." % field
+            )
         dompc = self.character.player_ob.Dominion
         current = getattr(dompc, field)
         setattr(dompc, field, current + value)

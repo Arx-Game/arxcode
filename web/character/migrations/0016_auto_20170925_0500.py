@@ -18,7 +18,9 @@ def add_editors(apps, schema_editor):
                 can_edit = True
             else:
                 can_edit = False
-            objects.append(TheoryPermissions(player=player, theory=theory, can_edit=can_edit))
+            objects.append(
+                TheoryPermissions(player=player, theory=theory, can_edit=can_edit)
+            )
         TheoryPermissions.objects.bulk_create(objects)
 
 
@@ -26,26 +28,54 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('character', '0015_auto_20170605_2252'),
+        ("character", "0015_auto_20170605_2252"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TheoryPermissions',
+            name="TheoryPermissions",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('can_edit', models.BooleanField(default=False)),
-                ('player', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='theory_permissions', to=settings.AUTH_USER_MODEL)),
-                ('theory', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='theory_permissions', to='character.Theory')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("can_edit", models.BooleanField(default=False)),
+                (
+                    "player",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="theory_permissions",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "theory",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="theory_permissions",
+                        to="character.Theory",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='theory',
-            name='known_by2',
-            field=models.ManyToManyField(blank=True, null=True, related_name='known_theories2', through='character.TheoryPermissions', to=settings.AUTH_USER_MODEL),
+            model_name="theory",
+            name="known_by2",
+            field=models.ManyToManyField(
+                blank=True,
+                null=True,
+                related_name="known_theories2",
+                through="character.TheoryPermissions",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
-        migrations.RunPython(add_editors)
+        migrations.RunPython(add_editors),
     ]

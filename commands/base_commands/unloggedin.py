@@ -16,12 +16,16 @@ MULTISESSION_MODE = settings.MULTISESSION_MODE
 CONNECTION_SCREEN_MODULE = settings.CONNECTION_SCREEN_MODULE
 CONNECTION_SCREEN = ""
 try:
-    CONNECTION_SCREEN = ansi.parse_ansi(utils.string_from_module(CONNECTION_SCREEN_MODULE))
+    CONNECTION_SCREEN = ansi.parse_ansi(
+        utils.string_from_module(CONNECTION_SCREEN_MODULE)
+    )
 except (AttributeError, TypeError, ValueError):
     pass
 if not CONNECTION_SCREEN:
-    CONNECTION_SCREEN = "\nEvennia: Error in CONNECTION_SCREEN MODULE (randomly picked connection screen " \
-                        "variable is not a string). \nEnter 'help' for aid."
+    CONNECTION_SCREEN = (
+        "\nEvennia: Error in CONNECTION_SCREEN MODULE (randomly picked connection screen "
+        "variable is not a string). \nEnter 'help' for aid."
+    )
 
 GUEST = "typeclasses.guest.Guest"
 
@@ -35,6 +39,7 @@ class CmdGuestConnect(ArxCommand):
     log in the player as that guest. If none are available,
     create a new guest account.
     """
+
     key = "guest"
 
     def dc_session(self, msg):
@@ -54,8 +59,10 @@ class CmdGuestConnect(ArxCommand):
         addr = session.address
         if bans and (any(tup[2].match(session.address) for tup in bans if tup[2])):
             # this is a banned IP or name!
-            string = "{rYou have been banned and cannot continue from here." \
-                     "\nIf you feel this ban is in error, please email an admin.{x"
+            string = (
+                "{rYou have been banned and cannot continue from here."
+                "\nIf you feel this ban is in error, please email an admin.{x"
+            )
             self.dc_session(string)
             return
         try:
@@ -66,7 +73,13 @@ class CmdGuestConnect(ArxCommand):
             # check if IP is in our whitelist
             white_list = ServerConfig.objects.conf("white_list") or []
             if addr not in white_list:
-                qname = addr[::-1] + "." + str(settings.TELNET_PORTS[0]) + "." + settings.TELNET_INTERFACES[0][::-1]
+                qname = (
+                    addr[::-1]
+                    + "."
+                    + str(settings.TELNET_PORTS[0])
+                    + "."
+                    + settings.TELNET_INTERFACES[0][::-1]
+                )
                 try:
                     query(qname)
                     msg = "Guest connections from TOR are not permitted, sorry."
@@ -75,22 +88,28 @@ class CmdGuestConnect(ArxCommand):
                 except NXDOMAIN:
                     # not inside TOR
                     pass
-                api_key = getattr(settings, 'HOST_BLOCKER_API_KEY', "")
-                url = "http://tools.xioax.com/networking/v2/json/%s/%s" % (addr, api_key)
+                api_key = getattr(settings, "HOST_BLOCKER_API_KEY", "")
+                url = "http://tools.xioax.com/networking/v2/json/%s/%s" % (
+                    addr,
+                    api_key,
+                )
                 try:
                     response = requests.get(url=url)
                     data = response.json()
                     print("Returned from xiaox: %s" % str(data))
-                    if data['host-ip']:
-                        self.dc_session("Guest connections from VPNs are not permitted, sorry.")
+                    if data["host-ip"]:
+                        self.dc_session(
+                            "Guest connections from VPNs are not permitted, sorry."
+                        )
                         return
                     # the address was safe, add it to our white_list
                     white_list.append(addr)
-                    ServerConfig.objects.conf('white_list', white_list)
+                    ServerConfig.objects.conf("white_list", white_list)
                 except Exception as err:
                     import traceback
+
                     traceback.print_exc()
-                    print('Error code on trying to check VPN:', err)
+                    print("Error code on trying to check VPN:", err)
         for pc in playerlist:
             if pc.is_guest():
                 # add session check just to be absolutely sure we don't connect to a guest in-use
@@ -99,7 +118,7 @@ class CmdGuestConnect(ArxCommand):
                 else:
                     guest = pc
                     break
-        # create a new guest account        
+        # create a new guest account
         if not guest:
             session.msg("All guests in use, creating a new one.")
             key = "Guest" + str(num_guests)
@@ -110,10 +129,16 @@ class CmdGuestConnect(ArxCommand):
                 # maximum loop check just in case
                 if num_guests > 5000:
                     break
-            guest = create.create_account(key, "guest@guest.com", "DefaultGuestPassword",
-                                          typeclass=GUEST,
-                                          is_superuser=False,
-                                          locks=None, permissions="Guests", report_to=session)
+            guest = create.create_account(
+                key,
+                "guest@guest.com",
+                "DefaultGuestPassword",
+                typeclass=GUEST,
+                is_superuser=False,
+                locks=None,
+                permissions="Guests",
+                report_to=session,
+            )
         # now connect the player to the guest account
         session.msg("Logging in as %s" % guest.key)
         session.sessionhandler.login(session, guest)
@@ -124,6 +149,7 @@ class CmdUnconnectedHelp(ArxCommand):
     This is an unconnected version of the help command,
     for simplicity. It shows a pane of info.
     """
+
     key = "help"
     aliases = ["h", "?"]
     locks = "cmd:all()"
@@ -131,8 +157,7 @@ class CmdUnconnectedHelp(ArxCommand):
     def func(self):
         """Shows help"""
 
-        string = \
-            """
+        string = """
 You are not yet logged into the game. Commands available at this point:
   {wconnect, guest, look, help, quit{n
 

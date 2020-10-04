@@ -8,13 +8,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0021_flashback_flashbackpost'),
+        ("character", "0021_flashback_flashbackpost"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='flashbackpost',
-            name='actions',
-            field=models.TextField(blank=True, verbose_name=b"The body of the post for your character's actions"),
+            model_name="flashbackpost",
+            name="actions",
+            field=models.TextField(
+                blank=True,
+                verbose_name=b"The body of the post for your character's actions",
+            ),
         ),
     ]

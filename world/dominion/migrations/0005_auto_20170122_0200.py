@@ -9,48 +9,94 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0005_auto_20170122_0008'),
-        ('dominion', '0004_crisis_required_clue'),
+        ("character", "0005_auto_20170122_0008"),
+        ("dominion", "0004_crisis_required_clue"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='CrisisUpdate',
+            name="CrisisUpdate",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('desc', models.TextField(blank=True, verbose_name=b'Story of what happened this update')),
-                ('gm_notes', models.TextField(blank=True, verbose_name=b'Any ooc notes of consequences')),
-                ('date', models.DateTimeField(blank=True, null=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "desc",
+                    models.TextField(
+                        blank=True, verbose_name=b"Story of what happened this update"
+                    ),
+                ),
+                (
+                    "gm_notes",
+                    models.TextField(
+                        blank=True, verbose_name=b"Any ooc notes of consequences"
+                    ),
+                ),
+                ("date", models.DateTimeField(blank=True, null=True)),
             ],
         ),
         migrations.AddField(
-            model_name='crisis',
-            name='chapter',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='crises', to='character.Chapter'),
+            model_name="crisis",
+            name="chapter",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="crises",
+                to="character.Chapter",
+            ),
         ),
         migrations.AddField(
-            model_name='rpevent',
-            name='crisis',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='events', to='dominion.Crisis'),
+            model_name="rpevent",
+            name="crisis",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="events",
+                to="dominion.Crisis",
+            ),
         ),
         migrations.AlterField(
-            model_name='rpevent',
-            name='location',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='events_held', to='objects.ObjectDB'),
+            model_name="rpevent",
+            name="location",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="events_held",
+                to="objects.ObjectDB",
+            ),
         ),
         migrations.AlterField(
-            model_name='rpevent',
-            name='name',
+            model_name="rpevent",
+            name="name",
             field=models.CharField(db_index=True, max_length=255),
         ),
         migrations.AddField(
-            model_name='crisisupdate',
-            name='crisis',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='updates', to='dominion.Crisis'),
+            model_name="crisisupdate",
+            name="crisis",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="updates",
+                to="dominion.Crisis",
+            ),
         ),
         migrations.AddField(
-            model_name='crisisaction',
-            name='update',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='dominion.CrisisUpdate'),
+            model_name="crisisaction",
+            name="update",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="actions",
+                to="dominion.CrisisUpdate",
+            ),
         ),
     ]

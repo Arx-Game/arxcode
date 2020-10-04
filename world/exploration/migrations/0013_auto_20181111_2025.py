@@ -9,17 +9,23 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0012_auto_20181111_2015'),
+        ("exploration", "0012_auto_20181111_2015"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='shardhavenobstacle',
-            name='rolls',
+            model_name="shardhavenobstacle",
+            name="rolls",
         ),
         migrations.AddField(
-            model_name='shardhavenobstacleroll',
-            name='obstacle',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='rolls', to='exploration.ShardhavenObstacle'),
+            model_name="shardhavenobstacleroll",
+            name="obstacle",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="rolls",
+                to="exploration.ShardhavenObstacle",
+            ),
         ),
     ]

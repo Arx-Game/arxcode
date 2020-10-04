@@ -1,5 +1,11 @@
 from django.contrib import admin
-from world.stat_checks.models import NaturalRollType, RollResult, StatWeight, DifficultyRating, DamageRating
+from world.stat_checks.models import (
+    NaturalRollType,
+    RollResult,
+    StatWeight,
+    DifficultyRating,
+    DamageRating,
+)
 
 
 class NaturalRollTypeAdmin(admin.ModelAdmin):

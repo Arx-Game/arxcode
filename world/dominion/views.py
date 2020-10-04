@@ -29,8 +29,9 @@ class RPEventListView(LimitPageMixin, ListView):
     """
     View for displaying list of RPEvents
     """
+
     model = RPEvent
-    template_name = 'dominion/cal_list.html'
+    template_name = "dominion/cal_list.html"
     paginate_by = 20
 
     def search_filter(self, qs):
@@ -42,7 +43,11 @@ class RPEventListView(LimitPageMixin, ListView):
             qs = qs.filter(gm_event=False, pc_event_participation__gm=True)
         text = self.request.GET.get("search_text")
         if text:
-            qs = qs.filter(Q(name__icontains=text) | Q(dompcs__player__username__iexact=text) | Q(desc__icontains=text))
+            qs = qs.filter(
+                Q(name__icontains=text)
+                | Q(dompcs__player__username__iexact=text)
+                | Q(desc__icontains=text)
+            )
         return qs
 
     def unfinished(self):
@@ -50,17 +55,30 @@ class RPEventListView(LimitPageMixin, ListView):
         user = self.request.user
         try:
             if user.is_staff:
-                return self.search_filter(RPEvent.objects.filter(finished=False).distinct().order_by('-date'))
+                return self.search_filter(
+                    RPEvent.objects.filter(finished=False).distinct().order_by("-date")
+                )
         except AttributeError:
             pass
         if not user.is_authenticated:
             return self.search_filter(
-                RPEvent.objects.filter(finished=False, public_event=True).distinct().order_by('-date'))
+                RPEvent.objects.filter(finished=False, public_event=True)
+                .distinct()
+                .order_by("-date")
+            )
         else:
-            return self.search_filter(RPEvent.objects.filter(Q(finished=False) &
-                                                             (Q(public_event=True) | (Q(dompcs__player_id=user.id)) |
-                                                              Q(orgs__in=user.Dominion.current_orgs))
-                                                             ).distinct().order_by('-date'))
+            return self.search_filter(
+                RPEvent.objects.filter(
+                    Q(finished=False)
+                    & (
+                        Q(public_event=True)
+                        | (Q(dompcs__player_id=user.id))
+                        | Q(orgs__in=user.Dominion.current_orgs)
+                    )
+                )
+                .distinct()
+                .order_by("-date")
+            )
 
     def get_queryset(self):
         """Gets queryset of RPEvents based on who the user is"""
@@ -68,22 +86,38 @@ class RPEventListView(LimitPageMixin, ListView):
         try:
             if user.is_staff:
                 return self.search_filter(
-                    RPEvent.objects.filter(finished=True, dompcs__isnull=False).distinct().order_by('-date'))
+                    RPEvent.objects.filter(finished=True, dompcs__isnull=False)
+                    .distinct()
+                    .order_by("-date")
+                )
         except AttributeError:
             pass
         if not user.is_authenticated:
-            return self.search_filter(RPEvent.objects.filter(finished=True, dompcs__isnull=False,
-                                                             public_event=True).distinct().order_by('-date'))
+            return self.search_filter(
+                RPEvent.objects.filter(
+                    finished=True, dompcs__isnull=False, public_event=True
+                )
+                .distinct()
+                .order_by("-date")
+            )
         else:
-            return self.search_filter(RPEvent.objects.filter(Q(finished=True) &
-                                                             (Q(public_event=True) | Q(dompcs__player_id=user.id) |
-                                                              Q(orgs__in=user.Dominion.current_orgs))
-                                                             ).distinct().order_by('-date'))
+            return self.search_filter(
+                RPEvent.objects.filter(
+                    Q(finished=True)
+                    & (
+                        Q(public_event=True)
+                        | Q(dompcs__player_id=user.id)
+                        | Q(orgs__in=user.Dominion.current_orgs)
+                    )
+                )
+                .distinct()
+                .order_by("-date")
+            )
 
     def get_context_data(self, **kwargs):
         """Passes along search filters to the context"""
         context = super(RPEventListView, self).get_context_data(**kwargs)
-        context['page_title'] = 'Events'
+        context["page_title"] = "Events"
         search_tags = ""
         text = self.request.GET.get("search_text")
         if text:
@@ -91,7 +125,7 @@ class RPEventListView(LimitPageMixin, ListView):
         event_type = self.request.GET.get("event_type")
         if event_type:
             search_tags += "&event_type=%s" % event_type
-        context['search_tags'] = search_tags
+        context["search_tags"] = search_tags
         return context
 
 
@@ -99,13 +133,14 @@ class RPEventDetailView(DetailView):
     """
     View for getting a specific RPEvent's page
     """
+
     model = RPEvent
-    template_name = 'dominion/cal_view.html'
+    template_name = "dominion/cal_view.html"
 
     def get_context_data(self, **kwargs):
         """Adds permission stuff to the context, as well as a comment form"""
         context = super(RPEventDetailView, self).get_context_data(**kwargs)
-        context['form'] = RPEventCommentForm
+        context["form"] = RPEventCommentForm
         can_view = False
         user = self.request.user
         private = not self.get_object().public_event
@@ -122,20 +157,21 @@ class RPEventDetailView(DetailView):
         # this will determine if we can read/write about private events, won't be used for public
         if private and not can_view:
             raise Http404
-        context['can_view'] = can_view
-        context['page_title'] = str(self.get_object())
+        context["can_view"] = can_view
+        context["page_title"] = str(self.get_object())
         return context
 
 
 class RPEventCreateView(LoginRequiredMixin, CreateView):
     """Create view for RPEvents"""
+
     model = RPEvent
     form_class = RPEventCreateForm
 
     def get_form_kwargs(self):
         kwargs = super(RPEventCreateView, self).get_form_kwargs()
         try:
-            kwargs['owner'] = self.request.user.Dominion
+            kwargs["owner"] = self.request.user.Dominion
         except AttributeError:
             raise PermissionDenied
         return kwargs
@@ -145,71 +181,108 @@ class RPEventCreateView(LoginRequiredMixin, CreateView):
 
 
 def event_calendar(request):
-    after_day = request.GET.get('day__gte', None)
+    after_day = request.GET.get("day__gte", None)
     extra_context = {}
 
     if not after_day:
         d = datetime.date.today()
     else:
         try:
-            split_after_day = after_day.split('-')
-            d = datetime.date(year=int(split_after_day[0]), month=int(split_after_day[1]), day=1)
+            split_after_day = after_day.split("-")
+            d = datetime.date(
+                year=int(split_after_day[0]), month=int(split_after_day[1]), day=1
+            )
         except:
             d = datetime.date.today()
 
-    previous_month = datetime.date(year=d.year, month=d.month, day=1)  # find first day of current month
-    previous_month = previous_month - datetime.timedelta(days=1)  # backs up a single day
-    previous_month = datetime.date(year=previous_month.year, month=previous_month.month,
-                                   day=1)  # find first day of previous month
+    previous_month = datetime.date(
+        year=d.year, month=d.month, day=1
+    )  # find first day of current month
+    previous_month = previous_month - datetime.timedelta(
+        days=1
+    )  # backs up a single day
+    previous_month = datetime.date(
+        year=previous_month.year, month=previous_month.month, day=1
+    )  # find first day of previous month
 
     last_day = calendar.monthrange(d.year, d.month)
-    next_month = datetime.date(year=d.year, month=d.month, day=last_day[1])  # find last day of current month
+    next_month = datetime.date(
+        year=d.year, month=d.month, day=last_day[1]
+    )  # find last day of current month
     next_month = next_month + datetime.timedelta(days=1)  # forward a single day
-    next_month = datetime.date(year=next_month.year, month=next_month.month,
-                               day=1)  # find first day of next month
+    next_month = datetime.date(
+        year=next_month.year, month=next_month.month, day=1
+    )  # find first day of next month
 
-    extra_context['previous_month'] = reverse('dominion:calendar') + '?day__gte=' + previous_month.strftime("%Y-%m-%d")
-    extra_context['next_month'] = reverse('dominion:calendar') + '?day__gte=' + next_month.strftime("%Y-%m-%d")
+    extra_context["previous_month"] = (
+        reverse("dominion:calendar")
+        + "?day__gte="
+        + previous_month.strftime("%Y-%m-%d")
+    )
+    extra_context["next_month"] = (
+        reverse("dominion:calendar") + "?day__gte=" + next_month.strftime("%Y-%m-%d")
+    )
 
     user = request.user
     events = None
     if user.is_staff:
         try:
-            events = RPEvent.objects.filter(dompcs__isnull=False).distinct().order_by('-date')
+            events = (
+                RPEvent.objects.filter(dompcs__isnull=False)
+                .distinct()
+                .order_by("-date")
+            )
         except AttributeError:
             pass
     elif not user.is_authenticated:
-        events = RPEvent.objects.filter(dompcs__isnull=False,
-                                        public_event=True).distinct().order_by('-date')
+        events = (
+            RPEvent.objects.filter(dompcs__isnull=False, public_event=True)
+            .distinct()
+            .order_by("-date")
+        )
     else:
-        events = RPEvent.objects.filter((Q(public_event=True) | Q(dompcs__player_id=user.id) |
-                                         Q(orgs__in=user.Dominion.current_orgs))).distinct().order_by('-date')
+        events = (
+            RPEvent.objects.filter(
+                (
+                    Q(public_event=True)
+                    | Q(dompcs__player_id=user.id)
+                    | Q(orgs__in=user.Dominion.current_orgs)
+                )
+            )
+            .distinct()
+            .order_by("-date")
+        )
 
     cal = EventHTMLCalendar(events)
 
     html_calendar = cal.formatmonth(d.year, d.month, withyear=True)
-    html_calendar = html_calendar.replace('<td ', '<td  width="150" height="150"')
-    extra_context['calendar'] = mark_safe(html_calendar)
-    extra_context['page_title'] = "Events Calendar"
+    html_calendar = html_calendar.replace("<td ", '<td  width="150" height="150"')
+    extra_context["calendar"] = mark_safe(html_calendar)
+    extra_context["page_title"] = "Events Calendar"
 
-    return render(request, 'dominion/calendar.html', extra_context)
+    return render(request, "dominion/calendar.html", extra_context)
 
 
 class CrisisDetailView(DetailView):
     """
     Displays view for a specific crisis
     """
+
     model = Plot
-    template_name = 'dominion/crisis_view.html'
+    template_name = "dominion/crisis_view.html"
 
     def get_context_data(self, **kwargs):
         """Modifies which actions can be seen based on user"""
         context = super(CrisisDetailView, self).get_context_data(**kwargs)
         if not self.get_object().check_can_view(self.request.user):
             raise Http404
-        context['page_title'] = str(self.get_object())
-        context['viewable_actions'] = self.get_object().get_viewable_actions(self.request.user)
-        context['updates_with_actions'] = [ob.beat for ob in context['viewable_actions']]
+        context["page_title"] = str(self.get_object())
+        context["viewable_actions"] = self.get_object().get_viewable_actions(
+            self.request.user
+        )
+        context["updates_with_actions"] = [
+            ob.beat for ob in context["viewable_actions"]
+        ]
         return context
 
 
@@ -217,18 +290,23 @@ class AssignedTaskListView(LimitPageMixin, ListView):
     """
     Displays list of Task stuff. Tasks are awful and we'll redo them later
     """
+
     model = AssignedTask
-    template_name = 'dominion/task_list.html'
+    template_name = "dominion/task_list.html"
     paginate_by = 5
 
     def get_queryset(self):
         """Gets queryset of Tasks based on them being finished"""
-        return AssignedTask.objects.filter(finished=True, observer_text__isnull=False).distinct().order_by('-week')
+        return (
+            AssignedTask.objects.filter(finished=True, observer_text__isnull=False)
+            .distinct()
+            .order_by("-week")
+        )
 
     def get_context_data(self, **kwargs):
         """Changes the page title for context"""
         context = super(AssignedTaskListView, self).get_context_data(**kwargs)
-        context['page_title'] = 'Rumors'
+        context["page_title"] = "Rumors"
         return context
 
 
@@ -240,12 +318,13 @@ def event_comment(request, pk):
     if not char:
         raise PermissionDenied
     event = get_object_or_404(RPEvent, id=pk)
-    if request.method == 'POST':
+    if request.method == "POST":
         form = RPEventCommentForm(request.POST)
         if form.is_valid():
             form.post_comment(char, event)
-            return HttpResponseRedirect(reverse('dominion:display_event', args=(pk,)))
-    return HttpResponseRedirect(reverse('dominion:display_event', args=(pk,)))
+            return HttpResponseRedirect(reverse("dominion:display_event", args=(pk,)))
+    return HttpResponseRedirect(reverse("dominion:display_event", args=(pk,)))
+
 
 GRID_SIZE = 100
 SUBGRID = 10
@@ -265,30 +344,30 @@ def map_image(request):
     def draw_font_outline(draw, x_coordinate, y_coordinate, font_used, text):
         """Draws outline"""
         # This is awful
-        draw.text((x_coordinate - 1, y_coordinate), text, font=font_used, fill='white')
-        draw.text((x_coordinate + 1, y_coordinate), text, font=font_used, fill='white')
-        draw.text((x_coordinate, y_coordinate - 1), text, font=font_used, fill='white')
-        draw.text((x_coordinate, y_coordinate + 1), text, font=font_used, fill='white')
-        draw.text((x_coordinate, y_coordinate), text, font=font_used, fill='black')
+        draw.text((x_coordinate - 1, y_coordinate), text, font=font_used, fill="white")
+        draw.text((x_coordinate + 1, y_coordinate), text, font=font_used, fill="white")
+        draw.text((x_coordinate, y_coordinate - 1), text, font=font_used, fill="white")
+        draw.text((x_coordinate, y_coordinate + 1), text, font=font_used, fill="white")
+        draw.text((x_coordinate, y_coordinate), text, font=font_used, fill="black")
 
     TERRAIN_NAMES = {
-        Land.COAST: 'Coastal',
-        Land.DESERT: 'Desert',
-        Land.GRASSLAND: 'Grassland',
-        Land.HILL: 'Hills',
-        Land.MOUNTAIN: 'Mountains',
-        Land.OCEAN: 'Ocean',
-        Land.PLAINS: 'Plains',
-        Land.SNOW: 'Snow',
-        Land.TUNDRA: 'Tundra',
-        Land.FOREST: 'Forest',
-        Land.JUNGLE: 'Jungle',
-        Land.MARSH: 'Marsh',
-        Land.ARCHIPELAGO: 'Archipelago',
-        Land.FLOOD_PLAINS: 'Flood Plains',
-        Land.ICE: 'Ice',
-        Land.LAKES: 'Lakes',
-        Land.OASIS: 'Oasis',
+        Land.COAST: "Coastal",
+        Land.DESERT: "Desert",
+        Land.GRASSLAND: "Grassland",
+        Land.HILL: "Hills",
+        Land.MOUNTAIN: "Mountains",
+        Land.OCEAN: "Ocean",
+        Land.PLAINS: "Plains",
+        Land.SNOW: "Snow",
+        Land.TUNDRA: "Tundra",
+        Land.FOREST: "Forest",
+        Land.JUNGLE: "Jungle",
+        Land.MARSH: "Marsh",
+        Land.ARCHIPELAGO: "Archipelago",
+        Land.FLOOD_PLAINS: "Flood Plains",
+        Land.ICE: "Ice",
+        Land.LAKES: "Lakes",
+        Land.OASIS: "Oasis",
     }
 
     regen = False
@@ -333,8 +412,8 @@ def map_image(request):
     if overlay:
         for xloop in range(0, mapimage.size[0] / GRID_SIZE):
             for yloop in range(0, mapimage.size[1] / GRID_SIZE):
-                x1 = (xloop * GRID_SIZE)
-                y1 = (yloop * GRID_SIZE)
+                x1 = xloop * GRID_SIZE
+                y1 = yloop * GRID_SIZE
                 x2 = x1 + GRID_SIZE
                 y2 = y1 + GRID_SIZE
 
@@ -342,36 +421,56 @@ def map_image(request):
                     for y in range(0, GRID_SIZE / SUBGRID):
                         subx = x1 + (SUBGRID * x)
                         suby = y1 + (SUBGRID * y)
-                        mapdraw.rectangle([(subx, suby), (subx + SUBGRID, suby + SUBGRID)], outline="#8a8a8a")
+                        mapdraw.rectangle(
+                            [(subx, suby), (subx + SUBGRID, suby + SUBGRID)],
+                            outline="#8a8a8a",
+                        )
 
                 mapdraw.rectangle([(x1, y1), (x2, y2)], outline="#ffffff")
 
     try:
         for land in lands:
-            x1 = ((land.x_coord - min_x) * GRID_SIZE)
-            y1 = ((total_height - (land.y_coord - min_y)) * GRID_SIZE)
+            x1 = (land.x_coord - min_x) * GRID_SIZE
+            y1 = (total_height - (land.y_coord - min_y)) * GRID_SIZE
 
             if overlay:
                 text_x = x1 + 10
                 text_y = y1 + 60
 
-                maptext = "%s (%d,%d)\n%s" % (TERRAIN_NAMES[land.terrain], land.x_coord, land.y_coord, land.region.name)
+                maptext = "%s (%d,%d)\n%s" % (
+                    TERRAIN_NAMES[land.terrain],
+                    land.x_coord,
+                    land.y_coord,
+                    land.region.name,
+                )
                 draw_font_outline(mapdraw, text_x, text_y, font, maptext)
 
-            domains = Domain.objects.filter(location__land=land)\
-                .filter(ruler__house__organization_owner__members__player__player__isnull=False).distinct()
+            domains = (
+                Domain.objects.filter(location__land=land)
+                .filter(
+                    ruler__house__organization_owner__members__player__player__isnull=False
+                )
+                .distinct()
+            )
 
             if domains:
                 for domain in domains:
                     circle_x = x1 + (SUBGRID * domain.location.x_coord)
                     circle_y = y1 + (SUBGRID * domain.location.y_coord)
 
-                    mapdraw.ellipse([(circle_x, circle_y),
-                                     (circle_x + SUBGRID, circle_y + SUBGRID)], '#000000')
+                    mapdraw.ellipse(
+                        [
+                            (circle_x, circle_y),
+                            (circle_x + SUBGRID, circle_y + SUBGRID),
+                        ],
+                        "#000000",
+                    )
 
                     label_x = circle_x + SUBGRID + 6
                     label_y = circle_y - 4
-                    draw_font_outline(mapdraw, label_x, label_y, domain_font, domain.name)
+                    draw_font_outline(
+                        mapdraw, label_x, label_y, domain_font, domain.name
+                    )
 
     except Exception as exc:
         print(str(exc))
@@ -415,10 +514,10 @@ def map_wrapper(request):
             imagemap_file.close()
 
         context = {
-            'page_title': 'Map of Arvum',
-            'img_width': img_width,
-            'img_height': img_height,
-            'imagemap_html': imagemap_html
+            "page_title": "Map of Arvum",
+            "img_width": img_width,
+            "img_height": img_height,
+            "imagemap_html": imagemap_html,
         }
         return render(request, "dominion/map_pregen.html", context)
 
@@ -428,7 +527,6 @@ def map_wrapper(request):
     ratio = 1280.0 / mapimage.size[0]
     img_width = trunc(mapimage.size[0] * ratio)
     img_height = trunc(mapimage.size[1] * ratio)
-
 
     try:
         lands = Land.objects.all()
@@ -457,8 +555,13 @@ def map_wrapper(request):
             x1 = (land.x_coord - min_x) * GRID_SIZE
             y1 = (total_height - (land.y_coord - min_y)) * GRID_SIZE
 
-            domains = Domain.objects.filter(location__land=land)\
-                .filter(ruler__house__organization_owner__members__player__player__isnull=False).distinct()
+            domains = (
+                Domain.objects.filter(location__land=land)
+                .filter(
+                    ruler__house__organization_owner__members__player__player__isnull=False
+                )
+                .distinct()
+            )
 
             if domains:
                 for domain in domains:
@@ -470,20 +573,25 @@ def map_wrapper(request):
                     domain_y2 = domain_y + font_size[1]
 
                     org = domain.ruler.house.organization_owner
-                    org_url = reverse("help_topics:display_org", kwargs={'object_id': org.id})
+                    org_url = reverse(
+                        "help_topics:display_org", kwargs={"object_id": org.id}
+                    )
 
-                    map_data = {"x1": trunc(domain_x * ratio), "y1": trunc(domain_y * ratio),
-                                "x2": trunc(domain_x2 * ratio), "y2": trunc(domain_y2 * ratio),
-                                "url": org_url, "title": org.name}
+                    map_data = {
+                        "x1": trunc(domain_x * ratio),
+                        "y1": trunc(domain_y * ratio),
+                        "x2": trunc(domain_x2 * ratio),
+                        "y2": trunc(domain_y2 * ratio),
+                        "url": org_url,
+                        "title": org.name,
+                    }
                     map_links.append(map_data)
 
     except Exception as exc:
         print(str(exc))
         raise Http404
 
-    context = {
-        'imagemap_links': map_links
-    }
+    context = {"imagemap_links": map_links}
     imagemap_html = render_to_string("dominion/map_wrapper.html", context)
     imagemap_file = open("world/dominion/map/arxmap_imagemap.html", "w")
     imagemap_file.write(imagemap_html)
@@ -495,11 +603,11 @@ def map_wrapper(request):
     imagestats_file.close()
 
     context = {
-        'img_width': img_width,
-        'img_height': img_height,
-        'imagemap_html': imagemap_html,
-        'regen_link': regen and "?regenerate=1" or "",
-        'page_title': 'Map of Arvum'
+        "img_width": img_width,
+        "img_height": img_height,
+        "imagemap_html": imagemap_html,
+        "regen_link": regen and "?regenerate=1" or "",
+        "page_title": "Map of Arvum",
     }
     return render(request, "dominion/map_pregen.html", context)
 
@@ -507,22 +615,22 @@ def map_wrapper(request):
 def generate_fealty_chart(request, filename, include_npcs=False):
 
     node_colors = {
-        'Ruling Prince': 'lightblue',
-        'Prince': 'lightblue',
-        'Archduke': 'lightblue',
-        'Ruling Duke': 'purple',
-        'Duke': 'purple',
-        'Ruling Marquis': 'red',
-        'Marquis': 'red',
-        'Marquis, Count of the March': 'red',
-        'Margrave': 'red',
-        'Lord of the March': 'red',
-        'Truespeaker': 'red',
-        'Ruling Count': 'yellow',
-        'Count of the March': 'yellow',
-        'Count': 'yellow',
-        'Ruling Baron': 'green',
-        'Baron': 'green',
+        "Ruling Prince": "lightblue",
+        "Prince": "lightblue",
+        "Archduke": "lightblue",
+        "Ruling Duke": "purple",
+        "Duke": "purple",
+        "Ruling Marquis": "red",
+        "Marquis": "red",
+        "Marquis, Count of the March": "red",
+        "Margrave": "red",
+        "Lord of the March": "red",
+        "Truespeaker": "red",
+        "Ruling Count": "yellow",
+        "Count of the March": "yellow",
+        "Count": "yellow",
+        "Ruling Baron": "green",
+        "Baron": "green",
     }
 
     def add_vassals(G, org):
@@ -535,17 +643,23 @@ def generate_fealty_chart(request, filename, include_npcs=False):
                 org_name = org_name + "\n(" + org_rank_1.player.player.key.title() + ")"
 
             for vassal in org.assets.estate.vassals.all():
-                is_npc = vassal.house.organization_owner.living_members.all().count() == 0
+                is_npc = (
+                    vassal.house.organization_owner.living_members.all().count() == 0
+                )
                 if vassal.house and (not is_npc or include_npcs):
-                    node_color = node_colors.get(vassal.house.organization_owner.rank_1_male, None)
+                    node_color = node_colors.get(
+                        vassal.house.organization_owner.rank_1_male, None
+                    )
                     name = vassal.house.organization_owner.name
 
-                    rank_1 = vassal.house.organization_owner.living_members.filter(rank=1).first()
+                    rank_1 = vassal.house.organization_owner.living_members.filter(
+                        rank=1
+                    ).first()
                     if rank_1 is not None:
                         name = name + "\n(" + rank_1.player.player.key.title() + ")"
 
                     if node_color:
-                        G.node(name, style='filled', color=node_color)
+                        G.node(name, style="filled", color=node_color)
                     G.edge(org_name, name)
                     add_vassals(G, vassal.house.organization_owner)
 
@@ -564,8 +678,16 @@ def generate_fealty_chart(request, filename, include_npcs=False):
         return response
 
     try:
-        G = Graph('fealties', format='png', engine='dot',
-                  graph_attr=(('overlap', 'prism'), ('spline', 'true'), ('concentrate', 'true')))
+        G = Graph(
+            "fealties",
+            format="png",
+            engine="dot",
+            graph_attr=(
+                ("overlap", "prism"),
+                ("spline", "true"),
+                ("concentrate", "true"),
+            ),
+        )
         crown = Organization.objects.get(id=145)
         add_vassals(G, crown)
 
@@ -582,9 +704,12 @@ def generate_fealty_chart(request, filename, include_npcs=False):
 
 
 def fealty_chart(request):
-    return generate_fealty_chart(request, "world/dominion/fealty/fealty_graph", include_npcs=False)
+    return generate_fealty_chart(
+        request, "world/dominion/fealty/fealty_graph", include_npcs=False
+    )
 
 
 def fealty_chart_full(request):
-    return generate_fealty_chart(request, "world/dominion/fealty/fealty_graph_full", include_npcs=True)
-
+    return generate_fealty_chart(
+        request, "world/dominion/fealty/fealty_graph_full", include_npcs=True
+    )
