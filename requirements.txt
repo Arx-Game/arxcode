@@ -1,11 +1,11 @@
 cloudinary==1.19.1
 django-bootstrap-form==3.4
-django-classy-tags==0.9.0
 django-crispy-forms==1.8.1
 django-test-without-migrations==0.6
 dnspython==1.16.0
 graphviz==0.13.2
 humanize==0.5.1
+Jinja2==2.11.2
 pillow==7.1.0
 python-decouple==3.3
 requests==2.22.0

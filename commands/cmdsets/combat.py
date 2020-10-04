@@ -1444,6 +1444,7 @@ class CmdCreateAntagonist(ArxCommand):
 
 class CmdHarm(ArxCommand):
     """
+    Note: Deprecated, and will be removed eventually. Use new @harm
     Harms characters and sends them a message
 
     Usage:
@@ -1507,12 +1508,7 @@ class CmdHarm(ArxCommand):
         
     def can_harm_others(self):
         """Checks if the caller can harm other players"""
-        if self.caller.check_permstring("builders"):
-            return True
-        event = self.caller.location.event
-        if not event:
-            return False
-        return self.caller.player_ob.Dominion in event.gms.all()
+        return self.caller.check_staff_or_gm()
 
 
 class CmdHeal(ArxCommand):
