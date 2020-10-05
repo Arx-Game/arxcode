@@ -120,7 +120,7 @@ DEFAULT_CHANNELS = [
 
 DATABASES = {
     "default": {
-        "ENGINE": config("DBMS", default='django.db.backends.sqlite3'),
+        "ENGINE": config("DBMS", default="django.db.backends.sqlite3"),
         "NAME": os.path.join(GAME_DIR, "server", "evennia.db3"),
         "USER": "",
         "PASSWORD": "",
