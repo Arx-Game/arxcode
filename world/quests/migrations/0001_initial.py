@@ -9,80 +9,263 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('character', '0035_auto_20191228_1417'),
-        ('dominion', '0047_actionrequirement'),
+        ("character", "0035_auto_20191228_1417"),
+        ("dominion", "0047_actionrequirement"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Quest',
+            name="Quest",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ic_desc', models.TextField(blank=True, verbose_name='IC Desc')),
-                ('gm_note', models.TextField(blank=True, verbose_name='GM Note')),
-                ('name', models.CharField(max_length=255, unique=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("ic_desc", models.TextField(blank=True, verbose_name="IC Desc")),
+                ("gm_note", models.TextField(blank=True, verbose_name="GM Note")),
+                ("name", models.CharField(max_length=255, unique=True)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='QuestStep',
+            name="QuestStep",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ic_desc', models.TextField(blank=True, verbose_name='IC Desc')),
-                ('gm_note', models.TextField(blank=True, verbose_name='GM Note')),
-                ('name', models.CharField(max_length=255)),
-                ('step_number', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('quest', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='steps', to='quests.Quest')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("ic_desc", models.TextField(blank=True, verbose_name="IC Desc")),
+                ("gm_note", models.TextField(blank=True, verbose_name="GM Note")),
+                ("name", models.CharField(max_length=255)),
+                (
+                    "step_number",
+                    models.PositiveSmallIntegerField(blank=True, null=True),
+                ),
+                (
+                    "quest",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="steps",
+                        to="quests.Quest",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='QuestStatus',
+            name="QuestStatus",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ic_desc', models.TextField(blank=True, verbose_name='IC Desc')),
-                ('gm_note', models.TextField(blank=True, verbose_name='GM Note')),
-                ('db_date_created', models.DateField(auto_now_add=True, verbose_name='Started')),
-                ('quest_completed', models.DateField(blank=True, help_text='Generated when all steps are marked complete.', null=True, verbose_name='Completed')),
-                ('entity', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='statuses', to='dominion.AssetOwner', verbose_name='Character/Org')),
-                ('quest', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='statuses', to='quests.Quest')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("ic_desc", models.TextField(blank=True, verbose_name="IC Desc")),
+                ("gm_note", models.TextField(blank=True, verbose_name="GM Note")),
+                (
+                    "db_date_created",
+                    models.DateField(auto_now_add=True, verbose_name="Started"),
+                ),
+                (
+                    "quest_completed",
+                    models.DateField(
+                        blank=True,
+                        help_text="Generated when all steps are marked complete.",
+                        null=True,
+                        verbose_name="Completed",
+                    ),
+                ),
+                (
+                    "entity",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="statuses",
+                        to="dominion.AssetOwner",
+                        verbose_name="Character/Org",
+                    ),
+                ),
+                (
+                    "quest",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="statuses",
+                        to="quests.Quest",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'Quest Statuses',
+                "verbose_name_plural": "Quest Statuses",
             },
         ),
         migrations.CreateModel(
-            name='QuestEffort',
+            name="QuestEffort",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('attempt_number', models.PositiveSmallIntegerField(blank=True, help_text='Reorders efforts', null=True, verbose_name='Attempt #')),
-                ('step_completed', models.BooleanField(blank=True, default=False, help_text='Mark if effort fulfills Quest Step requirements.', verbose_name='Step Complete?')),
-                ('action', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='used_in_efforts', to='dominion.PlotAction', verbose_name='Action')),
-                ('clue', models.ForeignKey(blank=True, help_text="Character's discovery of a clue, not clue itself.", null=True, on_delete=django.db.models.deletion.CASCADE, related_name='used_in_efforts', to='character.ClueDiscovery', verbose_name='Clue disco')),
-                ('event', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='used_in_efforts', to='dominion.RPEvent', verbose_name='Event')),
-                ('flashback', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='used_in_efforts', to='character.Flashback', verbose_name='Flashback')),
-                ('org_clue', models.ForeignKey(blank=True, help_text="Org's possession of a clue, not clue itself.", null=True, on_delete=django.db.models.deletion.CASCADE, related_name='used_in_efforts', to='dominion.ClueForOrg', verbose_name='Org Clue')),
-                ('quest', models.ForeignKey(blank=True, help_text="Character/org's status on a quest, not quest itself.", null=True, on_delete=django.db.models.deletion.CASCADE, related_name='used_in_efforts', to='quests.QuestStatus', verbose_name='Required Quest')),
-                ('revelation', models.ForeignKey(blank=True, help_text="Character's discovery of revelation, not revelation itself.", null=True, on_delete=django.db.models.deletion.CASCADE, related_name='used_in_efforts', to='character.RevelationDiscovery', verbose_name='Rev disco')),
-                ('status', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='efforts', to='quests.QuestStatus', verbose_name='Quester Status')),
-                ('step', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='efforts', to='quests.QuestStep', verbose_name='Quest Step')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "attempt_number",
+                    models.PositiveSmallIntegerField(
+                        blank=True,
+                        help_text="Reorders efforts",
+                        null=True,
+                        verbose_name="Attempt #",
+                    ),
+                ),
+                (
+                    "step_completed",
+                    models.BooleanField(
+                        blank=True,
+                        default=False,
+                        help_text="Mark if effort fulfills Quest Step requirements.",
+                        verbose_name="Step Complete?",
+                    ),
+                ),
+                (
+                    "action",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="used_in_efforts",
+                        to="dominion.PlotAction",
+                        verbose_name="Action",
+                    ),
+                ),
+                (
+                    "clue",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Character's discovery of a clue, not clue itself.",
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="used_in_efforts",
+                        to="character.ClueDiscovery",
+                        verbose_name="Clue disco",
+                    ),
+                ),
+                (
+                    "event",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="used_in_efforts",
+                        to="dominion.RPEvent",
+                        verbose_name="Event",
+                    ),
+                ),
+                (
+                    "flashback",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="used_in_efforts",
+                        to="character.Flashback",
+                        verbose_name="Flashback",
+                    ),
+                ),
+                (
+                    "org_clue",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Org's possession of a clue, not clue itself.",
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="used_in_efforts",
+                        to="dominion.ClueForOrg",
+                        verbose_name="Org Clue",
+                    ),
+                ),
+                (
+                    "quest",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Character/org's status on a quest, not quest itself.",
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="used_in_efforts",
+                        to="quests.QuestStatus",
+                        verbose_name="Required Quest",
+                    ),
+                ),
+                (
+                    "revelation",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Character's discovery of revelation, not revelation itself.",
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="used_in_efforts",
+                        to="character.RevelationDiscovery",
+                        verbose_name="Rev disco",
+                    ),
+                ),
+                (
+                    "status",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="efforts",
+                        to="quests.QuestStatus",
+                        verbose_name="Quester Status",
+                    ),
+                ),
+                (
+                    "step",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="efforts",
+                        to="quests.QuestStep",
+                        verbose_name="Quest Step",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='quest',
-            name='entities',
-            field=models.ManyToManyField(related_name='quests', through='quests.QuestStatus', to='dominion.AssetOwner'),
+            model_name="quest",
+            name="entities",
+            field=models.ManyToManyField(
+                related_name="quests",
+                through="quests.QuestStatus",
+                to="dominion.AssetOwner",
+            ),
         ),
         migrations.AddField(
-            model_name='quest',
-            name='search_tags',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='quests', to='character.SearchTag'),
+            model_name="quest",
+            name="search_tags",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="quests",
+                to="character.SearchTag",
+            ),
         ),
     ]

@@ -8,18 +8,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0039_prestigetier'),
+        ("dominion", "0039_prestigetier"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='prestigeadjustment',
-            name='long_reason',
+            model_name="prestigeadjustment",
+            name="long_reason",
             field=models.TextField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='prestigecategory',
-            name='description',
+            model_name="prestigecategory",
+            name="description",
             field=models.CharField(blank=True, max_length=80, null=True),
         ),
     ]

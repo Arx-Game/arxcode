@@ -8,38 +8,50 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0034_monster_weight_spawn'),
+        ("exploration", "0034_monster_weight_spawn"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhaven',
-            name='weight_boss_monster',
-            field=models.PositiveSmallIntegerField(default=5, verbose_name=b'Boss Spawn Weight'),
+            model_name="shardhaven",
+            name="weight_boss_monster",
+            field=models.PositiveSmallIntegerField(
+                default=5, verbose_name=b"Boss Spawn Weight"
+            ),
         ),
         migrations.AddField(
-            model_name='shardhaven',
-            name='weight_mook_monster',
-            field=models.PositiveSmallIntegerField(default=5, verbose_name=b'Mook Spawn Weight'),
+            model_name="shardhaven",
+            name="weight_mook_monster",
+            field=models.PositiveSmallIntegerField(
+                default=5, verbose_name=b"Mook Spawn Weight"
+            ),
         ),
         migrations.AddField(
-            model_name='shardhaven',
-            name='weight_no_monster',
-            field=models.PositiveSmallIntegerField(default=40, verbose_name=b'No Spawn Weight'),
+            model_name="shardhaven",
+            name="weight_no_monster",
+            field=models.PositiveSmallIntegerField(
+                default=40, verbose_name=b"No Spawn Weight"
+            ),
         ),
         migrations.AddField(
-            model_name='shardhaven',
-            name='weight_no_treasure',
-            field=models.PositiveSmallIntegerField(default=50, verbose_name=b'No Treasure Weight'),
+            model_name="shardhaven",
+            name="weight_no_treasure",
+            field=models.PositiveSmallIntegerField(
+                default=50, verbose_name=b"No Treasure Weight"
+            ),
         ),
         migrations.AddField(
-            model_name='shardhaven',
-            name='weight_trinket',
-            field=models.PositiveSmallIntegerField(default=5, verbose_name=b'Trinket Weight'),
+            model_name="shardhaven",
+            name="weight_trinket",
+            field=models.PositiveSmallIntegerField(
+                default=5, verbose_name=b"Trinket Weight"
+            ),
         ),
         migrations.AddField(
-            model_name='shardhaven',
-            name='weight_weapon',
-            field=models.PositiveSmallIntegerField(default=1, verbose_name=b'Weapon Weight'),
+            model_name="shardhaven",
+            name="weight_weapon",
+            field=models.PositiveSmallIntegerField(
+                default=1, verbose_name=b"Weapon Weight"
+            ),
         ),
     ]

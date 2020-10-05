@@ -33,11 +33,17 @@ class DescMixins(object):
     that won't override any current disguise, use .perm_desc. For a change
     that will change everything right now, disguise or not, use .desc.
     """
+
     default_desc = ""
 
     @property
     def base_desc(self):
-        return self.db.desc or self.db.raw_desc or self.db.general_desc or self.default_desc
+        return (
+            self.db.desc
+            or self.db.raw_desc
+            or self.db.general_desc
+            or self.default_desc
+        )
 
     @property
     def desc(self):
@@ -90,6 +96,7 @@ class DescMixins(object):
             self.db.general_desc = self.db.desc
         self.db.desc = ""
         self.ndb.cached_template_desc = None
+
     temp_desc = property(__temp_desc_get, __temp_desc_set, __temp_desc_del)
 
     def __perm_desc_get(self):
@@ -97,7 +104,9 @@ class DescMixins(object):
         :type self: ObjectDB
         :return:
         """
-        return (self.db.raw_desc or self.db.general_desc or self.db.desc or "") + self.additional_desc
+        return (
+            self.db.raw_desc or self.db.general_desc or self.db.desc or ""
+        ) + self.additional_desc
 
     def __perm_desc_set(self, val):
         """
@@ -106,6 +115,7 @@ class DescMixins(object):
         self.db.general_desc = val
         self.db.raw_desc = val
         self.ndb.cached_template_desc = None
+
     perm_desc = property(__perm_desc_get, __perm_desc_set)
 
     def __get_volume(self):
@@ -118,6 +128,7 @@ class DescMixins(object):
                 vol = obj.db.volume or 1
                 total += vol
         return total
+
     volume = property(__get_volume)
 
     @property
@@ -173,7 +184,6 @@ class DescMixins(object):
 
 
 class NameMixins(object):
-
     @property
     def is_disguised(self):
         return bool(self.fakename)
@@ -217,7 +227,9 @@ class NameMixins(object):
         :type self: ObjectDB
         """
         name = self.fakename or self.db.colored_name or self.key or ""
-        name = name.rstrip("{/").rstrip("|/") + ("{n" if ("{" in name or "|" in name or "%" in name) else "")
+        name = name.rstrip("{/").rstrip("|/") + (
+            "{n" if ("{" in name or "|" in name or "%" in name) else ""
+        )
         return name
 
     def __name_set(self, val):
@@ -230,6 +242,7 @@ class NameMixins(object):
         self.key = parse_ansi(val, strip_ansi=True)
         self.ndb.cached_template_desc = None
         self.save()
+
     name = property(__name_get, __name_set)
 
     def __str__(self):
@@ -265,6 +278,7 @@ class BaseObjectMixins(object):
         :type self: ObjectDB
         """
         import time
+
         self.location = None
         self.tags.add("deleted")
         self.db.deleted_time = time.time()
@@ -279,6 +293,7 @@ class BaseObjectMixins(object):
         self.attributes.remove("deleted_time")
         if move:
             from typeclasses.rooms import ArxRoom
+
             try:
                 room = ArxRoom.objects.get(db_key__iexact="Island of Lost Toys")
                 self.location = room
@@ -314,15 +329,17 @@ class BaseObjectMixins(object):
         """
         obj_list = self.contents
         if caller:
-            obj_list = [ob for ob in obj_list if ob.at_before_move(destination, caller=caller)]
+            obj_list = [
+                ob for ob in obj_list if ob.at_before_move(destination, caller=caller)
+            ]
         for obj in obj_list:
             obj.move_to(destination, quiet=True)
         return obj_list
 
     def at_before_move(self, destination, **kwargs):
-        caller = kwargs.pop('caller', None)
+        caller = kwargs.pop("caller", None)
         if caller:
-            if not self.access(caller, 'get') and self.location != caller:
+            if not self.access(caller, "get") and self.location != caller:
                 caller.msg("You cannot get %s." % self)
                 return False
         return super(BaseObjectMixins, self).at_before_move(destination, **kwargs)
@@ -346,8 +363,15 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         key = kwargs.get("key", "")
         return key, key
 
-    def return_contents(self, pobject, detailed=True, show_ids=False,
-                        strip_ansi=False, show_places=True, sep=", "):
+    def return_contents(
+        self,
+        pobject,
+        detailed=True,
+        show_ids=False,
+        strip_ansi=False,
+        show_places=True,
+        sep=", ",
+    ):
         """
         Returns contents of the object, used in formatting our description,
         as well as when in 'brief mode' and skipping a description, but
@@ -377,9 +401,19 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         string = ""
         # get and identify all objects
         visible = (con for con in self.contents if con.access(pobject, "view"))
-        exits, users, things, worn, sheathed, wielded, places, npcs = [], [], [], [], [], [], [], []
+        exits, users, things, worn, sheathed, wielded, places, npcs = (
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
         currency = self.return_currency()
         from typeclasses.places.places import Place
+
         qs = list(Place.objects.filter(db_location=self))
         for con in visible:
             key = get_key(con)
@@ -389,15 +423,18 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
             if con.destination:
                 exits.append(key)
             # Only display worn items in inventory to other characters
-            elif hasattr(con, 'wear') and con.is_worn:
+            elif hasattr(con, "wear") and con.is_worn:
                 if con.decorative:
                     worn.append(con)
                 else:
                     sheathed.append(key)
-            elif hasattr(con, 'wield') and con.is_wielded:
+            elif hasattr(con, "wield") and con.is_wielded:
                 if not con.db.stealth:
                     wielded.append(key)
-                elif hasattr(pobject, 'sensing_check') and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0:
+                elif (
+                    hasattr(pobject, "sensing_check")
+                    and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0
+                ):
                     key += "|w (hidden)|n"
                     wielded.append(key)
             elif con.has_account:
@@ -412,7 +449,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                     users.append(lname)
                 else:
                     users.append("{c%s{n" % lname)
-            elif hasattr(con, 'is_character') and con.is_character:
+            elif hasattr(con, "is_character") and con.is_character:
                 npcs.append(con)
             else:
                 if not self.db.places:
@@ -421,7 +458,11 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                     things.append(con)
         if worn:
             worn = sorted(worn, key=lambda x: (x.db.worn_time or 0))
-            string += "\n" + "{wWorn items of note:{n " + ", ".join(get_key(ob) for ob in worn)
+            string += (
+                "\n"
+                + "{wWorn items of note:{n "
+                + ", ".join(get_key(ob) for ob in worn)
+            )
         if sheathed:
             string += "\n" + "{wWorn/Sheathed weapons:{n " + ", ".join(sheathed)
         if wielded:
@@ -432,7 +473,9 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
             if exits:
                 string += "\n{wExits:{n " + ", ".join(exits)
             if users or npcs:
-                string += "\n{wCharacters:{n " + ", ".join(users + [get_key(ob) for ob in npcs])
+                string += "\n{wCharacters:{n " + ", ".join(
+                    users + [get_key(ob) for ob in npcs]
+                )
             if things:
                 things = sorted(things, key=lambda x: x.db.put_time or 0.0)
                 string += "\n{wObjects:{n " + sep.join([get_key(ob) for ob in things])
@@ -469,7 +512,10 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         amount = round(amount, 2)
         if amount > currency:
             from server.utils.exceptions import PayError
-            raise PayError("pay_money called without checking sufficient funds in character. Not enough.")
+
+            raise PayError(
+                "pay_money called without checking sufficient funds in character. Not enough."
+            )
         self.currency -= amount
         if receiver:
             receiver.currency += amount
@@ -485,8 +531,9 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         string = "coins worth a total of {:,.2f} silver pieces".format(currency)
         return string
 
-    def return_appearance(self, pobject, detailed=False, format_desc=False,
-                          show_contents=True):
+    def return_appearance(
+        self, pobject, detailed=False, format_desc=False, show_contents=True
+    ):
         """
         This is a convenient hook for a 'look'
         command to call.
@@ -516,7 +563,12 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 desc = parse_ansi(desc, strip_ansi=True)
             except (AttributeError, ValueError, TypeError):
                 pass
-        if desc and not self.db.recipe and not self.db.do_not_format_desc and "player_made_room" not in self.tags.all():
+        if (
+            desc
+            and not self.db.recipe
+            and not self.db.do_not_format_desc
+            and "player_made_room" not in self.tags.all()
+        ):
             if format_desc:
                 string += "\n\n%s{n\n" % desc
             else:
@@ -546,9 +598,11 @@ class ModifierMixin(object):
     Allows us to set modifiers in different situations with specific values. We check against a tag in the target,
     and if there's a match we apply the modifier.
     """
+
     @lazy_property
     def mods(self):
         from world.conditions.modifiers_handlers import ModifierHandler
+
         return ModifierHandler(self)
 
     @property
@@ -564,7 +618,16 @@ class ModifierMixin(object):
         """Removes a modifier tag from this object"""
         self.tags.remove(tag_name, category="modifiers")
 
-    def add_modifier(self, value, check_type, user_tag="", target_tag="", stat="", skill="", ability=""):
+    def add_modifier(
+        self,
+        value,
+        check_type,
+        user_tag="",
+        target_tag="",
+        stat="",
+        skill="",
+        ability="",
+    ):
         """
         Sets the modifier for this object for a type of tag. For example, if we want to give a bonus against
         all Abyssal creatures, we'd have tag_name 'abyssal' and keep check_type as 'all'.
@@ -579,6 +642,7 @@ class ModifierMixin(object):
                 ability: Ability that must be used for this modifier to apply.
         """
         from world.conditions.models import RollModifier
+
         check_types = [ob[0] for ob in RollModifier.CHECK_CHOICES]
         if check_type not in check_types:
             raise ValueError("check_type was not valid.")
@@ -587,40 +651,67 @@ class ModifierMixin(object):
         stat = stat.lower()
         skill = skill.lower()
         ability = ability.lower()
-        mod = self.modifiers.get_or_create(check=check_type, user_tag=user_tag, target_tag=target_tag, stat=stat,
-                                           skill=skill, ability=ability)[0]
+        mod = self.modifiers.get_or_create(
+            check=check_type,
+            user_tag=user_tag,
+            target_tag=target_tag,
+            stat=stat,
+            skill=skill,
+            ability=ability,
+        )[0]
         mod.value = value
         mod.save()
         return mod
 
-    @lowercase_kwargs("user_tags", "target_tags", "stat_list", "skill_list", "ability_list", default_append="")
-    def get_modifier(self, check_type, user_tags=None, target_tags=None, stat_list=None,
-                     skill_list=None, ability_list=None):
+    @lowercase_kwargs(
+        "user_tags",
+        "target_tags",
+        "stat_list",
+        "skill_list",
+        "ability_list",
+        default_append="",
+    )
+    def get_modifier(
+        self,
+        check_type,
+        user_tags=None,
+        target_tags=None,
+        stat_list=None,
+        skill_list=None,
+        ability_list=None,
+    ):
         """Returns an integer that is the value of our modifier for the listed tags and check.
 
-            Args:
-                check_type: The type of roll/check we're making
-                user_tags: Tags of the user we wanna check
-                target_tags: Tags of the target we wanna check
-                stat_list: Only check modifiers for this stat
-                skill_list: Only check modifiers for this skill
-                ability_list: Only check modifiers for this ability
+        Args:
+            check_type: The type of roll/check we're making
+            user_tags: Tags of the user we wanna check
+            target_tags: Tags of the target we wanna check
+            stat_list: Only check modifiers for this stat
+            skill_list: Only check modifiers for this skill
+            ability_list: Only check modifiers for this ability
 
-            Returns:
-                Integer value of the total mods we calculate.
+        Returns:
+            Integer value of the total mods we calculate.
         """
         from django.db.models import Sum
         from world.conditions.models import RollModifier
+
         check_types = RollModifier.get_check_type_list(check_type)
-        return self.modifiers.filter(check__in=check_types, user_tag__in=user_tags, target_tag__in=target_tags,
-                                     stat__in=stat_list, skill__in=skill_list, ability__in=ability_list
-                                     ).aggregate(Sum('value'))[1]
+        return self.modifiers.filter(
+            check__in=check_types,
+            user_tag__in=user_tags,
+            target_tag__in=target_tags,
+            stat__in=stat_list,
+            skill__in=skill_list,
+            ability__in=ability_list,
+        ).aggregate(Sum("value"))[1]
 
 
 class TriggersMixin(object):
     """
     Adds triggerhandler to our objects.
     """
+
     @lazy_property
     def triggerhandler(self):
         """Adds a triggerhandler property for caching trigger checks to avoid excessive queries"""
@@ -632,8 +723,9 @@ class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
 
 
 class CraftingMixins(object):
-    def return_appearance(self, pobject, detailed=False, format_desc=False,
-                          show_contents=True):
+    def return_appearance(
+        self, pobject, detailed=False, format_desc=False, show_contents=True
+    ):
         """
         This is a convenient hook for a 'look'
         command to call.
@@ -643,14 +735,19 @@ class CraftingMixins(object):
         :param format_desc: bool
         :param show_contents: bool
         """
-        string = super(CraftingMixins, self).return_appearance(pobject, detailed=detailed, format_desc=format_desc,
-                                                               show_contents=show_contents)
+        string = super(CraftingMixins, self).return_appearance(
+            pobject,
+            detailed=detailed,
+            format_desc=format_desc,
+            show_contents=show_contents,
+        )
         string += self.return_crafting_desc()
         return string
 
     def junk(self, caller):
         """Checks our ability to be junked out."""
         from server.utils.exceptions import CommandError
+
         if self.location != caller:
             raise CommandError("You can only +junk objects you are holding.")
         if self.contents:
@@ -661,17 +758,21 @@ class CraftingMixins(object):
 
     def do_junkout(self, caller):
         """Attempts to salvage materials from crafted item, then junks it."""
-        from world.dominion.models import (CraftingMaterials, CraftingMaterialType)
+        from world.dominion.models import CraftingMaterials, CraftingMaterialType
 
         def get_refund_chance():
             """Gets our chance of material refund based on a skill check"""
             from world.stats_and_skills import do_dice_check
-            roll = do_dice_check(caller, stat="dexterity", skill="legerdemain", quiet=False)
+
+            roll = do_dice_check(
+                caller, stat="dexterity", skill="legerdemain", quiet=False
+            )
             return max(roll, 1)
 
         def randomize_amount(amt):
             """Helper function to determine amount kept when junking"""
             from random import randint
+
             num_kept = 0
             for _ in range(amt):
                 if randint(0, 100) <= roll:
@@ -727,6 +828,7 @@ class CraftingMixins(object):
         """
         if self.db.recipe:
             from world.dominion.models import CraftingRecipe
+
             try:
                 recipe = CraftingRecipe.objects.get(id=self.db.recipe)
                 return recipe
@@ -747,6 +849,7 @@ class CraftingMixins(object):
         building a dict so it'll be insignificant.
         """
         from world.dominion.models import CraftingMaterialType
+
         ret = {}
         adorns = self.db.adorns or {}
         for adorn_id in adorns:
@@ -768,8 +871,9 @@ class CraftingMixins(object):
             adorn_strs = ["%s %s" % (amt, mat.name) for mat, amt in adorns.items()]
             string += "\nAdornments: %s" % ", ".join(adorn_strs)
         # recipe is an integer matching the CraftingRecipe ID
-        if hasattr(self, 'type_description') and self.type_description:
+        if hasattr(self, "type_description") and self.type_description:
             from server.utils.arx_utils import a_or_an
+
             td = self.type_description
             part = a_or_an(td)
             string += "\nIt is %s %s." % (part, td)
@@ -777,7 +881,7 @@ class CraftingMixins(object):
             string += self.get_quality_appearance()
         if self.db.quantity:
             string += "\nThere are %d units." % self.db.quantity
-        if hasattr(self, 'origin_description') and self.origin_description:
+        if hasattr(self, "origin_description") and self.origin_description:
             string += self.origin_description
         if self.db.translation:
             string += "\nIt contains script in a foreign tongue."
@@ -812,6 +916,7 @@ class CraftingMixins(object):
         if self.quality_level < 0:
             return ""
         from commands.base_commands.crafting import QUALITY_LEVELS
+
         qual = min(self.quality_level, 11)
         qual = QUALITY_LEVELS.get(qual, "average")
         return "\nIts level of craftsmanship is %s." % qual
@@ -834,7 +939,11 @@ class CraftingMixins(object):
 
     @property
     def is_plot_related(self):
-        if "plot" in self.tags.all() or self.search_tags.all().exists() or self.clues.all().exists():
+        if (
+            "plot" in self.tags.all()
+            or self.search_tags.all().exists()
+            or self.clues.all().exists()
+        ):
             return True
 
     @property
@@ -879,7 +988,7 @@ class MsgMixins(object):
             except TypeError:
                 pass
         options = options or {}
-        options.update(kwargs.get('options', {}))
+        options.update(kwargs.get("options", {}))
         try:
             text = str(text)
         except (TypeError, UnicodeDecodeError, ValueError):
@@ -895,16 +1004,23 @@ class MsgMixins(object):
                 from_obj = None
             except Exception:
                 import traceback
+
                 traceback.print_exc()
-        lang = options.get('language', None)
-        msg_content = options.get('msg_content', None)
+        lang = options.get("language", None)
+        msg_content = options.get("msg_content", None)
         if lang and msg_content:
             try:
-                if not self.check_permstring("builders") and lang.lower() not in self.languages.known_languages:
-                    text = text.replace(msg_content, "<Something in a language that you don't understand>.")
+                if (
+                    not self.check_permstring("builders")
+                    and lang.lower() not in self.languages.known_languages
+                ):
+                    text = text.replace(
+                        msg_content,
+                        "<Something in a language that you don't understand>.",
+                    )
             except AttributeError:
                 pass
-        if options.get('is_pose', False):
+        if options.get("is_pose", False):
             if self.db.posebreak:
                 text = "\n" + text
             name_color = self.db.name_color
@@ -917,7 +1033,9 @@ class MsgMixins(object):
                 if name_color:
                     # counts the instances of name replacement inside quotes and recolorizes
                     for _ in range(0, text.count("%s{n" % self.key)):
-                        text = self.namex.sub(r'"\1%s%s\2"' % (self.key, quote_color), text)
+                        text = self.namex.sub(
+                            r'"\1%s%s\2"' % (self.key, quote_color), text
+                        )
             if self.ndb.pose_history is None:
                 self.ndb.pose_history = []
             if from_obj == self:
@@ -925,21 +1043,21 @@ class MsgMixins(object):
             else:
                 try:
                     origin = from_obj
-                    if not from_obj and options.get('is_magic', False):
+                    if not from_obj and options.get("is_magic", False):
                         origin = "Magic System"
                     self.ndb.pose_history.append((str(origin), text))
                 except AttributeError:
                     pass
-        if options.get('box', False):
+        if options.get("box", False):
             text = text_box(text)
-        if options.get('roll', False):
+        if options.get("roll", False):
             if self.attributes.has("dice_string"):
                 text = "{w<" + self.db.dice_string + "> {n" + text
-        if options.get('is_magic', False):
+        if options.get("is_magic", False):
             if text[0] == "\n":
                 text = text[1:]
             text = "{w<" + self.magic_word + "> |n" + text
-            if options.get('is_pose'):
+            if options.get("is_pose"):
                 if self.db.posebreak:
                     text = "\n" + text
         try:
@@ -958,9 +1076,15 @@ class MsgMixins(object):
         except (TypeError, ValueError):
             pass
         try:
-            if from_obj and (options.get('is_pose', False) or options.get('log_msg', False)):
+            if from_obj and (
+                options.get("is_pose", False) or options.get("log_msg", False)
+            ):
                 private_msg = False
-                if hasattr(self, 'location') and hasattr(from_obj, 'location') and self.location == from_obj.location:
+                if (
+                    hasattr(self, "location")
+                    and hasattr(from_obj, "location")
+                    and self.location == from_obj.location
+                ):
                     if self.location.tags.get("private"):
                         private_msg = True
                 if not private_msg:
@@ -973,7 +1097,7 @@ class MsgMixins(object):
     def strip_ascii_from_tags(self, text):
         """Removes ascii within tags for formatting."""
         player_ob = self.player_ob or self
-        if 'no_ascii' in player_ob.tags.all():
+        if "no_ascii" in player_ob.tags.all():
             text = RE_ASCII.sub("", text)
             text = RE_ALT_ASCII.sub(r"\1", text)
         else:
@@ -999,7 +1123,11 @@ class LockMixins(object):
         Returns:
             True if they have access, False otherwise.
         """
-        if caller and not caller.check_permstring("builders") and not self.access(caller, 'usekey'):
+        if (
+            caller
+            and not caller.check_permstring("builders")
+            and not self.access(caller, "usekey")
+        ):
             caller.msg("You do not have a key to %s." % self)
             return False
         return True
@@ -1022,8 +1150,14 @@ class LockMixins(object):
             caller.msg(msg)
         self.location.msg_contents(msg, exclude=caller)
         # set the locked attribute of the destination of this exit, if we have one
-        if self.destination and hasattr(self.destination, 'entrances') and self.destination.db.locked is False:
-            entrances = [ob for ob in self.destination.entrances if ob.db.locked is False]
+        if (
+            self.destination
+            and hasattr(self.destination, "entrances")
+            and self.destination.db.locked is False
+        ):
+            entrances = [
+                ob for ob in self.destination.entrances if ob.db.locked is False
+            ]
             if not entrances:
                 self.destination.db.locked = True
 
@@ -1048,8 +1182,9 @@ class LockMixins(object):
         if self.destination:
             self.destination.db.locked = False
 
-    def return_appearance(self, pobject, detailed=False, format_desc=False,
-                          show_contents=True):
+    def return_appearance(
+        self, pobject, detailed=False, format_desc=False, show_contents=True
+    ):
         """
         :type self: AppearanceMixins, Container
         :param pobject: ObjectDB
@@ -1059,10 +1194,18 @@ class LockMixins(object):
         :return: str
         """
         currently_open = not self.db.locked
-        show_contents = (currently_open or self.tags.get("displayable")) and show_contents
-        base = super(LockMixins, self).return_appearance(pobject, detailed=detailed,
-                                                         format_desc=format_desc, show_contents=show_contents)
-        return base + "\nIt is currently %s." % ("locked" if self.db.locked else "unlocked")
+        show_contents = (
+            currently_open or self.tags.get("displayable")
+        ) and show_contents
+        base = super(LockMixins, self).return_appearance(
+            pobject,
+            detailed=detailed,
+            format_desc=format_desc,
+            show_contents=show_contents,
+        )
+        return base + "\nIt is currently %s." % (
+            "locked" if self.db.locked else "unlocked"
+        )
 
 
 # noinspection PyUnresolvedReferences
@@ -1071,15 +1214,17 @@ class InformMixin(object):
         if not append:
             inform = self.informs.create(message=message, week=week, category=category)
         else:
-            informs = self.informs.filter(category=category, week=week,
-                                          read_by__isnull=True)
+            informs = self.informs.filter(
+                category=category, week=week, read_by__isnull=True
+            )
             if informs:
                 inform = informs[0]
                 inform.message += "\n\n" + message
                 inform.save()
             else:
-                inform = self.informs.create(message=message, category=category,
-                                             week=week)
+                inform = self.informs.create(
+                    message=message, category=category, week=week
+                )
         self.notify_inform(inform)
 
     def notify_inform(self, new_inform):

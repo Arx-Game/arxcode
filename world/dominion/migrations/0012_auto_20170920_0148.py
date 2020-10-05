@@ -8,23 +8,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0011_organization_theories'),
+        ("dominion", "0011_organization_theories"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='assetowner',
-            name='min_materials_for_inform',
+            model_name="assetowner",
+            name="min_materials_for_inform",
             field=models.PositiveIntegerField(default=0),
         ),
         migrations.AddField(
-            model_name='assetowner',
-            name='min_resources_for_inform',
+            model_name="assetowner",
+            name="min_resources_for_inform",
             field=models.PositiveIntegerField(default=0),
         ),
         migrations.AddField(
-            model_name='assetowner',
-            name='min_silver_for_inform',
+            model_name="assetowner",
+            name="min_silver_for_inform",
             field=models.PositiveIntegerField(default=0),
         ),
     ]

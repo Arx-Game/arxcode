@@ -1,7 +1,12 @@
 from commands.base import ArxCommand
 from . import builder
 from .loot import LootGenerator
-from world.exploration.models import Shardhaven, ShardhavenLayout, GeneratedLootFragment, Monster
+from world.exploration.models import (
+    Shardhaven,
+    ShardhavenLayout,
+    GeneratedLootFragment,
+    Monster,
+)
 from evennia.commands.cmdset import CmdSet
 from evennia.utils import create
 from server.conf import settings
@@ -137,13 +142,16 @@ class CmdTestShardhavenBuild(ArxCommand):
             self.msg("Instanciating " + str(layout))
             room = layout.instanciate()
             from typeclasses.rooms import ArxRoom
+
             try:
                 city_center = ArxRoom.objects.get(id=13)
-                create.create_object(settings.BASE_EXIT_TYPECLASS,
-                                     key="Back to Arx <Arx>",
-                                     location=room,
-                                     aliases=["arx", "back to arx", "out"],
-                                     destination=city_center)
+                create.create_object(
+                    settings.BASE_EXIT_TYPECLASS,
+                    key="Back to Arx <Arx>",
+                    location=room,
+                    aliases=["arx", "back to arx", "out"],
+                    destination=city_center,
+                )
             except ArxRoom.DoesNotExist:
                 pass
 
@@ -168,7 +176,11 @@ class CmdTestShardhavenBuild(ArxCommand):
             layout = layouts[0]
 
             if haven.entrance.room:
-                self.msg("The entrance to {} is #{}.".format(haven.name, haven.entrance.room.id))
+                self.msg(
+                    "The entrance to {} is #{}.".format(
+                        haven.name, haven.entrance.room.id
+                    )
+                )
             else:
                 self.msg("{} is not presently instanciated.".format(haven.name))
             return
@@ -236,12 +248,7 @@ class CmdTestLoot(ArxCommand):
     def func(self):
 
         if "weaponname" in self.switches:
-            weapon_materials = (
-                'steel',
-                'rubicund',
-                'diamondplate',
-                'alaricite'
-            )
+            weapon_materials = ("steel", "rubicund", "diamondplate", "alaricite")
 
             size = GeneratedLootFragment.MEDIUM_WEAPON_TYPE
 
@@ -253,9 +260,11 @@ class CmdTestLoot(ArxCommand):
                 size = GeneratedLootFragment.BOW_WEAPON_TYPE
 
             material = random.choice(weapon_materials)
-            should_name = material in ['diamondplate', 'alaricite']
+            should_name = material in ["diamondplate", "alaricite"]
 
-            name = GeneratedLootFragment.generate_weapon_name(material, wpn_type=size, include_name=should_name)
+            name = GeneratedLootFragment.generate_weapon_name(
+                material, wpn_type=size, include_name=should_name
+            )
             self.msg("Generated a weapon: {}".format(name))
             return
 
@@ -284,7 +293,7 @@ class CmdTestLoot(ArxCommand):
                 LootGenerator.WPN_SMALL,
                 LootGenerator.WPN_MEDIUM,
                 LootGenerator.WPN_HUGE,
-                LootGenerator.WPN_BOW
+                LootGenerator.WPN_BOW,
             )
             weapon_type = random.choice(weapon_types)
 
@@ -303,7 +312,6 @@ class CmdTestLoot(ArxCommand):
 
 
 class CmdExplorationCmdSet(CmdSet):
-
     def at_cmdset_creation(self):
         self.add(CmdTestMonsterBuild())
         self.add(CmdTestShardhavenBuild())
@@ -387,8 +395,12 @@ class CmdExplorationSneak(ArxCommand):
             self.msg("You must provide a direction to sneak!")
             return
 
-        exit_objs = self.caller.search(self.args, quiet=True, global_search=False,
-                                       typeclass='typeclasses.exits.ShardhavenInstanceExit')
+        exit_objs = self.caller.search(
+            self.args,
+            quiet=True,
+            global_search=False,
+            typeclass="typeclasses.exits.ShardhavenInstanceExit",
+        )
         if not exit_objs or len(exit_objs) == 0:
             self.msg("There doesn't appear to be a shardhaven exit by that name!")
             return
@@ -400,16 +412,24 @@ class CmdExplorationSneak(ArxCommand):
         exit_obj = exit_objs[0]
 
         if not exit_obj.passable(self.caller):
-            self.msg("You cannot sneak that way; there's still an obstacle there you have to pass!")
+            self.msg(
+                "You cannot sneak that way; there's still an obstacle there you have to pass!"
+            )
             return
 
-        roll = do_dice_check(self.caller, stat="dexterity", skill="stealth", difficulty=25, quiet=False)
+        roll = do_dice_check(
+            self.caller, stat="dexterity", skill="stealth", difficulty=25, quiet=False
+        )
         if roll < 0:
-            self.caller.location.msg_contents("%s attempts to sneak %s, but makes noise as they do so!"
-                                              % (self.caller.name, exit_obj.direction_name))
+            self.caller.location.msg_contents(
+                "%s attempts to sneak %s, but makes noise as they do so!"
+                % (self.caller.name, exit_obj.direction_name)
+            )
         elif roll > 1:
-            self.caller.location.msg_contents("%s moves stealthily through %s."
-                                              % (self.caller.name, exit_obj.direction_name))
+            self.caller.location.msg_contents(
+                "%s moves stealthily through %s."
+                % (self.caller.name, exit_obj.direction_name)
+            )
 
         self.caller.ndb.shardhaven_sneak_value = roll
         self.caller.execute_cmd(exit_obj.direction_name)
@@ -444,8 +464,12 @@ class CmdExplorationAssist(ArxCommand):
             self.msg("You cannot assist through a direction again yet.")
             return
 
-        exit_objs = self.caller.search(self.args, quiet=True, global_search=False,
-                                       typeclass='typeclasses.exits.ShardhavenInstanceExit')
+        exit_objs = self.caller.search(
+            self.args,
+            quiet=True,
+            global_search=False,
+            typeclass="typeclasses.exits.ShardhavenInstanceExit",
+        )
         if not exit_objs or len(exit_objs) == 0:
             self.msg("There doesn't appear to be a shardhaven exit by that name!")
             return
@@ -457,7 +481,9 @@ class CmdExplorationAssist(ArxCommand):
         exit_obj = exit_objs[0]
         haven_exit = exit_obj.haven_exit
         if not haven_exit:
-            self.msg("Something is horribly wrong with that exit; it's not set up as a Shardhaven exit.")
+            self.msg(
+                "Something is horribly wrong with that exit; it's not set up as a Shardhaven exit."
+            )
             return
 
         if not haven_exit.obstacle:
@@ -465,10 +491,17 @@ class CmdExplorationAssist(ArxCommand):
             return
 
         self.caller.db.shardhaven_last_assist = time.time()
-        roll = do_dice_check(self.caller, stat="wits", skill="leadership", difficulty=30, quiet=False)
-        haven_exit.modify_diff(amount=roll / 2, reason="%s assisted with a leadership roll" % self.caller.name)
-        self.caller.location.msg_contents("%s attempts to assist the party with the obstacle to the %s, "
-                                          "adjusting the difficulty." % (self.caller.name, exit_obj.direction_name))
+        roll = do_dice_check(
+            self.caller, stat="wits", skill="leadership", difficulty=30, quiet=False
+        )
+        haven_exit.modify_diff(
+            amount=roll / 2,
+            reason="%s assisted with a leadership roll" % self.caller.name,
+        )
+        self.caller.location.msg_contents(
+            "%s attempts to assist the party with the obstacle to the %s, "
+            "adjusting the difficulty." % (self.caller.name, exit_obj.direction_name)
+        )
 
 
 class CmdExplorationPuzzle(ArxCommand):
@@ -515,7 +548,12 @@ class CmdExplorationPuzzle(ArxCommand):
         delta = time.time() - timestamp
         if delta < 180:
             from math import trunc
-            self.msg("You can't attempt to solve this puzzle for {} seconds.".format(trunc(180 - delta)))
+
+            self.msg(
+                "You can't attempt to solve this puzzle for {} seconds.".format(
+                    trunc(180 - delta)
+                )
+            )
             return False
 
         return True
@@ -533,14 +571,20 @@ class CmdExplorationPuzzle(ArxCommand):
                 cscript = self.caller.location.ndb.combat_manager
                 if cscript.ndb.combatants:
                     if cscript.check_character_is_combatant(self.caller):
-                        self.msg("You're in combat, and cannot attempt to solve this puzzle right now!")
+                        self.msg(
+                            "You're in combat, and cannot attempt to solve this puzzle right now!"
+                        )
                         return False
 
             if not self.can_attempt():
                 return
 
-            result, override_obstacle, attempted, instant = \
-                puzzle.obstacle.handle_obstacle(self.caller, None, None, args=self.args)
+            (
+                result,
+                override_obstacle,
+                attempted,
+                instant,
+            ) = puzzle.obstacle.handle_obstacle(self.caller, None, None, args=self.args)
             if result:
                 puzzle.handle_loot_drop(self.caller.location)
                 haven_room = self.shardhaven_room()
@@ -552,7 +596,13 @@ class CmdExplorationPuzzle(ArxCommand):
                 self.caller.location.db.puzzle_attempts = attempts
             return
 
-        self.msg("|/" + puzzle.obstacle.description + "|/" + puzzle.obstacle.options_description(None) + "|/")
+        self.msg(
+            "|/"
+            + puzzle.obstacle.description
+            + "|/"
+            + puzzle.obstacle.options_description(None)
+            + "|/"
+        )
 
 
 class CmdExplorationRoomCommands(CmdSet):

@@ -11,13 +11,19 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('character', '0027_playerinfoentry_entry_date'),
+        ("character", "0027_playerinfoentry_entry_date"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='playerinfoentry',
-            name='author',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL),
+            model_name="playerinfoentry",
+            name="author",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

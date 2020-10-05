@@ -8,25 +8,35 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0014_auto_20171106_2257'),
+        ("dominion", "0014_auto_20171106_2257"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='crisisaction',
-            name='assistants',
-            field=models.ManyToManyField(blank=True, related_name='assisted_actions',
-                                         through='dominion.CrisisActionAssistant', to='dominion.PlayerOrNpc'),
+            model_name="crisisaction",
+            name="assistants",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="assisted_actions",
+                through="dominion.CrisisActionAssistant",
+                to="dominion.PlayerOrNpc",
+            ),
         ),
         migrations.AlterField(
-            model_name='organization',
-            name='clues',
-            field=models.ManyToManyField(blank=True, related_name='orgs', through='dominion.ClueForOrg',
-                                         to='character.Clue'),
+            model_name="organization",
+            name="clues",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="orgs",
+                through="dominion.ClueForOrg",
+                to="character.Clue",
+            ),
         ),
         migrations.AlterField(
-            model_name='organization',
-            name='theories',
-            field=models.ManyToManyField(blank=True, related_name='orgs', to='character.Theory'),
+            model_name="organization",
+            name="theories",
+            field=models.ManyToManyField(
+                blank=True, related_name="orgs", to="character.Theory"
+            ),
         ),
     ]

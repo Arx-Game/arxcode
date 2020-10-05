@@ -13,11 +13,11 @@ class Report(object):
         self.week = week
         self.category = category
         self.inform_creator = inform_creator
-    
+
     def get_or_create_report(self, category):
         if self.inform_creator:
             # kind of hacky way to determine if this is a AccountDB or Organization instance, but whatever
-            if hasattr(self.owner, 'char_ob'):
+            if hasattr(self.owner, "char_ob"):
                 report = self.inform_creator.add_player_inform(self.owner, "", category)
             else:
                 report = self.inform_creator.add_org_inform(self.owner, "", category)
@@ -26,7 +26,7 @@ class Report(object):
             week = self.week
             report = owner.informs.create(week=week, category=self.category)
         return report
-            
+
 
 class ProjectReport(Report):
     def __init__(self, owner, week, project, new_total):
@@ -43,7 +43,7 @@ class ProjectReport(Report):
         txt += "New total: %s\n" % self.new_total
         report.message += txt
         report.save()
-        
+
 
 class StarvationReport(Report):
     pass
@@ -63,20 +63,37 @@ class BattleReport(Report):
         except Exception:
             print("ERROR: Could not generate battle report.")
             traceback.print_exc()
-                   
+
     def text_from_battle(self):
-        sides = "{w(Attacker){n%s vs {w(Defender){n%s\n" % (self.battle.atk_name, self.battle.def_name)
+        sides = "{w(Attacker){n%s vs {w(Defender){n%s\n" % (
+            self.battle.atk_name,
+            self.battle.def_name,
+        )
         victor = self.battle.victor
         if not victor:
             victor = "Neither side could claim decisive victory"
         victor = "\n{wVictor:{n %s\n" % str(victor)
-        atkarmy = "\n{wAttacking Units:{n %s\n" % (self.display_units_with_attr(self.battle.atk_units,
-                                                                                "starting_quantity"))
-        defarmy = "\n{wDefending Units:{n %s\n" % (self.display_units_with_attr(self.battle.def_units,
-                                                                                "starting_quantity"))
-        atklosses = "\n{wAttacker losses:{n %s\n" % (self.display_units_with_attr(self.battle.atk_units, "losses"))
-        deflosses = "\n{wDefender losses:{n %s\n" % (self.display_units_with_attr(self.battle.def_units, "losses"))
-        txt = "Battle Report\n" + victor + sides + atkarmy + defarmy + atklosses + deflosses
+        atkarmy = "\n{wAttacking Units:{n %s\n" % (
+            self.display_units_with_attr(self.battle.atk_units, "starting_quantity")
+        )
+        defarmy = "\n{wDefending Units:{n %s\n" % (
+            self.display_units_with_attr(self.battle.def_units, "starting_quantity")
+        )
+        atklosses = "\n{wAttacker losses:{n %s\n" % (
+            self.display_units_with_attr(self.battle.atk_units, "losses")
+        )
+        deflosses = "\n{wDefender losses:{n %s\n" % (
+            self.display_units_with_attr(self.battle.def_units, "losses")
+        )
+        txt = (
+            "Battle Report\n"
+            + victor
+            + sides
+            + atkarmy
+            + defarmy
+            + atklosses
+            + deflosses
+        )
         return txt
 
     @staticmethod
@@ -112,6 +129,7 @@ class WeeklyReport(Report):
     This report will act as a synopsis of all other reports we've accumulated
     during this weekly cycle.
     """
+
     def __init__(self, owner, week, inform_creator=None):
         super(WeeklyReport, self).__init__(owner, week, "synopsis", inform_creator)
         self.projects = 0
@@ -144,7 +162,14 @@ class WeeklyReport(Report):
         """
         Sends our collected reports to the player as an Inform.
         """
-        if not any((self.army_reports, self.income_change, self.failed_payments, self.successful_payments)):
+        if not any(
+            (
+                self.army_reports,
+                self.income_change,
+                self.failed_payments,
+                self.successful_payments,
+            )
+        ):
             return
         report = self.get_or_create_report(self.category)
         txt = ""
@@ -166,6 +191,7 @@ class WeeklyReport(Report):
                 report.message = txt
         except Exception:
             import traceback
+
             report.message = txt + "\n" + traceback.print_exc()
         if not self.inform_creator:
             report.save()

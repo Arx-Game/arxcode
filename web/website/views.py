@@ -1,4 +1,3 @@
-
 """
 This file contains the generic, assorted views that don't fall under one of
 the other applications. Views are django's way of processing e.g. html
@@ -30,26 +29,37 @@ def page_index(request):
     fpage_news_entries = 2
 
     # A QuerySet of recent news entries.
-    news_entries = NewsEntry.objects.all().order_by('-date_posted')[:fpage_news_entries]
+    news_entries = NewsEntry.objects.all().order_by("-date_posted")[:fpage_news_entries]
     # A QuerySet of the most recently connected players.
-    recent_users = [ob for ob in AccountDB.objects.get_recently_connected_accounts() if hasattr(ob, 'roster') and
-                    ob.roster.roster.name == "Active"][:fpage_player_limit]
+    recent_users = [
+        ob
+        for ob in AccountDB.objects.get_recently_connected_accounts()
+        if hasattr(ob, "roster") and ob.roster.roster.name == "Active"
+    ][:fpage_player_limit]
     nplyrs_conn_recent = len(recent_users) or "none"
     nplyrs = AccountDB.objects.filter(roster__roster__name="Active").count() or "none"
     nplyrs_reg_recent = len(AccountDB.objects.get_recently_created_accounts()) or "none"
     nsess = len(AccountDB.objects.get_connected_accounts()) or "noone"
 
     nobjs = ObjectDB.objects.all().count()
-    nrooms = ObjectDB.objects.filter(db_location__isnull=True).exclude(db_typeclass_path=_BASE_CHAR_TYPECLASS).count()
-    nexits = ObjectDB.objects.filter(db_location__isnull=False, db_destination__isnull=False).count()
+    nrooms = (
+        ObjectDB.objects.filter(db_location__isnull=True)
+        .exclude(db_typeclass_path=_BASE_CHAR_TYPECLASS)
+        .count()
+    )
+    nexits = ObjectDB.objects.filter(
+        db_location__isnull=False, db_destination__isnull=False
+    ).count()
     nchars = ObjectDB.objects.filter(db_typeclass_path=_BASE_CHAR_TYPECLASS).count()
     nothers = nobjs - nrooms - nchars - nexits
 
     try:
-        chapter = Chapter.objects.latest('start_date')
+        chapter = Chapter.objects.latest("start_date")
     except Chapter.DoesNotExist:
         chapter = None
-    events = RPEvent.objects.filter(finished=False, public_event=True).order_by('date')[:3]
+    events = RPEvent.objects.filter(finished=False, public_event=True).order_by("date")[
+        :3
+    ]
 
     pagevars = {
         "page_title": "After the Reckoning",
@@ -68,10 +78,10 @@ def page_index(request):
         "events": events,
         "game_slogan": settings.GAME_SLOGAN,
         "user": request.user,
-        "webclient_enabled": settings.WEBCLIENT_ENABLED
+        "webclient_enabled": settings.WEBCLIENT_ENABLED,
     }
 
-    return render(request, 'index.html', pagevars, content_type="text/html")
+    return render(request, "index.html", pagevars, content_type="text/html")
 
 
 def webclient(request):
@@ -84,6 +94,7 @@ def webclient(request):
     session.flush()
     session.save()
     from evennia.web.webclient.views import webclient
+
     return webclient(request)
 
 

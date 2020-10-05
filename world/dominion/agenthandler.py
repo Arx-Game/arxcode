@@ -31,6 +31,7 @@ class AgentHandler(object):
 
     def _get_unassigned(self):
         return self.agent.agent_objects.filter(quantity=0)
+
     unassigned = property(_get_unassigned)
 
     def find_agentob_by_character(self, character):
@@ -39,7 +40,7 @@ class AgentHandler(object):
                 return agent
 
     def get_or_create_agentob(self, num):
-        assert (self.agent.quantity >= num), "Not enough agents to assign."
+        assert self.agent.quantity >= num, "Not enough agents to assign."
         if num < 1:
             raise ValueError("Assigned non-positive number.")
         if self.agent.unique:
@@ -75,10 +76,10 @@ class AgentHandler(object):
         # will have their progression wiped upon transfer
         if setup:
             agent_ob.dbobj.setup_agent()
-        return agent_ob      
+        return agent_ob
 
     def assign(self, targ, num):
-        if not self.agent.unique:    
+        if not self.agent.unique:
             agent_ob = self.find_agentob_by_character(targ)
             if agent_ob:
                 self.agent.quantity -= num
@@ -89,5 +90,7 @@ class AgentHandler(object):
         agent_ob = self.get_or_create_agentob(num)
         agent_ob.dbobj.assign(targ)
         agent_ob.save()
-        targ.msg("%s %s been assigned to you." % (agent_ob.dbobj.name,
-                                                  "has" if self.agent.unique else "have"))
+        targ.msg(
+            "%s %s been assigned to you."
+            % (agent_ob.dbobj.name, "has" if self.agent.unique else "have")
+        )

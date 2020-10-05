@@ -11,8 +11,18 @@ from datetime import datetime
 from web.helpdesk.models import Ticket, Queue, FollowUp, KBItem
 
 
-def create_ticket(caller, message, priority=3, queue_slug=settings.REQUEST_QUEUE_SLUG, kb_category=None,
-                  send_email=True, optional_title=None, plot=None, beat=None, goal_update=None):
+def create_ticket(
+    caller,
+    message,
+    priority=3,
+    queue_slug=settings.REQUEST_QUEUE_SLUG,
+    kb_category=None,
+    send_email=True,
+    optional_title=None,
+    plot=None,
+    beat=None,
+    goal_update=None,
+):
     """
     Creates a new ticket and returns it.
     """
@@ -27,16 +37,35 @@ def create_ticket(caller, message, priority=3, queue_slug=settings.REQUEST_QUEUE
     except AttributeError:
         room = None
     # not a fan of emojis in tickets, tbh
-    message = message.rstrip(" ;)").rstrip(" :p").rstrip(" :P").rstrip(" ;P").rstrip(" ;p")
-    ticket = Ticket(title=optional_title, queue=queue, db_date_created=datetime.now(), submitter_email=email,
-                    submitting_player=caller, submitting_room=room, description=message, kb_category=kb_category,
-                    priority=priority, plot=plot, beat=beat, goal_update=goal_update)
+    message = (
+        message.rstrip(" ;)").rstrip(" :p").rstrip(" :P").rstrip(" ;P").rstrip(" ;p")
+    )
+    ticket = Ticket(
+        title=optional_title,
+        queue=queue,
+        db_date_created=datetime.now(),
+        submitter_email=email,
+        submitting_player=caller,
+        submitting_room=room,
+        description=message,
+        kb_category=kb_category,
+        priority=priority,
+        plot=plot,
+        beat=beat,
+        goal_update=goal_update,
+    )
     if optional_title[:-1] in message:
         title = ""
     else:
         title = "{w[{n%s{w]{n " % optional_title
     ticket.save()
-    staff_msg = "{w[%s]{n Ticket #%s by {c%s{n: %s%s" % (str(queue), ticket.id, caller, title, message)
+    staff_msg = "{w[%s]{n Ticket #%s by {c%s{n: %s%s" % (
+        str(queue),
+        ticket.id,
+        caller,
+        title,
+        message,
+    )
     inform_staff(staff_msg)
     # to do: mail player
     player_msg = "You have successfully created a new ticket.\n\n"
@@ -54,12 +83,21 @@ def add_followup(caller, ticket, message, mail_player=True):
     is set to True, the submitter is not emailed the response.
     """
     try:
-        new_followup = FollowUp(user_id=caller.id, date=datetime.now(), ticket=ticket, comment=message, public=False)
+        new_followup = FollowUp(
+            user_id=caller.id,
+            date=datetime.now(),
+            ticket=ticket,
+            comment=message,
+            public=False,
+        )
         new_followup.save()
     except Exception as err:
         inform_staff("ERROR when attempting to add followup to ticket: %s" % err)
         return False
-    inform_staff("{w[Requests]{n: %s has left a comment on ticket %s: %s" % (caller.key, ticket.id, message))
+    inform_staff(
+        "{w[Requests]{n: %s has left a comment on ticket %s: %s"
+        % (caller.key, ticket.id, message)
+    )
     if mail_player:
         header = "New comment on your ticket by %s.\n\n" % caller.key
         mail_update(ticket, message, header)
@@ -82,14 +120,21 @@ def resolve_ticket(caller, ticket, message):
     except Exception as err:
         inform_staff("ERROR: Error when attempting to close ticket: %s" % err)
         return False
-    if ticket.queue.slug in ('Code', 'Bugs', 'Typo'):
+    if ticket.queue.slug in ("Code", "Bugs", "Typo"):
         post = False
         subject = None
     else:
         subject = "%s %s closed" % (ticket.queue.slug, ticket.id)
-        post = "{wPlayer:{n %s\n%s" % (ticket.submitting_player, ticket.request_and_response_body())
-    inform_staff("{w[Requests]{n: %s has closed ticket %s: %s" % (caller.key, ticket.id, message),
-                 post=post, subject=subject)
+        post = "{wPlayer:{n %s\n%s" % (
+            ticket.submitting_player,
+            ticket.request_and_response_body(),
+        )
+    inform_staff(
+        "{w[Requests]{n: %s has closed ticket %s: %s"
+        % (caller.key, ticket.id, message),
+        post=post,
+        subject=subject,
+    )
     header = "Your ticket has been closed by %s.\n\n" % caller.key
     mail_update(ticket, message, header)
     if ticket.kb_category:

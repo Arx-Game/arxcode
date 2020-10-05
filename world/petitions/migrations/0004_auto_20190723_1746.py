@@ -10,43 +10,63 @@ import django.utils.timezone
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0039_prestigetier'),
-        ('petitions', '0003_brokeredsale_broker_type'),
+        ("dominion", "0039_prestigetier"),
+        ("petitions", "0003_brokeredsale_broker_type"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PetitionSettings',
+            name="PetitionSettings",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('inform', models.BooleanField(default=True)),
-                ('ignore_general', models.BooleanField(default=False)),
-                ('ignored_organizations', models.ManyToManyField(to='dominion.Organization')),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='petition_settings', to='dominion.PlayerOrNpc')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("inform", models.BooleanField(default=True)),
+                ("ignore_general", models.BooleanField(default=False)),
+                (
+                    "ignored_organizations",
+                    models.ManyToManyField(to="dominion.Organization"),
+                ),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="petition_settings",
+                        to="dominion.PlayerOrNpc",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='petition',
-            name='date_created',
-            field=models.DateField(auto_now_add=True, default=django.utils.timezone.now),
+            model_name="petition",
+            name="date_created",
+            field=models.DateField(
+                auto_now_add=True, default=django.utils.timezone.now
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='petition',
-            name='date_updated',
+            model_name="petition",
+            name="date_updated",
             field=models.DateField(auto_now=True),
         ),
         migrations.AddField(
-            model_name='petition',
-            name='waiting',
+            model_name="petition",
+            name="waiting",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='petitionparticipation',
-            name='subscribed',
+            model_name="petitionparticipation",
+            name="subscribed",
             field=models.BooleanField(default=False),
         ),
     ]

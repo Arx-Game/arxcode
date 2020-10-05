@@ -41,8 +41,13 @@ def get_unit_class_by_id(unit_id, unit_model=None):
         cls = _UNIT_TYPES[unit_id]
     except KeyError:
         if unit_model:
-            print("ERROR: Unit type not found for MilitaryUnit obj #%s!" % unit_model.id)
-        print("Attempted Unit class ID was %s. Not found, using Infantry as fallback." % unit_id)
+            print(
+                "ERROR: Unit type not found for MilitaryUnit obj #%s!" % unit_model.id
+            )
+        print(
+            "Attempted Unit class ID was %s. Not found, using Infantry as fallback."
+            % unit_id
+        )
         traceback.print_exc()
         cls = unit_constants.INFANTRY
     return cls
@@ -77,8 +82,8 @@ def type_from_str(name_str):
     cls = cls_from_str(name_str)
     if cls:
         return cls.id
-    
-    
+
+
 def cls_from_str(name_str):
     """
     Gets class of unit type from a string
@@ -95,7 +100,7 @@ def cls_from_str(name_str):
     for cls in _UNIT_TYPES.values():
         if cls.name.lower() == name_str:
             return cls
-            
+
 
 def print_unit_names():
     return ", ".join(cls.name for cls in _UNIT_TYPES.values())
@@ -105,6 +110,7 @@ class UnitStats(PositionActor):
     """
     Contains all the stats for a military unit.
     """
+
     id = -1
     name = "Default"
     # silver upkeep costs for 1 of a given unit
@@ -182,16 +188,17 @@ class UnitStats(PositionActor):
             self.commander = None
         if dbobj.origin:
             from django.core.exceptions import ObjectDoesNotExist
+
             try:
                 self.name = dbobj.origin.unit_mods.get(unit_type=self.id).name
             except (ObjectDoesNotExist, AttributeError):
                 pass
-            
+
     @classmethod
     def display_class_stats(cls):
         """
         Returns a string of stats about this class.
-        
+
             Returns:
                 msg (str): Formatted display of this class's stats
         """
@@ -200,24 +207,27 @@ class UnitStats(PositionActor):
         msg += "{wUpkeep Cost (silver){n: %s\n" % cls.silver_upkeep
         msg += "{wFood Upkeep{n: %s\n" % cls.food_upkeep
         return msg
-            
+
     def _targ_in_range(self):
         if not self.target:
             return False
         return self.check_distance_to_actor(self.target) <= self.range
+
     targ_in_range = property(_targ_in_range)
-    
+
     def _unit_active(self):
         return not self.routed and not self.destroyed
+
     active = property(_unit_active)
-    
+
     def _unit_value(self):
         return self.quantity * self.silver_upkeep
+
     value = property(_unit_value)
 
     def __str__(self):
         return "%s's %s(%s)" % (str(self.formation), self.name, self.quantity)
-   
+
     def swing(self, target, atk):
         """
         One unit trying to do damage to another. Defense is a representation
@@ -246,16 +256,18 @@ class UnitStats(PositionActor):
         attack += atk * self.level
         attack += atk * self.equipment
         # have a floor of half our attack
-        atk_roll = randint(attack/2, attack)
+        atk_roll = randint(attack / 2, attack)
         if self.commander:
             atk_roll += atk_roll * self.commander.warfare
         damage = atk_roll - def_roll
         if damage < 0:
             damage = 0
         target.damage += damage
-        self.log.info("%s attacked %s. Atk roll: %s Def roll: %s\nDamage:%s" % (
-            str(self), str(target), atk_roll, def_roll, damage))
-    
+        self.log.info(
+            "%s attacked %s. Atk roll: %s Def roll: %s\nDamage:%s"
+            % (str(self), str(target), atk_roll, def_roll, damage)
+        )
+
     def ranged_attack(self):
         if not self.range:
             return
@@ -264,7 +276,7 @@ class UnitStats(PositionActor):
         if not self.targ_in_range:
             return
         self.swing(self.target, self.range_damage)
-        
+
     def melee_attack(self):
         if not self.target:
             return
@@ -275,7 +287,7 @@ class UnitStats(PositionActor):
         else:
             self.swing(self.target, self.melee_damage)
         self.target.swing(self, self.target.melee_damage)
-   
+
     def advance(self):
         if self.target and not self.targ_in_range:
             self.move_toward_actor(self.target, self.movement)
@@ -284,9 +296,12 @@ class UnitStats(PositionActor):
                 x, y, z = self.storm_targ_pos
                 self.move_toward_position(x, y, z, self.movement)
             except (TypeError, ValueError):
-                print("ERROR when attempting to move toward castle. storm_targ_pos: %s" % str(self.storm_targ_pos))
+                print(
+                    "ERROR when attempting to move toward castle. storm_targ_pos: %s"
+                    % str(self.storm_targ_pos)
+                )
         self.log.info("%s has moved. Now at pos: %s" % (self, str(self.position)))
-    
+
     def cleanup(self):
         """
         Apply damage, destroy units/remove them, make units check for rout, check
@@ -298,7 +313,7 @@ class UnitStats(PositionActor):
         hp += self.hp * self.level
         hp += self.hp * self.equipment
         if self.damage >= hp:
-            losses = self.damage/hp
+            losses = self.damage / hp
             # save remainder
             self.losses += losses
             self.quantity -= losses
@@ -311,7 +326,7 @@ class UnitStats(PositionActor):
             self.rout_check()
         if self.routed:
             self.rally_check()
-        
+
     def rout_check(self):
         """
         Chance for the unit to rout. Roll 1-100 to beat a difficulty number
@@ -319,7 +334,7 @@ class UnitStats(PositionActor):
         any morale rating we have below 100. Reduced by 5 per troop level
         and commander level.
         """
-        percent_losses = float(self.losses)/float(self.starting_quantity)
+        percent_losses = float(self.losses) / float(self.starting_quantity)
         percent_losses = int(percent_losses * 100)
         morale_penalty = 100 - self.morale
         difficulty = percent_losses + morale_penalty
@@ -328,7 +343,7 @@ class UnitStats(PositionActor):
             difficulty -= 5 * self.commander.warfare
         if randint(1, 100) < difficulty:
             self.routed = True
-    
+
     def rally_check(self):
         """
         Rallying is based almost entirely on the skill of the commander. It's
@@ -348,13 +363,13 @@ class UnitStats(PositionActor):
         self.log.info("%s has routed and rolled %s to rally." % (str(self), roll))
         if roll >= 100:
             self.routed = False
-    
+
     def check_target(self):
         if not self.target:
             return
         if self.target.active:
             return self.target
-    
+
     def acquire_target(self, enemy_formation):
         """
         Retrieve a target from the enemy formation based on various

@@ -5,4 +5,4 @@ from django.apps import AppConfig
 
 
 class PetitionsConfig(AppConfig):
-    name = 'world.petitions'
+    name = "world.petitions"

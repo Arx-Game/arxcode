@@ -1,12 +1,17 @@
 from paxforms.fields import Paxfield
-from world.magic.models import Affinity, Alignment, Attunement, FamiliarAttunement, \
-    PractitionerEffect, PractitionerSpell
+from world.magic.models import (
+    Affinity,
+    Alignment,
+    Attunement,
+    FamiliarAttunement,
+    PractitionerEffect,
+    PractitionerSpell,
+)
 from server.utils.arx_utils import a_or_an
 import django.forms
 
 
 class AlignmentField(Paxfield):
-
     def __init__(self, **kwargs):
         super(AlignmentField, self).__init__(**kwargs)
         self._alignment = None
@@ -51,23 +56,22 @@ class AlignmentField(Paxfield):
         return True, ""
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
 
         choices = (
-            (-1, '----'),
+            (-1, "----"),
             (Alignment.PRIMAL.id, "Primal"),
             (Alignment.ELYSIAN.id, "Elysian"),
-            (Alignment.ABYSSAL.id, "Abyssal")
+            (Alignment.ABYSSAL.id, "Abyssal"),
         )
 
-        options['choices'] = choices
+        options["choices"] = choices
         return django.forms.ChoiceField(**options)
 
 
 class AffinityField(Paxfield):
-
     def __init__(self, **kwargs):
         super(AffinityField, self).__init__(**kwargs)
         self._affinity = None
@@ -109,19 +113,21 @@ class AffinityField(Paxfield):
 
     def validate(self, caller=None):
         if self._required and not self._affinity:
-            return False, "Required field {} wasn't filled out!  {}".format(self.full_name, self.help_text or "")
+            return False, "Required field {} wasn't filled out!  {}".format(
+                self.full_name, self.help_text or ""
+            )
         return True, ""
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
 
         choices = [(-1, "----")]
         for affinity in Affinity.objects.all():
             choices.append((affinity.id, affinity.name))
 
-        options['choices'] = choices
+        options["choices"] = choices
         return django.forms.ChoiceField(**options)
 
 
@@ -151,7 +157,9 @@ class PractitionerDependentField(Paxfield):
         if not final_value:
             term = self.__class__.term
             termpart = a_or_an(term)
-            return False, "You don't seem to know {} {} named '{}'!".format(termpart, term, value)
+            return False, "You don't seem to know {} {} named '{}'!".format(
+                termpart, term, value
+            )
 
         self._value = final_value
         return True, None
@@ -166,7 +174,9 @@ class PractitionerDependentField(Paxfield):
 
     def validate(self, caller=None):
         if self._required and not self._value:
-            return False, "Required field {} wasn't filled out!  {}".format(self.full_name, self.help_text or "")
+            return False, "Required field {} wasn't filled out!  {}".format(
+                self.full_name, self.help_text or ""
+            )
         return True, ""
 
     def webform_field(self, caller=None):
@@ -186,30 +196,36 @@ class SpellField(PractitionerDependentField):
 
         try:
             if isinstance(name, int):
-                spell = PractitionerSpell.objects.get(spell__id=name, practitioner=caller.practitioner)
+                spell = PractitionerSpell.objects.get(
+                    spell__id=name, practitioner=caller.practitioner
+                )
             else:
-                spell = PractitionerSpell.objects.get(spell__name__iexact=name, practitioner=caller.practitioner)
+                spell = PractitionerSpell.objects.get(
+                    spell__name__iexact=name, practitioner=caller.practitioner
+                )
             return spell.spell
         except PractitionerSpell.DoesNotExist:
             return None
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
 
         choices = []
         if not self.required:
-            choices.append((-1, '----'))
+            choices.append((-1, "----"))
 
         if caller and caller.practitioner:
             spells = {}
-            for spell_record in PractitionerSpell.objects.filter(practitioner=caller.practitioner).all():
+            for spell_record in PractitionerSpell.objects.filter(
+                practitioner=caller.practitioner
+            ).all():
                 spells[spell_record.spell.name] = spell_record.spell.id
             for key in sorted(spells.keys()):
                 choices.append((spells[key], key))
 
-        options['choices'] = choices
+        options["choices"] = choices
         return django.forms.ChoiceField(**options)
 
 
@@ -226,30 +242,36 @@ class EffectField(PractitionerDependentField):
 
         try:
             if isinstance(name, int):
-                effect = PractitionerEffect.objects.get(effect__id=name, practitioner=caller.practitioner)
+                effect = PractitionerEffect.objects.get(
+                    effect__id=name, practitioner=caller.practitioner
+                )
             else:
-                effect = PractitionerEffect.objects.get(effect__name__iexact=name, practitioner=caller.practitioner)
+                effect = PractitionerEffect.objects.get(
+                    effect__name__iexact=name, practitioner=caller.practitioner
+                )
             return effect.effect
         except PractitionerEffect.DoesNotExist:
             return None
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
 
         choices = []
         if not self.required:
-            choices.append((-1, '----'))
+            choices.append((-1, "----"))
 
         if caller and caller.practitioner:
             effects = {}
-            for effect_record in PractitionerEffect.objects.filter(practitioner=caller.practitioner).all():
+            for effect_record in PractitionerEffect.objects.filter(
+                practitioner=caller.practitioner
+            ).all():
                 effects[effect_record.effect.name] = effect_record.effect.id
             for key in sorted(effects.keys()):
                 choices.append((effects[key], key))
 
-        options['choices'] = choices
+        options["choices"] = choices
         return django.forms.ChoiceField(**options)
 
 
@@ -266,7 +288,9 @@ class ToolField(PractitionerDependentField):
 
         try:
             if isinstance(name, int):
-                attune = Attunement.objects.get(obj__id=name, practitioner=caller.practitioner)
+                attune = Attunement.objects.get(
+                    obj__id=name, practitioner=caller.practitioner
+                )
             else:
                 obj = caller.search(name)
                 if not obj:
@@ -275,28 +299,32 @@ class ToolField(PractitionerDependentField):
                 if obj.is_typeclass("typeclasses.characters.Character"):
                     return None
 
-                attune = Attunement.objects.get(obj=obj, practitioner=caller.practitioner)
+                attune = Attunement.objects.get(
+                    obj=obj, practitioner=caller.practitioner
+                )
             return attune.obj
         except Attunement.DoesNotExist:
             return None
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
 
         choices = []
         if not self.required:
-            choices.append((-1, '----'))
+            choices.append((-1, "----"))
 
         if caller and caller.practitioner:
             attunements = {}
-            for attunement in Attunement.objects.filter(practitioner=caller.practitioner).all():
+            for attunement in Attunement.objects.filter(
+                practitioner=caller.practitioner
+            ).all():
                 attunements[attunement.obj.name] = attunement.obj.id
             for key in sorted(attunements.keys()):
                 choices.append((attunements[key], key))
 
-        options['choices'] = choices
+        options["choices"] = choices
         return django.forms.ChoiceField(**options)
 
 
@@ -312,30 +340,37 @@ class FamiliarField(PractitionerDependentField):
 
         try:
             if isinstance(name, int):
-                attune = FamiliarAttunement.objects.get(familiar__id=name, practitioner=caller.practitioner)
+                attune = FamiliarAttunement.objects.get(
+                    familiar__id=name, practitioner=caller.practitioner
+                )
             else:
-                attune = FamiliarAttunement.objects.get(familiar__name__icontains=name, practitioner=caller.practitioner)
+                attune = FamiliarAttunement.objects.get(
+                    familiar__name__icontains=name, practitioner=caller.practitioner
+                )
             return attune.familiar
-        except (FamiliarAttunement.DoesNotExist, FamiliarAttunement.MultipleObjectsReturned):
+        except (
+            FamiliarAttunement.DoesNotExist,
+            FamiliarAttunement.MultipleObjectsReturned,
+        ):
             return None
 
     def webform_field(self, caller=None):
-        options = {'label': self.full_name}
+        options = {"label": self.full_name}
         if self.required is not None:
-            options['required'] = self.required
+            options["required"] = self.required
 
         choices = []
         if not self.required:
-            choices.append((-1, '----'))
+            choices.append((-1, "----"))
 
         if caller and caller.practitioner:
             attunements = {}
-            for attunement in FamiliarAttunement.objects.filter(practitioner=caller.practitioner).all():
+            for attunement in FamiliarAttunement.objects.filter(
+                practitioner=caller.practitioner
+            ).all():
                 attunements[attunement.familiar.name] = attunement.familiar.id
             for key in sorted(attunements.keys()):
                 choices.append((attunements[key], key))
 
-        options['choices'] = choices
+        options["choices"] = choices
         return django.forms.ChoiceField(**options)
-
-

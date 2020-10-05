@@ -4,7 +4,6 @@ from evennia.utils import create
 
 
 class WeatherScript(Script):
-
     def at_script_creation(self):
         self.key = "Weather Patterns"
         self.desc = "Keeps weather moving on the game."

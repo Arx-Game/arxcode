@@ -35,6 +35,7 @@ class CmdUseXP(ArxCommand):
     Dominion influence is bought with 'resources' rather than xp. The
     'learn' command is the same as 'xp/spend'.
     """
+
     key = "xp"
     aliases = ["+xp", "experience", "learn"]
     locks = "cmd:all()"
@@ -57,7 +58,9 @@ class CmdUseXP(ArxCommand):
         abilities = caller.traits.abilities
         abilities = set(abilities.keys()) | set(crafting)
         if caller.check_permstring("builder"):
-            caller.msg(", ".join(ability for ability in stats_and_skills.VALID_ABILITIES))
+            caller.msg(
+                ", ".join(ability for ability in stats_and_skills.VALID_ABILITIES)
+            )
         else:
             caller.msg(", ".join(ability for ability in abilities))
 
@@ -79,7 +82,9 @@ class CmdUseXP(ArxCommand):
             return
         history = self.caller.roster.accounthistory_set.filter(account=account).last()
         if amt > history.xp_earned:
-            self.msg("You cannot transfer more xp than you've earned since playing the character.")
+            self.msg(
+                "You cannot transfer more xp than you've earned since playing the character."
+            )
             return
         if amt > self.caller.db.xp:
             self.msg("You do not have enough xp remaining.")
@@ -126,8 +131,13 @@ class CmdUseXP(ArxCommand):
             if current >= 6:
                 caller.msg("%s is already at its maximum." % args)
                 return
-            if current >= 5 and stats_and_skills.get_skill_cost_increase(caller) <= -1.0:
-                caller.msg("You cannot buy a legendary skill while you still have catchup xp remaining.")
+            if (
+                current >= 5
+                and stats_and_skills.get_skill_cost_increase(caller) <= -1.0
+            ):
+                caller.msg(
+                    "You cannot buy a legendary skill while you still have catchup xp remaining."
+                )
                 return
             cost = stats_and_skills.get_skill_cost(caller, args)
             stype = "skill"
@@ -153,16 +163,24 @@ class CmdUseXP(ArxCommand):
                     if args == "tailor" and "sewing" not in caller.traits.skills:
                         caller.msg("You must have sewing to be a tailor.")
                         return
-                    if (args == "weaponsmith" or args == "armorsmith") and "smithing" not in caller.traits.skills:
+                    if (
+                        args == "weaponsmith" or args == "armorsmith"
+                    ) and "smithing" not in caller.traits.skills:
                         caller.msg("You must have smithing to be a %s." % args)
                         return
                     if args == "apothecary" and "alchemy" not in caller.traits.skills:
                         caller.msg("You must have alchemy to be an apothecary.")
                         return
-                    if args == "leatherworker" and "tanning" not in caller.traits.skills:
+                    if (
+                        args == "leatherworker"
+                        and "tanning" not in caller.traits.skills
+                    ):
                         caller.msg("You must have tanning to be a leatherworker.")
                         return
-                    if args == "carpenter" and "woodworking" not in caller.traits.skills:
+                    if (
+                        args == "carpenter"
+                        and "woodworking" not in caller.traits.skills
+                    ):
                         caller.msg("You must have woodworking to be a carpenter.")
                         return
                     if args == "jeweler" and "smithing" not in caller.traits.skills:
@@ -180,8 +198,11 @@ class CmdUseXP(ArxCommand):
             if args in stats_and_skills.CRAFTING_ABILITIES:
                 spec_warning = True
             if current == 5:
-                if any(key for key, value in caller.traits.abilities.items()
-                       if key in stats_and_skills.CRAFTING_ABILITIES and value >= 6):
+                if any(
+                    key
+                    for key, value in caller.traits.abilities.items()
+                    if key in stats_and_skills.CRAFTING_ABILITIES and value >= 6
+                ):
                     caller.msg("You have already chosen a crafting specialization.")
                     return
                 else:
@@ -190,7 +211,9 @@ class CmdUseXP(ArxCommand):
             stype = "ability"
             cost = stats_and_skills.get_ability_cost(caller, args)
         else:
-            caller.msg("'%s' wasn't identified as a stat, ability, or skill." % self.args)
+            caller.msg(
+                "'%s' wasn't identified as a stat, ability, or skill." % self.args
+            )
             return
         if "cost" in self.switches:
             caller.msg("Cost for %s: %s" % (self.args, cost))
@@ -202,12 +225,21 @@ class CmdUseXP(ArxCommand):
             #     return
             if stype == "dom":
                 if cost > getattr(dompc.assets, resource):
-                    msg = "Unable to buy influence in %s. The cost is %s, " % (args, cost)
-                    msg += "and you have %s %s resources available." % (getattr(dompc.assets, resource), resource)
+                    msg = "Unable to buy influence in %s. The cost is %s, " % (
+                        args,
+                        cost,
+                    )
+                    msg += "and you have %s %s resources available." % (
+                        getattr(dompc.assets, resource),
+                        resource,
+                    )
                     caller.msg(msg)
                     return
             elif cost > caller.db.xp:
-                caller.msg("Unable to raise %s. The cost is %s, and you have %s xp." % (args, cost, caller.db.xp))
+                caller.msg(
+                    "Unable to raise %s. The cost is %s, and you have %s xp."
+                    % (args, cost, caller.db.xp)
+                )
                 return
             if stype == "stat":
                 caller.adjust_xp(-cost)
@@ -230,7 +262,9 @@ class CmdUseXP(ArxCommand):
                 if set_specialization:
                     caller.msg("You have set your primary ability to be %s." % args)
                 if spec_warning:
-                    caller.msg("{wNote: The first crafting ability raised to 6 will be your specialization.{n")
+                    caller.msg(
+                        "{wNote: The first crafting ability raised to 6 will be your specialization.{n"
+                    )
                 caller.adjust_xp(-cost)
                 caller.traits.adjust_ability(args)
                 ability_history = caller.db.ability_history or {}
@@ -244,8 +278,10 @@ class CmdUseXP(ArxCommand):
                 # charge them influence
                 setattr(dompc.assets, resource, getattr(dompc.assets, resource) - cost)
                 caller.traits.adjust_dom(args)
-                caller.msg("You have increased your %s influence for a cost of %s %s resources." % (args, resource,
-                                                                                                    cost))
+                caller.msg(
+                    "You have increased your %s influence for a cost of %s %s resources."
+                    % (args, resource, cost)
+                )
                 caller.refresh_from_db()
                 return
             return
@@ -278,6 +314,7 @@ class CmdTrain(ArxCommand):
     Additional AP can be spent when training a retainer to lower the chance
     of failure.
     """
+
     key = "train"
     aliases = ["+train", "teach", "+teach"]
     locks = "cmd:all()"
@@ -289,11 +326,15 @@ class CmdTrain(ArxCommand):
         trained = ", ".join(ob.key for ob in self.currently_training(caller))
         if trained:
             trained = "You have trained %s this week. " % trained
-        msg = self.__doc__ + """
+        msg = (
+            self.__doc__
+            + """
 
     You can train {w%s{n people per week.
     %sYour current cost to train another character is {w%s{n AP.
-    """ % (self.max_trainees(caller), trained, self.action_point_cost(caller))
+    """
+            % (self.max_trainees(caller), trained, self.action_point_cost(caller))
+        )
         return msg
 
     def max_trainees(self, character):
@@ -336,7 +377,10 @@ class CmdTrain(ArxCommand):
         if not cost:
             return True
         if not character.ndb.training_cost_confirmation:
-            self.msg("It will use %s action points to train. Repeat the command to confirm." % cost)
+            self.msg(
+                "It will use %s action points to train. Repeat the command to confirm."
+                % cost
+            )
             character.ndb.training_cost_confirmation = True
             return
         character.ndb.training_cost_confirmation = False
@@ -362,20 +406,26 @@ class CmdTrain(ArxCommand):
         caller = self.caller
         switches = self.switches
         # try to handle possible caching errors
-        caller.attributes._cache.pop('currently_training-None', None)
-        caller.attributes._cache.pop('num_trained-None', None)
+        caller.attributes._cache.pop("currently_training-None", None)
+        caller.attributes._cache.pop("num_trained-None", None)
         caller.refresh_from_db()
         if not self.args:
-            self.msg("Currently training: %s" % ", ".join(str(ob) for ob in self.currently_training(caller)))
+            self.msg(
+                "Currently training: %s"
+                % ", ".join(str(ob) for ob in self.currently_training(caller))
+            )
             self.msg("You can train %s targets." % self.max_trainees(caller))
             return
         if not self.lhs or not self.rhs or not self.switches:
-            caller.msg("Usage: train/[stat or skill] <character to train>=<name of stat or skill to train>")
+            caller.msg(
+                "Usage: train/[stat or skill] <character to train>=<name of stat or skill to train>"
+            )
             return
         additional_cost = 0
         if "retainer" in self.switches:
             player = caller.player.search(self.lhs)
             from world.dominion.models import Agent
+
             if len(self.rhslist) < 2:
                 rhs = self.rhs
             else:
@@ -409,32 +459,52 @@ class CmdTrain(ArxCommand):
                 stat = self.rhs.lower()
                 if not self.check_attribute_name(stats_and_skills.VALID_STATS, "stat"):
                     return
-                if not self.check_attribute_value(caller.traits.get_stat_value(stat), targ.traits.get_stat_value(stat)):
+                if not self.check_attribute_value(
+                    caller.traits.get_stat_value(stat), targ.traits.get_stat_value(stat)
+                ):
                     return
             elif "skill" in switches:
                 skill = self.rhs.lower()
-                if not self.check_attribute_name(stats_and_skills.VALID_SKILLS, "skill"):
+                if not self.check_attribute_name(
+                    stats_and_skills.VALID_SKILLS, "skill"
+                ):
                     return
-                if not self.check_attribute_value(caller.traits.get_skill_value(skill),
-                                                  targ.traits.get_skill_value(skill)):
+                if not self.check_attribute_value(
+                    caller.traits.get_skill_value(skill),
+                    targ.traits.get_skill_value(skill),
+                ):
                     return
             elif "ability" in switches:
                 ability = self.rhs.lower()
-                if not self.check_attribute_name(stats_and_skills.VALID_ABILITIES, "ability"):
+                if not self.check_attribute_name(
+                    stats_and_skills.VALID_ABILITIES, "ability"
+                ):
                     return
-                if not self.check_attribute_value(caller.traits.get_ability_value(ability),
-                                                  targ.traits.get_ability_value(ability)):
+                if not self.check_attribute_value(
+                    caller.traits.get_ability_value(ability),
+                    targ.traits.get_ability_value(ability),
+                ):
                     return
             else:
-                caller.msg("Usage: train/[stat or skill] <character>=<stat or skill name>")
+                caller.msg(
+                    "Usage: train/[stat or skill] <character>=<stat or skill name>"
+                )
                 return
-            caller_msg = "You have provided training to %s for them to increase their %s." % (targ.name, self.rhs)
-            targ_msg = "%s has provided you training, helping you increase your %s." % (caller.name, self.rhs)
+            caller_msg = (
+                "You have provided training to %s for them to increase their %s."
+                % (targ.name, self.rhs)
+            )
+            targ_msg = "%s has provided you training, helping you increase your %s." % (
+                caller.name,
+                self.rhs,
+            )
         if not targ.can_be_trained_by(caller):
             return
         if not self.pay_ap_cost(caller, additional_cost):
             return
-        targ.post_training(caller, trainer_msg=caller_msg, targ_msg=targ_msg, ap_spent=additional_cost)
+        targ.post_training(
+            caller, trainer_msg=caller_msg, targ_msg=targ_msg, ap_spent=additional_cost
+        )
         return
 
 
@@ -447,6 +517,7 @@ class CmdAwardXP(ArxPlayerCommand):
 
     Gives some of that sweet, sweet xp to a character.
     """
+
     key = "@awardxp"
     locks = "cmd:perm(Wizards)"
     help_category = "Progression"
@@ -478,7 +549,9 @@ class CmdAwardXP(ArxPlayerCommand):
             targ.inform(msg, category="XP")
             inform_msg = " Message sent to player: %s" % inform_msg
         caller.msg("Giving %s xp to %s.%s" % (val, char, inform_msg))
-        inform_staff("%s has adjusted %s's xp by %s.%s" % (caller, char, val, inform_msg))
+        inform_staff(
+            "%s has adjusted %s's xp by %s.%s" % (caller, char, val, inform_msg)
+        )
 
 
 class CmdAdjustSkill(ArxPlayerCommand):
@@ -501,6 +574,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
     for the given vocation, and reset how much xp they have to spend based
     on their lifetime earned xp + the bonus for their social rank.
     """
+
     key = "@adjustskill"
     locks = "cmd:perm(Wizards)"
     help_category = "Progression"
@@ -510,8 +584,11 @@ class CmdAdjustSkill(ArxPlayerCommand):
     def func(self):
         """Execute command."""
         caller = self.caller
-        ability = "ability" in self.switches or self.cmdstring == "@adjustability" \
-                  or self.cmdstring == "@adjustabilities"
+        ability = (
+            "ability" in self.switches
+            or self.cmdstring == "@adjustability"
+            or self.cmdstring == "@adjustabilities"
+        )
         char = None
         if "reset" in self.switches or "refund" in self.switches:
             try:
@@ -523,7 +600,11 @@ class CmdAdjustSkill(ArxPlayerCommand):
                 char.db.xp = 0
             if "reset" in self.switches:
                 try:
-                    from commands.base_commands.guest import setup_voc, XP_BONUS_BY_SRANK
+                    from commands.base_commands.guest import (
+                        setup_voc,
+                        XP_BONUS_BY_SRANK,
+                    )
+
                     rhs = self.rhs.lower()
                     setup_voc(char, rhs)
                     char.db.vocation = rhs
@@ -532,7 +613,10 @@ class CmdAdjustSkill(ArxPlayerCommand):
                     xp = XP_BONUS_BY_SRANK[char.db.social_rank]
                     xp += total_xp
                     char.db.xp = xp
-                    caller.msg("%s has had their skills and stats set up as a %s." % (char, rhs))
+                    caller.msg(
+                        "%s has had their skills and stats set up as a %s."
+                        % (char, rhs)
+                    )
                     return
                 except (AttributeError, ValueError, TypeError, KeyError):
                     caller.msg("Could not set %s to %s vocation." % (char, self.rhs))
@@ -577,7 +661,10 @@ class CmdAdjustSkill(ArxPlayerCommand):
                     return
                 char.traits.set_ability_value(self.rhs, current - 1)
                 char.db.xp += cost
-            caller.msg("%s had %s reduced by 1 and was refunded %s xp." % (char, self.rhs, cost))
+            caller.msg(
+                "%s had %s reduced by 1 and was refunded %s xp."
+                % (char, self.rhs, cost)
+            )
             return
         try:
             player, skill = self.lhs.strip().split("/")
@@ -623,6 +710,7 @@ class CmdVoteXP(ArxPlayerCommand):
 
     Using vote with no arguments displays your votes.
     """
+
     key = "vote"
     aliases = ["+vote", "@vote", "unvote"]
     locks = "cmd:all()"
@@ -630,9 +718,11 @@ class CmdVoteXP(ArxPlayerCommand):
 
     @property
     def caller_alts(self):
-        return AccountDB.objects.filter(roster__current_account__isnull=False,
-                                        roster__roster__name="Active",
-                                        roster__current_account=self.caller.roster.current_account)
+        return AccountDB.objects.filter(
+            roster__current_account__isnull=False,
+            roster__roster__name="Active",
+            roster__current_account=self.caller.roster.current_account,
+        )
 
     def count_votes(self):
         num_votes = 0
@@ -671,7 +761,10 @@ class CmdVoteXP(ArxPlayerCommand):
             votes = caller.db.votes or []
             voted_for = list_to_string(votes) or "no one"
             remaining = self.max_votes - self.count_votes()
-            caller.msg("You have voted for %s, and have %s votes remaining." % (voted_for, remaining))
+            caller.msg(
+                "You have voted for %s, and have %s votes remaining."
+                % (voted_for, remaining)
+            )
             return
         targ = caller.search(self.args)
         if not targ:
@@ -693,7 +786,10 @@ class CmdVoteXP(ArxPlayerCommand):
                 votes.remove(targ)
                 caller.db.votes = votes
             else:
-                caller.msg("You are already voting for %s. To remove them, use 'unvote'." % targ)
+                caller.msg(
+                    "You are already voting for %s. To remove them, use 'unvote'."
+                    % targ
+                )
             return
         else:
             if self.cmdstring == "unvote":

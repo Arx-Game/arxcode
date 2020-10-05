@@ -73,7 +73,9 @@ class PaxformCommand(ArxCommand):
         values = self.caller.attributes.get(form.key, default=None)
 
         if form is None or not isinstance(form, Paxform):
-            self.msg("Form not provided to command!  Please contact your administrator.")
+            self.msg(
+                "Form not provided to command!  Please contact your administrator."
+            )
             return
 
         if "create" in self.switches:
@@ -88,12 +90,18 @@ class PaxformCommand(ArxCommand):
             return
 
         if values is None:
-            self.msg("No form in progress.  Please use {}/create first!".format(self.cmdstring))
+            self.msg(
+                "No form in progress.  Please use {}/create first!".format(
+                    self.cmdstring
+                )
+            )
             return
 
         if "cancel" in self.switches:
             if self.caller.attributes.get(form.key) is None:
-                self.msg("No {} session was in progress to cancel.".format(self.cmdstring))
+                self.msg(
+                    "No {} session was in progress to cancel.".format(self.cmdstring)
+                )
                 return
             self.msg("Cancelled.")
             self.caller.attributes.remove(form.key)

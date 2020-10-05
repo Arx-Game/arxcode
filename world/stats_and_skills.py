@@ -22,25 +22,78 @@ SOCIAL_STATS = ("charm", "command", "composure")
 MENTAL_STATS = ("intellect", "perception", "wits")
 MAGIC_STATS = ("mana", "luck", "willpower")
 VALID_STATS = PHYSICAL_STATS + SOCIAL_STATS + MENTAL_STATS + MAGIC_STATS
-COMBAT_SKILLS = ("athletics", "brawl", "dodge", "archery", "small wpn", "medium wpn",
-                 "huge wpn", "stealth", "survival")
-SOCIAL_SKILLS = ("intimidation", "leadership", "manipulation", "seduction", "diplomacy",
-                 "propaganda", "empathy", "etiquette", "performance", "haggling", "streetwise",)
-GENERAL_SKILLS = ("riddles", "legerdemain", "ride", "investigation",
-                  "law", "linguistics", "medicine", "occult",  "stewardship", "theology",
-                  "agriculture", "economics", "teaching", "war",
-                  "animal ken", "artwork", "sailing")
-CRAFTING_SKILLS = ('sewing', 'smithing', 'tanning', 'alchemy', 'woodworking')
+COMBAT_SKILLS = (
+    "athletics",
+    "brawl",
+    "dodge",
+    "archery",
+    "small wpn",
+    "medium wpn",
+    "huge wpn",
+    "stealth",
+    "survival",
+)
+SOCIAL_SKILLS = (
+    "intimidation",
+    "leadership",
+    "manipulation",
+    "seduction",
+    "diplomacy",
+    "propaganda",
+    "empathy",
+    "etiquette",
+    "performance",
+    "haggling",
+    "streetwise",
+)
+GENERAL_SKILLS = (
+    "riddles",
+    "legerdemain",
+    "ride",
+    "investigation",
+    "law",
+    "linguistics",
+    "medicine",
+    "occult",
+    "stewardship",
+    "theology",
+    "agriculture",
+    "economics",
+    "teaching",
+    "war",
+    "animal ken",
+    "artwork",
+    "sailing",
+)
+CRAFTING_SKILLS = ("sewing", "smithing", "tanning", "alchemy", "woodworking")
 VALID_SKILLS = COMBAT_SKILLS + SOCIAL_SKILLS + GENERAL_SKILLS + CRAFTING_SKILLS
 
-CRAFTING_ABILITIES = ('tailor', 'weaponsmith', 'armorsmith', 'leatherworker', 'apothecary',
-                      'carpenter', 'jeweler')
+CRAFTING_ABILITIES = (
+    "tailor",
+    "weaponsmith",
+    "armorsmith",
+    "leatherworker",
+    "apothecary",
+    "carpenter",
+    "jeweler",
+)
 VALID_ABILITIES = CRAFTING_ABILITIES
-DOM_SKILLS = ("population", "income", "farming", "productivity",
-              "upkeep", "loyalty", "warfare")
-_parent_abilities_ = {'sewing': ['tailor'], 'smithing': ['weaponsmith', 'armorsmith', 'jeweler'],
-                      'tanning': ['leatherworker'],
-                      'alchemy': ['apothecary'], 'woodworking': ['carpenter']}
+DOM_SKILLS = (
+    "population",
+    "income",
+    "farming",
+    "productivity",
+    "upkeep",
+    "loyalty",
+    "warfare",
+)
+_parent_abilities_ = {
+    "sewing": ["tailor"],
+    "smithing": ["weaponsmith", "armorsmith", "jeweler"],
+    "tanning": ["leatherworker"],
+    "alchemy": ["apothecary"],
+    "woodworking": ["carpenter"],
+}
 # Default difficulty for an 'easy' task for a person with a skill of 1
 DIFF_DEFAULT = 15
 
@@ -91,7 +144,7 @@ def get_stat_cost(caller, stat):
         total_stats += caller.attributes.get(stat)
     bonus_stats = total_stats - 36
     if bonus_stats > 0:
-        cost *= (1 + 0.5*bonus_stats)
+        cost *= 1 + 0.5 * bonus_stats
     return int(cost)
 
 
@@ -125,6 +178,7 @@ def cost_at_rank(skill, current_rating, new_rating):
 
 def get_skill_cost_increase(caller, additional_cost=0):
     from commands.base_commands import guest
+
     skills = caller.traits.skills
     srank = caller.db.social_rank or 0
     age = caller.db.age or 0
@@ -141,16 +195,18 @@ def get_skill_cost_increase(caller, additional_cost=0):
     elif total >= discounts:  # we have an xp tax
         total -= discounts
         total += additional_cost
-        return total/500.0
+        return total / 500.0
     else:  # we have some newbie skill points left over. Give us a discount
-        initial = (discounts - total)/additional_cost * -1
+        initial = (discounts - total) / additional_cost * -1
         # we need to determine the tax from the remaining points over, after discount
         cost = additional_cost + (additional_cost * initial)
-        tax = cost/500.0
+        tax = cost / 500.0
         return initial + tax
 
 
-def get_skill_cost(caller, skill, adjust_value=None, check_teacher=True, unmodified=False):
+def get_skill_cost(
+    caller, skill, adjust_value=None, check_teacher=True, unmodified=False
+):
     """Uses cost at rank and factors in teacher discounts if they are allowed."""
     current_rating = caller.traits.get_skill_value(skill)
     if not adjust_value and adjust_value != 0:
@@ -188,7 +244,9 @@ def get_dom_cost(caller, skill, adjust_value=None):
     return cost
 
 
-def get_ability_cost(caller, ability, adjust_value=None, check_teacher=True, unmodified=False):
+def get_ability_cost(
+    caller, ability, adjust_value=None, check_teacher=True, unmodified=False
+):
     """Uses cost at rank and factors in teacher discounts if they are allowed."""
     current_rating = caller.traits.get_ability_value(ability)
     if not adjust_value and adjust_value != 0:

@@ -9,14 +9,20 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('objects', '0009_remove_objectdb_db_player'),
-        ('exploration', '0009_auto_20181105_1906'),
+        ("objects", "0009_remove_objectdb_db_player"),
+        ("exploration", "0009_auto_20181105_1906"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenlayoutsquare',
-            name='room',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='shardhaven_room', to='objects.ObjectDB'),
+            model_name="shardhavenlayoutsquare",
+            name="room",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="shardhaven_room",
+                to="objects.ObjectDB",
+            ),
         ),
     ]

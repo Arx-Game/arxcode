@@ -158,12 +158,14 @@ try:
     from world.magic import magic_commands
 except Exception as err:
     print("<<ERROR>>: Error encountered in magic commands: %s" % err)
+from world.stat_checks import check_commands
 
 from evennia.commands.cmdset import CmdSet
 
 
 class OOCCmdSet(CmdSet):
     """Character-specific OOC commands. Most OOC commands defined in player."""
+
     key = "OOCCmdSet"
 
     def at_cmdset_creation(self):
@@ -182,6 +184,7 @@ class OOCCmdSet(CmdSet):
         self.add(rolling.CmdDiceString())
         self.add(rolling.CmdDiceCheck())
         self.add(rolling.CmdSpoofCheck())
+        self.add(check_commands.CmdStatCheck())
         self.add(general.CmdBriefMode())
         self.add(general.CmdTidyUp())
         self.add(extended_room.CmdGameTime())
@@ -192,7 +195,7 @@ class OOCCmdSet(CmdSet):
         self.add(social.CmdSocialNotable())
         self.add(social.CmdSocialNominate())
         self.add(social.CmdSocialReview())
-        # self.add(social.CmdFavor())
+        # self.add(social.CmdFavor())  #when enabled, please re-add "favor" to random_rp_command_keys in CmdRandomScene
         self.add(overrides.SystemNoMatch())
         self.add(weather_commands.CmdAdminWeather())
         self.add(roster.CmdPropriety())
@@ -207,6 +210,7 @@ class StateIndependentCmdSet(CmdSet):
     Poses and emits, for example, should be allowed even when a character is
     dead, because they might be posing something about the corpse, etc.
     """
+
     key = "StateIndependentCmdSet"
 
     def at_cmdset_creation(self):
@@ -249,6 +253,7 @@ class MobileCmdSet(CmdSet):
     current commands that could be executed while a player is alive but
     unable to move. The sets are just equal.
     """
+
     key = "MobileCmdSet"
 
     def at_cmdset_creation(self):
@@ -301,6 +306,7 @@ class MobileCmdSet(CmdSet):
 
 class StaffCmdSet(CmdSet):
     """OOC staff and building commands. Character-based due to interacting with game world."""
+
     key = "StaffCmdSet"
 
     def at_cmdset_creation(self):

@@ -9,34 +9,75 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0016_auto_20171208_1328'),
+        ("dominion", "0016_auto_20171208_1328"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PlotRoom',
+            name="PlotRoom",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, max_length=78)),
-                ('description', models.TextField(max_length=4096)),
-                ('public', models.BooleanField(default=False)),
-                ('wilderness', models.BooleanField(default=True)),
-                ('creator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='created_plot_rooms', to='dominion.PlayerOrNpc')),
-                ('domain', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='plot_rooms', to='dominion.Domain')),
-                ('land', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='plot_rooms', to='dominion.Land')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(db_index=True, max_length=78)),
+                ("description", models.TextField(max_length=4096)),
+                ("public", models.BooleanField(default=False)),
+                ("wilderness", models.BooleanField(default=True)),
+                (
+                    "creator",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="created_plot_rooms",
+                        to="dominion.PlayerOrNpc",
+                    ),
+                ),
+                (
+                    "domain",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="plot_rooms",
+                        to="dominion.Domain",
+                    ),
+                ),
+                (
+                    "land",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="plot_rooms",
+                        to="dominion.Land",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='region',
-            name='color_code',
+            model_name="region",
+            name="color_code",
             field=models.CharField(blank=True, max_length=8),
         ),
         migrations.AddField(
-            model_name='rpevent',
-            name='plotroom',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='events_held_here', to='dominion.PlotRoom'),
+            model_name="rpevent",
+            name="plotroom",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="events_held_here",
+                to="dominion.PlotRoom",
+            ),
         ),
     ]

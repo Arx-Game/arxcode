@@ -5,4 +5,4 @@ from django.apps import AppConfig
 
 
 class TemplateConfig(AppConfig):
-    name = 'world.templates'
+    name = "world.templates"

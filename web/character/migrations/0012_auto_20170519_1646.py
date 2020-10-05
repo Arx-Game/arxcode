@@ -8,12 +8,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0011_auto_20170516_0458'),
+        ("character", "0011_auto_20170516_0458"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='firstcontact',
-            options={'verbose_name_plural': 'First Impressions'},
+            name="firstcontact",
+            options={"verbose_name_plural": "First Impressions"},
         ),
     ]

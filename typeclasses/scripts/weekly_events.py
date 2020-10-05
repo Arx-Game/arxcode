@@ -26,15 +26,36 @@ from web.character.models import Investigation, RosterEntry
 
 
 EVENT_SCRIPT_NAME = "Weekly Update"
-VOTES_BOARD_NAME = 'Votes'
-PRESTIGE_BOARD_NAME = 'Prestige Changes'
+VOTES_BOARD_NAME = "Votes"
+PRESTIGE_BOARD_NAME = "Prestige Changes"
 TRAINING_CAP_PER_WEEK = 10
 
-PLAYER_ATTRS = ("votes", 'claimed_scenelist', 'random_scenelist', 'validated_list', 'praises', 'condemns',
-                'requested_validation', 'donated_ap', 'masked_validated_list', 'event_xp')
-CHARACTER_ATTRS = ("currently_training", "trainer", 'scene_requests', "num_trained", "num_journals",
-                   "num_rel_updates", "num_comments", "num_flashbacks", "support_cooldown", "support_points_spent",
-                   "rp_command_used", "random_rp_command_this_week")
+PLAYER_ATTRS = (
+    "votes",
+    "claimed_scenelist",
+    "random_scenelist",
+    "validated_list",
+    "praises",
+    "condemns",
+    "requested_validation",
+    "donated_ap",
+    "masked_validated_list",
+    "event_xp",
+)
+CHARACTER_ATTRS = (
+    "currently_training",
+    "trainer",
+    "scene_requests",
+    "num_trained",
+    "num_journals",
+    "num_rel_updates",
+    "num_comments",
+    "num_flashbacks",
+    "support_cooldown",
+    "support_points_spent",
+    "rp_command_used",
+    "random_rp_command_this_week",
+)
 
 
 class BulkInformCreator(object):
@@ -42,6 +63,7 @@ class BulkInformCreator(object):
     A container where we can add informs one at a time to be created after all are
     ready.
     """
+
     def __init__(self, week=None):
         self.informs = []
         self.receivers_to_notify = set()
@@ -58,7 +80,9 @@ class BulkInformCreator(object):
     def make_initial_inform(self, msg, category, week=None, player=None, org=None):
         """Creates a base Inform object. This isn't in the database yet."""
         week = week or self.week or 0
-        inform = Inform(message=msg, week=week, category=category, player=player, organization=org)
+        inform = Inform(
+            message=msg, week=week, category=category, player=player, organization=org
+        )
         # for efficiency we're going to skip notifying orgs, as that's expensive
         if player:
             self.receivers_to_notify.add(player)
@@ -77,6 +101,7 @@ class WeeklyEvents(RunDateMixin, Script):
     This script repeatedly saves server times so
     it can be retrieved after server downtime.
     """
+
     XP_TYPES_FOR_RESOURCES = ("votes", "scenes")
 
     # noinspection PyAttributeOutsideInit
@@ -94,6 +119,7 @@ class WeeklyEvents(RunDateMixin, Script):
     def at_start(self, **kwargs):
         super(WeeklyEvents, self).at_start(**kwargs)
         from world.magic.advancement import init_magic_advancement
+
         init_magic_advancement()
 
     @property
@@ -114,7 +140,10 @@ class WeeklyEvents(RunDateMixin, Script):
             hour = timedelta(minutes=65)
             if self.time_remaining < hour:
                 from evennia.server.sessionhandler import SESSIONS
-                cron_msg = "{wReminder: Weekly Updates will be running in about an hour.{n"
+
+                cron_msg = (
+                    "{wReminder: Weekly Updates will be running in about an hour.{n"
+                )
                 SESSIONS.announce_all(cron_msg)
 
     def do_weekly_events(self, reset=True):
@@ -153,18 +182,27 @@ class WeeklyEvents(RunDateMixin, Script):
             owner.prestige_decay()
 
         for owner in AssetOwner.objects.filter(
-                        Q(organization_owner__isnull=False) |
-                        (Q(player__player__roster__roster__name="Active") &
-                         Q(player__player__roster__frozen=False))).distinct():
+            Q(organization_owner__isnull=False)
+            | (
+                Q(player__player__roster__roster__name="Active")
+                & Q(player__player__roster__frozen=False)
+            )
+        ).distinct():
             try:
                 owner.do_weekly_adjustment(self.db.week, self.inform_creator)
             except Exception as err:
                 traceback.print_exc()
                 print("Error in %s's weekly adjustment: %s" % (owner, err))
         # resets the weekly record of work command
-        cache_safe_update(Member.objects.filter(deguilded=False), work_this_week=0, investment_this_week=0)
+        cache_safe_update(
+            Member.objects.filter(deguilded=False),
+            work_this_week=0,
+            investment_this_week=0,
+        )
         # decrement timer of limited transactions, remove transactions that are over
-        AccountTransaction.objects.filter(repetitions_left__gt=0).update(repetitions_left=F('repetitions_left') - 1)
+        AccountTransaction.objects.filter(repetitions_left__gt=0).update(
+            repetitions_left=F("repetitions_left") - 1
+        )
         AccountTransaction.objects.filter(repetitions_left=0).delete()
         for army in Army.objects.filter(orders__week=self.db.week):
             try:
@@ -200,8 +238,9 @@ class WeeklyEvents(RunDateMixin, Script):
 
     def do_investigations(self):
         """Does all the investigation events"""
-        for investigation in Investigation.objects.filter(active=True, ongoing=True,
-                                                          character__roster__name="Active"):
+        for investigation in Investigation.objects.filter(
+            active=True, ongoing=True, character__roster__name="Active"
+        ):
             try:
                 investigation.process_events(self.inform_creator)
             except Exception as err:
@@ -213,6 +252,7 @@ class WeeklyEvents(RunDateMixin, Script):
         """Deletes stale attributes"""
         try:
             from evennia.typeclasses.attributes import Attribute
+
             attr_names = CHARACTER_ATTRS + PLAYER_ATTRS
             qs = Attribute.objects.filter(db_key__in=attr_names)
             qs.delete()
@@ -230,9 +270,14 @@ class WeeklyEvents(RunDateMixin, Script):
         to be recorded will just be processed in their methods.
         """
         self.check_freeze()
-        players = [ob for ob in Account.objects.filter(Q(Q(roster__roster__name="Active") &
-                                                         Q(roster__frozen=False)) |
-                                                       Q(is_staff=True)).distinct() if ob.char_ob]
+        players = [
+            ob
+            for ob in Account.objects.filter(
+                Q(Q(roster__roster__name="Active") & Q(roster__frozen=False))
+                | Q(is_staff=True)
+            ).distinct()
+            if ob.char_ob
+        ]
         for player in players:
             self.count_votes(player)
             # journal XP
@@ -286,6 +331,7 @@ class WeeklyEvents(RunDateMixin, Script):
             RosterEntry.objects.filter(player__last_login__lt=date).update(frozen=True)
         except Exception as err:
             import traceback
+
             traceback.print_exc()
             print("Error on freezing accounts: %s" % err)
 
@@ -293,13 +339,19 @@ class WeeklyEvents(RunDateMixin, Script):
         """Makes a board post of inactive characters"""
         date = datetime.now()
         cutoffdate = date - timedelta(days=30)
-        qs = Account.objects.filter(roster__roster__name="Active", last_login__isnull=False).filter(
-            last_login__lte=cutoffdate)
+        qs = Account.objects.filter(
+            roster__roster__name="Active", last_login__isnull=False
+        ).filter(last_login__lte=cutoffdate)
         board = BBoard.objects.get(db_key__iexact="staff")
         table = EvTable("{wName{n", "{wLast Login Date{n", border="cells", width=78)
         for ob in qs:
             table.add_row(ob.key.capitalize(), ob.last_login.strftime("%x"))
-        board.bb_post(poster_obj=self, msg=str(table), subject="Inactive List", poster_name="Inactives")
+        board.bb_post(
+            poster_obj=self,
+            msg=str(table),
+            subject="Inactive List",
+            poster_name="Inactives",
+        )
         inform_staff("List of Inactive Characters posted.")
 
     def count_poses(self):
@@ -308,8 +360,11 @@ class WeeklyEvents(RunDateMixin, Script):
         min_poses = 20
         low_activity = []
         for ob in qs:
-            if (ob.posecount < min_poses and (ob.tags.get("rostercg")and ob.player_ob
-                                              and not ob.player_ob.tags.get("staff_alt"))):
+            if ob.posecount < min_poses and (
+                ob.tags.get("rostercg")
+                and ob.player_ob
+                and not ob.player_ob.tags.get("staff_alt")
+            ):
                 low_activity.append(ob)
             ob.db.previous_posecount = ob.posecount
             ob.posecount = 0
@@ -358,7 +413,10 @@ class WeeklyEvents(RunDateMixin, Script):
             traceback.print_exc()
             return
         if xp:
-            msg = "You received %s xp this week for journals/comments/relationship updates." % xp
+            msg = (
+                "You received %s xp this week for journals/comments/relationship updates."
+                % xp
+            )
             self.award_xp(char, xp, player, msg, xptype="journals")
 
     # -----------------------------------------------------------------
@@ -402,7 +460,10 @@ class WeeklyEvents(RunDateMixin, Script):
                 scenes = self.ndb.scenes[char]
                 xp = self.scale_xp(scenes * 2)
                 if scenes and xp:
-                    msg = "You were in %s random scenes this week, earning %s xp." % (scenes, xp)
+                    msg = "You were in %s random scenes this week, earning %s xp." % (
+                        scenes,
+                        xp,
+                    )
                     self.award_xp(char, xp, player, msg, xptype="scenes")
 
     @staticmethod
@@ -458,7 +519,10 @@ class WeeklyEvents(RunDateMixin, Script):
                 if char:
                     xp = self.scale_xp(votes)
                     if votes and xp:
-                        msg = "You received %s votes this week, earning %s xp." % (votes, xp)
+                        msg = "You received %s votes this week, earning %s xp." % (
+                            votes,
+                            xp,
+                        )
                         self.award_xp(char, xp, player, msg, xptype="votes")
             except (AttributeError, ValueError, TypeError):
                 print("Error for in award_vote_xp for key %s" % player)
@@ -470,7 +534,9 @@ class WeeklyEvents(RunDateMixin, Script):
                 account = char.roster.current_account
                 if account.id not in self.ndb.xptypes:
                     self.ndb.xptypes[account.id] = {}
-                self.ndb.xptypes[account.id][xptype] = xp + self.ndb.xptypes[account.id].get(xptype, 0)
+                self.ndb.xptypes[account.id][xptype] = xp + self.ndb.xptypes[
+                    account.id
+                ].get(xptype, 0)
             except AttributeError:
                 pass
             xp = int(xp)
@@ -493,11 +559,16 @@ class WeeklyEvents(RunDateMixin, Script):
             for r_type in ("military", "economic", "social"):
                 amt = player.gain_resources(r_type, xp)
             if amt:
-                resource_msg = "Based on your number of %s, you have gained %s resources of each type." % (xptype, amt)
+                resource_msg = (
+                    "Based on your number of %s, you have gained %s resources of each type."
+                    % (xptype, amt)
+                )
         except AttributeError:
             pass
         if resource_msg:
-            self.inform_creator.add_player_inform(player, resource_msg, "Resources", week=self.db.week)
+            self.inform_creator.add_player_inform(
+                player, resource_msg, "Resources", week=self.db.week
+            )
 
     def post_top_rpers(self):
         """
@@ -506,10 +577,13 @@ class WeeklyEvents(RunDateMixin, Script):
         they received.
         """
         import operator
+
         # this will create a sorted list of tuples of (id, votes), sorted by xp, highest to lowest
-        sorted_xp = sorted(self.ndb.xp.items(), key=operator.itemgetter(1), reverse=True)
+        sorted_xp = sorted(
+            self.ndb.xp.items(), key=operator.itemgetter(1), reverse=True
+        )
         string = "{wTop RPers this week by XP earned{n".center(60)
-        string += "\n{w" + "-"*60 + "{n\n"
+        string += "\n{w" + "-" * 60 + "{n\n"
         sorted_xp = sorted_xp[:20]
         num = 0
         for tup in sorted_xp:
@@ -522,14 +596,22 @@ class WeeklyEvents(RunDateMixin, Script):
             except AttributeError:
                 print("Could not find character of id %s during posting." % str(tup[0]))
         board = BBoard.objects.get(db_key__iexact=VOTES_BOARD_NAME)
-        board.bb_post(poster_obj=self, msg=string, subject="Weekly Votes", poster_name="Vote Results")
+        board.bb_post(
+            poster_obj=self,
+            msg=string,
+            subject="Weekly Votes",
+            poster_name="Vote Results",
+        )
         inform_staff("Vote process awards complete. Posted on %s." % board)
 
     def post_top_prestige(self):
         """Makes a board post of the top prestige earners this past week"""
         import random
         from world.dominion.models import PraiseOrCondemn
-        changes = PraiseOrCondemn.objects.filter(week=self.db.week).exclude(target__organization_owner__secret=True)
+
+        changes = PraiseOrCondemn.objects.filter(week=self.db.week).exclude(
+            target__organization_owner__secret=True
+        )
         praises = defaultdict(list)
         condemns = defaultdict(list)
         total_values = {}
@@ -548,7 +630,9 @@ class WeeklyEvents(RunDateMixin, Script):
             """Helper function to get total prestige amount from a list"""
             return sum(praise_ob.value for praise_ob in entry_list)
 
-        sorted_praises = sorted(praises.items(), key=lambda x: get_total_from_list(x[1]), reverse=True)
+        sorted_praises = sorted(
+            praises.items(), key=lambda x: get_total_from_list(x[1]), reverse=True
+        )
         sorted_praises = sorted_praises[:20]
         table = EvTable("{wName{n", "{wValue{n", "{wMsg{n", border="cells", width=78)
         for tup in sorted_praises:
@@ -556,7 +640,11 @@ class WeeklyEvents(RunDateMixin, Script):
             selected_message = ""
             if praise_messages:
                 selected_message = random.choice(praise_messages)
-            table.add_row(str(tup[0]).capitalize()[:18], get_total_from_list(tup[1]), selected_message)
+            table.add_row(
+                str(tup[0]).capitalize()[:18],
+                get_total_from_list(tup[1]),
+                selected_message,
+            )
         table.reformat_column(0, width=18)
         table.reformat_column(1, width=10)
         table.reformat_column(2, width=50)
@@ -565,10 +653,22 @@ class WeeklyEvents(RunDateMixin, Script):
         prestige_msg += "\n\n"
         try:
             # sort by our prestige change amount
-            sorted_changes = sorted(total_values.items(), key=lambda x: abs(x[1]), reverse=True)
+            sorted_changes = sorted(
+                total_values.items(), key=lambda x: abs(x[1]), reverse=True
+            )
             sorted_changes = sorted_changes[:20]
-            table = EvTable("{wName{n", "{wPrestige Change Amount{n", "{wPrestige Rank{n", border="cells", width=78)
-            rank_order = list(AssetOwner.objects.filter(player__player__roster__roster__name="Active").distinct())
+            table = EvTable(
+                "{wName{n",
+                "{wPrestige Change Amount{n",
+                "{wPrestige Rank{n",
+                border="cells",
+                width=78,
+            )
+            rank_order = list(
+                AssetOwner.objects.filter(
+                    player__player__roster__roster__name="Active"
+                ).distinct()
+            )
             rank_order = sorted(rank_order, key=lambda x: x.prestige, reverse=True)
             for tup in sorted_changes:
                 # get our prestige ranking compared to others
@@ -588,8 +688,14 @@ class WeeklyEvents(RunDateMixin, Script):
             prestige_msg = "%s\n%s" % (prestige_msg, str(table).lstrip())
         except (AttributeError, ValueError, TypeError):
             import traceback
+
             traceback.print_exc()
-        board.bb_post(poster_obj=self, msg=prestige_msg, subject="Weekly Praises/Condemns", poster_name="Prestige")
+        board.bb_post(
+            poster_obj=self,
+            msg=prestige_msg,
+            subject="Weekly Praises/Condemns",
+            poster_name="Prestige",
+        )
         inform_staff("Praises/condemns tally complete. Posted on %s." % board)
 
     def record_awarded_values(self):

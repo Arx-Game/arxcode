@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0013_auto_20170605_1756'),
+        ("character", "0013_auto_20170605_1756"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='firstcontact',
-            name='viewable_by_all',
+            model_name="firstcontact",
+            name="viewable_by_all",
             field=models.BooleanField(default=False),
         ),
     ]

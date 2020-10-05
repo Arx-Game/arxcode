@@ -9,19 +9,29 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0032_auto_20180831_0557'),
-        ('exploration', '0001_initial'),
+        ("dominion", "0032_auto_20180831_0557"),
+        ("exploration", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenlayout',
-            name='haven',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='layouts', to='dominion.Shardhaven'),
+            model_name="shardhavenlayout",
+            name="haven",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="layouts",
+                to="dominion.Shardhaven",
+            ),
         ),
         migrations.AlterField(
-            model_name='shardhavenlayout',
-            name='haven_type',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='dominion.ShardhavenType'),
+            model_name="shardhavenlayout",
+            name="haven_type",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="dominion.ShardhavenType",
+            ),
         ),
     ]

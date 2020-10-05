@@ -9,28 +9,52 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0008_auto_20181105_1902'),
+        ("exploration", "0008_auto_20181105_1902"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='shardhavenlayoutexit',
-            name='room_east',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exit_west', to='exploration.ShardhavenLayoutSquare'),
+            model_name="shardhavenlayoutexit",
+            name="room_east",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="exit_west",
+                to="exploration.ShardhavenLayoutSquare",
+            ),
         ),
         migrations.AlterField(
-            model_name='shardhavenlayoutexit',
-            name='room_north',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exit_south', to='exploration.ShardhavenLayoutSquare'),
+            model_name="shardhavenlayoutexit",
+            name="room_north",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="exit_south",
+                to="exploration.ShardhavenLayoutSquare",
+            ),
         ),
         migrations.AlterField(
-            model_name='shardhavenlayoutexit',
-            name='room_south',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exit_north', to='exploration.ShardhavenLayoutSquare'),
+            model_name="shardhavenlayoutexit",
+            name="room_south",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="exit_north",
+                to="exploration.ShardhavenLayoutSquare",
+            ),
         ),
         migrations.AlterField(
-            model_name='shardhavenlayoutexit',
-            name='room_west',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='exit_east', to='exploration.ShardhavenLayoutSquare'),
+            model_name="shardhavenlayoutexit",
+            name="room_west",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="exit_east",
+                to="exploration.ShardhavenLayoutSquare",
+            ),
         ),
     ]

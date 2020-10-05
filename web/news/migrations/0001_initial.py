@@ -17,34 +17,69 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='NewsEntry',
+            name="NewsEntry",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255)),
-                ('body', models.TextField()),
-                ('date_posted', models.DateTimeField(auto_now_add=True)),
-                ('author', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='author', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("title", models.CharField(max_length=255)),
+                ("body", models.TextField()),
+                ("date_posted", models.DateTimeField(auto_now_add=True)),
+                (
+                    "author",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="author",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ('-date_posted',),
-                'verbose_name_plural': 'News entries',
+                "ordering": ("-date_posted",),
+                "verbose_name_plural": "News entries",
             },
         ),
         migrations.CreateModel(
-            name='NewsTopic',
+            name="NewsTopic",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=75, unique=True)),
-                ('description', models.TextField(blank=True)),
-                ('icon', models.ImageField(blank=True, default='newstopic_icons/default.png', help_text='Image for the news topic.', upload_to='newstopic_icons')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=75, unique=True)),
+                ("description", models.TextField(blank=True)),
+                (
+                    "icon",
+                    models.ImageField(
+                        blank=True,
+                        default="newstopic_icons/default.png",
+                        help_text="Image for the news topic.",
+                        upload_to="newstopic_icons",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name'],
+                "ordering": ["name"],
             },
         ),
         migrations.AddField(
-            model_name='newsentry',
-            name='topic',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='newstopic', to='news.NewsTopic'),
+            model_name="newsentry",
+            name="topic",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="newstopic",
+                to="news.NewsTopic",
+            ),
         ),
     ]

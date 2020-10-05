@@ -8,35 +8,35 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0039_auto_20181118_2313'),
+        ("exploration", "0039_auto_20181118_2313"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='shardhavenobstacle',
-            name='modified_diff_at',
+            model_name="shardhavenobstacle",
+            name="modified_diff_at",
         ),
         migrations.RemoveField(
-            model_name='shardhavenobstacle',
-            name='modified_diff_by',
+            model_name="shardhavenobstacle",
+            name="modified_diff_by",
         ),
         migrations.RemoveField(
-            model_name='shardhavenobstacle',
-            name='modified_diff_reason',
+            model_name="shardhavenobstacle",
+            name="modified_diff_reason",
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutexit',
-            name='modified_diff_at',
+            model_name="shardhavenlayoutexit",
+            name="modified_diff_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutexit',
-            name='modified_diff_by',
+            model_name="shardhavenlayoutexit",
+            name="modified_diff_by",
             field=models.SmallIntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='shardhavenlayoutexit',
-            name='modified_diff_reason',
+            model_name="shardhavenlayoutexit",
+            name="modified_diff_reason",
             field=models.CharField(blank=True, max_length=80, null=True),
         ),
     ]

@@ -17,11 +17,24 @@ class CombatAction(object):
     An action that a player queues in when it is not their turn,
     or automatically queued in for them if they are autoattacking.
     """
+
     ATTACK_QTYPES = ["attack", "kill", "flank"]
-    
-    def __init__(self, character, qtype="pass", targ=None, msg="", attack_penalty=0, 
-                 dmg_penalty=0, status="queued", desc="", action=None, working=None, unsafe=False,
-                 delete_on_fail=False):
+
+    def __init__(
+        self,
+        character,
+        qtype="pass",
+        targ=None,
+        msg="",
+        attack_penalty=0,
+        dmg_penalty=0,
+        status="queued",
+        desc="",
+        action=None,
+        working=None,
+        unsafe=False,
+        delete_on_fail=False,
+    ):
         self.character = character
         self.state = character.combat.state
         self.status = status
@@ -47,7 +60,7 @@ class CombatAction(object):
         if self.targ:
             text += " Target: %s" % self.targ
         return "Action: %s" % text
-        
+
     @property
     def table_str(self):
         """Gets text for our table"""
@@ -55,31 +68,41 @@ class CombatAction(object):
         if self.targ:
             text += " %s" % self.targ
         return text
-        
+
     def display_roll(self):
         """Returns a string representation of the current roll for the action"""
         if not self.roll:
             return "None"
         return self.roll.result
-        
+
     def roll_result(self):
         """Returns the result of our roll or 0 if hasn't been rolled yet. Used for summations of all rolls"""
         if not self.roll:
             return 0
         return self.roll.result
-        
+
     def do_roll(self, stat=None, skill=None, difficulty=15):
         """Performs and records a roll for this action."""
         from world.roll import Roll
-        roll = Roll(self.character, stat=stat, skill=skill, difficulty=difficulty, quiet=False,
-                    flat_modifier=self.state.special_roll_modifier)
+
+        roll = Roll(
+            self.character,
+            stat=stat,
+            skill=skill,
+            difficulty=difficulty,
+            quiet=False,
+            flat_modifier=self.state.special_roll_modifier,
+        )
         roll.roll()
         self.roll = roll
-        
+
     def do_roll_for_special_action(self):
         """Performs a roll based on the stat/skill/difficult of our special action"""
-        self.do_roll(stat=self.special_action.stat, skill=self.special_action.skill,
-                     difficulty=self.special_action.difficulty)
+        self.do_roll(
+            stat=self.special_action.stat,
+            skill=self.special_action.skill,
+            difficulty=self.special_action.difficulty,
+        )
 
 
 @total_ordering
@@ -87,6 +110,7 @@ class CombatantStateHandler(object):
     """
     Stores information about a character's participation in a fight.
     """
+
     def __init__(self, character, combat, reset=True):
         self.combat = combat
         combat.register_state(self)
@@ -101,7 +125,7 @@ class CombatantStateHandler(object):
         self.damage_modifier = 0
         self.special_roll_modifier = 0
         self.armor_pierce_modifier = 0
-        
+
         # add defenders/guards
         self.defenders = []  # can be guarded by many
         if self.character.db.defenders:
@@ -119,7 +143,9 @@ class CombatantStateHandler(object):
         # remaining attacks this round
         self.remaining_attacks = 1
         # whether or not we intentionally kill PCs
-        self.do_lethal = True if self.combat.ndb.random_deaths and self.character.is_npc else False
+        self.do_lethal = (
+            True if self.combat.ndb.random_deaths and self.character.is_npc else False
+        )
         # list of targets for each of our attacks this round
         self.targets = []
         # last person we attacked
@@ -172,29 +198,33 @@ class CombatantStateHandler(object):
 
     def __hash__(self):
         return id(self)
-    
+
     @property
     def affect_real_dmg(self):
         """Whether the combat we're in is real or fake damage"""
         return self.combat.ndb.affect_real_dmg
-        
+
     @property
     def random_deaths(self):
         """Whether the combat we're in allows for random one-shots"""
         return self.combat.ndb.random_deaths
-        
+
     @property
     def automated(self):
         """Whether this character is automated"""
         return self.automated_override or not bool(self.character.player)
-        
+
     def get_current_and_queued_actions(self):
         """Returns list of actions taken this turn, or queued"""
-        actions = [ob for ob in self.recent_actions if ob.round_completed == self.combat.ndb.rounds]
+        actions = [
+            ob
+            for ob in self.recent_actions
+            if ob.round_completed == self.combat.ndb.rounds
+        ]
         if self.queued_action:
             actions += [self.queued_action]
         return actions
-        
+
     @property
     def valid_target(self):
         """
@@ -285,17 +315,33 @@ class CombatantStateHandler(object):
                 return
         self.setup_attacks()
 
-    def set_queued_action(self, qtype=None, targ=None, msg="", attack_penalty=0, dmg_penalty=0, do_ready=True,
-                          desc=None, action=None):
+    def set_queued_action(
+        self,
+        qtype=None,
+        targ=None,
+        msg="",
+        attack_penalty=0,
+        dmg_penalty=0,
+        do_ready=True,
+        desc=None,
+        action=None,
+    ):
         """
         Setup our type of queued action, remember targets, that sorta deal.
         """
         # remember that this is someone we wanted to attack
         if targ and targ not in self.foelist:
             self.add_foe(targ)
-        self.queued_action = CombatAction(self.character, qtype=qtype, targ=targ, msg=msg, 
-                                          attack_penalty=attack_penalty, dmg_penalty=dmg_penalty, desc=desc,
-                                          action=action)
+        self.queued_action = CombatAction(
+            self.character,
+            qtype=qtype,
+            targ=targ,
+            msg=msg,
+            attack_penalty=attack_penalty,
+            dmg_penalty=dmg_penalty,
+            desc=desc,
+            action=action,
+        )
         if do_ready:
             self.character_ready()
 
@@ -374,7 +420,10 @@ class CombatantStateHandler(object):
                 if obj == targ:
                     return targ, mssg
                 targ = obj
-                mssg += "It was interfered with, forcing you to target {c%s{n instead. " % targ
+                mssg += (
+                    "It was interfered with, forcing you to target {c%s{n instead. "
+                    % targ
+                )
                 return targ, mssg
             # reduce our roll, so we have increasing probability. 100% by end
             roll -= val
@@ -386,11 +435,19 @@ class CombatantStateHandler(object):
         is false, we can only attack opponents that are conscious.
         """
         beneficiary = self.character.db.guarding
-        if beneficiary and beneficiary.combat.combat and beneficiary.combat.combat == self.combat:
+        if (
+            beneficiary
+            and beneficiary.combat.combat
+            and beneficiary.combat.combat == self.combat
+        ):
             b_state = beneficiary.combat.state
             for foe in b_state.foelist:
                 self.add_foe(foe)
-        foelist = [ob for ob in self.foelist if ob.combat.state and ob.combat.state.valid_target]
+        foelist = [
+            ob
+            for ob in self.foelist
+            if ob.combat.state and ob.combat.state.valid_target
+        ]
         if not can_kill:
             foelist = [ob for ob in foelist if ob.combat.can_fight]
         self.targets = foelist
@@ -436,7 +493,10 @@ class CombatantStateHandler(object):
     def npc_target_choice(self, targ):
         """Checks who the npc will target"""
         from .utils import npc_target_choice
-        return npc_target_choice(targ, self.targets, self.prev_targ, self.combat_handler.switch_chance)
+
+        return npc_target_choice(
+            targ, self.targets, self.prev_targ, self.combat_handler.switch_chance
+        )
 
     def do_turn_actions(self, took_actions=False):
         """
@@ -485,16 +545,22 @@ class CombatantStateHandler(object):
             if targ not in self.targets:
                 wrong_targ = targ
                 targ = choice(self.targets)
-                self.character.msg("%s is no longer a valid target to attack. Attacking %s instead." %
-                                   (wrong_targ, targ))
+                self.character.msg(
+                    "%s is no longer a valid target to attack. Attacking %s instead."
+                    % (wrong_targ, targ)
+                )
             else:
                 self.character.msg(q.msg)
             if self.automated:
                 targ = self.npc_target_choice(targ)
             # set who we attacked
             self.prev_targ = targ
-            attack = self.combat_handler.do_attack(targ, attacker=self.character, attack_penalty=q.attack_penalty,
-                                                   dmg_penalty=q.dmg_penalty)
+            attack = self.combat_handler.do_attack(
+                targ,
+                attacker=self.character,
+                attack_penalty=q.attack_penalty,
+                dmg_penalty=q.dmg_penalty,
+            )
             q.finished_attack = attack
             self.recent_actions.append(q)
             return True
@@ -507,8 +573,12 @@ class CombatantStateHandler(object):
 
     def roll_initiative(self):
         """Rolls and stores initiative for the character."""
-        self.initiative = do_dice_check(self.character, stat_list=["dexterity", "composure"], stat_keep=True,
-                                        difficulty=0)
+        self.initiative = do_dice_check(
+            self.character,
+            stat_list=["dexterity", "composure"],
+            stat_keep=True,
+            difficulty=0,
+        )
         self.tiebreaker = randint(1, 1000000000)
 
     @property
@@ -541,16 +611,22 @@ class CombatantStateHandler(object):
         if self.character.db.never_tire:
             return
         armor_penalty = 0
-        if hasattr(self.character, 'armor_penalties'):
+        if hasattr(self.character, "armor_penalties"):
             armor_penalty = self.character.armor_penalties
         penalty = armor_penalty
         self.num_actions += 1 + (0.12 * armor_penalty)
         penalty += self.num_actions + 25
         keep = self.fatigue_soak
         penalty = int(penalty)
-        penalty = penalty//2 + randint(0, penalty//2)
-        myroll = do_dice_check(self.character, stat_list=["strength", "stamina", "dexterity", "willpower"],
-                               skill="athletics", keep_override=keep, difficulty=int(penalty), divisor=2)
+        penalty = penalty // 2 + randint(0, penalty // 2)
+        myroll = do_dice_check(
+            self.character,
+            stat_list=["strength", "stamina", "dexterity", "willpower"],
+            skill="athletics",
+            keep_override=keep,
+            difficulty=int(penalty),
+            divisor=2,
+        )
         myroll += randint(0, 25)
         if myroll < 0 and self.fatigue_gained_this_turn < 1:
             self._fatigue_penalty += 0.5
@@ -580,7 +656,7 @@ class CombatantStateHandler(object):
 
     def fatigue_atk_penalty(self):
         """Penalty we currently get to attack from fatigue"""
-        fat = self.fatigue_penalty/2
+        fat = self.fatigue_penalty / 2
         if fat > 30:
             return 30
         return fat
@@ -602,7 +678,10 @@ class CombatantStateHandler(object):
             return
         if not combat:
             return
-        if protected.location != combat.ndb.combat_location or guard.location != combat.ndb.combat_location:
+        if (
+            protected.location != combat.ndb.combat_location
+            or guard.location != combat.ndb.combat_location
+        ):
             return
         if guard.db.passive_guard:
             return
@@ -632,13 +711,17 @@ class CombatantStateHandler(object):
         if guard in self.defenders:
             self.defenders.remove(guard)
             if combat:
-                combat.msg("%s is no longer protecting %s." % (guard.name, protected.name))
+                combat.msg(
+                    "%s is no longer protecting %s." % (guard.name, protected.name)
+                )
 
     def get_defenders(self):
         """
         Returns list of defenders of a target.
         """
-        return [ob for ob in self.defenders if ob.combat.state and ob.combat.state.can_act]
+        return [
+            ob for ob in self.defenders if ob.combat.state and ob.combat.state.can_act
+        ]
 
     def clear_blocked_by_list(self):
         """
@@ -661,11 +744,16 @@ class CombatantStateHandler(object):
         character = self.character
         for targ in targlist:
             if targ in self.covered_by:
-                character.msg("%s is already covering you. You cannot cover their retreat." % targ.name)
+                character.msg(
+                    "%s is already covering you. You cannot cover their retreat."
+                    % targ.name
+                )
             elif targ in self.covering_targs:
                 character.msg("You are already covering %s's retreat." % targ.name)
             elif targ == self.block_flee:
-                character.msg("Why would you cover the retreat of someone you are trying to catch?")
+                character.msg(
+                    "Why would you cover the retreat of someone you are trying to catch?"
+                )
             else:
                 self.covering_targs.append(targ)
                 targ.combat.covered_by.append(character)
@@ -709,7 +797,10 @@ class CombatantStateHandler(object):
         if not self.combat:
             return
         self.combat.remove_afk(self.character)
-        if self.combat.ndb.phase == 2 and self.combat.ndb.active_character == self.character:
+        if (
+            self.combat.ndb.phase == 2
+            and self.combat.ndb.active_character == self.character
+        ):
             if self.character in self.combat.ndb.initiative_list:
                 self.combat.ndb.initiative_list.remove(self)
             # if we have remaining attacks, add us to the end
@@ -761,17 +852,26 @@ class CombatantStateHandler(object):
             return
         if character not in combat.ndb.flee_success:
             if character in combat.ndb.fleeing:
-                character.msg("You are already attempting to flee. If no one stops you, executing "
-                              "flee next turn will let you get away.")
+                character.msg(
+                    "You are already attempting to flee. If no one stops you, executing "
+                    "flee next turn will let you get away."
+                )
                 return
             combat.ndb.fleeing.append(character)
-            character.msg("If no one is able to stop you, executing flee next turn will let you run away.")
-            character.msg("Attempting to flee does not take your action this turn. You may still take an action.")
-            combat.msg("%s begins to try to withdraw from combat." % character.name, exclude=[character])
+            character.msg(
+                "If no one is able to stop you, executing flee next turn will let you run away."
+            )
+            character.msg(
+                "Attempting to flee does not take your action this turn. You may still take an action."
+            )
+            combat.msg(
+                "%s begins to try to withdraw from combat." % character.name,
+                exclude=[character],
+            )
             self.flee_exit = exit_obj
             return
         # we can flee for the hills
-        if not exit_obj.access(character, 'traverse'):
+        if not exit_obj.access(character, "traverse"):
             character.msg("You are not permitted to flee that way.")
             return
         # this is the command that exit_obj commands use
@@ -795,7 +895,9 @@ class CombatantStateHandler(object):
             character.msg("You are already attempting to stop them from fleeing.")
             return
         if target in self.covering_targs:
-            character.msg("It makes no sense to try to stop the retreat of someone you are covering.")
+            character.msg(
+                "It makes no sense to try to stop the retreat of someone you are covering."
+            )
             return
         # check who we're currently blocking. we're switching from them
         prev_blocked = self.block_flee
@@ -810,7 +912,10 @@ class CombatantStateHandler(object):
         if character not in t_fite.blocker_list:
             # add character to list of people blocking them
             t_fite.blocker_list.append(character)
-        combat.msg("%s moves to stop %s from being able to flee." % (character.name, target.name))
+        combat.msg(
+            "%s moves to stop %s from being able to flee."
+            % (character.name, target.name)
+        )
 
     def roll_flee_success(self):
         """
@@ -821,9 +926,13 @@ class CombatantStateHandler(object):
         """
         if self.covered_by:
             return True
-        myroll = do_dice_check(self.character, stat="dexterity", skill="dodge", difficulty=0)
+        myroll = do_dice_check(
+            self.character, stat="dexterity", skill="dodge", difficulty=0
+        )
         for guy in self.blocker_list:
-            if myroll < do_dice_check(guy, stat="dexterity", skill="brawl", difficulty=0):
+            if myroll < do_dice_check(
+                guy, stat="dexterity", skill="brawl", difficulty=0
+            ):
                 return False
         return True
 
@@ -848,8 +957,10 @@ class CombatantStateHandler(object):
             combat.msg("%s removes their bid to surrender." % self.character)
             return
         if combat.register_surrendering_character(self.character):
-            combat.msg("%s is attempting to surrender. They will leave combat if not prevented "
-                       "with surrender/deny." % self.character)
+            combat.msg(
+                "%s is attempting to surrender. They will leave combat if not prevented "
+                "with surrender/deny." % self.character
+            )
         else:
             self.character.msg("You are stopped from attempting to surrender.")
 

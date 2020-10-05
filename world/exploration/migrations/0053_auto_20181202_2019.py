@@ -9,35 +9,79 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('magic', '0006_auto_20181202_2018'),
-        ('exploration', '0052_auto_20181123_1307'),
+        ("magic", "0006_auto_20181202_2018"),
+        ("exploration", "0052_auto_20181123_1307"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ShardhavenAffinityChance',
+            name="ShardhavenAffinityChance",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('weight', models.PositiveSmallIntegerField(default=10)),
-                ('affinity', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Affinity')),
-                ('haven', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='affinity_chances', to='exploration.Shardhaven')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("weight", models.PositiveSmallIntegerField(default=10)),
+                (
+                    "affinity",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="magic.Affinity",
+                    ),
+                ),
+                (
+                    "haven",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="affinity_chances",
+                        to="exploration.Shardhaven",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='ShardhavenAlignmentChance',
+            name="ShardhavenAlignmentChance",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('weight', models.PositiveSmallIntegerField(default=10)),
-                ('alignment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='magic.Alignment')),
-                ('haven', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='alignment_chances', to='exploration.Shardhaven')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("weight", models.PositiveSmallIntegerField(default=10)),
+                (
+                    "alignment",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="magic.Alignment",
+                    ),
+                ),
+                (
+                    "haven",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="alignment_chances",
+                        to="exploration.Shardhaven",
+                    ),
+                ),
             ],
         ),
         migrations.AlterUniqueTogether(
-            name='shardhavenalignmentchance',
-            unique_together=set([('haven', 'alignment')]),
+            name="shardhavenalignmentchance",
+            unique_together=set([("haven", "alignment")]),
         ),
         migrations.AlterUniqueTogether(
-            name='shardhavenaffinitychance',
-            unique_together=set([('haven', 'affinity')]),
+            name="shardhavenaffinitychance",
+            unique_together=set([("haven", "affinity")]),
         ),
     ]

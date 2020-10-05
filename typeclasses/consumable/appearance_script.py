@@ -18,6 +18,7 @@ class AppearanceScript(Script):
                 self.stop()
             except Exception:
                 import traceback
+
                 traceback.print_exc()
             return
         # we still exist, so check our scent and remaining time
@@ -39,7 +40,7 @@ class AppearanceScript(Script):
         """
         Checks if we have anything modifying our appearance. Currently this
         is just scent. More things to be added later.
-        
+
             Returns:
                 bool: Strong. Like bull. Would defy being judged by Walrii
         """

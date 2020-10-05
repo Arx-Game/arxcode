@@ -22,7 +22,13 @@ try:
 except ImportError:
     from datetime import datetime as timezone
 
-from web.helpdesk.models import Queue, Ticket, FollowUp, EscalationExclusion, TicketChange
+from web.helpdesk.models import (
+    Queue,
+    Ticket,
+    FollowUp,
+    EscalationExclusion,
+    TicketChange,
+)
 from web.helpdesk.lib import send_templated_mail, safe_template_context
 
 
@@ -32,27 +38,28 @@ class Command(BaseCommand):
 
         self.option_list += (
             make_option(
-                '--queues',
-                help='Queues to include (default: all). Use queue slugs'),
+                "--queues", help="Queues to include (default: all). Use queue slugs"
+            ),
             make_option(
-                '--verboseescalation',
-                action='store_true',
+                "--verboseescalation",
+                action="store_true",
                 default=False,
-                help='Display a list of dates excluded'),
-            )
+                help="Display a list of dates excluded",
+            ),
+        )
 
     def handle(self, *args, **options):
         verbose = False
         queue_slugs = None
         queues = []
 
-        if options['verboseescalation']:
+        if options["verboseescalation"]:
             verbose = True
-        if options['queues']:
-            queue_slugs = options['queues']
+        if options["queues"]:
+            queue_slugs = options["queues"]
 
         if queue_slugs is not None:
-            queue_set = queue_slugs.split(',')
+            queue_set = queue_slugs.split(",")
             for queue in queue_set:
                 try:
                     q = Queue.objects.get(slug__exact=queue)
@@ -65,7 +72,9 @@ class Command(BaseCommand):
 
 def escalate_tickets(queues, verbose):
     """ Only include queues with escalation configured """
-    queryset = Queue.objects.filter(escalate_days__isnull=False).exclude(escalate_days=0)
+    queryset = Queue.objects.filter(escalate_days__isnull=False).exclude(
+        escalate_days=0
+    )
     if queues:
         queryset = queryset.filter(slug__in=queues)
 
@@ -81,24 +90,22 @@ def escalate_tickets(queues, verbose):
                 days += 1
             workdate = workdate + timedelta(days=1)
 
-
         req_last_escl_date = date.today() - timedelta(days=days)
 
         if verbose:
             print("Processing: %s" % q)
 
-        for t in q.ticket_set.filter(
-                  Q(status=Ticket.OPEN_STATUS)
-                | Q(status=Ticket.REOPENED_STATUS)
-            ).exclude(
-                priority=1
-            ).filter(
-                  Q(on_hold__isnull=True)
-                | Q(on_hold=False)
-            ).filter(
-                  Q(last_escalation__lte=req_last_escl_date)
+        for t in (
+            q.ticket_set.filter(
+                Q(status=Ticket.OPEN_STATUS) | Q(status=Ticket.REOPENED_STATUS)
+            )
+            .exclude(priority=1)
+            .filter(Q(on_hold__isnull=True) | Q(on_hold=False))
+            .filter(
+                Q(last_escalation__lte=req_last_escl_date)
                 | Q(last_escalation__isnull=True, created__lte=req_last_escl_date)
-            ):
+            )
+        ):
 
             t.last_escalation = timezone.now()
             t.priority -= 1
@@ -108,52 +115,51 @@ def escalate_tickets(queues, verbose):
 
             if t.submitter_email:
                 send_templated_mail(
-                    'escalated_submitter',
+                    "escalated_submitter",
                     context,
                     recipients=t.submitter_email,
                     sender=t.queue.from_address,
                     fail_silently=True,
-                    )
+                )
 
             if t.queue.updated_ticket_cc:
                 send_templated_mail(
-                    'escalated_cc',
+                    "escalated_cc",
                     context,
                     recipients=t.queue.updated_ticket_cc,
                     sender=t.queue.from_address,
                     fail_silently=True,
-                    )
+                )
 
             if t.assigned_to:
                 send_templated_mail(
-                    'escalated_owner',
+                    "escalated_owner",
                     context,
                     recipients=t.assigned_to.email,
                     sender=t.queue.from_address,
                     fail_silently=True,
-                    )
+                )
 
             if verbose:
-                print("  - Esclating %s from %s>%s" % (
-                    t.ticket,
-                    t.priority+1,
-                    t.priority
-                    ))
+                print(
+                    "  - Esclating %s from %s>%s"
+                    % (t.ticket, t.priority + 1, t.priority)
+                )
 
             f = FollowUp(
-                ticket = t,
-                title = 'Ticket Escalated',
+                ticket=t,
+                title="Ticket Escalated",
                 date=timezone.now(),
                 public=True,
-                comment=_('Ticket escalated after %s days' % q.escalate_days),
+                comment=_("Ticket escalated after %s days" % q.escalate_days),
             )
             f.save()
 
             tc = TicketChange(
-                followup = f,
-                field = _('Priority'),
-                old_value = t.priority + 1,
-                new_value = t.priority,
+                followup=f,
+                field=_("Priority"),
+                old_value=t.priority + 1,
+                new_value=t.priority,
             )
             tc.save()
 
@@ -164,9 +170,9 @@ def usage():
     print(" --verboseescalation: Display a list of dates excluded")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], ['queues=', 'verboseescalation'])
+        opts, args = getopt.getopt(sys.argv[1:], ["queues=", "verboseescalation"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -176,13 +182,13 @@ if __name__ == '__main__':
     queues = []
 
     for o, a in opts:
-        if o == '--verboseescalation':
+        if o == "--verboseescalation":
             verbose = True
-        if o == '--queues':
+        if o == "--queues":
             queue_slugs = a
 
     if queue_slugs is not None:
-        queue_set = queue_slugs.split(',')
+        queue_set = queue_slugs.split(",")
         for queue in queue_set:
             try:
                 q = Queue.objects.get(slug__exact=queue)

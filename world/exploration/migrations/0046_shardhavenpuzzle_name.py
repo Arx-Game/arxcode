@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0045_auto_20181122_2201'),
+        ("exploration", "0045_auto_20181122_2201"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenpuzzle',
-            name='name',
+            model_name="shardhavenpuzzle",
+            name="name",
             field=models.CharField(blank=True, max_length=40, null=True),
         ),
     ]

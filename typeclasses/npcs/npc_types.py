@@ -1,6 +1,12 @@
 import copy
-from world.stats_and_skills import (PHYSICAL_STATS, MENTAL_STATS, SOCIAL_STATS,
-                                    COMBAT_SKILLS, GENERAL_SKILLS, SOCIAL_SKILLS)
+from world.stats_and_skills import (
+    PHYSICAL_STATS,
+    MENTAL_STATS,
+    SOCIAL_STATS,
+    COMBAT_SKILLS,
+    GENERAL_SKILLS,
+    SOCIAL_SKILLS,
+)
 
 GUARD = 0
 THUG = 1
@@ -17,43 +23,83 @@ npc_templates = {
     "champion": CHAMPION,
     "assistant": ASSISTANT,
     "animal": ANIMAL,
-    "small animal": SMALL_ANIMAL
-    }
+    "small animal": SMALL_ANIMAL,
+}
 
 COMBAT_TYPES = (GUARD, THUG, CHAMPION, ANIMAL)
 
 guard_stats = {
-    'strength': 3, 'stamina': 3, 'dexterity': 3,
-    'charm': 1, 'command': 1, 'composure': 1,
-    'intellect': 2, 'perception': 2, 'wits': 2,
-    'mana': 1, 'luck': 1, 'willpower': 1,
-    }
+    "strength": 3,
+    "stamina": 3,
+    "dexterity": 3,
+    "charm": 1,
+    "command": 1,
+    "composure": 1,
+    "intellect": 2,
+    "perception": 2,
+    "wits": 2,
+    "mana": 1,
+    "luck": 1,
+    "willpower": 1,
+}
 spy_stats = {
-    'strength': 1, 'stamina': 1, 'dexterity': 1,
-    'charm': 3, 'command': 3, 'composure': 3,
-    'intellect': 2, 'perception': 2, 'wits': 2,
-    'mana': 1, 'luck': 1, 'willpower': 1,
-    }
+    "strength": 1,
+    "stamina": 1,
+    "dexterity": 1,
+    "charm": 3,
+    "command": 3,
+    "composure": 3,
+    "intellect": 2,
+    "perception": 2,
+    "wits": 2,
+    "mana": 1,
+    "luck": 1,
+    "willpower": 1,
+}
 assistant_stats = {
-    'strength': 1, 'stamina': 1, 'dexterity': 1,
-    'charm': 2, 'command': 2, 'composure': 2,
-    'intellect': 3, 'perception': 3, 'wits': 3,
-    'mana': 1, 'luck': 1, 'willpower': 1,
-    }
+    "strength": 1,
+    "stamina": 1,
+    "dexterity": 1,
+    "charm": 2,
+    "command": 2,
+    "composure": 2,
+    "intellect": 3,
+    "perception": 3,
+    "wits": 3,
+    "mana": 1,
+    "luck": 1,
+    "willpower": 1,
+}
 animal_stats = {
-    'strength': 3, 'stamina': 3, 'dexterity': 3,
-    'charm': 1, 'command': 1, 'composure': 1,
-    'intellect': 1, 'perception': 3, 'wits': 2,
-    'mana': 1, 'luck': 1, 'willpower': 1,
-    }
+    "strength": 3,
+    "stamina": 3,
+    "dexterity": 3,
+    "charm": 1,
+    "command": 1,
+    "composure": 1,
+    "intellect": 1,
+    "perception": 3,
+    "wits": 2,
+    "mana": 1,
+    "luck": 1,
+    "willpower": 1,
+}
 small_animal_stats = animal_stats.copy()
-small_animal_stats.update({'strength': 1, 'stamina': 1})
+small_animal_stats.update({"strength": 1, "stamina": 1})
 unknown_stats = {
-    'strength': 2, 'stamina': 2, 'dexterity': 2,
-    'charm': 1, 'command': 1, 'composure': 1,
-    'intellect': 2, 'perception': 2, 'wits': 2,
-    'mana': 1, 'luck': 1, 'willpower': 1,
-    }
+    "strength": 2,
+    "stamina": 2,
+    "dexterity": 2,
+    "charm": 1,
+    "command": 1,
+    "composure": 1,
+    "intellect": 2,
+    "perception": 2,
+    "wits": 2,
+    "mana": 1,
+    "luck": 1,
+    "willpower": 1,
+}
 
 npc_stats = {
     GUARD: guard_stats,
@@ -63,7 +109,7 @@ npc_stats = {
     CHAMPION: guard_stats,
     ANIMAL: animal_stats,
     SMALL_ANIMAL: small_animal_stats,
-    }
+}
 primary_stats = {
     GUARD: PHYSICAL_STATS,
     THUG: PHYSICAL_STATS,
@@ -72,7 +118,7 @@ primary_stats = {
     CHAMPION: PHYSICAL_STATS,
     ANIMAL: PHYSICAL_STATS,
     SMALL_ANIMAL: PHYSICAL_STATS,
-    }
+}
 
 guard_skills = dict([(key, 0) for key in COMBAT_SKILLS])
 guard_skills.update({"riding": 0, "leadership": 0, "war": 0})
@@ -80,8 +126,15 @@ spy_skills = dict([(key, 0) for key in SOCIAL_SKILLS])
 spy_skills.update({"streetwise": 0, "investigation": 0})
 assistant_skills = dict([(key, 0) for key in GENERAL_SKILLS])
 assistant_skills.update({"etiquette": 0, "diplomacy": 0})
-animal_skills = {"athletics": 1, "brawl": 1, "dodge": 1, "stealth": 0,
-                 "survival": 2, "legerdemain": 0, "performance": 0}
+animal_skills = {
+    "athletics": 1,
+    "brawl": 1,
+    "dodge": 1,
+    "stealth": 0,
+    "survival": 2,
+    "legerdemain": 0,
+    "performance": 0,
+}
 small_animal_skills = animal_skills.copy()
 small_animal_skills.update({"stealth": 1, "brawl": 0})
 
@@ -93,40 +146,40 @@ npc_skills = {
     CHAMPION: guard_skills,
     ANIMAL: animal_skills,
     SMALL_ANIMAL: small_animal_skills,
-    }
+}
 
 guard_weapon = {
-    'attack_skill': 'medium wpn',
-    'attack_stat': 'dexterity',
-    'damage_stat': 'strength',
-    'weapon_damage': 1,
-    'attack_type': 'melee',
-    'can_be_parried': True,
-    'can_be_blocked': True,
-    'can_be_dodged': True,
-    'can_parry': True,
-    'can_riposte': True,
-    'reach': 1,
-    'minimum_range': 0,
-    }
+    "attack_skill": "medium wpn",
+    "attack_stat": "dexterity",
+    "damage_stat": "strength",
+    "weapon_damage": 1,
+    "attack_type": "melee",
+    "can_be_parried": True,
+    "can_be_blocked": True,
+    "can_be_dodged": True,
+    "can_parry": True,
+    "can_riposte": True,
+    "reach": 1,
+    "minimum_range": 0,
+}
 
 animal_weapon = {
-    'attack_skill': 'brawl',
-    'attack_stat': 'dexterity',
-    'damage_stat': 'strength',
-    'weapon_damage': 2,
-    'attack_type': 'melee',
-    'can_be_parried': True,
-    'can_be_blocked': True,
-    'can_be_dodged': True,
-    'can_parry': True,
-    'can_riposte': True,
-    'reach': 1,
-    'minimum_range': 0,
-    }
+    "attack_skill": "brawl",
+    "attack_stat": "dexterity",
+    "damage_stat": "strength",
+    "weapon_damage": 2,
+    "attack_type": "melee",
+    "can_be_parried": True,
+    "can_be_blocked": True,
+    "can_be_dodged": True,
+    "can_parry": True,
+    "can_riposte": True,
+    "reach": 1,
+    "minimum_range": 0,
+}
 
 small_animal_weapon = animal_weapon.copy()
-small_animal_weapon.update({'weapon_damage': 1})
+small_animal_weapon.update({"weapon_damage": 1})
 
 npc_weapons = {
     GUARD: guard_weapon,
@@ -136,19 +189,19 @@ npc_weapons = {
     CHAMPION: guard_weapon,
     ANIMAL: animal_weapon,
     SMALL_ANIMAL: small_animal_weapon,
-    }
+}
 
 # all armor values are (base, scaling)
 guard_armor = (0, 10)
 npc_armor = {
     GUARD: guard_armor,
     THUG: guard_armor,
-    }
+}
 guard_hp = (0, 10)
 npc_hp = {
     GUARD: guard_hp,
     THUG: guard_hp,
-    }
+}
 
 
 npc_descs = {
@@ -158,14 +211,14 @@ npc_descs = {
     ASSISTANT: "A loyal assistant.",
     CHAMPION: "A loyal champion.",
     ANIMAL: "A faithful animal companion.",
-    SMALL_ANIMAL: "A small faithful animal companion."
-    }
+    SMALL_ANIMAL: "A small faithful animal companion.",
+}
 
 npc_plural_names = {
     GUARD: "guards",
     THUG: "thugs",
     SPY: "spies",
-    }
+}
 
 npc_singular_names = {
     GUARD: "guard",
@@ -175,7 +228,7 @@ npc_singular_names = {
     ASSISTANT: "assistant",
     ANIMAL: "animal",
     SMALL_ANIMAL: "small animal",
-    }
+}
 
 
 def get_npc_stats(n_type):
@@ -211,7 +264,7 @@ def get_npc_type(name):
 
 def get_npc_weapon(n_type, quality):
     weapon = copy.deepcopy(npc_weapons.get(n_type, guard_weapon))
-    weapon['weapon_damage'] += quality
+    weapon["weapon_damage"] += quality
     return weapon
 
 
@@ -248,10 +301,16 @@ def generate_default_name_and_desc(n_type, quality, org):
         desc = "%s who have seen combat before." % tname.capitalize()
     if quality == 4:
         name += " skilled veteran %s" % tname
-        desc = "%s who have seen combat, and proven to be very good at it." % tname.capitalize()
+        desc = (
+            "%s who have seen combat, and proven to be very good at it."
+            % tname.capitalize()
+        )
     if quality == 5:
         name += " elite %s" % tname
-        desc = "Highly skilled %s. Most probably would have name-recognition for their skill." % tname
+        desc = (
+            "Highly skilled %s. Most probably would have name-recognition for their skill."
+            % tname
+        )
     return name, desc
 
 
@@ -269,14 +328,15 @@ def check_passive_guard(atype):
 
 
 INNATE_ABILITIES = {
-    ASSISTANT: ('investigation_assistant', 'discreet_messenger', 'custom_messenger'),
-    SPY: ('investigation_assistant', 'custom_messenger', 'discreet_messenger'),
-    SMALL_ANIMAL: ('custom_messenger',),
+    ASSISTANT: ("investigation_assistant", "discreet_messenger", "custom_messenger"),
+    SPY: ("investigation_assistant", "custom_messenger", "discreet_messenger"),
+    SMALL_ANIMAL: ("custom_messenger",),
 }
 
 ABILITY_COSTS = {
-    'investigation_assistant': (150, 'social'), 'discreet_messenger': (25, 'social'),
-    'custom_messenger': (25, 'social'),
+    "investigation_assistant": (150, "social"),
+    "discreet_messenger": (25, "social"),
+    "custom_messenger": (25, "social"),
 }
 
 

@@ -21,6 +21,7 @@ _User = None
 # bboard manager
 #
 
+
 class BBoardManager(models.Manager):
     """
     This BBoardManager implements methods for searching
@@ -39,6 +40,7 @@ class BBoardManager(models.Manager):
     bboard_search
 
     """
+
     @returns_typeclass_list
     def get_all_bboards(self):
         """
@@ -56,8 +58,9 @@ class BBoardManager(models.Manager):
         bboards = self.filter(db_key__iexact=bboardkey)
         if not bboards:
             # also check aliases
-            bboards = [bboard for bboard in self.all()
-                        if bboardkey in bboard.aliases.all()]
+            bboards = [
+                bboard for bboard in self.all() if bboardkey in bboard.aliases.all()
+            ]
         if bboards:
             return bboards[0]
         return None
@@ -74,7 +77,6 @@ class BBoardManager(models.Manager):
             bboard.delete()
         return None
 
- 
     @returns_typeclass_list
     def bboard_search(self, ostring):
         """
@@ -83,10 +85,11 @@ class BBoardManager(models.Manager):
         ostring - the key or database id of the bboard.
         """
         bboards = []
-        if not ostring: return bboards
+        if not ostring:
+            return bboards
         try:
             # try an id match first
-            dbref = int(ostring.strip('#'))
+            dbref = int(ostring.strip("#"))
             bboards = self.filter(id=dbref)
         except Exception:
             pass
@@ -95,8 +98,9 @@ class BBoardManager(models.Manager):
             bboards = self.filter(db_key__iexact=ostring)
         if not bboards:
             # still no match. Search by alias.
-            bboards = [bboard for bboard in self.all()
-                        if ostring.lower() in [a.lower
-                            for a in bboard.aliases.all()]]
+            bboards = [
+                bboard
+                for bboard in self.all()
+                if ostring.lower() in [a.lower for a in bboard.aliases.all()]
+            ]
         return bboards
-

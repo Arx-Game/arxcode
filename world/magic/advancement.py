@@ -30,28 +30,41 @@ class MagicAdvancementScript(Script, RunDateMixin):
     # noinspection PyMethodMayBeStatic
     def advance_weekly_resonance(self, practitioner):
 
-        mana_base = round_up(practitioner.character.db.mana / 2.)
-        resonance_base = int((practitioner.potential ** (1 / 10.))) ** 6
-        resonance_weekly = (resonance_base * mana_base) / 4.
+        mana_base = round_up(practitioner.character.db.mana / 2.0)
+        resonance_base = int((practitioner.potential ** (1 / 10.0))) ** 6
+        resonance_weekly = (resonance_base * mana_base) / 4.0
 
-        new_resonance = min(practitioner.potential, practitioner.unspent_resonance + resonance_weekly)
+        new_resonance = min(
+            practitioner.potential, practitioner.unspent_resonance + resonance_weekly
+        )
         practitioner.unspent_resonance = new_resonance
         practitioner.save()
         if _MAGIC_LOG_ENABLED:
             logger.log_info(
-                "Magic: {} gained {} unspent resonance, now {} of {} max".format(str(practitioner), new_resonance,
-                                                                                 resonance_weekly,
-                                                                                 practitioner.potential))
+                "Magic: {} gained {} unspent resonance, now {} of {} max".format(
+                    str(practitioner),
+                    new_resonance,
+                    resonance_weekly,
+                    practitioner.potential,
+                )
+            )
 
-        return {'name': str(practitioner), 'gain': resonance_weekly, 'resonance': new_resonance,
-                'potential': practitioner.potential}
+        return {
+            "name": str(practitioner),
+            "gain": resonance_weekly,
+            "resonance": new_resonance,
+            "potential": practitioner.potential,
+        }
 
     # noinspection PyMethodMayBeStatic
     def advance_weekly_practice(self, practitioner):
 
-        potential_factor = int(practitioner.potential ** (1 / 10.))
+        potential_factor = int(practitioner.potential ** (1 / 10.0))
 
-        max_spend = min(practitioner.potential / ((potential_factor ** 2) * 10), practitioner.unspent_resonance)
+        max_spend = min(
+            practitioner.potential / ((potential_factor ** 2) * 10),
+            practitioner.unspent_resonance,
+        )
         nodes = practitioner.node_resonances.filter(practicing=True)
         if nodes.count() == 0:
             return None
@@ -60,7 +73,7 @@ class MagicAdvancementScript(Script, RunDateMixin):
         nodenames = []
 
         # Get a floating point value of how much resonance to add to each node
-        spend_each = max_spend / (nodes.count() * 1.)
+        spend_each = max_spend / (nodes.count() * 1.0)
         for node in nodes.all():
             nodenames.append(node.node.name)
             add_node = spend_each
@@ -69,20 +82,25 @@ class MagicAdvancementScript(Script, RunDateMixin):
             if node.teaching_multiplier:
                 add_node *= node.teaching_multiplier
                 teacher = node.taught_by
-                extra = "(taught by {} for bonus of {}x)".format(str(node.taught_by), node.teaching_multiplier)
+                extra = "(taught by {} for bonus of {}x)".format(
+                    str(node.taught_by), node.teaching_multiplier
+                )
 
             if _MAGIC_LOG_ENABLED:
-                logger.log_info("Magic: {} spent {} resonance on node {} for gain of {} {}".
-                                format(str(practitioner), spend_each, node.node.name, add_node, extra))
+                logger.log_info(
+                    "Magic: {} spent {} resonance on node {} for gain of {} {}".format(
+                        str(practitioner), spend_each, node.node.name, add_node, extra
+                    )
+                )
 
             node.raw_resonance = node.raw_resonance + add_node
 
             noderesults.append(
                 {
-                    'node': node.node.name,
-                    'gain': add_node,
-                    'resonance': node.raw_resonance,
-                    'teacher': teacher,
+                    "node": node.node.name,
+                    "gain": add_node,
+                    "resonance": node.raw_resonance,
+                    "teacher": teacher,
                 }
             )
 
@@ -91,18 +109,19 @@ class MagicAdvancementScript(Script, RunDateMixin):
             node.taught_on = None
             node.save()
 
-        self.inform_creator.add_player_inform(player=practitioner.character.dompc.player,
-                                              msg="You practiced {} this week.".format(commafy(nodenames)),
-                                              category="Magic")
+        self.inform_creator.add_player_inform(
+            player=practitioner.character.dompc.player,
+            msg="You practiced {} this week.".format(commafy(nodenames)),
+            category="Magic",
+        )
 
-        return {
-            'name': str(practitioner),
-            'practices': noderesults
-        }
+        return {"name": str(practitioner), "practices": noderesults}
 
     # noinspection PyMethodMayBeStatic
     def get_active_practitioners(self):
-        return Practitioner.objects.filter(character__roster__roster__name__in=['Active', 'Available', 'Unavailable'])
+        return Practitioner.objects.filter(
+            character__roster__roster__name__in=["Active", "Available", "Unavailable"]
+        )
 
     def weekly_resonance_update(self):
 
@@ -114,11 +133,24 @@ class MagicAdvancementScript(Script, RunDateMixin):
                 results.append(result)
 
         from typeclasses.bulletin_board.bboard import BBoard
+
         board = BBoard.objects.get(db_key__iexact="staff")
-        table = EvTable("{wName{n", "{wGain{n", "{wUnspent{n", "{wMax{n", border="cells", width=78)
+        table = EvTable(
+            "{wName{n", "{wGain{n", "{wUnspent{n", "{wMax{n", border="cells", width=78
+        )
         for result in results:
-            table.add_row(result['name'], result['gain'], "%.2f" % result['resonance'], result['potential'])
-        board.bb_post(poster_obj=self, msg=str(table), subject="Magic Resonance Gains", poster_name="Magic System")
+            table.add_row(
+                result["name"],
+                result["gain"],
+                "%.2f" % result["resonance"],
+                result["potential"],
+            )
+        board.bb_post(
+            poster_obj=self,
+            msg=str(table),
+            subject="Magic Resonance Gains",
+            poster_name="Magic System",
+        )
         inform_staff("List of magic resonance gains posted.")
 
     def weekly_practice_update(self):
@@ -130,21 +162,32 @@ class MagicAdvancementScript(Script, RunDateMixin):
                 results.append(result)
 
         from typeclasses.bulletin_board.bboard import BBoard
+
         board = BBoard.objects.get(db_key__iexact="staff")
         table = EvTable(border="cells", width=78)
-        table.add_column("|wName|n", width=20, valign='t')
-        table.add_column("|wPractices|n", valign='t')
+        table.add_column("|wName|n", width=20, valign="t")
+        table.add_column("|wPractices|n", valign="t")
         for result in results:
             subtable = EvTable(border=None)
-            for node in result['practices']:
-                subtable.add_row(node['node'], "%.2f gain" % node['gain'], "%.2f total" % node['resonance'],
-                                 node['teacher'])
-            table.add_row(result['name'], str(subtable))
+            for node in result["practices"]:
+                subtable.add_row(
+                    node["node"],
+                    "%.2f gain" % node["gain"],
+                    "%.2f total" % node["resonance"],
+                    node["teacher"],
+                )
+            table.add_row(result["name"], str(subtable))
 
-        SkillNodeResonance.objects.filter(teaching_multiplier__isnull=False).update(teaching_multiplier=None,
-                                                                                    taught_by=None, taught_on=None)
+        SkillNodeResonance.objects.filter(teaching_multiplier__isnull=False).update(
+            teaching_multiplier=None, taught_by=None, taught_on=None
+        )
 
-        board.bb_post(poster_obj=self, msg=str(table), subject="Magic Practice Results", poster_name="Magic System")
+        board.bb_post(
+            poster_obj=self,
+            msg=str(table),
+            subject="Magic Practice Results",
+            poster_name="Magic System",
+        )
         inform_staff("List of magic practice results posted.")
 
     def perform_weekly_magic(self):
@@ -163,6 +206,7 @@ class MagicAdvancementScript(Script, RunDateMixin):
     @property
     def inform_creator(self):
         from typeclasses.scripts.weekly_events import BulkInformCreator
+
         """Returns a bulk inform creator we'll use for gathering informs from the weekly update"""
         if self.ndb.inform_creator is None:
             self.ndb.inform_creator = BulkInformCreator(week=self.db.week)
@@ -189,7 +233,7 @@ class MagicAdvancementScript(Script, RunDateMixin):
 
 def magic_advancement_script():
     try:
-        return ScriptDB.objects.get(db_key='Magic Weekly')
+        return ScriptDB.objects.get(db_key="Magic Weekly")
     except ScriptDB.DoesNotExist:
         return None
 
@@ -199,7 +243,7 @@ def init_magic_advancement():
     This is called on startup, when you want to enable the magic system.
     """
     try:
-        ScriptDB.objects.get(db_key='Magic Weekly')
+        ScriptDB.objects.get(db_key="Magic Weekly")
     except ScriptDB.DoesNotExist:
         magic_system = create.create_script(MagicAdvancementScript)
         magic_system.start()

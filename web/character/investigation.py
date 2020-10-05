@@ -13,8 +13,17 @@ from commands.base import ArxCommand, ArxPlayerCommand
 from commands.mixins import FormCommandMixin
 from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
-from web.character.models import (Investigation, Clue, InvestigationAssistant, ClueDiscovery, Theory,
-                                  RevelationDiscovery, Revelation, get_random_clue, SearchTag)
+from web.character.models import (
+    Investigation,
+    Clue,
+    InvestigationAssistant,
+    ClueDiscovery,
+    Theory,
+    RevelationDiscovery,
+    Revelation,
+    get_random_clue,
+    SearchTag,
+)
 from web.character.forms import ClueCreateForm, RevelationCreateForm
 from world.dominion.models import Agent
 from world.dominion.plots.models import Plot
@@ -25,9 +34,20 @@ class InvestigationFormCommand(ArxCommand):
     """
     ABC for creating commands based on investigations that process a form.
     """
+
     help_entry_tags = ["investigations"]
     form_verb = "Creating"
-    form_switches = ("topic", "target", "tag", "tags", "story", "stat", "skill", "cancel", "finish")
+    form_switches = (
+        "topic",
+        "target",
+        "tag",
+        "tags",
+        "story",
+        "stat",
+        "skill",
+        "cancel",
+        "finish",
+    )
     ap_cost = 10
 
     @property
@@ -71,14 +91,20 @@ class InvestigationFormCommand(ArxCommand):
         if not form:
             return
         story, stat, skill = form[1], form[2], form[3]
-        msg = "|w%s an investigation:|n %s" % (self.form_verb, self.topic_string(color=True))
+        msg = "|w%s an investigation:|n %s" % (
+            self.form_verb,
+            self.topic_string(color=True),
+        )
         msg += self.display_target_string()
         msg += "\n%s" % (story or "Story unfinished.")
         msg += "\n|wStat:|n %s - |wSkill:|n %s" % (stat or "???", skill or "???")
         self.msg(msg)
 
     def display_target_string(self):
-        return "\n|w%s:|n %s" % (self.target_type.capitalize(), self.investigation_form[0])
+        return "\n|w%s:|n %s" % (
+            self.target_type.capitalize(),
+            self.investigation_form[0],
+        )
 
     def topic_string(self, color=False):
         """Joins tag-requirements and tag-omissions into a string"""
@@ -132,11 +158,17 @@ class InvestigationFormCommand(ArxCommand):
         amt = dompc.assets.social
         amt -= self.start_cost
         if amt < 0:
-            self.msg("It costs %s social resources to start a new investigation." % self.start_cost)
+            self.msg(
+                "It costs %s social resources to start a new investigation."
+                % self.start_cost
+            )
             return False
         if self.need_new_clue_written and not self.offer_placeholder_clue():
             return False
-        self.msg("You spend %s social resources to start a new investigation." % self.start_cost)
+        self.msg(
+            "You spend %s social resources to start a new investigation."
+            % self.start_cost
+        )
         dompc.assets.social = amt
         dompc.assets.save()
         return True
@@ -150,9 +182,12 @@ class InvestigationFormCommand(ArxCommand):
         """
         ap = self.new_clue_cost
         topic = self.topic_string(color=True)
-        prompt = ("An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. "
-                 "It will require a great deal of energy (|c%s|n action points) to investigate. "
-                 "Your tag requirements: %s\n|yRepeat the command to confirm and continue.|n" % (ap, topic))
+        prompt = (
+            "An opportunity has arisen to pursue knowledge previously unseen by mortal eyes. "
+            "It will require a great deal of energy (|c%s|n action points) to investigate. "
+            "Your tag requirements: %s\n|yRepeat the command to confirm and continue.|n"
+            % (ap, topic)
+        )
         if not self.confirm_command("new_clue_write", topic, prompt):
             return False
         if not self.caller.player.pay_action_points(ap):
@@ -173,7 +208,12 @@ class InvestigationFormCommand(ArxCommand):
         Create a new object from our related manager with the form we were given
         from finished form, with appropriate kwargs
         """
-        kwargs = {self.target_type: form[0], "actions": form[1], "stat_used": form[2], "skill_used": form[3]}
+        kwargs = {
+            self.target_type: form[0],
+            "actions": form[1],
+            "stat_used": form[2],
+            "skill_used": form[3],
+        }
         return self.related_manager.create(**kwargs)
 
     def do_finish(self):
@@ -199,14 +239,21 @@ class InvestigationFormCommand(ArxCommand):
             source_clue = form[6]
             clue_name = "PLACEHOLDER for Investigation #%s" % inv_ob.id
             if source_clue:
-                gm_notes = "Trying to find things related to Clue #%s: %s" % (source_clue.id, source_clue)
+                gm_notes = "Trying to find things related to Clue #%s: %s" % (
+                    source_clue.id,
+                    source_clue,
+                )
                 search_tags = list(source_clue.search_tags.all())
             else:
                 search_tags, omit_tags = form[5]
                 gm_notes = "Added tags: %s\n" % list_to_string(search_tags)
                 if omit_tags:
-                    gm_notes += "Exclude tags: %s" % list_to_string([("-%s" % ob) for ob in omit_tags])
-            clue = Clue.objects.create(name=clue_name, gm_notes=gm_notes, allow_investigation=True, rating=30)
+                    gm_notes += "Exclude tags: %s" % list_to_string(
+                        [("-%s" % ob) for ob in omit_tags]
+                    )
+            clue = Clue.objects.create(
+                name=clue_name, gm_notes=gm_notes, allow_investigation=True, rating=30
+            )
             for tag in search_tags:
                 clue.search_tags.add(tag)
             inv_ob.clue_target = clue
@@ -220,7 +267,7 @@ class InvestigationFormCommand(ArxCommand):
 
     @property
     def initial_form_values(self):
-        return ['', '', '', '', '', [], None]
+        return ["", "", "", "", "", [], None]
 
     # noinspection PyAttributeOutsideInit
     def create_form(self):
@@ -291,6 +338,7 @@ class InvestigationFormCommand(ArxCommand):
         """Returns True if they have enough time left to create/modify an investigation, False otherwise."""
         from evennia.scripts.models import ScriptDB
         from datetime import timedelta
+
         script = ScriptDB.objects.get(db_key="Weekly Update")
         day = timedelta(hours=24, minutes=5)
         if script.time_remaining < day:
@@ -345,12 +393,21 @@ class CmdAssistInvestigation(InvestigationFormCommand):
     use the /retainer switch and supply their number. Entering an invalid
     retainer ID will switch back to you as being the investigation's helper.
     """
+
     key = "@helpinvestigate"
     aliases = ["+helpinvestigate", "helpinvestigate"]
     locks = "cmd:all()"
     help_category = "Investigation"
     form_verb = "Helping"
-    change_switches = ("changestory", "changestat", "changeskill", "actionpoints", "silver", "resource", "resources")
+    change_switches = (
+        "changestory",
+        "changestat",
+        "changeskill",
+        "actionpoints",
+        "silver",
+        "resource",
+        "resources",
+    )
 
     def pay_costs(self):
         """No resource cost for helping investigations"""
@@ -366,7 +423,7 @@ class CmdAssistInvestigation(InvestigationFormCommand):
 
     @property
     def initial_form_values(self):
-        return ['', '', '', '', self.caller, [], None]
+        return ["", "", "", "", self.caller, [], None]
 
     @property
     def helper(self):
@@ -383,17 +440,23 @@ class CmdAssistInvestigation(InvestigationFormCommand):
     def check_eligibility(self, helper):
         helping = helper.assisted_investigations.filter(currently_helping=True)
         if helping:
-            self.msg("%s is already helping an investigation: %s" % (helper, ", ".join(str(ob.investigation.id)
-                                                                                       for ob in helping)))
+            self.msg(
+                "%s is already helping an investigation: %s"
+                % (helper, ", ".join(str(ob.investigation.id) for ob in helping))
+            )
             return False
         formid = self.investigation_form[0]
         if helper == self.caller:
             try:
                 if self.caller.roster.investigations.filter(active=True):
-                    self.msg("You cannot assist an investigation while having an active investigation.")
+                    self.msg(
+                        "You cannot assist an investigation while having an active investigation."
+                    )
                     return False
                 if self.caller.roster.investigations.get(id=formid):
-                    self.msg("You cannot assist one of your own investigations. You must use a retainer.")
+                    self.msg(
+                        "You cannot assist one of your own investigations. You must use a retainer."
+                    )
                     return False
             except (TypeError, ValueError, AttributeError, Investigation.DoesNotExist):
                 pass
@@ -420,10 +483,16 @@ class CmdAssistInvestigation(InvestigationFormCommand):
     def disp_invites(self):
         invites = self.caller.db.investigation_invitations or []
         # check which are valid
-        investigations = Investigation.objects.filter(id__in=invites, ongoing=True, active=True)
-        investigations = investigations | self.caller.roster.investigations.filter(ongoing=True)
-        self.msg("You are permitted to help the following investigations:\n%s" % "\n".join(
-            "  %s (ID: %s)" % (str(ob), ob.id) for ob in investigations))
+        investigations = Investigation.objects.filter(
+            id__in=invites, ongoing=True, active=True
+        )
+        investigations = investigations | self.caller.roster.investigations.filter(
+            ongoing=True
+        )
+        self.msg(
+            "You are permitted to help the following investigations:\n%s"
+            % "\n".join("  %s (ID: %s)" % (str(ob), ob.id) for ob in investigations)
+        )
         invest_ids = [ob.id for ob in investigations]
         # prune out invitations to investigations that are not active
         invites = [num for num in invites if num in invest_ids]
@@ -434,9 +503,16 @@ class CmdAssistInvestigation(InvestigationFormCommand):
         invites = self.caller.db.investigation_invitations or []
         if self.helper != self.caller:
             # if it's a retainer, we add IDs of investigations we're running or assisting as valid for them
-            invites.extend(list(Investigation.objects.filter(Q(character=self.caller.roster) |
-                                                             Q(assistants__char=self.caller)
-                                                             ).exclude(ongoing=False).values_list('id', flat=True)))
+            invites.extend(
+                list(
+                    Investigation.objects.filter(
+                        Q(character=self.caller.roster)
+                        | Q(assistants__char=self.caller)
+                    )
+                    .exclude(ongoing=False)
+                    .values_list("id", flat=True)
+                )
+            )
         return invites
 
     def get_target(self):
@@ -463,7 +539,10 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                 return
         if helper.assisted_investigations.filter(investigation_id=targ):
             phrase = "%s is" % str(helper) if helper != self.caller else "You are"
-            self.msg("%s already helping that investigation. You can /resume helping it." % phrase)
+            self.msg(
+                "%s already helping that investigation. You can /resume helping it."
+                % phrase
+            )
             return
         self.investigation_form[0] = targ
         super(CmdAssistInvestigation, self).get_target()
@@ -487,20 +566,29 @@ class CmdAssistInvestigation(InvestigationFormCommand):
             return
         if not already_investigating and not self.check_ap_cost():
             return
-        current_qs = self.helper.assisted_investigations.filter(currently_helping=True).exclude(id=created_object.id)
+        current_qs = self.helper.assisted_investigations.filter(
+            currently_helping=True
+        ).exclude(id=created_object.id)
         if current_qs:
             for ob in current_qs:
                 ob.currently_helping = False
                 ob.save()
-            self.msg("%s was currently helping another investigation. Switching." % self.helper)
+            self.msg(
+                "%s was currently helping another investigation. Switching."
+                % self.helper
+            )
         if not already_investigating:
             created_object.currently_helping = True
             created_object.save()
             created_object.investigation.do_roll()
-            self.msg("%s is now helping %s." % (self.helper, created_object.investigation))
+            self.msg(
+                "%s is now helping %s." % (self.helper, created_object.investigation)
+            )
         else:
-            self.msg("You already have an active investigation. That must stop before you help another.\n"
-                     "Once that investigation is no longer active, you may resume helping this investigation.")
+            self.msg(
+                "You already have an active investigation. That must stop before you help another.\n"
+                "Once that investigation is no longer active, you may resume helping this investigation."
+            )
         self.caller.attributes.remove(self.form_attr)
 
     @property
@@ -515,8 +603,13 @@ class CmdAssistInvestigation(InvestigationFormCommand):
         invest_id, actions, stat, skill = form
         valid_investigations = self.valid_targ_ids
         if invest_id not in valid_investigations:
-            self.msg("That is not a valid ID of an investigation for %s to assist." % self.helper)
-            self.msg("Valid IDs: %s" % ", ".join(str(ob) for ob in valid_investigations))
+            self.msg(
+                "That is not a valid ID of an investigation for %s to assist."
+                % self.helper
+            )
+            self.msg(
+                "Valid IDs: %s" % ", ".join(str(ob) for ob in valid_investigations)
+            )
             return
         try:
             investigation = Investigation.objects.get(id=invest_id)
@@ -527,26 +620,47 @@ class CmdAssistInvestigation(InvestigationFormCommand):
 
     def disp_currently_helping(self, char):
         self.msg("%s and retainers is helping the following investigations:" % char)
-        table = PrettyTable(["ID", "Character", "Investigation Owner", "Currently Helping"])
+        table = PrettyTable(
+            ["ID", "Character", "Investigation Owner", "Currently Helping"]
+        )
         if "history" in self.switches:
-            investigations = char.assisted_investigations.filter(investigation__ongoing=False)
+            investigations = char.assisted_investigations.filter(
+                investigation__ongoing=False
+            )
         else:
-            investigations = char.assisted_investigations.filter(investigation__ongoing=True)
-        retainers = [retainer.dbobj.id for retainer in char.player_ob.retainers.all() if retainer.dbobj]
+            investigations = char.assisted_investigations.filter(
+                investigation__ongoing=True
+            )
+        retainers = [
+            retainer.dbobj.id
+            for retainer in char.player_ob.retainers.all()
+            if retainer.dbobj
+        ]
         if "history" in self.switches:
-            retainer_investigations = InvestigationAssistant.objects.filter(char__in=retainers,
-                                                                            investigation__ongoing=False)
+            retainer_investigations = InvestigationAssistant.objects.filter(
+                char__in=retainers, investigation__ongoing=False
+            )
         else:
-            retainer_investigations = InvestigationAssistant.objects.filter(char__in=retainers,
-                                                                            investigation__ongoing=True)
+            retainer_investigations = InvestigationAssistant.objects.filter(
+                char__in=retainers, investigation__ongoing=True
+            )
         investigations = list(investigations) + list(retainer_investigations)
         for ob in investigations:
+
             def apply_color(object_to_format):
                 if ob.investigation.active:
                     return "{w%s{n" % object_to_format
                 return "{r%s{n" % object_to_format
-            row = [apply_color(column) for column in (ob.investigation.id, ob.char, ob.investigation.char,
-                                                      ob.currently_helping)]
+
+            row = [
+                apply_color(column)
+                for column in (
+                    ob.investigation.id,
+                    ob.char,
+                    ob.investigation.char,
+                    ob.currently_helping,
+                )
+            ]
             table.add_row(row)
         self.msg(table)
 
@@ -558,8 +672,14 @@ class CmdAssistInvestigation(InvestigationFormCommand):
 
     def view_investigation(self):
         try:
-            character_ids = [self.caller.id] + [ob.dbobj.id for ob in self.caller.player_ob.retainers]
-            ob = Investigation.objects.filter(assistants__char_id__in=character_ids).distinct().get(id=self.args)
+            character_ids = [self.caller.id] + [
+                ob.dbobj.id for ob in self.caller.player_ob.retainers
+            ]
+            ob = (
+                Investigation.objects.filter(assistants__char_id__in=character_ids)
+                .distinct()
+                .get(id=self.args)
+            )
         except (Investigation.DoesNotExist, TypeError, ValueError):
             self.msg("Could not find an investigation you're helping by that number.")
             self.disp_currently_helping(self.caller)
@@ -622,7 +742,9 @@ class CmdAssistInvestigation(InvestigationFormCommand):
             else:  # not a retainer, just the caller. So check if they have an active investigation
                 char = self.caller
                 if self.caller.roster.investigations.filter(active=True):
-                    self.msg("You currently have an active investigation, and cannot assist an investigation.")
+                    self.msg(
+                        "You currently have an active investigation, and cannot assist an investigation."
+                    )
                     return
             # check if they already are assisting something
             if char.assisted_investigations.filter(currently_helping=True):
@@ -636,9 +758,14 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                 self.msg("Not helping an investigation by that number.")
                 return
             except InvestigationAssistant.MultipleObjectsReturned:
-                self.msg("Well, this is awkward. You are assisting that investigation multiple times. This shouldn't "
-                         "be able to happen, but here we are.")
-                inform_staff("BUG: %s is assisting investigation %s multiple times." % (char, self.lhs))
+                self.msg(
+                    "Well, this is awkward. You are assisting that investigation multiple times. This shouldn't "
+                    "be able to happen, but here we are."
+                )
+                inform_staff(
+                    "BUG: %s is assisting investigation %s multiple times."
+                    % (char, self.lhs)
+                )
                 return
             # check if they have action points to afford it
             if not self.check_ap_cost():
@@ -663,7 +790,9 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                 char = self.caller
                 investigation_id = self.lhs
             try:
-                ob = char.assisted_investigations.get(investigation__id=investigation_id)
+                ob = char.assisted_investigations.get(
+                    investigation__id=investigation_id
+                )
                 if not self.check_is_ongoing(ob.investigation):
                     return
                 if not self.check_enough_time_left():
@@ -694,7 +823,10 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                         if amt < 0 or val <= 0:
                             raise ValueError
                         if val % 5000 or (ob.silver + val) > 50000:
-                            self.msg("Silver must be a multiple of 5000, 50000 max.\nCurrent silver: %s" % ob.silver)
+                            self.msg(
+                                "Silver must be a multiple of 5000, 50000 max.\nCurrent silver: %s"
+                                % ob.silver
+                            )
                             return
                     except (TypeError, ValueError):
                         self.caller_cannot_afford()
@@ -715,7 +847,9 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                             raise ValueError
                         oamt = getattr(ob, rtype)
                         if oamt + val > 50:
-                            self.msg("Maximum of 50 per resource. Current value: %s" % oamt)
+                            self.msg(
+                                "Maximum of 50 per resource. Current value: %s" % oamt
+                            )
                             return
                         current = getattr(dompc.assets, rtype)
                         current -= val
@@ -737,7 +871,9 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                 elif "actionpoints" in self.switches:
                     ob = ob.investigation
                     if not ob.active:
-                        self.msg("The investigation must be marked active to invest in it.")
+                        self.msg(
+                            "The investigation must be marked active to invest in it."
+                        )
                         return
                     # check if we can pay
                     try:
@@ -746,7 +882,9 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                             raise ValueError
                         if amt % 5:
                             self.msg("Action points must be a multiple of 5")
-                            self.msg("Current action points allocated: %s" % ob.action_points)
+                            self.msg(
+                                "Current action points allocated: %s" % ob.action_points
+                            )
                             return
                         if not self.check_ap_cost(amt):
                             return
@@ -820,23 +958,48 @@ class CmdInvestigate(InvestigationFormCommand):
     offered the chance to expend great effort (100 AP) into researching a
     clue that no one has found before.
     """
+
     key = "@investigate"
     locks = "cmd:all()"
     help_category = "Investigation"
     aliases = ["+investigate", "investigate"]
     base_cost = 25
-    model_switches = ("view", "active", "silver", "resource", "pause", "actionpoints",
-                      "changestory", "abandon", "resume", "requesthelp", "changestat", "changeskill")
-    needs_ongoing = ("active", "silver", "resource", "pause", "actionpoints", "abandon",
-                      "requesthelp", "changestat", "changeskill", "changestory")
+    model_switches = (
+        "view",
+        "active",
+        "silver",
+        "resource",
+        "pause",
+        "actionpoints",
+        "changestory",
+        "abandon",
+        "resume",
+        "requesthelp",
+        "changestat",
+        "changeskill",
+    )
+    needs_ongoing = (
+        "active",
+        "silver",
+        "resource",
+        "pause",
+        "actionpoints",
+        "abandon",
+        "requesthelp",
+        "changestat",
+        "changeskill",
+        "changestory",
+    )
 
     # noinspection PyAttributeOutsideInit
     def get_help(self, caller, cmdset):
         doc = self.__doc__
         caller = caller.char_ob
         self.caller = caller
-        doc += "\n\nThe cost to make an investigation active is %s action points and %s resources." % (
-            self.ap_cost, self.start_cost)
+        doc += (
+            "\n\nThe cost to make an investigation active is %s action points and %s resources."
+            % (self.ap_cost, self.start_cost)
+        )
         return doc
 
     @property
@@ -873,28 +1036,45 @@ class CmdInvestigate(InvestigationFormCommand):
         return ""
 
     def mark_active(self, created_object):
-        if not (self.related_manager.filter(active=True) or
-                self.caller.assisted_investigations.filter(currently_helping=True)):
+        if not (
+            self.related_manager.filter(active=True)
+            or self.caller.assisted_investigations.filter(currently_helping=True)
+        ):
             if not self.caller.assisted_investigations.filter(currently_helping=True):
                 if self.caller.player_ob.pay_action_points(self.ap_cost):
                     created_object.mark_active()
-                    self.msg("New investigation created. This has been set as your active investigation " +
-                             "for the week, and you may add resources/silver to increase its chance of success.")
+                    self.msg(
+                        "New investigation created. This has been set as your active investigation "
+                        + "for the week, and you may add resources/silver to increase its chance of success."
+                    )
                 else:
-                    self.msg("New investigation created. You could not afford the action points to mark it active.")
+                    self.msg(
+                        "New investigation created. You could not afford the action points to mark it active."
+                    )
             else:
-                self.msg("New investigation created. This investigation is not active because you are " +
-                         "currently assisting an investigation already.")
+                self.msg(
+                    "New investigation created. This investigation is not active because you are "
+                    + "currently assisting an investigation already."
+                )
         else:
-            self.msg("New investigation created. You already are participating in an active investigation " +
-                     "for this week, but may still add resources/silver to increase its chance of success " +
-                     "for when you next mark this as active.")
-        self.msg("You may only have one active investigation per week, and cannot change it once " +
-                 "it has received GM attention. Only the active investigation can progress.")
+            self.msg(
+                "New investigation created. You already are participating in an active investigation "
+                + "for this week, but may still add resources/silver to increase its chance of success "
+                + "for when you next mark this as active."
+            )
+        self.msg(
+            "You may only have one active investigation per week, and cannot change it once "
+            + "it has received GM attention. Only the active investigation can progress."
+        )
         created_object.save()
-        staffmsg = "%s has started an investigation on %s." % (self.caller, created_object.topic)
+        staffmsg = "%s has started an investigation on %s." % (
+            self.caller,
+            created_object.topic,
+        )
         if created_object.targeted_clue:
-            staffmsg += " They will roll to find clue %s." % created_object.targeted_clue
+            staffmsg += (
+                " They will roll to find clue %s." % created_object.targeted_clue
+            )
             created_object.setup_investigation_for_clue(created_object.targeted_clue)
         else:
             staffmsg += " Their topic does not target a clue, and will automatically fail unless GM'd."
@@ -920,13 +1100,17 @@ class CmdInvestigate(InvestigationFormCommand):
         clue = get_random_clue(self.caller.roster, search_tags, omit_tags, source_clue)
         if not clue:
             if check_break():
-                return self.refuse_new_clue("Investigations that require new writing are not " +
-                                            "allowed during staff break.")
+                return self.refuse_new_clue(
+                    "Investigations that require new writing are not "
+                    + "allowed during staff break."
+                )
             if len(search_tags) + len(omit_tags) > 6:
                 return self.refuse_new_clue("That investigation would be too specific.")
-            self.msg("The tag(s) or clue specified does not match an existing clue, and will be much more difficult and"
-                     " more expensive to look into than normal. Try other tags for an easier investigation, or "
-                     "proceed to /finish for a much more difficult one.")
+            self.msg(
+                "The tag(s) or clue specified does not match an existing clue, and will be much more difficult and"
+                " more expensive to look into than normal. Try other tags for an easier investigation, or "
+                "proceed to /finish for a much more difficult one."
+            )
         self.investigation_form[5] = [search_tags, omit_tags]
         self.investigation_form[4] = clue
         self.investigation_form[0] = self.args
@@ -982,7 +1166,9 @@ class CmdInvestigate(InvestigationFormCommand):
             except Investigation.DoesNotExist:
                 caller.msg("Investigation not found.")
                 return
-            if self.check_switches(self.needs_ongoing) and not self.check_is_ongoing(ob):
+            if self.check_switches(self.needs_ongoing) and not self.check_is_ongoing(
+                ob
+            ):
                 return
             if "resume" in self.switches:
                 msg = "To mark an investigation as active, use /active."
@@ -990,7 +1176,9 @@ class CmdInvestigate(InvestigationFormCommand):
                     self.msg("Already ongoing. %s" % msg)
                     return
                 if ob.clue_discoveries.exists():
-                    self.msg("This investigation has found something already. Start another.")
+                    self.msg(
+                        "This investigation has found something already. Start another."
+                    )
                     return
                 if not self.check_enough_time_left():
                     return
@@ -1018,10 +1206,15 @@ class CmdInvestigate(InvestigationFormCommand):
                     ass.currently_helping = False
                     ass.save()
                     asslist.append(str(ass.char))
-                caller.msg("Investigation has been marked to no longer be ongoing nor active.")
+                caller.msg(
+                    "Investigation has been marked to no longer be ongoing nor active."
+                )
                 caller.msg("You can resume it later with /resume.")
                 if asslist:
-                    caller.msg("The following assistants have stopped helping: %s" % ", ".join(asslist))
+                    caller.msg(
+                        "The following assistants have stopped helping: %s"
+                        % ", ".join(asslist)
+                    )
                 return
             if "view" in self.switches or not self.switches:
                 caller.msg(ob.display())
@@ -1035,17 +1228,23 @@ class CmdInvestigate(InvestigationFormCommand):
                 except Investigation.DoesNotExist:
                     current_active = None
                 if caller.assisted_investigations.filter(currently_helping=True):
-                    self.msg("You are currently helping an investigation, and must stop first.")
+                    self.msg(
+                        "You are currently helping an investigation, and must stop first."
+                    )
                     return
                 if check_break() and not ob.targeted_clue:
-                    self.msg("Investigations that do not target a clue cannot be marked active during the break.")
+                    self.msg(
+                        "Investigations that do not target a clue cannot be marked active during the break."
+                    )
                     return
                 if not self.check_enough_time_left():
                     return
                 if current_active:
                     if not current_active.automate_result:
-                        caller.msg("You already have an active investigation " +
-                                   "that has received GMing this week, and cannot be switched.")
+                        caller.msg(
+                            "You already have an active investigation "
+                            + "that has received GMing this week, and cannot be switched."
+                        )
                         return
                     if not self.check_ap_cost():
                         return
@@ -1055,7 +1254,9 @@ class CmdInvestigate(InvestigationFormCommand):
                     if not self.check_ap_cost():
                         return
                 # can afford it, proceed to turn off assisted investigations and mark active
-                for ass in caller.assisted_investigations.filter(currently_helping=True):
+                for ass in caller.assisted_investigations.filter(
+                    currently_helping=True
+                ):
                     ass.currently_helping = False
                     ass.save()
                     self.msg("No longer assisting in %s" % ass.investigation)
@@ -1072,7 +1273,10 @@ class CmdInvestigate(InvestigationFormCommand):
                     if amt < 0 or val <= 0:
                         raise ValueError
                     if val % 5000 or (ob.silver + val) > 50000:
-                        caller.msg("Silver must be a multiple of 5000, 50000 max.\nCurrent silver: %s" % ob.silver)
+                        caller.msg(
+                            "Silver must be a multiple of 5000, 50000 max.\nCurrent silver: %s"
+                            % ob.silver
+                        )
                         return
                 except (TypeError, ValueError):
                     self.caller_cannot_afford()
@@ -1088,7 +1292,9 @@ class CmdInvestigate(InvestigationFormCommand):
                 if not self.check_enough_time_left():
                     return
                 if not ob.active:
-                    self.msg("The investigation must be marked active to invest time in it.")
+                    self.msg(
+                        "The investigation must be marked active to invest time in it."
+                    )
                     return
                 try:
                     val = int(self.rhs)
@@ -1096,7 +1302,9 @@ class CmdInvestigate(InvestigationFormCommand):
                         raise ValueError
                     if val % 5:
                         caller.msg("Action points must be a multiple of 5")
-                        caller.msg("Current action points allocated: %s" % ob.action_points)
+                        caller.msg(
+                            "Current action points allocated: %s" % ob.action_points
+                        )
                         return
                     if not self.check_ap_cost(val):
                         return
@@ -1118,7 +1326,9 @@ class CmdInvestigate(InvestigationFormCommand):
                         raise ValueError
                     oamt = getattr(ob, rtype)
                     if oamt + val > 50:
-                        caller.msg("Maximum of 50 per resource. Current value: %s" % oamt)
+                        caller.msg(
+                            "Maximum of 50 per resource. Current value: %s" % oamt
+                        )
                         return
                     current = getattr(dompc.assets, rtype)
                     current -= val
@@ -1167,7 +1377,9 @@ class CmdInvestigate(InvestigationFormCommand):
                     return
                 for target in self.rhslist:
                     try:
-                        char = Character.objects.get(db_key__iexact=target, roster__roster__name="Active")
+                        char = Character.objects.get(
+                            db_key__iexact=target, roster__roster__name="Active"
+                        )
                     except Character.DoesNotExist:
                         self.msg("No active player found named %s" % target)
                         continue
@@ -1175,24 +1387,43 @@ class CmdInvestigate(InvestigationFormCommand):
                         self.msg("You cannot invite yourself.")
                         continue
                     if char.assisted_investigations.filter(investigation=ob):
-                        self.msg("%s are already able to assist the investigation." % target)
+                        self.msg(
+                            "%s are already able to assist the investigation." % target
+                        )
                         continue
                     current = char.db.investigation_invitations or []
                     if ob.id in current:
-                        self.msg("%s already has an invitation to assist this investigation." % target)
+                        self.msg(
+                            "%s already has an invitation to assist this investigation."
+                            % target
+                        )
                         continue
 
                     self.msg("Asking %s to assist with %s." % (char.key, ob))
                     current.append(ob.id)
                     char.db.investigation_invitations = current
                     name = caller.key
-                    inform_msg = "%s has requested your help in their investigation, ID %s.\n" % (name, ob.id)
+                    inform_msg = (
+                        "%s has requested your help in their investigation, ID %s.\n"
+                        % (name, ob.id)
+                    )
                     inform_msg += "To assist them, use the {w@helpinvestigate{n command, creating a "
-                    inform_msg += "form with {w@helpinvestigate/new{n, setting the target with "
-                    inform_msg += "{w@helpinvestigate/target %s{n, and filling in the other fields." % ob.id
-                    inform_msg += "\nThe current actions of their investigation are: %s" % ob.actions
-                    char.player_ob.inform(inform_msg, category="Investigation Request From %s" % name,
-                                          append=False)
+                    inform_msg += (
+                        "form with {w@helpinvestigate/new{n, setting the target with "
+                    )
+                    inform_msg += (
+                        "{w@helpinvestigate/target %s{n, and filling in the other fields."
+                        % ob.id
+                    )
+                    inform_msg += (
+                        "\nThe current actions of their investigation are: %s"
+                        % ob.actions
+                    )
+                    char.player_ob.inform(
+                        inform_msg,
+                        category="Investigation Request From %s" % name,
+                        append=False,
+                    )
                 return
         caller.msg("Invalid switch.")
         return
@@ -1222,6 +1453,7 @@ class CmdAdminInvestigations(ArxPlayerCommand):
     /search is used to search undiscovered clues that match a keyword for
     a given character to try to find possible matches.
     """
+
     key = "@gminvest"
     aliases = ["@gminvestigations"]
     locks = "cmd:perm(wizards)"
@@ -1229,13 +1461,16 @@ class CmdAdminInvestigations(ArxPlayerCommand):
 
     @property
     def qs(self):
-        return Investigation.objects.filter(active=True, ongoing=True,
-                                            character__roster__name="Active")
+        return Investigation.objects.filter(
+            active=True, ongoing=True, character__roster__name="Active"
+        )
 
     def disp_active(self):
         qs = list(self.qs)
         if len(qs) <= 20:
-            table = EvTable("ID", "Char", "Topic", "Targeted Clue", "Roll", border="cells", width=78)
+            table = EvTable(
+                "ID", "Char", "Topic", "Targeted Clue", "Roll", border="cells", width=78
+            )
             for ob in qs:
                 roll = ob.get_roll()
                 roll = "{r%s{n" % roll if roll < 1 else "{w%s{n" % roll
@@ -1247,7 +1482,9 @@ class CmdAdminInvestigations(ArxPlayerCommand):
             for ob in qs:
                 roll = ob.get_roll()
                 roll = "{r%s{n" % roll if roll < 1 else "{w%s{n" % roll
-                target = "{rNone{n" if not ob.targeted_clue else str(ob.targeted_clue)[:30]
+                target = (
+                    "{rNone{n" if not ob.targeted_clue else str(ob.targeted_clue)[:30]
+                )
                 character = "{c%s{n" % ob.character
                 table.add_row([ob.id, character, str(ob.topic)[:15], target, roll])
         self.msg(str(table))
@@ -1271,13 +1508,24 @@ class CmdAdminInvestigations(ArxPlayerCommand):
             player = self.caller.search(self.lhs)
             if not player:
                 return
-            clue_query = (Q(desc__icontains=self.rhs) | Q(name__icontains=self.rhs) |
-                          Q(search_tags__name__icontains=self.rhs))
-            rev_query = Q(revelations__desc__icontains=self.rhs) | Q(revelations__search_tags__name__icontains=self.rhs)
+            clue_query = (
+                Q(desc__icontains=self.rhs)
+                | Q(name__icontains=self.rhs)
+                | Q(search_tags__name__icontains=self.rhs)
+            )
+            rev_query = Q(revelations__desc__icontains=self.rhs) | Q(
+                revelations__search_tags__name__icontains=self.rhs
+            )
             rev_query |= Q(revelations__name__icontains=self.rhs)
-            undisco = (player.roster.undiscovered_clues.filter(allow_investigation=True)
-                                                       .filter(clue_query | rev_query).distinct())
-            self.msg("Clues that match: %s" % ", ".join("(ID:%s, %s)" % (ob.id, ob) for ob in undisco))
+            undisco = (
+                player.roster.undiscovered_clues.filter(allow_investigation=True)
+                .filter(clue_query | rev_query)
+                .distinct()
+            )
+            self.msg(
+                "Clues that match: %s"
+                % ", ".join("(ID:%s, %s)" % (ob.id, ob) for ob in undisco)
+            )
             return
         try:
             if "view" in self.switches or not self.switches:
@@ -1299,7 +1547,9 @@ class CmdAdminInvestigations(ArxPlayerCommand):
                 if targ in ob.character.clues.all():
                     self.msg("|rThey already have that clue. Aborting.")
                     return
-                ob.setup_investigation_for_clue(targ)  # will also handle saving the investigation
+                ob.setup_investigation_for_clue(
+                    targ
+                )  # will also handle saving the investigation
                 caller.msg("%s set to %s." % (ob, targ))
                 return
             if "roll" in self.switches:
@@ -1324,7 +1574,10 @@ class CmdAdminInvestigations(ArxPlayerCommand):
                 ob = self.qs.get(id=int(self.lhs))
                 ob.progress = int(self.rhs)
                 ob.save()
-                self.msg("Their progress is now %s, required to complete is %s." % (ob.progress, ob.completion_value))
+                self.msg(
+                    "Their progress is now %s, required to complete is %s."
+                    % (ob.progress, ob.completion_value)
+                )
                 return
         except (TypeError, ValueError):
             caller.msg("Arguments must be numbers.")
@@ -1345,12 +1598,15 @@ class CmdListClues(ArxPlayerCommand):
         @clues <clue #>
         @clues/share <clue #>[,<clue2 #>...]=<target>[,<target2>...]/<note>
         @clues/search <text>
+        @clues/search/name <tag>
+        @clues/search/tag <tag>
         @clues/addnote <clue #>=[text to append]
 
     Displays the clues that your character has discovered in game,
     or shares them with others. /search returns the clues that
-    contain the text specified. /addnote allows you to add more text to
-    your discovery of the clue.
+    contain the text specified. /search/name and /search/tag checks the
+    specific field for the text specified. /addnote allows you to add more
+    text to your discovery of the clue.
 
     When sharing clues, please roleplay a bit about them first. Don't dump
     information on people without any context. You must also write a note
@@ -1358,6 +1614,7 @@ class CmdListClues(ArxPlayerCommand):
     please briefly describe the scene in which the clue was shared, or why
     they were told, or any other contextual notes about it.
     """
+
     key = "clues"
     locks = "cmd:all()"
     aliases = ["clue", "@zoinks", "@jinkies"]
@@ -1431,9 +1688,13 @@ class CmdListClues(ArxPlayerCommand):
         try:
             rhslist, note = split_result[0], split_result[1]
         except IndexError:
-            raise CommandError("You must provide a note that gives context to the clues you're sharing.")
+            raise CommandError(
+                "You must provide a note that gives context to the clues you're sharing."
+            )
         if len(note) < 80:
-            raise CommandError("Please write a longer note that gives context to the clues you're sharing.")
+            raise CommandError(
+                "Please write a longer note that gives context to the clues you're sharing."
+            )
         rhslist = rhslist.split(",")
         shared_names = []
         targets = []
@@ -1441,43 +1702,76 @@ class CmdListClues(ArxPlayerCommand):
             pc = self.caller.search(arg)
             if not pc:
                 return
-            if not pc.char_ob.location or self.caller.char_ob.location != pc.char_ob.location:
-                raise CommandError("You can only share clues with someone in the same room. Please don't share "
-                                   "clues without some RP talking about them.")
+            if (
+                not pc.char_ob.location
+                or self.caller.char_ob.location != pc.char_ob.location
+            ):
+                raise CommandError(
+                    "You can only share clues with someone in the same room. Please don't share "
+                    "clues without some RP talking about them."
+                )
             targets.append(pc)
         cost = len(targets) * len(discoveries_to_share) * self.caller.clue_cost
         if not self.caller.pay_action_points(cost):
-            raise CommandError("Sharing the clue(s) with them would cost %s action points." % cost)
+            raise CommandError(
+                "Sharing the clue(s) with them would cost %s action points." % cost
+            )
         for targ in targets:
             for discovery in discoveries_to_share:
                 discovery.share(targ.roster, note=note)
             shared_names.append(str(targ.roster))
-        msg = "You have shared the clue(s) '%s' with %s." % (", ".join(str(ob.clue) for ob in discoveries_to_share),
-                                                             ", ".join(shared_names))
+        msg = "You have shared the clue(s) '%s' with %s." % (
+            ", ".join(str(ob.clue) for ob in discoveries_to_share),
+            ", ".join(shared_names),
+        )
         if note:
             msg += "\nYour note: %s" % note
         self.msg(msg)
 
     def disp_clue_table(self):
         table = PrettyTable(["{wClue #{n", "{wSubject{n", "{wType{n"])
-        discoveries = self.clue_discoveries.select_related('clue').order_by('date')
-        if "search" in self.switches:
+        discoveries = self.clue_discoveries.select_related("clue").order_by("date")
+        if "tag" in self.switches:
             msg = "{wMatching Clues{n\n"
-            discoveries = discoveries.filter(Q(message__icontains=self.args) | Q(clue__desc__icontains=self.args) |
-                                             Q(clue__name__icontains=self.args) |
-                                             Q(clue__search_tags__name__iexact=self.args)).distinct()
+            discoveries = discoveries.filter(
+                Q(clue__search_tags__name__iexact=self.args)
+            ).distinct()
+        elif "name" in self.switches:
+
+            msg = "{wMatching Clues{n\n"
+            discoveries = discoveries.filter(
+                Q(clue__name__icontains=self.args)
+            ).distinct()
+        elif "search" in self.switches and self.args:
+
+            msg = "{wMatching Clues{n\n"
+            discoveries = discoveries.filter(
+                Q(message__icontains=self.args)
+                | Q(clue__desc__icontains=self.args)
+                | Q(clue__name__icontains=self.args)
+                | Q(clue__search_tags__name__iexact=self.args)
+            ).distinct()
         else:
             msg = "{wDiscovered Clues{n\n"
         for discovery in discoveries:
-            table.add_row([discovery.clue.id, discovery.name, discovery.clue.get_clue_type_display()])
+            table.add_row(
+                [
+                    discovery.clue.id,
+                    discovery.name,
+                    discovery.clue.get_clue_type_display(),
+                ]
+            )
         msg += str(table)
-        self.msg(msg, options={'box': True})
+        self.msg(msg, options={"box": True})
 
     def add_note(self, discovery):
         if not self.rhs:
             self.msg("Must contain a note to add.")
             return
-        header = "\n[%s] %s wrote: " % (datetime.now().strftime("%x %X"), self.caller.key)
+        header = "\n[%s] %s wrote: " % (
+            datetime.now().strftime("%x %X"),
+            self.caller.key,
+        )
         discovery.message += header + self.rhs
         discovery.save()
         self.msg(discovery.display())
@@ -1498,6 +1792,7 @@ class CmdListRevelations(ArxPlayerCommand):
         due to clues being added to revelations later.
 
     """
+
     key = "@revelations"
     locks = "cmd:all()"
     help_category = "Information"
@@ -1510,7 +1805,7 @@ class CmdListRevelations(ArxPlayerCommand):
         for rev in revs:
             table.add_row([rev.id, rev.name])
         msg += str(table)
-        caller.msg(msg, options={'box': True})
+        caller.msg(msg, options={"box": True})
 
     def resync_revelations(self):
         character = self.caller.roster
@@ -1523,9 +1818,14 @@ class CmdListRevelations(ArxPlayerCommand):
         date = datetime.now()
         for revelation in discovered:
             message = "You had a revelation which had been missed!"
-            RevelationDiscovery.objects.create(character=character, discovery_method="Checked for Missing",
-                                               message=message, investigation=None,
-                                               revelation=revelation, date=date)
+            RevelationDiscovery.objects.create(
+                character=character,
+                discovery_method="Checked for Missing",
+                message=message,
+                investigation=None,
+                revelation=revelation,
+                date=date,
+            )
 
             self.msg("You were missing a revelation: %s" % str(revelation))
 
@@ -1584,6 +1884,7 @@ class CmdTheories(ArxPlayerCommand):
     /shareall allows you to also share any clue you know that is related
     to the theory specify.
     """
+
     key = "@theories"
     locks = "cmd:all()"
     help_category = "Investigation"
@@ -1591,9 +1892,9 @@ class CmdTheories(ArxPlayerCommand):
     def display_theories(self):
         table = EvTable("{wID #{n", "{wTopic{n")
         if "mine" in self.switches:
-            qs = self.caller.editable_theories.all().order_by('id')
+            qs = self.caller.editable_theories.all().order_by("id")
         else:
-            qs = self.caller.known_theories.all().order_by('id')
+            qs = self.caller.known_theories.all().order_by("id")
         for theory in qs:
             table.add_row(theory.id, theory.topic)
         self.msg(table)
@@ -1606,8 +1907,12 @@ class CmdTheories(ArxPlayerCommand):
             self.msg("No theory by that ID.")
             return
         self.msg(theory.display())
-        self.msg("{wRelated Theories{n: %s\n" %
-                 ", ".join(str(ob.id) for ob in theory.related_theories.filter(id__in=theories)))
+        self.msg(
+            "{wRelated Theories{n: %s\n"
+            % ", ".join(
+                str(ob.id) for ob in theory.related_theories.filter(id__in=theories)
+            )
+        )
         disp_clues = theory.related_clues.filter(id__in=self.caller.roster.clues.all())
         self.msg("{wRelated Clues:{n %s" % ", ".join(ob.name for ob in disp_clues))
         if "readall" in self.switches:
@@ -1623,8 +1928,12 @@ class CmdTheories(ArxPlayerCommand):
             self.view_theory()
             return
         if "search" in self.switches:
-            matches = self.caller.known_theories.filter(Q(topic__icontains=self.args) | Q(desc__icontains=self.args))
-            self.msg("Matches: %s" % ", ".join("%s (#%s)" % (ob, ob.id) for ob in matches))
+            matches = self.caller.known_theories.filter(
+                Q(topic__icontains=self.args) | Q(desc__icontains=self.args)
+            )
+            self.msg(
+                "Matches: %s" % ", ".join("%s (#%s)" % (ob, ob.id) for ob in matches)
+            )
             return
         if "create" in self.switches:
             theory = self.caller.created_theories.create(topic=self.lhs, desc=self.rhs)
@@ -1645,7 +1954,9 @@ class CmdTheories(ArxPlayerCommand):
                 targs.append(targ)
             if not targs:
                 return
-            clue_discoveries = self.caller.roster.clue_discoveries.filter(clue__id__in=theory.related_clues.all())
+            clue_discoveries = self.caller.roster.clue_discoveries.filter(
+                clue__id__in=theory.related_clues.all()
+            )
             per_targ_cost = self.caller.clue_cost
             for targ in targs:
                 if "shareall" in self.switches:
@@ -1672,8 +1983,11 @@ class CmdTheories(ArxPlayerCommand):
                     continue
                 theory.share_with(targ)
                 self.msg("Theory %s added to %s." % (self.lhs, targ))
-                targ.inform("%s has shared theory {w'%s'{n with you. Use {w@theories %s{n to view it." % (
-                    self.caller, theory.topic, self.lhs), category="Theories")
+                targ.inform(
+                    "%s has shared theory {w'%s'{n with you. Use {w@theories %s{n to view it."
+                    % (self.caller, theory.topic, self.lhs),
+                    category="Theories",
+                )
             return
         if "delete" in self.switches or "forget" in self.switches:
             try:
@@ -1704,7 +2018,10 @@ class CmdTheories(ArxPlayerCommand):
                 return
             if "rmeditor" in self.switches:
                 if player == theory.creator:
-                    self.msg("%s is the theory's original author, and cannot be removed." % player)
+                    self.msg(
+                        "%s is the theory's original author, and cannot be removed."
+                        % player
+                    )
                 else:
                     theory.remove_editor(player)
                     self.msg("%s cannot edit the theory." % player)
@@ -1782,7 +2099,9 @@ class ListPlotsMixin(object):
 
         msg = "{wPlots GMd:{n %s\n" % list_to_string(format_list(plots))
         msg += "{wClues Written:{n %s\n" % list_to_string(format_list(clues))
-        msg += "{wRevelations Written:{n %s\n" % list_to_string(format_list(revelations))
+        msg += "{wRevelations Written:{n %s\n" % list_to_string(
+            format_list(revelations)
+        )
         return msg
 
     def get_revelation(self):
@@ -1794,7 +2113,9 @@ class ListPlotsMixin(object):
                 revelation = self.gm_revelations.get(name__iexact=self.args)
             return revelation
         except (Revelation.DoesNotExist, ValueError, TypeError):
-            raise CommandError("No Revelation by that name or number.\n" + self.list_gm_plots())
+            raise CommandError(
+                "No Revelation by that name or number.\n" + self.list_gm_plots()
+            )
 
 
 class PRPLorecommand(ListPlotsMixin, FormCommandMixin, ArxPlayerCommand):
@@ -1831,12 +2152,17 @@ class CmdPRPClue(PRPLorecommand):
     /sendclue switch. Clues must have a revelation written that is tied
     to the plot. See the prprevelation command for details.
     """
+
     key = "prpclue"
     help_category = "PRP"
     locks = "cmd: all()"
     form_class = ClueCreateForm
     form_attribute = "clue_creation_form"
-    form_initial_kwargs = (('allow_sharing', True), ('allow_investigation', True), ('red_herring', False))
+    form_initial_kwargs = (
+        ("allow_sharing", True),
+        ("allow_investigation", True),
+        ("red_herring", False),
+    )
 
     def func(self):
         try:
@@ -1854,11 +2180,20 @@ class CmdPRPClue(PRPLorecommand):
                 revelation = self.get_revelation()
                 if not revelation:
                     return
-                self.msg("Clues: %s" % ", ".join("%s (#%s)" % (clue, clue.id) for clue in revelation.clues.all()))
+                self.msg(
+                    "Clues: %s"
+                    % ", ".join(
+                        "%s (#%s)" % (clue, clue.id) for clue in revelation.clues.all()
+                    )
+                )
                 return
             if "sendclue" in self.switches:
                 try:
-                    clue = Clue.objects.filter(revelations__plots__in=self.gm_plots).distinct().get(id=self.lhs)
+                    clue = (
+                        Clue.objects.filter(revelations__plots__in=self.gm_plots)
+                        .distinct()
+                        .get(id=self.lhs)
+                    )
                 except (TypeError, ValueError, Clue.DoesNotExist):
                     self.msg("No clue found by that ID.")
                     return
@@ -1866,12 +2201,17 @@ class CmdPRPClue(PRPLorecommand):
                 if not targ:
                     return
                 if not self.gm_plots.filter(dompcs=targ.Dominion).exists():
-                    self.msg("Target is not among the participants of the plots you GM.")
+                    self.msg(
+                        "Target is not among the participants of the plots you GM."
+                    )
                     return
                 targ.roster.discover_clue(clue)
                 self.msg("You have sent them a clue.")
-                targ.inform("Clue '%s' has been sent to you about a plot you're on. Use @clues to view it." % clue,
-                            category="Clue Discovery")
+                targ.inform(
+                    "Clue '%s' has been sent to you about a plot you're on. Use @clues to view it."
+                    % clue,
+                    category="Clue Discovery",
+                )
                 return
             form = self.caller.attributes.get(self.form_attribute)
             if not form:
@@ -1880,24 +2220,24 @@ class CmdPRPClue(PRPLorecommand):
             if "finish" in self.switches:
                 return self.submit_form()
             if "name" in self.switches:
-                form['name'] = self.args
+                form["name"] = self.args
             if "desc" in self.switches:
-                form['desc'] = self.args
+                form["desc"] = self.args
             if "revelation" in self.switches:
                 revelation = self.get_revelation()
                 if not revelation:
                     return
-                form['revelation'] = revelation.id
+                form["revelation"] = revelation.id
             if "rating" in self.switches:
-                form['rating'] = self.args
+                form["rating"] = self.args
             if "tags" in self.switches:
-                form['tag_names'] = self.args
+                form["tag_names"] = self.args
             if "fake" in self.switches:
-                form['red_herring'] = not form.get('red_herring')
+                form["red_herring"] = not form.get("red_herring")
             if "noinvestigate" in self.switches:
-                form['allow_investigation'] = not form.get('allow_investigation', True)
+                form["allow_investigation"] = not form.get("allow_investigation", True)
             if "noshare" in self.switches:
-                form['allow_sharing'] = not form.get('allow_sharing', True)
+                form["allow_sharing"] = not form.get("allow_sharing", True)
             self.display_form()
         except CommandError as err:
             self.msg(err)
@@ -1933,12 +2273,13 @@ class CmdPRPRevelation(PRPLorecommand):
     in the above example, and if the House was destroyed by 'The Bloodcurse',
     you would add that as a tag as well.
     """
+
     key = "prprevelation"
     help_category = "PRP"
     locks = "cmd: all()"
     form_class = RevelationCreateForm
     form_attribute = "revelation_creation_form"
-    form_initial_kwargs = (('red_herring', False),)
+    form_initial_kwargs = (("red_herring", False),)
 
     def func(self):
         """Executes command"""
@@ -1960,9 +2301,9 @@ class CmdPRPRevelation(PRPLorecommand):
             if "finish" in self.switches:
                 return self.submit_form()
             if "name" in self.switches:
-                form['name'] = self.args
+                form["name"] = self.args
             if "desc" in self.switches:
-                form['desc'] = self.args
+                form["desc"] = self.args
             if "plot" in self.switches:
                 try:
                     if self.lhs.isdigit():
@@ -1971,14 +2312,14 @@ class CmdPRPRevelation(PRPLorecommand):
                         plot = self.gm_plots.get(name__iexact=self.lhs)
                 except Plot.DoesNotExist:
                     raise CommandError("No plot by that name or number.")
-                form['plot'] = plot.id
-                form['plot_gm_notes'] = self.rhs
+                form["plot"] = plot.id
+                form["plot_gm_notes"] = self.rhs
             if "tags" in self.switches:
-                form['tag_names'] = self.args
+                form["tag_names"] = self.args
             if "fake" in self.switches:
-                form['red_herring'] = not form.get('red_herring')
+                form["red_herring"] = not form.get("red_herring")
             if "rating" in self.switches:
-                form['required_clue_value'] = self.args
+                form["required_clue_value"] = self.args
             self.display_form()
         except CommandError as err:
             self.msg(err)

@@ -19,6 +19,7 @@ from commands.base import ArxCommand
 
 class DeathCmdSet(CmdSet):
     """CmdSet for players who are currently dead. Should be highest priority cmdset."""
+
     key = "DeathCmdSet"
     key_mergetype = {"DefaultCharacter": "Replace"}
     priority = 200
@@ -37,10 +38,13 @@ class DeathCmdSet(CmdSet):
         replaced as needed.
         """
         from commands.cmdsets.standard import OOCCmdSet
+
         self.add(OOCCmdSet)
         from commands.cmdsets.standard import StateIndependentCmdSet
+
         self.add(StateIndependentCmdSet)
         from commands.cmdsets.standard import StaffCmdSet
+
         self.add(StaffCmdSet)
         self.add(CmdGet())
         self.add(CmdDrop())
@@ -54,12 +58,13 @@ class DeathCmdSet(CmdSet):
         self.add(CmdFight())
         self.add(CmdDonate())
         self.add(CmdOrgs)
-        
+
 
 class DeathCommand(ArxCommand):
     """
     You are dead. Many character commands will no longer function.
     """
+
     key = "dead"
     locks = "cmd:all()"
 
@@ -83,27 +88,31 @@ class CmdGet(DeathCommand):
     """
     You are dead. Many character commands will no longer function.
     """
+
     key = "get"
 
 
 class CmdDrop(DeathCommand):
     """
     You are dead. Many character commands will no longer function.
-    """    
+    """
+
     key = "drop"
 
 
 class CmdGive(DeathCommand):
     """
     You are dead. Many character commands will no longer function.
-    """    
+    """
+
     key = "give"
 
 
 class CmdSay(DeathCommand):
     """
     You are dead. Many character commands will no longer function.
-    """   
+    """
+
     key = "say"
 
 
@@ -111,6 +120,7 @@ class CmdWhisper(DeathCommand):
     """
     You are dead. Many character commands will no longer function.
     """
+
     key = "whisper"
 
 
@@ -118,6 +128,7 @@ class CmdFollow(DeathCommand):
     """
     You are dead. Many character commands will no longer function.
     """
+
     key = "follow"
 
 
@@ -125,28 +136,32 @@ class CmdDitch(DeathCommand):
     """
     You are dead. Many character commands will no longer function.
     """
+
     key = "ditch"
 
 
 class CmdShout(DeathCommand):
     """No shouting"""
+
     key = "shout"
 
 
 class CmdFight(DeathCommand):
     """No fighting"""
+
     key = "fight"
     aliases = ["train", "heal"]
 
 
 class CmdDonate(DeathCommand):
     """No donating"""
+
     key = "donate"
     aliases = "praise"
 
 
 class CmdOrgs(DeathCommand):
     """No org stuff"""
+
     key = "@org"
     aliases = ["@domain", "@army"]
-

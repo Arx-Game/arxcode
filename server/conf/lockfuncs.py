@@ -49,7 +49,7 @@ def rank(accessing_obj, accessed_obj, *args, **kwargs):
         return False
     if accessing_obj.player_ob:
         accessing_obj = accessing_obj.player_ob
-    if hasattr(accessing_obj, 'dbobj'):
+    if hasattr(accessing_obj, "dbobj"):
         accessing_obj = accessing_obj.dbobj
     try:
         rank_num = int(args[0])
@@ -73,7 +73,9 @@ def rank(accessing_obj, accessed_obj, *args, **kwargs):
         except Organization.DoesNotExist:
             return False
     try:
-        member = accessing_obj.Dominion.memberships.get(organization=org_obj, deguilded=False)
+        member = accessing_obj.Dominion.memberships.get(
+            organization=org_obj, deguilded=False
+        )
         return member.rank <= rank_num
     except (AttributeError, Member.DoesNotExist):
         return False
@@ -96,7 +98,7 @@ def organization(accessing_obj, accessed_obj, *args, **kwargs):
             accessing_obj = accessing_obj.player_ob
     except AttributeError:
         pass
-    if hasattr(accessing_obj, 'dbobj'):
+    if hasattr(accessing_obj, "dbobj"):
         accessing_obj = accessing_obj.dbobj
     try:
         org_obj = Organization.objects.get(name__iexact=args[0])
@@ -109,6 +111,7 @@ def organization(accessing_obj, accessed_obj, *args, **kwargs):
     except (AttributeError, Member.DoesNotExist):
         # we weren't a member of the organization
         return False
+
 
 # alias for organization lockfunc
 org = organization
@@ -136,6 +139,7 @@ def ability(accessing_obj, accessed_obj, *args, **kwargs):
         val = int(args[1])
     if name == "all":
         from world.stats_and_skills import CRAFTING_ABILITIES
+
         ability_list = CRAFTING_ABILITIES
     else:
         ability_list = name.split(",")
@@ -172,6 +176,7 @@ def skill(accessing_obj, accessed_obj, *args, **kwargs):
         val = int(args[1])
     if name == "all":
         from world.stats_and_skills import CRAFTING_SKILLS
+
         skill_list = CRAFTING_SKILLS
     else:
         skill_list = name.split(",")
@@ -197,7 +202,7 @@ def roomkey(accessing_obj, accessed_obj, *args, **kwargs):
         return False
     roomid = int(args[0])
     keylist = accessing_obj.db.keylist or []
-    valid = [ob for ob in keylist if hasattr(ob, 'tags')]
+    valid = [ob for ob in keylist if hasattr(ob, "tags")]
     keylist = [room.id for room in valid]
     if valid:
         accessing_obj.db.keylist = valid
@@ -214,7 +219,7 @@ def chestkey(accessing_obj, accessed_obj, *args, **kwargs):
         return False
     chestid = int(args[0])
     keylist = accessing_obj.db.chestkeylist or []
-    valid = [ob for ob in keylist if hasattr(ob, 'tags')]
+    valid = [ob for ob in keylist if hasattr(ob, "tags")]
     keylist = [chest.id for chest in valid]
     if valid:
         accessing_obj.db.chestkeylist = valid
@@ -229,6 +234,7 @@ def cattr(accessing_obj, accessed_obj, *args, **kwargs):
     should be a player.
     """
     from evennia.locks.lockfuncs import attr
+
     try:
         if accessing_obj.player_ob:
             return attr(accessing_obj, accessed_obj, *args, **kwargs)

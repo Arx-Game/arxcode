@@ -69,8 +69,17 @@ from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
 from .reports import WeeklyReport
 from .agenthandler import AgentHandler
 from .managers import OrganizationManager, LandManager
-from server.utils.arx_utils import get_week, inform_staff, CachedProperty, \
-    CachedPropertiesMixin, classproperty, a_or_an, inform_guides, commafy, get_full_url
+from server.utils.arx_utils import (
+    get_week,
+    inform_staff,
+    CachedProperty,
+    CachedPropertiesMixin,
+    classproperty,
+    a_or_an,
+    inform_guides,
+    commafy,
+    get_full_url,
+)
 from server.utils.exceptions import PayError
 from typeclasses.npcs import npc_types
 from typeclasses.mixins import InformMixin
@@ -85,7 +94,7 @@ LIFESTYLES = {
     4: (500, 4000),
     5: (1500, 7000),
     6: (5000, 10000),
-    }
+}
 PRESTIGE_DECAY_AMOUNT = 0.50
 MAX_PRESTIGE_HISTORY = 10
 
@@ -97,14 +106,27 @@ class PlayerOrNpc(SharedMemoryModel):
     or an NPC who has no presence in game, and exists only as a name in the
     database.
     """
-    player = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='Dominion', blank=True, null=True,
-                                  on_delete=models.CASCADE)
+
+    player = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        related_name="Dominion",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
     npc_name = models.CharField(blank=True, null=True, max_length=255)
-    parents = models.ManyToManyField("self", symmetrical=False, related_name='children', blank=True)
+    parents = models.ManyToManyField(
+        "self", symmetrical=False, related_name="children", blank=True
+    )
     spouses = models.ManyToManyField("self", blank=True)
     alive = models.BooleanField(default=True, blank=True)
-    patron = models.ForeignKey('self', related_name='proteges', null=True, blank=True,
-                               on_delete=models.SET_NULL)
+    patron = models.ForeignKey(
+        "self",
+        related_name="proteges",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
     lifestyle_rating = models.PositiveSmallIntegerField(default=1, blank=1)
     # --- Dominion skills----
     # bonus to population growth
@@ -138,45 +160,64 @@ class PlayerOrNpc(SharedMemoryModel):
         return self.player
 
     def _get_siblings(self):
-        return PlayerOrNpc.objects.filter(Q(parents__in=self.all_parents) &
-                                          ~Q(id=self.id)).distinct()
+        return PlayerOrNpc.objects.filter(
+            Q(parents__in=self.all_parents) & ~Q(id=self.id)
+        ).distinct()
 
     def _parents_and_spouses(self):
-        return PlayerOrNpc.objects.filter(Q(children__id=self.id) | Q(spouses__children__id=self.id)).distinct()
+        return PlayerOrNpc.objects.filter(
+            Q(children__id=self.id) | Q(spouses__children__id=self.id)
+        ).distinct()
+
     all_parents = property(_parents_and_spouses)
 
     @property
     def grandparents(self):
         """Returns queryset of our grandparents"""
-        return PlayerOrNpc.objects.filter(Q(children__children=self) | Q(spouses__children__children=self) |
-                                          Q(children__spouses__children=self) |
-                                          Q(spouses__children__children__spouses=self) |
-                                          Q(children__children__spouses=self) |
-                                          Q(spouses__children__spouses__children=self)).distinct()
+        return PlayerOrNpc.objects.filter(
+            Q(children__children=self)
+            | Q(spouses__children__children=self)
+            | Q(children__spouses__children=self)
+            | Q(spouses__children__children__spouses=self)
+            | Q(children__children__spouses=self)
+            | Q(spouses__children__spouses__children=self)
+        ).distinct()
 
     @property
     def greatgrandparents(self):
         """Returns queryset of our great grandparents"""
-        return PlayerOrNpc.objects.filter(Q(children__in=self.grandparents) | Q(spouses__children__in=self.grandparents)
-                                          ).distinct()
+        return PlayerOrNpc.objects.filter(
+            Q(children__in=self.grandparents)
+            | Q(spouses__children__in=self.grandparents)
+        ).distinct()
 
     @property
     def second_cousins(self):
         """Returns queryset of our second cousins"""
-        return PlayerOrNpc.objects.filter(~Q(id=self.id) & ~Q(id__in=self.cousins) &
-                                          ~Q(id__in=self.siblings) & ~Q(id__in=self.spouses.all())
-                                          & (
-                                            Q(parents__parents__parents__in=self.greatgrandparents) |
-                                            Q(parents__parents__parents__spouses__in=self.greatgrandparents) |
-                                            Q(parents__parents__spouses__parents__in=self.greatgrandparents) |
-                                            Q(parents__spouses__parents__parents__in=self.greatgrandparents)
-                                          )).distinct()
+        return PlayerOrNpc.objects.filter(
+            ~Q(id=self.id)
+            & ~Q(id__in=self.cousins)
+            & ~Q(id__in=self.siblings)
+            & ~Q(id__in=self.spouses.all())
+            & (
+                Q(parents__parents__parents__in=self.greatgrandparents)
+                | Q(parents__parents__parents__spouses__in=self.greatgrandparents)
+                | Q(parents__parents__spouses__parents__in=self.greatgrandparents)
+                | Q(parents__spouses__parents__parents__in=self.greatgrandparents)
+            )
+        ).distinct()
 
     def _get_cousins(self):
-        return PlayerOrNpc.objects.filter((Q(parents__parents__in=self.grandparents) |
-                                           Q(parents__parents__spouses__in=self.grandparents) |
-                                           Q(parents__spouses__parents__in=self.grandparents)) & ~Q(id=self.id)
-                                          & ~Q(id__in=self.siblings) & ~Q(id__in=self.spouses.all())).distinct()
+        return PlayerOrNpc.objects.filter(
+            (
+                Q(parents__parents__in=self.grandparents)
+                | Q(parents__parents__spouses__in=self.grandparents)
+                | Q(parents__spouses__parents__in=self.grandparents)
+            )
+            & ~Q(id=self.id)
+            & ~Q(id__in=self.siblings)
+            & ~Q(id__in=self.spouses.all())
+        ).distinct()
 
     cousins = property(_get_cousins)
     siblings = property(_get_siblings)
@@ -218,51 +259,82 @@ class PlayerOrNpc(SharedMemoryModel):
         grandchildren = set(grandchildren)
         # convert to strings
         if ggparents:
-            ggparents = "{wGreatgrandparents{n: %s\n" % (", ".join(str(ggparent) for ggparent in ggparents))
+            ggparents = "{wGreatgrandparents{n: %s\n" % (
+                ", ".join(str(ggparent) for ggparent in ggparents)
+            )
         else:
-            ggparents = ''
+            ggparents = ""
         if grandparents:
-            grandparents = "{wGrandparents{n: %s\n" % (", ".join(str(gparent) for gparent in grandparents))
+            grandparents = "{wGrandparents{n: %s\n" % (
+                ", ".join(str(gparent) for gparent in grandparents)
+            )
         else:
-            grandparents = ''
+            grandparents = ""
         if parents:
-            parents = "{wParents{n: %s\n" % (", ".join(str(parent) for parent in parents))
+            parents = "{wParents{n: %s\n" % (
+                ", ".join(str(parent) for parent in parents)
+            )
         else:
-            parents = ''
+            parents = ""
         if spouses:
-            spouses = "{wSpouses{n: %s\n" % (", ".join(str(spouse) for spouse in spouses))
+            spouses = "{wSpouses{n: %s\n" % (
+                ", ".join(str(spouse) for spouse in spouses)
+            )
         else:
-            spouses = ''
+            spouses = ""
         if unc_or_aunts:
-            unc_or_aunts = "{wUncles/Aunts{n: %s\n" % (", ".join(str(unc) for unc in unc_or_aunts))
+            unc_or_aunts = "{wUncles/Aunts{n: %s\n" % (
+                ", ".join(str(unc) for unc in unc_or_aunts)
+            )
         else:
-            unc_or_aunts = ''
+            unc_or_aunts = ""
         if siblings:
             siblings = "{wSiblings{n: %s\n" % (", ".join(str(sib) for sib in siblings))
         else:
-            siblings = ''
+            siblings = ""
         if neph_or_nieces:
-            neph_or_nieces = "{wNephews/Nieces{n: %s\n" % (", ".join(str(neph) for neph in neph_or_nieces))
+            neph_or_nieces = "{wNephews/Nieces{n: %s\n" % (
+                ", ".join(str(neph) for neph in neph_or_nieces)
+            )
         else:
-            neph_or_nieces = ''
+            neph_or_nieces = ""
         if children:
-            children = "{wChildren{n: %s\n" % (", ".join(str(child) for child in children))
+            children = "{wChildren{n: %s\n" % (
+                ", ".join(str(child) for child in children)
+            )
         else:
-            children = ''
+            children = ""
         if grandchildren:
-            grandchildren = "{wGrandchildren{n: %s\n" % (", ".join(str(gchild) for gchild in grandchildren))
+            grandchildren = "{wGrandchildren{n: %s\n" % (
+                ", ".join(str(gchild) for gchild in grandchildren)
+            )
         else:
-            grandchildren = ''
+            grandchildren = ""
         if cousins:
-            cousins = "{wCousins{n: %s\n" % (", ".join(str(cousin) for cousin in cousins))
+            cousins = "{wCousins{n: %s\n" % (
+                ", ".join(str(cousin) for cousin in cousins)
+            )
         else:
-            cousins = ''
+            cousins = ""
         if second_cousins:
-            second_cousins = "{wSecond Cousins{n: %s\n" % (", ".join(str(seco) for seco in second_cousins))
+            second_cousins = "{wSecond Cousins{n: %s\n" % (
+                ", ".join(str(seco) for seco in second_cousins)
+            )
         else:
-            second_cousins = ''
-        return (ggparents + grandparents + parents + unc_or_aunts + spouses + siblings
-                + children + neph_or_nieces + cousins + second_cousins + grandchildren)
+            second_cousins = ""
+        return (
+            ggparents
+            + grandparents
+            + parents
+            + unc_or_aunts
+            + spouses
+            + siblings
+            + children
+            + neph_or_nieces
+            + cousins
+            + second_cousins
+            + grandchildren
+        )
 
     def msg(self, *args, **kwargs):
         """Passthrough method to call msg in the player attached to us"""
@@ -276,25 +348,35 @@ class PlayerOrNpc(SharedMemoryModel):
             reputation.respect += respect
             reputation.save()
         except Reputation.DoesNotExist:
-            self.reputations.create(organization=org, affection=affection, respect=respect)
+            self.reputations.create(
+                organization=org, affection=affection, respect=respect
+            )
 
     @property
     def current_orgs(self):
         """Returns Organizations we have not been deguilded from"""
-        org_ids = self.memberships.filter(deguilded=False).values_list('organization', flat=True)
+        org_ids = self.memberships.filter(deguilded=False).values_list(
+            "organization", flat=True
+        )
         return Organization.objects.filter(id__in=org_ids)
 
     @property
     def public_orgs(self):
         """Returns non-secret organizations we haven't been deguilded from"""
-        org_ids = self.memberships.filter(deguilded=False, secret=False).values_list('organization', flat=True)
+        org_ids = self.memberships.filter(deguilded=False, secret=False).values_list(
+            "organization", flat=True
+        )
         return Organization.objects.filter(id__in=org_ids, secret=False)
 
     @property
     def secret_orgs(self):
         """Returns secret organizations we haven't been deguilded from"""
-        secret_ids = self.memberships.filter(deguilded=False, secret=True).values_list('organization', flat=True)
-        return Organization.objects.filter(Q(secret=True) | Q(id__in=secret_ids)).distinct()
+        secret_ids = self.memberships.filter(deguilded=False, secret=True).values_list(
+            "organization", flat=True
+        )
+        return Organization.objects.filter(
+            Q(secret=True) | Q(id__in=secret_ids)
+        ).distinct()
 
     def pay_lifestyle(self, report=None):
         """Pays for our lifestyle and adjusts our prestige"""
@@ -320,12 +402,15 @@ class PlayerOrNpc(SharedMemoryModel):
             assets.adjust_prestige(prestige)
             payname = "You" if payer == assets else str(payer)
             if report:
-                report.lifestyle_msg = "%s paid %s for your lifestyle and you gained %s prestige.\n" % (payname, cost,
-                                                                                                        prestige)
+                report.lifestyle_msg = (
+                    "%s paid %s for your lifestyle and you gained %s prestige.\n"
+                    % (payname, cost, prestige)
+                )
+
         if assets.vault > cost:
             pay_and_adjust(assets)
             return True
-        orgs = [ob for ob in self.current_orgs if ob.access(self.player, 'withdraw')]
+        orgs = [ob for ob in self.current_orgs if ob.access(self.player, "withdraw")]
         if not orgs:
             return False
         for org in orgs:
@@ -334,7 +419,9 @@ class PlayerOrNpc(SharedMemoryModel):
                 return True
         # no one could pay for us
         if report:
-            report.lifestyle_msg = "You were unable to afford to pay for your lifestyle.\n"
+            report.lifestyle_msg = (
+                "You were unable to afford to pay for your lifestyle.\n"
+            )
         return False
 
     @CachedProperty
@@ -350,16 +437,19 @@ class PlayerOrNpc(SharedMemoryModel):
             week = get_week()
         except Exception:
             import traceback
+
             traceback.print_exc()
             return cdowns
         try:
             max_support = self.player.char_ob.max_support
         except AttributeError:
             import traceback
+
             traceback.print_exc()
             return cdowns
-        qs = SupportUsed.objects.select_related('supporter__task__member__player').filter(Q(supporter__player=self) &
-                                                                                          Q(supporter__fake=False))
+        qs = SupportUsed.objects.select_related(
+            "supporter__task__member__player"
+        ).filter(Q(supporter__player=self) & Q(supporter__fake=False))
 
         def process_week(qset, week_offset=0):
             """Helper function for changing support cooldowns"""
@@ -372,11 +462,12 @@ class PlayerOrNpc(SharedMemoryModel):
                 cdowns[pc.id] = points
             if week_offset:
                 for name in cdowns.keys():
-                    cdowns[name] += max_support/3
+                    cdowns[name] += max_support / 3
                     if max_support % 3:
                         cdowns[name] += 1
                     if cdowns[name] >= max_support:
                         del cdowns[name]
+
         for offset in range(-3, 1):
             process_week(qs, offset)
         return cdowns
@@ -390,8 +481,11 @@ class PlayerOrNpc(SharedMemoryModel):
         week = get_week()
         try:
             max_support = self.player.char_ob.max_support
-            points_spent = sum(SupportUsed.objects.filter(Q(week=week) & Q(supporter__player=self) &
-                                                          Q(supporter__fake=False)).values_list('rating', flat=True))
+            points_spent = sum(
+                SupportUsed.objects.filter(
+                    Q(week=week) & Q(supporter__player=self) & Q(supporter__fake=False)
+                ).values_list("rating", flat=True)
+            )
 
         except (ValueError, TypeError, AttributeError):
             return 0
@@ -415,22 +509,30 @@ class PlayerOrNpc(SharedMemoryModel):
     def recent_actions(self):
         """Returns queryset of recent actions that weren't cancelled and aren't still in draft"""
         from datetime import timedelta
+
         offset = timedelta(days=-PlotAction.num_days)
         old = datetime.now() + offset
-        return self.actions.filter(Q(date_submitted__gte=old) &
-                                   ~Q(status__in=(PlotAction.CANCELLED, PlotAction.DRAFT)) &
-                                   Q(free_action=False))
+        return self.actions.filter(
+            Q(date_submitted__gte=old)
+            & ~Q(status__in=(PlotAction.CANCELLED, PlotAction.DRAFT))
+            & Q(free_action=False)
+        )
 
     @property
     def recent_assists(self):
         """Returns queryset of all assists from the past 30 days"""
         from datetime import timedelta
+
         offset = timedelta(days=-PlotAction.num_days)
         old = datetime.now() + offset
-        actions = PlotAction.objects.filter(Q(date_submitted__gte=old) &
-                                            ~Q(status__in=(PlotAction.CANCELLED, PlotAction.DRAFT)) &
-                                            Q(free_action=False))
-        return self.assisting_actions.filter(plot_action__in=actions, free_action=False).distinct()
+        actions = PlotAction.objects.filter(
+            Q(date_submitted__gte=old)
+            & ~Q(status__in=(PlotAction.CANCELLED, PlotAction.DRAFT))
+            & Q(free_action=False)
+        )
+        return self.assisting_actions.filter(
+            plot_action__in=actions, free_action=False
+        ).distinct()
 
     @property
     def past_actions(self):
@@ -449,8 +551,12 @@ class PlayerOrNpc(SharedMemoryModel):
     @property
     def events_hosted(self):
         """Events we acted as a host for"""
-        return self.events.filter(pc_event_participation__status__in=(PCEventParticipation.HOST,
-                                                                      PCEventParticipation.MAIN_HOST))
+        return self.events.filter(
+            pc_event_participation__status__in=(
+                PCEventParticipation.HOST,
+                PCEventParticipation.MAIN_HOST,
+            )
+        )
 
     @property
     def events_gmd(self):
@@ -460,7 +566,9 @@ class PlayerOrNpc(SharedMemoryModel):
     @property
     def events_attended(self):
         """Events we were a guest at or invited to attend"""
-        return self.events.filter(pc_event_participation__status=PCEventParticipation.GUEST)
+        return self.events.filter(
+            pc_event_participation__status=PCEventParticipation.GUEST
+        )
 
     @property
     def num_fealties(self):
@@ -469,23 +577,35 @@ class PlayerOrNpc(SharedMemoryModel):
         query = Q()
         for category in Organization.CATEGORIES_WITH_FEALTY_PENALTIES:
             query |= Q(category__iexact=category)
-        redundancies = self.current_orgs.filter(query).values_list('category').annotate(num=Count('category') - 1)
+        redundancies = (
+            self.current_orgs.filter(query)
+            .values_list("category")
+            .annotate(num=Count("category") - 1)
+        )
         no_fealties += sum(ob[1] for ob in redundancies)
-        return Fealty.objects.filter(orgs__in=self.current_orgs).distinct().count() + no_fealties
+        return (
+            Fealty.objects.filter(orgs__in=self.current_orgs).distinct().count()
+            + no_fealties
+        )
 
     @property
     def active_plots(self):
-        return self.plots.filter(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE,
-                                 usage__in=(Plot.GM_PLOT, Plot.PLAYER_RUN_PLOT)).distinct()
+        return self.plots.filter(
+            dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE,
+            usage__in=(Plot.GM_PLOT, Plot.PLAYER_RUN_PLOT),
+        ).distinct()
 
     @property
     def plots_we_can_gm(self):
-        return self.active_plots.filter(dompc_involvement__admin_status__gte=PCPlotInvolvement.GM).distinct()
+        return self.active_plots.filter(
+            dompc_involvement__admin_status__gte=PCPlotInvolvement.GM
+        ).distinct()
 
 
 # noinspection PyMethodParameters,PyPep8Naming
 class PrestigeCategory(SharedMemoryModel):
     """Categories of different kinds of prestige adjustments, whether it's from events, fashion, combat, etc."""
+
     name = models.CharField(max_length=30, blank=False, null=False)
     male_noun = models.CharField(max_length=30, blank=False, null=False)
     female_noun = models.CharField(max_length=30, blank=False, null=False)
@@ -501,40 +621,43 @@ class PrestigeCategory(SharedMemoryModel):
         try:
             result = cls.objects.get(name=name)
             cls.CACHED_TYPES[name] = result
-        except (PrestigeCategory.DoesNotExist, PrestigeCategory.MultipleObjectsReturned):
+        except (
+            PrestigeCategory.DoesNotExist,
+            PrestigeCategory.MultipleObjectsReturned,
+        ):
             return None
 
     @classproperty
     def FASHION(cls):
-        return cls.category_for_name('Fashion')
+        return cls.category_for_name("Fashion")
 
     @classproperty
     def EVENT(cls):
-        return cls.category_for_name('Event')
+        return cls.category_for_name("Event")
 
     @classproperty
     def CHAMPION(cls):
-        return cls.category_for_name('Champion')
+        return cls.category_for_name("Champion")
 
     @classproperty
     def ATHLETICS(cls):
-        return cls.category_for_name('Athletics')
+        return cls.category_for_name("Athletics")
 
     @classproperty
     def MILITARY(cls):
-        return cls.category_for_name('Military')
+        return cls.category_for_name("Military")
 
     @classproperty
     def DESIGN(cls):
-        return cls.category_for_name('Design')
+        return cls.category_for_name("Design")
 
     @classproperty
     def INVESTMENT(cls):
-        return cls.category_for_name('Investment')
+        return cls.category_for_name("Investment")
 
     @classproperty
     def CHARITY(cls):
-        return cls.category_for_name('Charity')
+        return cls.category_for_name("Charity")
 
     def __str__(self):
         return self.name
@@ -542,17 +665,21 @@ class PrestigeCategory(SharedMemoryModel):
 
 class PrestigeAdjustment(SharedMemoryModel):
     """A record of adjusting an AssetOwner's prestige"""
+
     FAME = 0
     LEGEND = 1
 
-    PRESTIGE_TYPES = (
-        (FAME, "Fame"),
-        (LEGEND, "Legend")
-    )
+    PRESTIGE_TYPES = ((FAME, "Fame"), (LEGEND, "Legend"))
 
-    asset_owner = models.ForeignKey('AssetOwner', related_name="prestige_adjustments", on_delete=models.CASCADE)
-    category = models.ForeignKey(PrestigeCategory, related_name='+', on_delete=models.CASCADE)
-    adjustment_type = models.PositiveSmallIntegerField(default=FAME, choices=PRESTIGE_TYPES)
+    asset_owner = models.ForeignKey(
+        "AssetOwner", related_name="prestige_adjustments", on_delete=models.CASCADE
+    )
+    category = models.ForeignKey(
+        PrestigeCategory, related_name="+", on_delete=models.CASCADE
+    )
+    adjustment_type = models.PositiveSmallIntegerField(
+        default=FAME, choices=PRESTIGE_TYPES
+    )
     adjusted_on = models.DateTimeField(auto_now_add=True, blank=False, null=False)
     adjusted_by = models.IntegerField(default=0)
     reason = models.TextField(blank=True, null=True)
@@ -571,6 +698,7 @@ class PrestigeAdjustment(SharedMemoryModel):
 
 class PrestigeTier(SharedMemoryModel):
     """Used for displaying people's descriptions of why they're prestigious"""
+
     rank_name = models.CharField(max_length=30, blank=False, null=False)
     minimum_prestige = models.PositiveIntegerField(blank=False, null=False)
 
@@ -581,7 +709,7 @@ class PrestigeTier(SharedMemoryModel):
         elif value < -100000:
             return "shameful"
 
-        results = cls.objects.order_by('-minimum_prestige')
+        results = cls.objects.order_by("-minimum_prestige")
         percentage = round((value / (max_value or 1)) * 100)
         for result in results.all():
             if percentage >= result.minimum_prestige:
@@ -599,10 +727,7 @@ class PrestigeNomination(SharedMemoryModel):
     TYPE_FAME = 0
     TYPE_LEGEND = 1
 
-    TYPES = (
-        (TYPE_FAME, 'Fame'),
-        (TYPE_LEGEND, 'Legend')
-    )
+    TYPES = ((TYPE_FAME, "Fame"), (TYPE_LEGEND, "Legend"))
 
     SIZE_SMALL = 0
     SIZE_MEDIUM = 1
@@ -610,10 +735,10 @@ class PrestigeNomination(SharedMemoryModel):
     SIZE_HUGE = 3
 
     SIZES = (
-        (SIZE_SMALL, 'Small'),
-        (SIZE_MEDIUM, 'Medium'),
-        (SIZE_LARGE, 'Large'),
-        (SIZE_HUGE, 'Huge'),
+        (SIZE_SMALL, "Small"),
+        (SIZE_MEDIUM, "Medium"),
+        (SIZE_LARGE, "Large"),
+        (SIZE_HUGE, "Huge"),
     )
 
     AMOUNTS = {
@@ -621,30 +746,41 @@ class PrestigeNomination(SharedMemoryModel):
             SIZE_SMALL: 100000,
             SIZE_MEDIUM: 250000,
             SIZE_LARGE: 500000,
-            SIZE_HUGE: 1000000
+            SIZE_HUGE: 1000000,
         },
         TYPE_LEGEND: {
             SIZE_SMALL: 5000,
             SIZE_MEDIUM: 10000,
             SIZE_LARGE: 25000,
-            SIZE_HUGE: 50000
-        }
+            SIZE_HUGE: 50000,
+        },
     }
 
     pending = models.BooleanField(default=True)
     approved = models.BooleanField(default=False)
 
-    nominator = models.ForeignKey('PlayerOrNpc', blank=False, null=False, related_name='+', on_delete=models.CASCADE)
-    nominees = models.ManyToManyField('AssetOwner', related_name='+')
-    category = models.ForeignKey('PrestigeCategory', blank=False, null=False, related_name='+',
-                                 on_delete=models.CASCADE)
+    nominator = models.ForeignKey(
+        "PlayerOrNpc",
+        blank=False,
+        null=False,
+        related_name="+",
+        on_delete=models.CASCADE,
+    )
+    nominees = models.ManyToManyField("AssetOwner", related_name="+")
+    category = models.ForeignKey(
+        "PrestigeCategory",
+        blank=False,
+        null=False,
+        related_name="+",
+        on_delete=models.CASCADE,
+    )
     adjust_type = models.PositiveSmallIntegerField(default=TYPE_FAME, choices=TYPES)
     adjust_size = models.PositiveSmallIntegerField(default=SIZE_SMALL, choices=SIZES)
     reason = models.CharField(max_length=40, blank=True, null=True)
     long_reason = models.TextField(blank=False, null=False)
 
-    approved_by = models.ManyToManyField('PlayerOrNpc', related_name='+')
-    denied_by = models.ManyToManyField('PlayerOrNpc', related_name='+')
+    approved_by = models.ManyToManyField("PlayerOrNpc", related_name="+")
+    denied_by = models.ManyToManyField("PlayerOrNpc", related_name="+")
 
     APPROVALS_REQUIRED = 3
     DENIALS_REQUIRED = 3
@@ -689,11 +825,19 @@ class PrestigeNomination(SharedMemoryModel):
         for target in self.nominees.all():
             targets.append("|y" + str(target.owner) + "|n")
             if self.adjust_type == PrestigeNomination.TYPE_FAME:
-                target.adjust_prestige(adjust_amount, category=self.category, reason=self.reason,
-                                       long_reason=self.long_reason)
+                target.adjust_prestige(
+                    adjust_amount,
+                    category=self.category,
+                    reason=self.reason,
+                    long_reason=self.long_reason,
+                )
             elif self.adjust_type == PrestigeNomination.TYPE_LEGEND:
-                target.adjust_legend(adjust_amount, category=self.category, reason=self.reason,
-                                     long_reason=self.long_reason)
+                target.adjust_legend(
+                    adjust_amount,
+                    category=self.category,
+                    reason=self.reason,
+                    long_reason=self.long_reason,
+                )
 
         comma_targets = commafy(targets)
         verb = "was"
@@ -709,17 +853,35 @@ class PrestigeNomination(SharedMemoryModel):
                 size_name = size_tup[1].lower()
 
         inform_guides("|wPRESTIGE:|n Nomination %d has been approved." % self.id)
-        summary = "%s %s just given %d %s %s: %s" % (comma_targets, verb, adjust_amount,
-                                                     str(self.category), type_noun, self.long_reason)
+        summary = "%s %s just given %d %s %s: %s" % (
+            comma_targets,
+            verb,
+            adjust_amount,
+            str(self.category),
+            type_noun,
+            self.long_reason,
+        )
 
         inform_staff(summary)
 
         from typeclasses.bulletin_board.bboard import BBoard
+
         board = BBoard.objects.get(db_key__iexact="vox populi")
         subject = "Reputation changes"
-        post_msg = "%s %s just given %s %s %s adjustment:\n\n%s" % (comma_targets, verb, a_or_an(size_name), size_name,
-                                                                    type_noun, self.long_reason)
-        post = board.bb_post(poster_obj=None, poster_name="Prestige Nomination", msg=post_msg, subject=subject)
+        post_msg = "%s %s just given %s %s %s adjustment:\n\n%s" % (
+            comma_targets,
+            verb,
+            a_or_an(size_name),
+            size_name,
+            type_noun,
+            self.long_reason,
+        )
+        post = board.bb_post(
+            poster_obj=None,
+            poster_name="Prestige Nomination",
+            msg=post_msg,
+            subject=subject,
+        )
         post.tags.add("reputation_change")
 
         self.pending = False
@@ -739,10 +901,21 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     access this model with object.assets, and their income will
     be adjusted on a weekly basis with object.assets.do_weekly_adjustment().
     """
-    player = models.OneToOneField('PlayerOrNpc', related_name="assets", blank=True, null=True,
-                                  on_delete=models.CASCADE)
-    organization_owner = models.OneToOneField('Organization', related_name='assets', blank=True, null=True,
-                                              on_delete=models.CASCADE)
+
+    player = models.OneToOneField(
+        "PlayerOrNpc",
+        related_name="assets",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    organization_owner = models.OneToOneField(
+        "Organization",
+        related_name="assets",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
 
     # money stored in the bank
     vault = models.PositiveIntegerField(default=0, blank=0)
@@ -758,126 +931,177 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     min_resources_for_inform = models.PositiveIntegerField(default=0)
     min_materials_for_inform = models.PositiveIntegerField(default=0)
 
-    _AVERAGE_PRESTIGE = {'last_check': None, 'last_value': 0}
-    _AVERAGE_FAME = {'last_check': None, 'last_value': 0}
-    _AVERAGE_LEGEND = {'last_check': None, 'last_value': 0}
-    _MEDIAN_PRESTIGE = {'last_check': None, 'last_value': 0}
-    _MEDIAN_FAME = {'last_check': None, 'last_value': 0}
-    _MEDIAN_LEGEND = {'last_check': None, 'last_value': 0}
+    _AVERAGE_PRESTIGE = {"last_check": None, "last_value": 0}
+    _AVERAGE_FAME = {"last_check": None, "last_value": 0}
+    _AVERAGE_LEGEND = {"last_check": None, "last_value": 0}
+    _MEDIAN_PRESTIGE = {"last_check": None, "last_value": 0}
+    _MEDIAN_FAME = {"last_check": None, "last_value": 0}
+    _MEDIAN_LEGEND = {"last_check": None, "last_value": 0}
 
     @classproperty
     def AVERAGE_PRESTIGE(cls):
-        last_check = cls._AVERAGE_PRESTIGE['last_check']
+        last_check = cls._AVERAGE_PRESTIGE["last_check"]
         now = datetime.now()
         if not last_check or (now - last_check).days >= 1:
-            cls._AVERAGE_PRESTIGE['last_check'] = now
+            cls._AVERAGE_PRESTIGE["last_check"] = now
             assets = list(
-                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+                AssetOwner.objects.filter(
+                    player__player__roster__roster__name__in=(
+                        "Active",
+                        "Gone",
+                        "Available",
+                    )
+                )
+            )
             assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
             total = 0
             for asset in assets:
                 total += asset.prestige
             total = total / len(assets)
-            cls._AVERAGE_PRESTIGE['last_value'] = total
+            cls._AVERAGE_PRESTIGE["last_value"] = total
 
-        return cls._AVERAGE_PRESTIGE['last_value']
+        return cls._AVERAGE_PRESTIGE["last_value"]
 
     @classproperty
     def MEDIAN_PRESTIGE(cls):
-        last_check = cls._MEDIAN_PRESTIGE['last_check']
+        last_check = cls._MEDIAN_PRESTIGE["last_check"]
         now = datetime.now()
         if not last_check or (now - last_check).days >= 1:
-            cls._MEDIAN_PRESTIGE['last_check'] = now
+            cls._MEDIAN_PRESTIGE["last_check"] = now
             assets = list(
-                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+                AssetOwner.objects.filter(
+                    player__player__roster__roster__name__in=(
+                        "Active",
+                        "Gone",
+                        "Available",
+                    )
+                )
+            )
             assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
 
             median = assets[len(assets) // 2].prestige
 
-            cls._MEDIAN_PRESTIGE['last_value'] = median
+            cls._MEDIAN_PRESTIGE["last_value"] = median
 
-        return cls._MEDIAN_PRESTIGE['last_value']
+        return cls._MEDIAN_PRESTIGE["last_value"]
 
     @classproperty
     def AVERAGE_FAME(cls):
-        last_check = cls._AVERAGE_FAME['last_check']
+        last_check = cls._AVERAGE_FAME["last_check"]
         now = datetime.now()
         if not last_check or (now - last_check).days >= 1:
-            cls._AVERAGE_FAME['last_check'] = now
+            cls._AVERAGE_FAME["last_check"] = now
             assets = list(
-                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available"))
-                                  .order_by('-fame'))
+                AssetOwner.objects.filter(
+                    player__player__roster__roster__name__in=(
+                        "Active",
+                        "Gone",
+                        "Available",
+                    )
+                ).order_by("-fame")
+            )
             total = 0
             for asset in assets:
                 total += asset.fame
             total = total / len(assets)
-            cls._AVERAGE_FAME['last_value'] = total
+            cls._AVERAGE_FAME["last_value"] = total
 
-        return cls._AVERAGE_FAME['last_value']
+        return cls._AVERAGE_FAME["last_value"]
 
     @classproperty
     def MEDIAN_FAME(cls):
-        last_check = cls._MEDIAN_FAME['last_check']
+        last_check = cls._MEDIAN_FAME["last_check"]
         now = datetime.now()
         if not last_check or (now - last_check).days >= 1:
-            cls._MEDIAN_FAME['last_check'] = now
+            cls._MEDIAN_FAME["last_check"] = now
             assets = list(
-                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+                AssetOwner.objects.filter(
+                    player__player__roster__roster__name__in=(
+                        "Active",
+                        "Gone",
+                        "Available",
+                    )
+                )
+            )
             assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
 
             median = assets[len(assets) / 2].fame
 
-            cls._MEDIAN_FAME['last_value'] = median
+            cls._MEDIAN_FAME["last_value"] = median
 
-        return cls._MEDIAN_FAME['last_value']
+        return cls._MEDIAN_FAME["last_value"]
 
     @classproperty
     def AVERAGE_LEGEND(cls):
-        last_check = cls._AVERAGE_LEGEND['last_check']
+        last_check = cls._AVERAGE_LEGEND["last_check"]
         now = datetime.now()
         if not last_check or (now - last_check).days >= 1:
-            cls._AVERAGE_LEGEND['last_check'] = now
+            cls._AVERAGE_LEGEND["last_check"] = now
             assets = list(
-                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+                AssetOwner.objects.filter(
+                    player__player__roster__roster__name__in=(
+                        "Active",
+                        "Gone",
+                        "Available",
+                    )
+                )
+            )
             assets = sorted(assets, key=lambda x: x.total_legend, reverse=True)
             total = 0
             for asset in assets:
                 total += asset.total_legend
             total = total / len(assets)
-            cls._AVERAGE_LEGEND['last_value'] = total
+            cls._AVERAGE_LEGEND["last_value"] = total
 
-        return cls._AVERAGE_LEGEND['last_value']
+        return cls._AVERAGE_LEGEND["last_value"]
 
     @classproperty
     def MEDIAN_LEGEND(cls):
-        last_check = cls._MEDIAN_LEGEND['last_check']
+        last_check = cls._MEDIAN_LEGEND["last_check"]
         now = datetime.now()
         if not last_check or (now - last_check).days >= 1:
-            cls._MEDIAN_LEGEND['last_check'] = now
+            cls._MEDIAN_LEGEND["last_check"] = now
             assets = list(
-                AssetOwner.objects.filter(player__player__roster__roster__name__in=("Active", "Gone", "Available")))
+                AssetOwner.objects.filter(
+                    player__player__roster__roster__name__in=(
+                        "Active",
+                        "Gone",
+                        "Available",
+                    )
+                )
+            )
             assets = sorted(assets, key=lambda x: x.prestige, reverse=True)
 
             median = assets[len(assets) / 2].total_legend
 
-            cls._MEDIAN_LEGEND['last_value'] = median
+            cls._MEDIAN_LEGEND["last_value"] = median
 
-        return cls._MEDIAN_LEGEND['last_value']
+        return cls._MEDIAN_LEGEND["last_value"]
 
     @CachedProperty
     def prestige(self):
         """Our prestige used for different mods. aggregate of fame, legend, and grandeur"""
         return self.fame + self.total_legend + self.grandeur + self.propriety
 
-    def descriptor_for_value_adjustment(self, value, max_value, best_adjust, include_reason=True,
-                                        wants_long_reason=False):
+    def descriptor_for_value_adjustment(
+        self,
+        value,
+        max_value,
+        best_adjust,
+        include_reason=True,
+        wants_long_reason=False,
+    ):
         qualifier = PrestigeTier.rank_for_prestige(value, max_value)
         result = None
         reason = None
         long_reason = best_adjust and best_adjust.long_reason
         if best_adjust:
             if include_reason:
-                reason = long_reason if wants_long_reason and long_reason else best_adjust.reason
+                reason = (
+                    long_reason
+                    if wants_long_reason and long_reason
+                    else best_adjust.reason
+                )
             char = self.player.player.char_ob
             gender = char.db.gender or "Male"
             if gender.lower() == "male":
@@ -898,17 +1122,22 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
 
         return result
 
-    def prestige_descriptor(self, adjust_type=None, include_reason=True, wants_long_reason=False):
+    def prestige_descriptor(
+        self, adjust_type=None, include_reason=True, wants_long_reason=False
+    ):
         if not self.player:
             return self.organization_owner.name
 
         value = self.prestige
         max_value = AssetOwner.MEDIAN_PRESTIGE
 
-        return self.descriptor_for_value_adjustment(value, max_value,
-                                                    self.most_notable_adjustment(adjust_type=adjust_type),
-                                                    wants_long_reason=wants_long_reason,
-                                                    include_reason=include_reason)
+        return self.descriptor_for_value_adjustment(
+            value,
+            max_value,
+            self.most_notable_adjustment(adjust_type=adjust_type),
+            wants_long_reason=wants_long_reason,
+            include_reason=include_reason,
+        )
 
     @CachedProperty
     def propriety(self):
@@ -918,7 +1147,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         # if we have negative fame, then positive propriety mods lessens that, while neg mods makes it worse
         if base < 0:
             percentage *= -1
-        value = int(base * percentage/100.0)
+        value = int(base * percentage / 100.0)
         if self.player:
             # It's not possible to use F expressions on datetime fields so we'll check a range of dates
             now = datetime.now()
@@ -927,19 +1156,25 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             three_weeks = now - timedelta(days=21)
             four_weeks = now - timedelta(days=28)
             # number of weeks since the favor was set, + 1, cap at a month ago
-            num_weeks = (Case(When(date_gossip_set__isnull=True, then=1),
-                              When(date_gossip_set__lte=four_weeks, then=5),
-                              When(date_gossip_set__lte=three_weeks, then=4),
-                              When(date_gossip_set__lte=two_weeks, then=3),
-                              When(date_gossip_set__lte=last_week, then=2),
-                              default=1))
+            num_weeks = Case(
+                When(date_gossip_set__isnull=True, then=1),
+                When(date_gossip_set__lte=four_weeks, then=5),
+                When(date_gossip_set__lte=three_weeks, then=4),
+                When(date_gossip_set__lte=two_weeks, then=3),
+                When(date_gossip_set__lte=last_week, then=2),
+                default=1,
+            )
             # the base prestige they get from each org, then modified by their favor value
-            org_prestige = (F('organization__assets__fame') + F('organization__assets__legend'))/(20 * F('num_weeks'))
-            val = org_prestige * F('favor')
-            favor = (self.player.reputations.filter(Q(favor__gt=0) | Q(favor__lt=0))
-                                            .annotate(num_weeks=num_weeks)
-                                            .annotate(val=val)
-                                            .aggregate(sum=Sum('val')))["sum"] or 0
+            org_prestige = (
+                F("organization__assets__fame") + F("organization__assets__legend")
+            ) / (20 * F("num_weeks"))
+            val = org_prestige * F("favor")
+            favor = (
+                self.player.reputations.filter(Q(favor__gt=0) | Q(favor__lt=0))
+                .annotate(num_weeks=num_weeks)
+                .annotate(val=val)
+                .aggregate(sum=Sum("val"))
+            )["sum"] or 0
             value += favor
         return value
 
@@ -958,20 +1193,20 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         """Modifier derived from prestige used as bonus for resource gain, org income, etc"""
         prestige = self.prestige
         if prestige >= 0:
-            return prestige ** (1. / 3.)
-        return -(-prestige) ** (1. / 3.)
+            return prestige ** (1.0 / 3.0)
+        return -((-prestige) ** (1.0 / 3.0))
 
     def get_bonus_resources(self, base_amount, random_percentage=None):
         """Calculates the amount of bonus resources we get from prestige."""
         mod = self.prestige_mod
-        bonus = (mod * base_amount)/100.0
+        bonus = (mod * base_amount) / 100.0
         if random_percentage is not None:
-            bonus = (bonus * randint(50, int(random_percentage)))/100.0
+            bonus = (bonus * randint(50, int(random_percentage))) / 100.0
         return int(bonus)
 
     def get_bonus_income(self, base_amount):
         """Calculates the bonus to domain/org income we get from prestige."""
-        return self.get_bonus_resources(base_amount)/4
+        return self.get_bonus_resources(base_amount) / 4
 
     def _get_owner(self):
         if self.player:
@@ -979,6 +1214,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         if self.organization_owner:
             return self.organization_owner
         return None
+
     owner = property(_get_owner)
 
     def __str__(self):
@@ -1001,7 +1237,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     @property
     def base_grandeur(self):
         """The amount we contribute to other people when they're totalling up grandeur"""
-        return int(self.fame/10.0 + self.total_legend/10.0 + self.propriety/10.0)
+        return int(self.fame / 10.0 + self.total_legend / 10.0 + self.propriety / 10.0)
 
     def get_grandeur_from_patron(self):
         """Gets our grandeur value from our patron, if we have one"""
@@ -1020,8 +1256,11 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     def get_grandeur_from_orgs(self):
         """Gets grandeur value from orgs we're a member of."""
         base = 0
-        memberships = list(self.player.memberships.filter(deguilded=False, secret=False,
-                                                          organization__secret=False).distinct())
+        memberships = list(
+            self.player.memberships.filter(
+                deguilded=False, secret=False, organization__secret=False
+            ).distinct()
+        )
         too_many_org_penalty = max(len(memberships) * 0.5, 1.0)
         for member in memberships:
             rank_divisor = max(member.rank, 1)
@@ -1040,26 +1279,33 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             grandeur = member.player.assets.base_grandeur / rank_divisor
             base += grandeur
             ranks += 11 - member.rank
-        too_many_members_mod = max(ranks/200.0, 0.01)
+        too_many_members_mod = max(ranks / 200.0, 0.01)
         base /= too_many_members_mod
         sign = -1 if base < 0 else 1
         return min(abs(int(base)), abs(self.fame + self.legend) * 2) * sign
 
     # noinspection PyMethodMayBeStatic
-    def store_prestige_record(self, value, adjustment_type=PrestigeAdjustment.FAME, category=None,
-                              reason=None, long_reason=None):
+    def store_prestige_record(
+        self,
+        value,
+        adjustment_type=PrestigeAdjustment.FAME,
+        category=None,
+        reason=None,
+        long_reason=None,
+    ):
         if not category:
             return
 
-        old_adjustments = PrestigeAdjustment.objects.filter(asset_owner=self,
-                                                            adjustment_type=adjustment_type)
+        old_adjustments = PrestigeAdjustment.objects.filter(
+            asset_owner=self, adjustment_type=adjustment_type
+        )
         new_adjustment = PrestigeAdjustment.objects.create(
             asset_owner=self,
             category=category,
             adjustment_type=adjustment_type,
             adjusted_by=value,
             reason=reason,
-            long_reason=long_reason
+            long_reason=long_reason,
         )
 
         if old_adjustments.count() >= MAX_PRESTIGE_HISTORY:
@@ -1094,8 +1340,13 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         self.save()
 
         if category:
-            self.store_prestige_record(value, adjustment_type=PrestigeAdjustment.FAME, category=category,
-                                       reason=reason, long_reason=long_reason)
+            self.store_prestige_record(
+                value,
+                adjustment_type=PrestigeAdjustment.FAME,
+                category=category,
+                reason=reason,
+                long_reason=long_reason,
+            )
 
     def adjust_legend(self, value, category=None, reason=None, long_reason=None):
         """
@@ -1105,8 +1356,13 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         self.save()
 
         if category:
-            self.store_prestige_record(value, adjustment_type=PrestigeAdjustment.LEGEND, category=category,
-                                       reason=reason, long_reason=long_reason)
+            self.store_prestige_record(
+                value,
+                adjustment_type=PrestigeAdjustment.LEGEND,
+                category=category,
+                reason=reason,
+                long_reason=long_reason,
+            )
 
     @CachedProperty
     def income(self):
@@ -1115,7 +1371,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             income += self.organization_owner.amount
         for amt in self.incomes.filter(do_weekly=True).exclude(category="vassal taxes"):
             income += amt.weekly_amount
-        if not hasattr(self, 'estate'):
+        if not hasattr(self, "estate"):
             return income
         for domain in self.estate.holdings.all():
             income += domain.total_income
@@ -1130,7 +1386,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             costs += army.costs
         for army in self.loaned_armies.filter(domain__isnull=True):
             costs += army.costs
-        if not hasattr(self, 'estate'):
+        if not hasattr(self, "estate"):
             return costs
         for domain in self.estate.holdings.all():
             costs += domain.costs
@@ -1177,7 +1433,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         if inform_target and inform_target.can_receive_informs:
             report = WeeklyReport(inform_target, week, inform_creator)
             npc = False
-        if hasattr(self, 'estate'):
+        if hasattr(self, "estate"):
             for domain in self.estate.holdings.all():
                 amount += domain.do_weekly_adjustment(week, report, npc)
         for agent in self.agents.all():
@@ -1195,8 +1451,12 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
             amount -= debt.amount
         self.vault += amount
         self.save()
-        if (self.player and self.player.player and hasattr(self.player.player, 'roster')
-                and self.player.player.roster.roster.name == "Active"):
+        if (
+            self.player
+            and self.player.player
+            and hasattr(self.player.player, "roster")
+            and self.player.player.roster.roster.name == "Active"
+        ):
             self.player.pay_lifestyle(report)
         if report:
             report.record_income(self.vault, amount)
@@ -1208,8 +1468,10 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
         msg = "{wName{n: %s\n" % self.owner
         msg += "{wVault{n: %s\n" % self.vault
         msg += "{wPrestige{n: %s\n" % self.grandeur
-        if hasattr(self, 'estate'):
-            msg += "{wHoldings{n: %s\n" % ", ".join(str(dom) for dom in self.estate.holdings.all())
+        if hasattr(self, "estate"):
+            msg += "{wHoldings{n: %s\n" % ", ".join(
+                str(dom) for dom in self.estate.holdings.all()
+            )
         msg += "{wAgents{n: %s\n" % ", ".join(str(agent) for agent in self.agents.all())
         return msg
 
@@ -1224,7 +1486,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     # alias for inform_owner
     inform = inform_owner
 
-    def access(self, accessing_obj, access_type='agent', default=False):
+    def access(self, accessing_obj, access_type="agent", default=False):
         """Performs access check on our owner for accessing_obj"""
         if self.organization_owner:
             return self.organization_owner.access(accessing_obj, access_type, default)
@@ -1249,9 +1511,10 @@ class Propriety(SharedMemoryModel):
     Tags that can be attached to a given AssetOwner that represent societal approval or
     disapproval. These act as percentile modifiers to their fame.
     """
+
     name = models.CharField(unique=True, max_length=120)
     percentage = models.SmallIntegerField(default=0)
-    owners = models.ManyToManyField('AssetOwner', related_name="proprieties")
+    owners = models.ManyToManyField("AssetOwner", related_name="proprieties")
 
     def __str__(self):
         return self.name
@@ -1269,7 +1532,10 @@ class Honorific(SharedMemoryModel):
     A record of a significant action that permanently alters the legend of an AssetOwner,
     bringing them fame or notoriety.
     """
-    owner = models.ForeignKey('AssetOwner', related_name="honorifics", on_delete=models.CASCADE)
+
+    owner = models.ForeignKey(
+        "AssetOwner", related_name="honorifics", on_delete=models.CASCADE
+    )
     title = models.CharField(db_index=True, max_length=200)
     description = models.TextField()
     amount = models.IntegerField(default=0)
@@ -1291,19 +1557,25 @@ class PraiseOrCondemn(SharedMemoryModel):
     Praises or Condemns are a record of someone trying to influence public opinion to increase
     a character's prestige.
     """
-    praiser = models.ForeignKey('PlayerOrNpc', related_name='praises_given', on_delete=models.CASCADE)
-    target = models.ForeignKey('AssetOwner', related_name='praises_received', on_delete=models.CASCADE)
+
+    praiser = models.ForeignKey(
+        "PlayerOrNpc", related_name="praises_given", on_delete=models.CASCADE
+    )
+    target = models.ForeignKey(
+        "AssetOwner", related_name="praises_received", on_delete=models.CASCADE
+    )
     message = models.TextField(blank=True)
     week = models.PositiveSmallIntegerField(default=0, blank=0)
     db_date_created = models.DateTimeField(auto_now_add=True)
     value = models.IntegerField(default=0)
-    number_used = models.PositiveSmallIntegerField(help_text="Number of praises/condemns used from weekly pool",
-                                                   default=1)
+    number_used = models.PositiveSmallIntegerField(
+        help_text="Number of praises/condemns used from weekly pool", default=1
+    )
 
     @property
     def verb(self):
         """Helper property for distinguishing which verb to use in strings"""
-        return "praised" if self.value >= 0 else 'condemned'
+        return "praised" if self.value >= 0 else "condemned"
 
     def do_prestige_adjustment(self):
         """Adjusts the prestige of the target after they're praised."""
@@ -1318,11 +1590,24 @@ class CharitableDonation(SharedMemoryModel):
     Represents all donations from a character to an Organization or Npc Group. They receive some affection
     and prestige in exchange for giving silver.
     """
-    giver = models.ForeignKey('AssetOwner', related_name='donations', on_delete=models.CASCADE)
-    organization = models.ForeignKey('Organization', related_name='donations', blank=True, null=True,
-                                     on_delete=models.CASCADE)
-    npc_group = models.ForeignKey('InfluenceCategory', related_name='donations', blank=True, null=True,
-                                  on_delete=models.CASCADE)
+
+    giver = models.ForeignKey(
+        "AssetOwner", related_name="donations", on_delete=models.CASCADE
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        related_name="donations",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    npc_group = models.ForeignKey(
+        "InfluenceCategory",
+        related_name="donations",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
     amount = models.PositiveIntegerField(default=0)
 
     @property
@@ -1339,30 +1624,41 @@ class CharitableDonation(SharedMemoryModel):
         different individual than the giver in order to use their social stats for the prestige roll.
         """
         from world.stats_and_skills import do_dice_check
+
         self.amount += value
         self.save()
         character = self.giver.player.player.char_ob
-        roll = do_dice_check(caller=caller, stat="charm", skill="propaganda", difficulty=10)
+        roll = do_dice_check(
+            caller=caller, stat="charm", skill="propaganda", difficulty=10
+        )
         roll += caller.social_clout
         if roll <= 1:
             roll = 1
         roll /= 4.0
-        roll *= value/2.0
+        roll *= value / 2.0
         prest = int(roll)
         self.giver.adjust_prestige(prest, category=PrestigeCategory.CHARITY)
         player = self.giver.player
         if caller != character:
-            msg = "%s donated %s silver to %s on your behalf.\n" % (caller, value, self.receiver)
+            msg = "%s donated %s silver to %s on your behalf.\n" % (
+                caller,
+                value,
+                self.receiver,
+            )
         else:
             msg = "You donate %s silver to %s.\n" % (value, self.receiver)
         if self.organization and player:
-            reputation = player.reputations.filter(organization=self.organization).first()
+            reputation = player.reputations.filter(
+                organization=self.organization
+            ).first()
             affection = 0
             respect = 0
             if reputation:
                 if roll < reputation.affection:
-                    msg += " Though the charity is appreciated, your reputation" \
-                           " with %s does not change. Ingrates.\n" % self.organization
+                    msg += (
+                        " Though the charity is appreciated, your reputation"
+                        " with %s does not change. Ingrates.\n" % self.organization
+                    )
                 else:
                     affection += 1
             else:
@@ -1393,11 +1689,24 @@ class AccountTransaction(SharedMemoryModel):
     their bank_amount stored in assets.money.bank_amount, and those
     have it as a debt have the same value subtracted.
     """
-    receiver = models.ForeignKey('AssetOwner', related_name='incomes', blank=True, null=True, db_index=True,
-                                 on_delete=models.CASCADE)
 
-    sender = models.ForeignKey('AssetOwner', related_name='debts', blank=True, null=True, db_index=True,
-                               on_delete=models.CASCADE)
+    receiver = models.ForeignKey(
+        "AssetOwner",
+        related_name="incomes",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+
+    sender = models.ForeignKey(
+        "AssetOwner",
+        related_name="debts",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     # quick description of the type of transaction. taxes between liege/vassal, etc
     category = models.CharField(blank=True, null=True, max_length=255)
 
@@ -1474,6 +1783,7 @@ class Region(SharedMemoryModel):
     constraint - it's just to get a feel for where each region is situated without
     precise list of their dimensions.
     """
+
     name = models.CharField(max_length=80, blank=True, null=True)
     # the Southwest corner of the region
     origin_x_coord = models.SmallIntegerField(default=0, blank=0)
@@ -1496,6 +1806,7 @@ class Land(SharedMemoryModel):
     and militaries. It is a 100 square mile area, with domains taking up free space
     within the square.
     """
+
     # region types
     COAST = 1
     DESERT = 2
@@ -1516,24 +1827,24 @@ class Land(SharedMemoryModel):
     OASIS = 17
 
     TERRAIN_CHOICES = (
-        (COAST, 'Coast'),
-        (DESERT, 'Desert'),
-        (GRASSLAND, 'Grassland'),
-        (HILL, 'Hill'),
-        (MOUNTAIN, 'Mountain'),
-        (OCEAN, 'Ocean'),
-        (PLAINS, 'Plains'),
-        (SNOW, 'Snow'),
-        (TUNDRA, 'Tundra'),
-        (FOREST, 'Forest'),
-        (JUNGLE, 'Jungle'),
-        (MARSH, 'Marsh'),
-        (ARCHIPELAGO, 'Archipelago'),
-        (FLOOD_PLAINS, 'Flood Plains'),
-        (ICE, 'Ice'),
-        (LAKES, 'Lakes'),
-        (OASIS, 'Oasis'),
-        )
+        (COAST, "Coast"),
+        (DESERT, "Desert"),
+        (GRASSLAND, "Grassland"),
+        (HILL, "Hill"),
+        (MOUNTAIN, "Mountain"),
+        (OCEAN, "Ocean"),
+        (PLAINS, "Plains"),
+        (SNOW, "Snow"),
+        (TUNDRA, "Tundra"),
+        (FOREST, "Forest"),
+        (JUNGLE, "Jungle"),
+        (MARSH, "Marsh"),
+        (ARCHIPELAGO, "Archipelago"),
+        (FLOOD_PLAINS, "Flood Plains"),
+        (ICE, "Ice"),
+        (LAKES, "Lakes"),
+        (OASIS, "Oasis"),
+    )
 
     name = models.CharField(max_length=80, blank=True, null=True)
     desc = models.TextField(blank=True, null=True)
@@ -1542,7 +1853,9 @@ class Land(SharedMemoryModel):
 
     terrain = models.PositiveSmallIntegerField(choices=TERRAIN_CHOICES, default=PLAINS)
 
-    region = models.ForeignKey('Region', on_delete=models.SET_NULL, blank=True, null=True)
+    region = models.ForeignKey(
+        "Region", on_delete=models.SET_NULL, blank=True, null=True
+    )
     # whether we can have boats here
     landlocked = models.BooleanField(default=True, blank=True)
 
@@ -1559,7 +1872,13 @@ class Land(SharedMemoryModel):
         min_farm = (Land.DESERT, Land.SNOW, Land.ICE)
         low_farm = (Land.TUNDRA, Land.MARSH, Land.MOUNTAIN)
         # 'farm' also refers to fishing for coast
-        high_farm = (Land.COAST, Land.LAKES, Land.PLAINS, Land.GRASSLAND, Land.FLOOD_PLAINS)
+        high_farm = (
+            Land.COAST,
+            Land.LAKES,
+            Land.PLAINS,
+            Land.GRASSLAND,
+            Land.FLOOD_PLAINS,
+        )
         if self.terrain in min_farm:
             return 25
         if self.terrain in low_farm:
@@ -1580,6 +1899,7 @@ class Land(SharedMemoryModel):
         if self.terrain in high_lumber:
             return 125
         return 100
+
     farm_mod = property(_get_farming_mod)
     mine_mod = property(_get_mining_mod)
     lumber_mod = property(_get_lumber_mod)
@@ -1590,6 +1910,7 @@ class Land(SharedMemoryModel):
             for domain in location.domains.all():
                 total_area += domain.area
         return total_area
+
     occupied_area = property(_get_occupied_area)
 
     def _get_hostile_area(self):
@@ -1597,10 +1918,12 @@ class Land(SharedMemoryModel):
         for hostile in self.hostiles.all():
             total_area += hostile.area
         return total_area
+
     hostile_area = property(_get_hostile_area)
 
     def _get_free_area(self):
         return LAND_SIZE - (self.occupied_area + self.hostile_area)
+
     free_area = property(_get_free_area)
 
     def __str__(self):
@@ -1619,17 +1942,23 @@ class HostileArea(SharedMemoryModel):
     land, whatever. If we contain hostile units, then they're contained
     in the self.hostiles property.
     """
-    land = models.ForeignKey('Land', related_name='hostiles', blank=True, null=True,
-                             on_delete=models.CASCADE)
+
+    land = models.ForeignKey(
+        "Land", related_name="hostiles", blank=True, null=True, on_delete=models.CASCADE
+    )
     desc = models.TextField(blank=True, null=True)
     from django.core.validators import MaxValueValidator
-    area = models.PositiveSmallIntegerField(validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0)
+
+    area = models.PositiveSmallIntegerField(
+        validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0
+    )
     # the type of hostiles controlling this area
     type = models.PositiveSmallIntegerField(default=0, blank=0)
     # we'll have HostileArea.units.all() to describe any military forces we have
 
     def _get_units(self):
         return self.units.all()
+
     hostiles = property(_get_units)
 
 
@@ -1638,11 +1967,23 @@ class MapLocation(SharedMemoryModel):
     A simple model that maps a given map location, for use with Domains, Landmarks,
     and Shardhavens.
     """
+
     name = models.CharField(blank=True, null=True, max_length=80)
-    land = models.ForeignKey('Land', on_delete=models.SET_NULL, related_name='locations', blank=True, null=True)
+    land = models.ForeignKey(
+        "Land",
+        on_delete=models.SET_NULL,
+        related_name="locations",
+        blank=True,
+        null=True,
+    )
     from django.core.validators import MaxValueValidator
-    x_coord = models.PositiveSmallIntegerField(validators=[MaxValueValidator(LAND_COORDS)], default=0)
-    y_coord = models.PositiveSmallIntegerField(validators=[MaxValueValidator(LAND_COORDS)], default=0)
+
+    x_coord = models.PositiveSmallIntegerField(
+        validators=[MaxValueValidator(LAND_COORDS)], default=0
+    )
+    y_coord = models.PositiveSmallIntegerField(
+        validators=[MaxValueValidator(LAND_COORDS)], default=0
+    )
 
     def __str__(self):
         if self.name:
@@ -1653,6 +1994,7 @@ class MapLocation(SharedMemoryModel):
             def label_maker(such_items):
                 """Format names of each object in Location"""
                 return "[%s] " % ", ".join(wow.name for wow in such_items)
+
             if self.landmarks.all():
                 label += label_maker(self.landmarks.all())
             if self.shardhavens.all():
@@ -1668,8 +2010,13 @@ class OrgRelationship(SharedMemoryModel):
     """
     The relationship between two or more organizations.
     """
-    name = models.CharField("Name of the relationship", max_length=255, db_index=True, blank=True)
-    orgs = models.ManyToManyField('Organization', related_name='relationships', blank=True, db_index=True)
+
+    name = models.CharField(
+        "Name of the relationship", max_length=255, db_index=True, blank=True
+    )
+    orgs = models.ManyToManyField(
+        "Organization", related_name="relationships", blank=True, db_index=True
+    )
     status = models.SmallIntegerField(default=0, blank=0)
     history = models.TextField("History of these organizations", blank=True)
 
@@ -1678,16 +2025,31 @@ class Reputation(SharedMemoryModel):
     """
     A player's reputation to an organization.
     """
-    player = models.ForeignKey('PlayerOrNpc', related_name='reputations', blank=True, null=True, db_index=True,
-                               on_delete=models.CASCADE)
-    organization = models.ForeignKey('Organization', related_name='reputations', blank=True, null=True, db_index=True,
-                                     on_delete=models.CASCADE)
+
+    player = models.ForeignKey(
+        "PlayerOrNpc",
+        related_name="reputations",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        related_name="reputations",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     # negative affection is dislike/hatred
     affection = models.IntegerField(default=0, blank=0)
     # positive respect is respect/fear, negative is contempt/dismissal
     respect = models.IntegerField(default=0, blank=0)
-    favor = models.IntegerField(help_text="A percentage of the org's prestige applied to player's propriety.",
-                                default=0)
+    favor = models.IntegerField(
+        help_text="A percentage of the org's prestige applied to player's propriety.",
+        default=0,
+    )
     npc_gossip = models.TextField(blank=True)
     date_gossip_set = models.DateTimeField(null=True)
 
@@ -1695,7 +2057,7 @@ class Reputation(SharedMemoryModel):
         return "%s for %s (%s)" % (self.player, self.organization, self.favor)
 
     class Meta:
-        unique_together = ('player', 'organization')
+        unique_together = ("player", "organization")
 
     def save(self, *args, **kwargs):
         """Saves changes and wipes cache"""
@@ -1711,8 +2073,14 @@ class Reputation(SharedMemoryModel):
         if not self.favor:
             return 0
         try:
-            weeks = ((datetime.now() - (self.date_gossip_set or datetime.now())).days/7) + 1
-            return self.favor * (self.organization.assets.fame + self.organization.assets.legend)/(20 * weeks)
+            weeks = (
+                (datetime.now() - (self.date_gossip_set or datetime.now())).days / 7
+            ) + 1
+            return (
+                self.favor
+                * (self.organization.assets.fame + self.organization.assets.legend)
+                / (20 * weeks)
+            )
         except AttributeError:
             return 0
 
@@ -1736,6 +2104,7 @@ class Fealty(SharedMemoryModel):
     """
     Represents the loyalty of different organizations for grouping them together.
     """
+
     name = models.CharField(unique=True, max_length=200)
 
     class Meta:
@@ -1753,33 +2122,75 @@ class Organization(InformMixin, SharedMemoryModel):
     can substitute for an object as an asset holder. This allows them to
     have their own money, incomes, debts, etc.
     """
+
     CATEGORIES_WITH_FEALTY_PENALTIES = ("Law", "Discipleship")
     name = models.CharField(blank=True, null=True, max_length=255, db_index=True)
     desc = models.TextField(blank=True, null=True)
     category = models.CharField(blank=True, null=True, default="noble", max_length=255)
-    fealty = models.ForeignKey("Fealty", blank=True, null=True, related_name="orgs",
-                               on_delete=models.SET_NULL)
+    fealty = models.ForeignKey(
+        "Fealty", blank=True, null=True, related_name="orgs", on_delete=models.SET_NULL
+    )
     # In a RP game, titles are IMPORTANT. And we need to divide them by gender.
-    rank_1_male = models.CharField(default="Prince", blank=True, null=True, max_length=255)
-    rank_1_female = models.CharField(default="Princess", blank=True, null=True, max_length=255)
-    rank_2_male = models.CharField(default="Voice", blank=True, null=True, max_length=255)
-    rank_2_female = models.CharField(default="Voice", blank=True, null=True, max_length=255)
-    rank_3_male = models.CharField(default="Noble Family", blank=True, null=True, max_length=255)
-    rank_3_female = models.CharField(default="Noble Family", blank=True, null=True, max_length=255)
-    rank_4_male = models.CharField(default="Trusted House Servants", blank=True, null=True, max_length=255)
-    rank_4_female = models.CharField(default="Trusted House Servants", blank=True, null=True, max_length=255)
-    rank_5_male = models.CharField(default="Noble Vassals", blank=True, null=True, max_length=255)
-    rank_5_female = models.CharField(default="Noble Vassals", blank=True, null=True, max_length=255)
-    rank_6_male = models.CharField(default="Vassals of Esteem", blank=True, null=True, max_length=255)
-    rank_6_female = models.CharField(default="Vassals of Esteem", blank=True, null=True, max_length=255)
-    rank_7_male = models.CharField(default="Known Commoners", blank=True, null=True, max_length=255)
-    rank_7_female = models.CharField(default="Known Commoners", blank=True, null=True, max_length=255)
-    rank_8_male = models.CharField(default="Sworn Commoners", blank=True, null=True, max_length=255)
-    rank_8_female = models.CharField(default="Sworn Commoners", blank=True, null=True, max_length=255)
-    rank_9_male = models.CharField(default="Forgotten Commoners", blank=True, null=True, max_length=255)
-    rank_9_female = models.CharField(default="Forgotten Commoners", blank=True, null=True, max_length=255)
-    rank_10_male = models.CharField(default="Serf", blank=True, null=True, max_length=255)
-    rank_10_female = models.CharField(default="Serf", blank=True, null=True, max_length=255)
+    rank_1_male = models.CharField(
+        default="Prince", blank=True, null=True, max_length=255
+    )
+    rank_1_female = models.CharField(
+        default="Princess", blank=True, null=True, max_length=255
+    )
+    rank_2_male = models.CharField(
+        default="Voice", blank=True, null=True, max_length=255
+    )
+    rank_2_female = models.CharField(
+        default="Voice", blank=True, null=True, max_length=255
+    )
+    rank_3_male = models.CharField(
+        default="Noble Family", blank=True, null=True, max_length=255
+    )
+    rank_3_female = models.CharField(
+        default="Noble Family", blank=True, null=True, max_length=255
+    )
+    rank_4_male = models.CharField(
+        default="Trusted House Servants", blank=True, null=True, max_length=255
+    )
+    rank_4_female = models.CharField(
+        default="Trusted House Servants", blank=True, null=True, max_length=255
+    )
+    rank_5_male = models.CharField(
+        default="Noble Vassals", blank=True, null=True, max_length=255
+    )
+    rank_5_female = models.CharField(
+        default="Noble Vassals", blank=True, null=True, max_length=255
+    )
+    rank_6_male = models.CharField(
+        default="Vassals of Esteem", blank=True, null=True, max_length=255
+    )
+    rank_6_female = models.CharField(
+        default="Vassals of Esteem", blank=True, null=True, max_length=255
+    )
+    rank_7_male = models.CharField(
+        default="Known Commoners", blank=True, null=True, max_length=255
+    )
+    rank_7_female = models.CharField(
+        default="Known Commoners", blank=True, null=True, max_length=255
+    )
+    rank_8_male = models.CharField(
+        default="Sworn Commoners", blank=True, null=True, max_length=255
+    )
+    rank_8_female = models.CharField(
+        default="Sworn Commoners", blank=True, null=True, max_length=255
+    )
+    rank_9_male = models.CharField(
+        default="Forgotten Commoners", blank=True, null=True, max_length=255
+    )
+    rank_9_female = models.CharField(
+        default="Forgotten Commoners", blank=True, null=True, max_length=255
+    )
+    rank_10_male = models.CharField(
+        default="Serf", blank=True, null=True, max_length=255
+    )
+    rank_10_female = models.CharField(
+        default="Serf", blank=True, null=True, max_length=255
+    )
     npc_members = models.PositiveIntegerField(default=0, blank=0)
     income_per_npc = models.PositiveSmallIntegerField(default=0, blank=0)
     cost_per_npc = models.PositiveSmallIntegerField(default=0, blank=0)
@@ -1791,7 +2202,9 @@ class Organization(InformMixin, SharedMemoryModel):
     # whether we can be publicly viewed
     secret = models.BooleanField(default=False, blank=False)
     # lockstring
-    lock_storage = models.TextField('locks', blank=True, help_text='defined in setup_utils')
+    lock_storage = models.TextField(
+        "locks", blank=True, help_text="defined in setup_utils"
+    )
     special_modifiers = models.TextField(blank=True, null=True)
     motd = models.TextField(blank=True, null=True)
     # used for when resource gain
@@ -1800,18 +2213,32 @@ class Organization(InformMixin, SharedMemoryModel):
     social_influence = models.IntegerField(default=0)
     base_support_value = models.SmallIntegerField(default=5)
     member_support_multiplier = models.SmallIntegerField(default=5)
-    clues = models.ManyToManyField('character.Clue', blank=True, related_name="orgs",
-                                   through="ClueForOrg")
-    theories = models.ManyToManyField('character.Theory', blank=True, related_name="orgs")
-    org_channel = models.OneToOneField('comms.ChannelDB', blank=True, null=True, related_name="org",
-                                       on_delete=models.SET_NULL)
-    org_board = models.OneToOneField('objects.ObjectDB', blank=True, null=True, related_name="org",
-                                     on_delete=models.SET_NULL)
+    clues = models.ManyToManyField(
+        "character.Clue", blank=True, related_name="orgs", through="ClueForOrg"
+    )
+    theories = models.ManyToManyField(
+        "character.Theory", blank=True, related_name="orgs"
+    )
+    org_channel = models.OneToOneField(
+        "comms.ChannelDB",
+        blank=True,
+        null=True,
+        related_name="org",
+        on_delete=models.SET_NULL,
+    )
+    org_board = models.OneToOneField(
+        "objects.ObjectDB",
+        blank=True,
+        null=True,
+        related_name="org",
+        on_delete=models.SET_NULL,
+    )
     objects = OrganizationManager()
 
     def get_modifier_from_influence(self, resource_name):
         """The modifier for an org based on their total influence"""
         from math import sqrt
+
         influence = getattr(self, "%s_influence" % resource_name)
         influence /= 3000
         if not influence:
@@ -1827,7 +2254,7 @@ class Organization(InformMixin, SharedMemoryModel):
         base = pow(goal_level - 1, 2) * 3000
         influence_required -= base
         influence -= base
-        return round(influence/float(influence_required), 2) * 100
+        return round(influence / float(influence_required), 2) * 100
 
     @property
     def economic_modifier(self):
@@ -1846,10 +2273,11 @@ class Organization(InformMixin, SharedMemoryModel):
 
     def _get_npc_money(self):
         npc_income = self.npc_members * self.income_per_npc
-        npc_income = (npc_income * self.income_modifier)/100.0
+        npc_income = (npc_income * self.income_modifier) / 100.0
         npc_income += self.assets.get_bonus_income(npc_income)
         npc_cost = self.npc_members * self.cost_per_npc
         return int(npc_income) - npc_cost
+
     amount = property(_get_npc_money)
 
     def __str__(self):
@@ -1864,17 +2292,19 @@ class Organization(InformMixin, SharedMemoryModel):
         active = self.active_members
         if viewing_member:
             # exclude any secret members that are higher in rank than viewing member
-            members_to_exclude = pcs.filter(Q(rank__lte=viewing_member.rank) & ~Q(id=viewing_member.id))
+            members_to_exclude = pcs.filter(
+                Q(rank__lte=viewing_member.rank) & ~Q(id=viewing_member.id)
+            )
             if not self.secret:
                 members_to_exclude = members_to_exclude.filter(secret=True)
             pcs = pcs.exclude(id__in=members_to_exclude)
         elif not show_all:
             pcs = pcs.exclude(secret=True)
         msg = ""
-        for rank in range(start, end+1):
+        for rank in range(start, end + 1):
             chars = pcs.filter(rank=rank)
-            male_title = getattr(self, 'rank_%s_male' % rank)
-            female_title = getattr(self, 'rank_%s_female' % rank)
+            male_title = getattr(self, "rank_%s_male" % rank)
+            female_title = getattr(self, "rank_%s_female" % rank)
             if male_title == female_title:
                 title = male_title
             else:
@@ -1888,9 +2318,13 @@ class Organization(InformMixin, SharedMemoryModel):
                 if not self.secret and charob.secret:
                     c_name += "(Secret)"
                 return c_name
+
             if len(chars) > 1:
-                msg += "{w%s{n (Rank %s): %s\n" % (title, rank,
-                                                   ", ".join(char_name(char) for char in chars))
+                msg += "{w%s{n (Rank %s): %s\n" % (
+                    title,
+                    rank,
+                    ", ".join(char_name(char) for char in chars),
+                )
             elif len(chars) > 0:
                 char = chars[0]
                 name = char_name(char)
@@ -1908,20 +2342,25 @@ class Organization(InformMixin, SharedMemoryModel):
         msg = "\n{wName{n: %s\n" % self.name
         msg += "{wDesc{n: %s\n" % self.desc
         if not self.secret:
-            msg += "\n{wLeaders of %s:\n%s\n" % (self.name, self.display_members(end=2, show_all=show_all))
+            msg += "\n{wLeaders of %s:\n%s\n" % (
+                self.name,
+                self.display_members(end=2, show_all=show_all),
+            )
         msg += "{wWebpage{n: %s\n" % get_full_url(self.get_absolute_url())
         return msg
 
     def display(self, viewing_member=None, display_clues=False, show_all=False):
         """Returns string display of org"""
-        if hasattr(self, 'assets'):
+        if hasattr(self, "assets"):
             money = self.assets.vault
             try:
-                display_money = not viewing_member or self.assets.can_be_viewed_by(viewing_member.player.player)
+                display_money = not viewing_member or self.assets.can_be_viewed_by(
+                    viewing_member.player.player
+                )
             except AttributeError:
                 display_money = False
             prestige = self.assets.prestige
-            if hasattr(self.assets, 'estate'):
+            if hasattr(self.assets, "estate"):
                 holdings = self.assets.estate.holdings.all()
             else:
                 holdings = []
@@ -1937,7 +2376,9 @@ class Organization(InformMixin, SharedMemoryModel):
             start = 1
         else:
             start = 3
-        members = self.display_members(start=start, viewing_member=viewing_member, show_all=show_all)
+        members = self.display_members(
+            start=start, viewing_member=viewing_member, show_all=show_all
+        )
         if members:
             members = "{wMembers of %s:\n%s" % (self.name, members)
         msg += members
@@ -1951,17 +2392,29 @@ class Organization(InformMixin, SharedMemoryModel):
                 """Helper function to format resource modifier string"""
                 return "%s%s%%" % ("+" if amount > 0 else "", amount)
 
-            income_mod = int(prestige_mod/4)
-            msg += " {wResource Mod:{n %s {wIncome Mod:{n %s" % (mod_string(resource_mod), mod_string(income_mod))
-            msg += "\n{wResources{n: Economic: %s, Military: %s, Social: %s" % (self.assets.economic,
-                                                                                self.assets.military,
-                                                                                self.assets.social)
+            income_mod = int(prestige_mod / 4)
+            msg += " {wResource Mod:{n %s {wIncome Mod:{n %s" % (
+                mod_string(resource_mod),
+                mod_string(income_mod),
+            )
+            msg += "\n{wResources{n: Economic: %s, Military: %s, Social: %s" % (
+                self.assets.economic,
+                self.assets.military,
+                self.assets.social,
+            )
         econ_progress = self.get_progress_to_next_modifier("economic")
         mil_progress = self.get_progress_to_next_modifier("military")
         soc_progress = self.get_progress_to_next_modifier("social")
-        msg += "\n{wMods: Economic:{n %s (%s/100), {wMilitary:{n %s (%s/100), {wSocial:{n %s (%s/100)\n" % (
-            self.economic_modifier, int(econ_progress), self.military_modifier, int(mil_progress),
-            self.social_modifier, int(soc_progress))
+        msg += "\n"
+        msg += "{wMods: Economic:{n %s (%s/100), " % (
+            self.economic_modifier,
+            int(econ_progress),
+        )
+        msg += "{wMilitary:{n %s (%s/100), " % (
+            self.military_modifier,
+            int(mil_progress),
+        )
+        msg += "{wSocial:{n %s (%s/100)\n" % (self.social_modifier, int(soc_progress))
         # msg += "{wSpheres of Influence:{n %s\n" % ", ".join("{w%s{n: %s" % (ob.category, ob.rating)
         #                                                     for ob in self.spheres.all())
         msg += self.display_work_settings()
@@ -1983,7 +2436,9 @@ class Organization(InformMixin, SharedMemoryModel):
                 msg += "\n"
             theories = self.theories.all()
             if theories:
-                msg += "\n{wTheories Known:{n %s\n" % "; ".join("%s (#%s)" % (ob, ob.id) for ob in theories)
+                msg += "\n{wTheories Known:{n %s\n" % "; ".join(
+                    "%s (#%s)" % (ob, ob.id) for ob in theories
+                )
         if holdings:
             msg += "{wHoldings{n: %s\n" % ", ".join(ob.name for ob in holdings)
         if self.motd and (viewing_member or show_all):
@@ -1996,7 +2451,8 @@ class Organization(InformMixin, SharedMemoryModel):
     def display_work_settings(self):
         """Gets table of work settings"""
         from server.utils.prettytable import PrettyTable
-        work_settings = self.work_settings.all().order_by('resource')
+
+        work_settings = self.work_settings.all().order_by("resource")
         msg = "\n{wWork Settings:{n"
         if not work_settings:
             return msg + " None found.\n"
@@ -2015,7 +2471,7 @@ class Organization(InformMixin, SharedMemoryModel):
         """What rank to default to if they don't set permission"""
         return 2 if self.secret else 10
 
-    def access(self, accessing_obj, access_type='read', default=False):
+    def access(self, accessing_obj, access_type="read", default=False):
         """
         Determines if another object has permission to access.
         accessing_obj - object trying to access this one
@@ -2025,7 +2481,9 @@ class Organization(InformMixin, SharedMemoryModel):
         if access_type not in self.locks.locks.keys():
             try:
                 obj = accessing_obj.player_ob or accessing_obj
-                member = obj.Dominion.memberships.get(deguilded=False, organization=self)
+                member = obj.Dominion.memberships.get(
+                    deguilded=False, organization=self
+                )
                 return member.rank <= self.default_access_rank
             except (AttributeError, Member.DoesNotExist):
                 return False
@@ -2049,24 +2507,35 @@ class Organization(InformMixin, SharedMemoryModel):
         category = "%s Story Update" % self
         bboard = self.org_board
         if bboard:
-            bboard.bb_post(poster_obj=gemit.sender, msg=gemit.text, subject=category, poster_name="Story")
+            bboard.bb_post(
+                poster_obj=gemit.sender,
+                msg=gemit.text,
+                subject=category,
+                poster_name="Story",
+            )
         for pc in self.offline_members:
             pc.inform(gemit.text, category=category, append=False)
-        box_chars = '\n' + '*' * 70 + '\n'
-        msg = box_chars + '[' + category + '] ' + gemit.text + box_chars
+        box_chars = "\n" + "*" * 70 + "\n"
+        msg = box_chars + "[" + category + "] " + gemit.text + box_chars
         self.msg(msg, prefix=False)
 
     @property
     def active_members(self):
         """Returns queryset of players in active roster and not deguilded"""
-        return self.members.filter(Q(player__player__roster__roster__name="Active") & Q(deguilded=False)).distinct()
+        return self.members.filter(
+            Q(player__player__roster__roster__name="Active") & Q(deguilded=False)
+        ).distinct()
 
     @property
     def living_members(self):
         """Returns queryset of players in active or available roster and not deguilded"""
-        return self.members.filter((Q(player__player__roster__roster__name="Active") |
-                                    Q(player__player__roster__roster__name="Available"))
-                                   & Q(deguilded=False)).distinct()
+        return self.members.filter(
+            (
+                Q(player__player__roster__roster__name="Active")
+                | Q(player__player__roster__roster__name="Available")
+            )
+            & Q(deguilded=False)
+        ).distinct()
 
     @property
     def can_receive_informs(self):
@@ -2081,7 +2550,9 @@ class Organization(InformMixin, SharedMemoryModel):
     @property
     def online_members(self):
         """Returns members who are currently online"""
-        return self.active_members.filter(player__player__db_is_connected=True).distinct()
+        return self.active_members.filter(
+            player__player__db_is_connected=True
+        ).distinct()
 
     @property
     def offline_members(self):
@@ -2091,7 +2562,10 @@ class Organization(InformMixin, SharedMemoryModel):
     @property
     def support_pool(self):
         """Returns our current support pool"""
-        return self.base_support_value + (self.active_members.count()) * self.member_support_multiplier
+        return (
+            self.base_support_value
+            + (self.active_members.count()) * self.member_support_multiplier
+        )
 
     def save(self, *args, **kwargs):
         """Saves changes and wipes cache"""
@@ -2102,11 +2576,12 @@ class Organization(InformMixin, SharedMemoryModel):
             pass
         # make sure that any cached AP modifiers based on Org fealties are invalidated
         from web.character.models import RosterEntry
+
         RosterEntry.clear_ap_cache_in_cached_instances()
 
     def get_absolute_url(self):
         """Returns URL of the org webpage"""
-        return reverse('help_topics:display_org', kwargs={'object_id': self.id})
+        return reverse("help_topics:display_org", kwargs={"object_id": self.id})
 
     @property
     def channel_color(self):
@@ -2120,30 +2595,50 @@ class Organization(InformMixin, SharedMemoryModel):
     def notify_inform(self, new_inform):
         """Notifies online players that there's a new inform"""
         index = list(self.informs.all()).index(new_inform) + 1
-        members = [pc for pc in self.online_members if pc.player and pc.player.player and self.access(pc.player.player,
-                                                                                                      "informs")]
+        members = [
+            pc
+            for pc in self.online_members
+            if pc.player
+            and pc.player.player
+            and self.access(pc.player.player, "informs")
+        ]
         for pc in members:
-            pc.msg("{y%s has new @informs. Use {w@informs/org %s/%s{y to read them." % (self, self, index))
+            pc.msg(
+                "{y%s has new @informs. Use {w@informs/org %s/%s{y to read them."
+                % (self, self, index)
+            )
 
     def setup(self):
         """Sets up the org with channel and board"""
         from typeclasses.channels import Channel
         from typeclasses.bulletin_board.bboard import BBoard
         from evennia.utils.create import create_object, create_channel
-        lockstr = "send: organization(%s) or perm(builders);listen: organization(%s) or perm(builders)" % (self, self)
+
+        lockstr = (
+            "send: organization(%s) or perm(builders);listen: organization(%s) or perm(builders)"
+            % (self, self)
+        )
         if not self.org_channel:
-            self.org_channel = create_channel(key=str(self.name), desc="%s channel" % self, locks=lockstr,
-                                              typeclass=Channel)
+            self.org_channel = create_channel(
+                key=str(self.name),
+                desc="%s channel" % self,
+                locks=lockstr,
+                typeclass=Channel,
+            )
         if not self.org_board:
             lockstr = lockstr.replace("send", "read").replace("listen", "write")
-            self.org_board = create_object(typeclass=BBoard, key=str(self.name), locks=lockstr)
+            self.org_board = create_object(
+                typeclass=BBoard, key=str(self.name), locks=lockstr
+            )
         self.save()
 
     def set_motd(self, message):
         """Sets our motd, notifies people, sets their flags."""
         self.motd = message
         self.save()
-        self.msg("|yMessage of the day for %s set to:|n %s" % (self, self.motd), prefix=False)
+        self.msg(
+            "|yMessage of the day for %s set to:|n %s" % (self, self.motd), prefix=False
+        )
         for pc in self.offline_members.filter(has_seen_motd=True):
             pc.has_seen_motd = False
             pc.save()
@@ -2160,8 +2655,9 @@ class Organization(InformMixin, SharedMemoryModel):
             except Member.DoesNotExist:
                 pass
         # list of all plots
-        plots = self.plot_involvement.filter(rank_requirement__gte=rank,
-                                             plot__resolved=resolved)
+        plots = self.plot_involvement.filter(
+            rank_requirement__gte=rank, plot__resolved=resolved
+        )
         return "\n".join([ob.display_plot_for_org() for ob in plots])
 
     def add_plot(self, plot, rank):
@@ -2179,15 +2675,30 @@ class Organization(InformMixin, SharedMemoryModel):
 
 class ClueForOrg(SharedMemoryModel):
     """Model that shows a clue known by an org"""
-    clue = models.ForeignKey('character.Clue', related_name="org_discoveries", db_index=True,
-                             on_delete=models.CASCADE)
-    org = models.ForeignKey('Organization', related_name="clue_discoveries", db_index=True,
-                            on_delete=models.CASCADE)
-    revealed_by = models.ForeignKey('character.RosterEntry', related_name="clues_added_to_orgs", blank=True, null=True,
-                                    db_index=True, on_delete=models.CASCADE)
+
+    clue = models.ForeignKey(
+        "character.Clue",
+        related_name="org_discoveries",
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    org = models.ForeignKey(
+        "Organization",
+        related_name="clue_discoveries",
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    revealed_by = models.ForeignKey(
+        "character.RosterEntry",
+        related_name="clues_added_to_orgs",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
 
     class Meta:
-        unique_together = ('clue', 'org')
+        unique_together = ("clue", "org")
 
     def __str__(self):
         return f"{self.org} knows {self.clue}"
@@ -2201,6 +2712,7 @@ class Agent(SharedMemoryModel):
     that will be defined elsewhere in an agent file. ObjectDB points to Agent
     as a foreignkey, and we access that set through self.agent_objects.
     """
+
     GUARD = npc_types.GUARD
     THUG = npc_types.THUG
     SPY = npc_types.SPY
@@ -2209,13 +2721,14 @@ class Agent(SharedMemoryModel):
     ANIMAL = npc_types.ANIMAL
     SMALL_ANIMAL = npc_types.SMALL_ANIMAL
     NPC_TYPE_CHOICES = (
-        (GUARD, 'Guard'),
-        (THUG, 'Thug'),
-        (SPY, 'Spy'),
-        (ASSISTANT, 'Assistant'),
-        (CHAMPION, 'Champion'),
-        (ANIMAL, 'Animal'),
-        (SMALL_ANIMAL, 'Small Animal'))
+        (GUARD, "Guard"),
+        (THUG, "Thug"),
+        (SPY, "Spy"),
+        (ASSISTANT, "Assistant"),
+        (CHAMPION, "Champion"),
+        (ANIMAL, "Animal"),
+        (SMALL_ANIMAL, "Small Animal"),
+    )
     name = models.CharField(blank=True, max_length=80)
     colored_name = models.CharField(blank=True, max_length=80)
     desc = models.TextField(blank=True)
@@ -2227,8 +2740,14 @@ class Agent(SharedMemoryModel):
     # numerical type of our agents. 0==regular guards, 1==spies, etc
     type = models.PositiveSmallIntegerField(choices=NPC_TYPE_CHOICES, default=GUARD)
     # assetowner, so either a player or an organization
-    owner = models.ForeignKey("AssetOwner", on_delete=models.SET_NULL, related_name="agents", blank=True, null=True,
-                              db_index=True)
+    owner = models.ForeignKey(
+        "AssetOwner",
+        on_delete=models.SET_NULL,
+        related_name="agents",
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     secret = models.BooleanField(default=False)
     # if this class of Agent is a unique individual, and as such the quantity cannot be more than 1
     unique = models.BooleanField(default=False)
@@ -2238,6 +2757,7 @@ class Agent(SharedMemoryModel):
 
     def _get_cost(self):
         return self.cost_per_guard * self.quantity
+
     cost = property(_get_cost)
 
     @property
@@ -2247,11 +2767,15 @@ class Agent(SharedMemoryModel):
 
     # total of all agent obs + our reserve quantity
     def _get_total_num(self):
-        return self.quantity + sum(self.agent_objects.values_list("quantity", flat=True))
+        return self.quantity + sum(
+            self.agent_objects.values_list("quantity", flat=True)
+        )
+
     total = property(_get_total_num)
 
     def _get_active(self):
         return self.agent_objects.filter(quantity__gte=1)
+
     active = property(_get_active)
 
     def __str__(self):
@@ -2271,14 +2795,21 @@ class Agent(SharedMemoryModel):
     def display(self, show_assignments=True, caller=None):
         """Returns string display of an agent"""
         msg = "\n\n{wID{n: %s {wName{n: %s {wType:{n %s  {wLevel{n: %s" % (
-            self.id, self.pretty_name, self.type_str, self.quality)
+            self.id,
+            self.pretty_name,
+            self.type_str,
+            self.quality,
+        )
         if not self.unique:
             msg += " {wUnassigned:{n %s\n" % self.quantity
         else:
             msg += "\n{wXP:{n %s {wLoyalty{n: %s\n" % (self.xp, self.loyalty)
         if not show_assignments:
             return msg
-        msg += ", ".join(agent.display(caller=caller) for agent in self.agent_objects.filter(quantity__gt=0))
+        msg += ", ".join(
+            agent.display(caller=caller)
+            for agent in self.agent_objects.filter(quantity__gt=0)
+        )
         return msg
 
     def assign(self, targ, num):
@@ -2286,7 +2817,9 @@ class Agent(SharedMemoryModel):
         Assigns num agents to target character object.
         """
         if num > self.quantity:
-            raise ValueError("Agent only has %s to assign, asked for %s." % (self.quantity, num))
+            raise ValueError(
+                "Agent only has %s to assign, asked for %s." % (self.quantity, num)
+            )
         self.npcs.assign(targ, num)
 
     def find_assigned(self, player):
@@ -2315,7 +2848,7 @@ class Agent(SharedMemoryModel):
         super(Agent, self).__init__(*args, **kwargs)
         self.npcs = AgentHandler(self)
 
-    def access(self, accessing_obj, access_type='agent', default=False):
+    def access(self, accessing_obj, access_type="agent", default=False):
         """Checks access for the agent by accessing_obj"""
         return self.owner.access(accessing_obj, access_type, default)
 
@@ -2347,9 +2880,9 @@ class Agent(SharedMemoryModel):
         elif category == "ability":
             attr_max = self.dbobj.get_ability_maximum(attr)
         elif category == "weapon":
-            if attr == 'weapon_damage':
+            if attr == "weapon_damage":
                 attr_max = (self.quality + 2) * 2
-            elif attr == 'difficulty_mod':
+            elif attr == "difficulty_mod":
                 attr_max = (self.quality + 1) * 2
             else:
                 raise ValueError("Undefined weapon attribute")
@@ -2383,6 +2916,7 @@ class Agent(SharedMemoryModel):
     def set_name(self, name):
         """Sets the name of the agent"""
         from evennia.utils.ansi import strip_ansi
+
         self.colored_name = name
         self.name = strip_ansi(name)
         self.save()
@@ -2395,8 +2929,14 @@ class AgentMission(SharedMemoryModel):
     """
     Missions that AgentObs go on.
     """
-    agentob = models.ForeignKey("AgentOb", related_name="missions", blank=True, null=True,
-                                on_delete=models.CASCADE)
+
+    agentob = models.ForeignKey(
+        "AgentOb",
+        related_name="missions",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
     active = models.BooleanField(default=True, blank=True)
     success_level = models.SmallIntegerField(default=0, blank=0)
     description = models.TextField(blank=True, null=True)
@@ -2409,9 +2949,18 @@ class AgentOb(SharedMemoryModel):
     """
     Allotment from an Agent class that has a representation in-game.
     """
-    agent_class = models.ForeignKey("Agent", related_name="agent_objects", blank=True, null=True,
-                                    db_index=True, on_delete=models.CASCADE)
-    dbobj = models.OneToOneField("objects.ObjectDB", blank=True, null=True, on_delete=models.CASCADE)
+
+    agent_class = models.ForeignKey(
+        "Agent",
+        related_name="agent_objects",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    dbobj = models.OneToOneField(
+        "objects.ObjectDB", blank=True, null=True, on_delete=models.CASCADE
+    )
     quantity = models.PositiveIntegerField(default=0, blank=0)
     # whether they're imprisoned, by whom, difficulty to free them, etc
     status_notes = models.TextField(blank=True, null=True)
@@ -2424,7 +2973,10 @@ class AgentOb(SharedMemoryModel):
         return self.dbobj.db.guarding
 
     def __str__(self):
-        return "%s%s" % (self.agent_class, (" guarding %s" % self.guarding) if self.guarding else "")
+        return "%s%s" % (
+            self.agent_class,
+            (" guarding %s" % self.guarding) if self.guarding else "",
+        )
 
     def recall(self, num):
         """
@@ -2472,7 +3024,7 @@ class AgentOb(SharedMemoryModel):
             self.quantity = 0
         self.save()
 
-    def access(self, accessing_obj, access_type='agent', default=False):
+    def access(self, accessing_obj, access_type="agent", default=False):
         """Checks whether someone can control the agent"""
         return self.agent_class.access(accessing_obj, access_type, default)
 
@@ -2484,18 +3036,24 @@ class WorkSetting(SharedMemoryModel):
     will primarily decide which one is used. If a member relies on their protege,
     the highest skill between them both will be used to choose a work_setting.
     """
-    RESOURCE_TYPES = ('Economic', 'Military', 'Social')
+
+    RESOURCE_TYPES = ("Economic", "Military", "Social")
     RESOURCE_CHOICES = tuple(enumerate(RESOURCE_TYPES))
 
-    organization = models.ForeignKey('Organization', related_name='work_settings',
-                                     on_delete=models.CASCADE)
+    organization = models.ForeignKey(
+        "Organization", related_name="work_settings", on_delete=models.CASCADE
+    )
     stat = models.CharField(blank=True, null=True, max_length=80)
     skill = models.CharField(blank=True, null=True, max_length=80)
     resource = models.PositiveSmallIntegerField(choices=RESOURCE_CHOICES, default=0)
     message = models.TextField(blank=True)
 
     def __str__(self):
-        return "%s-%s for %s" % (self.get_resource_display(), str(self.skill).capitalize(), self.organization)
+        return "%s-%s for %s" % (
+            self.get_resource_display(),
+            str(self.skill).capitalize(),
+            self.organization,
+        )
 
     @classmethod
     def get_choice_from_string(cls, string):
@@ -2503,24 +3061,46 @@ class WorkSetting(SharedMemoryModel):
         for int_constant, name in cls.RESOURCE_CHOICES:
             if string.lower() == name.lower():
                 return int_constant
-        raise ValueError("Type must be one of these: %s." % ", ".join(sorted(cls.RESOURCE_TYPES)))
+        raise ValueError(
+            "Type must be one of these: %s." % ", ".join(sorted(cls.RESOURCE_TYPES))
+        )
 
     @classmethod
     def create_work(cls, organization, resource_key):
         """Creates a new WorkSetting with default stat and skill chosen."""
-        default_settings = {0: ['intellect', 'economics'], 1: ['command', 'war'], 2: ['charm', 'diplomacy']}
+        default_settings = {
+            0: ["intellect", "economics"],
+            1: ["command", "war"],
+            2: ["charm", "diplomacy"],
+        }
         stat = default_settings[resource_key][0]
         skill = default_settings[resource_key][1]
-        return cls.objects.create(organization=organization, stat=stat, skill=skill, resource=resource_key)
+        return cls.objects.create(
+            organization=organization, stat=stat, skill=skill, resource=resource_key
+        )
 
     def do_work(self, clout, roller):
         """Does rolls for a given WorkSetting for character/protege. Returns roll and msg."""
         msg_spacer = " " if self.message else ""
         difficulty = 15 - clout
-        org_mod = getattr(self.organization, "%s_modifier" % self.get_resource_display().lower())
-        roll_msg = "\n%s%s%s rolling %s and %s. " % (self.message, msg_spacer, roller.key, self.stat, self.skill)
-        outcome = do_dice_check(roller, stat=self.stat, skill=self.skill, difficulty=difficulty,
-                                bonus_dice=org_mod, bonus_keep=org_mod//2)
+        org_mod = getattr(
+            self.organization, "%s_modifier" % self.get_resource_display().lower()
+        )
+        roll_msg = "\n%s%s%s rolling %s and %s. " % (
+            self.message,
+            msg_spacer,
+            roller.key,
+            self.stat,
+            self.skill,
+        )
+        outcome = do_dice_check(
+            roller,
+            stat=self.stat,
+            skill=self.skill,
+            difficulty=difficulty,
+            bonus_dice=org_mod,
+            bonus_keep=org_mod // 2,
+        )
         outcome //= 3
         return outcome, roll_msg
 
@@ -2542,13 +3122,33 @@ class Member(SharedMemoryModel):
     As far as salary goes, anyone in the Member model can have a WeeklyTransaction
     set up with their Organization.
     """
-    player = models.ForeignKey('PlayerOrNpc', related_name='memberships', blank=True, null=True, db_index=True,
-                               on_delete=models.CASCADE)
-    commanding_officer = models.ForeignKey('self', on_delete=models.SET_NULL, related_name='subordinates', blank=True,
-                                           null=True)
-    organization = models.ForeignKey('Organization', related_name='members', blank=True, null=True, db_index=True,
-                                     on_delete=models.CASCADE)
-    story_coordinator = models.BooleanField("Whether they're a coordinator for this org", default=False)
+
+    player = models.ForeignKey(
+        "PlayerOrNpc",
+        related_name="memberships",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    commanding_officer = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="subordinates",
+        blank=True,
+        null=True,
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        related_name="members",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    story_coordinator = models.BooleanField(
+        "Whether they're a coordinator for this org", default=False
+    )
     # work they've gained
     work_this_week = models.PositiveSmallIntegerField(default=0, blank=0)
     work_total = models.PositiveSmallIntegerField(default=0, blank=0)
@@ -2560,13 +3160,21 @@ class Member(SharedMemoryModel):
 
     # a rare case of us not using a player object, since we may designate any type of object as belonging
     # to an organization - character objects without players (npcs), rooms, exits, items, etc.
-    object = models.ForeignKey('objects.ObjectDB', related_name='memberships', blank=True, null=True,
-                               on_delete=models.CASCADE)
+    object = models.ForeignKey(
+        "objects.ObjectDB",
+        related_name="memberships",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
 
     rank = models.PositiveSmallIntegerField(blank=10, default=10)
 
-    pc_exists = models.BooleanField(blank=True, default=True,
-                                    help_text="Whether this member is a player character in the database")
+    pc_exists = models.BooleanField(
+        blank=True,
+        default=True,
+        help_text="Whether this member is a player character in the database",
+    )
     # stuff that players may set for their members:
     desc = models.TextField(blank=True)
     public_notes = models.TextField(blank=True)
@@ -2574,11 +3182,12 @@ class Member(SharedMemoryModel):
     has_seen_motd = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ['rank']
+        ordering = ["rank"]
 
     def _get_char(self):
         if self.player and self.player.player and self.player.player.char_ob:
             return self.player.player.char_ob
+
     char = property(_get_char)
 
     def __str__(self):
@@ -2653,17 +3262,22 @@ class Member(SharedMemoryModel):
             setattr(assets, resource_type, current + amount + bonus)
             assets.save()
             if bonus:
-                bonus_msg += " Amount modified by %s%s resources due to prestige." % ("+" if bonus > 0 else "", bonus)
+                bonus_msg += " Amount modified by %s%s resources due to prestige." % (
+                    "+" if bonus > 0 else "",
+                    bonus,
+                )
             if assets != self.player.assets:
-                inform_msg = "%s has been hard at work, and %s has gained %s %s resources." % (
-                              self, assets, amount, resource_type)
+                inform_msg = (
+                    "%s has been hard at work, and %s has gained %s %s resources."
+                    % (self, assets, amount, resource_type)
+                )
                 assets.inform(inform_msg + bonus_msg, category="Work", append=True)
             else:
                 self.player.player.msg(msg + bonus_msg)
 
         def get_amount_after_clout(clout_value, added=100, minimum=0):
             """helper function to calculate clout modifier on outcome amount"""
-            percent = (clout_value + added)/100.0
+            percent = (clout_value + added) / 100.0
             total = int(outcome * percent)
             if total < minimum:
                 total = minimum
@@ -2677,14 +3291,17 @@ class Member(SharedMemoryModel):
             msg += " Luck has gone %s's way, and they get a bonus! " % self
         msg += "You have gained %s %s resources." % (patron_amount, resource_type)
         adjust_resources(self.player.assets, patron_amount)
-        org_amount = patron_amount//5
+        org_amount = patron_amount // 5
         if org_amount:
             adjust_resources(self.organization.assets, org_amount)
             self.work_this_week += org_amount
             self.work_total += org_amount
             self.save()
         if protege:
-            adjust_resources(protege.assets, get_amount_after_clout(protege_clout, added=25, minimum=1))
+            adjust_resources(
+                protege.assets,
+                get_amount_after_clout(protege_clout, added=25, minimum=1),
+            )
 
     def invest(self, resource_type, ap_cost, protege=None, resources=0):
         """
@@ -2720,13 +3337,18 @@ class Member(SharedMemoryModel):
             self.investment_total += org_amount
             self.save()
             current = getattr(self.organization, "%s_influence" % resource_type)
-            setattr(self.organization, "%s_influence" % resource_type, current + org_amount)
+            setattr(
+                self.organization, "%s_influence" % resource_type, current + org_amount
+            )
             self.organization.save()
-        msg += "\nYou and {} both gain {:,} prestige.".format(self.organization, prestige)
+        msg += "\nYou and {} both gain {:,} prestige.".format(
+            self.organization, prestige
+        )
         self.player.assets.adjust_prestige(prestige, PrestigeCategory.INVESTMENT)
         self.organization.assets.adjust_prestige(prestige)
-        msg += "\nYou have increased the {} influence of {} by {:,}.".format(resource_type, self.organization,
-                                                                             org_amount)
+        msg += "\nYou have increased the {} influence of {} by {:,}.".format(
+            resource_type, self.organization, org_amount
+        )
         mod = getattr(self.organization, "%s_modifier" % resource_type)
         progress = self.organization.get_progress_to_next_modifier(resource_type)
         msg += "\nCurrent modifier is %s, progress to next is %d/100." % (mod, progress)
@@ -2748,9 +3370,13 @@ class Member(SharedMemoryModel):
                 ValueError if resource_type is invalid
         """
         resource_key = WorkSetting.get_choice_from_string(resource_type)
-        all_assignments = list(self.organization.work_settings.filter(resource=resource_key))
+        all_assignments = list(
+            self.organization.work_settings.filter(resource=resource_key)
+        )
         if not all_assignments:
-            all_assignments.append(WorkSetting.create_work(self.organization, resource_key))
+            all_assignments.append(
+                WorkSetting.create_work(self.organization, resource_key)
+            )
         assignment, roller = self.get_assignment_and_roller(protege, all_assignments)
         outcome, roll_msg = assignment.do_work(clout, roller)
         return outcome, roll_msg
@@ -2773,10 +3399,16 @@ class Member(SharedMemoryModel):
             """Choosing based on skills when nobody has knacks."""
             Skill = namedtuple("Skill", ["roller", "skill", "value"])
             skills_we_have = dict(self.char.traits.skills)
-            our_skills = [Skill(self.char, skill, value) for skill, value in skills_we_have.items()]
+            our_skills = [
+                Skill(self.char, skill, value)
+                for skill, value in skills_we_have.items()
+            ]
             if protege:
                 protege_skills = dict(protege.traits.skills)
-                our_skills += [Skill(protege, skill, value) for skill, value in protege_skills.items()]
+                our_skills += [
+                    Skill(protege, skill, value)
+                    for skill, value in protege_skills.items()
+                ]
             matches = []
             for skillset in our_skills:
                 for job in clipboard:
@@ -2787,7 +3419,13 @@ class Member(SharedMemoryModel):
                 rollers = [ob for ob in our_skills if ob.skill == assignment.skill]
                 if protege and len(rollers) > 1:
                     roller = rollers[0].roller
-                matches.append(Match(assignment.obj, roller, roller.traits.get_skill_value(assignment.skill)))
+                matches.append(
+                    Match(
+                        assignment.obj,
+                        roller,
+                        roller.traits.get_skill_value(assignment.skill),
+                    )
+                )
             return get_random_match_from_highest_values(matches)
 
         def get_random_match_from_highest_values(matches_list: List[Match]) -> Match:
@@ -2801,10 +3439,16 @@ class Member(SharedMemoryModel):
 
         matches = []
         clipboard = [Assignment(ob, ob.stat, ob.skill) for ob in all_assignments]
-        our_knacks = [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in self.char.mods.knacks]
+        our_knacks = [
+            Knack(ob.object, ob.stat, ob.skill, ob.value)
+            for ob in self.char.mods.knacks
+        ]
         if protege:
             protege = protege.player.char_ob
-            our_knacks += [Knack(ob.object, ob.stat, ob.skill, ob.value) for ob in protege.mods.knacks]
+            our_knacks += [
+                Knack(ob.object, ob.stat, ob.skill, ob.value)
+                for ob in protege.mods.knacks
+            ]
         if len(our_knacks) > 0:
             for job in clipboard:
                 for knack in our_knacks:
@@ -2819,6 +3463,7 @@ class Member(SharedMemoryModel):
     @property
     def pool_share(self):
         """Returns how much of support pool this member gets"""
+
         def calc_share(rank):
             """
             These are not percentages. These are the number of shares they
@@ -2843,6 +3488,7 @@ class Member(SharedMemoryModel):
             if rank == 9:
                 return 1
             return 0
+
         total = self.organization.support_pool
         shares = 0
         active = self.organization.active_members
@@ -2853,7 +3499,7 @@ class Member(SharedMemoryModel):
         if not shares:
             return 0
         myshare = calc_share(self.rank)
-        myshare = (myshare*total)//shares
+        myshare = (myshare * total) // shares
         if total % shares:
             myshare += 1
         return myshare
@@ -2865,17 +3511,25 @@ class Member(SharedMemoryModel):
             sphere = self.organization.spheres.get(category__name__iexact=catname)
         except SphereOfInfluence.DoesNotExist:
             return 0
-        return sum(sphere.usage.filter(Q(supporter__player=self.player) &
-                                       Q(supporter__fake=False) &
-                                       Q(week=week)).values_list('rating', flat=True))
+        return sum(
+            sphere.usage.filter(
+                Q(supporter__player=self.player)
+                & Q(supporter__fake=False)
+                & Q(week=week)
+            ).values_list("rating", flat=True)
+        )
 
     def get_total_points_used(self, week):
         """Gets how many points they've used total"""
         total = 0
         for sphere in self.organization.spheres.all():
-            total += sum(sphere.usage.filter(Q(supporter__player=self.player) &
-                                             Q(supporter__fake=False) &
-                                             Q(week=week)).values_list('rating', flat=True))
+            total += sum(
+                sphere.usage.filter(
+                    Q(supporter__player=self.player)
+                    & Q(supporter__fake=False)
+                    & Q(week=week)
+                ).values_list("rating", flat=True)
+            )
         return total
 
     @property
@@ -2902,16 +3556,22 @@ class Member(SharedMemoryModel):
         msg = "\n{wRank{n: %s" % self.rank
         msg += "\n{wSupport Pool Share{n: %s/%s" % (poolshare - used, poolshare)
         msg += "\n{wTotal Work{n: %s" % self.work_total
-        msg += "\n{wTasks Completed{n: %s, {wTotal Rating{n: %s" % (tasks.count(), sum(task.total for task in tasks))
+        msg += "\n{wTasks Completed{n: %s, {wTotal Rating{n: %s" % (
+            tasks.count(),
+            sum(task.total for task in tasks),
+        )
         if rep:
-            msg += "\n{wReputation{n: {wAffection{n: %s, {wRespect:{n %s" % (rep.affection, rep.respect)
+            msg += "\n{wReputation{n: {wAffection{n: %s, {wRespect:{n %s" % (
+                rep.affection,
+                rep.respect,
+            )
         return msg
 
     @property
     def rank_title(self):
         """Returns title for this member"""
         try:
-            male = self.player.player.char_ob.db.gender.lower().startswith('m')
+            male = self.player.player.char_ob.db.gender.lower().startswith("m")
         except (AttributeError, ValueError, TypeError):
             male = False
         if male:
@@ -2926,8 +3586,11 @@ class Task(SharedMemoryModel):
     A task that a guild creates and then assigns to members to carry out,
     to earn them and the members income. Used to create RP.
     """
+
     name = models.CharField(blank=True, null=True, max_length=80, db_index=True)
-    org = models.ManyToManyField('Organization', related_name='tasks', blank=True, db_index=True)
+    org = models.ManyToManyField(
+        "Organization", related_name="tasks", blank=True, db_index=True
+    )
     category = models.CharField(null=True, blank=True, max_length=80)
     room_echo = models.TextField(blank=True, null=True)
     active = models.BooleanField(default=False, blank=False)
@@ -2949,10 +3612,23 @@ class AssignedTask(SharedMemoryModel):
     """
     A task assigned to a player.
     """
-    task = models.ForeignKey('Task', related_name='assigned_tasks', blank=True, null=True, db_index=True,
-                             on_delete=models.CASCADE)
-    member = models.ForeignKey('Member', related_name='tasks', blank=True, null=True, db_index=True,
-                               on_delete=models.CASCADE)
+
+    task = models.ForeignKey(
+        "Task",
+        related_name="assigned_tasks",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    member = models.ForeignKey(
+        "Member",
+        related_name="tasks",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     finished = models.BooleanField(default=False, blank=False)
     week = models.PositiveSmallIntegerField(blank=0, default=0, db_index=True)
     notes = models.TextField(blank=True, null=True)
@@ -2982,7 +3658,7 @@ class AssignedTask(SharedMemoryModel):
     def get_org_amount(self, category):
         """Reward amount for an org"""
         try:
-            mod = getattr(self.org, category+"_modifier") + 1
+            mod = getattr(self.org, category + "_modifier") + 1
         except (TypeError, ValueError, AttributeError):
             mod = 1
         base = self.task.difficulty * mod
@@ -2990,7 +3666,7 @@ class AssignedTask(SharedMemoryModel):
         if oflow > 0:
             if mod > 2:
                 mod = 2
-            base += (mod * oflow)/2
+            base += (mod * oflow) / 2
         return base
 
     @property
@@ -3043,7 +3719,7 @@ class AssignedTask(SharedMemoryModel):
             rep = amt
             amt /= div
             # calculate resources for org. We compare multiplier for org to player mod, calc through that
-            orgres = self.get_org_amount(category)/div
+            orgres = self.get_org_amount(category) / div
             memassets = self.dompc.assets
             orgassets = org.assets
             current = getattr(memassets, category)
@@ -3059,8 +3735,7 @@ class AssignedTask(SharedMemoryModel):
         # msg += "Reputation earned: %s\n" % total_rep
         # for support in self.supporters.all():
         #     support.award_renown()
-        self.player.inform(msg, category="task", week=week,
-                                         append=True)
+        self.player.inform(msg, category="task", week=week, append=True)
 
     @CachedProperty
     def total(self):
@@ -3079,7 +3754,9 @@ class AssignedTask(SharedMemoryModel):
         msg += "{wOrganization{n %s\n" % self.member.organization.name
         msg += "{wWeek Finished{n: %s\n" % self.week
         msg += "{wTotal support{n: %s\n" % self.total
-        msg += "{wSupporters:{n %s\n" % ", ".join(str(ob) for ob in self.supporters.all())
+        msg += "{wSupporters:{n %s\n" % ", ".join(
+            str(ob) for ob in self.supporters.all()
+        )
         msg += "{wNotes:{n\n%s\n" % self.notes
         msg += "{wCurrent Alt Echo:{n %s\n" % self.current_alt_echo
         msg += "{wStory:{n\n%s\n" % self.story
@@ -3092,7 +3769,9 @@ class AssignedTask(SharedMemoryModel):
         if not msg:
             return msg
         msg += "\n\n"
-        msg += "\n\n".join(ob.observer_text for ob in self.supporters.all() if ob.observer_text)
+        msg += "\n\n".join(
+            ob.observer_text for ob in self.supporters.all() if ob.observer_text
+        )
         return msg
 
     def __str__(self):
@@ -3113,13 +3792,30 @@ class TaskSupporter(SharedMemoryModel):
     """
     A player that has pledged support to someone doing a task
     """
-    player = models.ForeignKey('PlayerOrNpc', related_name='supported_tasks', blank=True, null=True, db_index=True,
-                               on_delete=models.CASCADE)
-    task = models.ForeignKey('AssignedTask', related_name='supporters', blank=True, null=True, db_index=True,
-                             on_delete=models.CASCADE)
+
+    player = models.ForeignKey(
+        "PlayerOrNpc",
+        related_name="supported_tasks",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    task = models.ForeignKey(
+        "AssignedTask",
+        related_name="supporters",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     fake = models.BooleanField(default=False)
-    spheres = models.ManyToManyField('SphereOfInfluence', related_name='supported_tasks', blank=True,
-                                     through='SupportUsed')
+    spheres = models.ManyToManyField(
+        "SphereOfInfluence",
+        related_name="supported_tasks",
+        blank=True,
+        through="SupportUsed",
+    )
     observer_text = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     additional_points = models.PositiveSmallIntegerField(default=0, blank=0)
@@ -3139,8 +3835,11 @@ class TaskSupporter(SharedMemoryModel):
         # freebie point
         total += 1
         week = get_week()
-        total += (week - self.first_week)
-        if self.player.supported_tasks.filter(task__member=self.task.member).first() == self:
+        total += week - self.first_week
+        if (
+            self.player.supported_tasks.filter(task__member=self.task.member).first()
+            == self
+        ):
             total += 5
         for usage in self.allocation.all():
             total += usage.rating
@@ -3166,6 +3865,7 @@ class TaskSupporter(SharedMemoryModel):
 
 class Mats(object):
     """helper classes for crafting recipe to simplify API - allow for 'recipe.materials.all()'"""
+
     def __init__(self, mat, amount):
         self.mat = mat
         self.id = mat.id
@@ -3175,6 +3875,7 @@ class Mats(object):
 
 class MatList(object):
     """Helper class for list of mats used"""
+
     def __init__(self):
         self.mats = []
 
@@ -3193,13 +3894,22 @@ class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
     are used for wearable objects to denote the slot they're worn in and
     how many other objects may be worn in that slot, respectively.
     """
+
     name = models.CharField(blank=True, null=True, max_length=255, db_index=True)
     desc = models.TextField(blank=True, null=True)
     # organizations or players that know this recipe
-    known_by = models.ManyToManyField('AssetOwner', blank=True, related_name='recipes', db_index=True)
-    primary_materials = models.ManyToManyField('CraftingMaterialType', blank=True, related_name='recipes_primary')
-    secondary_materials = models.ManyToManyField('CraftingMaterialType', blank=True, related_name='recipes_secondary')
-    tertiary_materials = models.ManyToManyField('CraftingMaterialType', blank=True, related_name='recipes_tertiary')
+    known_by = models.ManyToManyField(
+        "AssetOwner", blank=True, related_name="recipes", db_index=True
+    )
+    primary_materials = models.ManyToManyField(
+        "CraftingMaterialType", blank=True, related_name="recipes_primary"
+    )
+    secondary_materials = models.ManyToManyField(
+        "CraftingMaterialType", blank=True, related_name="recipes_secondary"
+    )
+    tertiary_materials = models.ManyToManyField(
+        "CraftingMaterialType", blank=True, related_name="recipes_tertiary"
+    )
     primary_amount = models.PositiveSmallIntegerField(blank=0, default=0)
     secondary_amount = models.PositiveSmallIntegerField(blank=0, default=0)
     tertiary_amount = models.PositiveSmallIntegerField(blank=0, default=0)
@@ -3216,7 +3926,9 @@ class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
     result = models.TextField(blank=True, null=True)
     allow_adorn = models.BooleanField(default=True, blank=True)
     # lockstring
-    lock_storage = models.TextField('locks', blank=True, help_text='defined in setup_utils')
+    lock_storage = models.TextField(
+        "locks", blank=True, help_text="defined in setup_utils"
+    )
 
     def __init__(self, *args, **kwargs):
         super(CraftingRecipe, self).__init__(*args, **kwargs)
@@ -3235,7 +3947,7 @@ class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
                 for mat in self.tertiary_materials.all():
                     self.materials.mats.append(Mats(mat, self.tertiary_amount))
 
-    def access(self, accessing_obj, access_type='learn', default=False):
+    def access(self, accessing_obj, access_type="learn", default=False):
         """
         Determines if another object has permission to access.
         accessing_obj - object trying to access this one
@@ -3245,9 +3957,11 @@ class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
         return self.locks.check(accessing_obj, access_type=access_type, default=default)
 
     def org_owners(self):
-        return self.known_by.select_related('organization_owner').filter(organization_owner__isnull=False)
+        return self.known_by.select_related("organization_owner").filter(
+            organization_owner__isnull=False
+        )
 
-    org_owners = CachedProperty(org_owners, '_org_owners')
+    org_owners = CachedProperty(org_owners, "_org_owners")
 
     def can_be_learned_by(self, learner):
         """Returns True if learner can learn this recipe, False otherwise"""
@@ -3269,7 +3983,9 @@ class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
             return {}
         rlist = results.split(";")
         keyvalpairs = [pair.split(":") for pair in rlist]
-        keydict = {pair[0].strip(): pair[1].strip() for pair in keyvalpairs if len(pair) == 2}
+        keydict = {
+            pair[0].strip(): pair[1].strip() for pair in keyvalpairs if len(pair) == 2
+        }
         return keydict
 
     def display_reqs(self, dompc=None, full=False):
@@ -3279,9 +3995,19 @@ class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
             msg += "{wName:{n %s\n" % self.name
             msg += "{wDescription:{n %s\n" % self.desc
         msg += "{wSilver:{n %s\n" % self.additional_cost
-        tups = ((self.primary_amount, "{wPrimary Materials:{n\n", self.primary_materials),
-                (self.secondary_amount, "\n{wSecondary Materials:{n\n", self.secondary_materials),
-                (self.tertiary_amount, "\n{wTertiary Materials:{n\n", self.tertiary_materials),)
+        tups = (
+            (self.primary_amount, "{wPrimary Materials:{n\n", self.primary_materials),
+            (
+                self.secondary_amount,
+                "\n{wSecondary Materials:{n\n",
+                self.secondary_materials,
+            ),
+            (
+                self.tertiary_amount,
+                "\n{wTertiary Materials:{n\n",
+                self.tertiary_materials,
+            ),
+        )
         for tup in tups:
             if tup[0]:
                 msg += tup[1]
@@ -3293,10 +4019,14 @@ class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
                             amt = pcmat.amount
                         except CraftingMaterials.DoesNotExist:
                             amt = 0
-                        msglist.append("%s: %s (%s/%s)" % (str(mat), tup[0], amt, tup[0]))
+                        msglist.append(
+                            "%s: %s (%s/%s)" % (str(mat), tup[0], amt, tup[0])
+                        )
                     msg += ", ".join(msglist)
                 else:
-                    msg += ", ".join("%s: %s" % (str(ob), tup[0]) for ob in tup[2].all())
+                    msg += ", ".join(
+                        "%s: %s" % (str(ob), tup[0]) for ob in tup[2].all()
+                    )
         return msg
 
     @CachedProperty
@@ -3328,6 +4058,7 @@ class CraftingMaterialType(SharedMemoryModel):
     CraftingMaterialTypes, this includes the category of material, and how
     difficult it is to fake it as another material of the same category
     """
+
     # the type of material we are
     name = models.CharField(max_length=80, db_index=True)
     desc = models.TextField(blank=True, null=True)
@@ -3350,8 +4081,10 @@ class CraftingMaterialType(SharedMemoryModel):
         if quantity > 1:
             name_string = "{} {}".format(quantity, self.name)
 
-        result = create.create_object(key=name_string,
-                                      typeclass="world.dominion.dominion_typeclasses.CraftingMaterialObject")
+        result = create.create_object(
+            key=name_string,
+            typeclass="world.dominion.dominion_typeclasses.CraftingMaterialObject",
+        )
         result.db.desc = self.desc
         result.db.material_type = self.id
         result.db.quantity = quantity
@@ -3365,14 +4098,27 @@ class CraftingMaterials(SharedMemoryModel):
     If it is used in a recipe, do NOT set it owned by any asset owner, or by changing
     the amount they'll change the amount required in a recipe!
     """
-    type = models.ForeignKey('CraftingMaterialType', blank=True, null=True, db_index=True,
-                             on_delete=models.CASCADE)
+
+    type = models.ForeignKey(
+        "CraftingMaterialType",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     amount = models.PositiveIntegerField(blank=0, default=0)
-    owner = models.ForeignKey('AssetOwner', blank=True, null=True, related_name='materials', db_index=True,
-                              on_delete=models.CASCADE)
+    owner = models.ForeignKey(
+        "AssetOwner",
+        blank=True,
+        null=True,
+        related_name="materials",
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
 
     class Meta:
         """Define Django meta options"""
+
         verbose_name_plural = "Crafting Materials"
 
     def __str__(self):
@@ -3393,13 +4139,26 @@ class RPEvent(SharedMemoryModel):
     Events can have money tossed at them in order to generate prestige, which
     is indicated by the celebration_tier.
     """
+
     NONE, COMMON, REFINED, GRAND, EXTRAVAGANT, LEGENDARY = range(6)
 
-    LARGESSE_CHOICES = ((NONE, 'Small'), (COMMON, 'Average'), (REFINED, 'Refined'), (GRAND, 'Grand'),
-                        (EXTRAVAGANT, 'Extravagant'), (LEGENDARY, 'Legendary'),)
+    LARGESSE_CHOICES = (
+        (NONE, "Small"),
+        (COMMON, "Average"),
+        (REFINED, "Refined"),
+        (GRAND, "Grand"),
+        (EXTRAVAGANT, "Extravagant"),
+        (LEGENDARY, "Legendary"),
+    )
     # costs and prestige awards
-    LARGESSE_VALUES = ((NONE, (0, 0)), (COMMON, (100, 10000)), (REFINED, (1000, 50000)), (GRAND, (10000, 200000)),
-                       (EXTRAVAGANT, (100000, 1000000)), (LEGENDARY, (500000, 4000000)))
+    LARGESSE_VALUES = (
+        (NONE, (0, 0)),
+        (COMMON, (100, 10000)),
+        (REFINED, (1000, 50000)),
+        (GRAND, (10000, 200000)),
+        (EXTRAVAGANT, (100000, 1000000)),
+        (LEGENDARY, (500000, 4000000)),
+    )
 
     NO_RISK = 0
     MINIMAL_RISK = 1
@@ -3414,30 +4173,66 @@ class RPEvent(SharedMemoryModel):
     SUICIDAL_RISK = 10
 
     RISK_CHOICES = (
-        (NO_RISK, "No Risk"), (MINIMAL_RISK, "Minimal Risk"), (LOW_RISK, "Low Risk"), (REDUCED_RISK, "Reduced Risk"),
-        (NORMAL_RISK, "Normal Risk"), (SLIGHTLY_ELEVATED_RISK, "Slightly Elevated Risk"),
-        (MODERATELY_ELEVATED_RISK, "Moderately Elevated Risk"), (HIGHLY_ELEVATED_RISK, "Highly Elevated Risk"),
-        (VERY_HIGH_RISK, "Very High Risk"), (EXTREME_RISK, "Extreme Risk"), (SUICIDAL_RISK, "Suicidal Risk"),
-        )
-    dompcs = models.ManyToManyField('PlayerOrNpc', blank=True, related_name='events', through='PCEventParticipation')
-    orgs = models.ManyToManyField('Organization', blank=True, related_name='events', through='OrgEventParticipation')
+        (NO_RISK, "No Risk"),
+        (MINIMAL_RISK, "Minimal Risk"),
+        (LOW_RISK, "Low Risk"),
+        (REDUCED_RISK, "Reduced Risk"),
+        (NORMAL_RISK, "Normal Risk"),
+        (SLIGHTLY_ELEVATED_RISK, "Slightly Elevated Risk"),
+        (MODERATELY_ELEVATED_RISK, "Moderately Elevated Risk"),
+        (HIGHLY_ELEVATED_RISK, "Highly Elevated Risk"),
+        (VERY_HIGH_RISK, "Very High Risk"),
+        (EXTREME_RISK, "Extreme Risk"),
+        (SUICIDAL_RISK, "Suicidal Risk"),
+    )
+    dompcs = models.ManyToManyField(
+        "PlayerOrNpc", blank=True, related_name="events", through="PCEventParticipation"
+    )
+    orgs = models.ManyToManyField(
+        "Organization",
+        blank=True,
+        related_name="events",
+        through="OrgEventParticipation",
+    )
     name = models.CharField(max_length=255, db_index=True)
     desc = models.TextField(blank=True, null=True)
-    location = models.ForeignKey('objects.ObjectDB', blank=True, null=True, related_name='events_held',
-                                 on_delete=models.SET_NULL)
+    location = models.ForeignKey(
+        "objects.ObjectDB",
+        blank=True,
+        null=True,
+        related_name="events_held",
+        on_delete=models.SET_NULL,
+    )
     date = models.DateTimeField(blank=True, null=True)
-    celebration_tier = models.PositiveSmallIntegerField(choices=LARGESSE_CHOICES, default=NONE, blank=True)
+    celebration_tier = models.PositiveSmallIntegerField(
+        choices=LARGESSE_CHOICES, default=NONE, blank=True
+    )
     gm_event = models.BooleanField(default=False)
     public_event = models.BooleanField(default=True)
     finished = models.BooleanField(default=False)
     results = models.TextField(blank=True, null=True)
     room_desc = models.TextField(blank=True, null=True)
     # a beat with a blank desc will be used for connecting us to a Plot before the Event is finished
-    beat = models.ForeignKey("PlotUpdate", blank=True, null=True, related_name="events", on_delete=models.SET_NULL)
-    plotroom = models.ForeignKey('PlotRoom', blank=True, null=True, related_name='events_held_here',
-                                 on_delete=models.SET_NULL)
-    risk = models.PositiveSmallIntegerField(choices=RISK_CHOICES, default=NORMAL_RISK, blank=True)
-    search_tags = models.ManyToManyField('character.SearchTag', blank=True, related_name="events")
+    beat = models.ForeignKey(
+        "PlotUpdate",
+        blank=True,
+        null=True,
+        related_name="events",
+        on_delete=models.SET_NULL,
+    )
+    plotroom = models.ForeignKey(
+        "PlotRoom",
+        blank=True,
+        null=True,
+        related_name="events_held_here",
+        on_delete=models.SET_NULL,
+    )
+    risk = models.PositiveSmallIntegerField(
+        choices=RISK_CHOICES, default=NORMAL_RISK, blank=True
+    )
+    search_tags = models.ManyToManyField(
+        "character.SearchTag", blank=True, related_name="events"
+    )
 
     @property
     def prestige(self):
@@ -3460,7 +4255,11 @@ class RPEvent(SharedMemoryModel):
         if player.check_permstring("builders"):
             return True
         dom = player.Dominion
-        if dom in self.gms.all() or dom in self.hosts.all() or dom in self.participants.all():
+        if (
+            dom in self.gms.all()
+            or dom in self.hosts.all()
+            or dom in self.participants.all()
+        ):
             return True
         if dom.current_orgs.filter(events=self).exists():
             return True
@@ -3468,7 +4267,11 @@ class RPEvent(SharedMemoryModel):
     def can_end_or_move(self, player):
         """Whether an in-progress event can be stopped or moved by a host"""
         dompc = player.Dominion
-        return self.can_admin(player) or dompc in self.hosts.all() or dompc in self.gms.all()
+        return (
+            self.can_admin(player)
+            or dompc in self.hosts.all()
+            or dompc in self.gms.all()
+        )
 
     def can_admin(self, player):
         """Who can run admin commands for this event"""
@@ -3511,13 +4314,19 @@ class RPEvent(SharedMemoryModel):
     @property
     def hosts(self):
         """Our host or main host"""
-        return self.dompcs.filter(event_participation__status__in=(PCEventParticipation.HOST,
-                                                                   PCEventParticipation.MAIN_HOST))
+        return self.dompcs.filter(
+            event_participation__status__in=(
+                PCEventParticipation.HOST,
+                PCEventParticipation.MAIN_HOST,
+            )
+        )
 
     @property
     def participants(self):
         """Any guest who was invited/attended"""
-        return self.dompcs.filter(event_participation__status=PCEventParticipation.GUEST)
+        return self.dompcs.filter(
+            event_participation__status=PCEventParticipation.GUEST
+        )
 
     @property
     def gms(self):
@@ -3545,7 +4354,9 @@ class RPEvent(SharedMemoryModel):
         if not self.finished and not self.public_event:
             # prevent seeing names of invites once a private event has started
             if self.date > datetime.now():
-                msg += "{wInvited:{n %s\n" % ", ".join(str(ob) for ob in self.participants.all())
+                msg += "{wInvited:{n %s\n" % ", ".join(
+                    str(ob) for ob in self.participants.all()
+                )
         orgs = self.orgs.all()
         if orgs:
             msg += "{wOrgs:{n %s\n" % ", ".join(str(ob) for ob in orgs)
@@ -3558,9 +4369,12 @@ class RPEvent(SharedMemoryModel):
         msg += "{wDate:{n %s\n" % self.date.strftime("%x %H:%M")
         msg += "{wDesc:{n\n%s\n" % self.desc
         msg += "{wEvent Page:{n %s\n" % get_full_url(self.get_absolute_url())
-        comments = self.comments.filter(db_tags__db_key="white_journal").order_by('-db_date_created')
+        comments = self.comments.filter(db_tags__db_key="white_journal").order_by(
+            "-db_date_created"
+        )
         if comments:
             from server.utils.prettytable import PrettyTable
+
             msg += "\n{wComments:{n"
             table = PrettyTable(["#", "{wName{n"])
             x = 1
@@ -3584,6 +4398,7 @@ class RPEvent(SharedMemoryModel):
         """Returns our logfile"""
         try:
             from typeclasses.scripts.event_manager import LOGPATH
+
             filename = LOGPATH + "event_log_%s.txt" % self.id
             with open(filename) as log:
                 msg = log.read()
@@ -3608,12 +4423,17 @@ class RPEvent(SharedMemoryModel):
     def comments(self):
         """Returns queryset of Journals written about us"""
         from world.msgs.models import Journal
-        return Journal.objects.filter(db_tags__db_data=self.tagdata, db_tags__db_category="event")
+
+        return Journal.objects.filter(
+            db_tags__db_data=self.tagdata, db_tags__db_category="event"
+        )
 
     @property
     def main_host(self):
         """Returns who the main host was"""
-        return self.dompcs.filter(event_participation__status=PCEventParticipation.MAIN_HOST).first()
+        return self.dompcs.filter(
+            event_participation__status=PCEventParticipation.MAIN_HOST
+        ).first()
 
     def tag_obj(self, obj):
         """Attaches a tag to obj about this event"""
@@ -3627,7 +4447,7 @@ class RPEvent(SharedMemoryModel):
 
     def get_absolute_url(self):
         """Gets absolute URL for the RPEvent from their display view"""
-        return reverse('dominion:display_event', kwargs={'pk': self.id})
+        return reverse("dominion:display_event", kwargs={"pk": self.id})
 
     @CachedProperty
     def attended(self):
@@ -3643,8 +4463,10 @@ class RPEvent(SharedMemoryModel):
 
     def add_host(self, dompc, main_host=False, send_inform=True):
         """Adds a host for the event"""
-        status = PCEventParticipation.MAIN_HOST if main_host else PCEventParticipation.HOST
-        self.invite_dompc(dompc, 'status', status, send_inform)
+        status = (
+            PCEventParticipation.MAIN_HOST if main_host else PCEventParticipation.HOST
+        )
+        self.invite_dompc(dompc, "status", status, send_inform)
 
     def change_host_to_guest(self, dompc):
         """Changes a host to a guest"""
@@ -3654,8 +4476,10 @@ class RPEvent(SharedMemoryModel):
 
     def add_gm(self, dompc, send_inform=True):
         """Adds a gm for the event"""
-        self.invite_dompc(dompc, 'gm', True, send_inform)
-        if not self.gm_event and (dompc.player.is_staff or dompc.player.check_permstring("builders")):
+        self.invite_dompc(dompc, "gm", True, send_inform)
+        if not self.gm_event and (
+            dompc.player.is_staff or dompc.player.check_permstring("builders")
+        ):
             self.gm_event = True
             self.save()
 
@@ -3667,7 +4491,7 @@ class RPEvent(SharedMemoryModel):
 
     def add_guest(self, dompc, send_inform=True):
         """Adds a guest to the event"""
-        self.invite_dompc(dompc, 'status', PCEventParticipation.GUEST, send_inform)
+        self.invite_dompc(dompc, "status", PCEventParticipation.GUEST, send_inform)
 
     def invite_dompc(self, dompc, field, value, send_inform=True):
         """Invites a dompc to be a host, gm, or guest"""
@@ -3726,20 +4550,32 @@ class RPEvent(SharedMemoryModel):
 
     def make_announcement(self, msg):
         from typeclasses.accounts import Account
+
         msg = "{y(Private Message) %s" % msg
-        guildies = Member.objects.filter(organization__in=self.orgs.all(), deguilded=False)
-        all_dompcs = PlayerOrNpc.objects.filter(Q(id__in=self.dompcs.all()) | Q(memberships__in=guildies))
-        audience = Account.objects.filter(Dominion__in=all_dompcs, db_is_connected=True).distinct()
+        guildies = Member.objects.filter(
+            organization__in=self.orgs.all(), deguilded=False
+        )
+        all_dompcs = PlayerOrNpc.objects.filter(
+            Q(id__in=self.dompcs.all()) | Q(memberships__in=guildies)
+        )
+        audience = Account.objects.filter(
+            Dominion__in=all_dompcs, db_is_connected=True
+        ).distinct()
         for ob in audience:
             ob.msg(msg)
 
 
 class PCEventParticipation(SharedMemoryModel):
     """A PlayerOrNPC participating in an event"""
+
     MAIN_HOST, HOST, GUEST = range(3)
     STATUS_CHOICES = ((MAIN_HOST, "Main Host"), (HOST, "Host"), (GUEST, "Guest"))
-    dompc = models.ForeignKey('PlayerOrNpc', related_name="event_participation", on_delete=models.CASCADE)
-    event = models.ForeignKey('RPEvent', related_name="pc_event_participation", on_delete=models.CASCADE)
+    dompc = models.ForeignKey(
+        "PlayerOrNpc", related_name="event_participation", on_delete=models.CASCADE
+    )
+    event = models.ForeignKey(
+        "RPEvent", related_name="pc_event_participation", on_delete=models.CASCADE
+    )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=GUEST)
     gm = models.BooleanField(default=False)
     attended = models.BooleanField(default=False)
@@ -3758,17 +4594,28 @@ class PCEventParticipation(SharedMemoryModel):
 
 class OrgEventParticipation(SharedMemoryModel):
     """An org participating in an event"""
-    org = models.ForeignKey("Organization", related_name="event_participation", on_delete=models.CASCADE)
-    event = models.ForeignKey("RPEvent", related_name="org_event_participation", on_delete=models.CASCADE)
-    social = models.PositiveSmallIntegerField("Social Resources spent by the Org Sponsor", default=0)
+
+    org = models.ForeignKey(
+        "Organization", related_name="event_participation", on_delete=models.CASCADE
+    )
+    event = models.ForeignKey(
+        "RPEvent", related_name="org_event_participation", on_delete=models.CASCADE
+    )
+    social = models.PositiveSmallIntegerField(
+        "Social Resources spent by the Org Sponsor", default=0
+    )
 
     def invite(self):
         """Informs the org of their invitation"""
-        self.org.inform("Your organization has been invited to attend %s." % self.event, category="Event Invitations")
+        self.org.inform(
+            "Your organization has been invited to attend %s." % self.event,
+            category="Event Invitations",
+        )
 
 
 class InfluenceCategory(SharedMemoryModel):
     """This model describes influence with different npc groups, used for organizations, players, and tasks"""
+
     name = models.CharField(max_length=255, unique=True, db_index=True)
     orgs = models.ManyToManyField("Organization", through="SphereOfInfluence")
     players = models.ManyToManyField("PlayerOrNpc", through="Renown")
@@ -3776,6 +4623,7 @@ class InfluenceCategory(SharedMemoryModel):
 
     class Meta:
         """Define Django meta options"""
+
         verbose_name_plural = "Influence Categories"
 
     def __str__(self):
@@ -3784,8 +4632,13 @@ class InfluenceCategory(SharedMemoryModel):
 
 class Renown(SharedMemoryModel):
     """Renown is a player's influence with an npc group, represented by InfluenceCategory"""
-    category = models.ForeignKey("InfluenceCategory", db_index=True, on_delete=models.CASCADE)
-    player = models.ForeignKey("PlayerOrNpc", related_name="renown", db_index=True, on_delete=models.CASCADE)
+
+    category = models.ForeignKey(
+        "InfluenceCategory", db_index=True, on_delete=models.CASCADE
+    )
+    player = models.ForeignKey(
+        "PlayerOrNpc", related_name="renown", db_index=True, on_delete=models.CASCADE
+    )
     rating = models.IntegerField(blank=0, default=0)
 
     class Meta:
@@ -3801,20 +4654,25 @@ class Renown(SharedMemoryModel):
         if self.rating <= 0:
             return 0
         if self.rating <= 1000:
-            return self.rating/200
+            return self.rating / 200
         if self.rating <= 3000:
-            return 5 + (self.rating-1000)/400
+            return 5 + (self.rating - 1000) / 400
         if self.rating <= 6000:
-            return 10 + (self.rating-2000)/800
+            return 10 + (self.rating - 2000) / 800
         if self.rating <= 13000:
-            return 15 + (self.rating-4000)/1600
+            return 15 + (self.rating - 4000) / 1600
         return 20
 
 
 class SphereOfInfluence(SharedMemoryModel):
     """Influence categories for organization - npc groups they have some influence with"""
-    category = models.ForeignKey("InfluenceCategory", db_index=True, on_delete=models.CASCADE)
-    org = models.ForeignKey("Organization", related_name="spheres", db_index=True, on_delete=models.CASCADE)
+
+    category = models.ForeignKey(
+        "InfluenceCategory", db_index=True, on_delete=models.CASCADE
+    )
+    org = models.ForeignKey(
+        "Organization", related_name="spheres", db_index=True, on_delete=models.CASCADE
+    )
     rating = models.IntegerField(blank=0, default=0)
 
     class Meta:
@@ -3828,20 +4686,25 @@ class SphereOfInfluence(SharedMemoryModel):
     def level(self):
         """example idea for scaling"""
         if self.rating <= 150:
-            return self.rating/10
+            return self.rating / 10
         if self.rating <= 350:
-            return 15 + (self.rating-150)/20
+            return 15 + (self.rating - 150) / 20
         if self.rating <= 750:
-            return 25 + (self.rating-350)/40
+            return 25 + (self.rating - 350) / 40
         if self.rating <= 1550:
-            return 35 + (self.rating-750)/80
-        return 45 + (self.rating-1550)/100
+            return 35 + (self.rating - 750) / 80
+        return 45 + (self.rating - 1550) / 100
 
 
 class TaskRequirement(SharedMemoryModel):
     """NPC groups that are required for tasks"""
-    category = models.ForeignKey("InfluenceCategory", db_index=True, on_delete=models.CASCADE)
-    task = models.ForeignKey("Task", related_name="requirements", db_index=True, on_delete=models.CASCADE)
+
+    category = models.ForeignKey(
+        "InfluenceCategory", db_index=True, on_delete=models.CASCADE
+    )
+    task = models.ForeignKey(
+        "Task", related_name="requirements", db_index=True, on_delete=models.CASCADE
+    )
     minimum_amount = models.PositiveSmallIntegerField(blank=0, default=0)
 
     def __str__(self):
@@ -3850,9 +4713,20 @@ class TaskRequirement(SharedMemoryModel):
 
 class SupportUsed(SharedMemoryModel):
     """Support given by a TaskSupporter for a specific task, using an npc group under 'sphere'"""
+
     week = models.PositiveSmallIntegerField(default=0, blank=0)
-    supporter = models.ForeignKey("TaskSupporter", related_name="allocation", db_index=True, on_delete=models.CASCADE)
-    sphere = models.ForeignKey("SphereOfInfluence", related_name="usage", db_index=True, on_delete=models.CASCADE)
+    supporter = models.ForeignKey(
+        "TaskSupporter",
+        related_name="allocation",
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
+    sphere = models.ForeignKey(
+        "SphereOfInfluence",
+        related_name="usage",
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     rating = models.PositiveSmallIntegerField(blank=0, default=0)
 
     def __str__(self):
@@ -3861,20 +4735,42 @@ class SupportUsed(SharedMemoryModel):
 
 class PlotRoom(SharedMemoryModel):
     """Model for creating templates that can be used repeatedly for temporary rooms for RP events"""
+
     name = models.CharField(blank=False, null=False, max_length=78, db_index=True)
     description = models.TextField(max_length=4096)
-    creator = models.ForeignKey('PlayerOrNpc', related_name='created_plot_rooms', blank=True, null=True, db_index=True,
-                                on_delete=models.CASCADE)
+    creator = models.ForeignKey(
+        "PlayerOrNpc",
+        related_name="created_plot_rooms",
+        blank=True,
+        null=True,
+        db_index=True,
+        on_delete=models.CASCADE,
+    )
     public = models.BooleanField(default=False)
 
-    location = models.ForeignKey('MapLocation', related_name='plot_rooms', blank=True, null=True,
-                                 on_delete=models.CASCADE)
-    domain = models.ForeignKey('Domain', related_name='plot_rooms', blank=True, null=True,
-                               on_delete=models.CASCADE)
+    location = models.ForeignKey(
+        "MapLocation",
+        related_name="plot_rooms",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    domain = models.ForeignKey(
+        "Domain",
+        related_name="plot_rooms",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
     wilderness = models.BooleanField(default=True)
 
-    shardhaven_type = models.ForeignKey('exploration.ShardhavenType', related_name='tilesets', blank=True, null=True,
-                                        on_delete=models.CASCADE)
+    shardhaven_type = models.ForeignKey(
+        "exploration.ShardhavenType",
+        related_name="tilesets",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
 
     @property
     def land(self):
@@ -3902,7 +4798,13 @@ class PlotRoom(SharedMemoryModel):
             result += region_color + " - " + self.name
         elif region:
             result = "|yOutside Arx"
-            result += region_color + " - " + self.get_detailed_region_name() + " - " + self.name
+            result += (
+                region_color
+                + " - "
+                + self.get_detailed_region_name()
+                + " - "
+                + self.name
+            )
         else:
             result = "|yOutside Arx - " + self.name
 
@@ -3941,20 +4843,24 @@ class PlotRoom(SharedMemoryModel):
 
     def spawn_room(self, arx_exit=True):
         """Creates and returns a temporary room"""
-        room = create.create_object(typeclass='typeclasses.rooms.TempRoom',
-                                    key=self.ansi_name())
+        room = create.create_object(
+            typeclass="typeclasses.rooms.TempRoom", key=self.ansi_name()
+        )
         room.db.raw_desc = self.description
         room.db.desc = self.description
 
         if arx_exit:
             from typeclasses.rooms import ArxRoom
+
             try:
                 city_center = ArxRoom.objects.get(id=13)
-                create.create_object(settings.BASE_EXIT_TYPECLASS,
-                                     key="Back to Arx <Arx>",
-                                     location=room,
-                                     aliases=["arx", "back to arx", "out"],
-                                     destination=city_center)
+                create.create_object(
+                    settings.BASE_EXIT_TYPECLASS,
+                    key="Back to Arx <Arx>",
+                    location=room,
+                    aliases=["arx", "back to arx", "out"],
+                    destination=city_center,
+                )
             except ArxRoom.DoesNotExist:
                 # Just abort and return the room
                 return room
@@ -3978,17 +4884,24 @@ class Landmark(SharedMemoryModel):
     TYPE_HISTORICAL = 3
 
     CHOICES_TYPE = (
-        (TYPE_UNKNOWN, 'Unknown'),
-        (TYPE_FAITH, 'Faith'),
-        (TYPE_CULTURAL, 'Cultural'),
-        (TYPE_HISTORICAL, 'Historical')
+        (TYPE_UNKNOWN, "Unknown"),
+        (TYPE_FAITH, "Faith"),
+        (TYPE_CULTURAL, "Cultural"),
+        (TYPE_HISTORICAL, "Historical"),
     )
 
     name = models.CharField(blank=False, null=False, max_length=32, db_index=True)
     description = models.TextField(max_length=2048)
-    location = models.ForeignKey('MapLocation', related_name='landmarks', blank=True, null=True,
-                                 on_delete=models.CASCADE)
-    landmark_type = models.PositiveSmallIntegerField(choices=CHOICES_TYPE, default=TYPE_UNKNOWN)
+    location = models.ForeignKey(
+        "MapLocation",
+        related_name="landmarks",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    landmark_type = models.PositiveSmallIntegerField(
+        choices=CHOICES_TYPE, default=TYPE_UNKNOWN
+    )
 
     def __str__(self):
         return "<Landmark #%d: %s>" % (self.id, self.name)

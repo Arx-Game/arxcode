@@ -8,17 +8,17 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0012_auto_20170519_1646'),
+        ("character", "0012_auto_20170519_1646"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='firstcontact',
-            old_name='wrote_journal',
-            new_name='private',
+            model_name="firstcontact",
+            old_name="wrote_journal",
+            new_name="private",
         ),
         migrations.RemoveField(
-            model_name='firstcontact',
-            name='wrote_short_rel',
+            model_name="firstcontact",
+            name="wrote_short_rel",
         ),
     ]

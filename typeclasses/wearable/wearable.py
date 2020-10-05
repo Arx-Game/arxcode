@@ -17,7 +17,9 @@ class Wearable(FashionableMixins, Object):
     """
     Class for wearable objects
     """
+
     default_desc = "A piece of clothing or armor."
+
     def at_object_creation(self):
         """
         Run at Wearable creation.
@@ -44,7 +46,7 @@ class Wearable(FashionableMixins, Object):
 
     def at_before_move(self, destination, **kwargs):
         """Checks if the object can be moved"""
-        caller = kwargs.get('caller', None)
+        caller = kwargs.get("caller", None)
         if caller and self.is_worn:
             caller.msg("%s is currently worn and cannot be moved." % self)
             return False
@@ -108,20 +110,32 @@ class Wearable(FashionableMixins, Object):
         quality = self.quality_level
         recipe = self.recipe
         if not recipe:
-            return self.db.armor_class or 0, self.db.penalty or 0, self.db.armor_resilience or 0
+            return (
+                self.db.armor_class or 0,
+                self.db.penalty or 0,
+                self.db.armor_resilience or 0,
+            )
         base = float(recipe.resultsdict.get("baseval", 0.0))
-        scaling = float(recipe.resultsdict.get("scaling", (base/10.0) or 0.2))
+        scaling = float(recipe.resultsdict.get("scaling", (base / 10.0) or 0.2))
         penalty = float(recipe.resultsdict.get("penalty", 0.0))
         resilience = penalty / 3
         if quality >= 10:
             crafter = self.db.crafted_by
-            if (recipe.level > 3) or not crafter or crafter.check_permstring("builders"):
+            if (
+                (recipe.level > 3)
+                or not crafter
+                or crafter.check_permstring("builders")
+            ):
                 base += 1
         if not base:
             self.ndb.cached_armor_value = 0
             self.ndb.cached_penalty_value = penalty
             self.ndb.cached_resilience = resilience
-            return self.ndb.cached_armor_value, self.ndb.cached_penalty_value, self.ndb.cached_resilience
+            return (
+                self.ndb.cached_armor_value,
+                self.ndb.cached_penalty_value,
+                self.ndb.cached_resilience,
+            )
         try:
             armor = base + (scaling * quality)
         except (TypeError, ValueError):
@@ -135,7 +149,10 @@ class Wearable(FashionableMixins, Object):
         super(Wearable, self).check_fashion_ready()
         if not self.is_worn:
             from world.fashion.exceptions import FashionError
-            raise FashionError("Please wear %s before trying to model it as fashion." % self)
+
+            raise FashionError(
+                "Please wear %s before trying to model it as fashion." % self
+            )
         return True
 
     @property
@@ -220,6 +237,7 @@ class Wearable(FashionableMixins, Object):
 # noinspection PyMethodMayBeStatic
 class WearableContainer(Wearable, Container):
     """Combines Wearable and Container for backpacks, etc"""
+
     def at_object_creation(self):
         """Creates the object, calls both superclasses"""
         Wearable.at_object_creation(self)
@@ -231,7 +249,9 @@ class WearableContainer(Wearable, Container):
         cmdset is actually extracted. If no container-cmdset is cached, create
         it now.
         """
-        if self.ndb.container_reset or not self.cmdset.has_cmdset("_containerset", must_be_default=True):
+        if self.ndb.container_reset or not self.cmdset.has_cmdset(
+            "_containerset", must_be_default=True
+        ):
             # we are resetting, or no container-cmdset was set. Create one dynamically.
             self.cmdset.add_default(self.create_container_cmdset(self), permanent=False)
             self.ndb.container_reset = False

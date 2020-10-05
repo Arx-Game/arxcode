@@ -11,49 +11,128 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('dominion', '0032_auto_20180831_0557'),
+        ("dominion", "0032_auto_20180831_0557"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ShardhavenLayout',
+            name="ShardhavenLayout",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('width', models.PositiveSmallIntegerField(default=5)),
-                ('height', models.PositiveSmallIntegerField(default=4)),
-                ('entrance_x', models.PositiveSmallIntegerField(default=0)),
-                ('entrance_y', models.PositiveSmallIntegerField(default=0)),
-                ('haven_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='dominion.ShardhavenType')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("width", models.PositiveSmallIntegerField(default=5)),
+                ("height", models.PositiveSmallIntegerField(default=4)),
+                ("entrance_x", models.PositiveSmallIntegerField(default=0)),
+                ("entrance_y", models.PositiveSmallIntegerField(default=0)),
+                (
+                    "haven_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="dominion.ShardhavenType",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='ShardhavenLayoutExit',
+            name="ShardhavenLayoutExit",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('layout', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='exits', to='exploration.ShardhavenLayout')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "layout",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="exits",
+                        to="exploration.ShardhavenLayout",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='ShardhavenLayoutSquare',
+            name="ShardhavenLayoutSquare",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('x_coord', models.PositiveSmallIntegerField()),
-                ('y_coord', models.PositiveSmallIntegerField()),
-                ('exit_east', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='room_west', to='exploration.ShardhavenLayoutExit')),
-                ('exit_north', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='room_south', to='exploration.ShardhavenLayoutExit')),
-                ('exit_south', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='room_north', to='exploration.ShardhavenLayoutExit')),
-                ('exit_west', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='room_east', to='exploration.ShardhavenLayoutExit')),
-                ('layout', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='rooms', to='exploration.ShardhavenLayout')),
-                ('tile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='dominion.PlotRoom')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("x_coord", models.PositiveSmallIntegerField()),
+                ("y_coord", models.PositiveSmallIntegerField()),
+                (
+                    "exit_east",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="room_west",
+                        to="exploration.ShardhavenLayoutExit",
+                    ),
+                ),
+                (
+                    "exit_north",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="room_south",
+                        to="exploration.ShardhavenLayoutExit",
+                    ),
+                ),
+                (
+                    "exit_south",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="room_north",
+                        to="exploration.ShardhavenLayoutExit",
+                    ),
+                ),
+                (
+                    "exit_west",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="room_east",
+                        to="exploration.ShardhavenLayoutExit",
+                    ),
+                ),
+                (
+                    "layout",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="rooms",
+                        to="exploration.ShardhavenLayout",
+                    ),
+                ),
+                (
+                    "tile",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="dominion.PlotRoom",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

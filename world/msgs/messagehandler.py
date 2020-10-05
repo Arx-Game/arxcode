@@ -15,6 +15,7 @@ from web.character.models import Clue
 
 class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHandler):
     """Handler for most messages"""
+
     def __init__(self, obj=None):
         """
         We'll be doing a series of delayed calls to set up the various
@@ -63,7 +64,9 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         """
         Returns a list of all rumor entries which we've heard (marked as a receiver for)
         """
-        self._rumors = list(msg_utils.get_initial_queryset("Rumor").about_character(self.obj))
+        self._rumors = list(
+            msg_utils.get_initial_queryset("Rumor").about_character(self.obj)
+        )
         return self._rumors
 
     def build_gossiplist(self):
@@ -71,7 +74,9 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         Returns a list of all gossip entries we've heard (marked as a receiver for)
         """
         if self.obj.player_ob:
-            self._gossip = list(msg_utils.get_initial_queryset("Rumor").all_read_by(self.obj.player_ob))
+            self._gossip = list(
+                msg_utils.get_initial_queryset("Rumor").all_read_by(self.obj.player_ob)
+            )
         else:
             self._gossip = self.build_rumorslist()
 
@@ -81,9 +86,12 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         """
 
         # only visions that have been sent directly to us, not ones shared with us
-        self._visions = list(self.obj.roster.clue_discoveries.filter(clue__clue_type=Clue.VISION,
-                                                                     discovery_method__in=("original receiver",
-                                                                                           "Prior Knowledge")))
+        self._visions = list(
+            self.obj.roster.clue_discoveries.filter(
+                clue__clue_type=Clue.VISION,
+                discovery_method__in=("original receiver", "Prior Knowledge"),
+            )
+        )
         return self._visions
 
     def build_secretslist(self):
@@ -101,12 +109,21 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
     def add_vision(self, msg, sender, name, vision_obj=None):
         """adds a vision sent by a god or whatever"""
         from web.character.models import Clue
+
         if not vision_obj:
-            vision_obj = Clue(desc=msg, name=name, rating=25, author=sender.roster, clue_type=Clue.VISION)
+            vision_obj = Clue(
+                desc=msg,
+                name=name,
+                rating=25,
+                author=sender.roster,
+                clue_type=Clue.VISION,
+            )
             vision_obj.save()
             msg = ""  # prevent duplicate message
         if vision_obj not in self.obj.roster.clues.all():
-            self.obj.roster.discover_clue(vision_obj, message=msg, method="original receiver")
+            self.obj.roster.discover_clue(
+                vision_obj, message=msg, method="original receiver"
+            )
         self._visions = None  # clear cache
         return vision_obj
 
@@ -171,7 +188,9 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
         """
 
         try:
-            return self.get_clue_by_id(clue_number, attr).display(show_gm_notes=show_gm_notes)
+            return self.get_clue_by_id(clue_number, attr).display(
+                show_gm_notes=show_gm_notes
+            )
         except (KeyError, ValueError, TypeError):
             msg = "You must provide a valid ID number.\n"
             return msg + self.display_clue_table(attr)
@@ -207,6 +226,7 @@ class MessageHandler(messengerhandler.MessengerHandler, journalhandler.JournalHa
             A string of a PrettyTable for those ClueDiscoveries
         """
         from server.utils.prettytable import PrettyTable
+
         table = PrettyTable(["{w#", "{wName", "{wDate:"])
         for ob in getattr(self, attr):
             name = ob.name

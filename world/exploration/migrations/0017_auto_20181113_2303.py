@@ -8,13 +8,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0016_auto_20181113_2246'),
+        ("exploration", "0016_auto_20181113_2246"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='monster',
-            name='instances',
-            field=models.ManyToManyField(related_name='monsters', to='objects.ObjectDB'),
+            model_name="monster",
+            name="instances",
+            field=models.ManyToManyField(
+                related_name="monsters", to="objects.ObjectDB"
+            ),
         ),
     ]

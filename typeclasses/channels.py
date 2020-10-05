@@ -62,16 +62,18 @@ class Channel(DefaultChannel):
         post_send_message(msg) - called just after message was sent to channel
 
     """
+
     mentions = ["Everyone", "All"]
 
     @lazy_property
     def org_channel(self):
         from world.dominion.models import Organization
+
         try:
             return self.org
         except Organization.DoesNotExist:
             return None
-    
+
     @property
     def mutelist(self):
         """We cache mutelist here because retrieving a SaverList from Attribute is very expensive"""
@@ -109,8 +111,14 @@ class Channel(DefaultChannel):
         org = self.org_channel
         if org and org.secret:
             # check if list members are players who are non-secret members of the org
-            non_secret = [ob.player.player for ob in org.active_members.filter(secret=False)]
-            who_list = [ob for ob in who_list if ob in non_secret or ob.check_permstring("builders")]
+            non_secret = [
+                ob.player.player for ob in org.active_members.filter(secret=False)
+            ]
+            who_list = [
+                ob
+                for ob in who_list
+                if ob in non_secret or ob.check_permstring("builders")
+            ]
         # pass final list to format_wholist and return it
         return self.format_wholist(who_list)
 
@@ -158,7 +166,7 @@ class Channel(DefaultChannel):
     def clear_mute(self):
         self.db.mute_list = []
         self.ndb.mute_list = None
-        
+
     def delete_chan_message(self, message):
         """
         When given a message object, if the message has other
@@ -181,11 +189,11 @@ class Channel(DefaultChannel):
         """
         # use color if defined
         if self.db.colorstr:
-            return '%s[%s]{n ' % (self.db.colorstr, self.key)
+            return "%s[%s]{n " % (self.db.colorstr, self.key)
         # else default is whether it's private or not
-        if self.locks.get('listen').strip() != "listen:all()":
-            return '{y[%s]{n ' % self.key
-        return '{w[%s]{n ' % self.key
+        if self.locks.get("listen").strip() != "listen:all()":
+            return "{y[%s]{n " % self.key
+        return "{w[%s]{n " % self.key
 
     # noinspection PyMethodMayBeStatic
     def pose_transform(self, msg, sender_string):
@@ -195,17 +203,17 @@ class Channel(DefaultChannel):
         pose = False
         message = msg.message
         message_start = message.lstrip()
-        if message_start.startswith((':', ';')):
+        if message_start.startswith((":", ";")):
             pose = True
             message = message[1:]
-            if not message.startswith((':', "'", ',')):
-                if not message.startswith(' '):
-                    message = ' ' + message
+            if not message.startswith((":", "'", ",")):
+                if not message.startswith(" "):
+                    message = " " + message
         sender_string = "{c%s{n" % sender_string
         if pose:
-            return '%s%s' % (sender_string, message)
+            return "%s%s" % (sender_string, message)
         else:
-            return '%s: %s' % (sender_string, message)
+            return "%s: %s" % (sender_string, message)
 
     def tempmsg(self, message, header=None, senders=None):
         """
@@ -219,7 +227,9 @@ class Channel(DefaultChannel):
     def __word_contains_mention(self, word, mentions):
         word = word.lower()
         for mention in mentions:
-            if word.startswith(mention.lower()) and all(c in string.punctuation for c in word[len(mention):]):
+            if word.startswith(mention.lower()) and all(
+                c in string.punctuation for c in word[len(mention) :]
+            ):
                 return mention
         return None
 
@@ -228,9 +238,13 @@ class Channel(DefaultChannel):
         Looks through a message for words starting with '@' and
         mentioning a user's name. Highlights them if found.
         """
-        if '@' not in message:
+        if "@" not in message:
             return message
-        mentions = [mention for mention in self.mentions + names if mention.lower() in message.lower()]
+        mentions = [
+            mention
+            for mention in self.mentions + names
+            if mention.lower() in message.lower()
+        ]
         if not mentions:
             return message
 
@@ -242,7 +256,9 @@ class Channel(DefaultChannel):
             mention = self.__word_contains_mention(word[start_length:], mentions)
             if not mention:
                 continue
-            message = message.replace(word[:start_length + len(mention)], f"{{c[{mention}]{{n")
+            message = message.replace(
+                word[: start_length + len(mention)], f"{{c[{mention}]{{n"
+            )
         return message
 
     def send_msg(self, message, reciever, senders):
@@ -255,9 +271,7 @@ class Channel(DefaultChannel):
         try:
             # note our addition of the from_channel keyword here. This could be checked
             # by a custom account.msg() to treat channel-receives differently.
-            reciever.msg(
-                message, from_obj=senders, options={"from_channel": self.id}
-            )
+            reciever.msg(message, from_obj=senders, options={"from_channel": self.id})
         except AttributeError as e:
             logger.log_trace("%s\nCannot send msg to '%s'." % (e, reciever))
 
@@ -270,7 +284,7 @@ class Channel(DefaultChannel):
             subs = self.subscriptions.online()
         else:
             subs = self.subscriptions.all()
-        
+
         for entity in subs:
             if entity in msgobj.senders or entity.player_ob.db.highlight_all_mentions:
                 names = [sub.char_ob.key for sub in subs if sub.char_ob]
@@ -283,5 +297,6 @@ class Channel(DefaultChannel):
         if msgobj.keep_log:
             # log to file
             logger.log_file(
-                msgobj.message, self.attributes.get("log_file") or "channel_%s.log" % self.key
+                msgobj.message,
+                self.attributes.get("log_file") or "channel_%s.log" % self.key,
             )

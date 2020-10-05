@@ -8,18 +8,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0030_shardhavenobstacleroll_pass_instantly'),
+        ("exploration", "0030_shardhavenobstacleroll_pass_instantly"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='monster',
-            name='weight_trinket',
-            field=models.PositiveSmallIntegerField(default=0, help_text=b'The weight value to use for Trinkets'),
+            model_name="monster",
+            name="weight_trinket",
+            field=models.PositiveSmallIntegerField(
+                default=0, help_text=b"The weight value to use for Trinkets"
+            ),
         ),
         migrations.AlterField(
-            model_name='monster',
-            name='weight_weapon',
-            field=models.PositiveSmallIntegerField(default=0, help_text=b'The weight value to use for Weapons'),
+            model_name="monster",
+            name="weight_weapon",
+            field=models.PositiveSmallIntegerField(
+                default=0, help_text=b"The weight value to use for Weapons"
+            ),
         ),
     ]

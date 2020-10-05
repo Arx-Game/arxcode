@@ -20,11 +20,32 @@ class Roll(object):
     # This is the number that the roll needs to be >= for an extra die
     EXPLODE_VAL = 10
 
-    def __init__(self, caller=None, retainer=None, stat=None, skill=None, difficulty=15, stat_list=None,
-                 skill_list=None, skill_keep=True, stat_keep=False, quiet=True, announce_room=None,
-                 keep_override=None, bonus_dice=0, divisor=1, average_lists=False, can_crit=True,
-                 average_stat_list=False, average_skill_list=False, announce_values=False, flub=False,
-                 use_real_name=False, bonus_keep=0, flat_modifier=0):
+    def __init__(
+        self,
+        caller=None,
+        retainer=None,
+        stat=None,
+        skill=None,
+        difficulty=15,
+        stat_list=None,
+        skill_list=None,
+        skill_keep=True,
+        stat_keep=False,
+        quiet=True,
+        announce_room=None,
+        keep_override=None,
+        bonus_dice=0,
+        divisor=1,
+        average_lists=False,
+        can_crit=True,
+        average_stat_list=False,
+        average_skill_list=False,
+        announce_values=False,
+        flub=False,
+        use_real_name=False,
+        bonus_keep=0,
+        flat_modifier=0,
+    ):
         self.character = caller
         self.retainer = retainer
         self.difficulty = difficulty
@@ -63,9 +84,13 @@ class Roll(object):
             # look up each stat from supplied caller, adds to stats dict
             for somestat in stat_list:
                 if self.retainer is None:
-                    self.stats[somestat] += self.character.traits.get_stat_value(somestat)
+                    self.stats[somestat] += self.character.traits.get_stat_value(
+                        somestat
+                    )
                 else:
-                    self.stats[somestat] += self.retainer.dbobj.traits.get_stat_value(somestat)
+                    self.stats[somestat] += self.retainer.dbobj.traits.get_stat_value(
+                        somestat
+                    )
             # None isn't iterable so make an empty set of skills
             skill_list = skill_list or []
             # add individual skill to the list
@@ -157,7 +182,7 @@ class Roll(object):
         # if quiet is not set, then we send a message to the room.
         if not self.quiet and announce_room:
             msg = self.build_msg()
-            announce_room.msg_contents(msg, options={'roll': True})
+            announce_room.msg_contents(msg, options={"roll": True})
         # end result is the sum of our kept dice minus the difficulty of what we were
         # attempting. Positive number is a success, negative is a failure.
         return self.result
@@ -174,7 +199,9 @@ class Roll(object):
         try:
             if not self.can_crit:
                 return 1
-            bonus_crit_chance = self.bonus_crit_chance + self.get_crit_chance_modifiers()
+            bonus_crit_chance = (
+                self.bonus_crit_chance + self.get_crit_chance_modifiers()
+            )
             bonus_crit_mult = self.bonus_crit_mult
             roll = randint(1, 100)
             if roll > (5 + bonus_crit_chance):
@@ -216,11 +243,30 @@ class Roll(object):
             resultstr = "%s%s lower" % (red_col, -self.result)
 
         if self.retainer is None:
-            msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col, roll_msg,
-                                                                     self.difficulty, resultstr, no_col)
+            msg = "%s%s%s checked %s at difficulty %s, rolling %s%s." % (
+                cyan_col,
+                name,
+                no_col,
+                roll_msg,
+                self.difficulty,
+                resultstr,
+                no_col,
+            )
         else:
-            msg = "%s%s's%s retainer (%s%s) checked %s at difficulty %s, rolling %s%s." % (cyan_col, name, no_col,
-                self.retainer.pretty_name, no_col, roll_msg, self.difficulty, resultstr, no_col)
+            msg = (
+                "%s%s's%s retainer (%s%s) checked %s at difficulty %s, rolling %s%s."
+                % (
+                    cyan_col,
+                    name,
+                    no_col,
+                    self.retainer.pretty_name,
+                    no_col,
+                    roll_msg,
+                    self.difficulty,
+                    resultstr,
+                    no_col,
+                )
+            )
         if self.crit_mult > 1 and self.result >= 0:
             msg = "%s %s%s rolled a critical!%s" % (msg, green_col, name, no_col)
         self.msg = msg

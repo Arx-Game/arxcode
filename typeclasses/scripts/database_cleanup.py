@@ -13,6 +13,7 @@ class DatabaseCleanup(RunDateMixin, Script):
     """
     Occasionally will wipe stale objects from database.
     """
+
     DAYS_BETWEEN_CLEANUP = 7
 
     # noinspection PyAttributeOutsideInit
@@ -58,6 +59,7 @@ class DatabaseCleanup(RunDateMixin, Script):
     def cleanup_empty_tags():
         """Deletes stale tags"""
         from server.utils.arx_utils import delete_empty_tags
+
         delete_empty_tags()
 
     @staticmethod
@@ -66,6 +68,7 @@ class DatabaseCleanup(RunDateMixin, Script):
         try:
             from evennia.objects.models import ObjectDB
             import time
+
             qs = ObjectDB.objects.filter(db_tags__db_key__iexact="deleted")
             current_time = time.time()
             for ob in qs:
@@ -81,7 +84,7 @@ class DatabaseCleanup(RunDateMixin, Script):
                 # all checks passed, delete it for reals
                 if (not deleted_time) or (current_time - deleted_time > 604800):
                     # if we're a unique retainer, wipe the agent object as well
-                    if hasattr(ob, 'agentob'):
+                    if hasattr(ob, "agentob"):
                         if ob.agentob.agent_class.unique:
                             ob.agentob.agent_class.delete()
                     ob.delete()
@@ -94,6 +97,7 @@ class DatabaseCleanup(RunDateMixin, Script):
         """Deletes old django admin logs"""
         try:
             from django.contrib.admin.models import LogEntry
+
             qs = LogEntry.objects.filter(action_time__lte=date)
             qs.delete()
         except Exception as err:
@@ -105,11 +109,13 @@ class DatabaseCleanup(RunDateMixin, Script):
         """Deletes old request tickets"""
         try:
             from web.helpdesk.models import Ticket, Queue
+
             try:
                 queue = Queue.objects.get(slug__iexact="story")
-                qs = Ticket.objects.filter(status__in=(Ticket.RESOLVED_STATUS, Ticket.CLOSED_STATUS),
-                                           modified__lte=date
-                                           ).exclude(queue=queue)
+                qs = Ticket.objects.filter(
+                    status__in=(Ticket.RESOLVED_STATUS, Ticket.CLOSED_STATUS),
+                    modified__lte=date,
+                ).exclude(queue=queue)
                 qs.delete()
             except Queue.DoesNotExist:
                 pass
@@ -122,6 +128,7 @@ class DatabaseCleanup(RunDateMixin, Script):
         """Deletes old informs"""
         try:
             from world.msgs.models import Inform
+
             qs = Inform.objects.filter(date_sent__lte=date).exclude(important=True)
             qs.delete()
         except Exception as err:
@@ -133,6 +140,7 @@ class DatabaseCleanup(RunDateMixin, Script):
         """Clean up old praises"""
         try:
             from world.dominion.models import PraiseOrCondemn
+
             qs = PraiseOrCondemn.objects.filter(week__lte=get_week() - 4)
             qs.delete()
         except Exception as err:
@@ -144,6 +152,7 @@ class DatabaseCleanup(RunDateMixin, Script):
         """Cleans up stale/expired sessions"""
         try:
             from django.contrib.sessions.models import Session
+
             qs = Session.objects.filter(expire_date__lte=date)
             qs.delete()
         except Exception as err:

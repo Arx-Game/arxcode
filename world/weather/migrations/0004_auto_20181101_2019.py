@@ -8,18 +8,26 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('weather', '0003_weathertype_automated'),
+        ("weather", "0003_weathertype_automated"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='weathertype',
-            name='multiplier',
-            field=models.IntegerField(default=1, help_text=b'Multiply weather emit weights by this value when picking a weather; higher values make the weather more likely.', verbose_name=b'Weight Multiplier'),
+            model_name="weathertype",
+            name="multiplier",
+            field=models.IntegerField(
+                default=1,
+                help_text=b"Multiply weather emit weights by this value when picking a weather; higher values make the weather more likely.",
+                verbose_name=b"Weight Multiplier",
+            ),
         ),
         migrations.AlterField(
-            model_name='weathertype',
-            name='automated',
-            field=models.BooleanField(default=True, help_text=b'Should this weather ever occur automatically?', verbose_name=b'Automated'),
+            model_name="weathertype",
+            name="automated",
+            field=models.BooleanField(
+                default=True,
+                help_text=b"Should this weather ever occur automatically?",
+                verbose_name=b"Automated",
+            ),
         ),
     ]

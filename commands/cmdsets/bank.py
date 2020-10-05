@@ -11,6 +11,7 @@ from world.dominion.models import CraftingMaterials, AccountTransaction, AssetOw
 
 class BankCmdSet(CmdSet):
     """CmdSet for a market."""
+
     key = "BankCmdSet"
     priority = 101
     duplicates = False
@@ -52,6 +53,7 @@ class CmdBank(ArxCommand):
     withdraw materials from an organization's vault. You may also
     set up or end weekly payments to or from another entity.
     """
+
     key = "bank"
     aliases = ["+bank"]
     locks = "cmd:all()"
@@ -63,19 +65,30 @@ class CmdBank(ArxCommand):
         name = name.lower()
         matches = [ob for ob in all_accounts if str(ob.owner).lower() == name]
         if not matches:
-            self.msg("No matches. Choose one of the following: %s" % ", ".join(str(ob.owner) for ob in
-                                                                                      all_accounts))
+            self.msg(
+                "No matches. Choose one of the following: %s"
+                % ", ".join(str(ob.owner) for ob in all_accounts)
+            )
             return
         return matches[0]
 
     @staticmethod
     def get_debt_table(debts):
         x = 0
-        table = evtable.EvTable("{w#{n", "{wReceiver{n", "{wAmount{n", "{wTime Remaining{n", width=60,align="r")
+        table = evtable.EvTable(
+            "{w#{n",
+            "{wReceiver{n",
+            "{wAmount{n",
+            "{wTime Remaining{n",
+            width=60,
+            align="r",
+        )
         for debt in debts:
             x += 1
             time = "Permanent" if debt.repetitions_left == -1 else debt.repetitions_left
-            table.add_row(debt.id, debt.receiver, "{:,}".format(debt.weekly_amount), time)
+            table.add_row(
+                debt.id, debt.receiver, "{:,}".format(debt.weekly_amount), time
+            )
         return table
 
     @staticmethod
@@ -90,7 +103,9 @@ class CmdBank(ArxCommand):
         attr_name = "min_%s_for_inform" % attr_type
         if amt >= getattr(owner, attr_name):
             preposition = "to" if "deposit" in verb.lower() else "from"
-            msg = ("{} has {} {:,} {} {} {} account.".format(self.caller, verb, amt, mat_str, preposition, owner))
+            msg = "{} has {} {:,} {} {} {} account.".format(
+                self.caller, verb, amt, mat_str, preposition, owner
+            )
             owner.inform(msg, category="Bank Transaction")
 
     def func(self):
@@ -100,26 +115,35 @@ class CmdBank(ArxCommand):
             dompc = caller.player.Dominion
         except AttributeError:
             dompc = setup_utils.setup_dom_for_char(caller)
-        org_accounts = [member.organization.assets for member in dompc.memberships.filter(deguilded=False)]
+        org_accounts = [
+            member.organization.assets
+            for member in dompc.memberships.filter(deguilded=False)
+        ]
         all_accounts = [dompc.assets] + org_accounts
-        if ("payments" in self.switches or "endpayment" in self.switches or "adjustpayment" in self.switches
-                or "payment" in self.switches):
+        if (
+            "payments" in self.switches
+            or "endpayment" in self.switches
+            or "adjustpayment" in self.switches
+            or "payment" in self.switches
+        ):
             debts = list(dompc.assets.debts.all())
             for acc in org_accounts:
                 if acc.can_be_viewed_by(caller) and acc.debts.all():
                     debts += list(acc.debts.all())
             if not self.args:
-                caller.msg(str(self.get_debt_table(debts)), options={'box': True})
+                caller.msg(str(self.get_debt_table(debts)), options={"box": True})
                 return
             if "endpayment" in self.switches or "adjustpayment" in self.switches:
                 try:
                     if "endpayment" in self.switches:
                         debts += list(dompc.assets.incomes.all())
                     val = int(self.lhs)
-                    debt = AccountTransaction.objects.get(id=val, id__in=(ob.id for ob in debts))
+                    debt = AccountTransaction.objects.get(
+                        id=val, id__in=(ob.id for ob in debts)
+                    )
                 except (ValueError, AccountTransaction.DoesNotExist):
                     caller.msg("Invalid number. Select one of the following:")
-                    caller.msg(str(self.get_debt_table(debts)), options={'box': True})
+                    caller.msg(str(self.get_debt_table(debts)), options={"box": True})
                     return
                 if "endpayment" in self.switches:
                     debt.delete()
@@ -145,16 +169,20 @@ class CmdBank(ArxCommand):
                 sender = self.match_account(all_accounts, self.lhslist[0])
                 if not sender:
                     return
-                if not sender.access(caller, 'withdraw'):
+                if not sender.access(caller, "withdraw"):
                     caller.msg("You lack permission to set up a payment.")
                     return
                 amt = int(self.lhslist[1])
                 if amt <= 0:
                     raise ValueError
                 try:
-                    receiver = AssetOwner.objects.get(player__player__username__iexact=self.rhs)
+                    receiver = AssetOwner.objects.get(
+                        player__player__username__iexact=self.rhs
+                    )
                 except AssetOwner.DoesNotExist:
-                    receiver = AssetOwner.objects.get(organization_owner__name__iexact=self.rhs)
+                    receiver = AssetOwner.objects.get(
+                        organization_owner__name__iexact=self.rhs
+                    )
                 if sender == receiver:
                     caller.msg("Sender and receiver must be different.")
                     return
@@ -166,23 +194,51 @@ class CmdBank(ArxCommand):
                 return
             check = self.check_money(sender, amt)
             if check < 0:
-                caller.msg("Insufficient funds: {:,} more required to set up payment.".format(-check))
+                caller.msg(
+                    "Insufficient funds: {:,} more required to set up payment.".format(
+                        -check
+                    )
+                )
                 return
-            sender.debts.create(receiver=receiver, weekly_amount=amt, repetitions_left=-1)
-            caller.msg("New weekly payment set up: {} pays {:,} to {} every week.".format(sender, amt, receiver))
+            sender.debts.create(
+                receiver=receiver, weekly_amount=amt, repetitions_left=-1
+            )
+            caller.msg(
+                "New weekly payment set up: {} pays {:,} to {} every week.".format(
+                    sender, amt, receiver
+                )
+            )
             return
         if not self.args:
             msg = "{wAccounts{n".center(60)
             msg += "\n"
-            actable = evtable.EvTable("{wOwner{n", "{wBalance{n", "{wNet Income{n", "{wMaterials{n",
-                                      "{wEcon{n", "{wSoc{n", "{wMil{n", width=78, border="cells")
+            actable = evtable.EvTable(
+                "{wOwner{n",
+                "{wBalance{n",
+                "{wNet Income{n",
+                "{wMaterials{n",
+                "{wEcon{n",
+                "{wSoc{n",
+                "{wMil{n",
+                width=78,
+                border="cells",
+            )
 
             for account in all_accounts:
                 if not account.can_be_viewed_by(self.caller):
                     continue
-                mats = ", ".join(str(mat) for mat in account.materials.filter(amount__gte=1))
-                actable.add_row(str(account.owner), str(account.vault), str(account.net_income),
-                                mats, account.economic, account.social, account.military)
+                mats = ", ".join(
+                    str(mat) for mat in account.materials.filter(amount__gte=1)
+                )
+                actable.add_row(
+                    str(account.owner),
+                    str(account.vault),
+                    str(account.net_income),
+                    mats,
+                    account.economic,
+                    account.social,
+                    account.military,
+                )
                 actable.reformat_column(0, width=14)
                 actable.reformat_column(1, width=11)
                 actable.reformat_column(2, width=10)
@@ -195,10 +251,22 @@ class CmdBank(ArxCommand):
                 if incomes:
                     msg += ("{w%s Incomes{n" % str(account)).center(60)
                     msg += "\n"
-                    table = evtable.EvTable("{wSender{n", "{wAmount{n", "{wTime Remaining{n", width=60, align="r")
+                    table = evtable.EvTable(
+                        "{wSender{n",
+                        "{wAmount{n",
+                        "{wTime Remaining{n",
+                        width=60,
+                        align="r",
+                    )
                     for inc in incomes:
-                        time = "Permanent" if inc.repetitions_left == -1 else inc.repetitions_left
-                        table.add_row(inc.sender, "{:,}".format(inc.weekly_amount), time)
+                        time = (
+                            "Permanent"
+                            if inc.repetitions_left == -1
+                            else inc.repetitions_left
+                        )
+                        table.add_row(
+                            inc.sender, "{:,}".format(inc.weekly_amount), time
+                        )
                     msg += str(table)
                     msg += "\n"
                 if debts:
@@ -207,19 +275,27 @@ class CmdBank(ArxCommand):
                     msg += str(self.get_debt_table(debts))
                     msg += "\n"
             msg += str(actable)
-            caller.msg(msg, options={'box': True})
+            caller.msg(msg, options={"box": True})
             return
-        if ("depositmats" in self.switches or "withdrawmats" in self.switches
-                or "depositres" in self.switches or "withdrawres" in self.switches):
+        if (
+            "depositmats" in self.switches
+            or "withdrawmats" in self.switches
+            or "depositres" in self.switches
+            or "withdrawres" in self.switches
+        ):
             account = self.match_account(all_accounts)
             if not account:
                 return
             if account == dompc.assets:
-                caller.msg("Characters always have access to their own materials as an "
-                           "abstraction, so withdraws and deposits " +
-                           "are only between organizations and characters.")
+                caller.msg(
+                    "Characters always have access to their own materials as an "
+                    "abstraction, so withdraws and deposits "
+                    + "are only between organizations and characters."
+                )
                 return
-            usingmats = "depositmats" in self.switches or "withdrawmats" in self.switches
+            usingmats = (
+                "depositmats" in self.switches or "withdrawmats" in self.switches
+            )
             if usingmats:
                 attr_type = "materials"
             else:
@@ -229,8 +305,10 @@ class CmdBank(ArxCommand):
                 receiver = account
                 verb = "deposit"
             else:
-                if not account.access(caller, 'withdraw'):
-                    caller.msg("You do not have permission to withdraw from that account.")
+                if not account.access(caller, "withdraw"):
+                    caller.msg(
+                        "You do not have permission to withdraw from that account."
+                    )
                     return
                 receiver = dompc.assets
                 sender = account
@@ -245,8 +323,11 @@ class CmdBank(ArxCommand):
                 if usingmats:
                     source = sender.materials.get(type__name__iexact=matname)
                     if source.amount < val:
-                        caller.msg("You tried to {} {:,} {}, but only {:,} available.".format(
-                            verb, val, source.type.name, source.amount))
+                        caller.msg(
+                            "You tried to {} {:,} {}, but only {:,} available.".format(
+                                verb, val, source.type.name, source.amount
+                            )
+                        )
                         return
                     try:
                         targ = receiver.materials.get(type__name__iexact=matname)
@@ -265,8 +346,11 @@ class CmdBank(ArxCommand):
                     sresamt = getattr(sender, matname)
                     if sresamt < val:
                         matname += " resources"
-                        caller.msg("You tried to {} {:,} {}, but only {:,} available.".format(
-                            verb, val, matname, sresamt))
+                        caller.msg(
+                            "You tried to {} {:,} {}, but only {:,} available.".format(
+                                verb, val, matname, sresamt
+                            )
+                        )
                         return
                     tresamt = getattr(receiver, matname)
                     samt = sresamt - val
@@ -276,16 +360,23 @@ class CmdBank(ArxCommand):
                     matname += " resources"
                 source.save()
                 targ.save()
-                caller.msg("You have transferred {:,} {} from {} to {}.".format(
-                    val, matname, sender, receiver))
+                caller.msg(
+                    "You have transferred {:,} {} from {} to {}.".format(
+                        val, matname, sender, receiver
+                    )
+                )
                 if account.can_be_viewed_by(caller):
-                    caller.msg("Sender now has {:,}, receiver has {:,}.".format(samt, tamt))
+                    caller.msg(
+                        "Sender now has {:,}, receiver has {:,}.".format(samt, tamt)
+                    )
                 else:
                     caller.msg("Transaction successful.")
                 self.inform_owner(account, verb, val, attr_type, matname)
             except CraftingMaterials.DoesNotExist:
-                caller.msg("No match for that material. Valid materials: %s" % ", ".join(
-                    str(mat) for mat in sender.materials.all()))
+                caller.msg(
+                    "No match for that material. Valid materials: %s"
+                    % ", ".join(str(mat) for mat in sender.materials.all())
+                )
                 return
             except (ValueError, IndexError):
                 caller.msg("Invalid usage.")
@@ -311,13 +402,21 @@ class CmdBank(ArxCommand):
                 caller.msg("You have no money to deposit.")
                 return
             if amount > cash:
-                caller.msg("You tried to deposit {:,}, but only have {:,} on hand.".format(amount, cash))
+                caller.msg(
+                    "You tried to deposit {:,}, but only have {:,} on hand.".format(
+                        amount, cash
+                    )
+                )
                 return
             account.vault += amount
             caller.db.currency = cash - amount
             account.save()
             if account.can_be_viewed_by(caller):
-                caller.msg("You have deposited {:,}. The new balance is {:,}.".format(amount, account.vault))
+                caller.msg(
+                    "You have deposited {:,}. The new balance is {:,}.".format(
+                        amount, account.vault
+                    )
+                )
             else:
                 caller.msg("You have deposited {:,}.".format(amount))
             self.inform_owner(account, "deposited", amount)
@@ -329,17 +428,28 @@ class CmdBank(ArxCommand):
             cash = caller.db.currency or 0.0
             check = self.check_money(account, amount)
             if check < 0:
-                caller.msg("You cannot withdraw more than the balance minus an account's debt obligations.")
-                caller.msg("You want to withdraw {:,} but only {:,} is available after debt obligations.".format(amount,
-                                                                                                         check+amount))
+                caller.msg(
+                    "You cannot withdraw more than the balance minus an account's debt obligations."
+                )
+                caller.msg(
+                    "You want to withdraw {:,} but only {:,} is available after debt obligations.".format(
+                        amount, check + amount
+                    )
+                )
                 if account.debts.all():
-                    caller.msg("Cancelling payments would increase the amount available.")
+                    caller.msg(
+                        "Cancelling payments would increase the amount available."
+                    )
                     return
                 return
             account.vault -= amount
             caller.db.currency = cash + amount
             account.save()
-            caller.msg("You have withdrawn {:,}. New balance is {:,}.".format(amount, account.vault))
+            caller.msg(
+                "You have withdrawn {:,}. New balance is {:,}.".format(
+                    amount, account.vault
+                )
+            )
             self.inform_owner(account, "withdrawn", amount)
             return
         else:
