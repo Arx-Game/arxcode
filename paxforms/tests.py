@@ -37,6 +37,10 @@ class CmdTestForm(paxform_commands.PaxformCommand):
 class TestFormCommand(CommandTest):
     maxDiff = None
 
+    def setUp(self):
+        with self.settings(USE_TZ=True):
+            super().setUp()
+
     def test_form_command(self):
         self.call(
             CmdTestForm(),

@@ -36,7 +36,7 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     after they were invited, but inviting with /retro reveals back-posts.
     Partial visibility is achieved with /allow, once they have been invited
     normally. Use /invite without a name to see who has access. Use /check
-    similar to @check - the result will prefix your next post.
+    similar to @oldcheck - the result will prefix your next post.
     """
 
     key = "flashback"
