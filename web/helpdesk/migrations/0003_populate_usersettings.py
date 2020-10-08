@@ -11,6 +11,7 @@ def picke_settings(data):
     """Pickling as defined at migration's creation time"""
     import cPickle
     from web.helpdesk.lib import b64encode
+
     return b64encode(cPickle.dumps(data))
 
 
@@ -37,14 +38,13 @@ def populate_usersettings(apps, schema_editor):
 
 noop = lambda *args, **kwargs: None
 
+
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('helpdesk', '0002_socks_proxy'),
+        ("helpdesk", "0002_socks_proxy"),
     ]
 
     operations = [
         migrations.RunPython(noop, reverse_code=noop),
     ]
-
-

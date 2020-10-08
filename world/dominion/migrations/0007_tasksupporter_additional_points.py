@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0006_auto_20170201_0444'),
+        ("dominion", "0006_auto_20170201_0444"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='tasksupporter',
-            name='additional_points',
+            model_name="tasksupporter",
+            name="additional_points",
             field=models.PositiveSmallIntegerField(blank=0, default=0),
         ),
     ]

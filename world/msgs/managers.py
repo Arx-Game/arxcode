@@ -55,6 +55,7 @@ def q_msgtag(tag):
             Q() object of the tag key with the tag category
     """
     from evennia.typeclasses.tags import Tag
+
     tags = Tag.objects.filter(db_key=tag, db_category=TAG_CATEGORY)
     return Q(db_tags__in=tags)
 
@@ -127,6 +128,7 @@ def q_recent():
         Q() object that is more recent
     """
     from datetime import datetime, timedelta
+
     # only display most recent journals
     delay = datetime.now() - timedelta(hours=6)
     return Q(db_date_created__gt=delay)
@@ -163,6 +165,7 @@ class MsgQuerySet(QuerySet):
     """
     Custom queryset for allowing us to chain together these methods with manager methods.
     """
+
     def all_read_by(self, user):
         """
         Returns queryset of Msg objects read by this user.
@@ -277,7 +280,9 @@ class MsgProxyManager(MsgManager):
 
 class JournalManager(MsgProxyManager):
     def get_queryset(self):
-        return super(JournalManager, self).get_queryset().filter(self.all_journals_query)
+        return (
+            super(JournalManager, self).get_queryset().filter(self.all_journals_query)
+        )
 
     def all_permitted_journals(self, user):
         qs = self.get_queryset()
@@ -285,8 +290,11 @@ class JournalManager(MsgProxyManager):
             return qs
         # get all White Journals plus Black Journals they've written
         # noinspection PyUnresolvedReferences
-        return qs.filter(self.non_recent_white_query() | Q(self.all_journals_query & q_sender_character(user.char_ob)) |
-                         self.revealed_query)
+        return qs.filter(
+            self.non_recent_white_query()
+            | Q(self.all_journals_query & q_sender_character(user.char_ob))
+            | self.revealed_query
+        )
 
 
 class BlackJournalManager(MsgProxyManager):
@@ -296,12 +304,18 @@ class BlackJournalManager(MsgProxyManager):
 
 class WhiteJournalManager(MsgProxyManager):
     def get_queryset(self):
-        return super(WhiteJournalManager, self).get_queryset().filter(self.non_recent_white_query())
+        return (
+            super(WhiteJournalManager, self)
+            .get_queryset()
+            .filter(self.non_recent_white_query())
+        )
 
 
 class MessengerManager(MsgProxyManager):
     def get_queryset(self):
-        return super(MessengerManager, self).get_queryset().filter(q_msgtag(MESSENGER_TAG))
+        return (
+            super(MessengerManager, self).get_queryset().filter(q_msgtag(MESSENGER_TAG))
+        )
 
 
 class PostManager(MsgProxyManager):
@@ -314,4 +328,8 @@ class PostManager(MsgProxyManager):
 
 class RumorManager(MsgProxyManager):
     def get_queryset(self):
-        return super(RumorManager, self).get_queryset().filter(q_msgtag(GOSSIP_TAG) | q_msgtag(RUMOR_TAG))
+        return (
+            super(RumorManager, self)
+            .get_queryset()
+            .filter(q_msgtag(GOSSIP_TAG) | q_msgtag(RUMOR_TAG))
+        )

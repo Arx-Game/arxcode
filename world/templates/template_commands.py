@@ -1,5 +1,3 @@
-
-
 from server.utils import arx_more
 from server.utils.prettytable import PrettyTable
 from .models import Template, TemplateGrantee
@@ -49,30 +47,57 @@ class TemplateForm(Paxform):
       +template <id of template you want details on>
     """
 
-    desc = fields.TextField(required=True, full_name="Description", help_text="ASCII or description to map into the template.")
-    access_level = fields.ChoiceField(choices=Template.ACCESS_LEVELS, full_name="Access Level", default='PR', required=True, help_text="""
+    desc = fields.TextField(
+        required=True,
+        full_name="Description",
+        help_text="ASCII or description to map into the template.",
+    )
+    access_level = fields.ChoiceField(
+        choices=Template.ACCESS_LEVELS,
+        full_name="Access Level",
+        default="PR",
+        required=True,
+        help_text="""
             open: Anyone can use this template!
             restricted: Access to use the template has to be granted on a character by character basis
             private: Cannot grant access to this template. (When changing to this access level ALL extent permissions are cleared) 
-    """)
+    """,
+    )
 
-    title = fields.TextField(max_length=255, required=True, full_name="Title", help_text="Brief description of the template to be shown")
+    title = fields.TextField(
+        max_length=255,
+        required=True,
+        full_name="Title",
+        help_text="Brief description of the template to be shown",
+    )
 
-    attribution = fields.TextField(max_length=60, required=True, full_name="Attribution", help_text="Name (or pseudonym, etc) to be used as the owner of the template.")
+    attribution = fields.TextField(
+        max_length=60,
+        required=True,
+        full_name="Attribution",
+        help_text="Name (or pseudonym, etc) to be used as the owner of the template.",
+    )
 
-    apply_attribution = fields.BooleanField(required=True, default=False, full_name="Show Attribution", help_text="Whether or not to show attribution.")
+    apply_attribution = fields.BooleanField(
+        required=True,
+        default=False,
+        full_name="Show Attribution",
+        help_text="Whether or not to show attribution.",
+    )
 
     def submit(self, caller, values):
         template = Template(
             owner=caller.roster.current_account,
-            title=values['title'],
-            access_level=values['access_level'],
-            apply_attribution=values['apply_attribution'],
-            attribution=values['attribution'],
-            desc=values['desc']
+            title=values["title"],
+            access_level=values["access_level"],
+            apply_attribution=values["apply_attribution"],
+            attribution=values["attribution"],
+            desc=values["desc"],
         )
         template.save()
-        caller.msg("Created new template. Markup tag to use is: {}".format(template.markup()))
+        caller.msg(
+            "Created new template. Markup tag to use is: {}".format(template.markup())
+        )
 
 
 class CmdTemplateForm(PaxformCommand):
@@ -122,26 +147,44 @@ class CmdTemplateForm(PaxformCommand):
                 self.msg("You cannot grant yourself access to a template.")
                 return
 
-            grantees = TemplateGrantee.objects.filter(grantee=char.roster, template=template)
+            grantees = TemplateGrantee.objects.filter(
+                grantee=char.roster, template=template
+            )
 
             if grantees.exists():
-                self.msg("{} already has access to {}.".format(char.name, template.markup()))
+                self.msg(
+                    "{} already has access to {}.".format(char.name, template.markup())
+                )
             else:
                 TemplateGrantee(grantee=char.roster, template=template).save()
-                self.msg("You have granted {} access to {}.".format(char.name, template.markup()))
+                self.msg(
+                    "You have granted {} access to {}.".format(
+                        char.name, template.markup()
+                    )
+                )
         elif "revoke" in self.switches:
             template, char = self.char_and_template_for_access()
 
             if not template or not char:
                 return
 
-            grantees = TemplateGrantee.objects.filter(grantee=char.roster, template=template)
+            grantees = TemplateGrantee.objects.filter(
+                grantee=char.roster, template=template
+            )
 
             if grantees.exists():
                 grantees.first().delete()
-                self.msg("You have revoked {}'s access to {}.".format(char.name, template.markup()))
+                self.msg(
+                    "You have revoked {}'s access to {}.".format(
+                        char.name, template.markup()
+                    )
+                )
             else:
-                self.msg("{} does not have access to {}.".format(char.name, template.markup()))
+                self.msg(
+                    "{} does not have access to {}.".format(
+                        char.name, template.markup()
+                    )
+                )
         elif "change_access" in self.switches:
             access_level = self.parse_access_levels(self.rhs)
 
@@ -156,7 +199,7 @@ class CmdTemplateForm(PaxformCommand):
             elif template.access_level == access_level:
                 self.msg("The template already has that access level.")
                 return
-            elif template.access_level == 'RS':
+            elif template.access_level == "RS":
                 template.grantees.clear()
 
             template.access_level = access_level
@@ -179,14 +222,25 @@ class CmdTemplateForm(PaxformCommand):
                 template = self.find_template(args)
                 if not template:
                     return
-                if template.access_level == 'OP':
-                    self.msg("Everyone has access to this template. It has an OPEN access level.")
-                elif template.access_level == 'PR':
-                    self.msg("No one but you has access to this template. It has a PRIVATE access level.")
+                if template.access_level == "OP":
+                    self.msg(
+                        "Everyone has access to this template. It has an OPEN access level."
+                    )
+                elif template.access_level == "PR":
+                    self.msg(
+                        "No one but you has access to this template. It has a PRIVATE access level."
+                    )
                 else:
-                    self.msg("Current grantees: {}".format(
-                       ", ".join([entry.character.name for entry in template.grantees.all()])
-                    ))
+                    self.msg(
+                        "Current grantees: {}".format(
+                            ", ".join(
+                                [
+                                    entry.character.name
+                                    for entry in template.grantees.all()
+                                ]
+                            )
+                        )
+                    )
 
         elif "desc" in self.switches:
             if "[[TEMPLATE_" in args:
@@ -205,22 +259,35 @@ class CmdTemplateForm(PaxformCommand):
 
         template = self.find_template(self.rhs)
 
-        if template and template.access_level != 'RS':
+        if template and template.access_level != "RS":
             template = None
-            self.msg("Template must have access level of RESTRICTED to modify grantees.")
+            self.msg(
+                "Template must have access level of RESTRICTED to modify grantees."
+            )
 
         return [template, char]
 
     def find_template(self, id):
         try:
-            template = Template.objects.filter(id=id, owner=self.caller.roster.current_account)[:1].get()
+            template = Template.objects.filter(
+                id=id, owner=self.caller.roster.current_account
+            )[:1].get()
         except (Template.DoesNotExist, ValueError):
             self.msg("You do not own a template with that id.")
             template = None
         return template
 
     def list(self, caller):
-        table = PrettyTable(["{wId{n", "{wName{n", "{wAttribution{n", "{wMarkup{n", "{wAccess Level{n", "{wIn Use{n"])
+        table = PrettyTable(
+            [
+                "{wId{n",
+                "{wName{n",
+                "{wAttribution{n",
+                "{wMarkup{n",
+                "{wAccess Level{n",
+                "{wIn Use{n",
+            ]
+        )
 
         for template in Template.objects.accessible_by(self.caller):
             attribution = template.attribution if template.apply_attribution else ""
@@ -236,7 +303,16 @@ class CmdTemplateForm(PaxformCommand):
                 if template.access_level == var[0]:
                     access_level = var[1]
 
-            table.add_row([template.id, template.title, attribution, template.markup(), access_level, in_use])
+            table.add_row(
+                [
+                    template.id,
+                    template.title,
+                    attribution,
+                    template.markup(),
+                    access_level,
+                    in_use,
+                ]
+            )
         arx_more.msg(caller, str(table), justify_kwargs=False)
 
     def display(self, template):
@@ -250,4 +326,3 @@ class CmdTemplateForm(PaxformCommand):
         for var in Template.ACCESS_LEVELS:
             if value.strip().lower() == var[1].lower():
                 return var[0]
-

@@ -15,7 +15,12 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 """
 from functools import wraps
 
-from evennia.commands.default import cmdset_character, cmdset_account, cmdset_session, cmdset_unloggedin
+from evennia.commands.default import (
+    cmdset_character,
+    cmdset_account,
+    cmdset_session,
+    cmdset_unloggedin,
+)
 
 from .cmdsets import standard
 from typeclasses.wearable import cmdset_wearable
@@ -39,7 +44,9 @@ def check_errors(func):
             return func(*args, **kwargs)
         except Exception:
             import traceback
+
             traceback.print_exc()
+
     return new_func
 
 
@@ -49,6 +56,7 @@ class CharacterCmdSet(cmdset_character.CharacterCmdSet):
     `get`, etc available on in-game Character objects. It is merged with
     the `PlayerCmdSet` when a Player puppets a Character.
     """
+
     key = "DefaultCharacter"
     priority = 101
 
@@ -84,6 +92,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     Character. It holds game-account-specific commands, channel
     commands, etc.
     """
+
     key = "DefaultPlayer"
     priority = 101
 
@@ -108,8 +117,9 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_default_commands(self):
         """Add selected Evennia built-in commands"""
-        from evennia.commands.default import (account, building, system, admin, comms)
+        from evennia.commands.default import account, building, system, admin, comms
         from commands.base_commands import overrides
+
         # Player-specific commands
         self.add(account.CmdOOCLook())
         self.add(account.CmdIC())
@@ -139,6 +149,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_overridden_commands(self):
         """Add arx overrides of Evennia commands"""
         from .base_commands import help, overrides
+
         self.add(help.CmdHelp())
         self.add(overrides.CmdWho())
         self.add(overrides.CmdArxSetAttribute())
@@ -156,6 +167,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_general_commands(self):
         """Add general/misc commands"""
         from .base_commands import general
+
         self.add(general.CmdPage())
         self.add(general.CmdMail())
         self.add(general.CmdGradient())
@@ -166,6 +178,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_bboard_commands(self):
         """Add commands for bulletin boards"""
         from .base_commands import bboards
+
         self.add(bboards.CmdBBReadOrPost())
         self.add(bboards.CmdBBSub())
         self.add(bboards.CmdBBUnsub())
@@ -177,6 +190,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_roster_commands(self):
         """Add commands around roster viewing or management"""
         from .base_commands import roster
+
         self.add(roster.CmdRosterList())
         self.add(roster.CmdAdminRoster())
         self.add(roster.CmdSheet())
@@ -188,6 +202,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_jobs_commands(self):
         """Add commands for interacting with helpdesk"""
         from .base_commands import jobs
+
         self.add(jobs.CmdJob())
         self.add(jobs.CmdRequest())
         self.add(jobs.CmdApp())
@@ -196,6 +211,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_dominion_commands(self):
         """Add commands related to Dominion, the offscreen estate-management game"""
         from world.dominion import general_dominion_commands as domcommands
+
         self.add(domcommands.CmdAdmDomain())
         self.add(domcommands.CmdAdmArmy())
         self.add(domcommands.CmdAdmCastle())
@@ -214,6 +230,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_social_commands(self):
         """Add commands for social RP"""
         from .base_commands import social
+
         self.add(social.CmdFinger())
         self.add(social.CmdWatch())
         self.add(social.CmdCalendar())
@@ -227,6 +244,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_staff_commands(self):
         """Add commands for staff players"""
         from .base_commands import staff_commands
+
         # more recently implemented staff commands
         self.add(staff_commands.CmdRestore())
         self.add(staff_commands.CmdSendVision())
@@ -244,16 +262,20 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         self.add(staff_commands.CmdAdminBreak())
         self.add(staff_commands.CmdSetServerConfig())
         from .cmdsets import starting_gear
+
         self.add(starting_gear.CmdSetupGear())
         from world.fashion import fashion_commands
+
         self.add(fashion_commands.CmdAdminFashion())
         from web.character import file_commands
+
         self.add(file_commands.CmdAdminFile)
 
     @check_errors
     def add_investigation_commands(self):
         """Add commands based on investigations/clus"""
         from web.character import investigation
+
         self.add(investigation.CmdAdminInvestigations())
         self.add(investigation.CmdListClues())
         self.add(investigation.CmdTheories())
@@ -265,21 +287,25 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     def add_scene_commands(self):
         """Commands for flashbacks"""
         from web.character import scene_commands
+
         self.add(scene_commands.CmdFlashback())
 
     @check_errors
     def add_gming_actions_commands(self):
         """Add commands for interacting with crises and GMing"""
         from world.dominion import crisis_commands
+
         self.add(crisis_commands.CmdViewCrisis())
         self.add(crisis_commands.CmdGMCrisis())
         from .base_commands import story_actions
+
         self.add(story_actions.CmdGMAction)
 
     @check_errors
     def add_lore_commands(self):
         """Add commands for using lore knowledge base"""
         from web.helpdesk import lore_commands
+
         self.add(lore_commands.CmdLoreSearch())
 
 
@@ -288,6 +314,7 @@ class UnloggedinCmdSet(cmdset_unloggedin.UnloggedinCmdSet):
     Command set available to the Session before being logged in.  This
     holds commands like creating a new account, logging in, etc.
     """
+
     key = "DefaultUnloggedin"
 
     def at_cmdset_creation(self):
@@ -301,12 +328,14 @@ class UnloggedinCmdSet(cmdset_unloggedin.UnloggedinCmdSet):
 
         try:
             from evennia.commands.default import unloggedin as default_unloggedin
+
             self.add(default_unloggedin.CmdUnconnectedConnect())
             self.add(default_unloggedin.CmdUnconnectedQuit())
             self.add(default_unloggedin.CmdUnconnectedLook())
             self.add(default_unloggedin.CmdUnconnectedEncoding())
             self.add(default_unloggedin.CmdUnconnectedScreenreader())
             from .base_commands import unloggedin
+
             self.add(unloggedin.CmdGuestConnect())
             self.add(unloggedin.CmdUnconnectedHelp())
         except Exception as err:
@@ -318,6 +347,7 @@ class SessionCmdSet(cmdset_session.SessionCmdSet):
     This cmdset is made available on Session level once logged in. It
     is empty by default.
     """
+
     key = "DefaultSession"
 
     def at_cmdset_creation(self):

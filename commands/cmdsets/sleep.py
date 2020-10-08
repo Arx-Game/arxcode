@@ -18,11 +18,12 @@ from commands.base import ArxCommand
 import time
 
 # one hour between recovery tests
-MIN_TIME = 3600 
+MIN_TIME = 3600
 
 
 class SleepCmdSet(CmdSet):
     """CmdSet for players who are currently sleeping. Lower priority than death cmdset, so it's overriden."""
+
     key = "SleepCmdSet"
     key_mergetype = {"DefaultCharacter": "Replace"}
     priority = 120
@@ -41,10 +42,13 @@ class SleepCmdSet(CmdSet):
         replaced as needed.
         """
         from commands.cmdsets.standard import OOCCmdSet
+
         self.add(OOCCmdSet)
         from commands.cmdsets.standard import StateIndependentCmdSet
+
         self.add(StateIndependentCmdSet)
         from commands.cmdsets.standard import StaffCmdSet
+
         self.add(StaffCmdSet)
         self.add(CmdGet())
         self.add(CmdDrop())
@@ -57,12 +61,13 @@ class SleepCmdSet(CmdSet):
         self.add(CmdWake())
         self.add(CmdMoveOverride())
         self.add(CmdNoFighting())
-        
+
 
 class SleepCommand(ArxCommand):
     """
     You are sleeping. Many character commands will no longer function.
     """
+
     key = "sleep"
     locks = "cmd:all()"
 
@@ -74,12 +79,15 @@ class SleepCommand(ArxCommand):
 
     def func(self):
         """Let the player know they can't do anything."""
-        self.msg("You can't do that while sleeping. To wake up, use the {wwake{n command.")
+        self.msg(
+            "You can't do that while sleeping. To wake up, use the {wwake{n command."
+        )
         return
 
 
 class CmdMoveOverride(SleepCommand):
     """Prevents movement"""
+
     key = "north"
     aliases = ["n", "s", "w", "e"]
 
@@ -88,17 +96,22 @@ class CmdWake(ArxCommand):
     """
     Attempt to wake up from sleep. Automatic if uninjured.
     """
+
     key = "wake"
     locks = "cmd:all()"
 
     def func(self):
         """Try to wake."""
         caller = self.caller
-        if not hasattr(caller, 'wake_up'):
+        if not hasattr(caller, "wake_up"):
             caller.cmdset.delete(SleepCmdSet)
             caller.msg("Deleting SleepCmdSet from non-character object.")
             return
-        if not hasattr(caller, 'dmg') or not hasattr(caller, 'max_hp') or caller.dmg <= caller.max_hp:
+        if (
+            not hasattr(caller, "dmg")
+            or not hasattr(caller, "max_hp")
+            or caller.dmg <= caller.max_hp
+        ):
             caller.wake_up()
             return
         # determine if we're healthy enough to wake up automatically
@@ -118,33 +131,37 @@ class CmdWake(ArxCommand):
             return
         caller.msg("You are still too injured to wake up.")
         return
-            
+
 
 class CmdGet(SleepCommand):
     """
     You are sleeping. Many character commands will no longer function.
     """
+
     key = "get"
 
 
 class CmdDrop(SleepCommand):
     """
     You are sleeping. Many character commands will no longer function.
-    """    
+    """
+
     key = "drop"
 
 
 class CmdGive(SleepCommand):
     """
     You are sleeping. Many character commands will no longer function.
-    """    
+    """
+
     key = "give"
 
 
 class CmdSay(SleepCommand):
     """
     You are sleeping. Many character commands will no longer function.
-    """   
+    """
+
     key = "say"
 
 
@@ -152,6 +169,7 @@ class CmdWhisper(SleepCommand):
     """
     You are sleeping. Many character commands will no longer function.
     """
+
     key = "whisper"
 
 
@@ -159,6 +177,7 @@ class CmdFollow(SleepCommand):
     """
     You are sleeping. Many character commands will no longer function.
     """
+
     key = "follow"
 
 
@@ -166,6 +185,7 @@ class CmdDitch(SleepCommand):
     """
     You are sleeping. Many character commands will no longer function.
     """
+
     key = "ditch"
 
 
@@ -173,10 +193,12 @@ class CmdShout(SleepCommand):
     """
     You are sleeping. Many character commands will no longer function.
     """
+
     key = "shout"
 
 
 class CmdNoFighting(SleepCommand):
     """Prevents fighting, etc"""
+
     key = "fight"
     aliases = ["heal", "train"]

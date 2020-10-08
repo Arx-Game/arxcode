@@ -55,25 +55,25 @@ except ImportError:
 
 import socket
 
-if hasattr(socket, 'setdefaulttimeout'):
+if hasattr(socket, "setdefaulttimeout"):
     # Set the default timeout on sockets to 5 seconds
     socket.setdefaulttimeout(5)
 
-__version__ = '0.3.0'
+__version__ = "0.3.0"
 
 __all__ = (
-    '__version__',
-    'Akismet',
-    'AkismetError',
-    'APIKeyError',
+    "__version__",
+    "Akismet",
+    "AkismetError",
+    "APIKeyError",
 )
 
-__author__ = 'Michael Foord <fuzzyman AT voidspace DOT org DOT uk>'
+__author__ = "Michael Foord <fuzzyman AT voidspace DOT org DOT uk>"
 
 __docformat__ = "restructuredtext en"
 
 user_agent = "%s | akismet.py/%s"
-DEFAULTAGENT = 'Python Interface by Fuzzyman/%s'
+DEFAULTAGENT = "Python Interface by Fuzzyman/%s"
 
 isfile = os.path.isfile
 
@@ -87,13 +87,20 @@ except ImportError:
         import urllib2 as urllib_request
 
 if urllib_request is None:
+
     def _fetch_url(url, data, headers):
-        req = urlfetch.fetch(url=url, payload=data, method=urlfetch.POST, headers=headers)
+        req = urlfetch.fetch(
+            url=url, payload=data, method=urlfetch.POST, headers=headers
+        )
         if req.status_code == 200:
             return req.content
-        raise Exception('Could not fetch Akismet URL: %s Response code: %s' %
-                        (url, req.status_code))
+        raise Exception(
+            "Could not fetch Akismet URL: %s Response code: %s" % (url, req.status_code)
+        )
+
+
 else:
+
     def _fetch_url(url, data, headers):
         req = urllib_request.Request(url, data, headers)
         h = urllib_request.urlopen(req)
@@ -112,7 +119,7 @@ class APIKeyError(AkismetError):
 class Akismet(object):
     """A class for working with the akismet API"""
 
-    baseurl = 'rest.akismet.com/1.1/'
+    baseurl = "rest.akismet.com/1.1/"
 
     def __init__(self, key=None, blog_url=None, agent=None):
         """Automatically calls ``setAPIKey``."""
@@ -126,7 +133,7 @@ class Akismet(object):
         Fetch the url to make requests to.
         This comprises of api key plus the baseurl.
         """
-        return 'http://%s.%s' % (self.key, self.baseurl)
+        return "http://%s.%s" % (self.key, self.baseurl)
 
     def _safeRequest(self, url, data, headers):
         try:
@@ -144,9 +151,12 @@ class Akismet(object):
         This method is *usually* called automatically when you create a new
         ``Akismet`` instance.
         """
-        if key is None and isfile('apikey.txt'):
-            the_file = [l.strip() for l in open('apikey.txt').readlines()
-                        if l.strip() and not l.strip().startswith('#')]
+        if key is None and isfile("apikey.txt"):
+            the_file = [
+                l.strip()
+                for l in open("apikey.txt").readlines()
+                if l.strip() and not l.strip().startswith("#")
+            ]
             try:
                 self.key = the_file[0]
                 self.blog_url = the_file[1]
@@ -169,14 +179,14 @@ class Akismet(object):
         """
         if self.key is None:
             raise APIKeyError("Your have not set an API key.")
-        data = {'key': self.key, 'blog': self.blog_url}
+        data = {"key": self.key, "blog": self.blog_url}
         # this function *doesn't* use the key as part of the URL
-        url = 'http://%sverify-key' % self.baseurl
+        url = "http://%sverify-key" % self.baseurl
         # we *don't* trap the error here
         # so if akismet is down it will raise an HTTPError or URLError
-        headers = {'User-Agent': self.user_agent}
+        headers = {"User-Agent": self.user_agent}
         resp = self._safeRequest(url, urlencode(data), headers)
-        if resp.lower() == 'valid':
+        if resp.lower() == "valid":
             return True
         else:
             return False
@@ -190,33 +200,33 @@ class Akismet(object):
         It raises an ``AkismetError`` if the user IP or user-agent can't be
         worked out.
         """
-        if 'user_ip' not in data:
+        if "user_ip" not in data:
             try:
-                val = os.environ['REMOTE_ADDR']
+                val = os.environ["REMOTE_ADDR"]
             except KeyError:
                 raise AkismetError("No 'user_ip' supplied")
-            data['user_ip'] = val
-        if 'user_agent' not in data:
+            data["user_ip"] = val
+        if "user_agent" not in data:
             try:
-                val = os.environ['HTTP_USER_AGENT']
+                val = os.environ["HTTP_USER_AGENT"]
             except KeyError:
                 raise AkismetError("No 'user_agent' supplied")
-            data['user_agent'] = val
+            data["user_agent"] = val
         #
-        data.setdefault('referrer', os.environ.get('HTTP_REFERER', 'unknown'))
-        data.setdefault('permalink', '')
-        data.setdefault('comment_type', 'comment')
-        data.setdefault('comment_author', '')
-        data.setdefault('comment_author_email', '')
-        data.setdefault('comment_author_url', '')
-        data.setdefault('SERVER_ADDR', os.environ.get('SERVER_ADDR', ''))
-        data.setdefault('SERVER_ADMIN', os.environ.get('SERVER_ADMIN', ''))
-        data.setdefault('SERVER_NAME', os.environ.get('SERVER_NAME', ''))
-        data.setdefault('SERVER_PORT', os.environ.get('SERVER_PORT', ''))
-        data.setdefault('SERVER_SIGNATURE', os.environ.get('SERVER_SIGNATURE', ''))
-        data.setdefault('SERVER_SOFTWARE', os.environ.get('SERVER_SOFTWARE', ''))
-        data.setdefault('HTTP_ACCEPT', os.environ.get('HTTP_ACCEPT', ''))
-        data.setdefault('blog', self.blog_url)
+        data.setdefault("referrer", os.environ.get("HTTP_REFERER", "unknown"))
+        data.setdefault("permalink", "")
+        data.setdefault("comment_type", "comment")
+        data.setdefault("comment_author", "")
+        data.setdefault("comment_author_email", "")
+        data.setdefault("comment_author_url", "")
+        data.setdefault("SERVER_ADDR", os.environ.get("SERVER_ADDR", ""))
+        data.setdefault("SERVER_ADMIN", os.environ.get("SERVER_ADMIN", ""))
+        data.setdefault("SERVER_NAME", os.environ.get("SERVER_NAME", ""))
+        data.setdefault("SERVER_PORT", os.environ.get("SERVER_PORT", ""))
+        data.setdefault("SERVER_SIGNATURE", os.environ.get("SERVER_SIGNATURE", ""))
+        data.setdefault("SERVER_SOFTWARE", os.environ.get("SERVER_SOFTWARE", ""))
+        data.setdefault("HTTP_ACCEPT", os.environ.get("HTTP_ACCEPT", ""))
+        data.setdefault("blog", self.blog_url)
 
     def comment_check(self, comment, data=None, build_data=True, DEBUG=False):
         """
@@ -277,28 +287,28 @@ class Akismet(object):
             raise APIKeyError("Your have not set an API key.")
         if data is None:
             data = {}
-        data['comment_content'] = comment
+        data["comment_content"] = comment
         if build_data:
             self._build_data(comment, data)
-        if 'blog' not in data:
-            data['blog'] = self.blog_url
-        url = '%scomment-check' % self._getURL()
+        if "blog" not in data:
+            data["blog"] = self.blog_url
+        url = "%scomment-check" % self._getURL()
         # we *don't* trap the error here
         # so if akismet is down it will raise an HTTPError or URLError
-        headers = {'User-Agent': self.user_agent}
+        headers = {"User-Agent": self.user_agent}
         # urlencode() chokes on non-ASCII input unless doseq= is set (2.6).
         # None of our values should be sequences, so it shouldn't matter.
         resp = self._safeRequest(url, urlencode(data, doseq=True), headers)
         if DEBUG:
             return resp
         resp = resp.lower()
-        if resp == 'true':
+        if resp == "true":
             return True
-        elif resp == 'false':
+        elif resp == "false":
             return False
         else:
             # NOTE: Happens when you get a 'howdy wilbur' response !
-            raise AkismetError('missing required argument.')
+            raise AkismetError("missing required argument.")
 
     def submit_spam(self, comment, data=None, build_data=True):
         """
@@ -313,10 +323,10 @@ class Akismet(object):
             data = {}
         if build_data:
             self._build_data(comment, data)
-        url = '%ssubmit-spam' % self._getURL()
+        url = "%ssubmit-spam" % self._getURL()
         # we *don't* trap the error here
         # so if akismet is down it will raise an HTTPError or URLError
-        headers = {'User-Agent': self.user_agent}
+        headers = {"User-Agent": self.user_agent}
         self._safeRequest(url, urlencode(data, doseq=True), headers)
 
     def submit_ham(self, comment, data=None, build_data=True):
@@ -332,8 +342,8 @@ class Akismet(object):
             data = {}
         if build_data:
             self._build_data(comment, data)
-        url = '%ssubmit-ham' % self._getURL()
+        url = "%ssubmit-ham" % self._getURL()
         # we *don't* trap the error here
         # so if akismet is down it will raise an HTTPError or URLError
-        headers = {'User-Agent': self.user_agent}
+        headers = {"User-Agent": self.user_agent}
         self._safeRequest(url, urlencode(data, doseq=True), headers)

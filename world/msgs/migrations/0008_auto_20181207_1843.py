@@ -8,14 +8,14 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('msgs', '0007_inform_read_by'),
+        ("msgs", "0007_inform_read_by"),
     ]
 
     operations = [
         migrations.DeleteModel(
-            name='Comment',
+            name="Comment",
         ),
         migrations.DeleteModel(
-            name='Vision',
+            name="Vision",
         ),
     ]

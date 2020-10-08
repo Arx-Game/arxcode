@@ -13,15 +13,25 @@ class ConditionsCommandsTests(ArxCommandTest):
     def test_modifiers_cmd(self):
         self.setup_cmd(condition_commands.CmdModifiers, self.char1)
         self.call_cmd("char2", "Modifiers on Char2: ")
-        self.call_cmd("/targetmod char2=10,abyssal,any combat",
-                      "You have added a modifier to Char2: "
-                      "Modifier on Char2 of +10 against abyssal for Any Combat checks.")
-        self.call_cmd("char2", "Modifiers on Char2: Modifier on Char2 of +10 against abyssal for Any Combat checks")
-        self.call_cmd("/usermod here=10,divine,defense",
-                      "You have added a modifier to Room: Modifier on Room of +10 for divine for Defense checks.")
+        self.call_cmd(
+            "/targetmod char2=10,abyssal,any combat",
+            "You have added a modifier to Char2: "
+            "Modifier on Char2 of +10 against abyssal for Any Combat checks.",
+        )
+        self.call_cmd(
+            "char2",
+            "Modifiers on Char2: Modifier on Char2 of +10 against abyssal for Any Combat checks",
+        )
+        self.call_cmd(
+            "/usermod here=10,divine,defense",
+            "You have added a modifier to Room: Modifier on Room of +10 for divine for Defense checks.",
+        )
         self.call_cmd("/search asdf", "Modifiers for/against asdf: ")
-        self.call_cmd("/search divine", "Modifiers for/against divine: "
-                                        "Modifier on Room of +10 for divine for Defense checks")
+        self.call_cmd(
+            "/search divine",
+            "Modifiers for/against divine: "
+            "Modifier on Room of +10 for divine for Defense checks",
+        )
 
     def test_knacks_cmd(self):
         self.setup_cmd(condition_commands.CmdKnacks, self.char1)
@@ -32,39 +42,73 @@ class ConditionsCommandsTests(ArxCommandTest):
         self.call_cmd("/create a,b=asdf", "You must provide a name.")
         self.call_cmd("/create a,b,c=asdf", "a is not a valid stat.")
         self.call_cmd("/create strength,b,c=asdf", "b is not a valid skill.")
-        self.call_cmd("/create strength,brawl,hit ppl gud=real gud",
-                      "You tried to spend 150 xp, but only have 0 available.")
+        self.call_cmd(
+            "/create strength,brawl,hit ppl gud=real gud",
+            "You tried to spend 150 xp, but only have 0 available.",
+        )
         self.char1.adjust_xp(150)
-        self.assertEqual(self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 0)
-        self.call_cmd("/create charm,seduction,smirkity vixen=So slyyyyyy",
-                      "You spend 150 xp and have 0 remaining.|"
-                      "You create a knack called 'smirkity vixen' for charm+seduction.")
-        self.assertEqual(self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 1)
-        self.assertEqual(self.char1.mods.get_crit_modifiers(["charm"], ["seduction"]), 1)
-        self.call_cmd("", 'Knacks for Char:\n\n'
-                          'Name: smirkity vixen\n'
-                          'Stat: charm Skill: seduction Value: 1\n'
-                          'Description: So slyyyyyy')
-        self.call_cmd("smirkity vixen", 'Name: smirkity vixen\n'
-                                        'Stat: charm Skill: seduction Value: 1\n'
-                                        'Description: So slyyyyyy')
+        self.assertEqual(
+            self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 0
+        )
+        self.call_cmd(
+            "/create charm,seduction,smirkity vixen=So slyyyyyy",
+            "You spend 150 xp and have 0 remaining.|"
+            "You create a knack called 'smirkity vixen' for charm+seduction.",
+        )
+        self.assertEqual(
+            self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 1
+        )
+        self.assertEqual(
+            self.char1.mods.get_crit_modifiers(["charm"], ["seduction"]), 1
+        )
+        self.call_cmd(
+            "",
+            "Knacks for Char:\n\n"
+            "Name: smirkity vixen\n"
+            "Stat: charm Skill: seduction Value: 1\n"
+            "Description: So slyyyyyy",
+        )
+        self.call_cmd(
+            "smirkity vixen",
+            "Name: smirkity vixen\n"
+            "Stat: charm Skill: seduction Value: 1\n"
+            "Description: So slyyyyyy",
+        )
         self.call_cmd("/train asdf", "No knack found by that name.")
-        self.call_cmd("/train smirkity vixen", "You tried to spend 60 xp, but only have 0 available.")
+        self.call_cmd(
+            "/train smirkity vixen",
+            "You tried to spend 60 xp, but only have 0 available.",
+        )
         self.char1.adjust_xp(60)
-        self.call_cmd("/train smirkity vixen", 'You spend 60 xp and have 0 remaining.|'
-                                               'You have increased smirkity vixen to rank 2.')
-        self.assertEqual(self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 2)
-        self.assertEqual(self.char1.mods.get_crit_modifiers(["charm"], ["seduction"]), 2)
-        self.call_cmd("/create charm,seduction,more smirkity=So smirk",
-                      "You already have a knack for that skill and stat combination.")
+        self.call_cmd(
+            "/train smirkity vixen",
+            "You spend 60 xp and have 0 remaining.|"
+            "You have increased smirkity vixen to rank 2.",
+        )
+        self.assertEqual(
+            self.char1.mods.get_total_roll_modifiers(["charm"], ["seduction"]), 2
+        )
+        self.assertEqual(
+            self.char1.mods.get_crit_modifiers(["charm"], ["seduction"]), 2
+        )
+        self.call_cmd(
+            "/create charm,seduction,more smirkity=So smirk",
+            "You already have a knack for that skill and stat combination.",
+        )
 
 
 class TestTriggers(ArxTest):
     def setUp(self):
         super(TestTriggers, self).setUp()
-        self.trigger1 = EffectTrigger.objects.create(object=self.room2, priority=2, room_msg="trigger1 fire")
-        self.trigger2 = EffectTrigger.objects.create(object=self.room2, priority=1, room_msg="trigger2 fire")
-        self.trigger3 = EffectTrigger.objects.create(object=self.room2, priority=1, room_msg="trigger3 fire")
+        self.trigger1 = EffectTrigger.objects.create(
+            object=self.room2, priority=2, room_msg="trigger1 fire"
+        )
+        self.trigger2 = EffectTrigger.objects.create(
+            object=self.room2, priority=1, room_msg="trigger2 fire"
+        )
+        self.trigger3 = EffectTrigger.objects.create(
+            object=self.room2, priority=1, room_msg="trigger3 fire"
+        )
         self.mock_triggers()
 
     def mock_triggers(self):

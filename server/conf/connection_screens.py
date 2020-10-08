@@ -18,8 +18,8 @@ screen is read and displayed by the unlogged-in "look" command.
 from django.conf import settings
 from evennia import utils
 
-CONNECTION_SCREEN = \
-"""{b=============================================================={n
+CONNECTION_SCREEN = (
+    """{b=============================================================={n
              Welcome to {g%s{n
 
  If you have an existing account, connect to it by typing:
@@ -31,7 +31,9 @@ CONNECTION_SCREEN = \
  or the '{w@charcreate <email>{n' command.
 
  Enter {whelp{n for more info. {wlook{n will re-show this screen.
-{b=============================================================={n""" % settings.VERBOSE_GAME_NAME
+{b=============================================================={n"""
+    % settings.VERBOSE_GAME_NAME
+)
 
 ##"""{b=============================================================={n
 ## Welcome to {g%s{n, version %s!

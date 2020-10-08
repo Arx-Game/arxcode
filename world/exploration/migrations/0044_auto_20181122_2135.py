@@ -9,13 +9,17 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0043_auto_20181122_1409'),
+        ("exploration", "0043_auto_20181122_1409"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='monstercraftingdrops',
-            name='material',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='monsters', to='dominion.CraftingMaterialType'),
+            model_name="monstercraftingdrops",
+            name="material",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="monsters",
+                to="dominion.CraftingMaterialType",
+            ),
         ),
     ]

@@ -7,8 +7,9 @@ from django.db import migrations, models
 
 def delete_duplicates(apps, schema_editor):
     from collections import defaultdict
+
     fields_to_object = defaultdict(list)
-    InvestigationAssistant = apps.get_model('character', "InvestigationAssistant")
+    InvestigationAssistant = apps.get_model("character", "InvestigationAssistant")
     for obj in InvestigationAssistant.objects.all():
         fields_to_object[(obj.char_id, obj.investigation_id)].append(obj)
     matches = [item for item in fields_to_object.values() if len(item) > 1]
@@ -22,19 +23,21 @@ def delete_duplicates(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('objects', '0009_remove_objectdb_db_player'),
-        ('character', '0023_clue_gm_notes'),
+        ("objects", "0009_remove_objectdb_db_player"),
+        ("character", "0023_clue_gm_notes"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='investigationassistant',
-            name='currently_helping',
-            field=models.BooleanField(default=False, help_text=b"Whether they're currently helping out"),
+            model_name="investigationassistant",
+            name="currently_helping",
+            field=models.BooleanField(
+                default=False, help_text=b"Whether they're currently helping out"
+            ),
         ),
         migrations.RunPython(delete_duplicates),
         migrations.AlterUniqueTogether(
-            name='investigationassistant',
-            unique_together=set([('char', 'investigation')]),
+            name="investigationassistant",
+            unique_together=set([("char", "investigation")]),
         ),
     ]

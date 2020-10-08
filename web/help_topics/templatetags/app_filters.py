@@ -9,16 +9,16 @@ register = template.Library()
 def mush_to_html(value):
     if not value:
         return value
-    value = value.replace('&', '&amp')
-    value = value.replace('<', '&lt')
-    value = value.replace('>', '&gt')
-    value = value.replace('%r', '<br>')
-    value = value.replace('%R', '<br>')
-    value = value.replace('\n', '<br>')
-    value = value.replace('%b', ' ')
-    value = value.replace('%t', '&nbsp&nbsp&nbsp&nbsp')
-    value = value.replace('|/', '<br>')
-    value = value.replace('{/', '<br>')
+    value = value.replace("&", "&amp")
+    value = value.replace("<", "&lt")
+    value = value.replace(">", "&gt")
+    value = value.replace("%r", "<br>")
+    value = value.replace("%R", "<br>")
+    value = value.replace("\n", "<br>")
+    value = value.replace("%b", " ")
+    value = value.replace("%t", "&nbsp&nbsp&nbsp&nbsp")
+    value = value.replace("|/", "<br>")
+    value = value.replace("{/", "<br>")
     value = parse_ansi(value, strip_ansi=True)
     return mark_safe(value)
 
@@ -40,6 +40,8 @@ def date_from_header(header):
     """
     hlist = header.split(";")
     keyvalpairs = [pair.split(":") for pair in hlist]
-    keydict = {pair[0].strip(): pair[1].strip() for pair in keyvalpairs if len(pair) == 2}
-    date = keydict.get('date', None)
+    keydict = {
+        pair[0].strip(): pair[1].strip() for pair in keyvalpairs if len(pair) == 2
+    }
+    date = keydict.get("date", None)
     return date

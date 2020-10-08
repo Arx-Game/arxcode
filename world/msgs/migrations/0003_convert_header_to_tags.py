@@ -6,29 +6,59 @@ from django.db import migrations
 
 
 def convert_header_to_tags(apps, schema_editor):
-    Msg = apps.get_model('comms', 'Msg')
-    Tag = apps.get_model('typeclasses', 'Tag')
+    Msg = apps.get_model("comms", "Msg")
+    Tag = apps.get_model("typeclasses", "Tag")
     qs_all = Msg.objects.all()
 
-    white_tag = Tag.objects.get_or_create(db_key="white_journal", db_model="msg", db_category="msg")[0]
-    black_tag = Tag.objects.get_or_create(db_key="black_journal", db_model="msg", db_category="msg")[0]
-    relationship_tag = Tag.objects.get_or_create(db_key="relationship", db_model="msg", db_category="msg")[0]
-    messenger_tag = Tag.objects.get_or_create(db_key="messenger", db_model="msg", db_category="msg")[0]
-    vision_tag = Tag.objects.get_or_create(db_key="visions", db_model="msg", db_category="msg")[0]
-    gossip_tag = Tag.objects.get_or_create(db_key="gossip", db_model="msg", db_category="msg")[0]
-    rumor_tag = Tag.objects.get_or_create(db_key="rumors", db_model="msg", db_category="msg")[0]
-    comment_tag = Tag.objects.get_or_create(db_key="comment", db_model="msg", db_category="msg")[0]
-    preserve_tag = Tag.objects.get_or_create(db_key="preserve", db_model="msg", db_category="msg")[0]
+    white_tag = Tag.objects.get_or_create(
+        db_key="white_journal", db_model="msg", db_category="msg"
+    )[0]
+    black_tag = Tag.objects.get_or_create(
+        db_key="black_journal", db_model="msg", db_category="msg"
+    )[0]
+    relationship_tag = Tag.objects.get_or_create(
+        db_key="relationship", db_model="msg", db_category="msg"
+    )[0]
+    messenger_tag = Tag.objects.get_or_create(
+        db_key="messenger", db_model="msg", db_category="msg"
+    )[0]
+    vision_tag = Tag.objects.get_or_create(
+        db_key="visions", db_model="msg", db_category="msg"
+    )[0]
+    gossip_tag = Tag.objects.get_or_create(
+        db_key="gossip", db_model="msg", db_category="msg"
+    )[0]
+    rumor_tag = Tag.objects.get_or_create(
+        db_key="rumors", db_model="msg", db_category="msg"
+    )[0]
+    comment_tag = Tag.objects.get_or_create(
+        db_key="comment", db_model="msg", db_category="msg"
+    )[0]
+    preserve_tag = Tag.objects.get_or_create(
+        db_key="preserve", db_model="msg", db_category="msg"
+    )[0]
 
-    white = qs_all.filter(db_header__icontains="white_journal").exclude(db_tags=white_tag)
-    black = qs_all.filter(db_header__icontains="black_journal").exclude(db_tags=black_tag)
-    relationship = qs_all.filter(db_header__icontains="relationship").exclude(db_tags=relationship_tag)
-    messenger = qs_all.filter(db_header__icontains="messenger").exclude(db_tags=messenger_tag)
+    white = qs_all.filter(db_header__icontains="white_journal").exclude(
+        db_tags=white_tag
+    )
+    black = qs_all.filter(db_header__icontains="black_journal").exclude(
+        db_tags=black_tag
+    )
+    relationship = qs_all.filter(db_header__icontains="relationship").exclude(
+        db_tags=relationship_tag
+    )
+    messenger = qs_all.filter(db_header__icontains="messenger").exclude(
+        db_tags=messenger_tag
+    )
     visions = qs_all.filter(db_header__icontains="visions").exclude(db_tags=vision_tag)
     gossip = qs_all.filter(db_header__icontains="gossip").exclude(db_tags=gossip_tag)
     rumors = qs_all.filter(db_header__icontains="rumor").exclude(db_tags=rumor_tag)
-    comments = qs_all.filter(db_header__icontains="comment").exclude(db_tags=comment_tag)
-    preserved = qs_all.filter(db_header__icontains="preserve").exclude(db_tags=preserve_tag)
+    comments = qs_all.filter(db_header__icontains="comment").exclude(
+        db_tags=comment_tag
+    )
+    preserved = qs_all.filter(db_header__icontains="preserve").exclude(
+        db_tags=preserve_tag
+    )
 
     TagToMsgModel = Msg.db_tags.through
     bulk_list = []
@@ -56,9 +86,7 @@ def convert_header_to_tags(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('msgs', '0002_auto_20160831_0248'),
+        ("msgs", "0002_auto_20160831_0248"),
     ]
 
-    operations = [
-        migrations.RunPython(convert_header_to_tags)
-    ]
+    operations = [migrations.RunPython(convert_header_to_tags)]

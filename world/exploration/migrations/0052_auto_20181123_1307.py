@@ -8,18 +8,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0051_auto_20181123_1244'),
+        ("exploration", "0051_auto_20181123_1244"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='shardhavenpuzzleobjectloot',
-            name='guaranteed',
-            field=models.BooleanField(default=False, help_text=b'Is this object a guaranteed drop?'),
+            model_name="shardhavenpuzzleobjectloot",
+            name="guaranteed",
+            field=models.BooleanField(
+                default=False, help_text=b"Is this object a guaranteed drop?"
+            ),
         ),
         migrations.AlterField(
-            model_name='shardhavenpuzzleobjectloot',
-            name='duplicate',
-            field=models.BooleanField(default=False, help_text=b'Do we create a duplicate copy of this object to drop?'),
+            model_name="shardhavenpuzzleobjectloot",
+            name="duplicate",
+            field=models.BooleanField(
+                default=False,
+                help_text=b"Do we create a duplicate copy of this object to drop?",
+            ),
         ),
     ]

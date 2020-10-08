@@ -1,0 +1,12 @@
+version: '3.4'
+services:
+  arx:
+    image: arx:latest
+    ports:
+      - "3000:3000"
+      - "8000:8000"
+    tty: true
+    volumes:
+      - type: bind
+        source: .
+        target: /usr/src/arx

@@ -8,23 +8,35 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('helpdesk', '0010_auto_20171109_0942'),
+        ("helpdesk", "0010_auto_20171109_0942"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='escalationexclusion',
-            name='queues',
-            field=models.ManyToManyField(blank=True, help_text='Leave blank for this exclusion to be applied to all queues, or select those queues you wish to exclude with this entry.', to='helpdesk.Queue'),
+            model_name="escalationexclusion",
+            name="queues",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Leave blank for this exclusion to be applied to all queues, or select those queues you wish to exclude with this entry.",
+                to="helpdesk.Queue",
+            ),
         ),
         migrations.AlterField(
-            model_name='ignoreemail',
-            name='queues',
-            field=models.ManyToManyField(blank=True, help_text='Leave blank for this e-mail to be ignored on all queues, or select those queues you wish to ignore this e-mail for.', to='helpdesk.Queue'),
+            model_name="ignoreemail",
+            name="queues",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Leave blank for this e-mail to be ignored on all queues, or select those queues you wish to ignore this e-mail for.",
+                to="helpdesk.Queue",
+            ),
         ),
         migrations.AlterField(
-            model_name='presetreply',
-            name='queues',
-            field=models.ManyToManyField(blank=True, help_text='Leave blank to allow this reply to be used for all queues, or select those queues you wish to limit this reply to.', to='helpdesk.Queue'),
+            model_name="presetreply",
+            name="queues",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Leave blank to allow this reply to be used for all queues, or select those queues you wish to limit this reply to.",
+                to="helpdesk.Queue",
+            ),
         ),
     ]

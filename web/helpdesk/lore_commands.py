@@ -32,6 +32,7 @@ class CmdLoreSearch(ArxPlayerCommand):
     new theme question by issuing a lore/request about your question, which
     creates a ticket for review.
     """
+
     key = "lore"
     aliases = ["theme"]
     help_category = "Information"
@@ -54,7 +55,9 @@ class CmdLoreSearch(ArxPlayerCommand):
     def display_main_categories(self):
         """Displays the main categories for no input"""
         msg = SEP + "\n|CMain Categories:|n\n" + SEP + "\n\n"
-        cat_names = KBCategory.objects.filter(parent__isnull=True).values_list('title', flat=True)
+        cat_names = KBCategory.objects.filter(parent__isnull=True).values_list(
+            "title", flat=True
+        )
         msg += "|w" + ", ".join(cat_names)
         self.msg(msg)
 
@@ -77,17 +80,30 @@ class CmdLoreSearch(ArxPlayerCommand):
                 msg += "\n"
             msg += item.display()
         if not item and not category:
-            raise self.error_class("No matches for either a category or entry by that name in the knowledge base.")
+            raise self.error_class(
+                "No matches for either a category or entry by that name in the knowledge base."
+            )
         self.msg(msg)
 
     def search_knowledge_base(self):
         """Performs a search for a term given by the player"""
         search_tag_query = Q(search_tags__name__iexact=self.args)
-        categories = KBCategory.objects.filter(Q(title__icontains=self.args) | Q(description__icontains=self.args) |
-                                               search_tag_query).distinct()
-        entries = KBItem.objects.filter(Q(title__icontains=self.args) | Q(question__icontains=self.args) |
-                                        Q(answer__icontains=self.args) | search_tag_query).distinct()
-        disco_query = Q(name__icontains=self.args) | Q(desc__icontains=self.args) | search_tag_query
+        categories = KBCategory.objects.filter(
+            Q(title__icontains=self.args)
+            | Q(description__icontains=self.args)
+            | search_tag_query
+        ).distinct()
+        entries = KBItem.objects.filter(
+            Q(title__icontains=self.args)
+            | Q(question__icontains=self.args)
+            | Q(answer__icontains=self.args)
+            | search_tag_query
+        ).distinct()
+        disco_query = (
+            Q(name__icontains=self.args)
+            | Q(desc__icontains=self.args)
+            | search_tag_query
+        )
         try:
             clues = self.caller.roster.clues.filter(disco_query).distinct()
         except AttributeError:
@@ -117,8 +133,10 @@ class CmdLoreSearch(ArxPlayerCommand):
             category, title = self.lhs.split("/")
             category = KBCategory.objects.get(title__iexact=category)
         except ValueError:
-            raise self.error_class("You must specify both a category and a "
-                                   "title for the entry created by your question.")
+            raise self.error_class(
+                "You must specify both a category and a "
+                "title for the entry created by your question."
+            )
         except KBCategory.DoesNotExist:
             raise self.error_class("No category by that title.")
         if KBItem.objects.filter(title__iexact=title).exists():
@@ -126,7 +144,14 @@ class CmdLoreSearch(ArxPlayerCommand):
         if Ticket.objects.filter(title__iexact=title).exists():
             raise self.error_class("An entry is already proposed with that title.")
         if not self.rhs:
-            raise self.error_class("You must enter a question about lore or theme for staff to answer.")
-        ticket = helpdesk_api.create_ticket(self.caller, self.rhs, kb_category=category, queue_slug="Theme",
-                                            optional_title=title)
+            raise self.error_class(
+                "You must enter a question about lore or theme for staff to answer."
+            )
+        ticket = helpdesk_api.create_ticket(
+            self.caller,
+            self.rhs,
+            kb_category=category,
+            queue_slug="Theme",
+            optional_title=title,
+        )
         self.msg("You have created ticket %s, asking: %s" % (ticket.id, self.rhs))

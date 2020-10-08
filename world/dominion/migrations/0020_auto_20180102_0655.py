@@ -54,47 +54,98 @@ def fix_shardhavens(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0019_auto_20171228_0839'),
+        ("dominion", "0019_auto_20171228_0839"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='MapLocation',
+            name="MapLocation",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(blank=True, max_length=80, null=True)),
-                ('x_coord', models.PositiveSmallIntegerField(default=0, validators=[django.core.validators.MaxValueValidator(9)])),
-                ('y_coord', models.PositiveSmallIntegerField(default=0, validators=[django.core.validators.MaxValueValidator(9)])),
-                ('land', models.ForeignKey(on_delete=django.db.models.deletion.SET_NULL, related_name='locations',
-                                           to='dominion.Land', blank=True, null=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(blank=True, max_length=80, null=True)),
+                (
+                    "x_coord",
+                    models.PositiveSmallIntegerField(
+                        default=0,
+                        validators=[django.core.validators.MaxValueValidator(9)],
+                    ),
+                ),
+                (
+                    "y_coord",
+                    models.PositiveSmallIntegerField(
+                        default=0,
+                        validators=[django.core.validators.MaxValueValidator(9)],
+                    ),
+                ),
+                (
+                    "land",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="locations",
+                        to="dominion.Land",
+                        blank=True,
+                        null=True,
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='domain',
-            name='location',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='domains', to='dominion.MapLocation'),
+            model_name="domain",
+            name="location",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="domains",
+                to="dominion.MapLocation",
+            ),
         ),
         migrations.AddField(
-            model_name='landmark',
-            name='location',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='landmarks', to='dominion.MapLocation'),
+            model_name="landmark",
+            name="location",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="landmarks",
+                to="dominion.MapLocation",
+            ),
         ),
         migrations.AddField(
-            model_name='plotroom',
-            name='location',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='plot_rooms', to='dominion.MapLocation'),
+            model_name="plotroom",
+            name="location",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="plot_rooms",
+                to="dominion.MapLocation",
+            ),
         ),
         migrations.AddField(
-            model_name='shardhaven',
-            name='location',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='shardhavens', to='dominion.MapLocation'),
+            model_name="shardhaven",
+            name="location",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="shardhavens",
+                to="dominion.MapLocation",
+            ),
         ),
-
         migrations.RunPython(fix_domains),
         migrations.RunPython(fix_plotrooms),
         migrations.RunPython(fix_landmarks),
-        migrations.RunPython(fix_shardhavens)
+        migrations.RunPython(fix_shardhavens),
     ]

@@ -9,19 +9,34 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0010_shardhavenlayoutsquare_room'),
+        ("exploration", "0010_shardhavenlayoutsquare_room"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ShardhavenMoodFragment',
+            name="ShardhavenMoodFragment",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('text', models.TextField()),
-                ('shardhaven_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='exploration.ShardhavenType')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("text", models.TextField()),
+                (
+                    "shardhaven_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to="exploration.ShardhavenType",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

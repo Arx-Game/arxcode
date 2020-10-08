@@ -22,6 +22,7 @@ class Wieldable(Wearable):
     'stealth' determines if the weapon will give an echo to the room when it is
     wielded. Poisons, magic, stealthy daggers, etc, fall into this category.
     """
+
     default_desc = "A weapon of some kind."
     SHEATHED_LIMIT = 6
 
@@ -70,7 +71,7 @@ class Wieldable(Wearable):
 
     def at_before_move(self, destination, **kwargs):
         """Checks if the object can be moved"""
-        caller = kwargs.get('caller', None)
+        caller = kwargs.get("caller", None)
         if caller and self.is_wielded:
             caller.msg("%s is currently wielded and cannot be moved." % self)
             return False
@@ -170,7 +171,11 @@ class Wieldable(Wearable):
         exclude = [wielder]
         if self.db.stealth:
             # checks for sensing a stealthed weapon being wielded. those who fail are put in exclude list
-            chars = [char for char in wielder.location.contents if hasattr(char, 'sensing_check') and char != wielder]
+            chars = [
+                char
+                for char in wielder.location.contents
+                if hasattr(char, "sensing_check") and char != wielder
+            ]
             for char in chars:
                 if char.sensing_check(self, diff=self.db.sensing_difficulty) < 1:
                     exclude.append(char)
@@ -198,15 +203,22 @@ class Wieldable(Wearable):
         base = float(recipe.resultsdict.get("baseval", 0))
         if quality >= 10:
             crafter = self.db.crafted_by
-            if (recipe.level > 3) or not crafter or crafter.check_permstring("builders"):
+            if (
+                (recipe.level > 3)
+                or not crafter
+                or crafter.check_permstring("builders")
+            ):
                 base += 1
-        scaling = float(recipe.resultsdict.get("scaling", (base/20) or 0.2))
+        scaling = float(recipe.resultsdict.get("scaling", (base / 20) or 0.2))
         if not base and not scaling:
             self.ndb.cached_damage_bonus = 0
             self.ndb.cached_difficulty_mod = diffmod
             self.ndb.cached_flat_damage_bonus = flat_damage_bonus
-            return (self.ndb.cached_damage_bonus, self.ndb.cached_difficulty_mod,
-                    self.ndb.cached_flat_damage_bonus)
+            return (
+                self.ndb.cached_damage_bonus,
+                self.ndb.cached_difficulty_mod,
+                self.ndb.cached_flat_damage_bonus,
+            )
         try:
             damage = int(round(base + (scaling * quality)))
             diffmod -= int(round(0.2 * quality))
@@ -225,11 +237,16 @@ class Wieldable(Wearable):
 
     def check_fashion_ready(self):
         from world.fashion.mixins import FashionableMixins
+
         FashionableMixins.check_fashion_ready(self)
         if not (self.is_wielded or self.is_worn):
             from world.fashion.exceptions import FashionError
+
             verb = "wear" if self.decorative else "sheathe"
-            raise FashionError("Please wield or %s %s before trying to model it as fashion." % (verb, self))
+            raise FashionError(
+                "Please wield or %s %s before trying to model it as fashion."
+                % (verb, self)
+            )
         return True
 
     @property

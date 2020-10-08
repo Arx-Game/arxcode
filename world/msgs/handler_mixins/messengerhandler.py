@@ -2,9 +2,17 @@
 Handler for Messengers
 """
 from world.dominion.models import CraftingMaterials, CraftingMaterialType
-from world.msgs.handler_mixins.msg_utils import get_initial_queryset, lazy_import_from_str
+from world.msgs.handler_mixins.msg_utils import (
+    get_initial_queryset,
+    lazy_import_from_str,
+)
 from world.msgs.handler_mixins.handler_base import MsgHandlerBase
-from world.msgs.managers import q_msgtag, PRESERVE_TAG, MESSENGER_TAG, reload_model_as_proxy
+from world.msgs.managers import (
+    q_msgtag,
+    PRESERVE_TAG,
+    MESSENGER_TAG,
+    reload_model_as_proxy,
+)
 from server.utils.arx_utils import get_date, create_arx_message, inform_staff
 
 
@@ -55,7 +63,11 @@ class MessengerHandler(MsgHandlerBase):
         """
         Returns a list of all messengers this character has received. Does not include pending.
         """
-        pending_ids = [tup[0].id for tup in self.pending_messengers if tup and tup[0] and hasattr(tup[0], 'id')]
+        pending_ids = [
+            tup[0].id
+            for tup in self.pending_messengers
+            if tup and tup[0] and hasattr(tup[0], "id")
+        ]
         self._messenger_history = list(self.messenger_qs.exclude(id__in=pending_ids))
         return self._messenger_history
 
@@ -81,7 +93,9 @@ class MessengerHandler(MsgHandlerBase):
         if not date:
             date = get_date()
         header = self.create_messenger_header(date)
-        msg = create_arx_message(self.obj, msg, receivers=None, header=header, cls=cls, tags=MESSENGER_TAG)
+        msg = create_arx_message(
+            self.obj, msg, receivers=None, header=header, cls=cls, tags=MESSENGER_TAG
+        )
         return msg
 
     def del_messenger(self, msg):
@@ -117,7 +131,10 @@ class MessengerHandler(MsgHandlerBase):
             self.obj.msg("You will not receive messages discreetly.")
             return
         self.obj.db.discreet_messenger = val
-        self.obj.msg("%s will now deliver messages to you discreetly if they are in the same room." % val)
+        self.obj.msg(
+            "%s will now deliver messages to you discreetly if they are in the same room."
+            % val
+        )
 
     @property
     def pending_messengers(self):
@@ -148,8 +165,9 @@ class MessengerHandler(MsgHandlerBase):
         forwarded_by = None
         try:
             import numbers
+
             msg = msgtuple[0]
-            if msg and hasattr(msg, 'id') and msg.id:
+            if msg and hasattr(msg, "id") and msg.id:
                 # Very important: The Msg object is unpickled in Attributes as a Msg. It MUST be reloaded as its proxy
                 msg = reload_model_as_proxy(msg)
             delivered_object = msgtuple[1]
@@ -171,8 +189,11 @@ class MessengerHandler(MsgHandlerBase):
             pass
         except (TypeError, AttributeError):
             import traceback
+
             traceback.print_exc()
-            self.msg("The message object was in the wrong format or deleted, possibly a result of a database error.")
+            self.msg(
+                "The message object was in the wrong format or deleted, possibly a result of a database error."
+            )
             inform_staff("%s received a buggy messenger." % self.obj)
             return
         return msg, delivered_object, money, mats, messenger_name, forwarded_by
@@ -180,7 +201,7 @@ class MessengerHandler(MsgHandlerBase):
     def handle_delivery(self, obj, money, mats):
         """
         Handles the delivery of stuff from a Messenger to our character
-        
+
             Args:
                 obj (ObjectDB): Delivered object, of any typeclass
                 money (float): Amount of silver
@@ -215,21 +236,33 @@ class MessengerHandler(MsgHandlerBase):
         discreet = self.discreet_messenger
         try:
             if discreet.location == self.obj.location:
-                self.msg("%s has discreetly informed you of a message delivered by %s." % (discreet, messenger_name))
+                self.msg(
+                    "%s has discreetly informed you of a message delivered by %s."
+                    % (discreet, messenger_name)
+                )
             else:
                 discreet = None
         except AttributeError:
             discreet = None
         if not discreet:
-            ignore = [ob for ob in self.obj.location.contents if ob.db.ignore_messenger_deliveries and ob != self.obj]
-            self.obj.location.msg_contents("%s arrives, delivering a message to {c%s{n before departing." % (
-                messenger_name, self.obj.name), exclude=ignore)
+            ignore = [
+                ob
+                for ob in self.obj.location.contents
+                if ob.db.ignore_messenger_deliveries and ob != self.obj
+            ]
+            self.obj.location.msg_contents(
+                "%s arrives, delivering a message to {c%s{n before departing."
+                % (messenger_name, self.obj.name),
+                exclude=ignore,
+            )
 
     def get_packed_messenger(self):
         pending = self.pending_messengers
         if isinstance(pending, str):
-            self.msg("Your pending_messengers attribute was corrupted in the database conversion. "
-                     "Sorry! Ask a GM to see if they can find which messages were yours.")
+            self.msg(
+                "Your pending_messengers attribute was corrupted in the database conversion. "
+                "Sorry! Ask a GM to see if they can find which messages were yours."
+            )
             self.obj.db.pending_messengers = []
             return
         if not pending:
@@ -242,15 +275,25 @@ class MessengerHandler(MsgHandlerBase):
         if not packed:
             return
         # get msg object and any delivered obj
-        msg, obj, money, mats, messenger_name, forwarded_by = self.unpack_oldest_pending_messenger(packed)
+        (
+            msg,
+            obj,
+            money,
+            mats,
+            messenger_name,
+            forwarded_by,
+        ) = self.unpack_oldest_pending_messenger(packed)
         # adds it to our list of old messages
-        if msg and hasattr(msg, 'id') and msg.id:
+        if msg and hasattr(msg, "id") and msg.id:
             self.add_messenger_to_history(msg)
             self.display_messenger(msg)
         else:
             from evennia.utils.logger import log_err
+
             self.msg("Error: The msg object no longer exists.")
-            log_err("%s has tried to receive a messenger that no longer exists." % self.obj)
+            log_err(
+                "%s has tried to receive a messenger that no longer exists." % self.obj
+            )
         self.notify_of_messenger_arrival(messenger_name)
         # handle anything delivered
         self.handle_delivery(obj, money, mats)
@@ -259,13 +302,15 @@ class MessengerHandler(MsgHandlerBase):
 
     def display_messenger(self, msg):
         if not msg:
-            self.msg("It appears this messenger was deleted already. If this appears to be an error, "
-                     "inform staff please.")
+            self.msg(
+                "It appears this messenger was deleted already. If this appears to be an error, "
+                "inform staff please."
+            )
             return
         name = self.get_sender_name(msg)
         mssg = "{wSent by:{n %s\n" % name
         mssg += self.disp_entry(msg)
-        self.msg(mssg, options={'box': True})
+        self.msg(mssg, options={"box": True})
 
     def add_messenger_to_history(self, msg):
         """marks us as having received the message"""
@@ -282,21 +327,26 @@ class MessengerHandler(MsgHandlerBase):
         # delete our oldest messenger that isn't marked to preserve
         self.delete_oldest_unpreserved_messenger()
         return msg
-        
+
     def delete_oldest_unpreserved_messenger(self):
-        qs = self.messenger_qs.exclude(q_msgtag(PRESERVE_TAG)).order_by('db_date_created')
+        qs = self.messenger_qs.exclude(q_msgtag(PRESERVE_TAG)).order_by(
+            "db_date_created"
+        )
         if qs.count() > 30:
             self.del_messenger(qs.first())
 
     def messenger_notification(self, num_times=1, force=False):
         from twisted.internet import reactor
+
         if self.pending_messengers:
             # send messages to our player object so even an @ooc player will see them
             player = self.obj.player_ob
             if not player or not player.is_connected:
                 return
             if force or not player.db.ignore_messenger_notifications:
-                player.msg("{mYou have %s messengers waiting.{n" % len(self.pending_messengers))
+                player.msg(
+                    "{mYou have %s messengers waiting.{n" % len(self.pending_messengers)
+                )
                 self.msg("(To receive a messenger, type 'receive messenger')")
                 num_times -= 1
                 if num_times > 0:
@@ -318,7 +368,9 @@ class MessengerHandler(MsgHandlerBase):
         self.send_packed_messenger_to_receivers(packed, targs)
         self.messenger_draft = None
 
-    def create_and_send_messenger(self, text, receivers, delivery=None, money=None, mats=None):
+    def create_and_send_messenger(
+        self, text, receivers, delivery=None, money=None, mats=None
+    ):
         """
         Creates a new messenger and sends it off to our receivers
         Args:
@@ -330,7 +382,9 @@ class MessengerHandler(MsgHandlerBase):
         """
         messenger = self.create_messenger(text)
         self.prep_deliveries(receivers, delivery, money, mats)
-        packed = self.pack_messenger_for_delivery(messenger, delivery=delivery, money=money, mats=mats)
+        packed = self.pack_messenger_for_delivery(
+            messenger, delivery=delivery, money=money, mats=mats
+        )
         self.send_packed_messenger_to_receivers(packed, receivers)
 
     def prep_deliveries(self, receivers, delivery=None, money=None, mats=None):
@@ -357,7 +411,9 @@ class MessengerHandler(MsgHandlerBase):
             pmats = self.obj.player.Dominion.assets.materials
             pmat = pmats.get(type=mats[0])
             if pmat.amount < amt:
-                raise ValueError("Attempted to send more materials than you have available.")
+                raise ValueError(
+                    "Attempted to send more materials than you have available."
+                )
             pmat.amount -= amt
             pmat.save()
 
@@ -368,7 +424,9 @@ class MessengerHandler(MsgHandlerBase):
             receivers: List of Characters for our forwarded Messenger
             messenger: Messenger object to be forwarded
         """
-        packed = self.pack_messenger_for_delivery(messenger, delivery=None, money=None, mats=None, forwarder=self.obj)
+        packed = self.pack_messenger_for_delivery(
+            messenger, delivery=None, money=None, mats=None, forwarder=self.obj
+        )
         self.send_packed_messenger_to_receivers(packed, receivers)
 
     def send_packed_messenger_to_receivers(self, packed, receivers):
@@ -411,8 +469,10 @@ class MessengerHandler(MsgHandlerBase):
         if self.no_messenger_preview:
             self.msg("You dispatch %s to {c%s{n." % (m_name or "a messenger", names))
         else:
-            self.msg("You dispatch %s to {c%s{n with the following message:\n\n'%s'\n" % (
-                m_name or "a messenger", names, messenger.db_message))
+            self.msg(
+                "You dispatch %s to {c%s{n with the following message:\n\n'%s'\n"
+                % (m_name or "a messenger", names, messenger.db_message)
+            )
         deliver_str = m_name or "Your messenger"
         if delivery:
             self.msg("%s will also deliver %s." % (deliver_str, delivery))
@@ -422,7 +482,9 @@ class MessengerHandler(MsgHandlerBase):
             mat = CraftingMaterialType.objects.get(id=mats[0])
             self.msg("%s will also deliver %s %s." % (deliver_str, mats[1], mat))
 
-    def pack_messenger_for_delivery(self, messenger, delivery=None, money=None, mats=None, forwarder=None):
+    def pack_messenger_for_delivery(
+        self, messenger, delivery=None, money=None, mats=None, forwarder=None
+    ):
         """
         Gets a list that will be used for serializing into a receiver's list of pending messengers.
         Args:
@@ -460,7 +522,9 @@ class MessengerHandler(MsgHandlerBase):
     def custom_messenger(self, val):
         if not val:
             self.obj.attributes.remove("custom_messenger")
-            self.msg("You will no longer have a custom messenger deliver messages for you.")
+            self.msg(
+                "You will no longer have a custom messenger deliver messages for you."
+            )
             return
         self.obj.db.custom_messenger = val
         self.msg("You will now have %s act as your messenger." % val)

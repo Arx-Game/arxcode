@@ -8,13 +8,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0048_shardhavenpuzzle_haven_types'),
+        ("exploration", "0048_shardhavenpuzzle_haven_types"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='shardhavenpuzzle',
-            name='haven_types',
-            field=models.ManyToManyField(related_name='puzzles', to='exploration.ShardhavenType'),
+            model_name="shardhavenpuzzle",
+            name="haven_types",
+            field=models.ManyToManyField(
+                related_name="puzzles", to="exploration.ShardhavenType"
+            ),
         ),
     ]

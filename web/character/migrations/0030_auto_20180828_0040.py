@@ -28,17 +28,23 @@ def add_progress_to_investigations(apps, schema_editor):
     the OuterRef is to Investigation's clue_target_id field, which is then used to set an annotation which is
     used in the update.
     """
-    ClueDiscovery = apps.get_model('character', "ClueDiscovery")
-    Investigation = apps.get_model('character', "Investigation")
-    Clue = apps.get_model('character', "Clue")
+    ClueDiscovery = apps.get_model("character", "ClueDiscovery")
+    Investigation = apps.get_model("character", "Investigation")
+    Clue = apps.get_model("character", "Clue")
     qs = Investigation.objects.filter(clue_target__isnull=False)
-    roll_subquery = ClueDiscovery.objects.filter(roll__gt=0, investigation=OuterRef('id')).values_list('roll')[:1]
+    roll_subquery = ClueDiscovery.objects.filter(
+        roll__gt=0, investigation=OuterRef("id")
+    ).values_list("roll")[:1]
     qs = qs.annotate(clue_roll=Subquery(roll_subquery)).filter(clue_roll__isnull=False)
-    rating_subquery = Clue.objects.filter(id=OuterRef('clue_target_id')).values_list('rating')[:1]
-    qs = qs.annotate(clue_rating=Subquery(rating_subquery)).filter(clue_rating__isnull=False)
-    qs.update(progress=F('clue_roll'), completion_value=F('clue_rating'))
+    rating_subquery = Clue.objects.filter(id=OuterRef("clue_target_id")).values_list(
+        "rating"
+    )[:1]
+    qs = qs.annotate(clue_rating=Subquery(rating_subquery)).filter(
+        clue_rating__isnull=False
+    )
+    qs.update(progress=F("clue_roll"), completion_value=F("clue_rating"))
     # delete clue discoveries that were below the discovery threshold
-    ClueDiscovery.objects.filter(roll__lt=F('clue__rating') * 10).delete()
+    ClueDiscovery.objects.filter(roll__lt=F("clue__rating") * 10).delete()
 
 
 def transfer_lore_topics_to_revelation_gmnotes(apps, schema_editor):
@@ -48,10 +54,10 @@ def transfer_lore_topics_to_revelation_gmnotes(apps, schema_editor):
     we'll copy over the LoreTopic's desc directly to Revelation's gmnotes field. If not, we'll
     create a Revelation with the appropriate gm_notes and add its search tags to it.
     """
-    Revelation = apps.get_model('character', "Revelation")
-    LoreTopic = apps.get_model('character', "LoreTopic")
-    RevelationSearchTagThrough = apps.get_model('character', "Revelation_search_tags")
-    SearchTag = apps.get_model('character', "SearchTag")
+    Revelation = apps.get_model("character", "Revelation")
+    LoreTopic = apps.get_model("character", "LoreTopic")
+    RevelationSearchTagThrough = apps.get_model("character", "Revelation_search_tags")
+    SearchTag = apps.get_model("character", "SearchTag")
     revelation_bulk_create_list = []
     rev_tag_bulk_create_list = []
     for topic in LoreTopic.objects.all():
@@ -60,12 +66,22 @@ def transfer_lore_topics_to_revelation_gmnotes(apps, schema_editor):
             match.gm_notes = topic.desc
             match.save()
         except Revelation.DoesNotExist:
-            revelation_bulk_create_list.append(Revelation(name=topic.name, gm_notes=topic.desc))
+            revelation_bulk_create_list.append(
+                Revelation(name=topic.name, gm_notes=topic.desc)
+            )
     Revelation.objects.bulk_create(revelation_bulk_create_list)
-    subquery = Revelation.objects.filter(name=OuterRef('topic__name')).values_list('id')[:1]
-    qs = SearchTag.objects.exclude(topic__isnull=True).annotate(revelation=Subquery(subquery)).exclude(revelation__isnull=True)
+    subquery = Revelation.objects.filter(name=OuterRef("topic__name")).values_list(
+        "id"
+    )[:1]
+    qs = (
+        SearchTag.objects.exclude(topic__isnull=True)
+        .annotate(revelation=Subquery(subquery))
+        .exclude(revelation__isnull=True)
+    )
     for tag in qs:
-        rev_tag_bulk_create_list.append(RevelationSearchTagThrough(revelation_id=tag.revelation, searchtag=tag))
+        rev_tag_bulk_create_list.append(
+            RevelationSearchTagThrough(revelation_id=tag.revelation, searchtag=tag)
+        )
     RevelationSearchTagThrough.objects.bulk_create(rev_tag_bulk_create_list)
 
 
@@ -78,7 +94,11 @@ def set_clue_authors(apps, schema_editor):
     Clue = apps.get_model("character", "Clue")
     for clue in Clue.objects.filter(event__isnull=False):
         try:
-            clue.author = clue.event.dompcs.filter(event_participation__gm=True).first().player.roster
+            clue.author = (
+                clue.event.dompcs.filter(event_participation__gm=True)
+                .first()
+                .player.roster
+            )
             clue.save()
         except AttributeError:
             pass
@@ -90,9 +110,9 @@ def convert_secrets_to_clues(apps, schema_editor):
     into a clue. After they become Clues, they can be shared, tied to other entities such as Revelations which
     contain the relevant lore they're a part of, have tags attached to them for searching, be used in plots, etc.
     """
-    Attribute = apps.get_model('typeclasses', "Attribute")
-    Clue = apps.get_model('character', "Clue")
-    ClueDiscovery = apps.get_model('character', "ClueDiscovery")
+    Attribute = apps.get_model("typeclasses", "Attribute")
+    Clue = apps.get_model("character", "Clue")
+    ClueDiscovery = apps.get_model("character", "ClueDiscovery")
     qs = Attribute.objects.filter(db_key="secrets")
     clue_bulk_list = []
     disco_bulk_list = []
@@ -105,20 +125,33 @@ def convert_secrets_to_clues(apps, schema_editor):
             for num in range(len(secrets_list)):
                 name = "Secret #%s of %s" % (num + 1, objdb.db_key)
                 desc = secrets_list[num]
-                clue_bulk_list.append(Clue(name=name, desc=desc, clue_type=2, tangible_object=objdb,
-                                           author=entry))
+                clue_bulk_list.append(
+                    Clue(
+                        name=name,
+                        desc=desc,
+                        clue_type=2,
+                        tangible_object=objdb,
+                        author=entry,
+                    )
+                )
         except (AttributeError, ValueError, TypeError):
             orphan_secrets += "%s\n...\n" % ob.db_value
     if orphan_secrets:
-        with open('orphan_secrets.txt', 'a+') as log:
+        with open("orphan_secrets.txt", "a+") as log:
             log.write(str(orphan_secrets))
     Clue.objects.bulk_create(clue_bulk_list)
     # delete old secrets
     qs.delete()
     qs = Clue.objects.filter(clue_type=2)
     for ob in qs:
-        disco_bulk_list.append(ClueDiscovery(clue=ob, character=ob.author, discovery_method="GM granted",
-                                             date=ob.tangible_object.db_date_created))
+        disco_bulk_list.append(
+            ClueDiscovery(
+                clue=ob,
+                character=ob.author,
+                discovery_method="GM granted",
+                date=ob.tangible_object.db_date_created,
+            )
+        )
     ClueDiscovery.objects.bulk_create(disco_bulk_list)
     # remove the author field now that we're no longer using it to check for orphans
     qs.update(author=None)
@@ -129,10 +162,10 @@ def convert_visions_to_clues(apps, schema_editor):
     Converts visions which were before stored as Msg proxy models into clues, so that they can be shared
     with other characters.
     """
-    Msg = apps.get_model('comms', "Msg")
-    Clue = apps.get_model('character', "Clue")
-    ClueDiscovery = apps.get_model('character', "ClueDiscovery")
-    Tag = apps.get_model('typeclasses', "Tag")
+    Msg = apps.get_model("comms", "Msg")
+    Clue = apps.get_model("character", "Clue")
+    ClueDiscovery = apps.get_model("character", "ClueDiscovery")
+    Tag = apps.get_model("typeclasses", "Tag")
     try:
         tag = Tag.objects.get(db_key="visions", db_category="msg")
     except Tag.DoesNotExist:
@@ -146,10 +179,18 @@ def convert_visions_to_clues(apps, schema_editor):
         except AttributeError:
             author = None
         name = "<Placeholder Vision Name, ID#%d>" % vision.id
-        clue = Clue.objects.create(name=name, desc=vision.db_message, author=author, clue_type=1, rating=25)
+        clue = Clue.objects.create(
+            name=name, desc=vision.db_message, author=author, clue_type=1, rating=25
+        )
         for receiver in receivers:
-            bulk_create_list.append(ClueDiscovery(clue=clue, character=receiver.roster, date=vision.db_date_created,
-                                                  discovery_method="original receiver"))
+            bulk_create_list.append(
+                ClueDiscovery(
+                    clue=clue,
+                    character=receiver.roster,
+                    date=vision.db_date_created,
+                    discovery_method="original receiver",
+                )
+            )
     ClueDiscovery.objects.bulk_create(bulk_create_list)
     visions.delete()
     tag.delete()
@@ -161,7 +202,7 @@ def convert_gmnotes_to_clue_fields(apps, schema_editor):
     TextField on secrets present on a Character. If the Character has no existing secret, it'll create a
     blank one for them to store the gm_notes.
     """
-    Attribute = apps.get_model('typeclasses', "Attribute")
+    Attribute = apps.get_model("typeclasses", "Attribute")
     qs = Attribute.objects.filter(db_key="gm_notes")
     orphan_gmnotes = ""
     for ob in qs:
@@ -170,211 +211,332 @@ def convert_gmnotes_to_clue_fields(apps, schema_editor):
             first_secret = objdb.clues.filter(clue_type=2).first()
             if not first_secret:
                 name = "PLACEHOLDER: Secret #1 of %s" % objdb.db_key
-                first_secret = objdb.clues.create(clue_type=2, name=name, tangible_object=objdb)
+                first_secret = objdb.clues.create(
+                    clue_type=2, name=name, tangible_object=objdb
+                )
             first_secret.gm_notes = (first_secret.gm_notes or "") + "\n%s" % ob.db_value
             first_secret.save()
         except (AttributeError, ValueError, TypeError):
             orphan_gmnotes += "%s\n...\n" % ob.db_value
     if orphan_gmnotes:
-        with open('orphan_gmnotes.txt', 'a+') as log:
+        with open("orphan_gmnotes.txt", "a+") as log:
             log.write(str(orphan_gmnotes))
     qs.delete()
 
 
 class Migration(migrations.Migration):
     """Migration operations for fixing up character models"""
+
     dependencies = [
-        ('character', '0029_auto_20181111_2007'),
-        ('dominion', '0035_auto_20180831_0922'),
+        ("character", "0029_auto_20181111_2007"),
+        ("dominion", "0035_auto_20180831_0922"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='clue',
-            name='author',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='clues_written', to='character.RosterEntry'),
+            model_name="clue",
+            name="author",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="clues_written",
+                to="character.RosterEntry",
+            ),
         ),
         migrations.AddField(
-            model_name='clue',
-            name='tangible_object',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
-                                    help_text=b"An in-game object that this Clue is a secret or backstory for",
-                                    related_name='clues', to='objects.ObjectDB'),
+            model_name="clue",
+            name="tangible_object",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                help_text=b"An in-game object that this Clue is a secret or backstory for",
+                related_name="clues",
+                to="objects.ObjectDB",
+            ),
         ),
         migrations.RunPython(set_clue_authors),
         migrations.AddField(
-            model_name='revelation',
-            name='author',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='revelations_written', to='character.RosterEntry'),
+            model_name="revelation",
+            name="author",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="revelations_written",
+                to="character.RosterEntry",
+            ),
         ),
         migrations.CreateModel(
-            name='RevelationPlotInvolvement',
+            name="RevelationPlotInvolvement",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('plot',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='revelation_involvement',
-                                   to='dominion.Plot')),
-                ('revelation',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='plot_involvement',
-                                   to='character.Revelation')),
-                ('gm_notes', models.TextField(blank=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "plot",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="revelation_involvement",
+                        to="dominion.Plot",
+                    ),
+                ),
+                (
+                    "revelation",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="plot_involvement",
+                        to="character.Revelation",
+                    ),
+                ),
+                ("gm_notes", models.TextField(blank=True)),
             ],
-            options={'abstract': False},
+            options={"abstract": False},
         ),
         migrations.RemoveField(
-            model_name='mystery',
-            name='characters',
+            model_name="mystery",
+            name="characters",
         ),
         migrations.AddField(
-            model_name='investigation',
-            name='completion_value',
-            field=models.IntegerField(default=300, help_text=b'Total progress needed to make a discovery.'),
+            model_name="investigation",
+            name="completion_value",
+            field=models.IntegerField(
+                default=300, help_text=b"Total progress needed to make a discovery."
+            ),
         ),
         migrations.AddField(
-            model_name='investigation',
-            name='progress',
-            field=models.IntegerField(default=0, help_text=b'Progress made towards a discovery.'),
+            model_name="investigation",
+            name="progress",
+            field=models.IntegerField(
+                default=0, help_text=b"Progress made towards a discovery."
+            ),
         ),
         migrations.RunPython(add_progress_to_investigations),
         migrations.AlterField(
-            model_name='clue',
-            name='characters',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='clues',
-                                         through='character.ClueDiscovery', to='character.RosterEntry'),
+            model_name="clue",
+            name="characters",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="clues",
+                through="character.ClueDiscovery",
+                to="character.RosterEntry",
+            ),
         ),
         migrations.AlterField(
-            model_name='clue',
-            name='revelations',
-            field=models.ManyToManyField(blank=True, related_name='clues', through='character.ClueForRevelation',
-                                         to='character.Revelation'),
+            model_name="clue",
+            name="revelations",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="clues",
+                through="character.ClueForRevelation",
+                to="character.Revelation",
+            ),
         ),
         migrations.AlterField(
-            model_name='cluediscovery',
-            name='character',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='clue_discoveries',
-                                    to='character.RosterEntry'),
+            model_name="cluediscovery",
+            name="character",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="clue_discoveries",
+                to="character.RosterEntry",
+            ),
         ),
         migrations.AlterField(
-            model_name='cluediscovery',
-            name='investigation',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
-                                    related_name='clue_discoveries', to='character.Investigation'),
+            model_name="cluediscovery",
+            name="investigation",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="clue_discoveries",
+                to="character.Investigation",
+            ),
         ),
         migrations.RemoveField(
-            model_name='cluediscovery',
-            name='roll',
+            model_name="cluediscovery",
+            name="roll",
         ),
         migrations.AlterUniqueTogether(
-            name='cluediscovery',
-            unique_together=set([('clue', 'character')]),
+            name="cluediscovery",
+            unique_together=set([("clue", "character")]),
         ),
         migrations.DeleteModel(
-            name='MysteryDiscovery',
+            name="MysteryDiscovery",
         ),
         migrations.AddField(
-            model_name='revelation',
-            name='plots',
-            field=models.ManyToManyField(blank=True, related_name='revelations',
-                                         through='character.RevelationPlotInvolvement', to='dominion.Plot'),
+            model_name="revelation",
+            name="plots",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="revelations",
+                through="character.RevelationPlotInvolvement",
+                to="dominion.Plot",
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='revelationplotinvolvement',
-            unique_together=set([('revelation', 'plot')]),
+            name="revelationplotinvolvement",
+            unique_together=set([("revelation", "plot")]),
         ),
         migrations.AddField(
-            model_name='clue',
-            name='clue_type',
+            model_name="clue",
+            name="clue_type",
             field=models.PositiveSmallIntegerField(
-                choices=[((0, b'Game Lore'), (1, b'Vision'), (2, b'Character Secret'))], default=0),
+                choices=[((0, b"Game Lore"), (1, b"Vision"), (2, b"Character Secret"))],
+                default=0,
+            ),
         ),
         migrations.AddField(
-            model_name='revelation',
-            name='gm_notes',
-            field=models.TextField(blank=True, help_text=b'OOC Notes about this topic'),
+            model_name="revelation",
+            name="gm_notes",
+            field=models.TextField(blank=True, help_text=b"OOC Notes about this topic"),
         ),
         migrations.AddField(
-            model_name='revelation',
-            name='search_tags',
-            field=models.ManyToManyField(blank=True, related_name='revelations', to='character.SearchTag'),
+            model_name="revelation",
+            name="search_tags",
+            field=models.ManyToManyField(
+                blank=True, related_name="revelations", to="character.SearchTag"
+            ),
         ),
         migrations.RunPython(transfer_lore_topics_to_revelation_gmnotes),
         migrations.AlterField(
-            model_name='clue',
-            name='search_tags',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='clues', to='character.SearchTag'),
+            model_name="clue",
+            name="search_tags",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="clues",
+                to="character.SearchTag",
+            ),
         ),
         migrations.DeleteModel(
-            name='LoreTopic',
+            name="LoreTopic",
         ),
         migrations.RemoveField(
-            model_name='searchtag',
-            name='topic',
+            model_name="searchtag",
+            name="topic",
         ),
         migrations.RemoveField(
-            model_name='clue',
-            name='event',
+            model_name="clue",
+            name="event",
         ),
         migrations.RunPython(convert_secrets_to_clues),
         migrations.RunPython(convert_visions_to_clues),
         migrations.AddField(
-            model_name='searchtag',
-            name='game_objects',
-            field=models.ManyToManyField(blank=True, related_name='search_tags', to='objects.ObjectDB'),
+            model_name="searchtag",
+            name="game_objects",
+            field=models.ManyToManyField(
+                blank=True, related_name="search_tags", to="objects.ObjectDB"
+            ),
         ),
         migrations.AddField(
-            model_name='storyemit',
-            name='search_tags',
-            field=models.ManyToManyField(blank=True, related_name='emits', to='character.SearchTag'),
+            model_name="storyemit",
+            name="search_tags",
+            field=models.ManyToManyField(
+                blank=True, related_name="emits", to="character.SearchTag"
+            ),
         ),
         migrations.CreateModel(
-            name='CluePlotInvolvement',
+            name="CluePlotInvolvement",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('clue',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='plot_involvement',
-                                   to='character.Clue')),
-                ('plot',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='clue_involvement',
-                                   to='dominion.Plot')),
-                ('gm_notes', models.TextField(blank=True)),
-                ('access', models.PositiveSmallIntegerField(
-                 choices=[(0, b'Neutral'), (1, b'Hooked'), (2, b'Granted')], default=0),)
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "clue",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="plot_involvement",
+                        to="character.Clue",
+                    ),
+                ),
+                (
+                    "plot",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="clue_involvement",
+                        to="dominion.Plot",
+                    ),
+                ),
+                ("gm_notes", models.TextField(blank=True)),
+                (
+                    "access",
+                    models.PositiveSmallIntegerField(
+                        choices=[(0, b"Neutral"), (1, b"Hooked"), (2, b"Granted")],
+                        default=0,
+                    ),
+                ),
             ],
-            options={'abstract': False},
+            options={"abstract": False},
         ),
         migrations.AddField(
-            model_name='clue',
-            name='plots',
-            field=models.ManyToManyField(blank=True, related_name='clues',
-                                         through='character.CluePlotInvolvement', to='dominion.Plot'),
+            model_name="clue",
+            name="plots",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="clues",
+                through="character.CluePlotInvolvement",
+                to="dominion.Plot",
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='clueplotinvolvement',
-            unique_together=set([('clue', 'plot')]),
+            name="clueplotinvolvement",
+            unique_together=set([("clue", "plot")]),
         ),
         migrations.RunPython(convert_gmnotes_to_clue_fields),
         migrations.AlterField(
-            model_name='revelation',
-            name='characters',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='revelations',
-                                         through='character.RevelationDiscovery', to='character.RosterEntry'),
+            model_name="revelation",
+            name="characters",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="revelations",
+                through="character.RevelationDiscovery",
+                to="character.RosterEntry",
+            ),
         ),
         migrations.AlterField(
-            model_name='revelationdiscovery',
-            name='character',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='revelation_discoveries',
-                                    to='character.RosterEntry'),
+            model_name="revelationdiscovery",
+            name="character",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="revelation_discoveries",
+                to="character.RosterEntry",
+            ),
         ),
         migrations.AddField(
-            model_name='flashback',
-            name='beat',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
-                                    related_name='flashbacks', to='dominion.PlotUpdate'),
+            model_name="flashback",
+            name="beat",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="flashbacks",
+                to="dominion.PlotUpdate",
+            ),
         ),
         migrations.AddField(
-            model_name='storyemit',
-            name='beat',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
-                                    related_name='emits', to='dominion.PlotUpdate'),
+            model_name="storyemit",
+            name="beat",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="emits",
+                to="dominion.PlotUpdate",
+            ),
         ),
     ]

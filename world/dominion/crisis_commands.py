@@ -10,14 +10,16 @@ from world.dominion.plots.models import Plot, PlotAction, PlotActionAssistant
 class CrisisCmdMixin(object):
     @property
     def viewable_crises(self):
-        qs = Plot.objects.viewable_by_player(self.caller).order_by('end_date')
+        qs = Plot.objects.viewable_by_player(self.caller).order_by("end_date")
         return qs
 
     def list_crises(self):
         qs = self.viewable_crises
         resolved = "old" in self.switches
         qs = qs.filter(usage=Plot.CRISIS, resolved=resolved)
-        table = EvTable("{w#{n", "{wName{n", "{wDesc{n", "{wUpdates On{n", width=78, border="cells")
+        table = EvTable(
+            "{w#{n", "{wName{n", "{wDesc{n", "{wUpdates On{n", width=78, border="cells"
+        )
         for ob in qs:
             date = "--" if not ob.end_date else ob.end_date.strftime("%m/%d")
             table.add_row(ob.id, ob.name, ob.headline, date)
@@ -40,7 +42,12 @@ class CrisisCmdMixin(object):
         crisis = self.get_crisis(self.lhs)
         if not crisis:
             return self.list_crises()
-        self.msg(crisis.display(display_connected=self.called_by_staff, staff_display=self.called_by_staff))
+        self.msg(
+            crisis.display(
+                display_connected=self.called_by_staff,
+                staff_display=self.called_by_staff,
+            )
+        )
 
 
 class CmdGMCrisis(CrisisCmdMixin, ArxPlayerCommand):
@@ -69,6 +76,7 @@ class CmdGMCrisis(CrisisCmdMixin, ArxPlayerCommand):
     probably shouldn't be sent or should be the vague details that people have
     no idea the crisis exists might notice.
     """
+
     key = "@gmcrisis"
     locks = "cmd:perm(wizards)"
     help_category = "GMing"
@@ -111,8 +119,14 @@ class CmdGMCrisis(CrisisCmdMixin, ArxPlayerCommand):
         gm_notes = None
         if len(rhs) > 1:
             gm_notes = rhs[1]
-        crisis.create_update(gemit, self.caller, gm_notes, do_gemit="nogemit" not in self.switches,
-                             episode_name=episode_name, episode_synopsis=episode_synopsis)
+        crisis.create_update(
+            gemit,
+            self.caller,
+            gm_notes,
+            do_gemit="nogemit" not in self.switches,
+            episode_name=episode_name,
+            episode_synopsis=episode_synopsis,
+        )
         episode_text = ""
         if episode_name:
             episode_text = ", creating a new episode called '%s'" % episode_name
@@ -141,13 +155,16 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
 
     To create a new action, use the @action command.
     """
+
     key = "crisis"
     locks = "cmd:all()"
     help_category = "Story"
 
     @property
     def current_actions(self):
-        return self.caller.Dominion.actions.exclude(status__in=(PlotAction.PUBLISHED, PlotAction.CANCELLED))
+        return self.caller.Dominion.actions.exclude(
+            status__in=(PlotAction.PUBLISHED, PlotAction.CANCELLED)
+        )
 
     @property
     def assisted_actions(self):
@@ -158,8 +175,12 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
         self.msg("{wYour pending actions:{n")
         table = EvTable("{w#{n", "{wCrisis{n")
         current_actions = [ob for ob in self.current_actions if ob.plot] + [
-            ass.plot_action for ass in self.assisted_actions.exclude(
-                plot_action__status__in=(PlotAction.PUBLISHED, PlotAction.CANCELLED)) if ass.plot_action.plot]
+            ass.plot_action
+            for ass in self.assisted_actions.exclude(
+                plot_action__status__in=(PlotAction.PUBLISHED, PlotAction.CANCELLED)
+            )
+            if ass.plot_action.plot
+        ]
         for ob in current_actions:
             table.add_row(ob.id, ob.plot)
         self.msg(table)
@@ -176,7 +197,9 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
         if not get_all and not get_assisted:
             qs = self.current_actions
         else:
-            qs = PlotAction.objects.filter(Q(dompc=dompc) | Q(assistants=dompc)).distinct()
+            qs = PlotAction.objects.filter(
+                Q(dompc=dompc) | Q(assistants=dompc)
+            ).distinct()
         try:
             action = qs.get(id=self.lhs)
             if not action.pk:
@@ -190,8 +213,10 @@ class CmdViewCrisis(CrisisCmdMixin, ArxPlayerCommand):
                     return
             return action
         except (PlotAction.DoesNotExist, ValueError):
-            self.msg("No action found by that id. Remember to specify the number of the action, not the crisis. " +
-                     "Use /assist if trying to change your assistance of an action.")
+            self.msg(
+                "No action found by that id. Remember to specify the number of the action, not the crisis. "
+                + "Use /assist if trying to change your assistance of an action."
+            )
         return
 
     def view_action(self):

@@ -3,4 +3,5 @@
 
 class EquipError(Exception):
     """Errors when donning equipment"""
+
     pass

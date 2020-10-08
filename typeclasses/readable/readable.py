@@ -13,6 +13,7 @@ class Readable(Object):
     """
     Class for objects that can be written/named
     """
+
     default_desc = "Nothing has been written on this yet. '{whelp write{n'"
 
     def at_object_creation(self):
@@ -101,6 +102,7 @@ class CmdSign(ArxCommand):
 
     Places your signature on a document.
     """
+
     key = "sign"
     locks = "cmd:all()"
 
@@ -137,6 +139,7 @@ class CmdWrite(ArxCommand, TemplateMixins):
     Check your changes with /proof, and then finalize changes with /finish.
     Once set, no further changes can be made.
     """
+
     key = "write"
     locks = "cmd:all()"
 
@@ -158,7 +161,7 @@ class CmdWrite(ArxCommand, TemplateMixins):
 
         if not self.args and not self.switches:
             self.switches.append("proof")
-        if not self.switches or 'desc' in self.switches:
+        if not self.switches or "desc" in self.switches:
             if not self.can_apply_templates(caller, self.args):
                 return
             obj.ndb.desc = self.args
@@ -182,7 +185,7 @@ class CmdWrite(ArxCommand, TemplateMixins):
             return
         if "proof" in self.switches:
             msg = self.display()
-            caller.msg(msg, options={'box': True})
+            caller.msg(msg, options={"box": True})
             return
         if "finish" in self.switches:
             name = obj.ndb.title
@@ -195,9 +198,14 @@ class CmdWrite(ArxCommand, TemplateMixins):
                 return
             if obj.db.num_instances > 1:
                 from evennia.utils.create import create_object
+
                 remain = obj.db.num_instances - 1
-                newobj = create_object(typeclass="typeclasses.readable.readable.Readable",
-                                       key='book', location=caller, home=caller)
+                newobj = create_object(
+                    typeclass="typeclasses.readable.readable.Readable",
+                    key="book",
+                    location=caller,
+                    home=caller,
+                )
                 newobj.set_num(remain)
             obj.db.num_instances = 1
             obj.name = name
@@ -205,7 +213,7 @@ class CmdWrite(ArxCommand, TemplateMixins):
             if obj.ndb.transtext:
                 obj.db.translation = obj.ndb.transtext
             obj.save()
-            
+
             self.apply_templates_to(obj)
 
             caller.msg("You have written on %s." % obj.name)

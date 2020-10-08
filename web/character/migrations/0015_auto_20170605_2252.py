@@ -8,22 +8,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0014_firstcontact_viewable_by_all'),
+        ("character", "0014_firstcontact_viewable_by_all"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='firstcontact',
-            name='viewable_by_all',
+            model_name="firstcontact",
+            name="viewable_by_all",
         ),
         migrations.AddField(
-            model_name='firstcontact',
-            name='receiver_share',
+            model_name="firstcontact",
+            name="receiver_share",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='firstcontact',
-            name='writer_share',
+            model_name="firstcontact",
+            name="writer_share",
             field=models.BooleanField(default=False),
         ),
     ]

@@ -9,7 +9,6 @@ _MAX_PRIMUM_TIER2 = 10
 
 
 class MagicMixins(object):
-
     @property
     def practitioner(self):
         if self.ndb.practitioner:
@@ -231,8 +230,10 @@ class MagicMixins(object):
         return self.primum != 0
 
     def drain_primum(self, amount):
-        if self.practitioner or self.is_typeclass('typeclasses.characters.Character'):
-            logger.log_err("Tried to drain a Character of primum as though it were an Object!  Not good.")
+        if self.practitioner or self.is_typeclass("typeclasses.characters.Character"):
+            logger.log_err(
+                "Tried to drain a Character of primum as though it were an Object!  Not good."
+            )
             raise ValueError
 
         if self.primum == 0:
@@ -249,8 +250,10 @@ class MagicMixins(object):
             self.db.quality_level = self.quality_level_from_primum(self.db.primum)
 
     def infuse_primum(self, amount):
-        if self.practitioner or self.is_typeclass('typeclasses.characters.Character'):
-            logger.log_err("Tried to infuse a Character with primum as though it were an Object!  Not good.")
+        if self.practitioner or self.is_typeclass("typeclasses.characters.Character"):
+            logger.log_err(
+                "Tried to infuse a Character with primum as though it were an Object!  Not good."
+            )
             raise ValueError
 
         self.db.primum = min(self.primum + amount, self.max_potential)
@@ -285,8 +288,9 @@ class MagicMixins(object):
 
         base_string = "{} {} {}".format(part.capitalize(), adjective, noun)
         if second_noun and (second_noun != noun):
-            base_string = "Once {} {} {}, now only {} {}".format(part, adjective, second_noun,
-                                                                 a_or_an(noun), noun)
+            base_string = "Once {} {} {}, now only {} {}".format(
+                part, adjective, second_noun, a_or_an(noun), noun
+            )
 
         magic_desc_short = None
         if self.practitioner:
@@ -332,7 +336,7 @@ class MagicMixins(object):
             # effect with their magicword, so they can see that something legitimately
             # came from the magic system.
 
-            self.msg(text, options={'is_pose': True, 'is_magic': True})
+            self.msg(text, options={"is_pose": True, "is_magic": True})
             return
 
         if practitioner:
@@ -344,5 +348,7 @@ class MagicMixins(object):
 
     def msg_contents_magic(self, text, strength=10, guaranteed=False, mundane=False):
         for obj in self.contents:
-            if hasattr(obj, 'msg_magic'):
-                obj.msg_magic(text, strength=strength, guaranteed=guaranteed, mundane=mundane)
+            if hasattr(obj, "msg_magic"):
+                obj.msg_magic(
+                    text, strength=strength, guaranteed=guaranteed, mundane=mundane
+                )

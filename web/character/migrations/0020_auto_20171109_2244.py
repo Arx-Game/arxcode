@@ -9,28 +9,42 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0019_auto_20171029_1416'),
+        ("character", "0019_auto_20171029_1416"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='accounthistory',
-            name='contacts',
-            field=models.ManyToManyField(blank=True, related_name='contacted_by', through='character.FirstContact', to='character.AccountHistory'),
+            model_name="accounthistory",
+            name="contacts",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="contacted_by",
+                through="character.FirstContact",
+                to="character.AccountHistory",
+            ),
         ),
         migrations.AlterField(
-            model_name='clue',
-            name='search_tags',
-            field=models.ManyToManyField(blank=True, db_index=True, to='character.SearchTag'),
+            model_name="clue",
+            name="search_tags",
+            field=models.ManyToManyField(
+                blank=True, db_index=True, to="character.SearchTag"
+            ),
         ),
         migrations.AlterField(
-            model_name='theory',
-            name='known_by',
-            field=models.ManyToManyField(blank=True, related_name='known_theories', through='character.TheoryPermissions', to=settings.AUTH_USER_MODEL),
+            model_name="theory",
+            name="known_by",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="known_theories",
+                through="character.TheoryPermissions",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='theory',
-            name='related_clues',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='theories', to='character.Clue'),
+            model_name="theory",
+            name="related_clues",
+            field=models.ManyToManyField(
+                blank=True, db_index=True, related_name="theories", to="character.Clue"
+            ),
         ),
     ]

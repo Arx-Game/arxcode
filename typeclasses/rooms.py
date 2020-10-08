@@ -84,7 +84,9 @@ from world.msgs.messagehandler import MessageHandler
 from world.weather import utils as weather_utils
 
 # error return function, needed by Extended Look command
-_AT_SEARCH_RESULT = utils.variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
+_AT_SEARCH_RESULT = utils.variable_from_module(
+    *settings.SEARCH_AT_RESULT.rsplit(".", 1)
+)
 
 # room cmdsets
 MARKETCMD = "commands.cmdsets.market.MarketCmdSet"
@@ -103,6 +105,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
     time. It also allows for "details", together with a slightly modified
     look command.
     """
+
     def get_time_and_season(self):
         """
         Calculate the current time and season ids.
@@ -122,40 +125,54 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         super(ArxRoom, self).undelete(move=move)
         for entrance in self.entrances:
             entrance.undelete(move)
-        
+
     @lazy_property
     def messages(self):
         return MessageHandler(self)
 
     @property
     def player_characters(self):
-        return [ob for ob in self.contents if hasattr(ob, "is_character") and ob.is_character and ob.player]
-        
+        return [
+            ob
+            for ob in self.contents
+            if hasattr(ob, "is_character") and ob.is_character and ob.player
+        ]
+
     def get_visible_characters(self, pobject):
         """Returns a list of visible characters in a room."""
         return [char for char in self.player_characters if char.access(pobject, "view")]
 
-    def return_appearance(self, looker, detailed=False, format_desc=True, show_contents=True):
+    def return_appearance(
+        self, looker, detailed=False, format_desc=True, show_contents=True
+    ):
         """This is called when e.g. the look command wants to retrieve the description of this object."""
         # update desc
         ExtendedRoom.return_appearance(self, looker)
         # return updated desc plus other stuff
-        return (ObjectMixins.return_appearance(self, looker, detailed, format_desc)
-                + self.command_string() + self.mood_string + self.event_string() + self.extra_status_string(looker)
-                + self.combat_string(looker))
-    
+        return (
+            ObjectMixins.return_appearance(self, looker, detailed, format_desc)
+            + self.command_string()
+            + self.mood_string
+            + self.event_string()
+            + self.extra_status_string(looker)
+            + self.combat_string(looker)
+        )
+
     def _current_event(self):
         if not self.db.current_event:
             return None
         from world.dominion.models import RPEvent
+
         try:
             return RPEvent.objects.get(id=self.db.current_event)
         except (RPEvent.DoesNotExist, ValueError, TypeError):
             return None
+
     event = property(_current_event)
 
     def _entrances(self):
         return ObjectDB.objects.filter(db_destination=self)
+
     entrances = property(_entrances)
 
     def combat_string(self, looker):
@@ -172,12 +189,15 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
 
     def extra_status_string(self, looker):
         return ""
-    
+
     def event_string(self):
         event = self.event
         if not event:
             return ""
-        msg = "\n{wCurrent Event{n: %s (for more - {w@cal %s{n)" % (event.name, event.id)
+        msg = "\n{wCurrent Event{n: %s (for more - {w@cal %s{n)" % (
+            event.name,
+            event.id,
+        )
         if event.celebration_tier == 0:
             largesse = "poor"
         elif event.celebration_tier == 1:
@@ -227,7 +247,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         try:
             created = mood[1]
             if time.time() - created > 86400:
-                self.attributes.remove('room_mood')
+                self.attributes.remove("room_mood")
             else:
                 msg = "\n{wCurrent Room Mood:{n " + mood[2]
         except (IndexError, ValueError, TypeError):
@@ -236,6 +256,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
 
     def _homeowners(self):
         return self.db.owners or []
+
     homeowners = property(_homeowners)
 
     def give_key(self, char):
@@ -271,7 +292,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
             self.db.owners = owners
             if not owners:
                 self.del_home()
-        
+
     def setup_home(self, owners=None, sethomespace=True):
         owners = utils.make_iter(owners)
         for owner in owners:
@@ -282,6 +303,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         if "HomeCmdSet" not in [ob.key for ob in self.cmdset.all()]:
             self.cmdset.add(HOMECMD, permanent=True)
         from world.dominion.models import AssetOwner
+
         try:
             # add our room owner as a homeowner if they're a player
             aowner = AssetOwner.objects.get(id=self.db.room_owner)
@@ -326,7 +348,9 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         self.attributes.remove("blacklist")
         self.attributes.remove("shopowner")
 
-    def msg_contents(self, text=None, exclude=None, from_obj=None, mapping=None, **kwargs):
+    def msg_contents(
+        self, text=None, exclude=None, from_obj=None, mapping=None, **kwargs
+    ):
         """
         Emits something to all objects inside an object.
 
@@ -341,17 +365,20 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         else:
             message = text
         eventid = self.db.current_event
-        gm_only = kwargs.pop('gm_msg', False)
-        options = kwargs.get('options', {})
+        gm_only = kwargs.pop("gm_msg", False)
+        options = kwargs.get("options", {})
         if gm_only:
             exclude = exclude or []
-            exclude = exclude + [ob for ob in self.contents if not ob.check_permstring("builders")]
+            exclude = exclude + [
+                ob for ob in self.contents if not ob.check_permstring("builders")
+            ]
         # if we have an event at this location, log messages
         if eventid:
             from evennia.scripts.models import ScriptDB
+
             try:
                 event_script = ScriptDB.objects.get(db_key="Event Manager")
-                ooc = options.get('ooc_note', False)
+                ooc = options.get("ooc_note", False)
                 if gm_only or ooc:
                     event_script.add_gmnote(eventid, message)
                 else:
@@ -359,33 +386,35 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
             except ScriptDB.DoesNotExist:
                 if from_obj:
                     from_obj.msg("Error: Event Manager not found.")
-        super(ArxRoom, self).msg_contents(text=message, exclude=exclude, from_obj=from_obj, mapping=mapping, **kwargs)
-        
+        super(ArxRoom, self).msg_contents(
+            text=message, exclude=exclude, from_obj=from_obj, mapping=mapping, **kwargs
+        )
+
     def ban_character(self, character):
         if character not in self.banlist:
             self.banlist.append(character)
-            
+
     def unban_character(self, character):
         if character in self.banlist:
             self.banlist.remove(character)
-            
+
     @property
     def banlist(self):
         if self.db.banlist is None:
             self.db.banlist = []
         return self.db.banlist
-        
+
     def check_banned(self, character):
         return character in self.banlist
-        
+
     def add_bouncer(self, character):
         if character not in self.bouncers:
             self.bouncers.append(character)
-            
+
     def remove_bouncer(self, character):
         if character in self.bouncers:
             self.bouncers.remove(character)
-            
+
     @property
     def bouncers(self):
         if self.db.bouncers is None:
@@ -408,19 +437,38 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
 
     # noinspection PyMethodMayBeStatic
     # noinspection PyUnusedLocal
-    def at_say(self, message, msg_self=None, msg_location=None, receivers=None, msg_receivers=None, **kwargs):
+    def at_say(
+        self,
+        message,
+        msg_self=None,
+        msg_location=None,
+        receivers=None,
+        msg_receivers=None,
+        **kwargs
+    ):
         return message
 
     def msg_action(self, from_obj, no_name_emit_string, exclude=None, options=None):
         if from_obj.is_disguised:
             exclude = exclude or []
-            can_see = [ob for ob in self.player_characters if ob.truesight and ob != from_obj]
-            emit_string = '%s%s' % ("%s {c(%s){n" % (from_obj.name, from_obj.key), no_name_emit_string)
+            can_see = [
+                ob for ob in self.player_characters if ob.truesight and ob != from_obj
+            ]
+            emit_string = "%s%s" % (
+                "%s {c(%s){n" % (from_obj.name, from_obj.key),
+                no_name_emit_string,
+            )
             for character in can_see:
                 character.msg(emit_string, options=options, from_obj=from_obj)
             exclude.extend(can_see)
         emit_string = "%s%s" % (from_obj, no_name_emit_string)
-        self.msg_contents(emit_string, exclude=exclude, from_obj=from_obj, options=options, mapping=None)
+        self.msg_contents(
+            emit_string,
+            exclude=exclude,
+            from_obj=from_obj,
+            options=options,
+            mapping=None,
+        )
 
 
 class CmdExtendedLook(default_cmds.CmdLook):
@@ -435,14 +483,19 @@ class CmdExtendedLook(default_cmds.CmdLook):
 
     Observes your location, details at your location or objects in your vicinity.
     """
-    arg_regex = r'\/|\s|$'
+
+    arg_regex = r"\/|\s|$"
     # remove 'ls' alias because it just causes collisions with exit aliases
     aliases = ["l"]
 
     def check_detail(self):
         caller = self.caller
         location = caller.location
-        if location and hasattr(location, "return_detail") and callable(location.return_detail):
+        if (
+            location
+            and hasattr(location, "return_detail")
+            and callable(location.return_detail)
+        ):
             detail = location.return_detail(self.args)
             if detail:
                 # we found a detail instead. Show that.
@@ -458,11 +511,13 @@ class CmdExtendedLook(default_cmds.CmdLook):
         looking_at_obj = None
         if args:
             alist = args.split("'s ")
-            if len(alist) == 2:               
+            if len(alist) == 2:
                 obj = caller.search(alist[0], use_nicks=True, quiet=True)
                 if obj:
                     obj = utils.make_iter(obj)
-                    looking_at_obj = caller.search(alist[1], location=obj[0], use_nicks=True, quiet=True)
+                    looking_at_obj = caller.search(
+                        alist[1], location=obj[0], use_nicks=True, quiet=True
+                    )
             else:
                 looking_at_obj = caller.search(args, use_nicks=True, quiet=True)
             # originally called search with invalid arg of no_error or something instead of quiet
@@ -487,7 +542,7 @@ class CmdExtendedLook(default_cmds.CmdLook):
                 caller.msg("You have no location to look at!")
                 return
 
-        if not hasattr(looking_at_obj, 'return_appearance'):
+        if not hasattr(looking_at_obj, "return_appearance"):
             # this is likely due to us having a player instead
             looking_at_obj = looking_at_obj.character
         if not looking_at_obj.access(caller, "view"):
@@ -499,7 +554,8 @@ class CmdExtendedLook(default_cmds.CmdLook):
         # if it's a written object, we'll paginate the description
         if looking_at_obj.db.written:
             from server.utils import arx_more
-            desc = desc.replace('%r', '\n')
+
+            desc = desc.replace("%r", "\n")
             arx_more.msg(caller, desc, pages_by_char=True)
         else:
             caller.msg(desc)
@@ -516,6 +572,7 @@ class CmdStudyRawAnsi(ArxCommand):
 
     Prints raw ansi.
     """
+
     key = "@study"
     locks = "cmd:all()"
 
@@ -530,6 +587,7 @@ class CmdStudyRawAnsi(ArxCommand):
             if not targ:
                 return
         from server.utils.arx_utils import raw
+
         if targ != caller:
             targ.msg("%s sent you this @study on %s: " % (caller, ob))
             caller.msg("Sent to %s." % targ)
@@ -539,6 +597,7 @@ class CmdStudyRawAnsi(ArxCommand):
 
 # Custom build commands for setting seasonal descriptions
 # and detailing extended rooms.
+
 
 class CmdExtendedDesc(default_cmds.CmdDesc):
     """
@@ -577,6 +636,7 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
     version of the @desc command.
 
     """
+
     aliases = ["@describe", "@detail"]
 
     @staticmethod
@@ -589,30 +649,32 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
         """Define extended command"""
         caller = self.caller
         location = caller.location
-        if self.cmdstring == '@detail':
+        if self.cmdstring == "@detail":
             # switch to detailing mode. This operates only on current location
             if not location:
                 caller.msg("No location to detail!")
                 return
-            if not location.access(caller, 'edit'):
+            if not location.access(caller, "edit"):
                 caller.msg("You do not have permission to use @desc here.")
                 return
-            
+
             if not self.args:
                 # No args given. Return all details on location
                 string = "{wDetails on %s{n:\n" % location
-                string += "\n".join(" {w%s{n: %s" % (
-                    key, utils.crop(text)) for key, text in location.db.details.items())
+                string += "\n".join(
+                    " {w%s{n: %s" % (key, utils.crop(text))
+                    for key, text in location.db.details.items()
+                )
                 caller.msg(string)
                 return
-            if self.switches and self.switches[0] in 'del':
+            if self.switches and self.switches[0] in "del":
                 # removing a detail.
                 if self.lhs in location.db.details:
                     del location.db.details[self.lhs]
                     caller.msg("Detail %s deleted, if it existed." % self.lhs)
                 self.reset_times(location)
                 return
-            if self.switches and self.switches[0] in 'fix':
+            if self.switches and self.switches[0] in "fix":
                 if not self.lhs or not self.rhs:
                     caller.msg("Syntax: @detail/fix key=old,new")
                 fixlist = self.rhs.split(",")
@@ -621,11 +683,16 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
                     return
                 key = self.lhs
                 try:
-                    location.db.details[key] = location.db.details[key].replace(fixlist[0], fixlist[1])
+                    location.db.details[key] = location.db.details[key].replace(
+                        fixlist[0], fixlist[1]
+                    )
                 except (KeyError, AttributeError):
                     caller.msg("No such detail found.")
                     return
-                caller.msg("Detail %s has had text changed to: %s" % (key, location.db.details[key]))
+                caller.msg(
+                    "Detail %s has had text changed to: %s"
+                    % (key, location.db.details[key])
+                )
                 return
             if not self.rhs:
                 # no '=' used - list content of given detail
@@ -651,10 +718,12 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
                     string += " {wgeneral:{n %s" % location.db.general_desc
                     caller.msg(string)
                     return
-            if self.switches and self.switches[0] in ("spring",
-                                                      "summer",
-                                                      "autumn",
-                                                      "winter"):
+            if self.switches and self.switches[0] in (
+                "spring",
+                "summer",
+                "autumn",
+                "winter",
+            ):
                 # a seasonal switch was given
                 if self.rhs:
                     caller.msg("Seasonal descs only works with rooms, not objects.")
@@ -663,16 +732,16 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
                 if not location:
                     caller.msg("No location was found!")
                     return
-                if not location.access(caller, 'edit'):
+                if not location.access(caller, "edit"):
                     caller.msg("You do not have permission to @desc here.")
                     return
-                if switch == 'spring':
+                if switch == "spring":
                     location.db.spring_desc = self.args
-                elif switch == 'summer':
+                elif switch == "summer":
                     location.db.summer_desc = self.args
-                elif switch == 'autumn':
+                elif switch == "autumn":
                     location.db.autumn_desc = self.args
-                elif switch == 'winter':
+                elif switch == "winter":
                     location.db.winter_desc = self.args
                 # clear flag to force an update
                 self.reset_times(location)
@@ -692,11 +761,16 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
                     if not obj:
                         return
                 else:
-                    caller.msg("You must have both an object to describe and the description.")
+                    caller.msg(
+                        "You must have both an object to describe and the description."
+                    )
                     caller.msg("Format: @desc <object>=<description>")
                     return
-                if not obj.access(caller, 'edit'):
-                    caller.msg("You do not have permission to change the @desc of %s." % obj.name)
+                if not obj.access(caller, "edit"):
+                    caller.msg(
+                        "You do not have permission to change the @desc of %s."
+                        % obj.name
+                    )
                     return
                 obj.desc = self.rhs  # a compatability fallback
                 if utils.inherits_from(obj, ExtendedRoom):
@@ -725,6 +799,7 @@ class CmdGameTime(ArxCommand):
     The second format will show what the in-game date was for a given real date
     (and optional time).
     """
+
     key = "time"
     locks = "cmd:all()"
     help_category = "General"
@@ -732,7 +807,11 @@ class CmdGameTime(ArxCommand):
 
     # noinspection PyUnusedLocal
     def get_help(self, caller, cmdset):
-        return self.__doc__ + "\nGame time moves %s times faster than real time." % gametime.time_factor()
+        return (
+            self.__doc__
+            + "\nGame time moves %s times faster than real time."
+            % gametime.time_factor()
+        )
 
     def func(self):
         """Reads time info from current room"""
@@ -748,17 +827,26 @@ class CmdGameTime(ArxCommand):
                     pass
 
             if not parsed:
-                self.msg("Unable to understand that date!  It must be in the format "
-                                "|wYYYY/mm/dd|n or |wYYYY/mm/dd HH:MM|n to be understood.")
+                self.msg(
+                    "Unable to understand that date!  It must be in the format "
+                    "|wYYYY/mm/dd|n or |wYYYY/mm/dd HH:MM|n to be understood."
+                )
                 return
 
             parsed = time.mktime(parsed)
             game_time = gametime.realtime_to_gametime(parsed)
             if game_time is None:
-                self.msg("Real date |w{}|n was before the game started!".format(to_parse))
+                self.msg(
+                    "Real date |w{}|n was before the game started!".format(to_parse)
+                )
                 return
             from server.utils.arx_utils import get_date
-            self.msg("Real date |w{}|n was about |w{}|n in game time.".format(to_parse, get_date(game_time)))
+
+            self.msg(
+                "Real date |w{}|n was about |w{}|n in game time.".format(
+                    to_parse, get_date(game_time)
+                )
+            )
             return
 
         location = self.caller.location
@@ -770,11 +858,16 @@ class CmdGameTime(ArxCommand):
             if season == "autumn":
                 prep = "an"
             weather = weather_utils.get_last_emit()
-            self.msg("It's %s %s day, in the %s.  %s" % (prep, season, timeslot, weather))
+            self.msg(
+                "It's %s %s day, in the %s.  %s" % (prep, season, timeslot, weather)
+            )
             time_tuple = gametime.gametime(format=True)
             hour, minute = time_tuple[4], time_tuple[5]
             from server.utils.arx_utils import get_date
-            self.msg("Today's date: %s. Current time: %s:%02d" % (get_date(), hour, minute))
+
+            self.msg(
+                "Today's date: %s. Current time: %s:%02d" % (get_date(), hour, minute)
+            )
 
 
 class CmdSetGameTimescale(ArxCommand):
@@ -789,6 +882,7 @@ class CmdSetGameTimescale(ArxCommand):
     factor is, the speed at which IC time runs compared to normal time.
     The second form will set a new time factor.
     """
+
     key = "timescale"
     locks = "cmd:perm(Wizards)"
 
@@ -805,17 +899,27 @@ class CmdSetGameTimescale(ArxCommand):
         elif "history" in self.switches:
             from datetime import datetime
             from evennia.utils.evtable import EvTable
+
             table = EvTable("Real Time", "Game Date", "Multiplier")
             for tdict in gametime.time_intervals():
-                dt = datetime.fromtimestamp(tdict['real'])
-                ic_time = gametime._format(tdict['game'], gametime.YEAR, gametime.MONTH, gametime.WEEK, gametime.DAY,
-                                           gametime.HOUR, gametime.MIN)
+                dt = datetime.fromtimestamp(tdict["real"])
+                ic_time = gametime._format(
+                    tdict["game"],
+                    gametime.YEAR,
+                    gametime.MONTH,
+                    gametime.WEEK,
+                    gametime.DAY,
+                    gametime.HOUR,
+                    gametime.MIN,
+                )
                 month, day, year = ic_time[1] + 1, ic_time[3] + 1, ic_time[0] + 1001
 
                 real_time = dt.strftime("%m/%d/%Y %H:%M")
-                ic_timestamp = "{}/{}/{} {}:{}".format(month, day, year, ic_time[4], ic_time[5])
+                ic_timestamp = "{}/{}/{} {}:{}".format(
+                    month, day, year, ic_time[4], ic_time[5]
+                )
 
-                multiplier = tdict['multiplier']
+                multiplier = tdict["multiplier"]
 
                 table.add_row(real_time, ic_timestamp, multiplier)
 
@@ -837,12 +941,14 @@ class TempRoom(ArxRoom):
         :return: True if the room has no characters or NPCs in it, False if someone is present.
         """
         for con in self.contents:
-            if con is not obj and (con.has_account or (hasattr(con, 'is_character') and con.is_character)):
+            if con is not obj and (
+                con.has_account or (hasattr(con, "is_character") and con.is_character)
+            ):
                 return False
         return True
 
     def at_object_leave(self, obj, target_location):
         """Override of at_object_leave hook for soft-deleting this room once it's empty"""
-        if obj.has_account or (hasattr(obj, 'is_character') and obj.is_character):
+        if obj.has_account or (hasattr(obj, "is_character") and obj.is_character):
             if self.is_empty_except(obj):
                 self.softdelete()

@@ -6,93 +6,105 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('weather', '0004_auto_20181101_2019'),
+        ("weather", "0004_auto_20181101_2019"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='weatheremit',
-            name='at_afternoon',
-            field=models.BooleanField(default=True, verbose_name='Afternoon'),
+            model_name="weatheremit",
+            name="at_afternoon",
+            field=models.BooleanField(default=True, verbose_name="Afternoon"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='at_evening',
-            field=models.BooleanField(default=True, verbose_name='Evening'),
+            model_name="weatheremit",
+            name="at_evening",
+            field=models.BooleanField(default=True, verbose_name="Evening"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='at_morning',
-            field=models.BooleanField(default=True, verbose_name='Morning'),
+            model_name="weatheremit",
+            name="at_morning",
+            field=models.BooleanField(default=True, verbose_name="Morning"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='at_night',
-            field=models.BooleanField(default=True, verbose_name='Night'),
+            model_name="weatheremit",
+            name="at_night",
+            field=models.BooleanField(default=True, verbose_name="Night"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='gm_notes',
-            field=models.TextField(blank=True, null=True, verbose_name='GM Notes'),
+            model_name="weatheremit",
+            name="gm_notes",
+            field=models.TextField(blank=True, null=True, verbose_name="GM Notes"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='in_fall',
-            field=models.BooleanField(default=True, verbose_name='Fall'),
+            model_name="weatheremit",
+            name="in_fall",
+            field=models.BooleanField(default=True, verbose_name="Fall"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='in_spring',
-            field=models.BooleanField(default=True, verbose_name='Spring'),
+            model_name="weatheremit",
+            name="in_spring",
+            field=models.BooleanField(default=True, verbose_name="Spring"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='in_summer',
-            field=models.BooleanField(default=True, verbose_name='Summer'),
+            model_name="weatheremit",
+            name="in_summer",
+            field=models.BooleanField(default=True, verbose_name="Summer"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='in_winter',
-            field=models.BooleanField(default=True, verbose_name='Winter'),
+            model_name="weatheremit",
+            name="in_winter",
+            field=models.BooleanField(default=True, verbose_name="Winter"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='intensity_max',
-            field=models.PositiveSmallIntegerField(default=10, verbose_name='Max Intensity'),
+            model_name="weatheremit",
+            name="intensity_max",
+            field=models.PositiveSmallIntegerField(
+                default=10, verbose_name="Max Intensity"
+            ),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='intensity_min',
-            field=models.PositiveSmallIntegerField(default=1, verbose_name='Min Intensity'),
+            model_name="weatheremit",
+            name="intensity_min",
+            field=models.PositiveSmallIntegerField(
+                default=1, verbose_name="Min Intensity"
+            ),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='text',
-            field=models.TextField(verbose_name='Emit'),
+            model_name="weatheremit",
+            name="text",
+            field=models.TextField(verbose_name="Emit"),
         ),
         migrations.AlterField(
-            model_name='weatheremit',
-            name='weight',
-            field=models.PositiveIntegerField(default=10, verbose_name='Weight'),
+            model_name="weatheremit",
+            name="weight",
+            field=models.PositiveIntegerField(default=10, verbose_name="Weight"),
         ),
         migrations.AlterField(
-            model_name='weathertype',
-            name='automated',
-            field=models.BooleanField(default=True, help_text='Should this weather ever occur automatically?', verbose_name='Automated'),
+            model_name="weathertype",
+            name="automated",
+            field=models.BooleanField(
+                default=True,
+                help_text="Should this weather ever occur automatically?",
+                verbose_name="Automated",
+            ),
         ),
         migrations.AlterField(
-            model_name='weathertype',
-            name='gm_notes',
-            field=models.TextField(blank=True, null=True, verbose_name='GM Notes'),
+            model_name="weathertype",
+            name="gm_notes",
+            field=models.TextField(blank=True, null=True, verbose_name="GM Notes"),
         ),
         migrations.AlterField(
-            model_name='weathertype',
-            name='multiplier',
-            field=models.IntegerField(default=1, help_text='Multiply weather emit weights by this value when picking a weather; higher values make the weather more likely.', verbose_name='Weight Multiplier'),
+            model_name="weathertype",
+            name="multiplier",
+            field=models.IntegerField(
+                default=1,
+                help_text="Multiply weather emit weights by this value when picking a weather; higher values make the weather more likely.",
+                verbose_name="Weight Multiplier",
+            ),
         ),
         migrations.AlterField(
-            model_name='weathertype',
-            name='name',
-            field=models.CharField(max_length=25, verbose_name='Weather Name'),
+            model_name="weathertype",
+            name="name",
+            field=models.CharField(max_length=25, verbose_name="Weather Name"),
         ),
     ]

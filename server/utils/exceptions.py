@@ -2,6 +2,7 @@
 Exceptions for Arx!
 """
 
+
 class WalrusJudgement(Exception):
     WALRUSFACTS = [
         "Walruses hook their tusks on ice to rest in water.",
@@ -18,12 +19,15 @@ class WalrusJudgement(Exception):
         "Walruses sometimes stay awake at sea for three and a half straight days.",
         "Walrus tusks can grow over 3 feet in length.",
         "Walruses have 450 sensitive whiskers called vibrissae.",
-        "Walruses can live to around 40 years old."
-        ]
+        "Walruses can live to around 40 years old.",
+    ]
 
     def __init__(self, *args, **kwargs):
         from random import choice
-        super(WalrusJudgement, self).__init__("Did you know? " + choice(self.WALRUSFACTS))
+
+        super(WalrusJudgement, self).__init__(
+            "Did you know? " + choice(self.WALRUSFACTS)
+        )
 
 
 class CommandError(Exception):

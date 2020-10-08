@@ -22,7 +22,14 @@ from world.magic.mixins import MagicMixins
 from world.traits.traitshandler import Traitshandler
 
 
-class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMixins, DefaultCharacter):
+class Character(
+    UseEquipmentMixins,
+    NameMixins,
+    MsgMixins,
+    ObjectMixins,
+    MagicMixins,
+    DefaultCharacter,
+):
     """
     The Character defaults to reimplementing some of base Object's hook methods with the
     following functionality:
@@ -42,6 +49,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     at_post_puppet - Echoes "PlayerName has entered the game" to the room.
 
     """
+
     def at_object_creation(self):
         """
         Called once, when this object is first created.
@@ -128,7 +136,9 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         if self.location:
             self.location.triggerhandler.check_room_entry_triggers(self)
 
-    def return_appearance(self, pobject, detailed=False, format_desc=False, show_contents=False):
+    def return_appearance(
+        self, pobject, detailed=False, format_desc=False, show_contents=False
+    ):
         """
         This is a convenient hook for a 'look'
         command to call.
@@ -149,6 +159,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         if strip_ansi:
             try:
                 from evennia.utils.ansi import parse_ansi
+
                 desc = parse_ansi(desc, strip_ansi=True)
             except (AttributeError, ValueError, TypeError, UnicodeDecodeError):
                 pass
@@ -215,7 +226,17 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
 {w| Height:{n %(height)-15s {wEye Color:{n %(eyes)-15s                  {w|{n
 {w| Hair Color:{n %(hair)-11s {wSkin Tone:{n %(skin)-17s                {w|{n
 {w.---------------------------------------------------------------------.{n
-""" % ({'species': species, 'hair': hair, 'eyes': eyes, 'height': height, 'gender': gender, 'age': age, 'skin': skin})
+""" % (
+            {
+                "species": species,
+                "hair": hair,
+                "eyes": eyes,
+                "height": height,
+                "gender": gender,
+                "age": age,
+                "skin": skin,
+            }
+        )
         return string
 
     def death_process(self, *args, **kwargs):
@@ -231,12 +252,14 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             self.location.msg_contents("{r%s has died.{n" % self.name)
         try:
             from commands.cmdsets import death
+
             cmds = death.DeathCmdSet
             if cmds.key not in [ob.key for ob in self.cmdset.all()]:
                 self.cmdset.add(cmds, permanent=True)
         except Exception as err:
             print("<<ERROR>>: Error when importing death cmdset: %s" % err)
         from server.utils.arx_utils import inform_staff
+
         if not self.db.npc:
             inform_staff("{rDeath{n: Character {c%s{n has died." % self.key)
 
@@ -250,6 +273,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             self.location.msg_contents("{w%s has returned to life.{n" % self.name)
         try:
             from commands.cmdsets import death
+
             self.cmdset.delete(death.DeathCmdSet)
         except Exception as err:
             print("<<ERROR>>: Error when importing mobile cmdset: %s" % err)
@@ -267,9 +291,12 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         else:
             self.db.sleep_status = "asleep"
         if self.location and not quiet:
-            self.location.msg_contents("%s%s falls %s." % (self.name, reason, self.db.sleep_status))
+            self.location.msg_contents(
+                "%s%s falls %s." % (self.name, reason, self.db.sleep_status)
+            )
         try:
             from commands.cmdsets import sleep
+
             cmds = sleep.SleepCmdSet
             if cmds.key not in [ob.key for ob in self.cmdset.all()]:
                 self.cmdset.add(cmds, permanent=True)
@@ -278,8 +305,9 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
 
     @property
     def conscious(self):
-        return ((self.db.sleep_status != "unconscious" and self.db.sleep_status != "asleep")
-                and self.db.health_status != "dead")
+        return (
+            self.db.sleep_status != "unconscious" and self.db.sleep_status != "asleep"
+        ) and self.db.health_status != "dead"
 
     def wake_up(self, quiet=False):
         """
@@ -292,6 +320,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
                 self.location.msg_contents("%s wakes up." % self.name)
         try:
             from commands.cmdsets import sleep
+
             self.cmdset.delete(sleep.SleepCmdSet)
         except Exception as err:
             print("<<ERROR>>: Error when importing mobile cmdset: %s" % err)
@@ -403,7 +432,9 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         """
         if not self.conscious and not allow_wake:
             return -100
-        roll = do_dice_check(self, stat="perception", stat_keep=True, difficulty=difficulty)
+        roll = do_dice_check(
+            self, stat="perception", stat_keep=True, difficulty=difficulty
+        )
         return roll
 
     def get_fancy_name(self, short=False, display_mask=True):
@@ -517,17 +548,26 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         if value < 0:
             raise ValueError("Attempted to spend negative xp.")
         if self.xp < value:
-            raise PayError("You tried to spend %s xp, but only have %s available." % (value, self.xp))
+            raise PayError(
+                "You tried to spend %s xp, but only have %s available."
+                % (value, self.xp)
+            )
         self.xp -= value
         self.msg("You spend %s xp and have %s remaining." % (value, self.xp))
 
     def follow(self, targ):
         if not targ.ndb.followers:
             targ.ndb.followers = []
-        targ.msg("%s starts to follow you. To remove them as a follower, use 'ditch'." % self.name)
+        targ.msg(
+            "%s starts to follow you. To remove them as a follower, use 'ditch'."
+            % self.name
+        )
         if self not in targ.ndb.followers:
             targ.ndb.followers.append(self)
-        self.msg("You start to follow %s. To stop following, use 'follow' with no arguments." % targ.name)
+        self.msg(
+            "You start to follow %s. To stop following, use 'follow' with no arguments."
+            % targ.name
+        )
         self.ndb.following = targ
 
     def stop_follow(self):
@@ -584,6 +624,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             multiplier -= 0.25
             remaining -= interval
         return int(total)
+
     max_support = property(_get_max_support)
 
     @property
@@ -591,8 +632,19 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         """Another representation of social value of a character"""
         total = 0
         my_skills = self.traits.skills
-        skills_used = {"diplomacy": 2, "empathy": 2, "seduction": 2, "etiquette": 2, "manipulation": 2, "propaganda": 2,
-                       "intimidation": 1, "leadership": 1, "streetwise": 1, "performance": 1, "haggling": 1}
+        skills_used = {
+            "diplomacy": 2,
+            "empathy": 2,
+            "seduction": 2,
+            "etiquette": 2,
+            "manipulation": 2,
+            "propaganda": 2,
+            "intimidation": 1,
+            "leadership": 1,
+            "streetwise": 1,
+            "performance": 1,
+            "haggling": 1,
+        }
         stats_used = {"charm": 2, "composure": 1, "command": 1}
         for skill, exponent in skills_used.items():
             total += pow(my_skills.get(skill, 0), exponent)
@@ -672,13 +724,21 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             # inserts the NE/SE/SW/NW direction at 0 to be highest priority
             check_exits.insert(0, dest)
             for dirname in check_exits:
-                if loc.locations_set.filter(db_key__iexact=dirname
-                                            ).exclude(db_destination__in=self.ndb.traversed or []):
+                if loc.locations_set.filter(db_key__iexact=dirname).exclude(
+                    db_destination__in=self.ndb.traversed or []
+                ):
                     return "{c" + dirname + "{n"
-            dest = "{c" + dest + "{n roughly. Please use '{w@map{n' to determine an exact route"
+            dest = (
+                "{c"
+                + dest
+                + "{n roughly. Please use '{w@map{n' to determine an exact route"
+            )
         except (AttributeError, TypeError, ValueError):
             print("Error in using directions for rooms: %s, %s" % (loc.id, room.id))
-            print("origin is (%s,%s), destination is (%s, %s)" % (x_ori, y_ori, x_dest, y_dest))
+            print(
+                "origin is (%s,%s), destination is (%s, %s)"
+                % (x_ori, y_ori, x_dest, y_dest)
+            )
             self.msg("Rooms not properly set up for @directions. Logging error.")
             return
         # try to find it through traversal
@@ -690,13 +750,16 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         exit_ids = [ob.id for ob in loc.exits]
         q_add = ""
         from django.db.models import Q
+
         exclude_ob = Q()
 
         def get_new_exclude_ob():
             """Helper function to build Q() objects to exclude"""
             base_exclude_query = "db_tags__db_key"
             other_exclude_query = {q_add + "db_destination_id": loc.id}
-            traversed_query = {q_add + "db_destination_id__in": self.ndb.traversed or []}
+            traversed_query = {
+                q_add + "db_destination_id__in": self.ndb.traversed or []
+            }
             exclude_query = q_add + base_exclude_query
             exclude_dict = {exclude_query: "secret"}
             return Q(**exclude_dict) | Q(**other_exclude_query) | Q(**traversed_query)
@@ -707,7 +770,12 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             filter_dict = {query: room.id}
             exclude_ob |= get_new_exclude_ob()
             q_ob = Q(Q(**filter_dict) & ~exclude_ob)
-            exit_name = loc.locations_set.distinct().filter(id__in=exit_ids).exclude(exclude_ob).filter(q_ob)
+            exit_name = (
+                loc.locations_set.distinct()
+                .filter(id__in=exit_ids)
+                .exclude(exclude_ob)
+                .filter(q_ob)
+            )
             iterations += 1
         if not exit_name:
             return "{c" + dest + "{n"
@@ -725,6 +793,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             self.messages.messenger_notification(2, force=True)
         except (AttributeError, ValueError, TypeError):
             import traceback
+
             traceback.print_exc()
 
         guards = self.guards
@@ -753,7 +822,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             guards = self.guards
             for guard in guards:
                 try:
-                    if guard.location and 'persistent_guard' not in guard.tags.all():
+                    if guard.location and "persistent_guard" not in guard.tags.all():
                         guard.dismiss()
                 except AttributeError:
                     continue
@@ -761,21 +830,28 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     @property
     def portrait(self):
         from web.character.models import Photo
+
         try:
             return self.roster.profile_picture
         except (AttributeError, Photo.DoesNotExist):
             return None
 
     def get_absolute_url(self):
-        return reverse('character:sheet', kwargs={'object_id': self.id})
+        return reverse("character:sheet", kwargs={"object_id": self.id})
 
     @lazy_property
     def combat(self):
         from typeclasses.scripts.combat.combatant import CombatHandler
+
         return CombatHandler(self)
 
     def view_stats(self, viewer, combat=False):
-        from commands.base_commands.roster import display_stats, display_skills, display_abilities
+        from commands.base_commands.roster import (
+            display_stats,
+            display_skills,
+            display_abilities,
+        )
+
         display_stats(viewer, self)
         display_skills(viewer, self)
         display_abilities(viewer, self)
@@ -812,19 +888,23 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             msg (str, optional): a replacement message.
             mapping (dict, optional): additional mapping objects.
         """
+
         def format_string(viewer):
             if msg:
                 return msg
             if secret:
                 return "%s is leaving." % self.get_display_name(viewer)
             else:
-                return "%s is leaving, heading for %s." % (self.get_display_name(viewer),
-                                                           destination.get_display_name(viewer))
+                return "%s is leaving, heading for %s." % (
+                    self.get_display_name(viewer),
+                    destination.get_display_name(viewer),
+                )
+
         if not self.location:
             return
         secret = False
         if mapping:
-            secret = mapping.get('secret', False)
+            secret = mapping.get("secret", False)
         for obj in self.location.contents:
             if obj != self:
                 string = format_string(obj)
@@ -852,13 +932,15 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
         if not source_location and self.location.has_account:
             # This was created from nowhere and added to a player's
             # inventory; it's probably the result of a create command.
-            string = "You now have %s in your possession." % self.get_display_name(self.location)
+            string = "You now have %s in your possession." % self.get_display_name(
+                self.location
+            )
             self.location.msg(string)
             return
 
         secret = False
         if mapping:
-            secret = mapping.get('secret', False)
+            secret = mapping.get("secret", False)
 
         def format_string(viewer):
             if msg:
@@ -866,7 +948,11 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             if secret:
                 return "%s arrives." % self.get_display_name(viewer)
             else:
-                from_str = " from %s" % source_location.get_display_name(viewer) if source_location else ""
+                from_str = (
+                    " from %s" % source_location.get_display_name(viewer)
+                    if source_location
+                    else ""
+                )
                 return "%s arrives%s." % (self.get_display_name(viewer), from_str)
 
         for obj in self.location.contents:
@@ -937,36 +1023,79 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     def attack_modifier(self, value):
         self.db.attack_modifier = value
 
-    def search(self,  # type: Character
-               searchdata, global_search=False, use_nicks=True, typeclass=None, location=None,
-               attribute_name=None, quiet=False, exact=False, candidates=None, nofound_string=None,
-               multimatch_string=None, use_dbref=True):
+    def search(
+        self,  # type: Character
+        searchdata,
+        global_search=False,
+        use_nicks=True,
+        typeclass=None,
+        location=None,
+        attribute_name=None,
+        quiet=False,
+        exact=False,
+        candidates=None,
+        nofound_string=None,
+        multimatch_string=None,
+        use_dbref=True,
+    ):
         from django.conf import settings
+
         # if we're staff, we just use the regular search method
         if self.check_permstring("builders"):
-            return super(Character, self).search(searchdata, global_search=global_search, use_nicks=use_nicks,
-                                                 typeclass=typeclass, location=location,
-                                                 attribute_name=attribute_name, quiet=quiet, exact=exact,
-                                                 candidates=candidates, nofound_string=nofound_string,
-                                                 multimatch_string=multimatch_string, use_dbref=use_dbref)
+            return super(Character, self).search(
+                searchdata,
+                global_search=global_search,
+                use_nicks=use_nicks,
+                typeclass=typeclass,
+                location=location,
+                attribute_name=attribute_name,
+                quiet=quiet,
+                exact=exact,
+                candidates=candidates,
+                nofound_string=nofound_string,
+                multimatch_string=multimatch_string,
+                use_dbref=use_dbref,
+            )
         # we're not staff. We get search results, then throw out matches of people wearing masks that were by their key
-        results = super(Character, self).search(searchdata, global_search=global_search, use_nicks=use_nicks,
-                                                typeclass=typeclass, location=location, attribute_name=attribute_name,
-                                                quiet=True, exact=exact, candidates=candidates,
-                                                nofound_string=nofound_string, multimatch_string=multimatch_string,
-                                                use_dbref=use_dbref)
+        results = super(Character, self).search(
+            searchdata,
+            global_search=global_search,
+            use_nicks=use_nicks,
+            typeclass=typeclass,
+            location=location,
+            attribute_name=attribute_name,
+            quiet=True,
+            exact=exact,
+            candidates=candidates,
+            nofound_string=nofound_string,
+            multimatch_string=multimatch_string,
+            use_dbref=use_dbref,
+        )
         # we prune results of keys for masked (false_name) objects in results
-        results = [ob for ob in results if not ob.db.false_name or searchdata.lower() != ob.key.lower()]
+        results = [
+            ob
+            for ob in results
+            if not ob.db.false_name or searchdata.lower() != ob.key.lower()
+        ]
         # quiet means that messaging is handled elsewhere
         if quiet:
             return results
         if location == self:
             nofound_string = nofound_string or "You don't carry '%s'." % searchdata
-            multimatch_string = multimatch_string or "You carry more than one '%s':" % searchdata
+            multimatch_string = (
+                multimatch_string or "You carry more than one '%s':" % searchdata
+            )
         # call the _AT_SEARCH_RESULT func to transform our results and send messages
-        _AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit('.', 1))
-        return _AT_SEARCH_RESULT(results, self, query=searchdata,  nofound_string=nofound_string,
-                                 multimatch_string=multimatch_string)
+        _AT_SEARCH_RESULT = variable_from_module(
+            *settings.SEARCH_AT_RESULT.rsplit(".", 1)
+        )
+        return _AT_SEARCH_RESULT(
+            results,
+            self,
+            query=searchdata,
+            nofound_string=nofound_string,
+            multimatch_string=multimatch_string,
+        )
 
     def can_be_trained_by(self, trainer):
         """
@@ -997,6 +1126,7 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
             True if everything went off. Used for trying to catch extremely elusive caching errors.
         """
         from server.utils.arx_utils import trainer_diagnostics
+
         currently_training = trainer.db.currently_training or []
         # num_trained is redundancy to attempt to prevent cache errors.
         num_trained = trainer.db.num_trained or len(currently_training)
@@ -1047,8 +1177,12 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     def valid_actions(self):
         from world.dominion.models import PlotAction
         from django.db.models import Q
-        return PlotAction.objects.filter(Q(dompc=self.dompc) | Q(assistants=self.dompc)).exclude(
-            status=PlotAction.CANCELLED).distinct()
+
+        return (
+            PlotAction.objects.filter(Q(dompc=self.dompc) | Q(assistants=self.dompc))
+            .exclude(status=PlotAction.CANCELLED)
+            .distinct()
+        )
 
     @property
     def past_actions(self):
@@ -1086,13 +1220,22 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
     @property
     def dompc(self):
         """Returns our Dominion object"""
-        return self.player_ob.Dominion
+        try:
+            return self.player_ob.Dominion
+        except AttributeError:
+            return None
 
     @property
     def secrets(self):
         from web.character.models import Clue
-        return self.roster.clue_discoveries.filter(clue__clue_type=Clue.CHARACTER_SECRET,
-                                                   clue__tangible_object=self).exclude(clue__desc="").distinct()
+
+        return (
+            self.roster.clue_discoveries.filter(
+                clue__clue_type=Clue.CHARACTER_SECRET, clue__tangible_object=self
+            )
+            .exclude(clue__desc="")
+            .distinct()
+        )
 
     def at_magic_exposure(self, alignment=None, affinity=None, strength=10):
         if not self.practitioner:
@@ -1100,10 +1243,23 @@ class Character(UseEquipmentMixins, NameMixins, MsgMixins, ObjectMixins, MagicMi
 
         if not alignment:
             from world.magic.models import Alignment
+
             alignment = Alignment.PRIMAL
 
-        self.practitioner.at_magic_exposure(alignment=alignment, affinity=affinity, strength=strength)
+        self.practitioner.at_magic_exposure(
+            alignment=alignment, affinity=affinity, strength=strength
+        )
 
     @property
     def char_ob(self):
         return self
+
+    def check_staff_or_gm(self):
+        if self.check_permstring("builders"):
+            return True
+        if not self.location or not self.dompc:
+            return False
+        event = self.location.event
+        if not event:
+            return False
+        return self.dompc in event.gms.all()

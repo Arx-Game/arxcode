@@ -14,7 +14,6 @@ from evennia.objects.models import ObjectDB
 MAP_TYPECLASS = "typeclasses.map.Map"
 
 
-
 class CmdMap(ArxCommand):
     """
     @map - look at a map of area, if available
@@ -40,10 +39,10 @@ class CmdMap(ArxCommand):
             return
         caller.msg("Map of {c%s{n." % map.key)
         from typeclasses.map import _CALLER_ICON
+
         caller.msg("Your location displayed as %s." % _CALLER_ICON)
         directions = caller.ndb.waypoint
         caller.msg(map.draw_map(room, destination=directions))
-
 
 
 class CmdMapCreate(ArxCommand):
@@ -74,21 +73,30 @@ class CmdMapCreate(ArxCommand):
 
         except (ValueError, KeyError, AttributeError):
             caller.msg("Usage @mapcreate <mapname>")
-            return     
-        
+            return
+
         if ObjectDB.objects.filter(db_typeclass_path=typeclass, db_key__iexact=name):
             caller.msg("There already exists a map by that name.")
             return
         description = "A map."
         # Create and set the map up
         lockstring = "view:all();delete:perm(Immortals);edit:id(%s)" % caller.id
-        new_map = create.create_object(typeclass, name, location=caller,
-                                         home = "#4", permissions=None,
-                                         locks=lockstring, aliases=None, destination=None,
-                                         report_to=None, nohome=False)
+        new_map = create.create_object(
+            typeclass,
+            name,
+            location=caller,
+            home="#4",
+            permissions=None,
+            locks=lockstring,
+            aliases=None,
+            destination=None,
+            report_to=None,
+            nohome=False,
+        )
         new_map.desc = description
         self.msg("Created map %s." % new_map.key)
         new_map.save()
+
 
 class CmdMapRoom(ArxCommand):
     """
@@ -115,11 +123,12 @@ class CmdMapRoom(ArxCommand):
 
         caller = self.caller
         try:
-            x,y = int(self.rhslist[0]), int(self.rhslist[1])
-            if 'clear' not in self.switches:
+            x, y = int(self.rhslist[0]), int(self.rhslist[1])
+            if "clear" not in self.switches:
                 icons = self.rhslist[2]
-            map = ObjectDB.objects.get(db_typeclass_path=MAP_TYPECLASS,
-                                       db_key__iexact=self.lhs)
+            map = ObjectDB.objects.get(
+                db_typeclass_path=MAP_TYPECLASS, db_key__iexact=self.lhs
+            )
         except (KeyError, AttributeError, TypeError, ValueError):
             caller.msg("Usage error. Example of correct usage:")
             caller.msg("@maproom crownward=5,3,C7")
@@ -127,8 +136,8 @@ class CmdMapRoom(ArxCommand):
         except ObjectDB.DoesNotExist:
             caller.msg("No map found for %s." % self.lhs)
             return
-        if 'clear' in self.switches:
-            map.db.rooms[(x,y)] = None
+        if "clear" in self.switches:
+            map.db.rooms[(x, y)] = None
             caller.msg("Location (%s, %s) will be a blank space." % (x, y))
             return
         # set up room
@@ -139,4 +148,3 @@ class CmdMapRoom(ArxCommand):
         map.add_room(room)
         caller.msg("Added %s at (%s, %s)." % (room, x, y))
         return
-        

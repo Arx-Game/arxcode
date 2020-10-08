@@ -24,12 +24,15 @@ from django.db import connection
 
 def fix_broken_msgs():
     from evennia.comms.models import Msg
+
     ReceiverObjects = Msg.db_receivers_objects.through
     ReceiverAccounts = Msg.db_receivers_accounts.through
-    valid_ids = Msg.objects.values_list('id', flat=True)
+    valid_ids = Msg.objects.values_list("id", flat=True)
     # get any Join table rows that don't have valid IDs
-    querysets = [ReceiverObjects.objects.exclude(msg_id__in=valid_ids),
-                 ReceiverAccounts.objects.exclude(msg_id__in=valid_ids)]
+    querysets = [
+        ReceiverObjects.objects.exclude(msg_id__in=valid_ids),
+        ReceiverAccounts.objects.exclude(msg_id__in=valid_ids),
+    ]
     for qs in querysets:
         ret = qs.delete()
         print("Deleted: ", ret)
@@ -38,11 +41,13 @@ def fix_broken_msgs():
 def fix_missing_tables():
     """Adds inexplicably missing tables that Evennia migrations remove"""
     with connection.cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(
+            """
         CREATE TABLE IF NOT EXISTS comms_channeldb_db_subscriptions 
         (id integer PRIMARY KEY 
                        );
-                       """)
+                       """
+        )
 
 
 def fix_broken_fks():
@@ -58,9 +63,11 @@ def fix_broken_fks():
         # dump an unused table that would show up in the query
         cursor.execute("DROP TABLE IF EXISTS 'players_playerdb_db_liteattributes';")
         # get all the tables with broken foreignkeys
-        cursor.execute("""
+        cursor.execute(
+            """
         SELECT tbl_name, sql FROM sqlite_master WHERE sql LIKE '%players_playerdb%';
-        """)
+        """
+        )
         rows = cursor.fetchall()
         # disable foreign key integrity constraint checks so we can drop the tables
         cursor.execute("PRAGMA foreign_keys = OFF;")

@@ -10,23 +10,24 @@ from world.stats_and_skills import VALID_SKILLS, VALID_STATS
 class CmdModifiers(ArxCommand):
     """
     Adds modifiers to objects
-    
+
     Usage:
         @modifiers <object>
         @modifiers/search <tag name>
         @modifiers/targetmod <object>=<value>,<tag name>,check
         @modifiers/usermod <object>=<value>,<tag name>,check
-        
+
     Sets modifiers for the most common usages - an object providing a bonus
     against those with a particular tag (targetmod) for a given type of roll,
     or an object providing a bonus to a user if they have the given tag. For
     more complex modifiers (such as to specific skills, or combinations of
     requirements), use django admin.
-    
+
     Rooms provide modifiers to those in the location, while weapons and armor
     must be wielded/worn respectively. Tags they check can be added to things
     with the @tag command using the category 'modifiers'.
     """
+
     key = "@modifiers"
     locks = "cmd: perm(builders)"
     help_category = "building"
@@ -36,11 +37,15 @@ class CmdModifiers(ArxCommand):
         targ = self.caller.search(self.lhs)
         if not targ:
             return
-        self.msg("Modifiers on %s: %s" % (targ, ", ".join(str(ob) for ob in targ.modifiers.all())))
+        self.msg(
+            "Modifiers on %s: %s"
+            % (targ, ", ".join(str(ob) for ob in targ.modifiers.all()))
+        )
 
     def add_mod(self):
         """Adds a modifier to target"""
         from server.utils.arx_utils import dict_from_choices_field
+
         choices = dict_from_choices_field(RollModifier, "CHECK_CHOICES")
         try:
             value = int(self.rhslist[0])
@@ -63,8 +68,11 @@ class CmdModifiers(ArxCommand):
     def search_mods(self):
         """Searches for modifiers for/against a given tag"""
         from django.db.models import Q
+
         msg = "Modifiers for/against %s: " % self.args
-        qs = RollModifier.objects.filter(Q(user_tag__iexact=self.args) | Q(target_tag__iexact=self.args))
+        qs = RollModifier.objects.filter(
+            Q(user_tag__iexact=self.args) | Q(target_tag__iexact=self.args)
+        )
         msg += ", ".join(str(ob) for ob in qs)
         self.msg(msg)
 
@@ -100,6 +108,7 @@ class CmdKnacks(ArxCommand):
     a knack increases the results of applicable rolls by {} and chance for a
     critical success by 1 + half your rank (rounded down).
     """
+
     key = "@knacks"
     aliases = ["knack"]
     locks = "cmd:all()"
@@ -110,8 +119,12 @@ class CmdKnacks(ArxCommand):
     bonus_per_rank = 1
 
     def get_help(self, caller, cmdset):
-        return self.__doc__.format(self.new_knack_cost, self.base_increase_cost, self.cost_per_rank,
-                                   self.bonus_per_rank)
+        return self.__doc__.format(
+            self.new_knack_cost,
+            self.base_increase_cost,
+            self.cost_per_rank,
+            self.bonus_per_rank,
+        )
 
     def func(self):
         """Executes the knack command"""
@@ -149,7 +162,11 @@ class CmdKnacks(ArxCommand):
         if not desc:
             raise self.error_class("You must provide a description.")
         try:
-            stat, skill, name = self.lhslist[0], self.lhslist[1], ", ".join(self.lhslist[2:])
+            stat, skill, name = (
+                self.lhslist[0],
+                self.lhslist[1],
+                ", ".join(self.lhslist[2:]),
+            )
         except IndexError:
             raise self.error_class("You must provide a stat and skill.")
         if not name:
@@ -161,8 +178,16 @@ class CmdKnacks(ArxCommand):
             raise self.error_class("{} is not a valid stat.".format(stat))
         if skill not in VALID_SKILLS:
             raise self.error_class("{} is not a valid skill.".format(skill))
-        if any([knack for knack in self.caller.mods.knacks if knack.stat == stat and knack.skill == skill]):
-            raise self.error_class("You already have a knack for that skill and stat combination.")
+        if any(
+            [
+                knack
+                for knack in self.caller.mods.knacks
+                if knack.stat == stat and knack.skill == skill
+            ]
+        ):
+            raise self.error_class(
+                "You already have a knack for that skill and stat combination."
+            )
         self.caller.pay_xp(self.new_knack_cost)
         self.caller.mods.create_knack(name, stat, skill, desc)
         self.msg("You create a knack called '{}' for {}+{}.".format(name, stat, skill))

@@ -1,4 +1,10 @@
-from .models import PlayerAccount, PlayerInfoEntry, PlayerSiteEntry, RosterEntry, AccountHistory
+from .models import (
+    PlayerAccount,
+    PlayerInfoEntry,
+    PlayerSiteEntry,
+    RosterEntry,
+    AccountHistory,
+)
 from commands.base import ArxCommand
 from datetime import date
 
@@ -16,6 +22,7 @@ class CmdAdminFile(ArxCommand):
     This command accesses a given player account's overall file, for easy reference of
     all past data we've entered about them; past rulings, decisions, and suchnot.
     """
+
     key = "@file"
     locks = "cmd:perm(Admins)"
 
@@ -31,7 +38,7 @@ class CmdAdminFile(ArxCommand):
         try:
             character = RosterEntry.objects.get(character__db_key__iexact=accountstring)
             return character.current_account
-        except(RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned):
+        except (RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned):
             pass
 
         return None
@@ -45,7 +52,7 @@ class CmdAdminFile(ArxCommand):
             if character.current_account and character.current_account not in result:
                 result.append(character.current_account)
             return result
-        except(RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned):
+        except (RosterEntry.DoesNotExist, RosterEntry.MultipleObjectsReturned):
             pass
 
         return None
@@ -70,44 +77,74 @@ class CmdAdminFile(ArxCommand):
 
             account = self.account_for_string(accountstring)
             if not account:
-                self.msg("No email address or currently-played character matched {}".format(accountstring))
+                self.msg(
+                    "No email address or currently-played character matched {}".format(
+                        accountstring
+                    )
+                )
                 return
 
             self.msg("|/|wInformation for {}:|n".format(account.email))
 
-            sites = PlayerSiteEntry.objects.filter(account=account).distinct().order_by('last_seen')
+            sites = (
+                PlayerSiteEntry.objects.filter(account=account)
+                .distinct()
+                .order_by("last_seen")
+            )
             addresses = [site.address for site in sites]
             addresses = ", ".join(addresses)
 
             self.msg("  Known Addresses: {}".format(addresses))
 
-            history = AccountHistory.objects.filter(account=account).order_by('start_date')
+            history = AccountHistory.objects.filter(account=account).order_by(
+                "start_date"
+            )
             alts = []
             for entry in history:
                 result = entry.entry.character.key
-                if entry.entry.current_account != account \
-                        or entry.entry.roster.name not in ["Active", "Unavailable"]:
+                if (
+                    entry.entry.current_account != account
+                    or entry.entry.roster.name not in ["Active", "Unavailable"]
+                ):
                     result = "ex-" + result
                 alts.append(result)
             alts = set(alts)
             alts = ", ".join(alts)
 
-            self.msg("  Has played: {}". format(alts))
+            self.msg("  Has played: {}".format(alts))
             self.msg("-------------")
 
-            entries = PlayerInfoEntry.objects.filter(account=account).order_by('entry_date').distinct()
+            entries = (
+                PlayerInfoEntry.objects.filter(account=account)
+                .order_by("entry_date")
+                .distinct()
+            )
             counter = 1
             for entry in entries:
                 if entry_num is not None and entry_num == counter:
-                    self.msg("|wEntry #{}: on {} - {} by {}|n".format(counter, entry.entry_date.strftime("%Y/%m/%d"),
-                                                                      entry.type_name,
-                                                                      entry.author.key.capitalize() if entry.author
-                                                                      else "Unknown"))
+                    self.msg(
+                        "|wEntry #{}: on {} - {} by {}|n".format(
+                            counter,
+                            entry.entry_date.strftime("%Y/%m/%d"),
+                            entry.type_name,
+                            entry.author.key.capitalize()
+                            if entry.author
+                            else "Unknown",
+                        )
+                    )
                     self.msg("{}|/".format(entry.text))
                     return
                 elif entry_num is None:
-                    self.msg("{}: {} - {} by {}".format(counter, entry.entry_date.strftime("%Y/%m/%d"), entry.type_name,
-                                                        entry.author.key.capitalize() if entry.author else "Unknown"))
+                    self.msg(
+                        "{}: {} - {} by {}".format(
+                            counter,
+                            entry.entry_date.strftime("%Y/%m/%d"),
+                            entry.type_name,
+                            entry.author.key.capitalize()
+                            if entry.author
+                            else "Unknown",
+                        )
+                    )
                 counter += 1
 
             if entry_num is not None:
@@ -119,8 +156,11 @@ class CmdAdminFile(ArxCommand):
 
             arglist = self.lhs.split("/")
             if len(arglist) != 2:
-                self.msg("You must provide both an accountstring and an entry type.  Valid entry types are {}"
-                         .format(", ".join(PlayerInfoEntry.valid_types())))
+                self.msg(
+                    "You must provide both an accountstring and an entry type.  Valid entry types are {}".format(
+                        ", ".join(PlayerInfoEntry.valid_types())
+                    )
+                )
                 return
 
             if not self.rhs or len(self.rhs) == 0:
@@ -130,16 +170,28 @@ class CmdAdminFile(ArxCommand):
             accountstring = arglist[0]
             entry_type = PlayerInfoEntry.type_for_name(arglist[1])
             if entry_type is None:
-                self.msg("You must provide both an accountstring and an entry type.  Valid entry types are {}"
-                         .format(", ".join(PlayerInfoEntry.valid_types())))
+                self.msg(
+                    "You must provide both an accountstring and an entry type.  Valid entry types are {}".format(
+                        ", ".join(PlayerInfoEntry.valid_types())
+                    )
+                )
                 return
 
             account = self.account_for_string(accountstring)
             if not account:
-                self.msg("Unable to find a player record matching '{}'!".format(accountstring))
+                self.msg(
+                    "Unable to find a player record matching '{}'!".format(
+                        accountstring
+                    )
+                )
                 return
 
-            entry = PlayerInfoEntry(account=account, entry_type=entry_type, entry_date=date.today(), author=self.account)
+            entry = PlayerInfoEntry(
+                account=account,
+                entry_type=entry_type,
+                entry_date=date.today(),
+                author=self.account,
+            )
             entry.text = self.rhs
             entry.save()
 
@@ -153,19 +205,27 @@ class CmdAdminFile(ArxCommand):
 
             results = self.past_accounts_for_character(self.args)
             if not results or len(results) == 0:
-                self.msg("Unable to find any past players for a character named '{}'!".format(self.args))
+                self.msg(
+                    "Unable to find any past players for a character named '{}'!".format(
+                        self.args
+                    )
+                )
                 return
 
             self.msg("|w{}|n has been played by:".format(self.args))
             for account in results:
                 string = "  |w{}|n: ".format(account.email)
-                entries = AccountHistory.objects.filter(account=account, entry__character__db_key__iexact=self.args).order_by('start_date')
+                entries = AccountHistory.objects.filter(
+                    account=account, entry__character__db_key__iexact=self.args
+                ).order_by("start_date")
                 played_periods = []
                 for entry in entries:
                     if not entry.start_date:
                         played_string = "from ??? to "
                     else:
-                        played_string = "from {} to ".format(entry.start_date.strftime("%Y/%m/%d"))
+                        played_string = "from {} to ".format(
+                            entry.start_date.strftime("%Y/%m/%d")
+                        )
                     if not entry.end_date:
                         played_string += "now"
                     else:
@@ -191,12 +251,18 @@ class CmdAdminFile(ArxCommand):
             account_entries = {}
             for entry in entries:
                 account = entry.account
-                sites = account_entries[account.email] if account.email in account_entries else []
+                sites = (
+                    account_entries[account.email]
+                    if account.email in account_entries
+                    else []
+                )
                 sites.append(entry.address)
                 account_entries[account.email] = sites
 
             for email, sites in account_entries.items():
-                self.msg("|w{}|n has connected from: {}".format(email, ", ".join(sites)))
+                self.msg(
+                    "|w{}|n has connected from: {}".format(email, ", ".join(sites))
+                )
 
             return
 

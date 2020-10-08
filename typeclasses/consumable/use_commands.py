@@ -13,6 +13,7 @@ class CmdApplyConsumable(ArxCommand):
     can be used on. For example, 'incense' may only be
     usable on a room, or 'perfume' on a character.
     """
+
     key = "use"
     locks = "cmd:all()"
     help_category = "General"
@@ -34,7 +35,10 @@ class CmdApplyConsumable(ArxCommand):
                 self.msg("%s is not a valid target for %s." % (target, potion))
                 return
             if not potion.consume():
-                self.msg("%s doesn't have enough left to use. It needs to be replenished." % potion)
+                self.msg(
+                    "%s doesn't have enough left to use. It needs to be replenished."
+                    % potion
+                )
                 return
             # the call method will handle most messaging
             potion.use_on_target(target, self.caller)

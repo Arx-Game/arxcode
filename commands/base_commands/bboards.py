@@ -14,8 +14,14 @@ from commands.base import ArxCommand, ArxPlayerCommand
 from typeclasses.bulletin_board.bboard import BBoard
 
 # limit symbol import for API
-__all__ = ("CmdBBReadOrPost", "CmdBBSub", "CmdBBUnsub",
-           "CmdBBCreate", "get_boards", "get_unread_posts")
+__all__ = (
+    "CmdBBReadOrPost",
+    "CmdBBSub",
+    "CmdBBUnsub",
+    "CmdBBCreate",
+    "get_boards",
+    "get_unread_posts",
+)
 BOARD_TYPECLASS = "typeclasses.bulletin_board.bboard.BBoard"
 
 
@@ -24,7 +30,7 @@ def get_boards(caller):
     returns list of bulletin boards
     """
     bb_list = list(BBoard.objects.all())
-    bb_list = [ob for ob in bb_list if ob.access(caller, 'read')]
+    bb_list = [ob for ob in bb_list if ob.access(caller, "read")]
     return bb_list
 
 
@@ -40,10 +46,9 @@ def list_bboards(caller, old=False):
     # just display the subscribed bboards with no extra info
     if old:
         caller.msg("{cDisplaying only archived posts.{n")
-    bbtable = prettytable.PrettyTable(["{wbb #",
-                                       "{wName",
-                                       "{wPosts{n",
-                                      "{wSubscribed{n"])
+    bbtable = prettytable.PrettyTable(
+        ["{wbb #", "{wName", "{wPosts{n", "{wSubscribed{n"]
+    )
     for bboard in bb_list:
         bb_number = bb_list.index(bboard)
         bb_name = bboard.key
@@ -54,9 +59,8 @@ def list_bboards(caller, old=False):
             unread_str = " {w(%s new){n" % unread_num
         else:
             unread_str = ""
-        bbtable.add_row([bb_number, bb_name,
-                         "%s%s" % (len(posts), unread_str), subbed])
-    caller.msg("\n{w" + "="*60 + "{n\n%s" % bbtable)
+        bbtable.add_row([bb_number, bb_name, "%s%s" % (len(posts), unread_str), subbed])
+    caller.msg("\n{w" + "=" * 60 + "{n\n%s" % bbtable)
 
 
 def access_bboard(caller, args, request="read"):
@@ -82,7 +86,10 @@ def access_bboard(caller, args, request="read"):
             return
         except BBoard.MultipleObjectsReturned:
             boards = BBoard.objects.filter(db_key__icontains=args, id__in=board_ids)
-            caller.msg("Too many boards returned, please pick one: %s" % ", ".join(str(ob) for ob in boards))
+            caller.msg(
+                "Too many boards returned, please pick one: %s"
+                % ", ".join(str(ob) for ob in boards)
+            )
             return
     if not board.access(caller, request):
         caller.msg("You do not have the required privileges to do that.")
@@ -99,17 +106,17 @@ def list_messages(caller, board, board_num, old=False):
     if not board:
         caller.msg("No bulletin board found.")
         return
-    caller.msg("{w" + "="*60 + "\n{n")
+    caller.msg("{w" + "=" * 60 + "\n{n")
     title = "{w**** %s ****{n" % board.key.capitalize()
     title = "{:^80}".format(title)
     caller.msg(title)
     posts = board.get_all_posts(old=old)
     msgnum = 0
-    msgtable = prettytable.PrettyTable(["{wbb/msg",
-                                        "{wSubject",
-                                        "{wPostDate",
-                                        "{wPosted By"])
+    msgtable = prettytable.PrettyTable(
+        ["{wbb/msg", "{wSubject", "{wPostDate", "{wPosted By"]
+    )
     from world.msgs.models import Post
+
     read_posts = Post.objects.all_read_by(caller)
     for post in posts:
         unread = post not in read_posts
@@ -164,6 +171,7 @@ class CmdBBNew(ArxPlayerCommand):
     it will retrieve up to the number of messages specified.
 
     """
+
     key = "+bbnew"
     aliases = ["@bbnew", "bbnew"]
     help_category = "Comms"
@@ -217,7 +225,10 @@ class CmdBBNew(ArxPlayerCommand):
             if noread:
                 self.msg("You have marked %s posts as read." % posts_on_board)
         if not found_posts:
-            self.msg("No new posts found on boards: %s." % ", ".join(str(sub) for sub in my_subs))
+            self.msg(
+                "No new posts found on boards: %s."
+                % ", ".join(str(sub) for sub in my_subs)
+            )
 
 
 class CmdBBReadOrPost(ArxPlayerCommand):
@@ -263,7 +274,7 @@ class CmdBBReadOrPost(ArxPlayerCommand):
         args = self.args
         switches = self.switches
         old = "old" in switches
-        if not args and not ('new' in switches or 'catchup' in switches):
+        if not args and not ("new" in switches or "catchup" in switches):
             return list_bboards(caller, old)
 
         # first, "@bb <board #>" use case
@@ -272,7 +283,9 @@ class CmdBBReadOrPost(ArxPlayerCommand):
             if not board_to_check:
                 return
             if not board_to_check.has_subscriber(reader):
-                reader.msg("You are not yet a subscriber to {0}".format(board_to_check.key))
+                reader.msg(
+                    "You are not yet a subscriber to {0}".format(board_to_check.key)
+                )
                 reader.msg("Use {w@bbsub{n to subscribe to it.")
                 return
             list_messages(reader, board_to_check, arguments, old)
@@ -283,17 +296,17 @@ class CmdBBReadOrPost(ArxPlayerCommand):
                 board_check(caller, args)
                 return
             else:
-                if arglist[1] == 'u':
-                    switches.append('new')
+                if arglist[1] == "u":
+                    switches.append("new")
                     # build arguments for bbnew command
                     args = " all=%s" % arglist[0]
                 else:
-                    switches.append('read')
-        if 'new' in switches or 'catchup' in switches:
-            if 'catchup' in switches:
+                    switches.append("read")
+        if "new" in switches or "catchup" in switches:
+            if "catchup" in switches:
                 caller.execute_cmd("+bbnew/markread" + args)
                 return
-            caller.execute_cmd("+bbnew"+args)
+            caller.execute_cmd("+bbnew" + args)
             return
         # both post/read share board #
         arglist = args.split("/")
@@ -302,7 +315,7 @@ class CmdBBReadOrPost(ArxPlayerCommand):
         if not board:
             return
 
-        if 'read' in switches:
+        if "read" in switches:
             if len(arglist) < 2:
                 board_check(caller, args)
                 return
@@ -333,9 +346,16 @@ class CmdBBReadOrPost(ArxPlayerCommand):
             if not num_read:
                 caller.msg("No posts in range.")
             return
-        if 'del' in switches or 'archive' in switches or 'sticky' in switches or 'delete' in switches:
+        if (
+            "del" in switches
+            or "archive" in switches
+            or "sticky" in switches
+            or "delete" in switches
+        ):
             if "del" in switches or "delete" in switches:
-                if board.tags.get("only_staff_delete") and not caller.check_permstring("builders"):
+                if board.tags.get("only_staff_delete") and not caller.check_permstring(
+                    "builders"
+                ):
                     self.msg("Only builders may delete from that board.")
                     return
                 switchname = "del"
@@ -360,16 +380,20 @@ class CmdBBReadOrPost(ArxPlayerCommand):
             post = board.get_post(caller, post_num, old)
             if not post:
                 return
-            if caller not in post.db_sender_accounts.all() and not board.access(caller, "edit"):
+            if caller not in post.db_sender_accounts.all() and not board.access(
+                caller, "edit"
+            ):
                 caller.msg("You cannot %s someone else's post, only your own." % verb)
                 return
             if getattr(board, method)(post):
                 caller.msg("Post %sd" % verb)
-                inform_staff("%s has %sd post %s on board %s." % (caller, verb, post_num, board))
+                inform_staff(
+                    "%s has %sd post %s on board %s." % (caller, verb, post_num, board)
+                )
             else:
                 caller.msg("Post %s failed for unknown reason." % verb)
             return
-        if 'edit' in switches:
+        if "edit" in switches:
             lhs = self.lhs
             arglist = lhs.split("/")
             if len(arglist) < 2 or not self.rhs:
@@ -380,20 +404,24 @@ class CmdBBReadOrPost(ArxPlayerCommand):
             except ValueError:
                 self.msg("Invalid post number.")
                 return
-            board = access_bboard(caller, arglist[0], 'write')
+            board = access_bboard(caller, arglist[0], "write")
             if not board:
                 return
             post = board.get_post(caller, post_num)
             if not post:
                 return
-            if caller not in post.db_sender_accounts.all() and not board.access(caller, "edit"):
+            if caller not in post.db_sender_accounts.all() and not board.access(
+                caller, "edit"
+            ):
                 caller.msg("You cannot edit someone else's post, only your own.")
                 return
             if board.edit_post(self.caller, post, self.rhs):
                 self.msg("Post edited.")
-                inform_staff("%s has edited post %s on board %s." % (caller, post_num, board))
+                inform_staff(
+                    "%s has edited post %s on board %s." % (caller, post_num, board)
+                )
             return
-        if 'post' in switches:
+        if "post" in switches:
             if not self.rhs:
                 caller.msg("Usage: @bb/post <board #>/<subject> = <post message>")
                 return
@@ -403,7 +431,7 @@ class CmdBBReadOrPost(ArxPlayerCommand):
                 subject = "No Subject"
             else:
                 subject = arglist[1]
-            board = access_bboard(caller, arglist[0], 'write')
+            board = access_bboard(caller, arglist[0], "write")
             if not board:
                 return
             board.bb_post(caller, self.rhs, subject)
@@ -419,6 +447,7 @@ class CmdOrgStance(ArxPlayerCommand):
     Declare your org's bold, nuanced political stance in response to a posted
     proclamation - in a svelte 280 characters or less.
     """
+
     key = "@bborgstance"
     aliases = ["bborgstance", "+bborgstance"]
     help_category = "Comms"
@@ -436,6 +465,7 @@ class CmdOrgStance(ArxPlayerCommand):
             self.msg("Invalid post number.")
             return
         from django.core.exceptions import ObjectDoesNotExist
+
         try:
             org = self.caller.current_orgs.get(name__iexact=arglist[1])
         except ObjectDoesNotExist:
@@ -476,10 +506,10 @@ class CmdBBSub(ArxPlayerCommand):
             return
 
         # check permissions
-        if not bboard.access(caller, 'read'):
+        if not bboard.access(caller, "read"):
             self.msg("%s: You are not allowed to listen to this bboard." % bboard.key)
             return
-        if 'add' in self.switches:
+        if "add" in self.switches:
             if not caller.check_permstring("builders"):
                 caller.msg("You must be a builder or higher to use that switch.")
                 return
@@ -489,7 +519,7 @@ class CmdBBSub(ArxPlayerCommand):
         if not targ:
             return
         if not bboard.subscribe_bboard(targ):
-            if 'quiet' not in self.switches:
+            if "quiet" not in self.switches:
                 caller.msg("%s is already subscribed to that board." % targ)
             return
         caller.msg("Successfully subscribed %s to %s" % (targ, bboard.key.capitalize()))
@@ -567,10 +597,18 @@ class CmdBBCreate(ArxCommand):
         lockstring = "write:all();read:all();control:id(%s)" % caller.id
 
         typeclass = BOARD_TYPECLASS
-        new_board = create.create_object(typeclass, bboardname, location=caller,
-                                         home="#4", permissions=None,
-                                         locks=lockstring, aliases=None, destination=None,
-                                         report_to=None, nohome=False)
+        new_board = create.create_object(
+            typeclass,
+            bboardname,
+            location=caller,
+            home="#4",
+            permissions=None,
+            locks=lockstring,
+            aliases=None,
+            destination=None,
+            report_to=None,
+            nohome=False,
+        )
         if description:
             new_board.desc = description
         self.msg("Created bboard %s." % new_board.key)

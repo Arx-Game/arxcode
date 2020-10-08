@@ -9,14 +9,20 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0033_goal_goalupdate'),
-        ('helpdesk', '0012_auto_20181116_0459'),
+        ("character", "0033_goal_goalupdate"),
+        ("helpdesk", "0012_auto_20181116_0459"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='ticket',
-            name='goal_update',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='tickets', to='character.GoalUpdate'),
+            model_name="ticket",
+            name="goal_update",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="tickets",
+                to="character.GoalUpdate",
+            ),
         ),
     ]

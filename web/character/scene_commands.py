@@ -38,13 +38,17 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     normally. Use /invite without a name to see who has access. Use /check
     similar to @check - the result will prefix your next post.
     """
+
     key = "flashback"
     aliases = ["flashbacks"]
     locks = "cmd:all()"
     help_category = "Story"
     invite_switches = ("invite", "uninvite", "allow")
     change_switches = ("title", "summary", "conclude")
-    requires_owner = ("invite", "allow",) + change_switches
+    requires_owner = (
+        "invite",
+        "allow",
+    ) + change_switches
     requires_unconcluded = ("post", "roll", "check", "conclude")
 
     @property
@@ -82,12 +86,15 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
 
     def list_flashbacks(self):
         from evennia.utils.evtable import EvTable
+
         roster = self.roster_entry
         flashbacks = roster.flashbacks.all()
         if not flashbacks:
             self.msg("No flashbacks available to list. Why not create one?")
             return
-        table = EvTable("ID", "Flashback", "Owner", "New Posts", width=78, border="cells")
+        table = EvTable(
+            "ID", "Flashback", "Owner", "New Posts", width=78, border="cells"
+        )
         for flashback in flashbacks:
             new_posts = str(flashback.get_new_posts(roster).count())
             color = "|g" if flashback.posts_allowed_by(self.caller) else ""
@@ -100,7 +107,9 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         summary = self.rhs if self.rhs else ""
         flashback, created = Flashback.objects.get_or_create(title=title)
         if not created:
-            self.msg("There is already a flashback with that title. Please choose another.")
+            self.msg(
+                "There is already a flashback with that title. Please choose another."
+            )
             return
         flashback.summary = summary
         flashback.save()
@@ -129,8 +138,11 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
     def read_new_posts(self, flashback):
         """Displays unread posts and then marks them read."""
         roster = self.roster_entry
-        perms = (roster.flashback_post_permissions.filter(post__flashback=flashback)
-                                                  .exclude(is_read=True).distinct())
+        perms = (
+            roster.flashback_post_permissions.filter(post__flashback=flashback)
+            .exclude(is_read=True)
+            .distinct()
+        )
         perms_list = list(perms)
         new_posts = flashback.posts.filter(flashback_post_permissions__in=perms_list)
         if not new_posts:
@@ -174,12 +186,18 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         retro = "retro" in self.switches
         retro_msg = " with all previous posts visible" if retro else ""
         flashback.invite_roster(target.roster, retro=retro)
-        self.msg("You have invited %s to participate in flashback #%s%s." % (target, flashback.id, retro_msg))
+        self.msg(
+            "You have invited %s to participate in flashback #%s%s."
+            % (target, flashback.id, retro_msg)
+        )
 
     def uninvite_target(self, flashback, target, inv=None):
         """Calls method to change contributor to 'retired', or delete non-contributor involvement."""
         if not inv or inv.status == inv.RETIRED:
-            return self.msg("They are %s in this flashback already." % ("marked as retired" if inv else "not involved"))
+            return self.msg(
+                "They are %s in this flashback already."
+                % ("marked as retired" if inv else "not involved")
+            )
         owners = list(flashback.owners)
         if target.roster in owners:
             return self.msg("Cannot remove an owner of the flashback.")
@@ -188,8 +206,10 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         flashback.uninvite_involvement(inv)
         self.msg("You have uninvited %s from flashback #%s." % (target, flashback.id))
         if target != self.caller:
-            target.inform("You have been retired from flashback #%s." % flashback.id,
-                          category="Flashbacks")
+            target.inform(
+                "You have been retired from flashback #%s." % flashback.id,
+                category="Flashbacks",
+            )
 
     def mark_readable_posts(self, flashback, target, inv=None):
         """Allows a number of back-posts to be readable by target."""
@@ -201,12 +221,17 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
             self.rhslist.append("all")
         if self.rhslist[1] != "all":
             try:
-                amount = int(self.rhslist[1].strip('-'))
+                amount = int(self.rhslist[1].strip("-"))
             except (TypeError, ValueError):
-                self.msg("Specify a number to allow a number of visible back-posts, or 'all'.")
+                self.msg(
+                    "Specify a number to allow a number of visible back-posts, or 'all'."
+                )
                 return
         flashback.allow_back_read(target.roster, amount=amount)
-        self.msg("%s can see %s previous post(s) in flashback #%s." % (target, self.rhslist[1], flashback.id))
+        self.msg(
+            "%s can see %s previous post(s) in flashback #%s."
+            % (target, self.rhslist[1], flashback.id)
+        )
 
     def post_message(self, flashback):
         """Add a new post. Requires confirmation if this will 'consume' a waiting dice roll."""
@@ -215,9 +240,13 @@ class CmdFlashback(RewardRPToolUseMixin, ArxPlayerCommand):
         roster = self.roster_entry
         inv = flashback.get_involvement(roster)
         if inv.roll:
-            prompt = ("|wThis roll will accompany the new post:|n %s\n"
-                      "|yPlease repeat command to confirm and continue.|n" % inv.roll)
-            if not self.confirm_command("flashback_%s_post" % flashback.id, self.rhs, prompt):
+            prompt = (
+                "|wThis roll will accompany the new post:|n %s\n"
+                "|yPlease repeat command to confirm and continue.|n" % inv.roll
+            )
+            if not self.confirm_command(
+                "flashback_%s_post" % flashback.id, self.rhs, prompt
+            ):
                 return
         flashback.add_post(self.rhs, roster)
         self.msg("You have posted to |w%s|n: %s" % (flashback, self.rhs))

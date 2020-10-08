@@ -9,43 +9,67 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0023_worksetting'),
+        ("dominion", "0023_worksetting"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='CharitableDonation',
+            name="CharitableDonation",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('amount', models.PositiveIntegerField(default=0)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("amount", models.PositiveIntegerField(default=0)),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.RenameField(
-            model_name='assetowner',
-            old_name='prestige',
-            new_name='fame',
+            model_name="assetowner",
+            old_name="prestige",
+            new_name="fame",
         ),
         migrations.AddField(
-            model_name='assetowner',
-            name='legend',
+            model_name="assetowner",
+            name="legend",
             field=models.IntegerField(blank=0, default=0),
         ),
         migrations.AddField(
-            model_name='charitabledonation',
-            name='giver',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='donations', to='dominion.AssetOwner'),
+            model_name="charitabledonation",
+            name="giver",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="donations",
+                to="dominion.AssetOwner",
+            ),
         ),
         migrations.AddField(
-            model_name='charitabledonation',
-            name='npc_group',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='donations', to='dominion.InfluenceCategory'),
+            model_name="charitabledonation",
+            name="npc_group",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="donations",
+                to="dominion.InfluenceCategory",
+            ),
         ),
         migrations.AddField(
-            model_name='charitabledonation',
-            name='organization',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='donations', to='dominion.Organization'),
+            model_name="charitabledonation",
+            name="organization",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="donations",
+                to="dominion.Organization",
+            ),
         ),
     ]

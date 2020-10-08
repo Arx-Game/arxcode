@@ -39,16 +39,20 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
                                         not be called if the attribute `err_traverse` is
                                         defined, in which case that will simply be echoed.
     """
+
     def can_traverse(self, character):
         if character.db.mask and "private" not in self.destination.tags.all():
-            msg = "The guards of %s inform you that such masks are forbidden in public, " % self.destination
+            msg = (
+                "The guards of %s inform you that such masks are forbidden in public, "
+                % self.destination
+            )
             msg += "per Decree 47c Appendix L of Queen Alaricetta the Prudent."
             character.msg(msg)
             return
         if self.destination.check_banned(character):
             character.msg("You have been banned from entering there.")
             return
-        if self.access(character, 'traverse'):
+        if self.access(character, "traverse"):
             # we may traverse the exit.
             return True
         elif character.db.bypass_locked_doors:
@@ -85,6 +89,7 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
             This is a command that simply cause the caller
             to traverse the object it is attached to.
             """
+
             obj = None
 
             def func(self):
@@ -128,7 +133,7 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
                         return
                 # iff locked, then we can pass through it if we have a key
                 if self.obj.db.locked:
-                    if not self.obj.access(self.caller, 'usekey'):
+                    if not self.obj.access(self.caller, "usekey"):
                         self.caller.msg("You don't have a key to this exit.")
                         return
                     else:
@@ -144,27 +149,42 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
 
             def func(self):
                 self.caller.msg("You knocked on the door.")
-                self.obj.destination.msg_contents("{wThere is a knock coming from %s." % self.obj.reverse_exit)
+                self.obj.destination.msg_contents(
+                    "{wThere is a knock coming from %s." % self.obj.reverse_exit
+                )
                 self.mark_command_used()
 
         # create an exit command. We give the properties here,
         # to always trigger metaclass preparations
-        exitcmd = ExitCommand(key=exitkey,
-                              aliases=exitaliases,
-                              locks=str(exidbobj.locks),
-                              auto_help=False,
-                              destination=exidbobj.db_destination,
-                              arg_regex=r"$",
-                              is_exit=True,
-                              obj=exidbobj)
+        exitcmd = ExitCommand(
+            key=exitkey,
+            aliases=exitaliases,
+            locks=str(exidbobj.locks),
+            auto_help=False,
+            destination=exidbobj.db_destination,
+            arg_regex=r"$",
+            is_exit=True,
+            obj=exidbobj,
+        )
         passaliases = ["pass %s" % alias for alias in exitaliases]
-        passcmd = PassExit(key="pass %s" % exitkey, aliases=passaliases, is_exit=True, auto_help=False, obj=exidbobj)
+        passcmd = PassExit(
+            key="pass %s" % exitkey,
+            aliases=passaliases,
+            is_exit=True,
+            auto_help=False,
+            obj=exidbobj,
+        )
         knockaliases = ["knock %s" % alias for alias in exitaliases]
-        knockcmd = KnockExit(key="knock %s" % exitkey, aliases=knockaliases, is_exit=True, auto_help=False,
-                             obj=exidbobj)
+        knockcmd = KnockExit(
+            key="knock %s" % exitkey,
+            aliases=knockaliases,
+            is_exit=True,
+            auto_help=False,
+            obj=exidbobj,
+        )
         # create a cmdset
         exit_cmdset = cmdset.CmdSet(None)
-        exit_cmdset.key = '_exitset'
+        exit_cmdset.key = "_exitset"
         exit_cmdset.priority = 101  # equal to channel priority
         exit_cmdset.duplicates = True
         # add command to cmdset
@@ -176,20 +196,30 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
     def check_banned(self, character):
         return self.destination.check_banned(character)
 
-    def at_traverse(self, traversing_object, target_location, key_message=True, special_entrance=None, quiet=False,
-                    allow_follow=True):
+    def at_traverse(
+        self,
+        traversing_object,
+        target_location,
+        key_message=True,
+        special_entrance=None,
+        quiet=False,
+        allow_follow=True,
+    ):
         """
         This implements the actual traversal. The traverse lock has already been
         checked (in the Exit command) at this point.
         """
         source_location = traversing_object.location
         secret = self.tags.get("secret")
-        mapping = {'secret': secret}
+        mapping = {"secret": secret}
         if traversing_object.move_to(target_location, quiet=quiet, mapping=mapping):
             # if the door was locked, send a message about it unless we were following
             if key_message and self.db.locked:
-                msg = special_entrance or self.db.success_traverse or \
-                      "You unlock the locked door, then close and lock it behind you."
+                msg = (
+                    special_entrance
+                    or self.db.success_traverse
+                    or "You unlock the locked door, then close and lock it behind you."
+                )
                 traversing_object.msg(msg)
             self.at_after_traverse(traversing_object, source_location)
             # move followers
@@ -215,7 +245,9 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
                             invalid_followers.append(follower)
                             continue
                         # followers won't see the message about the door being locked
-                        self.at_traverse(follower, self.destination, key_message=False, quiet=True)
+                        self.at_traverse(
+                            follower, self.destination, key_message=False, quiet=True
+                        )
                         valid_followers.append(follower.name)
                         leader = fname
                     else:
@@ -228,7 +260,11 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
                         traversing_object.ndb.followers.remove(invalid)
                 if valid_followers:
                     verb = "arrive" if len(valid_followers) > 1 else "arrives"
-                    fol_msg = "%s %s, following %s." % (", ".join(valid_followers), verb, leader.name)
+                    fol_msg = "%s %s, following %s." % (
+                        ", ".join(valid_followers),
+                        verb,
+                        leader.name,
+                    )
                     leave_msg = fol_msg.replace("arrive", "leave")
                     self.destination.msg_contents(fol_msg)
                     self.location.msg_contents(leave_msg)
@@ -254,16 +290,18 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
 
     def msg(self, text=None, from_obj=None, options=None, **kwargs):
         options = options or {}
-        if options.get('shout', False):
+        if options.get("shout", False):
             other_options = options.copy()
-            from_dir = options.get('from_dir', 'from nearby')
+            from_dir = options.get("from_dir", "from nearby")
             new_from_dir = "from the %s" % str(self.reverse_exit)
             if not isinstance(text, str):
                 text = text[0]
             text = text.replace(from_dir, new_from_dir)
-            del other_options['shout']
-            other_options['from_dir'] = new_from_dir
-            self.destination.msg_contents(text, exclude=None, from_obj=from_obj, options=other_options, **kwargs)
+            del other_options["shout"]
+            other_options["from_dir"] = new_from_dir
+            self.destination.msg_contents(
+                text, exclude=None, from_obj=from_obj, options=other_options, **kwargs
+            )
 
     @property
     def is_exit(self):
@@ -271,7 +309,9 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
 
     @property
     def reverse_exit(self):
-        entrances = [ob for ob in self.destination.exits if ob.destination == self.location]
+        entrances = [
+            ob for ob in self.destination.exits if ob.destination == self.location
+        ]
         if not entrances:
             return "nowhere"
         return entrances[0]
@@ -296,16 +336,25 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
         """
         Lock exit will lock an exit -and- the reverse exit
         """
-        if str(self.destination.id) not in self.locks.all() or str(self.location.id) not in self.locks.all():
-            self.locks.add("usekey: perm(builders) or roomkey(%s) or roomkey(%s)" % (self.destination.id,
-                                                                                     self.location.id))
+        if (
+            str(self.destination.id) not in self.locks.all()
+            or str(self.location.id) not in self.locks.all()
+        ):
+            self.locks.add(
+                "usekey: perm(builders) or roomkey(%s) or roomkey(%s)"
+                % (self.destination.id, self.location.id)
+            )
         self.lock(caller)
         try:
             self.reverse_exit.lock(caller)
-            if (str(self.destination.id) not in self.reverse_exit.locks.all()
-                    or str(self.location.id) not in self.reverse_exit.locks.all()):
-                self.reverse_exit.locks.add("usekey: perm(builders) or roomkey(%s) or roomkey(%s)" % (
-                    self.destination.id, self.location.id))
+            if (
+                str(self.destination.id) not in self.reverse_exit.locks.all()
+                or str(self.location.id) not in self.reverse_exit.locks.all()
+            ):
+                self.reverse_exit.locks.add(
+                    "usekey: perm(builders) or roomkey(%s) or roomkey(%s)"
+                    % (self.destination.id, self.location.id)
+                )
         except AttributeError:
             pass
 
@@ -313,48 +362,60 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
         """
         As above
         """
-        if str(self.destination.id) not in self.locks.all() or str(self.location.id) not in self.locks.all():
-            self.locks.add("usekey: perm(builders) or roomkey(%s) or roomkey(%s)" % (self.destination.id,
-                                                                                     self.location.id))
+        if (
+            str(self.destination.id) not in self.locks.all()
+            or str(self.location.id) not in self.locks.all()
+        ):
+            self.locks.add(
+                "usekey: perm(builders) or roomkey(%s) or roomkey(%s)"
+                % (self.destination.id, self.location.id)
+            )
         self.unlock(caller)
         try:
             self.reverse_exit.unlock(caller)
-            if (str(self.destination.id) not in self.reverse_exit.locks.all()
-                    or str(self.location.id) not in self.reverse_exit.locks.all()):
-                self.reverse_exit.locks.add("usekey: perm(builders) or roomkey(%s) or roomkey(%s)" % (
-                    self.destination.id, self.location.id))
+            if (
+                str(self.destination.id) not in self.reverse_exit.locks.all()
+                or str(self.location.id) not in self.reverse_exit.locks.all()
+            ):
+                self.reverse_exit.locks.add(
+                    "usekey: perm(builders) or roomkey(%s) or roomkey(%s)"
+                    % (self.destination.id, self.location.id)
+                )
         except AttributeError:
             pass
-        
+
     @property
     def password(self):
         return self.db.password
-    
+
     @property
     def password_question(self):
         if not self.db.password_question:
-            return "From the entrance of %s a voice asks for the password." % self.destination
+            return (
+                "From the entrance of %s a voice asks for the password."
+                % self.destination
+            )
         return self.db.password_question
-    
+
     @property
     def password_failmsg(self):
         if not self.db.password_failmsg:
             return "The voice informs you that is not the correct password."
         return self.db.password_failmsg
-    
+
     @property
     def password_failures(self):
         if self.ndb.password_failures is None:
             self.ndb.password_failures = {}
         return self.ndb.password_failures
-    
+
     def at_password_fail(self, caller):
         """
         Called when caller fails to give correct password.
-        
+
             Args:
                 caller (ObjectDB): The character trying to enter
-                
+
         We inform the caller that they failed. We then add them to
         a dict of people with how many times they failed, to stop
         people from trying after X failed attempts.
@@ -381,23 +442,27 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
 
     @property
     def reverse_exit(self):
-        entrances = [ob for ob in self.destination.exits if ob.destination == self.location]
+        entrances = [
+            ob for ob in self.destination.exits if ob.destination == self.location
+        ]
         if not entrances:
             return "nowhere"
         return entrances[0]
 
     def msg(self, text=None, from_obj=None, options=None, **kwargs):
         options = options or {}
-        if options.get('shout', False):
+        if options.get("shout", False):
             other_options = options.copy()
-            from_dir = options.get('from_dir', 'from nearby')
+            from_dir = options.get("from_dir", "from nearby")
             new_from_dir = "from the %s" % str(self.reverse_exit)
             if not isinstance(text, str):
                 text = text[0]
             text = text.replace(from_dir, new_from_dir)
-            del other_options['shout']
-            other_options['from_dir'] = new_from_dir
-            self.destination.msg_contents(text, exclude=None, from_obj=from_obj, options=other_options, **kwargs)
+            del other_options["shout"]
+            other_options["from_dir"] = new_from_dir
+            self.destination.msg_contents(
+                text, exclude=None, from_obj=from_obj, options=other_options, **kwargs
+            )
 
     @property
     def haven_exit(self):
@@ -406,7 +471,10 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
 
         try:
             haven_exit = ShardhavenLayoutExit.objects.get(id=self.db.haven_exit_id)
-        except (ShardhavenLayoutExit.DoesNotExist, ShardhavenLayoutExit.MultipleObjectsReturned):
+        except (
+            ShardhavenLayoutExit.DoesNotExist,
+            ShardhavenLayoutExit.MultipleObjectsReturned,
+        ):
             return None
 
         return haven_exit
@@ -415,14 +483,16 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
 
         other_room = self.destination
         haven_square = None
-        if hasattr(other_room, 'shardhaven_square'):
+        if hasattr(other_room, "shardhaven_square"):
             haven_square = other_room.shardhaven_square
 
         characters = []
         character_string = None
 
         for testobj in other_room.contents:
-            if testobj.has_account or (hasattr(testobj, 'is_character') and testobj.is_character):
+            if testobj.has_account or (
+                hasattr(testobj, "is_character") and testobj.is_character
+            ):
                 characters.append(testobj.name)
 
         if len(characters):
@@ -445,12 +515,15 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
                 result += "  And {} {}.".format(puzzle_part, puzzle_string)
         elif puzzle_string:
             puzzle_part = a_or_an(puzzle_string)
-            result = "In the next room, you see {} {}.".format(puzzle_part, puzzle_string)
+            result = "In the next room, you see {} {}.".format(
+                puzzle_part, puzzle_string
+            )
 
         return result
 
-    def return_appearance(self, pobject, detailed=False, format_desc=False,
-                          show_contents=True):
+    def return_appearance(
+        self, pobject, detailed=False, format_desc=False, show_contents=True
+    ):
 
         result = "|c" + self.key + "|n|/|/"
 
@@ -484,7 +557,11 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             if other_room_contents:
                 result += "|/|/" + other_room_contents
         else:
-            result += "|/|/The " + self.haven_exit.obstacle_name + " blocks your view of the next room!"
+            result += (
+                "|/|/The "
+                + self.haven_exit.obstacle_name
+                + " blocks your view of the next room!"
+            )
 
         return result + "|/"
 
@@ -507,24 +584,26 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             return self.haven_exit.passed_by.count() > 0
 
     def create_exit_cmdset(self, exidbobj):
-
         class ShardhavenExitCommand(command.Command):
-
             def func(self):
                 if self.obj.can_traverse(self.caller):
-                    self.obj.at_traverse(self.caller, self.obj.destination, arguments=self.args)
+                    self.obj.at_traverse(
+                        self.caller, self.obj.destination, arguments=self.args
+                    )
 
         exitkey = exidbobj.db_key.strip().lower()
         exitaliases = list(exidbobj.aliases.all())
-        exitcmd = ShardhavenExitCommand(key=exitkey,
-                                        aliases=exitaliases,
-                                        locks=str(exidbobj.locks),
-                                        auto_help=False,
-                                        destination=exidbobj.db_destination,
-                                        is_exit=True,
-                                        obj=exidbobj)
+        exitcmd = ShardhavenExitCommand(
+            key=exitkey,
+            aliases=exitaliases,
+            locks=str(exidbobj.locks),
+            auto_help=False,
+            destination=exidbobj.db_destination,
+            is_exit=True,
+            obj=exidbobj,
+        )
         exit_cmdset = cmdset.CmdSet(None)
-        exit_cmdset.key = '_exitset'
+        exit_cmdset.key = "_exitset"
         exit_cmdset.priority = 101  # equal to channel priority
         exit_cmdset.duplicates = True
         exit_cmdset.add(exitcmd)
@@ -538,12 +617,16 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             cscript = character.location.ndb.combat_manager
             if cscript.ndb.combatants:
                 if cscript.check_character_is_combatant(character):
-                    character.msg("You're in combat, and cannot move rooms again unless you flee!")
+                    character.msg(
+                        "You're in combat, and cannot move rooms again unless you flee!"
+                    )
                     return False
 
         if character.ndb.followers and len(character.ndb.followers) > 0:
             if not self.passable(character):
-                character.msg("You can't have people follow you through an obstacle that you haven't tried yet!")
+                character.msg(
+                    "You can't have people follow you through an obstacle that you haven't tried yet!"
+                )
                 return False
 
             can_pass = True
@@ -551,7 +634,9 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
                 if not self.passable(follower):
                     can_pass = False
             if not can_pass:
-                character.msg("At least one of your followers hasn't passed this obstacle!")
+                character.msg(
+                    "At least one of your followers hasn't passed this obstacle!"
+                )
                 return False
 
         if not self.passable(character):
@@ -563,7 +648,12 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             delta = time.time() - timestamp
             if delta < 180:
                 from math import trunc
-                character.msg("You can't attempt to pass this obstacle again for {} seconds.".format(trunc(180 - delta)))
+
+                character.msg(
+                    "You can't attempt to pass this obstacle again for {} seconds.".format(
+                        trunc(180 - delta)
+                    )
+                )
                 return False
 
         return True
@@ -573,13 +663,28 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
         first = self.key.split(" ")[0]
         return first.lower()
 
-    def at_traverse(self, traversing_object, target_location, key_message=True, special_entrance=None, quiet=False,
-                    allow_follow=True, arguments=None):
+    def at_traverse(
+        self,
+        traversing_object,
+        target_location,
+        key_message=True,
+        special_entrance=None,
+        quiet=False,
+        allow_follow=True,
+        arguments=None,
+    ):
 
         if not self.passable(traversing_object):
             import time
-            result, override_obstacle, attempted, instant = \
-                self.haven_exit.obstacle.handle_obstacle(traversing_object, self, self.haven_exit, args=arguments)
+
+            (
+                result,
+                override_obstacle,
+                attempted,
+                instant,
+            ) = self.haven_exit.obstacle.handle_obstacle(
+                traversing_object, self, self.haven_exit, args=arguments
+            )
             if attempted:
                 attempts = self.db.attempts or {}
                 attempts[traversing_object.id] = time.time()
@@ -595,12 +700,18 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
             else:
                 return
 
-        self.location.msg_contents("{} heads {}.".format(traversing_object.name, self.direction_name))
+        self.location.msg_contents(
+            "{} heads {}.".format(traversing_object.name, self.direction_name)
+        )
 
-        super(ShardhavenInstanceExit, self).at_traverse(traversing_object, target_location,
-                                                        key_message=key_message,
-                                                        special_entrance=special_entrance,
-                                                        quiet=quiet, allow_follow=allow_follow)
+        super(ShardhavenInstanceExit, self).at_traverse(
+            traversing_object,
+            target_location,
+            key_message=key_message,
+            special_entrance=special_entrance,
+            quiet=quiet,
+            allow_follow=allow_follow,
+        )
 
         if traversing_object and traversing_object.ndb.followers and allow_follow:
             invalid_followers = []
@@ -624,7 +735,9 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
                         invalid_followers.append(follower)
                         continue
                     # followers won't see the message about the door being locked
-                    self.at_traverse(follower, self.destination, key_message=False, quiet=True)
+                    self.at_traverse(
+                        follower, self.destination, key_message=False, quiet=True
+                    )
                     valid_followers.append(follower.name)
                     leader = fname
                 else:
@@ -637,8 +750,11 @@ class ShardhavenInstanceExit(DefaultExit, BaseObjectMixins):
                     traversing_object.ndb.followers.remove(invalid)
             if valid_followers:
                 verb = "arrive" if len(valid_followers) > 1 else "arrives"
-                fol_msg = "%s %s, following %s." % (", ".join(valid_followers), verb, leader.name)
+                fol_msg = "%s %s, following %s." % (
+                    ", ".join(valid_followers),
+                    verb,
+                    leader.name,
+                )
                 leave_msg = fol_msg.replace("arrive", "leave")
                 self.destination.msg_contents(fol_msg)
                 self.location.msg_contents(leave_msg)
-

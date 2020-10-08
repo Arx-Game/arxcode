@@ -33,12 +33,12 @@ class Command(BaseCommand):
             ctype, created = ContentType.objects.get_or_create(
                 app_label=opts.app_label,
                 model=opts.object_name.lower(),
-                defaults={'name': smart_text(opts.verbose_name_raw)})
+                defaults={"name": smart_text(opts.verbose_name_raw)},
+            )
 
             for codename, name in _get_all_permissions(opts, ctype):
                 p, created = Permission.objects.get_or_create(
-                    codename=codename,
-                    content_type=ctype,
-                    defaults={'name': name})
+                    codename=codename, content_type=ctype, defaults={"name": name}
+                )
                 if created:
-                    sys.stdout.write('Adding permission {}\n'.format(p))
+                    sys.stdout.write("Adding permission {}\n".format(p))

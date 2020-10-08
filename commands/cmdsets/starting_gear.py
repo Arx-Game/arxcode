@@ -17,18 +17,32 @@ from evennia import CmdSet
 from evennia.utils.logger import log_info
 from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils import arx_utils
-from world.dominion.models import (CraftingMaterialType, PlayerOrNpc,
-                                   CraftingRecipe, AssetOwner)
-from commands.base_commands.crafting import (create_decorative_weapon, create_wearable, create_weapon,
-                                             create_place, create_book, create_container,
-                                             create_wearable_container, create_generic, PERFUME, create_mask,
-                                             create_consumable)
+from world.dominion.models import (
+    CraftingMaterialType,
+    PlayerOrNpc,
+    CraftingRecipe,
+    AssetOwner,
+)
+from commands.base_commands.crafting import (
+    create_decorative_weapon,
+    create_wearable,
+    create_weapon,
+    create_place,
+    create_book,
+    create_container,
+    create_wearable_container,
+    create_generic,
+    PERFUME,
+    create_mask,
+    create_consumable,
+)
 
 CASH = 6000
 
 
 class StartingGearCmdSet(CmdSet):
     """CmdSet for a market."""
+
     key = "StartingGearCmdSet"
     priority = 101
     duplicates = False
@@ -69,12 +83,13 @@ class CmdStartingGear(ArxCommand):
     /refundremainder, which removes this command permanently.
     For a list of valid recipes, please look at:
     http://play.arxmush.org/topics/recipes/
-    
+
     Note that the silver cost is an additional cost on top of the
     cost of materials, so the actual cost of an item is far higher
     than seen there. You must add in the cost of the materials
     listed on the page for an accurate cost of crafting an item.
     """
+
     key = "startgear"
     locks = "cmd:all()"
     help_category = "Progression"
@@ -93,8 +108,10 @@ class CmdStartingGear(ArxCommand):
             msg += "{wAlt Desc:{n %s\n" % proj[4]
         adorns = proj[3]
         if adorns:
-            msg += "{wAdornments:{n %s\n" % ", ".join("%s: %s" % (CraftingMaterialType.objects.get(id=mat).name, amt)
-                                                      for mat, amt in adorns.items())
+            msg += "{wAdornments:{n %s\n" % ", ".join(
+                "%s: %s" % (CraftingMaterialType.objects.get(id=mat).name, amt)
+                for mat, amt in adorns.items()
+            )
         return msg
 
     def func(self):
@@ -115,7 +132,10 @@ class CmdStartingGear(ArxCommand):
             if project:
                 caller.msg(self.display_project(project))
                 caller.msg("{wTo finish it, use /finish.")
-            caller.msg("You have the equivalent of {w%s{n silver remaining to spend on gear." % caller.db.startgear_val)
+            caller.msg(
+                "You have the equivalent of {w%s{n silver remaining to spend on gear."
+                % caller.db.startgear_val
+            )
             return
         # start a crafting project
         if not self.switches:
@@ -129,12 +149,20 @@ class CmdStartingGear(ArxCommand):
             cost = recipe.value
             caller.msg("Its cost is {w%s{n." % cost)
             if cost > caller.db.startgear_val:
-                caller.msg("{rYou only have {w%s{r silver remaining for gear.{n" % caller.db.startgear_val)
+                caller.msg(
+                    "{rYou only have {w%s{r silver remaining for gear.{n"
+                    % caller.db.startgear_val
+                )
                 return
             caller.db.startgear_project = proj
             caller.msg("{wYou have started to craft:{n %s." % recipe.name)
-            caller.msg("You will have {w%s{n remaining after finishing." % (caller.db.startgear_val - cost))
-            caller.msg("{wTo finish it, use /finish after you set its name and description.")
+            caller.msg(
+                "You will have {w%s{n remaining after finishing."
+                % (caller.db.startgear_val - cost)
+            )
+            caller.msg(
+                "{wTo finish it, use /finish after you set its name and description."
+            )
             caller.msg("{wTo abandon this, use /abandon.{n")
             return
         proj = caller.db.startgear_project
@@ -162,9 +190,11 @@ class CmdStartingGear(ArxCommand):
                 return
             recipe = CraftingRecipe.objects.get(id=proj[0])
             if not recipe.allow_adorn:
-                caller.msg("This recipe does not allow for additional materials to be used.")
+                caller.msg(
+                    "This recipe does not allow for additional materials to be used."
+                )
                 return
-            
+
             cost = recipe.value
             adorns = proj[3] or {}
             adorns[mat.id] = amt
@@ -179,9 +209,13 @@ class CmdStartingGear(ArxCommand):
                 return
             proj[3] = adorns
             caller.db.crafting_project = proj
-            caller.msg("Additional materials: %s" % ", ".join("%s: %s" %
-                                                              (CraftingMaterialType.objects.get(id=mat).name, amt)
-                                                              for mat, amt in adorns.items()))
+            caller.msg(
+                "Additional materials: %s"
+                % ", ".join(
+                    "%s: %s" % (CraftingMaterialType.objects.get(id=mat).name, amt)
+                    for mat, amt in adorns.items()
+                )
+            )
             return
         if "name" in self.switches:
             if not self.args:
@@ -207,10 +241,15 @@ class CmdStartingGear(ArxCommand):
                 caller.msg("Describe them how? This is only used for disguise recipes.")
                 return
             proj[4] = self.args
-            caller.msg("This is only used for disguise recipes. Alternate description set to:\n%s" % self.args)
+            caller.msg(
+                "This is only used for disguise recipes. Alternate description set to:\n%s"
+                % self.args
+            )
             return
         if "abandon" in self.switches or "abort" in self.switches:
-            caller.msg("You have abandoned this crafting project. You may now start another.")
+            caller.msg(
+                "You have abandoned this crafting project. You may now start another."
+            )
             caller.attributes.remove("startgear_project")
             return
         # do rolls for our crafting. determine quality level, handle forgery stuff
@@ -232,8 +271,10 @@ class CmdStartingGear(ArxCommand):
                 mat = CraftingMaterialType.objects.get(id=adorn)
                 cost += mat.value * proj[3][adorn]
             if caller.db.startgear_val < cost:
-                caller.msg("You need %s silver to finish the recipe, and have only %s." % (cost,
-                                                                                           caller.db.startgear_val))
+                caller.msg(
+                    "You need %s silver to finish the recipe, and have only %s."
+                    % (cost, caller.db.startgear_val)
+                )
                 return
             caller.db.startgear_val -= cost
             # quality will always be average
@@ -268,7 +309,7 @@ class CmdStartingGear(ArxCommand):
             obj.db.recipe = recipe.id
             obj.db.adorns = proj[3]
             obj.db.crafted_by = caller
-            obj.db.volume = int(recipe.resultsdict.get('volume', 0))
+            obj.db.volume = int(recipe.resultsdict.get("volume", 0))
             caller.msg("You created %s." % obj.name)
             caller.attributes.remove("startgear_project")
             return
@@ -276,7 +317,7 @@ class CmdStartingGear(ArxCommand):
             money = caller.db.currency or 0.0
             refund = caller.db.startgear_val
             money += refund
-            caller.attributes.remove('startgear_val')
+            caller.attributes.remove("startgear_val")
             caller.db.currency = money
             caller.msg("You receive %s silver coins." % refund)
             caller.cmdset.delete(StartingGearCmdSet)
@@ -307,6 +348,7 @@ class CmdSetupGear(ArxPlayerCommand):
     Grants starting money to a character to buy their gear and
     adds the startgear command to them to create it.
     """
+
     key = "@setupgear"
     locks = "cmd:perm(Builders)"
     help_category = "Building"

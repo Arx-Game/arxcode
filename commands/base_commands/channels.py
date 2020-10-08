@@ -32,6 +32,7 @@ class ArxChannelCommand(command.Command):
     it by entering its name or alias, followed by the text you want to
     send.
     """
+
     # this flag is what identifies this cmd as a channel cmd
     # and branches off to the system send-to-channel command
     # (which is customizable by admin)
@@ -93,7 +94,7 @@ class ArxChannelCommand(command.Command):
             string = "You are not connected to channel '%s'."
             self.msg(string % channelkey)
             return
-        if not channel.access(caller, 'send'):
+        if not channel.access(caller, "send"):
             string = "You are not permitted to send to channel '%s'."
             self.msg(string % channelkey)
             return
@@ -101,7 +102,10 @@ class ArxChannelCommand(command.Command):
             caller.msg("Channel messages may not contain newline characters.")
             return
         if len(msg) > self.max_length and not caller.check_permstring("helpers"):
-            self.msg("Channel messages may not exceed %d characters in length." % self.max_length)
+            self.msg(
+                "Channel messages may not exceed %d characters in length."
+                % self.max_length
+            )
             return
         if msg == "who" or msg == "?" or msg == "all" or msg == "list":
             if caller.check_permstring("builders"):
@@ -110,7 +114,7 @@ class ArxChannelCommand(command.Command):
                 wholist = channel.wholist
             self.msg("{w%s:{n\n %s" % (channel, wholist))
             return
-        if msg == 'last' or msg.startswith("last "):
+        if msg == "last" or msg.startswith("last "):
             msglist = msg.split()
             # check if it wasn't just a message starting with 'last'
             # eg: 'last week we blah blah'
@@ -120,11 +124,14 @@ class ArxChannelCommand(command.Command):
                     self.num_messages = int(msglist[1])
                 self.display_history = True
         if self.display_history:
-            log_file = channel.attributes.get("log_file", default="channel_%s.log" % channel.key)
+            log_file = channel.attributes.get(
+                "log_file", default="channel_%s.log" % channel.key
+            )
 
             def send_msg(lines):
                 msgs = "".join(line for line in lines)
                 arx_more.msg(caller, msgs, justify_kwargs=False)
+
             if self.num_messages > 200:
                 self.num_messages = 200
             self.msg("{wChannel history for %s:{n" % self.key)

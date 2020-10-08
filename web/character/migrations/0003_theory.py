@@ -11,20 +11,60 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('character', '0002_investigationassistant'),
+        ("character", "0002_investigationassistant"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Theory',
+            name="Theory",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('topic', models.CharField(blank=True, max_length=255, null=True)),
-                ('desc', models.TextField(blank=True, null=True)),
-                ('creator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='created_theories', to=settings.AUTH_USER_MODEL)),
-                ('known_by', models.ManyToManyField(blank=True, null=True, related_name='known_theories', to=settings.AUTH_USER_MODEL)),
-                ('related_clues', models.ManyToManyField(blank=True, null=True, related_name='theories', to='character.Clue')),
-                ('related_theories', models.ManyToManyField(blank=True, related_name='_theory_related_theories_+', to='character.Theory')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("topic", models.CharField(blank=True, max_length=255, null=True)),
+                ("desc", models.TextField(blank=True, null=True)),
+                (
+                    "creator",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="created_theories",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "known_by",
+                    models.ManyToManyField(
+                        blank=True,
+                        null=True,
+                        related_name="known_theories",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "related_clues",
+                    models.ManyToManyField(
+                        blank=True,
+                        null=True,
+                        related_name="theories",
+                        to="character.Clue",
+                    ),
+                ),
+                (
+                    "related_theories",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="_theory_related_theories_+",
+                        to="character.Theory",
+                    ),
+                ),
             ],
         ),
     ]

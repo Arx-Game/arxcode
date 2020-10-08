@@ -21,3 +21,61 @@ Evennia's documentation is [here](https://github.com/evennia/evennia/wiki).
 
 Griatch wrote a great guide to installing arx [here](https://github.com/evennia/evennia/wiki/Arxcode-installing-help).
 Enjoy!
+
+----
+
+## Docker
+
+This will cover getting Arx up and running using a Docker container and docker compose. The purpose of this is to provide ease of use in development and is not meant to be used in a production environment.
+
+### Setup
+
+1. Install Docker
+2. Install Docker Compose
+3. Run the init script (./init.sh)
+  * If you want to use the sample-development.env file, run the init script with the setup-env argument (./init.sh setup-env) 
+  * Once completed, kill the running docker process.
+
+The init script will build the evennia db, build the docker file, and set the state.
+
+A very basic environment file is attached in sample-development.env, which will give you a running local instance that can be connected to from localhost.
+
+The server is localhost:3000
+The portal is localhost:8000
+
+If you wish to use those settings, you can run the default-env.sh script
+
+### Running Instance
+
+In general, once the init script is run, all you have to do to start the server is docker-compose up. Changes made to the code base will not be represented in the default version.
+
+#### Running Instance With Live Changes
+
+In order to run the service in a live mode to support changes, you need to run the following command.
+
+```
+docker-compose -f docker-compose-live.yaml up
+```
+
+This mounts the entire bin directory to the most recent version of the arx:latest image.
+
+In order to reload live changes, you need to do the following:
+
+```
+docker container ls
+```
+
+The result should look something like this:
+
+```
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS                    NAMES
+1e5d4de22d3b        arx:latest          "start"             2 minutes ago       Up 2 minutes        0.0.0.0:3000->3000/tcp   arxcode_arx_1
+```
+
+After this, run the following command:
+
+```
+docker exec 1e5d4de22d3b evennia reload
+```
+
+This will restart the server with the live modifications from your local directory.

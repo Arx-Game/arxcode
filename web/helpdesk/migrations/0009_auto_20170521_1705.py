@@ -10,18 +10,23 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('helpdesk', '0008_auto_20170116_1712'),
+        ("helpdesk", "0008_auto_20170116_1712"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='ticket',
-            old_name='created',
-            new_name='db_date_created',
+            model_name="ticket",
+            old_name="created",
+            new_name="db_date_created",
         ),
         migrations.AddField(
-            model_name='ticket',
-            name='participants',
-            field=models.ManyToManyField(blank=True, null=True, related_name='assisted_storyactions', to=settings.AUTH_USER_MODEL),
+            model_name="ticket",
+            name="participants",
+            field=models.ManyToManyField(
+                blank=True,
+                null=True,
+                related_name="assisted_storyactions",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

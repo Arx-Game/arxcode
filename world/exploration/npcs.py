@@ -3,7 +3,6 @@ from .models import Monster
 
 
 class MonsterMixin(object):
-
     @property
     def room_monsters(self):
         if not self.location:
@@ -11,8 +10,10 @@ class MonsterMixin(object):
 
         monsters = []
         for testobj in self.location.contents:
-            if testobj != self and (testobj.is_typeclass("world.exploration.npcs.MookMonsterNpc")
-                                    or testobj.is_typeclass("world.exploration.npcs.BossMonsterNpc")):
+            if testobj != self and (
+                testobj.is_typeclass("world.exploration.npcs.MookMonsterNpc")
+                or testobj.is_typeclass("world.exploration.npcs.BossMonsterNpc")
+            ):
                 monsters.append(testobj)
 
         return monsters
@@ -47,14 +48,16 @@ class MonsterMixin(object):
             return
 
         haven_square = self.location.shardhaven_square
-        if haven_square.monster and haven_square.monster.id == self.location.db.last_monster:
+        if (
+            haven_square.monster
+            and haven_square.monster.id == self.location.db.last_monster
+        ):
             self.location.db.last_monster = None
             haven_square.monster_defeated = True
             haven_square.save()
 
 
 class BossMonsterNpc(Npc, MonsterMixin):
-
     def death_process(self, *args, **kwargs):
         super(BossMonsterNpc, self).death_process(*args, **kwargs)
         self.check_if_defeat()
@@ -66,7 +69,6 @@ class BossMonsterNpc(Npc, MonsterMixin):
 
 
 class MookMonsterNpc(MultiNpc, MonsterMixin):
-
     def multideath(self, num, death=False):
         super(MookMonsterNpc, self).multideath(num, death=death)
         if self.db.num_living == 0:

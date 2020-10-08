@@ -21,7 +21,7 @@ class MsgHandlerBase(object):
     def get_date_from_header(msg):
         # type: (msg) -> Msg
         header = MsgHandlerBase.parse_header(msg)
-        return header.get('date', None)
+        return header.get("date", None)
 
     def get_sender_name(self, msg):
         return msg.get_sender_name(self.obj)

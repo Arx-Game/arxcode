@@ -6,13 +6,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('templates', '0002_auto_20181031_1455'),
+        ("templates", "0002_auto_20181031_1455"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='template',
-            name='access_level',
-            field=models.CharField(choices=[('PR', 'PRIVATE'), ('RS', 'RESTRICTED'), ('OP', 'OPEN')], default='PR', max_length=2),
+            model_name="template",
+            name="access_level",
+            field=models.CharField(
+                choices=[("PR", "PRIVATE"), ("RS", "RESTRICTED"), ("OP", "OPEN")],
+                default="PR",
+                max_length=2,
+            ),
         ),
     ]

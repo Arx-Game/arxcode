@@ -7,8 +7,8 @@ from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-     url(r'^show/(?P<entry_id>\d+)/$', views.show_news),
-     url(r'^archive/$', views.news_archive),
-     url(r'^search/$', views.search_form),
-     url(r'^search/results/$', views.search_results),
+    url(r"^show/(?P<entry_id>\d+)/$", views.show_news),
+    url(r"^archive/$", views.news_archive),
+    url(r"^search/$", views.search_form),
+    url(r"^search/results/$", views.search_results),
 ]

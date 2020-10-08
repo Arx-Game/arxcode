@@ -1,4 +1,3 @@
-
 """
 This is a very simple news application, with most of the expected features
 like news-categories/topics and searchable archives.
@@ -32,6 +31,7 @@ class SearchForm(forms.Form):
     view when we're picking the query out of GET. This makes searching safe
     via the search form or by directly inputing values via GET key pairs.
     """
+
     search_terms = forms.CharField(max_length=100, min_length=3, required=True)
 
 
@@ -45,10 +45,10 @@ def show_news(request, entry_id):
     pagevars = {
         "page_title": "News Entry",
         "news_entry": news_entry,
-        "sidebar": sidebar
+        "sidebar": sidebar,
     }
 
-    return render(request, 'news/show_entry.html', pagevars, content_type="text/html")
+    return render(request, "news/show_entry.html", pagevars, content_type="text/html")
 
 
 def news_archive(request):
@@ -57,18 +57,22 @@ def news_archive(request):
 
     TODO: Expand this a bit to allow filtering by month/year.
     """
-    news_entries = NewsEntry.objects.all().order_by('-date_posted')
+    news_entries = NewsEntry.objects.all().order_by("-date_posted")
     # TODO: Move this to either settings.py or the SQL configuration.
     entries_per_page = 15
 
     pagevars = {
         "page_title": "News Archive",
         "browse_url": "/news/archive",
-        "sidebar": sidebar
+        "sidebar": sidebar,
     }
     view = ListView.as_view(queryset=news_entries)
-    return view(request, template_name='news/archive.html',
-                extra_context=pagevars, paginate_by=entries_per_page)
+    return view(
+        request,
+        template_name="news/archive.html",
+        extra_context=pagevars,
+        paginate_by=entries_per_page,
+    )
 
 
 def search_form(request):
@@ -77,14 +81,17 @@ def search_form(request):
     user enters a search term that meets the minimum, send them on their way
     to the results page.
     """
-    if request.method == 'GET':
+    if request.method == "GET":
         # A GET request was sent to the search page, load the value and
         # validate it.
         form = SearchForm(request.GET)
         if form.is_valid():
             # If the input is good, send them to the results page with the
             # query attached in GET variables.
-            return HttpResponseRedirect('/news/search/results/?search_terms=' + form.cleaned_data['search_terms'])
+            return HttpResponseRedirect(
+                "/news/search/results/?search_terms="
+                + form.cleaned_data["search_terms"]
+            )
     else:
         # Brand new search, nothing has been sent just yet.
         form = SearchForm()
@@ -93,10 +100,10 @@ def search_form(request):
         "page_title": "Search News",
         "search_form": form,
         "debug": settings.DEBUG,
-        "sidebar": sidebar
+        "sidebar": sidebar,
     }
 
-    return render(request, 'news/search_form.html', pagevars, content_type="text/html")
+    return render(request, "news/search_form.html", pagevars, content_type="text/html")
 
 
 def search_results(request):
@@ -117,16 +124,23 @@ def search_results(request):
     # Perform searches that match the title and contents.
     # TODO: Allow the user to specify what to match against and in what
     # topics/categories.
-    news_entries = NewsEntry.objects.filter(Q(title__contains=cleaned_get['search_terms'])
-                                            | Q(body__contains=cleaned_get['search_terms']))
+    news_entries = NewsEntry.objects.filter(
+        Q(title__contains=cleaned_get["search_terms"])
+        | Q(body__contains=cleaned_get["search_terms"])
+    )
 
     pagevars = {
         "game_name": settings.SERVERNAME,
         "page_title": "Search Results",
-        "searchtext": cleaned_get['search_terms'],
+        "searchtext": cleaned_get["search_terms"],
         "browse_url": "/news/search/results",
-        "sidebar": sidebar
+        "sidebar": sidebar,
     }
     view = ListView.as_view(queryset=news_entries)
-    return view(request, news_entries, template_name='news/archive.html', extra_context=pagevars,
-                paginate_by=entries_per_page)
+    return view(
+        request,
+        news_entries,
+        template_name="news/archive.html",
+        extra_context=pagevars,
+        paginate_by=entries_per_page,
+    )

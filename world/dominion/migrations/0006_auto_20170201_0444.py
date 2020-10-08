@@ -8,115 +8,156 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0005_auto_20170122_0200'),
+        ("dominion", "0005_auto_20170122_0200"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='orgrelationship',
-            name='history',
-            field=models.TextField(blank=True, verbose_name=b'History of these organizations'),
+            model_name="orgrelationship",
+            name="history",
+            field=models.TextField(
+                blank=True, verbose_name=b"History of these organizations"
+            ),
         ),
         migrations.AddField(
-            model_name='orgrelationship',
-            name='name',
-            field=models.CharField(blank=True, db_index=True, max_length=255, verbose_name=b'Name of the relationship'),
+            model_name="orgrelationship",
+            name="name",
+            field=models.CharField(
+                blank=True,
+                db_index=True,
+                max_length=255,
+                verbose_name=b"Name of the relationship",
+            ),
         ),
         migrations.AlterField(
-            model_name='army',
-            name='name',
+            model_name="army",
+            name="name",
             field=models.CharField(blank=True, db_index=True, max_length=80, null=True),
         ),
         migrations.AlterField(
-            model_name='assignedtask',
-            name='week',
+            model_name="assignedtask",
+            name="week",
             field=models.PositiveSmallIntegerField(blank=0, db_index=True, default=0),
         ),
         migrations.AlterField(
-            model_name='craftingmaterialtype',
-            name='category',
+            model_name="craftingmaterialtype",
+            name="category",
             field=models.CharField(blank=True, db_index=True, max_length=80, null=True),
         ),
         migrations.AlterField(
-            model_name='craftingmaterialtype',
-            name='name',
+            model_name="craftingmaterialtype",
+            name="name",
             field=models.CharField(db_index=True, max_length=80),
         ),
         migrations.AlterField(
-            model_name='craftingrecipe',
-            name='ability',
+            model_name="craftingrecipe",
+            name="ability",
             field=models.CharField(blank=True, db_index=True, max_length=80, null=True),
         ),
         migrations.AlterField(
-            model_name='craftingrecipe',
-            name='known_by',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='recipes', to='dominion.AssetOwner'),
+            model_name="craftingrecipe",
+            name="known_by",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="recipes",
+                to="dominion.AssetOwner",
+            ),
         ),
         migrations.AlterField(
-            model_name='craftingrecipe',
-            name='name',
-            field=models.CharField(blank=True, db_index=True, max_length=255, null=True),
+            model_name="craftingrecipe",
+            name="name",
+            field=models.CharField(
+                blank=True, db_index=True, max_length=255, null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='craftingrecipe',
-            name='skill',
+            model_name="craftingrecipe",
+            name="skill",
             field=models.CharField(blank=True, db_index=True, max_length=80, null=True),
         ),
         migrations.AlterField(
-            model_name='influencecategory',
-            name='name',
+            model_name="influencecategory",
+            name="name",
             field=models.CharField(db_index=True, max_length=255, unique=True),
         ),
         migrations.AlterField(
-            model_name='organization',
-            name='name',
-            field=models.CharField(blank=True, db_index=True, max_length=255, null=True),
+            model_name="organization",
+            name="name",
+            field=models.CharField(
+                blank=True, db_index=True, max_length=255, null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='orgrelationship',
-            name='orgs',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='relationships', to='dominion.Organization'),
+            model_name="orgrelationship",
+            name="orgs",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="relationships",
+                to="dominion.Organization",
+            ),
         ),
         migrations.AlterField(
-            model_name='rpevent',
-            name='gms',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='events_gmd', to='dominion.PlayerOrNpc'),
+            model_name="rpevent",
+            name="gms",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="events_gmd",
+                to="dominion.PlayerOrNpc",
+            ),
         ),
         migrations.AlterField(
-            model_name='rpevent',
-            name='hosts',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='events_hosted', to='dominion.PlayerOrNpc'),
+            model_name="rpevent",
+            name="hosts",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="events_hosted",
+                to="dominion.PlayerOrNpc",
+            ),
         ),
         migrations.AlterField(
-            model_name='rpevent',
-            name='participants',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='events_attended', to='dominion.PlayerOrNpc'),
+            model_name="rpevent",
+            name="participants",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="events_attended",
+                to="dominion.PlayerOrNpc",
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='name',
+            model_name="task",
+            name="name",
             field=models.CharField(blank=True, db_index=True, max_length=80, null=True),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='org',
-            field=models.ManyToManyField(blank=True, db_index=True, related_name='tasks', to='dominion.Organization'),
+            model_name="task",
+            name="org",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                related_name="tasks",
+                to="dominion.Organization",
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='week',
+            model_name="task",
+            name="week",
             field=models.PositiveSmallIntegerField(blank=0, db_index=True, default=0),
         ),
         migrations.AlterUniqueTogether(
-            name='renown',
-            unique_together=set([('category', 'player')]),
+            name="renown",
+            unique_together=set([("category", "player")]),
         ),
         migrations.AlterUniqueTogether(
-            name='reputation',
-            unique_together=set([('player', 'organization')]),
+            name="reputation",
+            unique_together=set([("player", "organization")]),
         ),
         migrations.AlterUniqueTogether(
-            name='sphereofinfluence',
-            unique_together=set([('category', 'org')]),
+            name="sphereofinfluence",
+            unique_together=set([("category", "org")]),
         ),
     ]

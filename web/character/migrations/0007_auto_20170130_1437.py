@@ -10,18 +10,29 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('character', '0006_auto_20170128_2256'),
+        ("character", "0006_auto_20170128_2256"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='theory',
-            name='can_edit',
-            field=models.ManyToManyField(blank=True, null=True, related_name='editable_theories', to=settings.AUTH_USER_MODEL),
+            model_name="theory",
+            name="can_edit",
+            field=models.ManyToManyField(
+                blank=True,
+                null=True,
+                related_name="editable_theories",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='theory',
-            name='related_clues',
-            field=models.ManyToManyField(blank=True, db_index=True, null=True, related_name='theories', to='character.Clue'),
+            model_name="theory",
+            name="related_clues",
+            field=models.ManyToManyField(
+                blank=True,
+                db_index=True,
+                null=True,
+                related_name="theories",
+                to="character.Clue",
+            ),
         ),
     ]

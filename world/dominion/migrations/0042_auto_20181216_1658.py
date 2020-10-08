@@ -8,18 +8,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0041_prestigenomination'),
+        ("dominion", "0041_prestigenomination"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='prestigenomination',
-            name='approved',
+            model_name="prestigenomination",
+            name="approved",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='prestigenomination',
-            name='denied_by',
-            field=models.ManyToManyField(related_name='_prestigenomination_denied_by_+', to='dominion.PlayerOrNpc'),
+            model_name="prestigenomination",
+            name="denied_by",
+            field=models.ManyToManyField(
+                related_name="_prestigenomination_denied_by_+",
+                to="dominion.PlayerOrNpc",
+            ),
         ),
     ]

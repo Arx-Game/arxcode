@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exploration', '0033_auto_20181117_1740'),
+        ("exploration", "0033_auto_20181117_1740"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='monster',
-            name='weight_spawn',
+            model_name="monster",
+            name="weight_spawn",
             field=models.PositiveSmallIntegerField(default=10),
         ),
     ]

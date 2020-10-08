@@ -15,7 +15,9 @@ from typeclasses.mixins import ObjectMixins, MsgMixins, NameMixins, CraftingMixi
 from world.magic.mixins import MagicMixins
 
 
-class Object(CraftingMixins, MsgMixins, ObjectMixins, NameMixins, DefaultObject, MagicMixins):
+class Object(
+    CraftingMixins, MsgMixins, ObjectMixins, NameMixins, DefaultObject, MagicMixins
+):
     """
     This is the root typeclass object, implementing an in-game Evennia
     game object, such as having a location, being able to be
@@ -161,7 +163,7 @@ class Object(CraftingMixins, MsgMixins, ObjectMixins, NameMixins, DefaultObject,
      at_say(speaker, message)  - by default, called if an object inside this
                                  object speaks
 
-     """
+    """
 
     def at_magic_exposure(self, alignment=None, affinity=None, strength=10):
         pass

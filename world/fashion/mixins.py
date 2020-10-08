@@ -10,6 +10,7 @@ class FashionableMixins(object):
     Handles the fashion requirements of wearable items. Requires that the object
     using the mixin is an ObjectDB/Typeclass instance.
     """
+
     fashion_ap_cost = 1
 
     def check_fashion_ready(self):
@@ -17,30 +18,46 @@ class FashionableMixins(object):
         if self.modeled_by:
             raise FashionError("%s has already been used to model fashion." % self)
         if not self.crafted_by_mortals:
-            raise FashionError("%s was wrought by no mortal hand, and from it no mortal fame can be earned." % self)
+            raise FashionError(
+                "%s was wrought by no mortal hand, and from it no mortal fame can be earned."
+                % self
+            )
         return True
 
     def model_for_fashion(self, player, org, outfit=None):
-        """ Our spine:
+        """Our spine:
         Checks the item's availability as well as the model's. Makes snapshot object
         and has it calculate fame. Then fame is awarded and a record of it made.
         """
         self.check_fashion_ready()
         if not outfit and not player.pay_action_points(self.fashion_ap_cost):
-            msg = "It costs %d AP to model %s; you do not have enough energy." % (self.fashion_ap_cost, self)
+            msg = "It costs %d AP to model %s; you do not have enough energy." % (
+                self.fashion_ap_cost,
+                self,
+            )
             raise FashionError(msg)
-        snapshot = FashionSnapshot.objects.create(fashion_model=player.Dominion, fashion_item=self, org=org,
-                                                  designer=self.designer.Dominion, outfit=outfit)
+        snapshot = FashionSnapshot.objects.create(
+            fashion_model=player.Dominion,
+            fashion_item=self,
+            org=org,
+            designer=self.designer.Dominion,
+            outfit=outfit,
+        )
         snapshot.roll_for_fame()
         snapshot.apply_fame()
         snapshot.inform_fashion_clients()
         return snapshot.fame
 
-    def return_appearance(self, pobject, detailed=False, format_desc=False,
-                          show_contents=True):
+    def return_appearance(
+        self, pobject, detailed=False, format_desc=False, show_contents=True
+    ):
         """Override of return appearance to add our modeled-by snapshots"""
-        ret = super(FashionableMixins, self).return_appearance(pobject, detailed=detailed, format_desc=format_desc,
-                                                               show_contents=show_contents)
+        ret = super(FashionableMixins, self).return_appearance(
+            pobject,
+            detailed=detailed,
+            format_desc=format_desc,
+            show_contents=show_contents,
+        )
         mod = self.modeled_by
         if mod:
             ret += "\n%s" % mod
@@ -109,9 +126,13 @@ class FashionableMixins(object):
     def designer(self):
         """Returns the item's creator player"""
         creator = self.db.crafted_by
-        if creator and hasattr(creator, 'player_ob'):
+        if creator and hasattr(creator, "player_ob"):
             return self.db.crafted_by.player_ob
 
     @property
     def crafted_by_mortals(self):
-        return bool(self.recipe and self.designer and not self.designer.check_permstring("builders"))
+        return bool(
+            self.recipe
+            and self.designer
+            and not self.designer.check_permstring("builders")
+        )

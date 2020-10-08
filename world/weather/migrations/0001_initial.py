@@ -10,46 +10,99 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='WeatherEmit',
+            name="WeatherEmit",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('at_night', models.BooleanField(default=True, verbose_name=b'Night')),
-                ('at_morning', models.BooleanField(default=True, verbose_name=b'Morning')),
-                ('at_afternoon', models.BooleanField(default=True, verbose_name=b'Afternoon')),
-                ('at_evening', models.BooleanField(default=True, verbose_name=b'Evening')),
-                ('in_summer', models.BooleanField(default=True, verbose_name=b'Summer')),
-                ('in_fall', models.BooleanField(default=True, verbose_name=b'Fall')),
-                ('in_winter', models.BooleanField(default=True, verbose_name=b'Winter')),
-                ('in_spring', models.BooleanField(default=True, verbose_name=b'Spring')),
-                ('intensity_min', models.PositiveSmallIntegerField(default=1, verbose_name=b'Min Intensity')),
-                ('intensity_max', models.PositiveSmallIntegerField(default=10, verbose_name=b'Max Intensity')),
-                ('weight', models.PositiveIntegerField(verbose_name=b'Weight')),
-                ('text', models.TextField(verbose_name=b'Emit')),
-                ('gm_notes', models.TextField(blank=True, null=True, verbose_name=b'GM Notes')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("at_night", models.BooleanField(default=True, verbose_name=b"Night")),
+                (
+                    "at_morning",
+                    models.BooleanField(default=True, verbose_name=b"Morning"),
+                ),
+                (
+                    "at_afternoon",
+                    models.BooleanField(default=True, verbose_name=b"Afternoon"),
+                ),
+                (
+                    "at_evening",
+                    models.BooleanField(default=True, verbose_name=b"Evening"),
+                ),
+                (
+                    "in_summer",
+                    models.BooleanField(default=True, verbose_name=b"Summer"),
+                ),
+                ("in_fall", models.BooleanField(default=True, verbose_name=b"Fall")),
+                (
+                    "in_winter",
+                    models.BooleanField(default=True, verbose_name=b"Winter"),
+                ),
+                (
+                    "in_spring",
+                    models.BooleanField(default=True, verbose_name=b"Spring"),
+                ),
+                (
+                    "intensity_min",
+                    models.PositiveSmallIntegerField(
+                        default=1, verbose_name=b"Min Intensity"
+                    ),
+                ),
+                (
+                    "intensity_max",
+                    models.PositiveSmallIntegerField(
+                        default=10, verbose_name=b"Max Intensity"
+                    ),
+                ),
+                ("weight", models.PositiveIntegerField(verbose_name=b"Weight")),
+                ("text", models.TextField(verbose_name=b"Emit")),
+                (
+                    "gm_notes",
+                    models.TextField(blank=True, null=True, verbose_name=b"GM Notes"),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='WeatherType',
+            name="WeatherType",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=25, verbose_name=b'Weather Name')),
-                ('gm_notes', models.TextField(blank=True, null=True, verbose_name=b'GM Notes')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=25, verbose_name=b"Weather Name")),
+                (
+                    "gm_notes",
+                    models.TextField(blank=True, null=True, verbose_name=b"GM Notes"),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='weatheremit',
-            name='weather',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='emits', to='weather.WeatherType'),
+            model_name="weatheremit",
+            name="weather",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="emits",
+                to="weather.WeatherType",
+            ),
         ),
     ]

@@ -15,6 +15,7 @@ from world.dominion.models import Organization
 
 class BrokeredSale(SharedMemoryModel):
     """A sale sitting on the broker, waiting for someone to buy it"""
+
     ACTION_POINTS = 0
     ECONOMIC = 1
     SOCIAL = 2
@@ -22,19 +23,35 @@ class BrokeredSale(SharedMemoryModel):
     CRAFTING_MATERIALS = 4
     SALE = 0
     PURCHASE = 1
-    OFFERING_TYPES = ((ACTION_POINTS, "Action Points"), (ECONOMIC, "Economic Resources"), (SOCIAL, "Social Resources"),
-                      (MILITARY, "Military Resources"), (CRAFTING_MATERIALS, "Crafting Materials"))
-    RESOURCE_TYPES = ((ECONOMIC, "economic"), (SOCIAL, "social"), (MILITARY, "military"))
+    OFFERING_TYPES = (
+        (ACTION_POINTS, "Action Points"),
+        (ECONOMIC, "Economic Resources"),
+        (SOCIAL, "Social Resources"),
+        (MILITARY, "Military Resources"),
+        (CRAFTING_MATERIALS, "Crafting Materials"),
+    )
+    RESOURCE_TYPES = (
+        (ECONOMIC, "economic"),
+        (SOCIAL, "social"),
+        (MILITARY, "military"),
+    )
     BROKER_TYPES = ((PURCHASE, "Purchase"), (SALE, "Sale"))
-    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="brokered_sales",
-                              on_delete=models.CASCADE)
-    sale_type = models.PositiveSmallIntegerField(default=ACTION_POINTS, choices=OFFERING_TYPES)
+    owner = models.ForeignKey(
+        "dominion.PlayerOrNpc", related_name="brokered_sales", on_delete=models.CASCADE
+    )
+    sale_type = models.PositiveSmallIntegerField(
+        default=ACTION_POINTS, choices=OFFERING_TYPES
+    )
     amount = models.PositiveIntegerField(default=0)
     price = models.PositiveIntegerField(default=0)
-    buyers = models.ManyToManyField("dominion.PlayerOrNpc", related_name="brokered_purchases",
-                                    through="PurchasedAmount")
-    crafting_material_type = models.ForeignKey("dominion.CraftingMaterialType", null=True, blank=True,
-                                               on_delete=models.CASCADE)
+    buyers = models.ManyToManyField(
+        "dominion.PlayerOrNpc",
+        related_name="brokered_purchases",
+        through="PurchasedAmount",
+    )
+    crafting_material_type = models.ForeignKey(
+        "dominion.CraftingMaterialType", null=True, blank=True, on_delete=models.CASCADE
+    )
     broker_type = models.PositiveSmallIntegerField(default=SALE, choices=BROKER_TYPES)
 
     @property
@@ -59,7 +76,11 @@ class BrokeredSale(SharedMemoryModel):
             string display of the sale
         """
         msg = "{wID{n: %s\n" % self.id
-        msg += "{wMaterial{n: %s {wAmount{n: %s {wPrice{n: %s\n" % (self.material_name, self.amount, self.price)
+        msg += "{wMaterial{n: %s {wAmount{n: %s {wPrice{n: %s\n" % (
+            self.material_name,
+            self.amount,
+            self.price,
+        )
         amounts = self.purchased_amounts.all()
         if caller == self.owner_character and amounts:
             msg += "{wPurchase History:{n\n"
@@ -80,7 +101,10 @@ class BrokeredSale(SharedMemoryModel):
             PayError if they can't afford stuff
         """
         if amount > self.amount:
-            raise PayError("You want to buy %s, but there is only %s for sale." % (amount, self.amount))
+            raise PayError(
+                "You want to buy %s, but there is only %s for sale."
+                % (amount, self.amount)
+            )
         cost = self.price * amount
         self.amount -= amount
         if self.broker_type == self.SALE:
@@ -121,13 +145,21 @@ class BrokeredSale(SharedMemoryModel):
     def pay_owner(self, buyer, quantity, cost):
         """Pays our owner"""
         self.owner_character.pay_money(-cost)
-        self.owner.player.inform("%s has bought %s %s for %s silver." % (buyer, quantity, self.material_name, cost),
-                                 category="Broker Sale", append=True)
+        self.owner.player.inform(
+            "%s has bought %s %s for %s silver."
+            % (buyer, quantity, self.material_name, cost),
+            category="Broker Sale",
+            append=True,
+        )
 
     def pay_seller(self, seller, quantity, cost):
         seller.player.char_ob.pay_money(-cost)
-        self.owner.player.inform("%s has sold %s %s for %s silver." % (seller, quantity, self.material_name, cost),
-                                 category="Broker Sale", append=True)
+        self.owner.player.inform(
+            "%s has sold %s %s for %s silver."
+            % (seller, quantity, self.material_name, cost),
+            category="Broker Sale",
+            append=True,
+        )
 
     def cancel(self):
         """Refund our owner and delete ourselves"""
@@ -145,12 +177,18 @@ class BrokeredSale(SharedMemoryModel):
             new_cost = self.price * self.amount
             to_pay = original_cost - new_cost
             if to_pay > buyer.currency:
-                raise PayError("You cannot afford to pay %s when you only have %s silver." % (to_pay, buyer.currency))
+                raise PayError(
+                    "You cannot afford to pay %s when you only have %s silver."
+                    % (to_pay, buyer.currency)
+                )
             self.owner_character.pay_money(to_pay)
         try:
-            other_sale = self.owner.brokered_sales.get(sale_type=self.sale_type, price=new_price,
-                                                       crafting_material_type=self.crafting_material_type,
-                                                       broker_type=self.broker_type)
+            other_sale = self.owner.brokered_sales.get(
+                sale_type=self.sale_type,
+                price=new_price,
+                crafting_material_type=self.crafting_material_type,
+                broker_type=self.broker_type,
+            )
             other_sale.amount += self.amount
             other_sale.save()
             self.delete()
@@ -161,10 +199,15 @@ class BrokeredSale(SharedMemoryModel):
 
 class PurchasedAmount(SharedMemoryModel):
     """Details of a purchase by a player"""
-    deal = models.ForeignKey('BrokeredSale', related_name="purchased_amounts",
-                             on_delete=models.CASCADE)
-    buyer = models.ForeignKey('dominion.PlayerOrNpc', related_name="purchased_amounts",
-                              on_delete=models.CASCADE)
+
+    deal = models.ForeignKey(
+        "BrokeredSale", related_name="purchased_amounts", on_delete=models.CASCADE
+    )
+    buyer = models.ForeignKey(
+        "dominion.PlayerOrNpc",
+        related_name="purchased_amounts",
+        on_delete=models.CASCADE,
+    )
     amount = models.PositiveIntegerField(default=0)
 
     def display(self):
@@ -173,8 +216,11 @@ class PurchasedAmount(SharedMemoryModel):
 
 
 class PetitionSettings(SharedMemoryModel):
-    owner = models.ForeignKey("dominion.PlayerOrNpc", related_name="petition_settings",
-                              on_delete=models.CASCADE)
+    owner = models.ForeignKey(
+        "dominion.PlayerOrNpc",
+        related_name="petition_settings",
+        on_delete=models.CASCADE,
+    )
     inform = models.BooleanField(default=True)
     ignore_general = models.BooleanField(default=False)
     ignored_organizations = models.ManyToManyField(Organization)
@@ -195,9 +241,19 @@ class PetitionSettings(SharedMemoryModel):
 
 class Petition(SharedMemoryModel):
     """A request for assistance made openly or to an organization"""
-    dompcs = models.ManyToManyField('dominion.PlayerOrNpc', related_name="petitions", through="PetitionParticipation")
-    organization = models.ForeignKey('dominion.Organization', related_name="petitions", blank=True, null=True,
-                                     on_delete=models.CASCADE)
+
+    dompcs = models.ManyToManyField(
+        "dominion.PlayerOrNpc",
+        related_name="petitions",
+        through="PetitionParticipation",
+    )
+    organization = models.ForeignKey(
+        "dominion.Organization",
+        related_name="petitions",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
     closed = models.BooleanField(default=False)
     waiting = models.BooleanField(default=True)
     topic = models.CharField("Short summary of the petition", max_length=120)
@@ -206,7 +262,7 @@ class Petition(SharedMemoryModel):
     date_updated = models.DateField(auto_now=True)
 
     class Meta:
-        ordering = ('-date_updated',)
+        ordering = ("-date_updated",)
 
     @property
     def owner(self):
@@ -285,13 +341,21 @@ class Petition(SharedMemoryModel):
         self.posts.create(in_character=in_character, dompc=dompc, text=text)
         part = self.petitionparticipation_set.get(dompc=dompc)
         part.subscribed = True
-        for participant in self.petitionparticipation_set.filter(unread_posts=False).exclude(dompc=dompc):
+        for participant in self.petitionparticipation_set.filter(
+            unread_posts=False
+        ).exclude(dompc=dompc):
             participant.unread_posts = True
             participant.save()
             if participant.subscribed:
-                participant.player.msg("{wA new message has been posted to petition %s.{n" % self.id)
-                participant.player.inform("{wA new message has been posted to petition %s:{n|/|/%s" %
-                                          (self.id, text), category="Petition", append=True)
+                participant.player.msg(
+                    "{wA new message has been posted to petition %s.{n" % self.id
+                )
+                participant.player.inform(
+                    "{wA new message has been posted to petition %s:{n|/|/%s"
+                    % (self.id, text),
+                    category="Petition",
+                    append=True,
+                )
 
     def mark_posts_read(self, dompc):
         """If dompc is a participant, mark their posts read"""
@@ -309,15 +373,16 @@ class Petition(SharedMemoryModel):
 
 class PetitionParticipation(SharedMemoryModel):
     """A model showing how someone participated in a petition"""
-    petition = models.ForeignKey('Petition', on_delete=models.CASCADE)
-    dompc = models.ForeignKey('dominion.PlayerOrNpc', on_delete=models.CASCADE)
+
+    petition = models.ForeignKey("Petition", on_delete=models.CASCADE)
+    dompc = models.ForeignKey("dominion.PlayerOrNpc", on_delete=models.CASCADE)
     is_owner = models.BooleanField(default=False)
     signed_up = models.BooleanField(default=False)
     unread_posts = models.BooleanField(default=False)
     subscribed = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('petition', 'dompc')
+        unique_together = ("petition", "dompc")
 
     def __str__(self):
         return str(self.dompc)
@@ -329,10 +394,13 @@ class PetitionParticipation(SharedMemoryModel):
 
 class PetitionPost(SharedMemoryModel):
     """A model of a message attached to a given petition."""
-    petition = models.ForeignKey('petitions.Petition', related_name="posts",
-                                 on_delete=models.CASCADE)
-    dompc = models.ForeignKey('dominion.PlayerOrNpc', blank=True, null=True,
-                              on_delete=models.CASCADE)
+
+    petition = models.ForeignKey(
+        "petitions.Petition", related_name="posts", on_delete=models.CASCADE
+    )
+    dompc = models.ForeignKey(
+        "dominion.PlayerOrNpc", blank=True, null=True, on_delete=models.CASCADE
+    )
     in_character = models.BooleanField(default=True)
     text = models.TextField(blank=True)
 

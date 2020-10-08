@@ -9,6 +9,7 @@ from world.conditions.models import RollModifier
 
 class ModifierHandler(object):
     """Caches and handles various RollModifier queries"""
+
     def __init__(self, obj):
         self.obj = obj
 
@@ -40,8 +41,14 @@ class ModifierHandler(object):
         Returns:
             The new knack
         """
-        knack = self.obj.modifiers.create(modifier_type=RollModifier.KNACK, name=name, stat=stat, skill=skill,
-                                          description=desc, value=1)
+        knack = self.obj.modifiers.create(
+            modifier_type=RollModifier.KNACK,
+            name=name,
+            stat=stat,
+            skill=skill,
+            description=desc,
+            value=1,
+        )
         del self.knacks  # clear cache
         return knack
 

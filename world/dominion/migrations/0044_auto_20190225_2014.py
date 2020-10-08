@@ -8,18 +8,20 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0043_auto_20181230_1627'),
+        ("dominion", "0043_auto_20181230_1627"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='plotupdate',
-            name='ooc_notes',
-            field=models.TextField(blank=True, verbose_name=b'Player-visible ooc notes'),
+            model_name="plotupdate",
+            name="ooc_notes",
+            field=models.TextField(
+                blank=True, verbose_name=b"Player-visible ooc notes"
+            ),
         ),
         migrations.AlterField(
-            model_name='plotupdate',
-            name='gm_notes',
-            field=models.TextField(blank=True, verbose_name=b'Staff-visible notes'),
+            model_name="plotupdate",
+            name="gm_notes",
+            field=models.TextField(blank=True, verbose_name=b"Staff-visible notes"),
         ),
     ]

@@ -5,4 +5,4 @@ from django.apps import AppConfig
 
 
 class ConditionsConfig(AppConfig):
-    name = 'world.conditions'
+    name = "world.conditions"

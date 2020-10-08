@@ -1,8 +1,22 @@
 COMBAT_STYLES = ("melee", "close", "brawling", "archery", "magic")
 COMBAT_STATUS = ("active", "subdued", "incapacitated")
 COMBAT_STANCES = ("defensive", "guarded", "balanced", "aggressive", "reckless")
-STANCE_ATK_MOD = {"defensive": 10, "guarded": 5, "balanced": 0, "aggressive": -10, "reckless": -20, None: 0}
-STANCE_DEF_MOD = {"defensive": -10, "guarded": -5, "balanced": 0, "aggressive": 10, "reckless": 20, None: 0}
+STANCE_ATK_MOD = {
+    "defensive": 10,
+    "guarded": 5,
+    "balanced": 0,
+    "aggressive": -10,
+    "reckless": -20,
+    None: 0,
+}
+STANCE_DEF_MOD = {
+    "defensive": -10,
+    "guarded": -5,
+    "balanced": 0,
+    "aggressive": 10,
+    "reckless": 20,
+    None: 0,
+}
 
 COMBAT_INTRO = """
 Combat makes commands available to you, which you can see by

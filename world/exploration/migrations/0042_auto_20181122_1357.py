@@ -9,74 +9,182 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0035_auto_20180831_0922'),
-        ('magic', '0004_alchemicalmaterial_plural_name'),
-        ('objects', '0009_remove_objectdb_db_player'),
-        ('exploration', '0041_shardhavenobstacle_obstacle_class'),
+        ("dominion", "0035_auto_20180831_0922"),
+        ("magic", "0004_alchemicalmaterial_plural_name"),
+        ("objects", "0009_remove_objectdb_db_player"),
+        ("exploration", "0041_shardhavenobstacle_obstacle_class"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ShardhavenPuzzle',
+            name="ShardhavenPuzzle",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('weight_trinket', models.SmallIntegerField(default=0, help_text=b'A weight chance that this puzzle will drop a trinket.')),
-                ('weight_weapon', models.SmallIntegerField(default=0, help_text=b'A weight chance that this puzzle will drop a weapon.')),
-                ('obstacle', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='puzzles', to='exploration.ShardhavenObstacle')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "weight_trinket",
+                    models.SmallIntegerField(
+                        default=0,
+                        help_text=b"A weight chance that this puzzle will drop a trinket.",
+                    ),
+                ),
+                (
+                    "weight_weapon",
+                    models.SmallIntegerField(
+                        default=0,
+                        help_text=b"A weight chance that this puzzle will drop a weapon.",
+                    ),
+                ),
+                (
+                    "obstacle",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="puzzles",
+                        to="exploration.ShardhavenObstacle",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='ShardhavenPuzzleCraftingMaterial',
+            name="ShardhavenPuzzleCraftingMaterial",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('weight', models.SmallIntegerField(default=10, help_text=b'A weight chance that this puzzle will drop this material.')),
-                ('minimum_quantity', models.PositiveSmallIntegerField(default=1)),
-                ('maximum_quantity', models.PositiveSmallIntegerField(default=1)),
-                ('material', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='dominion.CraftingMaterialType')),
-                ('puzzle', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='crafting_materials', to='exploration.ShardhavenPuzzle')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "weight",
+                    models.SmallIntegerField(
+                        default=10,
+                        help_text=b"A weight chance that this puzzle will drop this material.",
+                    ),
+                ),
+                ("minimum_quantity", models.PositiveSmallIntegerField(default=1)),
+                ("maximum_quantity", models.PositiveSmallIntegerField(default=1)),
+                (
+                    "material",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="dominion.CraftingMaterialType",
+                    ),
+                ),
+                (
+                    "puzzle",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="crafting_materials",
+                        to="exploration.ShardhavenPuzzle",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='ShardhavenPuzzleMaterial',
+            name="ShardhavenPuzzleMaterial",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('weight', models.SmallIntegerField(default=10, help_text=b'A weight chance that this puzzle will drop this material.')),
-                ('minimum_quantity', models.PositiveSmallIntegerField(default=1)),
-                ('maximum_quantity', models.PositiveSmallIntegerField(default=1)),
-                ('material', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='magic.AlchemicalMaterial')),
-                ('puzzle', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='alchemical_materials', to='exploration.ShardhavenPuzzle')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "weight",
+                    models.SmallIntegerField(
+                        default=10,
+                        help_text=b"A weight chance that this puzzle will drop this material.",
+                    ),
+                ),
+                ("minimum_quantity", models.PositiveSmallIntegerField(default=1)),
+                ("maximum_quantity", models.PositiveSmallIntegerField(default=1)),
+                (
+                    "material",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="magic.AlchemicalMaterial",
+                    ),
+                ),
+                (
+                    "puzzle",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="alchemical_materials",
+                        to="exploration.ShardhavenPuzzle",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='ShardhavenPuzzleObjectLoot',
+            name="ShardhavenPuzzleObjectLoot",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('weight', models.SmallIntegerField(default=10, help_text=b'A weight chance that this puzzle will drop this object.')),
-                ('duplicate', models.BooleanField(default=False)),
-                ('object', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='objects.ObjectDB')),
-                ('puzzle', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='crafting_materials', to='exploration.ShardhavenPuzzle')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "weight",
+                    models.SmallIntegerField(
+                        default=10,
+                        help_text=b"A weight chance that this puzzle will drop this object.",
+                    ),
+                ),
+                ("duplicate", models.BooleanField(default=False)),
+                (
+                    "object",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="objects.ObjectDB",
+                    ),
+                ),
+                (
+                    "puzzle",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="crafting_materials",
+                        to="exploration.ShardhavenPuzzle",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.AddField(
-            model_name='monsterdrops',
-            name='max_quantity',
+            model_name="monsterdrops",
+            name="max_quantity",
             field=models.PositiveSmallIntegerField(default=1),
         ),
         migrations.AddField(
-            model_name='monsterdrops',
-            name='min_quantity',
+            model_name="monsterdrops",
+            name="min_quantity",
             field=models.PositiveSmallIntegerField(default=1),
         ),
     ]

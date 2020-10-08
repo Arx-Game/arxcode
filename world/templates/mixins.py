@@ -20,7 +20,9 @@ class TemplateMixins(object):
         escape = lambda e: "".join("\\" + c if c in "\\" or c == "\\" else c for c in e)
         work_string = string
         for template in templates:
-            work_string = re.sub(re.escape(template.markup()), escape(template.desc), work_string)
+            work_string = re.sub(
+                re.escape(template.markup()), escape(template.desc), work_string
+            )
         return work_string
 
     def can_apply_templates(self, caller, desc):
@@ -29,7 +31,9 @@ class TemplateMixins(object):
         if len(template_ids) > 0:
             templates = Template.objects.in_list(self.find_template_ids(desc))
 
-            unusable_templates = filter(lambda t: not t.is_accessible_by(caller), templates)
+            unusable_templates = filter(
+                lambda t: not t.is_accessible_by(caller), templates
+            )
             unusable_templates = list(map(lambda t: t.markup(), unusable_templates))
 
             if unusable_templates:
@@ -48,4 +52,3 @@ class TemplateMixins(object):
 
             for template in templates:
                 template.applied_to.add(obj)
-

@@ -20,6 +20,7 @@ def delayed_start(event_id):
     try:
         event = RPEvent.objects.get(id=event_id)
         from evennia.scripts.models import ScriptDB
+
         script = ScriptDB.objects.get(db_key="Event Manager")
         if event.id in script.db.cancelled:
             script.db.cancelled.remove(event.id)
@@ -34,6 +35,7 @@ class EventManager(Script):
     This script repeatedly saves server times so
     it can be retrieved after server downtime.
     """
+
     # noinspection PyAttributeOutsideInit
     def at_script_creation(self):
         """
@@ -97,10 +99,12 @@ class EventManager(Script):
 
     @staticmethod
     def announce_upcoming_event(event, diff):
-        mins = int(diff/60)
+        mins = int(diff / 60)
         secs = diff % 60
-        announce_msg = "{wEvent: '%s'(#%s) will start in %s minutes and %s seconds.{n" % (event.name, event.id,
-                                                                                          mins, secs)
+        announce_msg = (
+            "{wEvent: '%s'(#%s) will start in %s minutes and %s seconds.{n"
+            % (event.name, event.id, mins, secs)
+        )
         if event.public_event:
             SESSIONS.announce_all(announce_msg)
         else:
@@ -160,7 +164,7 @@ class EventManager(Script):
             SESSIONS.announce_all(start_str)
         elif event.location:
             try:
-                event.location.msg_contents(start_str, options={'box': True})
+                event.location.msg_contents(start_str, options={"box": True})
             except Exception:
                 pass
         self.db.active_events.append(event.id)
@@ -174,9 +178,9 @@ class EventManager(Script):
         open_logs = self.ndb.open_logs or []
         open_gm_logs = self.ndb.open_gm_logs or []
         # noinspection PyBroadException
-        with open(self.get_log_path(event.id), 'a+') as log:
+        with open(self.get_log_path(event.id), "a+") as log:
             open_logs.append(log)
-        with open(self.get_gmlog_path(event.id), 'a+') as gmlog:
+        with open(self.get_gmlog_path(event.id), "a+") as gmlog:
             open_gm_logs.append(gmlog)
         self.ndb.open_logs = open_logs
         self.ndb.open_gm_logs = open_gm_logs
@@ -223,7 +227,7 @@ class EventManager(Script):
         event = RPEvent.objects.get(id=eventid)
         msg = parse_ansi(msg, strip_ansi=True)
         msg = "\n" + msg + "\n"
-        with open(self.get_log_path(eventid), 'a+') as log:
+        with open(self.get_log_path(eventid), "a+") as log:
             log.write(msg)
         try:
             dompc = sender.player.Dominion
@@ -235,7 +239,7 @@ class EventManager(Script):
     def add_gmnote(self, eventid, msg):
         msg = parse_ansi(msg, strip_ansi=True)
         msg = "\n" + msg + "\n"
-        with open(self.get_gmlog_path(eventid), 'a+') as log:
+        with open(self.get_gmlog_path(eventid), "a+") as log:
             log.write(msg)
 
     def add_gemit(self, msg):
@@ -262,7 +266,9 @@ class EventManager(Script):
                 pass
             # award prestige
             try:
-                host.assets.adjust_prestige(event.prestige / len(qualified_hosts), PrestigeCategory.EVENT)
+                host.assets.adjust_prestige(
+                    event.prestige / len(qualified_hosts), PrestigeCategory.EVENT
+                )
             except (AttributeError, ValueError, TypeError):
                 continue
 
@@ -282,19 +288,20 @@ class EventManager(Script):
     @staticmethod
     def get_event_board():
         from typeclasses.bulletin_board.bboard import BBoard
+
         return BBoard.objects.get(db_key__iexact="events")
 
     def post_event(self, event, poster, post):
         board = self.get_event_board()
-        board.bb_post(poster_obj=poster, msg=post, subject=event.name,
-                      event=event)
+        board.bb_post(poster_obj=poster, msg=post, subject=event.name, event=event)
 
     def delete_event_post(self, event):
         # noinspection PyBroadException
         try:
             board = self.get_event_board()
-            post = board.posts.get(db_tags__db_key=event.tagkey,
-                                   db_tags__db_data=event.tagdata)
+            post = board.posts.get(
+                db_tags__db_key=event.tagkey, db_tags__db_data=event.tagdata
+            )
             post.delete()
         except Exception:
             pass

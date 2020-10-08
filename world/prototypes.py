@@ -36,11 +36,11 @@ See the `@spawn` command and `evennia.utils.spawner` for more info.
 
 """
 
-#from random import randint
+# from random import randint
 #
-#NOBODY = {}
+# NOBODY = {}
 #
-#GOBLIN = {
+# GOBLIN = {
 # "key": "goblin grunt",
 # "health": lambda: randint(20,30),
 # "resists": ["cold", "poison"],
@@ -48,23 +48,23 @@ See the `@spawn` command and `evennia.utils.spawner` for more info.
 # "weaknesses": ["fire", "light"]
 # }
 #
-#GOBLIN_WIZARD = {
+# GOBLIN_WIZARD = {
 # "prototype": "GOBLIN",
 # "key": "goblin wizard",
 # "spells": ["fire ball", "lighting bolt"]
 # }
 #
-#GOBLIN_ARCHER = {
+# GOBLIN_ARCHER = {
 # "prototype": "GOBLIN",
 # "key": "goblin archer",
 # "attacks": ["short bow"]
-#}
+# }
 #
-#ARCHWIZARD = {
+# ARCHWIZARD = {
 # "attacks": ["archwizard staff"],
-#}
+# }
 #
-#GOBLIN_ARCHWIZARD = {
+# GOBLIN_ARCHWIZARD = {
 # "key": "goblin archwizard",
 # "prototype" : ("GOBLIN_WIZARD", "ARCHWIZARD")
-#}
+# }

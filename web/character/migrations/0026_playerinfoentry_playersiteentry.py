@@ -9,32 +9,73 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('character', '0025_storyemit_orgs'),
+        ("character", "0025_storyemit_orgs"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PlayerInfoEntry',
+            name="PlayerInfoEntry",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('entry_type', models.PositiveSmallIntegerField(choices=[(0, 'Info'), (1, 'Ruling'), (2, 'Praise'), (3, 'Criticism')], default=0)),
-                ('text', models.TextField(blank=True)),
-                ('account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='entries', to='character.PlayerAccount')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "entry_type",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "Info"),
+                            (1, "Ruling"),
+                            (2, "Praise"),
+                            (3, "Criticism"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                ("text", models.TextField(blank=True)),
+                (
+                    "account",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="entries",
+                        to="character.PlayerAccount",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='PlayerSiteEntry',
+            name="PlayerSiteEntry",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('address', models.CharField(blank=True, max_length=255, null=True)),
-                ('last_seen', models.DateTimeField(blank=True, null=True)),
-                ('account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='addresses', to='character.PlayerAccount')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("address", models.CharField(blank=True, max_length=255, null=True)),
+                ("last_seen", models.DateTimeField(blank=True, null=True)),
+                (
+                    "account",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="addresses",
+                        to="character.PlayerAccount",
+                    ),
+                ),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
     ]

@@ -1,1 +1,1 @@
-default_app_config = 'world.magic.apps.MagicConfig'
+default_app_config = "world.magic.apps.MagicConfig"

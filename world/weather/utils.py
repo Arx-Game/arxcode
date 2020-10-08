@@ -30,22 +30,22 @@ def weather_emits(weathertype, season=None, time=None, intensity=5):
 
     qs = WeatherEmit.objects.filter(weather=weathertype)
     qs = qs.filter(intensity_min__lte=intensity, intensity_max__gte=intensity)
-    if season == 'spring':
+    if season == "spring":
         qs = qs.filter(in_spring=True)
-    elif season == 'summer':
+    elif season == "summer":
         qs = qs.filter(in_summer=True)
-    elif season == 'autumn' or season == 'fall':
+    elif season == "autumn" or season == "fall":
         qs = qs.filter(in_fall=True)
-    elif season == 'winter':
+    elif season == "winter":
         qs = qs.filter(in_winter=True)
 
-    if time == 'night':
+    if time == "night":
         qs = qs.filter(at_night=True)
-    elif time == 'morning':
+    elif time == "morning":
         qs = qs.filter(at_morning=True)
-    elif time == 'afternoon':
+    elif time == "afternoon":
         qs = qs.filter(at_afternoon=True)
-    elif time == 'evening':
+    elif time == "evening":
         qs = qs.filter(at_evening=True)
 
     return qs
@@ -65,12 +65,12 @@ def pick_emit(weathertype, season=None, time=None, intensity=None):
     :return:
     """
     # Do we have a GM-set override?
-    custom_weather = ServerConfig.objects.conf('weather_custom', default=None)
+    custom_weather = ServerConfig.objects.conf("weather_custom", default=None)
     if custom_weather:
         return custom_weather
 
     if weathertype is None:
-        weathertype = ServerConfig.objects.conf('weather_type_current', default=1)
+        weathertype = ServerConfig.objects.conf("weather_type_current", default=1)
 
     if isinstance(weathertype, int):
         weathertype = WeatherType.objects.get(pk=weathertype)
@@ -79,13 +79,16 @@ def pick_emit(weathertype, season=None, time=None, intensity=None):
         raise ValueError
 
     if intensity is None:
-        intensity = ServerConfig.objects.conf('weather_intensity_current', default=5)
+        intensity = ServerConfig.objects.conf("weather_intensity_current", default=5)
 
     emits = weather_emits(weathertype, season=season, time=time, intensity=intensity)
 
     if emits.count() == 0:
-        logger.log_err("Weather: Unable to find any matching emits for {} intensity {} on a {} {}."
-                       .format(weathertype.name, intensity, season, time))
+        logger.log_err(
+            "Weather: Unable to find any matching emits for {} intensity {} on a {} {}.".format(
+                weathertype.name, intensity, season, time
+            )
+        )
         return None
 
     if emits.count() == 1:
@@ -106,7 +109,7 @@ def set_weather_type(value=1):
     Sets the weather type, as an integer value.
     :param value: A value mapping to the primary key of a WeatherType object
     """
-    ServerConfig.objects.conf(key='weather_type_current', value=value)
+    ServerConfig.objects.conf(key="weather_type_current", value=value)
 
 
 def set_weather_target_type(value=1):
@@ -115,7 +118,7 @@ def set_weather_target_type(value=1):
     :param value: A value mapping to the primary key of a WeatherType object
     :return:
     """
-    ServerConfig.objects.conf(key='weather_type_target', value=value)
+    ServerConfig.objects.conf(key="weather_type_target", value=value)
 
 
 def get_weather_type():
@@ -123,7 +126,7 @@ def get_weather_type():
     Returns the current weather type, as an integer.
     :return: An integer mapping to the primary key of a WeatherType object
     """
-    return ServerConfig.objects.conf('weather_type_current', default=1)
+    return ServerConfig.objects.conf("weather_type_current", default=1)
 
 
 def get_weather_target_type():
@@ -131,7 +134,7 @@ def get_weather_target_type():
     Returns the target weather type, as an integer.
     :return: An integer mapping to the primary key of a WeatherType object
     """
-    return ServerConfig.objects.conf('weather_type_target', default=1)
+    return ServerConfig.objects.conf("weather_type_target", default=1)
 
 
 def set_weather_intensity(value=5):
@@ -139,7 +142,7 @@ def set_weather_intensity(value=5):
     Sets the weather intensity, as an integer value.
     :param value: A value from 1 to 10.
     """
-    ServerConfig.objects.conf(key='weather_intensity_current', value=value)
+    ServerConfig.objects.conf(key="weather_intensity_current", value=value)
 
 
 def set_weather_target_intensity(value=5):
@@ -147,7 +150,7 @@ def set_weather_target_intensity(value=5):
     Sets the weather intensity, as an integer value.
     :param value: A value from 1 to 10.
     """
-    ServerConfig.objects.conf(key='weather_intensity_target', value=value)
+    ServerConfig.objects.conf(key="weather_intensity_target", value=value)
 
 
 def get_weather_intensity():
@@ -155,7 +158,7 @@ def get_weather_intensity():
     Returns the current weather intensity, as an integer from 1 to 10
     :return: The current intensity.
     """
-    return ServerConfig.objects.conf('weather_intensity_current', default=5)
+    return ServerConfig.objects.conf("weather_intensity_current", default=5)
 
 
 def get_weather_target_intensity():
@@ -163,29 +166,29 @@ def get_weather_target_intensity():
     Returns the target weather intensity, as an integer.
     :return: An integer value from 1 to 10.
     """
-    return ServerConfig.objects.conf('weather_intensity_target', default=5)
+    return ServerConfig.objects.conf("weather_intensity_target", default=5)
 
 
-def emits_for_season(season='fall'):
+def emits_for_season(season="fall"):
     """
     Returns all valid emits for the season given.
     :param season: 'summer', 'autumn', 'winter', or 'spring'
     """
     qs = WeatherEmit.objects.all()
     season = season.lower()
-    if season == 'spring':
+    if season == "spring":
         qs = qs.filter(in_spring=True)
-    elif season == 'summer':
+    elif season == "summer":
         qs = qs.filter(in_summer=True)
-    elif season == 'autumn' or season == 'fall':
+    elif season == "autumn" or season == "fall":
         qs = qs.filter(in_fall=True)
-    elif season == 'winter':
+    elif season == "winter":
         qs = qs.filter(in_winter=True)
 
     return qs
 
 
-def random_weather(season='fall'):
+def random_weather(season="fall"):
     """
     Given a season, picks a weighted random weather type from the list
     of valid weathers.
@@ -200,7 +203,9 @@ def random_weather(season='fall'):
     total_weight = 0
     for emit in emits:
         if emit.weather.automated:
-            weatherweight = weathers[emit.weather.id] if emit.weather.id in weathers else 0
+            weatherweight = (
+                weathers[emit.weather.id] if emit.weather.id in weathers else 0
+            )
             weatherweight += emit.weight
             weathers[emit.weather.id] = weatherweight * emit.weather.multiplier
             total_weight += emit.weight
@@ -222,11 +227,13 @@ def advance_weather():
     If we have met our target, pick a new one for the next run.
     :return: Current weather ID as an integer, current weather intensity as an integer
     """
-    if ServerConfig.objects.conf('weather_locked', default=False):
+    if ServerConfig.objects.conf("weather_locked", default=False):
         return get_weather_type(), get_weather_intensity()
 
-    target_weather = ServerConfig.objects.conf('weather_type_target', default=None)
-    target_intensity = ServerConfig.objects.conf('weather_intensity_target', default=None)
+    target_weather = ServerConfig.objects.conf("weather_type_target", default=None)
+    target_intensity = ServerConfig.objects.conf(
+        "weather_intensity_target", default=None
+    )
 
     season, time = gametime.get_time_and_season()
 
@@ -239,8 +246,10 @@ def advance_weather():
         target_intensity = randint(1, 10)
         set_weather_intensity(target_intensity)
 
-    current_weather = ServerConfig.objects.conf('weather_type_current', default=1)
-    current_intensity = ServerConfig.objects.conf('weather_intensity_current', default=1)
+    current_weather = ServerConfig.objects.conf("weather_type_current", default=1)
+    current_intensity = ServerConfig.objects.conf(
+        "weather_intensity_current", default=1
+    )
 
     if current_weather != target_weather:
         current_intensity -= randint(1, 6)
@@ -288,12 +297,15 @@ def choose_current_weather():
         # target intensity of during our current season/time;
         # we'll advance the weather until we do have something.
         season, time = gametime.get_time_and_season()
-        logger.log_err("Weather: No available weather for type {} intensity {} during {} {}"
-                       .format(weather_type, weather_intensity, season, time))
+        logger.log_err(
+            "Weather: No available weather for type {} intensity {} during {} {}".format(
+                weather_type, weather_intensity, season, time
+            )
+        )
         weather_type, weather_intensity = advance_weather()
         emit = pick_emit(weather_type, intensity=weather_intensity)
 
-    ServerConfig.objects.conf(key='weather_last_emit', value=emit)
+    ServerConfig.objects.conf(key="weather_last_emit", value=emit)
     return emit
 
 
@@ -302,7 +314,7 @@ def get_last_emit():
     Returns the last emit chosen by the weather system.
     :return: The last emit chosen by the weather system.
     """
-    return ServerConfig.objects.conf(key='weather_last_emit', default=None)
+    return ServerConfig.objects.conf(key="weather_last_emit", default=None)
 
 
 def announce_weather(text=None):

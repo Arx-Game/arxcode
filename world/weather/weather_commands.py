@@ -44,15 +44,18 @@ class CmdAdminWeather(ArxCommand):
     def func(self):
 
         if "advance" in self.switches:
-            if ServerConfig.objects.conf('weather_locked', default=False):
+            if ServerConfig.objects.conf("weather_locked", default=False):
                 self.msg("Weather is currently locked, and cannot be advanced!")
                 return
 
             weather, intensity = utils.advance_weather()
             weatherobj = WeatherType.objects.get(pk=weather)
-            self.msg("Current weather is now {} ({}), intensity {}.  "
-                     "Remember to {}/announce if you want players to know.".format(weatherobj.name, weather, intensity,
-                                                                                   self.cmdstring))
+            self.msg(
+                "Current weather is now {} ({}), intensity {}.  "
+                "Remember to {}/announce if you want players to know.".format(
+                    weatherobj.name, weather, intensity, self.cmdstring
+                )
+            )
             return
 
         if "announce" in self.switches:
@@ -62,23 +65,30 @@ class CmdAdminWeather(ArxCommand):
 
         if "set" in self.switches:
             if self.args:
-                ServerConfig.objects.conf('weather_custom', value=self.args)
-                self.msg('Custom weather emit set.  Remember to {}/announce if you want the players to know.'
-                         .format(self.cmdstring))
+                ServerConfig.objects.conf("weather_custom", value=self.args)
+                self.msg(
+                    "Custom weather emit set.  Remember to {}/announce if you want the players to know.".format(
+                        self.cmdstring
+                    )
+                )
                 return
             else:
-                ServerConfig.objects.conf('weather_custom', delete=True)
-                self.msg('Custom weather message cleared.  Remember to {}/announce '
-                         'if you want the players to see a new weather emit.'.format(self.cmdstring))
+                ServerConfig.objects.conf("weather_custom", delete=True)
+                self.msg(
+                    "Custom weather message cleared.  Remember to {}/announce "
+                    "if you want the players to see a new weather emit.".format(
+                        self.cmdstring
+                    )
+                )
                 return
 
         if "lock" in self.switches:
-            ServerConfig.objects.conf('weather_locked', value=True)
+            ServerConfig.objects.conf("weather_locked", value=True)
             self.msg("Weather is now locked and will not change.")
             return
 
         if "unlock" in self.switches:
-            ServerConfig.objects.conf('weather_locked', delete=True)
+            ServerConfig.objects.conf("weather_locked", delete=True)
             self.msg("Weather is now unlocked and will change again as normal.")
             return
 
@@ -101,17 +111,21 @@ class CmdAdminWeather(ArxCommand):
                 return
             utils.set_weather_type(weather_type)
             utils.set_weather_intensity(weather_intensity)
-            self.msg("Set weather type to {} and intensity to {}."
-                     .format(weather_type, weather_intensity))
+            self.msg(
+                "Set weather type to {} and intensity to {}.".format(
+                    weather_type, weather_intensity
+                )
+            )
             return
 
         if "start" in self.switches:
             try:
-                weather = ScriptDB.objects.get(db_key='Weather Patterns')
+                weather = ScriptDB.objects.get(db_key="Weather Patterns")
                 if weather:
                     self.msg("The weather system appears to already be running!")
             except ScriptDB.DoesNotExist:
                 from . import weather_script
+
                 weather_script.init_weather()
                 self.msg("The weather system is now running.")
             return
@@ -125,13 +139,19 @@ class CmdAdminWeather(ArxCommand):
         current_obj = WeatherType.objects.get(pk=current_weather)
         target_obj = WeatherType.objects.get(pk=target_weather)
 
-        locked = ServerConfig.objects.conf('weather_locked', default=False)
-        custom = ServerConfig.objects.conf('weather_custom', default=None)
+        locked = ServerConfig.objects.conf("weather_locked", default=False)
+        custom = ServerConfig.objects.conf("weather_custom", default=None)
 
-        self.msg("\nWeather pattern is {} (intensity {}), moving towards {} (intensity {})."
-                 .format(current_obj.name, current_intensity, target_obj.name, target_intensity))
+        self.msg(
+            "\nWeather pattern is {} (intensity {}), moving towards {} (intensity {}).".format(
+                current_obj.name, current_intensity, target_obj.name, target_intensity
+            )
+        )
         if custom:
             self.msg("However, weather currently is set to a custom value: " + custom)
         if locked:
-            self.msg("And weather currently is locked, and will not change. {}/unlock to restore normal weather"
-                     .format(self.cmdstring))
+            self.msg(
+                "And weather currently is locked, and will not change. {}/unlock to restore normal weather".format(
+                    self.cmdstring
+                )
+            )

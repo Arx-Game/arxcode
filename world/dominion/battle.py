@@ -44,20 +44,21 @@ class Formation(object):
 
     def __str__(self):
         return self.name
-    
+
     def __iter__(self):
         active_units = self.front_rank + self.back_rank
         for unit in active_units:
             yield unit
-    
+
     def __contains__(self, unit):
         return unit in self.front_rank or unit in self.back_rank
-    
+
     def __len__(self):
         return len(self.front_rank) + len(self.back_rank)
 
     def _get_all_units(self):
         return self.front_rank + self.back_rank + self.lost_units + self.routed_units
+
     all_units = property(_get_all_units)
 
 
@@ -70,6 +71,7 @@ class UnitFormation(Formation):
     and units which are currently in rout. Units which rout for more than one
     turn are then lost.
     """
+
     def __init__(self, units, battle, front=None, back=None):
         # setup standard formation stuff
         Formation.__init__(self, units, battle, front, back)
@@ -91,14 +93,15 @@ class UnitFormation(Formation):
         self._castle = castle
         for unit in self:
             self.recall_unit_to_castle(unit)
+
     castle = property(_get_castle, _set_castle)
-    
+
     def add_units(self, unit_list):
         for unit in unit_list:
             self.add_unit(unit)
         self.sort_ranks(self.front_rank)
         self.sort_ranks(self.back_rank)
-    
+
     def add_unit(self, unit):
         unit.formation = self
         unit.log = self.log
@@ -112,7 +115,7 @@ class UnitFormation(Formation):
     def get_targs_for_units(self, enemy_formation):
         for unit in self:
             unit.acquire_target(enemy_formation)
-    
+
     def get_target_from_formation_for_attacker(self, attacker):
         """
         We acquire a target if one exists. If the attacker is ranged,
@@ -120,7 +123,7 @@ class UnitFormation(Formation):
         ranks. If we're melee, we choose the highest value target in
         the front rank if the front rank exists, otherwise we choose
         the highest value target in the back rank.
-        
+
         If we have a castle, we can only have ranged units exchange fire
         unless the enemy is storming us. If the attacker is not ranged
         and we have no enemies storming us, they cannot acquire a target.
@@ -132,7 +135,10 @@ class UnitFormation(Formation):
             return
         if self.castle:
             # add to storming units if they're in position and not already storming
-            if attacker.position == self.castle_pos and attacker not in self.storming_units:
+            if (
+                attacker.position == self.castle_pos
+                and attacker not in self.storming_units
+            ):
                 self.storming_units.append(attacker)
                 attacker.storming = True
             if not self.storming_units:
@@ -158,13 +164,13 @@ class UnitFormation(Formation):
 
     @staticmethod
     def sort_ranks(rank_list):
-        rank_list.sort(key=operator.attrgetter('value'))
+        rank_list.sort(key=operator.attrgetter("value"))
         return rank_list
-    
+
     def ranged_attacks(self):
         for unit in self:
             unit.ranged_attack()
-    
+
     def movement(self):
         for unit in self:
             stay_put = False
@@ -176,7 +182,7 @@ class UnitFormation(Formation):
                     self.recall_unit_to_castle(unit)
             if not stay_put:
                 unit.advance()
-                
+
     def recall_unit_to_castle(self, unit):
         try:
             x, y, z = self.castle_pos
@@ -185,11 +191,11 @@ class UnitFormation(Formation):
             x, y, z = DEFENDER_BACK
         unit.castle = self.castle
         unit.move(x, y, z)
-    
+
     def melee_attacks(self):
         for unit in self:
             unit.melee_attack()
-    
+
     def check_rally(self):
         """
         Check if our units that are currently routed can be made to rally.
@@ -201,7 +207,7 @@ class UnitFormation(Formation):
         for unit in rallied:
             self.routed_units.remove(rallied)
             self.add_unit(unit)
-    
+
     def cleanup(self):
         """
         In the cleanup phase, units that were previously marked as routed
@@ -233,7 +239,7 @@ class UnitFormation(Formation):
         usage:  formation.mark_lost_or_routed(*destroyed_list)
                 formation.mark_lost_or_routed(unit1, unit2, unit3, ...)
                 formation.mark_lost_or_routed(*routed, routed=True)
-        
+
         Given an iterable argument, 'units', we will mark all the units
         as lost, checking what rank they are in to remove them from the
         lists of active units. If the keyword argument of 'routed' is
@@ -245,7 +251,7 @@ class UnitFormation(Formation):
                 self.front_rank.remove(unit)
             if unit in self.back_rank:
                 self.back_rank.remove(unit)
-            if kwargs.get('routed', False):
+            if kwargs.get("routed", False):
                 self.routed_units.append(unit)
             else:
                 self.lost_units.append(unit)
@@ -274,16 +280,27 @@ class UnitFormation(Formation):
                     traceback.print_exc()
 
     def _all_units(self):
-        return set(self.front_rank + self.back_rank + self.lost_units + self.routed_units)
+        return set(
+            self.front_rank + self.back_rank + self.lost_units + self.routed_units
+        )
+
     all_units = property(_all_units)
-                
+
 
 class Battle(object):
     ATK_WIN = 0
-    DEF_WIN = 1    
+    DEF_WIN = 1
 
-    def __init__(self, armies_atk, armies_def, week, pc_atk=None, pc_def=None,
-                 atk_domain=None, def_domain=None):
+    def __init__(
+        self,
+        armies_atk,
+        armies_def,
+        week,
+        pc_atk=None,
+        pc_def=None,
+        atk_domain=None,
+        def_domain=None,
+    ):
         self.log = setup_log(settings.BATTLE_LOG)
         self.week = week
         self.armies_atk = []
@@ -321,23 +338,27 @@ class Battle(object):
         if pc:
             return "%s (%s)" % (str(domain), pc)
         return str(domain)
-    
+
     def get_atk_name(self):
-        return self.get_name() 
+        return self.get_name()
+
     atk_name = property(get_atk_name)
-    
+
     def get_def_name(self):
         return self.get_name(attacker=False)
+
     def_name = property(get_def_name)
-    
+
     def get_atk_units(self):
         return self.formation_atk.all_units
+
     atk_units = property(get_atk_units)
-    
+
     def get_def_units(self):
         return self.formation_def.all_units
+
     def_units = property(get_def_units)
-        
+
     def add_army(self, attacker=None, defender=None):
         """
         Adds armies to either side and then either creates
@@ -348,9 +369,13 @@ class Battle(object):
             self.armies_atk.append(attacker)
             units = [get_combat(unit, self.grid) for unit in attacker.units.all()]
             if not self.formation_atk:
-                self.formation_atk = UnitFormation(units, self, ATTACKER_FRONT, ATTACKER_BACK)
+                self.formation_atk = UnitFormation(
+                    units, self, ATTACKER_FRONT, ATTACKER_BACK
+                )
                 self.formation_atk.name = "Attacker"
-                self.log.info("Attacker created with %s units." % str(len(self.formation_atk)))
+                self.log.info(
+                    "Attacker created with %s units." % str(len(self.formation_atk))
+                )
             else:
                 self.formation_atk.add_units(units)
         if defender:
@@ -360,9 +385,13 @@ class Battle(object):
                 self.castle = defender.castle
             units = [get_combat(unit, self.grid) for unit in defender.units.all()]
             if not self.formation_def:
-                self.formation_def = UnitFormation(units, self, DEFENDER_FRONT, DEFENDER_BACK)
+                self.formation_def = UnitFormation(
+                    units, self, DEFENDER_FRONT, DEFENDER_BACK
+                )
                 self.formation_def.name = "Defender"
-                self.log.info("Defender created with %s units." % str(len(self.formation_def)))
+                self.log.info(
+                    "Defender created with %s units." % str(len(self.formation_def))
+                )
             else:
                 self.formation_def.add_units(units)
             # if we got a castle earlier from defender, add it to the formation
@@ -397,7 +426,7 @@ class Battle(object):
         self.formation_def.check_rally()
         self.formation_def.get_targs_for_units(self.formation_atk)
         self.combat_round()
-    
+
     def check_victory(self):
         """
         If a formation has no active units left, we declare victory for
@@ -416,7 +445,7 @@ class Battle(object):
             return True
         if not self.formation_atk and not self.formation_def:
             self.log.info("Both formations empty. Ending combat with no victor.")
-            return True        
+            return True
 
     def combat_round(self):
         # combat phases
@@ -428,21 +457,21 @@ class Battle(object):
         if self.ending:
             return
         self.pre_round()
-    
+
     def ranged_phase(self):
         self.formation_atk.ranged_attacks()
         self.formation_def.ranged_attacks()
         self.cleanup()
-    
+
     def movement_phase(self):
         self.formation_atk.movement()
         self.formation_def.movement()
-    
+
     def melee_phase(self):
         self.formation_atk.melee_attacks()
         self.formation_def.melee_attacks()
         self.cleanup()
-    
+
     def cleanup(self):
         """
         Process damage for each unit. Determine if a unit is routed or
@@ -468,10 +497,14 @@ class Battle(object):
                 try:
                     BattleReport(self.attacker_pc, self)
                 except Exception:
-                    self.log.info("ERROR: Could not generate BattleReport for attacker.")
+                    self.log.info(
+                        "ERROR: Could not generate BattleReport for attacker."
+                    )
             if self.defender_pc:
                 try:
                     BattleReport(self.defender_pc, self)
                 except Exception:
-                    self.log.info("ERROR: Could not generate BattleReport for defender.")
+                    self.log.info(
+                        "ERROR: Could not generate BattleReport for defender."
+                    )
         self.ending = True

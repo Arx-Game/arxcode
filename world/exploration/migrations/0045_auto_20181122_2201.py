@@ -9,16 +9,16 @@ class Migration(migrations.Migration):
     atomic = False
 
     dependencies = [
-        ('exploration', '0044_auto_20181122_2135'),
+        ("exploration", "0044_auto_20181122_2135"),
     ]
 
     operations = [
         migrations.RenameModel(
-            old_name='MonsterDrops',
-            new_name='MonsterAlchemicalDrop',
+            old_name="MonsterDrops",
+            new_name="MonsterAlchemicalDrop",
         ),
         migrations.RenameModel(
-            old_name='MonsterCraftingDrops',
-            new_name='MonsterCraftingDrop',
+            old_name="MonsterCraftingDrops",
+            new_name="MonsterCraftingDrop",
         ),
     ]

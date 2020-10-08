@@ -11,87 +11,161 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('dominion', '0002_organization_category'),
+        ("dominion", "0002_organization_category"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ActionOOCAnswer',
+            name="ActionOOCAnswer",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('text', models.TextField(blank=True)),
-                ('gm', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='answers_given', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("text", models.TextField(blank=True)),
+                (
+                    "gm",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="answers_given",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='ActionOOCQuestion',
+            name="ActionOOCQuestion",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('text', models.TextField(blank=True)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("text", models.TextField(blank=True)),
             ],
         ),
         migrations.CreateModel(
-            name='CrisisAction',
+            name="CrisisAction",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('week', models.PositiveSmallIntegerField(blank=0, db_index=True, default=0)),
-                ('action', models.TextField(blank=True, verbose_name=b'What actions the player is taking')),
-                ('public', models.BooleanField(default=True)),
-                ('rolls', models.TextField(blank=True)),
-                ('gm_notes', models.TextField(blank=True)),
-                ('story', models.TextField(blank=True, verbose_name=b'Story written by the GM for the player')),
-                ('outcome_value', models.SmallIntegerField(blank=0, default=0)),
-                ('sent', models.BooleanField(default=False)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "week",
+                    models.PositiveSmallIntegerField(blank=0, db_index=True, default=0),
+                ),
+                (
+                    "action",
+                    models.TextField(
+                        blank=True, verbose_name=b"What actions the player is taking"
+                    ),
+                ),
+                ("public", models.BooleanField(default=True)),
+                ("rolls", models.TextField(blank=True)),
+                ("gm_notes", models.TextField(blank=True)),
+                (
+                    "story",
+                    models.TextField(
+                        blank=True,
+                        verbose_name=b"Story written by the GM for the player",
+                    ),
+                ),
+                ("outcome_value", models.SmallIntegerField(blank=0, default=0)),
+                ("sent", models.BooleanField(default=False)),
             ],
         ),
         migrations.AddField(
-            model_name='crisis',
-            name='end_date',
+            model_name="crisis",
+            name="end_date",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='crisis',
-            name='headline',
-            field=models.CharField(blank=True, max_length=255, null=True, verbose_name=b'News-style bulletin'),
+            model_name="crisis",
+            name="headline",
+            field=models.CharField(
+                blank=True,
+                max_length=255,
+                null=True,
+                verbose_name=b"News-style bulletin",
+            ),
         ),
         migrations.AddField(
-            model_name='crisis',
-            name='public',
+            model_name="crisis",
+            name="public",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='crisis',
-            name='resolved',
+            model_name="crisis",
+            name="resolved",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='crisis',
-            name='start_date',
+            model_name="crisis",
+            name="start_date",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AlterField(
-            model_name='crisis',
-            name='name',
-            field=models.CharField(blank=True, db_index=True, max_length=255, null=True),
+            model_name="crisis",
+            name="name",
+            field=models.CharField(
+                blank=True, db_index=True, max_length=255, null=True
+            ),
         ),
         migrations.AddField(
-            model_name='crisisaction',
-            name='crisis',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='dominion.Crisis'),
+            model_name="crisisaction",
+            name="crisis",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="actions",
+                to="dominion.Crisis",
+            ),
         ),
         migrations.AddField(
-            model_name='crisisaction',
-            name='dompc',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='dominion.PlayerOrNpc'),
+            model_name="crisisaction",
+            name="dompc",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="actions",
+                to="dominion.PlayerOrNpc",
+            ),
         ),
         migrations.AddField(
-            model_name='actionoocquestion',
-            name='action',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='questions', to='dominion.CrisisAction'),
+            model_name="actionoocquestion",
+            name="action",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="questions",
+                to="dominion.CrisisAction",
+            ),
         ),
         migrations.AddField(
-            model_name='actionoocanswer',
-            name='question',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='answers', to='dominion.ActionOOCQuestion'),
+            model_name="actionoocanswer",
+            name="question",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="answers",
+                to="dominion.ActionOOCQuestion",
+            ),
         ),
     ]

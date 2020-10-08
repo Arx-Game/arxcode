@@ -19,8 +19,7 @@ _SCREEN_HEIGHT = settings.CLIENT_DEFAULT_HEIGHT
 
 # text
 
-_DISPLAY = \
-"""{text}
+_DISPLAY = """{text}
 (|wmore|n [{pageno}/{pagemax}] |wn|next|||wb|nack|||wt|nop|||we|nnd|||wq|nuit)"""
 
 
@@ -38,9 +37,22 @@ class CmdMore(Command):
     """
     Manipulate the text paging
     """
+
     key = _CMD_NOINPUT
-    aliases = ["quit", "q", "abort", "a", "next", "n",
-               "back", "b", "top", "t", "end", "e"]
+    aliases = [
+        "quit",
+        "q",
+        "abort",
+        "a",
+        "next",
+        "n",
+        "back",
+        "b",
+        "top",
+        "t",
+        "end",
+        "e",
+    ]
     auto_help = False
 
     def func(self):
@@ -75,6 +87,7 @@ class CmdMoreLook(Command):
     """
     Override look to display window and prevent OOCLook from firing
     """
+
     key = "look"
     aliases = ["l"]
     auto_help = False
@@ -98,6 +111,7 @@ class CmdSetMore(CmdSet):
     """
     Stores the more command
     """
+
     key = "more_commands"
     priority = 110
 
@@ -110,7 +124,16 @@ class EvMore(object):
     """
     The main pager object
     """
-    def __init__(self, caller, text, always_page=False, session=None, justify_kwargs=None, **kwargs):
+
+    def __init__(
+        self,
+        caller,
+        text,
+        always_page=False,
+        session=None,
+        justify_kwargs=None,
+        **kwargs
+    ):
         """
         Initialization of the text handler.
 
@@ -146,15 +169,17 @@ class EvMore(object):
         text = caller.strip_ascii_from_tags(text)
 
         # set up individual pages for different sessions
-        height = max(4, session.protocol_flags.get("SCREENHEIGHT", {0:_SCREEN_HEIGHT})[0] - 4)
-        width = session.protocol_flags.get("SCREENWIDTH", {0:_SCREEN_WIDTH})[0]
+        height = max(
+            4, session.protocol_flags.get("SCREENHEIGHT", {0: _SCREEN_HEIGHT})[0] - 4
+        )
+        width = session.protocol_flags.get("SCREENWIDTH", {0: _SCREEN_WIDTH})[0]
 
-        pages_by_char = kwargs.pop('pages_by_char', False)
+        pages_by_char = kwargs.pop("pages_by_char", False)
         if pages_by_char:
             PAGE_LENGTH = 3000
             MARGIN = 1000
             while len(text) > PAGE_LENGTH:
-                index = find_newline_seperator(text[PAGE_LENGTH:PAGE_LENGTH+MARGIN])
+                index = find_newline_seperator(text[PAGE_LENGTH : PAGE_LENGTH + MARGIN])
                 sep = PAGE_LENGTH + index
                 self._pages.append(text[:sep])
                 text = "\n" + text[sep:]
@@ -168,14 +193,16 @@ class EvMore(object):
                 justify_kwargs = justify_kwargs or {}
                 width = justify_kwargs.get("width", width)
                 justify_kwargs["width"] = width
-                justify_kwargs["align"] = justify_kwargs.get("align", 'l')
+                justify_kwargs["align"] = justify_kwargs.get("align", "l")
                 justify_kwargs["indent"] = justify_kwargs.get("indent", 0)
 
                 lines = justify(text, **justify_kwargs).split("\n")
 
             # always limit number of chars to 10 000 per page
             height = min(10000 // width, height)
-            self._pages = ["\n".join(lines[i:i+height]) for i in range(0, len(lines), height)]
+            self._pages = [
+                "\n".join(lines[i : i + height]) for i in range(0, len(lines), height)
+            ]
         self._npages = len(self._pages)
         self._npos = 0
         if self._npages <= 1 and not always_page:
@@ -196,9 +223,7 @@ class EvMore(object):
         """
         pos = self._pos
         text = self._pages[pos]
-        page = _DISPLAY.format(text=text,
-                               pageno=pos + 1,
-                               pagemax=self._npages)
+        page = _DISPLAY.format(text=text, pageno=pos + 1, pagemax=self._npages)
         if not page or not text:
             self.page_quit()
         # check for wrong session
@@ -246,7 +271,9 @@ class EvMore(object):
         self._caller.cmdset.remove(CmdSetMore)
 
 
-def msg(caller, text="", always_page=False, session=None, justify_kwargs=None, **kwargs):
+def msg(
+    caller, text="", always_page=False, session=None, justify_kwargs=None, **kwargs
+):
     """
     More-supported version of msg, mimicking the normal msg method.
 
@@ -265,6 +292,11 @@ def msg(caller, text="", always_page=False, session=None, justify_kwargs=None, *
             to the `caller.msg` method.
 
     """
-    EvMore(caller, text, always_page=always_page, session=session,
-                justify_kwargs=justify_kwargs, **kwargs)
-
+    EvMore(
+        caller,
+        text,
+        always_page=always_page,
+        session=session,
+        justify_kwargs=justify_kwargs,
+        **kwargs
+    )

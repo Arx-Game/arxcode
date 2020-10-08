@@ -6,12 +6,12 @@ from django.db import migrations, models
 
 
 def create_tiers(apps, schema_editor):
-    PrestigeTier = apps.get_model('dominion', 'PrestigeTier')
+    PrestigeTier = apps.get_model("dominion", "PrestigeTier")
     tiers = [
-        PrestigeTier(rank_name='celebrated', minimum_prestige=10000000),
-        PrestigeTier(rank_name='renowned', minimum_prestige=8000000),
-        PrestigeTier(rank_name='well-known', minimum_prestige=5000000),
-        PrestigeTier(rank_name='notable', minimum_prestige=2500000),
+        PrestigeTier(rank_name="celebrated", minimum_prestige=10000000),
+        PrestigeTier(rank_name="renowned", minimum_prestige=8000000),
+        PrestigeTier(rank_name="well-known", minimum_prestige=5000000),
+        PrestigeTier(rank_name="notable", minimum_prestige=2500000),
     ]
     PrestigeTier.objects.bulk_create(tiers)
 
@@ -19,20 +19,28 @@ def create_tiers(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dominion', '0038_auto_20181212_2111'),
+        ("dominion", "0038_auto_20181212_2111"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PrestigeTier',
+            name="PrestigeTier",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('rank_name', models.CharField(max_length=30)),
-                ('minimum_prestige', models.PositiveIntegerField()),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("rank_name", models.CharField(max_length=30)),
+                ("minimum_prestige", models.PositiveIntegerField()),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
         ),
-        migrations.RunPython(create_tiers)
+        migrations.RunPython(create_tiers),
     ]

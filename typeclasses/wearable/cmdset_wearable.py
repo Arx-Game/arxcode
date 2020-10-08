@@ -36,6 +36,7 @@ class CmdWear(ArxCommand):
     'Remove' will take off specified worn items, with 'undress' being an
     alias for 'remove all'.
     """
+
     key = "wear"
     locks = "cmd:all()"
     aliases = ["remove", "undress", "removeall"]
@@ -47,6 +48,7 @@ class CmdWear(ArxCommand):
         remove_all = all((cmdstr == "remove", self.args, self.args == "all"))
         from typeclasses.scripts.combat.combat_settings import CombatError
         from world.fashion.exceptions import FashionError
+
         try:
             if undress or remove_all:
                 self.caller.undress()
@@ -62,9 +64,12 @@ class CmdWear(ArxCommand):
 
     def equip_or_remove_outfit(self):
         from world.fashion.fashion_commands import get_caller_outfit_from_args
+
         outfit = get_caller_outfit_from_args(self.caller, self.args)
         if not outfit.is_carried:
-            raise EquipError("Outfit components must be on your person and not in any containers.")
+            raise EquipError(
+                "Outfit components must be on your person and not in any containers."
+            )
         getattr(outfit, self.cmdstring.lower())()
 
     def wear_or_remove_item(self):
@@ -81,6 +86,7 @@ class DefaultCmdSet(CmdSet):
     Legacy commandset that doesn't do anything, but required so that
     old wearables don't throw errors due to a nonexistent pathname
     """
+
     key = "OldWearableDefault"
 
 
@@ -93,6 +99,7 @@ class WearCmdSet(CmdSet):
     bring it back. It's added to the object
     using obj.cmdset.add_default().
     """
+
     key = "WearableDefault"
     # if we have multiple wearable objects, just keep
     # one cmdset, ditch others
