@@ -128,7 +128,7 @@ class SimpleRoll:
             self_only = True
 
         # Now that we know who's getting it, build the private message string.
-        receiver_suffix = "(Shared with: %s)" % (",").join(receiver_list)
+        receiver_suffix = "(Shared with: %s)" % (", ").join(receiver_list)
         private_msg = f"|w[Private Roll]|n {self.roll_message} {receiver_suffix}"
 
         # Always sent to yourself.
@@ -141,6 +141,9 @@ class SimpleRoll:
             if gm.check_permstring("Builders")
         ]
         for gm in staff_list:
+            # If this GM is also the caller, skip me!  I've seen it already!
+            if gm.name.lower() in self_list:
+                continue
             gm.msg(private_msg, options={"roll": True})
 
         # If sending only to caller, we're done.
