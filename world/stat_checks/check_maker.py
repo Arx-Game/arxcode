@@ -20,9 +20,15 @@ def check_rolls_tied(roll1, roll2, tie_value=TIE_THRESHOLD):
 
 class SimpleRoll:
     def __init__(
-        self, character=None, stat=None, skill=None, rating: DifficultyRating = None
+        self,
+        character=None,
+        stat=None,
+        skill=None,
+        rating: DifficultyRating = None,
+        receivers: list = None,
     ):
         self.character = character
+        self.receivers = receivers
         self.stat = stat
         self.skill = skill
         self.result_value = None
@@ -88,6 +94,68 @@ class SimpleRoll:
             self.roll_message, options={"roll": True}
         )
 
+    def announce_to_players(self):
+        """
+        Sends the roll result message to players as well as all staff
+        at self.character's location.
+        """
+        self_list = (
+            "me",
+            "self",
+            str(self.character).lower(),
+            str(self.character.key).lower(),
+        )
+
+        # Adjust receiver list; this is who actually will receive it besides staff and the caller.
+        receiver_list = self.receivers.copy()
+        for name in self.receivers:
+            receiver = self.character.search(name.strip(), use_nicks=True)
+
+            # If not found, is the caller, or is a GM, remove from the list of receivers.
+            # (Staff doesn't need to get it twice, and the caller always will.)
+            if (
+                not receiver
+                or receiver.check_permstring("Builders")
+                or name in self_list
+            ):
+                receiver_list.remove(name)
+
+        # Is this message meant just for me, or am I now the only recipient?
+        self_only = False
+        if len(receiver_list) == 0:
+            receiver_list.clear()
+            receiver_list.append("self-only")
+            self_only = True
+
+        # Now that we know who's getting it, build the private message string.
+        receiver_suffix = "(Shared with: %s)" % (",").join(receiver_list)
+        private_msg = f"|w[Private Roll]|n {self.roll_message} {receiver_suffix}"
+
+        # Always sent to yourself.
+        self.character.msg(private_msg, options={"roll": True})
+
+        # Send result message to all staff in location.
+        staff_list = [
+            gm
+            for gm in self.character.location.contents
+            if gm.check_permstring("Builders")
+        ]
+        for gm in staff_list:
+            gm.msg(private_msg, options={"roll": True})
+
+        # If sending only to caller, we're done.
+        if self_only:
+            return
+
+        # Send result message to receiver list.
+        for name in receiver_list:
+            # Do not send to caller twice.
+            if name in self_list or name == "self-only":
+                continue
+            receiver = self.character.search(name.strip(), use_nicks=True)
+            if receiver:
+                receiver.msg(private_msg, options={"roll": True})
+
     def get_roll_value_for_stat(self) -> int:
         """
         Looks up how much to modify our roll by based on our stat. We use a lookup table to
@@ -143,6 +211,24 @@ class BaseCheckMaker:
         roll = self.roll_class(character=self.character, **self.kwargs)
         roll.execute()
         roll.announce_to_room()
+
+
+class PrivateCheckMaker:
+    roll_class = SimpleRoll
+
+    def __init__(self, character, **kwargs):
+        self.character = character
+        self.kwargs = kwargs
+
+    @classmethod
+    def perform_check_for_character(cls, character, **kwargs):
+        check = cls(character, **kwargs)
+        check.make_check_and_announce()
+
+    def make_check_and_announce(self):
+        roll = self.roll_class(character=self.character, **self.kwargs)
+        roll.execute()
+        roll.announce_to_players()
 
 
 class RollResults:
