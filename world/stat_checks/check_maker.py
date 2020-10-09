@@ -151,9 +151,6 @@ class SimpleRoll:
 
         # Send result message to receiver list.
         for name in receiver_list:
-            # Do not send to caller twice.
-            if name in self_list or name == "self-only":
-                continue
             receiver = self.character.search(name.strip(), use_nicks=True)
             if receiver:
                 receiver.msg(private_msg, options={"roll": True})
