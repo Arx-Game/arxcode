@@ -96,6 +96,12 @@ class TestCheckCommands(ArxCommandTest):
             f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: char2)",
         )
 
+        # Test that copy-pasting names aren't going to spam.
+        self.call_cmd(
+            "dex at normal=char2,char2",
+            f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: char2)",
+        )
+
     def test_stat_check_cmd_contest(self, mock_randint):
         self.add_character(3)
         self.add_character(4)
