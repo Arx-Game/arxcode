@@ -117,6 +117,7 @@ class SimpleRoll:
                 not receiver
                 or receiver.check_permstring("Builders")
                 or name.lower() in self_list
+                or receiver_list.count(name) > 1
             ):
                 receiver_list.remove(name)
 
