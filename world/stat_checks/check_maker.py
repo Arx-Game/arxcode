@@ -96,8 +96,8 @@ class SimpleRoll:
 
     def announce_to_players(self):
         """
-        Sends the roll result message to players as well as all staff
-        at self.character's location.
+        Sends a private roll result message to specific players as well as
+        all staff at self.character's location.
         """
         self_list = (
             "me",
@@ -112,7 +112,7 @@ class SimpleRoll:
             receiver = self.character.search(name.strip(), use_nicks=True)
 
             # If not found, is the caller, or is a GM, remove from the list of receivers.
-            # (Staff doesn't need to get it twice, and the caller always will.)
+            # (Staff and the caller don't need to get it twice; they always receive it.)
             if (
                 not receiver
                 or receiver.check_permstring("Builders")
@@ -145,7 +145,7 @@ class SimpleRoll:
                 continue
             gm.msg(private_msg, options={"roll": True})
 
-        # If sending only to caller, we're done.
+        # If sending only to caller (and staff), we're done.
         if self_only:
             return
 
