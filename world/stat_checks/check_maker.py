@@ -123,7 +123,6 @@ class SimpleRoll:
         # Is this message meant just for me, or am I now the only recipient?
         self_only = False
         if len(receiver_list) == 0:
-            receiver_list.clear()
             receiver_list.append("self-only")
             self_only = True
 
