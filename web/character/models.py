@@ -2646,7 +2646,7 @@ class FlashbackInvolvement(SharedMemoryModel):
         check_str += "=me"  # makes this a private roll
         flub_str = "/flub" if flub else ""
         char.ndb.last_roll = None
-        char.execute_cmd("@check%s %s" % (flub_str, check_str))
+        char.execute_cmd("@oldcheck%s %s" % (flub_str, check_str))
         roll = char.ndb.last_roll
         if roll:
             roll.use_real_name = True  # Thanks, Maskbama.
