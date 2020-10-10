@@ -1072,11 +1072,7 @@ class Character(
             use_dbref=use_dbref,
         )
         # filter out objects we can't see:
-        results = [
-            ob
-            for ob in results
-            if ob.access(self, "view")
-        ]
+        results = [ob for ob in results if ob.access(self, "view")]
         # filter out masked objects unless our search wasn't by their real name:
         results = [
             ob
