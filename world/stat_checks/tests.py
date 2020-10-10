@@ -13,6 +13,10 @@ from unittest.mock import Mock, patch
 class TestCheckCommands(ArxCommandTest):
     def setUp(self):
         super().setUp()
+        DifficultyRating.objects.all().delete()
+        StatWeight.objects.all().delete()
+        NaturalRollType.objects.all().delete()
+        RollResult.objects.all().delete()
         self.easy = DifficultyRating.objects.create(name="easy", value=0)
         self.normal = DifficultyRating.objects.create(name="Normal", value=25)
         template = "{% if natural_roll_type %}{{natural_roll_type|title}}! {% endif %}{{character}} rolls {{result}}."
