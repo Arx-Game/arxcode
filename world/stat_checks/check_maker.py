@@ -121,7 +121,7 @@ class SimpleRoll:
             # If I am the caller or a staff member, remove me from the list of receivers.
             # (Staff and the caller always get the memo; we want PC receivers.)
             # Also checks for duplicate receivers to cross them off too so malicious users
-            # can't put ""=Name,Name,Name" and spam the other party with the result.
+            # can't put "=Name,Name,Name" and spam the other party with the result.
             if (
                 receiver.check_permstring("Builders")
                 or receiver.name.lower() in self_list
