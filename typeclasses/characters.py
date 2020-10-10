@@ -1040,7 +1040,7 @@ class Character(
     ):
         from django.conf import settings
 
-        # if we're staff, we just use the regular search method
+        # if we're staff, we just return the regular search method:
         if self.check_permstring("builders"):
             return super(Character, self).search(
                 searchdata,
@@ -1056,7 +1056,7 @@ class Character(
                 multimatch_string=multimatch_string,
                 use_dbref=use_dbref,
             )
-        # we're not staff. We get search results, then throw out matches of people wearing masks that were by their key
+        # we're not staff. Our search results must filter objects out:
         results = super(Character, self).search(
             searchdata,
             global_search=global_search,
@@ -1071,7 +1071,9 @@ class Character(
             multimatch_string=multimatch_string,
             use_dbref=use_dbref,
         )
-        # we prune results of keys for masked (false_name) objects in results
+        # filter out objects we can't see:
+        results = [ob for ob in results if ob.access(self, "view")]
+        # filter out masked objects unless our search wasn't by their real name:
         results = [
             ob
             for ob in results
