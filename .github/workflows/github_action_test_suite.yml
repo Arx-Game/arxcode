@@ -1,0 +1,26 @@
+name: test-suite
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+
+      - name: Install requirements and evennia
+        run: |
+          export ARX_DIR=$(pwd)
+          cd ..
+          git clone https://github.com/TehomCD/evennia.git
+          cd evennia
+          pip install -e .
+          cd $ARX_DIR
+          pip install -r requirements.txt
+          mkdir server/logs
+
+      - name: Run tests
+        run: |
+          evennia migrate
+          evennia test --settings=test_settings .
