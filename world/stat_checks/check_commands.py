@@ -55,13 +55,18 @@ class CmdStatCheck(ArxCommand):
         )
 
     def do_private_check(self):
-        receivers = [player for player in self.rhs.split(",")]
+        receiver_names = [player for player in self.rhs.split(",")]
+        receiver_list = []
+        for name in receiver_names:
+            receiver = self.caller.search(name.strip(), use_nicks=True)
+            if receiver:
+                receiver_list.append(receiver)
 
         stat, skill, rating = self.get_check_values_from_args(
-            self.lhs, "Usage: stat [+ skill] at <difficulty rating>=<player1>,<player2>"
+            self.lhs, "Usage: stat [+ skill] at <difficulty rating>[=<player1>,<player2>,etc.]"
         )
         PrivateCheckMaker.perform_check_for_character(
-            self.caller, stat=stat, skill=skill, rating=rating, receivers=receivers
+            self.caller, stat=stat, skill=skill, rating=rating, receivers=receiver_list
         )
 
     def get_check_values_from_args(self, args, syntax):

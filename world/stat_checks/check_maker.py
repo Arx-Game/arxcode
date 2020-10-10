@@ -25,10 +25,10 @@ class SimpleRoll:
         stat=None,
         skill=None,
         rating: DifficultyRating = None,
-        receivers: list = None,
+        receivers: list = [],
     ):
         self.character = character
-        self.receivers = receivers
+        self.receivers = receivers or []
         self.stat = stat
         self.skill = skill
         self.result_value = None
@@ -106,35 +106,51 @@ class SimpleRoll:
             str(self.character.key).lower(),
         )
 
+        # If we fail to make a copy (e.g. self.receivers is None),
+        # start with a blank slate.
+        try:
+            receiver_list = self.receivers.copy()
+        except:
+            receiver_list = []
+
         # Adjust receiver list; this is who actually will receive it besides staff and the caller.
-        receiver_list = self.receivers.copy()
-        for name in self.receivers:
-            receiver = self.character.search(name.strip(), use_nicks=True)
-
-            # If not found, is the caller, or is a GM, remove from the list of receivers.
-            # (Staff and the caller don't need to get it twice; they always receive it.)
+        # NOTE: receiver_names became necessary as .join() was being weird with converting
+        # str(self.receivers).  Results were N, a, m, e, 1 instead of Name1, Name2, etc.
+        receiver_names = []
+        for receiver in self.receivers:
+            # If I am the caller or a staff member, remove me from the list of receivers.
+            # (Staff and the caller always get the memo; we want PC receivers.)
+            # Also checks for duplicate receivers to cross them off too so malicious users
+            # can't put ""=Name,Name,Name" and spam the other party with the result.
             if (
-                not receiver
-                or receiver.check_permstring("Builders")
-                or name.lower() in self_list
-                or receiver_list.count(name) > 1
+                receiver.check_permstring("Builders")
+                or receiver.name.lower() in self_list
+                or receiver_list.count(receiver) > 1
             ):
-                receiver_list.remove(name)
+                receiver_list.remove(receiver)
+            else:
+                receiver_names.append(receiver.name)
 
-        # Is this message meant just for me, or am I now the only recipient?
+        # Am I now the only recipient?
         self_only = False
         if len(receiver_list) == 0:
-            receiver_list.append("self-only")
+            receiver_suffix = "(Shared with: self-only)"
             self_only = True
+        else:
+            receiver_suffix = "(Shared with: %s)" % (", ").join(receiver_names)
 
         # Now that we know who's getting it, build the private message string.
-        receiver_suffix = "(Shared with: %s)" % (", ").join(receiver_list)
         private_msg = f"|w[Private Roll]|n {self.roll_message} {receiver_suffix}"
 
         # Always sent to yourself.
         self.character.msg(private_msg, options={"roll": True})
 
-        # Send result message to all staff in location.
+        # If caller doesn't have a location, we're done; there's no one
+        # else to hear it!
+        if not self.character.location:
+            return
+
+        # Otherwise, send result to all staff in location.
         staff_list = [
             gm
             for gm in self.character.location.contents
@@ -146,15 +162,13 @@ class SimpleRoll:
                 continue
             gm.msg(private_msg, options={"roll": True})
 
-        # If sending only to caller (and staff), we're done.
+        # If sending only to caller and any staff present, we're done.
         if self_only:
             return
 
         # Send result message to receiver list.
-        for name in receiver_list:
-            receiver = self.character.search(name.strip(), use_nicks=True)
-            if receiver:
-                receiver.msg(private_msg, options={"roll": True})
+        for receiver in receiver_list:
+            receiver.msg(private_msg, options={"roll": True})
 
     def get_roll_value_for_stat(self) -> int:
         """
