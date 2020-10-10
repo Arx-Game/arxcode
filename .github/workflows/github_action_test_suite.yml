@@ -22,4 +22,5 @@ jobs:
 
       - name: Run tests
         run: |
+          evennia migrate
           evennia test --settings=test_settings .
