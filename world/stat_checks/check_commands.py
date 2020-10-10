@@ -21,7 +21,7 @@ class CmdStatCheck(ArxCommand):
     def get_help(self, caller, cmdset):
         msg = """
     Usage: 
-        @check stat + skill at <difficulty rating>=<player1>,<player2>,etc.
+        @check stat + skill at <difficulty rating>[=<player1>,<player2>,etc.]
         @check/contest name1,name2,name3,name4,name5,etc=stat (+ skill) at <rating>
         @check/contest/here stat (+ skill) at <difficulty rating>
         @check/vs stat (+ skill) vs stat(+skill)=<target name>
