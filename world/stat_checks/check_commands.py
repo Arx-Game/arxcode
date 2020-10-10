@@ -63,7 +63,8 @@ class CmdStatCheck(ArxCommand):
                 receiver_list.append(receiver)
 
         stat, skill, rating = self.get_check_values_from_args(
-            self.lhs, "Usage: stat [+ skill] at <difficulty rating>[=<player1>,<player2>,etc.]"
+            self.lhs,
+            "Usage: stat [+ skill] at <difficulty rating>[=<player1>,<player2>,etc.]",
         )
         PrivateCheckMaker.perform_check_for_character(
             self.caller, stat=stat, skill=skill, rating=rating, receivers=receiver_list
