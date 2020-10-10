@@ -25,7 +25,7 @@ class SimpleRoll:
         stat=None,
         skill=None,
         rating: DifficultyRating = None,
-        receivers: list = [],
+        receivers: list = None,
     ):
         self.character = character
         self.receivers = receivers or []
