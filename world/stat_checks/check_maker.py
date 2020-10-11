@@ -110,28 +110,25 @@ class SimpleRoll:
         # start with a blank slate.
         try:
             receiver_list = self.receivers.copy()
-        except:
+        except Exception:
             receiver_list = []
 
         # Adjust receiver list; this is who actually will receive it besides staff and the caller.
         # NOTE: receiver_names became necessary as .join() was being weird with converting
         # str(self.receivers).  Results were N, a, m, e, 1 instead of Name1, Name2, etc.
-        receiver_names = []
-        for receiver in self.receivers:
-            # If I am the caller or a staff member, remove me from the list of receivers.
-            # (Staff and the caller always get the memo; we want PC receivers.)
-            # Also checks for duplicate receivers to cross them off too so malicious users
-            # can't put "=Name,Name,Name" and spam the other party with the result.
-            if (
-                receiver.check_permstring("Builders")
-                or receiver.name.lower() in self_list
-                or receiver_list.count(receiver) > 1
-            ):
-                receiver_list.remove(receiver)
-            else:
-                receiver_names.append(receiver.name)
 
-        # Am I now the only recipient?
+        # If I am the caller or a staff member, remove me from the list of receivers.
+        # (Staff and the caller always get the memo; we want PC receivers.)
+        # Also checks for duplicate receivers to cross them off too so malicious users
+        # can't put "=Name,Name,Name" and spam the other party with the result.
+        receiver_list = [
+            ob
+            for ob in set(self.receivers)
+            if not ob.check_permstring("Builders") and ob.name.lower() not in self_list
+        ]
+        receiver_names = [ob.name for ob in receiver_list]
+
+        # Am I the only recipient?
         self_only = False
         if len(receiver_list) == 0:
             receiver_suffix = "(Shared with: self-only)"
