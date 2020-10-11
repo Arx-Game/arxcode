@@ -2,6 +2,7 @@ from commands.base import ArxCommand
 from world.stat_checks.models import DifficultyRating, DamageRating
 from world.stat_checks.check_maker import (
     BaseCheckMaker,
+    PrivateCheckMaker,
     ContestedCheckMaker,
     SimpleRoll,
     OpposingRolls,
@@ -19,11 +20,12 @@ class CmdStatCheck(ArxCommand):
 
     def get_help(self, caller, cmdset):
         msg = """
-    Usage: @check stat + skill at <difficulty rating>
-           @check/contest name1,name2,name3,name4,name5,etc=stat (+ skill) at <rating>
-           @check/contest/here stat (+ skill) at <difficulty rating>
-           @check/vs stat (+ skill) vs stat(+skill)=<target name>
-           
+    Usage:
+        @check stat + skill at <difficulty rating>[=<player1>,<player2>,etc.]
+        @check/contest name1,name2,name3,name4,name5,etc=stat (+ skill) at <rating>
+        @check/contest/here stat (+ skill) at <difficulty rating>
+        @check/vs stat (+ skill) vs stat(+skill)=<target name>
+
     Normal check is at a difficulty rating. Rating must be one of {difficulty_ratings}.
     check/contest allows a GM to have everyone selected to make a check, listing the
     results in order of results. check/contest/here is shorthand to check everyone in
@@ -38,6 +40,8 @@ class CmdStatCheck(ArxCommand):
                 return self.do_contested_check()
             if "vs" in self.switches:
                 return self.do_opposing_checks()
+            if self.rhs:
+                return self.do_private_check()
             return self.do_normal_check()
         except self.error_class as err:
             self.msg(err)
@@ -48,6 +52,21 @@ class CmdStatCheck(ArxCommand):
         )
         BaseCheckMaker.perform_check_for_character(
             self.caller, stat=stat, skill=skill, rating=rating
+        )
+
+    def do_private_check(self):
+        receiver_list = []
+        for name in self.rhslist:
+            receiver = self.caller.search(name.strip(), use_nicks=True)
+            if receiver:
+                receiver_list.append(receiver)
+
+        stat, skill, rating = self.get_check_values_from_args(
+            self.lhs,
+            "Usage: stat [+ skill] at <difficulty rating>[=<player1>,<player2>,etc.]",
+        )
+        PrivateCheckMaker.perform_check_for_character(
+            self.caller, stat=stat, skill=skill, rating=rating, receivers=receiver_list
         )
 
     def get_check_values_from_args(self, args, syntax):
@@ -140,13 +159,13 @@ class CmdHarm(ArxCommand):
     def get_help(self, caller, cmdset):
         msg = """
         Causes damage to a character during a story
-        
+
         Usage: harm <character>=<damage rating>[,<damage type>]
-        
+
         The harm command is used to inflict damage on a character during a
         story, usually as the result of a failed roll. Damage is determined
         by the rating of the damage you select.
-        
+
         Ratings: {damage_ratings}
         """
         ratings = ", ".join(str(ob) for ob in DifficultyRating.get_all_instances())

@@ -84,6 +84,28 @@ class TestCheckCommands(ArxCommandTest):
             options=self.options,
         )
 
+    def test_stat_check_cmd_private(self, mock_randint):
+        # Test private roll messaging
+        # Self-only private roll.
+        mock_randint.return_value = 25
+        self.call_cmd(
+            "dex at normal=me",
+            f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: self-only)",
+        )
+
+        # Sharing with another character.
+        # Note that the 'me' gets removed because it's redundant.
+        self.call_cmd(
+            "dex at normal=me,char2",
+            f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char2)",
+        )
+
+        # Test that copy-pasting names aren't going to spam.
+        self.call_cmd(
+            "dex at normal=char2,char2",
+            f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char2)",
+        )
+
     def test_stat_check_cmd_contest(self, mock_randint):
         self.add_character(3)
         self.add_character(4)
