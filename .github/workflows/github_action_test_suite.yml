@@ -18,9 +18,15 @@ jobs:
           pip install -e .
           cd $ARX_DIR
           pip install -r requirements.txt
+          pip install coveralls
           mkdir server/logs
 
       - name: Run tests
         run: |
           evennia migrate
-          evennia test --settings=test_settings .
+          coverage run --source=$ARX_DIR evennia test --settings=test_settings .
+
+      - name: Coveralls GitHub Action
+        uses: coverallsapp/github-action@v1.1.2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
