@@ -25,9 +25,9 @@ jobs:
         run: |
           evennia migrate
           coverage run --source=$ARX_DIR --omit=*/migrations/*,*/test*.py,*.sh,*.txt,*.md,*.pyc $(which evennia) test --settings=test_settings .
-          coveralls
+          coverage xml
 
-      - name: Coveralls GitHub Action
-        uses: coverallsapp/github-action@v1.1.2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Send to Coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          run: coveralls
