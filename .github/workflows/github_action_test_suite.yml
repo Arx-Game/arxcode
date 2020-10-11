@@ -24,7 +24,7 @@ jobs:
       - name: Run tests
         run: |
           evennia migrate
-          coverage run --source=$ARX_DIR evennia test --settings=test_settings .
+          coverage run --source=$ARX_DIR $(which evennia) test --settings=test_settings .
 
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v1.1.2
