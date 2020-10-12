@@ -145,7 +145,7 @@ class CmdStatCheck(ArxCommand):
             rolls.append(
                 SimpleRoll(character=arg[0], stat=stat, skill=skill, rating=rating)
             )
-        OpposingRolls(rolls[0], rolls[1], self.caller).announce()
+        OpposingRolls(rolls[0], rolls[1], self.caller, target).announce()
 
 
 class CmdHarm(ArxCommand):

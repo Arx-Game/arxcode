@@ -147,14 +147,18 @@ class TestCheckCommands(ArxCommandTest):
         self.call_cmd(f"/vs blah blah={self.char2}", "Must provide two checks.")
         self.call_cmd(f"/vs dex + melee vs intelligence={self.char2}", "")
         self.mock_announce.assert_called_with(
-            "Char has called for an opposing check. Char checks dex and melee at easy. Char rolls marginal. "
-            "Char2 checks intelligence at easy. Char2 rolls marginal.\nThe rolls are tied.",
+            "\n|w*** Char has called for an opposing check with Char2. ***|n\n"
+            "Char checks dex and melee at easy. Char rolls marginal.\n"
+            "Char2 checks intelligence at easy. Char2 rolls marginal.\n"
+            "*** The rolls are |ctied|n. ***",
             options=self.options,
         )
         self.char2.traits.set_stat_value("intelligence", 50)
         self.call_cmd(f"/vs dex + melee vs intelligence={self.char2}", "")
         self.mock_announce.assert_called_with(
-            "Char has called for an opposing check. Char checks dex and melee at easy. Char rolls marginal. "
-            "Char2 checks intelligence at easy. Char2 rolls okay.\nChar2 is the winner.",
+            "\n|w*** Char has called for an opposing check with Char2. ***|n\n"
+            "Char checks dex and melee at easy. Char rolls marginal.\n"
+            "Char2 checks intelligence at easy. Char2 rolls okay.\n"
+            "*** |cChar2|n is the winner. ***",
             options=self.options,
         )
