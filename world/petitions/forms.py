@@ -25,7 +25,9 @@ class PetitionForm(ModelForm):
         org = self.cleaned_data.get("organization")
         if org:
             org.inform(
-                "A new petition has been made by %s." % self.owner, category="Petitions"
+                "A new petition has been made by %s.  Type 'petition %s' to read it."
+                % (self.owner, petition.id),
+                category="Petitions",
             )
         return petition
 

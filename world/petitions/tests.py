@@ -399,7 +399,8 @@ class TestPetitionCommands(ArxCommandTest):
         )
         self.call_cmd("/search asdfadsf", "Updated ID Owner Topic Org On")
         org.inform.assert_called_with(
-            "A new petition has been made by Testaccount.", category="Petitions"
+            "A new petition has been made by Testaccount.  Type 'petition 3' to read it.",
+            category="Petitions",
         )
         self.account2.inform.assert_not_called()
 
