@@ -307,10 +307,11 @@ class ContestedCheckMaker:
 
 
 class OpposingRolls:
-    def __init__(self, roll1, roll2, caller):
+    def __init__(self, roll1, roll2, caller, target):
         self.roll1 = roll1
         self.roll2 = roll2
         self.caller = caller
+        self.target = target
 
     def announce(self):
         self.roll1.execute()
@@ -319,9 +320,9 @@ class OpposingRolls:
             [self.roll1, self.roll2], key=lambda x: x.result_value, reverse=True
         )
         if check_rolls_tied(self.roll1, self.roll2):
-            result = "The rolls are tied."
+            result = "*** The rolls are |ctied|n. ***"
         else:
-            result = f"{rolls[0].character} is the winner."
-        msg = f"{self.caller} has called for an opposing check. "
-        msg += f"{self.roll1.roll_message} {self.roll2.roll_message}\n{result}"
+            result = f"*** |c{rolls[0].character}|n is the winner. ***"
+        msg = f"\n|w*** {self.caller} has called for an opposing check with {self.target}. ***|n\n"
+        msg += f"{self.roll1.roll_message}\n{self.roll2.roll_message}\n{result}"
         self.caller.msg_location_or_contents(msg, options={"roll": True})
