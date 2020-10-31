@@ -53,8 +53,13 @@ class CmdPray(ArxCommand):
         table = PrettyTable(["{w#", "{wEntity", "|wStatus|n", "{wDate|n", "|wPrayer|n"])
         for prayer in prayers:
             table.add_row(
-                [prayer.id, prayer.entity, prayer.status, prayer.db_date_created.strftime("%x"),
-                 prayer.text[:30]]
+                [
+                    prayer.id,
+                    prayer.entity,
+                    prayer.status,
+                    prayer.db_date_created.strftime("%x"),
+                    prayer.text[:30],
+                ]
             )
         self.msg(str(table))
 

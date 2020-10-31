@@ -32,15 +32,17 @@ class PrayerListFilter(admin.SimpleListFilter):
 
     def choices(self, changelist):
         yield {
-            'selected': self.value() is None,
-            'query_string': changelist.get_query_string(remove=[self.parameter_name]),
-            'display': "Unanswered",
+            "selected": self.value() is None,
+            "query_string": changelist.get_query_string(remove=[self.parameter_name]),
+            "display": "Unanswered",
         }
         for lookup, title in self.lookup_choices:
             yield {
-                'selected': self.value() == str(lookup),
-                'query_string': changelist.get_query_string({self.parameter_name: lookup}),
-                'display': title,
+                "selected": self.value() == str(lookup),
+                "query_string": changelist.get_query_string(
+                    {self.parameter_name: lookup}
+                ),
+                "display": title,
             }
 
 
