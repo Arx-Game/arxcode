@@ -71,7 +71,7 @@ class CmdPray(ArxCommand):
             )
         matches = InvocableEntity.objects.filter(
             Q(name__iexact=self.lhs) | Q(aliases__alias__iexact=self.lhs)
-        )
+        ).distinct()
         if not matches:
             raise self.error_class(
                 f"No entity by the name {self.lhs}. Available: {InvocableEntity.get_public_names()}"
