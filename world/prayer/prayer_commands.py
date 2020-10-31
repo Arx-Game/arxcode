@@ -50,10 +50,16 @@ class CmdPray(ArxCommand):
         if self.rhs:
             prayers = prayers.filter(entity__name__iexact=self.rhs)
         # list prayers
-        table = PrettyTable(["{w#", "{wEntity", "|wStatus|n", "{wDate:"])
+        table = PrettyTable(["{w#", "{wEntity", "|wStatus|n", "{wDate|n", "|wPrayer|n"])
         for prayer in prayers:
             table.add_row(
-                [prayer.id, prayer.entity, prayer.status, prayer.db_date_created]
+                [
+                    prayer.id,
+                    prayer.entity,
+                    prayer.status,
+                    prayer.db_date_created.strftime("%x"),
+                    prayer.text[:30],
+                ]
             )
         self.msg(str(table))
 
