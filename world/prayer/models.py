@@ -25,9 +25,10 @@ class Prayer(SharedMemoryModel):
         return hasattr(self, "answer") and self.answer
 
     def get_prayer_display(self):
-        msg = f"Prayer: {self.text}\n"
+        msg = f"|wPrayer to {self.entity}:|n {self.text}\n"
         if self.is_answered:
-            msg += str(self.answer.get_prayer_answer_display())
+            msg += f"|wAnswer:|n {self.answer.get_prayer_answer_display()}\n"
+        return msg
 
 
 class InvocableEntity(SharedMemoryModel):

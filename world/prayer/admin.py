@@ -17,7 +17,6 @@ class PrayerListFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         """Defines lookup display for list filter"""
         return (
-            (None, "Unanswered"),
             ("is_answered", "Answered"),
             ("all", "All"),
         )
@@ -31,13 +30,27 @@ class PrayerListFilter(admin.SimpleListFilter):
         if self.value() == "all":
             return queryset.all()
 
+    def choices(self, changelist):
+        yield {
+            'selected': self.value() is None,
+            'query_string': changelist.get_query_string(remove=[self.parameter_name]),
+            'display': "Unanswered",
+        }
+        for lookup, title in self.lookup_choices:
+            yield {
+                'selected': self.value() == str(lookup),
+                'query_string': changelist.get_query_string({self.parameter_name: lookup}),
+                'display': title,
+            }
+
 
 class PrayerAdmin(admin.ModelAdmin):
-    list_display = ("character", "entity", "is_answered", "some_text")
+    list_display = ("character", "entity", "status", "some_text")
     raw_id_fields = ("character",)
     inlines = (PrayerAnswerInline,)
     ordering = ("-db_date_created",)
     search_fields = ("character__db_key", "entity__name", "text")
+    list_filter = (PrayerListFilter,)
 
     @staticmethod
     def some_text(obj):
