@@ -1,11 +1,18 @@
-from world.prayer.prayer_commands import CmdGMPray, CmdPray
+from world.prayer.prayer_commands import CmdPray
+from world.prayer.models import InvocableEntity
 
 from server.utils.test_utils import ArxCommandTest
+from unittest.mock import patch
 
 
 class TestPrayerCommands(ArxCommandTest):
-    def test_cmdpray(self):
-        self.setup_cmd(CmdPray, self.char1)
+    def setUp(self):
+        super().setUp()
+        InvocableEntity.objects.create(name="Gloria")
 
-    def test_gmpray(self):
-        self.setup_cmd(CmdGMPray, self.char1)
+    @patch("world.prayer.prayer_commands.inform_staff")
+    def test_cmdpray(self, mock_inform):
+        self.setup_cmd(CmdPray, self.char1)
+        self.call_cmd("gloria=hi", "You pray to Gloria.")
+        self.assertEqual(1, self.char1.prayers.count())
+        mock_inform.assert_called()
