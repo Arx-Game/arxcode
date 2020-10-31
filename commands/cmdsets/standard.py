@@ -159,6 +159,7 @@ try:
 except Exception as err:
     print("<<ERROR>>: Error encountered in magic commands: %s" % err)
 from world.stat_checks import check_commands
+from world.prayer import prayer_commands
 
 from evennia.commands.cmdset import CmdSet
 
@@ -302,6 +303,7 @@ class MobileCmdSet(CmdSet):
         self.add(fashion_commands.CmdFashionOutfit())
         self.add(petitions_commands.CmdPetition())
         self.add(condition_commands.CmdKnacks())
+        self.add(prayer_commands.CmdPray())
 
 
 class StaffCmdSet(CmdSet):
