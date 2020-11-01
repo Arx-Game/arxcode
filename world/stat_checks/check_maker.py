@@ -106,37 +106,32 @@ class SimpleRoll:
             str(self.character.key).lower(),
         )
 
-        # If we fail to make a copy (e.g. self.receivers is None),
-        # start with a blank slate.
-        try:
-            receiver_list = self.receivers.copy()
-        except Exception:
-            receiver_list = []
-
-        # Adjust receiver list; this is who actually will receive it besides staff and the caller.
-        # NOTE: receiver_names became necessary as .join() was being weird with converting
-        # str(self.receivers).  Results were N, a, m, e, 1 instead of Name1, Name2, etc.
-
-        # If I am the caller or a staff member, remove me from the list of receivers.
-        # (Staff and the caller always get the memo; we want PC receivers.)
-        # Also checks for duplicate receivers to cross them off too so malicious users
-        # can't put "=Name,Name,Name" and spam the other party with the result.
+        # Build the list of who is seeing the roll, and the lists of names
+        # for the msg of who is seeing the roll.  Staff names are highlighted
+        # and last in the lists to draw attention to the fact it was successfully
+        # shared with a GM.  The names are also sorted because my left brain
+        # insisted that it's more organized this way.
         receiver_list = [
-            ob
-            for ob in set(self.receivers)
-            if not ob.check_permstring("Builders") and ob.name.lower() not in self_list
+            ob for ob in set(self.receivers) if ob.name.lower() not in self_list
         ]
-        receiver_names = [ob.name for ob in receiver_list]
+        staff_receiver_names = [
+            "|c%s|n" % (ob.name)
+            for ob in set(self.receivers)
+            if ob.check_permstring("Builders")
+        ]
+        pc_receiver_names = [
+            ob.name for ob in set(self.receivers) if not ob.check_permstring("Builders")
+        ]
 
-        # Am I the only recipient?
-        self_only = False
+        all_receiver_names = sorted(pc_receiver_names) + sorted(staff_receiver_names)
+
+        # Am I the only (non-staff) recipient?
         if len(receiver_list) == 0:
             receiver_suffix = "(Shared with: self-only)"
-            self_only = True
         else:
-            receiver_suffix = "(Shared with: %s)" % (", ").join(receiver_names)
+            receiver_suffix = "(Shared with: %s)" % (", ").join(all_receiver_names)
 
-        # Now that we know who's getting it, build the private message string.
+        # Now that we know who is getting it, build the private message string.
         private_msg = f"|w[Private Roll]|n {self.roll_message} {receiver_suffix}"
 
         # Always sent to yourself.
@@ -153,17 +148,14 @@ class SimpleRoll:
             for gm in self.character.location.contents
             if gm.check_permstring("Builders")
         ]
-        for gm in staff_list:
-            # If this GM is also the caller, skip me!  I've seen it already!
-            if gm.name.lower() in self_list:
+        for staff in staff_list:
+            # If this GM is the caller or a private receiver, skip them.
+            # They were or will be notified.
+            if staff == self.character or staff in receiver_list:
                 continue
-            gm.msg(private_msg, options={"roll": True})
+            staff.msg(private_msg, options={"roll": True})
 
-        # If sending only to caller and any staff present, we're done.
-        if self_only:
-            return
-
-        # Send result message to receiver list.
+        # Send result message to receiver list, if any.
         for receiver in receiver_list:
             receiver.msg(private_msg, options={"roll": True})
 
