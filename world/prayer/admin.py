@@ -1,5 +1,9 @@
 from django.contrib import admin
 from world.prayer.models import Prayer, PrayerAnswer, InvocableEntity, EntityAlias
+from django.shortcuts import reverse
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
+from evennia.utils.utils import crop
 
 
 class PrayerAnswerInline(admin.TabularInline):
@@ -47,16 +51,28 @@ class PrayerListFilter(admin.SimpleListFilter):
 
 
 class PrayerAdmin(admin.ModelAdmin):
-    list_display = ("character", "entity", "status", "some_text")
+    list_display = ("id", "character_name", "entity", "status", "prayer_text")
     raw_id_fields = ("character",)
     inlines = (PrayerAnswerInline,)
     ordering = ("-db_date_created",)
     search_fields = ("character__db_key", "entity__name", "text")
     list_filter = (PrayerListFilter,)
 
-    @staticmethod
-    def some_text(obj):
-        return obj.text[:40]
+    def prayer_text(self, obj):
+        return crop(obj.text, width=120)
+
+    prayer_text.short_description = "Start of Prayer"
+
+    @mark_safe
+    def character_name(self, obj):
+        character_url = reverse(
+            "admin:objects_objectdb_change", args=[obj.character.id]
+        )
+        return f"<a href={character_url}>{escape(obj.character.db_key)}</a>"
+
+    character_name.allow_tags = True
+    character_name.short_description = "Character Name"
+    character_name.admin_order_field = "character__db_key"
 
 
 class EntityAliasInline(admin.StackedInline):
