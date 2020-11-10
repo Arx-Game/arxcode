@@ -176,10 +176,13 @@ def get_ability_val(char, recipe):
 
 def get_highest_crafting_skill(character):
     """Returns the highest crafting skill for character"""
-    from world.stats_and_skills import CRAFTING_SKILLS
+    from world.traits.models import Trait
 
     skills = character.traits.skills
-    return max(CRAFTING_SKILLS + ("artwork",), key=lambda x: skills.get(x, 0))
+    return max(
+        Trait.get_valid_skill_names(Trait.CRAFTING) + ["artwork"],
+        key=lambda x: skills.get(x, 0),
+    )
 
 
 def do_crafting_roll(char, recipe, diffmod=0, diffmult=1.0, room=None):
@@ -188,7 +191,7 @@ def do_crafting_roll(char, recipe, diffmod=0, diffmult=1.0, room=None):
     skill = recipe.skill
     if skill in ("all", "any"):
         skill = get_highest_crafting_skill(char)
-    stat = "luck" if (char.db.luck or 0) > (char.db.dexterity or 0) else "dexterity"
+    stat = "luck" if char.traits.luck > char.traits.dexterity else "dexterity"
     can_crit = False
     try:
         if char.roster.roster.name == "Active":

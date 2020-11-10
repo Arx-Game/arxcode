@@ -5,16 +5,21 @@ from mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest
 from . import combat, market, home
+from world.traits.models import Trait
 
 
 # noinspection PyUnresolvedReferences
 # noinspection PyUnusedLocal
 @patch.object(combat, "inform_staff")
 class CombatCommandsTests(ArxCommandTest):
-    def setUp(self):
-        super().setUp()
-        self.char1.traits.initialize_stats()
-        self.char2.traits.initialize_stats()
+    @classmethod
+    def setUpTestData(cls):
+        Trait.objects.get_or_create(
+            name="stamina", trait_type=Trait.STAT, category=Trait.PHYSICAL
+        )
+        Trait.objects.get_or_create(
+            name="willpower", trait_type=Trait.STAT, category=Trait.MAGIC
+        )
 
     def start_fight(self, *args):
         """Helper function for starting a fight in our test"""
@@ -405,7 +410,6 @@ class CombatCommandsTests(ArxCommandTest):
         self.char1.db.defenders = [self.char3]
         self.char3.db.guarding = self.char1
         self.char3.combat.autoattack = True
-        self.char3.traits.initialize_stats()
         fight = self.start_fight(self.char1)
         self.call_cmd("", "Could not find ''.|Attack who?")
         self.call_cmd("Emerald", "Could not find 'Emerald'.|Attack who?")

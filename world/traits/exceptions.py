@@ -1,0 +1,2 @@
+class InvalidTrait(Exception):
+    pass

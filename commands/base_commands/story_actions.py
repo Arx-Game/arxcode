@@ -20,6 +20,7 @@ from world.dominion.plots.models import (
     PlotUpdate,
 )
 from world.magic.models import Spell, SkillNode
+from world.traits.models import Trait
 
 
 # noinspection PyUnresolvedReferences
@@ -455,7 +456,6 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
 
     def set_roll(self, action):
         """Sets a stat and skill for action or assistant"""
-        from world.stats_and_skills import VALID_SKILLS, VALID_STATS
 
         try:
             stat, skill = self.rhslist
@@ -464,7 +464,10 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         except (ValueError, TypeError, AttributeError):
             self.msg("Usage: @action/roll <action #>=<stat>,<skill>")
             return
-        if stat not in VALID_STATS or skill not in VALID_SKILLS:
+        if (
+            stat not in Trait.get_valid_stat_names()
+            or skill not in Trait.get_valid_skill_names()
+        ):
             self.msg("You must provide a valid stat and skill.")
             return
         field_name = "stat_used"

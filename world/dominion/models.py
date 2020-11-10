@@ -56,6 +56,7 @@ from datetime import datetime, timedelta
 from random import randint, choice as random_choice
 from typing import List
 
+import typeclasses.npcs.constants
 from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils import create
@@ -81,7 +82,6 @@ from server.utils.arx_utils import (
     get_full_url,
 )
 from server.utils.exceptions import PayError
-from typeclasses.npcs import npc_types
 from typeclasses.mixins import InformMixin
 from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement
 from world.stats_and_skills import do_dice_check
@@ -2713,13 +2713,13 @@ class Agent(SharedMemoryModel):
     as a foreignkey, and we access that set through self.agent_objects.
     """
 
-    GUARD = npc_types.GUARD
-    THUG = npc_types.THUG
-    SPY = npc_types.SPY
-    ASSISTANT = npc_types.ASSISTANT
-    CHAMPION = npc_types.CHAMPION
-    ANIMAL = npc_types.ANIMAL
-    SMALL_ANIMAL = npc_types.SMALL_ANIMAL
+    GUARD = typeclasses.npcs.constants.GUARD
+    THUG = typeclasses.npcs.constants.THUG
+    SPY = typeclasses.npcs.constants.SPY
+    ASSISTANT = typeclasses.npcs.constants.ASSISTANT
+    CHAMPION = typeclasses.npcs.constants.CHAMPION
+    ANIMAL = typeclasses.npcs.constants.ANIMAL
+    SMALL_ANIMAL = typeclasses.npcs.constants.SMALL_ANIMAL
     NPC_TYPE_CHOICES = (
         (GUARD, "Guard"),
         (THUG, "Thug"),

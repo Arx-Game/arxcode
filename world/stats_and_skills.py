@@ -17,67 +17,6 @@ from math import ceil
 
 # tuples of allowed stats and skills
 
-PHYSICAL_STATS = ("strength", "dexterity", "stamina")
-SOCIAL_STATS = ("charm", "command", "composure")
-MENTAL_STATS = ("intellect", "perception", "wits")
-MAGIC_STATS = ("mana", "luck", "willpower")
-VALID_STATS = PHYSICAL_STATS + SOCIAL_STATS + MENTAL_STATS + MAGIC_STATS
-COMBAT_SKILLS = (
-    "athletics",
-    "brawl",
-    "dodge",
-    "archery",
-    "small wpn",
-    "medium wpn",
-    "huge wpn",
-    "stealth",
-    "survival",
-)
-SOCIAL_SKILLS = (
-    "intimidation",
-    "leadership",
-    "manipulation",
-    "seduction",
-    "diplomacy",
-    "propaganda",
-    "empathy",
-    "etiquette",
-    "performance",
-    "haggling",
-    "streetwise",
-)
-GENERAL_SKILLS = (
-    "riddles",
-    "legerdemain",
-    "ride",
-    "investigation",
-    "law",
-    "linguistics",
-    "medicine",
-    "occult",
-    "stewardship",
-    "theology",
-    "agriculture",
-    "economics",
-    "teaching",
-    "war",
-    "animal ken",
-    "artwork",
-    "sailing",
-)
-CRAFTING_SKILLS = ("sewing", "smithing", "tanning", "alchemy", "woodworking")
-VALID_SKILLS = COMBAT_SKILLS + SOCIAL_SKILLS + GENERAL_SKILLS + CRAFTING_SKILLS
-
-CRAFTING_ABILITIES = (
-    "tailor",
-    "weaponsmith",
-    "armorsmith",
-    "leatherworker",
-    "apothecary",
-    "carpenter",
-    "jeweler",
-)
-VALID_ABILITIES = CRAFTING_ABILITIES
 DOM_SKILLS = (
     "population",
     "income",
@@ -111,11 +50,13 @@ LEGENDARY_COST = 500
 
 
 def get_partial_match(args, s_type):
+    from world.traits.models import Trait
+
     # helper function for finding partial string match of stat/skills
     if s_type == "stat":
-        word_list = VALID_STATS
+        word_list = Trait.get_valid_stat_names()
     elif s_type == "skill":
-        word_list = VALID_SKILLS
+        word_list = Trait.get_valid_skill_names()
     else:
         return
     matches = []
@@ -139,9 +80,7 @@ def get_stat_cost(caller, stat):
     cost = NEW_STAT_COST
     if caller.traits.check_training(stat, stype="stat"):
         cost = discounted_cost(caller, cost)
-    total_stats = 0
-    for stat in VALID_STATS:
-        total_stats += caller.attributes.get(stat)
+    total_stats = caller.traits.get_total_stats()
     bonus_stats = total_stats - 36
     if bonus_stats > 0:
         cost *= 1 + 0.5 * bonus_stats
@@ -150,15 +89,20 @@ def get_stat_cost(caller, stat):
 
 def cost_at_rank(skill, current_rating, new_rating):
     """Returns the total cost when given a current rating and the new rating."""
+    from world.traits.models import Trait
+
     cost = 0
     if new_rating > current_rating:
         while current_rating < new_rating:
             current_rating += 1
-            if skill in COMBAT_SKILLS or skill in VALID_ABILITIES:
+            if (
+                skill in Trait.get_valid_skill_names(Trait.COMBAT)
+                or skill in Trait.get_valid_ability_names()
+            ):
                 mult = COMBAT_SKILL_COST_MULT
             else:
                 mult = NON_COMBAT_SKILL_COST_MULT
-            if current_rating >= 6 and skill in VALID_SKILLS:
+            if current_rating >= 6 and skill in Trait.get_valid_skill_names():
                 base = LEGENDARY_COST
                 mult //= 10
             else:
@@ -167,7 +111,10 @@ def cost_at_rank(skill, current_rating, new_rating):
         return cost
     if new_rating < current_rating:
         while current_rating > new_rating:
-            if skill in COMBAT_SKILLS or skill in VALID_ABILITIES:
+            if (
+                skill in Trait.get_valid_skill_names(Trait.COMBAT)
+                or skill in Trait.get_valid_ability_names()
+            ):
                 cost -= current_rating * COMBAT_SKILL_COST_MULT
             else:
                 cost -= current_rating * NON_COMBAT_SKILL_COST_MULT
@@ -248,20 +195,23 @@ def get_ability_cost(
     caller, ability, adjust_value=None, check_teacher=True, unmodified=False
 ):
     """Uses cost at rank and factors in teacher discounts if they are allowed."""
+    from world.traits.models import Trait
+
     current_rating = caller.traits.get_ability_value(ability)
     if not adjust_value and adjust_value != 0:
         adjust_value = 1
     new_rating = current_rating + adjust_value
     cost = cost_at_rank(ability, current_rating, new_rating)
-    if ability in CRAFTING_ABILITIES:
+    crafting_abilities = Trait.get_valid_ability_names(Trait.CRAFTING)
+    if ability in crafting_abilities:
         cost /= 2
     if cost < 0:
         return cost
     if unmodified:
         return cost
     # abilities are more expensive the more we have in the same category
-    if ability in CRAFTING_ABILITIES:
-        for c_ability in CRAFTING_ABILITIES:
+    if ability in crafting_abilities:
+        for c_ability in crafting_abilities:
             cost += caller.traits.get_ability_value(c_ability)
     # check what discount would be
     if check_teacher:

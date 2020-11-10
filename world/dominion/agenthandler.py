@@ -15,7 +15,6 @@ in the world.
 """
 
 from evennia.utils.create import create_object
-from typeclasses.npcs import npc_types
 
 npc_typeclass = "typeclasses.npcs.npc.Agent"
 retainer_typeclass = "typeclasses.npcs.npc.Retainer"
@@ -27,6 +26,8 @@ class AgentHandler(object):
 
     @staticmethod
     def get_type_name(tnum):
+        from typeclasses.npcs import npc_types
+
         return npc_types.get_npc_singular_name(tnum)
 
     def _get_unassigned(self):

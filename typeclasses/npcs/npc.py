@@ -21,33 +21,11 @@ command, it then summons guards for that player character.
 
 """
 from typeclasses.characters import Character
-from .npc_types import (
-    get_npc_stats,
-    get_npc_desc,
-    get_npc_skills,
-    get_npc_singular_name,
-    get_npc_plural_name,
-    get_npc_weapon,
-    get_armor_bonus,
-    get_hp_bonus,
-    primary_stats,
-    assistant_skills,
-    spy_skills,
-    get_npc_stat_cap,
-    check_passive_guard,
-    COMBAT_TYPES,
-    get_innate_abilities,
-    ABILITY_COSTS,
-    ANIMAL,
-    SMALL_ANIMAL,
-)
+
 from world.stats_and_skills import (
     do_dice_check,
     get_stat_cost,
     get_skill_cost,
-    PHYSICAL_STATS,
-    MENTAL_STATS,
-    SOCIAL_STATS,
 )
 import time
 
@@ -221,6 +199,8 @@ class Npc(Character):
         return roll
 
     def get_fakeweapon(self, force_update=False):
+        from .npc_types import get_npc_weapon
+
         if not self.db.fakeweapon or force_update:
             npctype = self._get_npc_type()
             quality = self._get_quality()
@@ -281,6 +261,14 @@ class Npc(Character):
         return True
 
     def setup_stats(self, ntype, threat):
+        from .npc_types import (
+            get_npc_weapon,
+            get_npc_stats,
+            get_npc_skills,
+            get_armor_bonus,
+            get_hp_bonus,
+        )
+
         self.db.npc_quality = threat
         for stat, value in get_npc_stats(ntype).items():
             self.attributes.add(stat, value)
@@ -328,6 +316,8 @@ class Npc(Character):
 
     @property
     def default_desc(self):
+        from .npc_types import get_npc_desc
+
         return get_npc_desc(self.db.npc_type or 0)
 
     def set_npc_new_desc(self, desc=None):
@@ -349,9 +339,13 @@ class MultiNpc(Npc):
             self.db.num_incap = incap + num
 
     def get_singular_name(self):
+        from .npc_types import get_npc_singular_name
+
         return self.db.singular_name or get_npc_singular_name(self._get_npc_type())
 
     def get_plural_name(self):
+        from .npc_types import get_npc_plural_name
+
         return self.db.plural_name or get_npc_plural_name(self._get_npc_type())
 
     @property
@@ -368,6 +362,8 @@ class MultiNpc(Npc):
         This object dying. Set its state to dead, send out
         death message to location. Add death commandset.
         """
+        from .npc_types import get_npc_plural_name, get_npc_singular_name
+
         num = 1
         if self.ae_dmg >= self.max_hp:
             num = self.quantity
@@ -390,6 +386,8 @@ class MultiNpc(Npc):
         Falls asleep. Uncon flag determines if this is regular sleep,
         or unconsciousness.
         """
+        from .npc_types import get_npc_singular_name
+
         reason = " is %s and " % verb if verb else ""
         if self.location:
             self.location.msg_contents(
@@ -408,6 +406,8 @@ class MultiNpc(Npc):
 
     # noinspection PyAttributeOutsideInit
     def setup_name(self):
+        from .npc_types import get_npc_singular_name, get_npc_plural_name
+
         npc_type = self.db.npc_type
         if self.db.num_living == 1 and not self.db.num_dead:
             self.key = self.db.singular_name or get_npc_singular_name(npc_type)
@@ -508,6 +508,8 @@ class AgentMixin(object):
         """
         We'll set up our stats based on the type given by our agent class.
         """
+        from .npc_types import check_passive_guard
+
         agent = self.agentob
         agent_class = agent.agent_class
         quality = agent_class.quality or 0
@@ -709,6 +711,9 @@ class AgentMixin(object):
         Get the cost of a stat based on our current
         rating and the type of agent we are.
         """
+        from .npc_types import primary_stats
+        from world.traits.models import Trait
+
         atype = self.agent.type
         stats = primary_stats.get(atype, [])
         base = get_stat_cost(self, attr)
@@ -716,11 +721,11 @@ class AgentMixin(object):
             base *= 2
         xpcost = base
         rescost = base
-        if attr in MENTAL_STATS:
+        if attr in Trait.get_valid_stat_names(Trait.MENTAL):
             restype = "economic"
-        elif attr in SOCIAL_STATS:
+        elif attr in Trait.get_valid_stat_names(Trait.SOCIAL):
             restype = "social"
-        elif attr in PHYSICAL_STATS:
+        elif attr in Trait.get_valid_stat_names(Trait.PHYSICAL):
             restype = "military"
         else:  # special stats
             restype = "military"
@@ -731,6 +736,8 @@ class AgentMixin(object):
         Get the cost of a skill based on our current rating and the
         type of agent that we are.
         """
+        from .npc_types import get_npc_skills, spy_skills, assistant_skills
+
         restype = "military"
         atype = self.agent.type
         primary_skills = get_npc_skills(atype)
@@ -751,6 +758,8 @@ class AgentMixin(object):
         of agent we are. If it's primary stats, == to our
         quality level. Otherwise, quality - 1.
         """
+        from .npc_types import primary_stats, get_npc_stat_cap
+
         atype = self.agent.type
         pstats = primary_stats.get(atype, [])
         if attr in pstats:
@@ -767,6 +776,8 @@ class AgentMixin(object):
         Get the current max for a skill based on the type
         of agent we are
         """
+        from .npc_types import get_npc_skills
+
         atype = self.agent.type
         primary_skills = get_npc_skills(atype)
         if attr in primary_skills:
@@ -814,6 +825,8 @@ class AgentMixin(object):
     def weaponized(
         self,  # type: Retainer or Agent
     ):
+        from .npc_types import COMBAT_TYPES
+
         if self.npc_type in COMBAT_TYPES:
             return True
         if self.weapons_hidden:
@@ -838,6 +851,9 @@ class AgentMixin(object):
 
     @property
     def uses_training_cap(self):
+        from typeclasses.npcs.constants import SMALL_ANIMAL
+        from typeclasses.npcs.constants import ANIMAL
+
         return self.npc_type not in (ANIMAL, SMALL_ANIMAL)
 
     @property
@@ -901,6 +917,8 @@ class Retainer(AgentMixin, Npc):
         """
         Returns a list of ability names that are valid to buy for this agent
         """
+        from .npc_types import get_innate_abilities
+
         abilities = ()
         innate = get_innate_abilities(self.agent.type)
         abilities += innate
@@ -915,6 +933,8 @@ class Retainer(AgentMixin, Npc):
 
     # noinspection PyMethodMayBeStatic
     def get_ability_cost(self, attr):
+        from .npc_types import ABILITY_COSTS
+
         cost, res_type = ABILITY_COSTS.get(attr)
         return cost, cost, res_type
 
@@ -1019,6 +1039,8 @@ class Agent(AgentMixin, MultiNpc):
     # -----------------------------------------------
 
     def setup_name(self):
+        from .npc_types import get_npc_singular_name, get_npc_plural_name
+
         a_type = self.agentob.agent_class.type
         noun = self.agentob.agent_class.name
         if not noun:
@@ -1065,6 +1087,8 @@ class Agent(AgentMixin, MultiNpc):
         This object dying. Set its state to dead, send out
         death message to location.
         """
+        from .npc_types import get_npc_singular_name, get_npc_plural_name
+
         num = 1
         if self.ae_dmg >= self.max_hp:
             num = self.quantity

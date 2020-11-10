@@ -1,20 +1,15 @@
 import copy
-from world.stats_and_skills import (
-    PHYSICAL_STATS,
-    MENTAL_STATS,
-    SOCIAL_STATS,
-    COMBAT_SKILLS,
-    GENERAL_SKILLS,
-    SOCIAL_SKILLS,
-)
 
-GUARD = 0
-THUG = 1
-SPY = 2
-ASSISTANT = 3
-CHAMPION = 4
-ANIMAL = 5
-SMALL_ANIMAL = 6
+from typeclasses.npcs.constants import (
+    GUARD,
+    THUG,
+    SPY,
+    ASSISTANT,
+    CHAMPION,
+    ANIMAL,
+    SMALL_ANIMAL,
+)
+from world.traits.models import Trait
 
 npc_templates = {
     "guard": GUARD,
@@ -111,20 +106,22 @@ npc_stats = {
     SMALL_ANIMAL: small_animal_stats,
 }
 primary_stats = {
-    GUARD: PHYSICAL_STATS,
-    THUG: PHYSICAL_STATS,
-    SPY: SOCIAL_STATS,
-    ASSISTANT: MENTAL_STATS,
-    CHAMPION: PHYSICAL_STATS,
-    ANIMAL: PHYSICAL_STATS,
-    SMALL_ANIMAL: PHYSICAL_STATS,
+    GUARD: Trait.get_valid_stat_names(Trait.PHYSICAL),
+    THUG: Trait.get_valid_stat_names(Trait.PHYSICAL),
+    SPY: Trait.get_valid_stat_names(Trait.SOCIAL),
+    ASSISTANT: Trait.get_valid_stat_names(Trait.MENTAL),
+    CHAMPION: Trait.get_valid_stat_names(Trait.PHYSICAL),
+    ANIMAL: Trait.get_valid_stat_names(Trait.PHYSICAL),
+    SMALL_ANIMAL: Trait.get_valid_stat_names(Trait.PHYSICAL),
 }
 
-guard_skills = dict([(key, 0) for key in COMBAT_SKILLS])
-guard_skills.update({"riding": 0, "leadership": 0, "war": 0})
-spy_skills = dict([(key, 0) for key in SOCIAL_SKILLS])
+guard_skills = dict([(key, 0) for key in Trait.get_valid_skill_names(Trait.COMBAT)])
+guard_skills.update({"ride": 0, "leadership": 0, "war": 0})
+spy_skills = dict([(key, 0) for key in Trait.get_valid_skill_names(Trait.SOCIAL)])
 spy_skills.update({"streetwise": 0, "investigation": 0})
-assistant_skills = dict([(key, 0) for key in GENERAL_SKILLS])
+assistant_skills = dict(
+    [(key, 0) for key in Trait.get_valid_skill_names(Trait.GENERAL)]
+)
 assistant_skills.update({"etiquette": 0, "diplomacy": 0})
 animal_skills = {
     "athletics": 1,
@@ -315,7 +312,7 @@ def generate_default_name_and_desc(n_type, quality, org):
 
 
 def get_npc_stat_cap(atype, stat):
-    if atype == SMALL_ANIMAL and stat in PHYSICAL_STATS:
+    if atype == SMALL_ANIMAL and stat in Trait.get_valid_stat_names(Trait.PHYSICAL):
         return 2
     return 5
 

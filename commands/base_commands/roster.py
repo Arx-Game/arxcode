@@ -805,32 +805,32 @@ def display_stats(caller, character):
     title = title.center(60)
     # It might make more sense to have a 3 character variable for
     # strength named 'str', but rather not be identical to str cast
-    stg = character.db.strength
+    stg = character.traits.strength
     if not stg:
         stg = 0
-    dex = character.db.dexterity
+    dex = character.traits.dexterity
     if not dex:
         dex = 0
-    sta = character.db.stamina
+    sta = character.traits.stamina
     if not sta:
         sta = 0
-    cha = character.db.charm
+    cha = character.traits.charm
     if not cha:
         cha = 0
-    cmd = character.db.command
+    cmd = character.traits.command
     if not cmd:
         cmd = 0
-    comp = character.db.composure
+    comp = character.traits.composure
     if not comp:
         comp = 0
     # As above for str, so for using intel for int
-    intel = character.db.intellect
+    intel = character.traits.intellect
     if not intel:
         intel = 0
-    per = character.db.perception
+    per = character.traits.perception
     if not per:
         per = 0
-    wit = character.db.wits
+    wit = character.traits.wits
     if not wit:
         wit = 0
 
@@ -857,13 +857,13 @@ def display_stats(caller, character):
     }
     disp = disp.rstrip()
     caller.msg(disp)
-    mana = character.db.mana
+    mana = character.traits.mana
     if not mana:
         mana = 0
-    luck = character.db.luck
+    luck = character.traits.luck
     if not luck:
         luck = 0
-    will = character.db.willpower
+    will = character.traits.willpower
     if not will:
         will = 0
     title = "Special Stats"

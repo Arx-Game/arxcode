@@ -3,55 +3,7 @@ from evennia.utils.idmapper.models import SharedMemoryModel
 from jinja2 import Environment, BaseLoader
 from typing import Union
 
-
-class NameIntegerLookupModel(SharedMemoryModel):
-    """
-    This abstract class will primarily be used for small lookup tables that can be queried once and
-    then stored in memory.
-    """
-
-    _cache_set = False
-    _name_to_id_map = dict()
-    name = models.CharField(unique=True, max_length=150)
-    value = models.SmallIntegerField(
-        verbose_name="minimum value for this difficulty range/rating", unique=True
-    )
-
-    class Meta:
-        abstract = True
-
-    @classmethod
-    def cache_instance(cls, instance, new=False):
-        """Override of cache instance with pk cast to lowercase to be case insensitive"""
-        super().cache_instance(instance, new)
-        cls._name_to_id_map[instance.name] = instance.id
-
-    @classmethod
-    def get_all_instances(cls):
-        if cls._cache_set:
-            return sorted(cls.get_all_cached_instances(), key=lambda x: x.value)
-        # performs the query and populates the SharedMemoryModel cache
-        values = list(cls.objects.all().order_by("value"))
-        cls._cache_set = True
-        cls._name_to_id_map = {
-            instance.name.lower(): instance.id for instance in values
-        }
-        return values
-
-    def __str__(self):
-        return self.name
-
-    @classmethod
-    def get_instance_by_name(cls, name):
-        cls.get_all_instances()
-        pk = cls._name_to_id_map.get(name.lower())
-        return cls.get_cached_instance(pk)
-
-    def save(self, *args, **kwargs):
-        ret = super().save(*args, **kwargs)
-        # store the new name to pk mapping
-        type(self)._name_to_id_map[self.name.lower()] = self.id
-        return ret
+from server.utils.abstract_models import NameLookupModel, NameIntegerLookupModel
 
 
 class DifficultyRating(NameIntegerLookupModel):

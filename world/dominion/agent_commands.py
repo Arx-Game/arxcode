@@ -11,6 +11,7 @@ from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils.arx_utils import validate_name, caller_change_field
 from typeclasses.npcs.npc_types import get_npc_type, generate_default_name_and_desc
 from .models import Agent, Organization, AssetOwner
+from world.traits.models import Trait
 
 
 class CmdAgents(ArxPlayerCommand):
@@ -593,7 +594,6 @@ class CmdRetainers(ArxPlayerCommand):
         Helper method that returns the attr that the player is buying
         or displays a failure message and returns None.
         """
-        from world.stats_and_skills import VALID_SKILLS, VALID_STATS
 
         if not self.check_categories(category):
             return
@@ -611,18 +611,20 @@ class CmdRetainers(ArxPlayerCommand):
             return
         attr = rhs.lower()
         if category == "stat":
-            if attr not in VALID_STATS:
+            stat_names = Trait.get_valid_stat_names()
+            if attr not in stat_names:
                 self.msg(
                     "When buying a stat, it must be one of the following: %s"
-                    % ", ".join(VALID_STATS)
+                    % ", ".join(stat_names)
                 )
                 return
             return attr
         if category == "skill":
-            if attr not in VALID_SKILLS:
+            skill_names = Trait.get_valid_skill_names()
+            if attr not in skill_names:
                 self.msg(
                     "When buying a skill, it must be one of the following: %s"
-                    % ", ".join(VALID_SKILLS)
+                    % ", ".join(skill_names)
                 )
                 return
             return attr

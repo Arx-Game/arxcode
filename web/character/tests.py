@@ -354,7 +354,7 @@ class SceneCommandTests(ArxCommandTest):
         mock_build_msg.return_value = (
             "Galvanion checked willpower at difficulty 9001, rolling 9000 lower."
         )
-        self.char.db.willpower = 1
+        self.char.traits.set_stat_value("willpower", 1)
         self.char.msg = Mock()
         self.call_cmd(
             "/check 1=willpower", "Your next post in flashback #1 will use this roll."

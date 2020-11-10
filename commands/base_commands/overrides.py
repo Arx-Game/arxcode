@@ -1023,6 +1023,16 @@ class CmdArxSetAttribute(CmdSetAttribute):
         caller.msg(msg)
         arx_utils.inform_staff("Building command by %s: %s" % (caller, msg))
 
+    def set_attr(self, obj, attr, value):
+        from world.traits.models import Trait
+
+        trait = Trait.get_instance_by_name(attr)
+        if trait:
+            obj.traits.set_trait_value(trait.get_trait_type_display(), attr, value)
+            return f"Set trait {obj.name}/{attr} = {value}"
+        # normal case
+        return super().set_attr(obj, attr, value)
+
 
 class CmdDig(ObjManipCommand):
     """

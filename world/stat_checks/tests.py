@@ -6,6 +6,7 @@ from world.stat_checks.models import (
     NaturalRollType,
     StatWeight,
 )
+from world.traits.models import Trait
 from unittest.mock import Mock, patch
 
 
@@ -45,6 +46,15 @@ class TestCheckCommands(ArxCommandTest):
         self.mock_announce = Mock()
         self.char1.msg_location_or_contents = self.mock_announce
         self.options = {"roll": True}
+        Trait.objects.get_or_create(
+            name="melee", trait_type=Trait.SKILL, category=Trait.COMBAT
+        )
+        Trait.objects.get_or_create(
+            name="dex", trait_type=Trait.STAT, category=Trait.PHYSICAL
+        )
+        Trait.objects.get_or_create(
+            name="intelligence", trait_type=Trait.STAT, category=Trait.MENTAL
+        )
 
     def test_stat_check_cmd_normal(self, mock_randint):
         # test help message fetches Difficulty Ratings from lookup table

@@ -159,6 +159,7 @@ INSTALLED_APPS += (
     "world.quests.apps.QuestsConfig",
     "world.stat_checks.apps.StatChecksConfig",
     "world.prayer.apps.PrayerConfig",
+    "world.traits.apps.TraitsConfig",
 )
 
 CRISPY_TEMPLATE_PACK = "bootstrap3"

@@ -4,7 +4,6 @@ Tests for different general commands.
 
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
-from random import getstate, setstate, seed
 
 from evennia.server.models import ServerConfig
 from server.utils.test_utils import (
@@ -13,7 +12,7 @@ from server.utils.test_utils import (
     TestTicketMixins,
 )
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent, CraftingRecipe, Agent
+from world.dominion.models import RPEvent, CraftingRecipe
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
@@ -33,7 +32,6 @@ from . import (
     help,
     general,
     exchanges,
-    rolling,
 )
 
 
@@ -2227,96 +2225,3 @@ class HelpCommandTests(ArxCommandTest):
         expected_return += "\n\nRelated help entries: test entry\n\n"
         expected_return += "Suggested: +plots, +plot, @gmplots, support, globalscript"
         self.call_cmd("plots", expected_return, cmdset=CharacterCmdSet())
-
-
-class CheckCommandTests(ArxCommandTest):
-    def setUp(self):
-        super(CheckCommandTests, self).setUp()
-
-        # Because PEP8 line lengths.
-        create_agent = self.char1.player_ob.Dominion.assets.agents.create
-
-        retainer = create_agent(
-            type=Agent.CHAMPION,
-            name="Steve, the Retainer",
-            quality=1,
-            quantity=1,
-            unique=True,
-            desc="I'm a retainer!",
-        )
-        retainer.assign(self.char1, 1)
-
-        self.random_state = getstate()
-
-        # This is to prevent char1 from also receiving GM-only messages
-        # from the @check announcement to the room.
-        self.char1.permissions.remove("Developer")
-
-    def test_cmd_check_retainer(self):
-        # I need to quell char1 somehow, or change permissions to non-Wizard.
-        self.setup_cmd(rolling.CmdDiceCheck, self.char1)
-
-        expected_return = "Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]"
-        self.call_cmd("/retainer", expected_return)
-        self.call_cmd("/retainer X|strength + athletics at 20", expected_return)
-        self.call_cmd("/retainer 1=strength + athletics at 20", expected_return)
-        self.call_cmd(
-            "/retainer -1|strength + athletics at 20",
-            "Retainer ID must be a positive number.",
-        )
-
-        # Wrong difficulty value (X < 1 || X > 100)
-        self.call_cmd(
-            "/retainer 1|strength + athletics at 0",
-            "Difficulty must be a number between 1 and 100.",
-        )
-
-        # Using 's' for stat (not-unique stat test)
-        self.call_cmd(
-            "/retainer 1|s + athletics at 20",
-            "There must be one unique match for a character stat."
-            " Please check spelling and try again.",
-        )
-
-        # Using 's' for skill (not-unique skill test)
-        self.call_cmd(
-            "/retainer 1|strength + s at 20",
-            "There must be one unique match for a character skill."
-            " Please check spelling and try again.",
-        )
-
-        # Invalid skill name.
-        self.call_cmd(
-            "/retainer 1|strength + cuddles at 20",
-            "No matches for a skill by that name." " Check spelling and try again.",
-        )
-
-        # Couldn't find retainer with that ID.
-        self.call_cmd(
-            "/retainer 10|strength + athletics at 20", "No retainer found with ID 10."
-        )
-
-        seed(1)
-        self.call_cmd(
-            "/retainer 1|strength + athletics at 20",
-            "Char's retainer (Steve, the Retainer) checked strength"
-            " + athletics at difficulty 20, rolling 0 higher.",
-        )
-
-        self.call_cmd(
-            "/retainer/flub 1|strength + athletics at 20",
-            "Char's retainer (Steve, the Retainer) checked strength"
-            " + athletics at difficulty 20, rolling 12 lower.",
-        )
-
-        # This test returns two messages twice because char1 is >= "Builders"
-        # permissions hierarchy, so it will notify both char1, and GM-char1.
-        self.call_cmd(
-            "/retainer 1|strength + athletics at 20=Char",
-            "[Private Roll] Char's retainer (Steve, the Retainer) checked strength"
-            " + athletics at difficulty 20, rolling 5 higher. (Shared with: self-only)",
-        )
-
-    def tearDown(self):
-        setstate(self.random_state)
-        self.char1.permissions.add("Developer")

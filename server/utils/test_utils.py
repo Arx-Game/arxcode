@@ -59,10 +59,12 @@ class ArxTestConfigMixin(object):
         """Run for each testcase"""
         super(ArxTestConfigMixin, self).setUp()
         from web.character.models import Roster
+        from world.traits.models import Trait
 
         self.active_roster = Roster.objects.create(name="Active")
         self.setup_aliases()
         self.setup_arx_characters()
+        Trait._cache_set = False
 
     def setup_arx_characters(self):
         """

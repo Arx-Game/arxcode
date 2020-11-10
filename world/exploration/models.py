@@ -1,3 +1,4 @@
+import typeclasses.npcs.constants
 from typeclasses.scripts.combat import combat_settings
 from world.stats_and_skills import do_dice_check
 
@@ -7,7 +8,6 @@ from django.db import models
 from . import builder
 from server.utils.arx_utils import inform_staff
 import random
-from typeclasses.npcs import npc_types
 from server.utils.picker import WeightedPicker
 import datetime
 
@@ -26,13 +26,13 @@ class Monster(SharedMemoryModel):
     BOSS_TYPECLASS = "world.exploration.npcs.BossMonsterNpc"
 
     NPC_TYPES = (
-        (npc_types.GUARD, "Guard"),
-        (npc_types.THUG, "Thug"),
-        (npc_types.SPY, "Spy"),
-        (npc_types.CHAMPION, "Champion"),
-        (npc_types.ASSISTANT, "Assistant"),
-        (npc_types.ANIMAL, "Animal"),
-        (npc_types.SMALL_ANIMAL, "Small Animal"),
+        (typeclasses.npcs.constants.GUARD, "Guard"),
+        (typeclasses.npcs.constants.THUG, "Thug"),
+        (typeclasses.npcs.constants.SPY, "Spy"),
+        (typeclasses.npcs.constants.CHAMPION, "Champion"),
+        (typeclasses.npcs.constants.ASSISTANT, "Assistant"),
+        (typeclasses.npcs.constants.ANIMAL, "Animal"),
+        (typeclasses.npcs.constants.SMALL_ANIMAL, "Small Animal"),
     )
 
     name = models.CharField(max_length=40, blank=False, null=False)

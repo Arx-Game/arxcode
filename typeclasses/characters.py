@@ -66,8 +66,6 @@ class Character(
         self.db.dice_string = "Default Dicestring"
         self.db.health_status = "alive"
         self.db.sleep_status = "awake"
-        self.traits.initialize_skills()
-        self.traits.initialize_abilities()
         self.at_init()
         self.locks.add("delete:perm(Immortals);tell:all()")
 
@@ -450,7 +448,7 @@ class Character(
     @property
     def max_hp(self):
         """Returns our max hp"""
-        hp = self.db.stamina or 0
+        hp = self.traits.stamina
         hp *= 20
         hp += 20
         bonus = self.db.bonus_max_hp or 0

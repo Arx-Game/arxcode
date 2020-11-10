@@ -34,6 +34,20 @@ class ConditionsCommandsTests(ArxCommandTest):
         )
 
     def test_knacks_cmd(self):
+        from world.traits.models import Trait
+
+        Trait.objects.get_or_create(
+            name="strength", trait_type=Trait.STAT, category=Trait.PHYSICAL
+        )
+        Trait.objects.get_or_create(
+            name="charm", trait_type=Trait.STAT, category=Trait.SOCIAL
+        )
+        Trait.objects.get_or_create(
+            name="brawl", trait_type=Trait.SKILL, category=Trait.COMBAT
+        )
+        Trait.objects.get_or_create(
+            name="seduction", trait_type=Trait.SKILL, category=Trait.SOCIAL
+        )
         self.setup_cmd(condition_commands.CmdKnacks, self.char1)
         self.call_cmd("", "Knacks for Char:")
         self.call_cmd("asdf", "No knack found by that name.")

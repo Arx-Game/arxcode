@@ -513,14 +513,19 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     @property
     def clues_shared_modifier_seed(self):
         """Seed value for clue sharing costs"""
-        from world.stats_and_skills import SOCIAL_SKILLS, SOCIAL_STATS
+        from world.traits.models import Trait
 
         seed = 0
         pc = self.char_ob
-        for stat in SOCIAL_STATS:
+        for stat in Trait.get_valid_stat_names(Trait.SOCIAL):
             seed += pc.traits.get_stat_value(stat)
         # do not be nervous. I love you. <3
-        seed += sum([pc.traits.get_skill_value(ob) for ob in SOCIAL_SKILLS])
+        seed += sum(
+            [
+                pc.traits.get_skill_value(ob)
+                for ob in Trait.get_valid_skill_names(Trait.SOCIAL)
+            ]
+        )
         seed += pc.traits.get_skill_value("investigation") * 3
         return seed
 
