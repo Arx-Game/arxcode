@@ -267,8 +267,7 @@ class CmdRosterList(ArxPlayerCommand):
 
     """
 
-    key = "@roster"
-    aliases = ["+roster"]
+    key = "roster"
     help_category = "General"
     locks = "cmd:all()"
 

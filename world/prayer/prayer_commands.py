@@ -54,9 +54,9 @@ class CmdPray(ArxCommand):
         for prayer in prayers:
             table.add_row(
                 [
-                    prayer.id,
-                    prayer.entity,
-                    prayer.status,
+                    str(prayer.id),
+                    str(prayer.entity),
+                    str(prayer.status),
                     prayer.db_date_created.strftime("%x"),
                     prayer.text[:30],
                 ]

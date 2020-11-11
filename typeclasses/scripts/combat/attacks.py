@@ -558,7 +558,7 @@ class Attack(object):
         """
         keep_dice = self.handler.weapon_damage + 1
         try:
-            keep_dice += self.attacker.attributes.get(self.damage_stat) // 2
+            keep_dice += self.attacker.traits.get_stat_value(self.damage_stat) // 2
         except (TypeError, AttributeError, ValueError):
             pass
         if keep_dice < 3:

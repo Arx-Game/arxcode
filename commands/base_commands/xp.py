@@ -120,7 +120,7 @@ class CmdUseXP(ArxCommand):
         # get cost already factors in if we have a trainer, so no need to check
         if args in Trait.get_valid_stat_names():
             cost = stats_and_skills.get_stat_cost(caller, args)
-            current = caller.attributes.get(args)
+            current = caller.traits.get_stat_value(args)
             if current >= 5:
                 caller.msg("%s is already at its maximum." % args)
                 return

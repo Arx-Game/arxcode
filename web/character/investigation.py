@@ -314,7 +314,7 @@ class InvestigationFormCommand(ArxCommand):
                 self.disp_investigation_form()
                 return True
             if "stat" in self.switches:
-                if not self.caller.attributes.get(self.args.lower()):
+                if not self.caller.traits.get_stat_value(self.args.lower()):
                     self.msg("No stat by the name of %s." % self.args)
                     return
                 investigation[2] = self.args
