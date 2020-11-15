@@ -421,6 +421,15 @@ class CmdFinger(ArxPlayerCommand):
         if titles:
             msg += "{wFull Titles:{n %s\n" % titles
         try:
+            if char.roster.show_positions:
+                positions = char.player_ob.player_positions.all()
+                if positions:
+                    msg += "{wOOC Positions: {n%s\n" % ", ".join(
+                        str(pos) for pos in positions
+                    )
+        except AttributeError:
+            pass
+        try:
             rost = str(char.roster.roster)
             roster_status = "{n, currently"
             if rost == "Gone":

@@ -34,7 +34,7 @@ class MonsterMixin(object):
             try:
                 monster = Monster.objects.get(id=self.db.monster_id)
                 monster.handle_loot_drop(self, self.location)
-            except Monster.DoesNotExist, Monster.MultipleObjectsReturned:
+            except (Monster.DoesNotExist, Monster.MultipleObjectsReturned):
                 pass
 
     def check_if_defeat(self):
