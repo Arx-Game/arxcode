@@ -60,9 +60,13 @@ class CmdTouchCrystal(ArxCommand):
         if not port_target:
             caller.msg("The crystal grows dark when touched. It is not attuned.")
             return
-        caller.msg_location_or_contents(f"{caller} touches a crystal and fades from view.")
+        caller.msg_location_or_contents(
+            f"{caller} touches a crystal and fades from view."
+        )
         caller.move_to(port_target)
-        caller.msg_location_or_contents(f"{caller} suddenly appears in a burst of light.")
+        caller.msg_location_or_contents(
+            f"{caller} suddenly appears in a burst of light."
+        )
 
 
 class CmdAttuneCrystal(ArxCommand):
@@ -70,6 +74,7 @@ class CmdAttuneCrystal(ArxCommand):
     This attunes a teleportation crystal to your current room.
     Usage: 'attune crystal'
     """
+
     key = "attune crystal"
     locks = "cmd:all()"
 
