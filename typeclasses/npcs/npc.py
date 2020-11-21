@@ -271,7 +271,7 @@ class Npc(Character):
 
         self.db.npc_quality = threat
         for stat, value in get_npc_stats(ntype).items():
-            self.attributes.add(stat, value)
+            self.traits.set_stat_value(stat, value)
         skills = get_npc_skills(ntype)
         for skill in skills:
             skills[skill] += threat

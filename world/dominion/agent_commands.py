@@ -806,12 +806,12 @@ class CmdRetainers(ArxPlayerCommand):
             return
         if not self.check_max_for_attr(agent, attr, category="stat"):
             return
-        current = agent.dbobj.attributes.get(attr) or 0
+        current = agent.dbobj.traits.get_stat_value(attr)
         xp_cost, res_cost, res_type = self.get_attr_cost(agent, attr, "stat", current)
         if not self.pay_xp_and_resources(agent, xp_cost, res_cost, res_type):
             return
         newval = current + 1
-        agent.dbobj.attributes.add(attr, newval)
+        agent.dbobj.traits.set_stat_value(attr, newval)
         self.msg("You have increased %s to %s." % (attr, newval))
 
     def buy_level(self, agent):
