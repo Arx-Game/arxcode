@@ -89,4 +89,4 @@ class Migration(migrations.Migration):
         ("msgs", "0002_auto_20160831_0248"),
     ]
 
-    operations = [migrations.RunPython(convert_header_to_tags)]
+    operations = [migrations.RunPython(convert_header_to_tags, elidable=True)]

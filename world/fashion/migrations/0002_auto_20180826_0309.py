@@ -9,7 +9,6 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("dominion", "0031_auto_20180804_2115"),
         ("objects", "0009_remove_objectdb_db_player"),
         ("fashion", "0001_initial"),
     ]

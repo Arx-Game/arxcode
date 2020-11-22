@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("dominion", "0026_rpevent_risk"),
+        ("dominion", "0001_squashed_dominion"),
         ("objects", "0009_remove_objectdb_db_player"),
     ]
 

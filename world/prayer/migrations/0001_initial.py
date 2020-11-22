@@ -10,8 +10,8 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("objects", "0011_auto_20191025_0831"),
-        ("dominion", "0048_auto_20200719_1248"),
-        ("character", "0035_auto_20191228_1417"),
+        ("dominion", "0001_squashed_dominion"),
+        ("character", "0001_squashed_character"),
     ]
 
     operations = [
