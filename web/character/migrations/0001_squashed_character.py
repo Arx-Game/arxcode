@@ -8,33 +8,6 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        # ("character", "0001_initial"),
-        # ("character", "0002_investigationassistant"),
-        # ("character", "0003_theory"),
-        # ("character", "0004_auto_20161217_0654"),
-        # ("character", "0005_auto_20170122_0008"),
-        # ("character", "0006_auto_20170128_2256"),
-        # ("character", "0007_auto_20170130_1437"),
-        # ("character", "0008_auto_20170209_0208"),
-        # ("character", "0009_investigation_roll"),
-        # ("character", "0010_auto_20170514_0639"),
-        # ("character", "0011_auto_20170516_0458"),
-        # ("character", "0012_auto_20170519_1646"),
-        # ("character", "0013_auto_20170605_1756"),
-        # ("character", "0014_firstcontact_viewable_by_all"),
-        # ("character", "0015_auto_20170605_2252"),
-        # ("character", "0016_auto_20170925_0500"),
-        # ("character", "0017_remove_theory_known_by"),
-        # ("character", "0018_auto_20170925_0515"),
-        # ("character", "0019_auto_20171029_1416"),
-        # ("character", "0020_auto_20171109_2244"),
-        # ("character", "0021_flashback_flashbackpost"),
-        # ("character", "0022_auto_20171226_0208"),
-        # ("character", "0023_clue_gm_notes"),
-        # ("character", "0024_auto_20180310_1931"),
-    ]
-
     initial = True
 
     dependencies = [
@@ -44,6 +17,23 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.CreateModel(
+            name="PlayerAccount",
+            fields=[
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("email", models.EmailField(max_length=254, unique=True)),
+                ("karma", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("gm_notes", models.TextField(blank=True, null=True)),
+            ],
+        ),
         migrations.CreateModel(
             name="AccountHistory",
             fields=[
@@ -67,6 +57,10 @@ class Migration(migrations.Migration):
                     models.DateTimeField(blank=True, null=True, db_index=True),
                 ),
             ],
+            options={
+                "verbose_name": "Played Character",
+                "verbose_name_plural": "Played Characters",
+            },
         ),
         migrations.CreateModel(
             name="Chapter",
@@ -108,52 +102,78 @@ class Migration(migrations.Migration):
                     "rating",
                     models.PositiveSmallIntegerField(
                         blank=0,
+                        db_index=True,
                         default=0,
                         help_text="Value required to get this clue",
-                        db_index=True,
                     ),
                 ),
                 (
                     "desc",
                     models.TextField(
                         blank=True,
-                        help_text=b"Description of the clue given to the player",
-                        verbose_name=b"Description",
+                        help_text="Description of the clue given to the player",
+                        verbose_name="Description",
                     ),
                 ),
                 (
                     "red_herring",
                     models.BooleanField(
                         default=False,
-                        help_text=b"Whether this revelation is totally fake",
+                        help_text="Whether this revelation is totally fake",
                     ),
                 ),
                 (
                     "allow_investigation",
                     models.BooleanField(
                         default=False,
-                        help_text=b"Can be gained through investigation rolls",
+                        help_text="Can be gained through investigation rolls",
                     ),
                 ),
                 (
                     "allow_exploration",
                     models.BooleanField(
                         default=False,
-                        help_text=b"Can be gained through exploration rolls",
+                        help_text="Can be gained through exploration rolls",
                     ),
                 ),
                 (
                     "allow_trauma",
                     models.BooleanField(
-                        default=False, help_text=b"Can be gained through combat rolls"
+                        default=False, help_text="Can be gained through combat rolls"
                     ),
                 ),
                 (
-                    "investigation_tags",
+                    "clue_type",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (0, "Game Lore"),
+                            (1, "Vision"),
+                            (2, "Character Secret"),
+                        ],
+                        default=0,
+                    ),
+                ),
+                (
+                    "gm_notes",
                     models.TextField(
                         blank=True,
-                        help_text=b"List keywords separated by semicolons for investigation",
-                        verbose_name=b"Keywords for investigation",
+                        help_text="Notes visible only to staff/GMs about this clue",
+                        verbose_name="GM Notes",
+                    ),
+                ),
+                (
+                    "allow_sharing",
+                    models.BooleanField(default=True, help_text="Can be shared"),
+                ),
+                (
+                    "tangible_object",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="An in-game object that this Clue is a secret or backstory for",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="clues",
+                        to="objects.ObjectDB",
                     ),
                 ),
             ],
@@ -206,39 +226,39 @@ class Migration(migrations.Migration):
                 (
                     "ongoing",
                     models.BooleanField(
+                        db_index=True,
                         default=True,
                         help_text="Whether this investigation is finished or not",
-                        db_index=True,
                     ),
                 ),
                 (
                     "active",
                     models.BooleanField(
+                        db_index=True,
                         default=False,
                         help_text="Whether this is the investigation for the week. Only one allowed",
-                        db_index=True,
                     ),
                 ),
                 (
                     "automate_result",
                     models.BooleanField(
                         default=True,
-                        help_text=b"Whether to generate a result during weekly maintenance. Set false if GM'd",
+                        help_text="Whether to generate a result during weekly maintenance. Set false if GM'd",
                     ),
                 ),
                 (
                     "results",
                     models.TextField(
                         blank=True,
-                        default=b"You didn't find anything.",
-                        help_text=b"The text to send the player, either set by GM or generated automatically by script if automate_result is set.",
+                        default="You didn't find anything.",
+                        help_text="The text to send the player, either set by GM or generated automatically by script if automate_result is set.",
                     ),
                 ),
                 (
                     "actions",
                     models.TextField(
                         blank=True,
-                        help_text=b"The writeup the player submits of their actions, used for GMing.",
+                        help_text="The writeup the player submits of their actions, used for GMing.",
                     ),
                 ),
                 (
@@ -253,8 +273,8 @@ class Migration(migrations.Migration):
                     "stat_used",
                     models.CharField(
                         blank=True,
-                        default=b"perception",
-                        help_text=b"The stat the player chose to use",
+                        default="perception",
+                        help_text="The stat the player chose to use",
                         max_length=80,
                     ),
                 ),
@@ -262,8 +282,8 @@ class Migration(migrations.Migration):
                     "skill_used",
                     models.CharField(
                         blank=True,
-                        default=b"investigation",
-                        help_text=b"The skill the player chose to use",
+                        default="investigation",
+                        help_text="The skill the player chose to use",
                         max_length=80,
                     ),
                 ),
@@ -272,7 +292,7 @@ class Migration(migrations.Migration):
                     models.PositiveSmallIntegerField(
                         blank=0,
                         default=0,
-                        help_text=b"Additional silver added by the player",
+                        help_text="Additional silver added by the player",
                     ),
                 ),
                 (
@@ -280,7 +300,7 @@ class Migration(migrations.Migration):
                     models.PositiveSmallIntegerField(
                         blank=0,
                         default=0,
-                        help_text=b"Additional economic resources added by the player",
+                        help_text="Additional economic resources added by the player",
                     ),
                 ),
                 (
@@ -288,7 +308,7 @@ class Migration(migrations.Migration):
                     models.PositiveSmallIntegerField(
                         blank=0,
                         default=0,
-                        help_text=b"Additional military resources added by the player",
+                        help_text="Additional military resources added by the player",
                     ),
                 ),
                 (
@@ -296,7 +316,34 @@ class Migration(migrations.Migration):
                     models.PositiveSmallIntegerField(
                         blank=0,
                         default=0,
-                        help_text=b"Additional social resources added by the player",
+                        help_text="Additional social resources added by the player",
+                    ),
+                ),
+                (
+                    "progress",
+                    models.IntegerField(
+                        default=0, help_text="Progress made towards a discovery."
+                    ),
+                ),
+                (
+                    "completion_value",
+                    models.IntegerField(
+                        default=300,
+                        help_text="Total progress needed to make a discovery.",
+                    ),
+                ),
+                (
+                    "roll",
+                    models.SmallIntegerField(
+                        blank=True, default=-9999, help_text="Current dice roll"
+                    ),
+                ),
+                (
+                    "action_points",
+                    models.PositiveSmallIntegerField(
+                        blank=0,
+                        default=0,
+                        help_text="How many action points spent by player/assistants.",
                     ),
                 ),
             ],
@@ -423,23 +470,6 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
-            name="PlayerAccount",
-            fields=[
-                (
-                    "id",
-                    models.AutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("email", models.EmailField(max_length=254, unique=True)),
-                ("karma", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("gm_notes", models.TextField(blank=True, null=True)),
-            ],
-        ),
-        migrations.CreateModel(
             name="Revelation",
             fields=[
                 (
@@ -456,8 +486,8 @@ class Migration(migrations.Migration):
                     "desc",
                     models.TextField(
                         blank=True,
-                        help_text=b"Description of the revelation given to the player",
-                        verbose_name=b"Description",
+                        help_text="Description of the revelation given to the player",
+                        verbose_name="Description",
                     ),
                 ),
                 (
@@ -465,14 +495,20 @@ class Migration(migrations.Migration):
                     models.PositiveSmallIntegerField(
                         blank=0,
                         default=0,
-                        help_text=b"The total value of clues to trigger this",
+                        help_text="The total value of clues to trigger this",
                     ),
                 ),
                 (
                     "red_herring",
                     models.BooleanField(
                         default=False,
-                        help_text=b"Whether this revelation is totally fake",
+                        help_text="Whether this revelation is totally fake",
+                    ),
+                ),
+                (
+                    "gm_notes",
+                    models.TextField(
+                        blank=True, help_text="OOC Notes about this topic"
                     ),
                 ),
             ],
@@ -859,7 +895,7 @@ class Migration(migrations.Migration):
                     "message",
                     models.TextField(
                         blank=True,
-                        help_text=b"Message for the player's records about how they discovered this.",
+                        help_text="Message for the player's records about how they discovered this.",
                     ),
                 ),
                 ("date", models.DateTimeField(blank=True, null=True)),
@@ -870,10 +906,6 @@ class Migration(migrations.Migration):
                         help_text="How this was discovered - exploration, trauma, etc",
                         max_length=255,
                     ),
-                ),
-                (
-                    "roll",
-                    models.PositiveSmallIntegerField(blank=0, db_index=True, default=0),
                 ),
                 (
                     "character",
@@ -897,7 +929,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="clues",
+                        related_name="clue_discoveries",
                         to="character.Investigation",
                     ),
                 ),
@@ -941,7 +973,8 @@ class Migration(migrations.Migration):
             model_name="clue",
             name="revelations",
             field=models.ManyToManyField(
-                db_index=True,
+                blank=True,
+                related_name="clues",
                 through="character.ClueForRevelation",
                 to="character.Revelation",
             ),
@@ -1001,7 +1034,6 @@ class Migration(migrations.Migration):
                     models.ManyToManyField(
                         blank=True,
                         db_index=True,
-                        null=True,
                         related_name="theories",
                         to="character.Clue",
                     ),
@@ -1018,15 +1050,6 @@ class Migration(migrations.Migration):
             options={
                 "verbose_name_plural": "Theories",
             },
-        ),
-        migrations.AddField(
-            model_name="investigation",
-            name="action_points",
-            field=models.PositiveSmallIntegerField(
-                blank=0,
-                default=0,
-                help_text="How many action points spent by player/assistants.",
-            ),
         ),
         migrations.CreateModel(
             name="FirstContact",
@@ -1090,15 +1113,6 @@ class Migration(migrations.Migration):
                 "abstract": False,
             },
         ),
-        migrations.RemoveField(
-            model_name="clue",
-            name="investigation_tags",
-        ),
-        migrations.AddField(
-            model_name="clue",
-            name="allow_sharing",
-            field=models.BooleanField(default=True, help_text="Can be shared"),
-        ),
         migrations.CreateModel(
             name="TheoryPermissions",
             fields=[
@@ -1132,13 +1146,6 @@ class Migration(migrations.Migration):
             options={
                 "abstract": False,
             },
-        ),
-        migrations.AddField(
-            model_name="investigation",
-            name="roll",
-            field=models.SmallIntegerField(
-                blank=True, default=-9999, help_text="Current dice roll"
-            ),
         ),
         migrations.AddField(
             model_name="accounthistory",
@@ -1175,36 +1182,11 @@ class Migration(migrations.Migration):
                 ("title", models.CharField(max_length=250, unique=True)),
                 ("summary", models.TextField(blank=True)),
                 ("db_date_created", models.DateTimeField(blank=True, null=True)),
-                (
-                    "allowed",
-                    models.ManyToManyField(
-                        blank=True,
-                        related_name="allowed_flashbacks",
-                        to="character.RosterEntry",
-                    ),
-                ),
-                (
-                    "owner",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="created_flashbacks",
-                        to="character.RosterEntry",
-                    ),
-                ),
                 ("concluded", models.BooleanField(default=False)),
             ],
             options={
                 "abstract": False,
             },
-        ),
-        migrations.AddField(
-            model_name="clue",
-            name="gm_notes",
-            field=models.TextField(
-                blank=True,
-                help_text="Notes visible only to staff/GMs about this clue",
-                verbose_name="GM Notes",
-            ),
         ),
         migrations.CreateModel(
             name="PlayerInfoEntry",
@@ -1295,18 +1277,6 @@ class Migration(migrations.Migration):
                 to="character.RosterEntry",
             ),
         ),
-        migrations.AddField(
-            model_name="clue",
-            name="tangible_object",
-            field=models.ForeignKey(
-                blank=True,
-                help_text="An in-game object that this Clue is a secret or backstory for",
-                null=True,
-                on_delete=django.db.models.deletion.SET_NULL,
-                related_name="clues",
-                to="objects.ObjectDB",
-            ),
-        ),
         migrations.CreateModel(
             name="Comment",
             fields=[
@@ -1372,56 +1342,9 @@ class Migration(migrations.Migration):
                 to="character.RosterEntry",
             ),
         ),
-        migrations.AddField(
-            model_name="investigation",
-            name="completion_value",
-            field=models.IntegerField(
-                default=300, help_text="Total progress needed to make a discovery."
-            ),
-        ),
-        migrations.AddField(
-            model_name="investigation",
-            name="progress",
-            field=models.IntegerField(
-                default=0, help_text="Progress made towards a discovery."
-            ),
-        ),
-        migrations.AlterField(
-            model_name="clue",
-            name="revelations",
-            field=models.ManyToManyField(
-                blank=True,
-                related_name="clues",
-                through="character.ClueForRevelation",
-                to="character.Revelation",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="cluediscovery",
-            name="investigation",
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name="clue_discoveries",
-                to="character.Investigation",
-            ),
-        ),
-        migrations.RemoveField(
-            model_name="cluediscovery",
-            name="roll",
-        ),
         migrations.AlterUniqueTogether(
             name="cluediscovery",
             unique_together={("clue", "character")},
-        ),
-        migrations.AddField(
-            model_name="clue",
-            name="clue_type",
-            field=models.PositiveSmallIntegerField(
-                choices=[(0, "Game Lore"), (1, "Vision"), (2, "Character Secret")],
-                default=0,
-            ),
         ),
         migrations.AddField(
             model_name="revelation",
@@ -1438,13 +1361,6 @@ class Migration(migrations.Migration):
                 related_name="known_theories",
                 through="character.TheoryPermissions",
                 to=settings.AUTH_USER_MODEL,
-            ),
-        ),
-        migrations.AlterField(
-            model_name="theory",
-            name="related_clues",
-            field=models.ManyToManyField(
-                blank=True, db_index=True, related_name="theories", to="character.Clue"
             ),
         ),
         migrations.CreateModel(
@@ -1599,7 +1515,7 @@ class Migration(migrations.Migration):
                     "actions",
                     models.TextField(
                         blank=True,
-                        verbose_name=b"The body of the post for your character's actions",
+                        verbose_name="The body of the post for your character's actions",
                     ),
                 ),
                 ("db_date_created", models.DateTimeField(blank=True, null=True)),
@@ -1616,16 +1532,8 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         blank=True,
                         null=True,
-                        on_delete=django.db.models.deletion.CASCADE,
+                        on_delete=django.db.models.deletion.SET_NULL,
                         related_name="flashback_posts",
-                        to="character.RosterEntry",
-                    ),
-                ),
-                (
-                    "read_by",
-                    models.ManyToManyField(
-                        blank=True,
-                        related_name="read_flashback_posts",
                         to="character.RosterEntry",
                     ),
                 ),
@@ -1730,99 +1638,6 @@ class Migration(migrations.Migration):
                 to="character.RosterEntry",
             ),
         ),
-        migrations.AlterField(
-            model_name="flashbackpost",
-            name="poster",
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.SET_NULL,
-                related_name="flashback_posts",
-                to="character.RosterEntry",
-            ),
-        ),
-        migrations.AlterModelOptions(
-            name="accounthistory",
-            options={
-                "verbose_name": "Played Character",
-                "verbose_name_plural": "Played Characters",
-            },
-        ),
-        migrations.RemoveField(
-            model_name="flashback",
-            name="allowed",
-        ),
-        migrations.RemoveField(
-            model_name="flashback",
-            name="owner",
-        ),
-        migrations.RemoveField(
-            model_name="flashbackpost",
-            name="read_by",
-        ),
-        migrations.AlterField(
-            model_name="clue",
-            name="allow_exploration",
-            field=models.BooleanField(
-                default=False, help_text="Can be gained through exploration rolls"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="clue",
-            name="allow_investigation",
-            field=models.BooleanField(
-                default=False, help_text="Can be gained through investigation rolls"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="clue",
-            name="allow_trauma",
-            field=models.BooleanField(
-                default=False, help_text="Can be gained through combat rolls"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="clue",
-            name="desc",
-            field=models.TextField(
-                blank=True,
-                help_text="Description of the clue given to the player",
-                verbose_name="Description",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="clue",
-            name="rating",
-            field=models.PositiveSmallIntegerField(
-                blank=0,
-                db_index=True,
-                default=0,
-                help_text="Value required to get this clue",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="clue",
-            name="red_herring",
-            field=models.BooleanField(
-                default=False, help_text="Whether this revelation is totally fake"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="cluediscovery",
-            name="message",
-            field=models.TextField(
-                blank=True,
-                help_text="Message for the player's records about how they discovered this.",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="flashbackpost",
-            name="actions",
-            field=models.TextField(
-                blank=True,
-                verbose_name="The body of the post for your character's actions",
-            ),
-        ),
         migrations.CreateModel(
             name="GoalUpdate",
             fields=[
@@ -1863,103 +1678,6 @@ class Migration(migrations.Migration):
             options={
                 "abstract": False,
             },
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="actions",
-            field=models.TextField(
-                blank=True,
-                help_text="The writeup the player submits of their actions, used for GMing.",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="active",
-            field=models.BooleanField(
-                db_index=True,
-                default=False,
-                help_text="Whether this is the investigation for the week. Only one allowed",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="automate_result",
-            field=models.BooleanField(
-                default=True,
-                help_text="Whether to generate a result during weekly maintenance. Set false if GM'd",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="economic",
-            field=models.PositiveSmallIntegerField(
-                blank=0,
-                default=0,
-                help_text="Additional economic resources added by the player",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="military",
-            field=models.PositiveSmallIntegerField(
-                blank=0,
-                default=0,
-                help_text="Additional military resources added by the player",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="ongoing",
-            field=models.BooleanField(
-                db_index=True,
-                default=True,
-                help_text="Whether this investigation is finished or not",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="results",
-            field=models.TextField(
-                blank=True,
-                default="You didn't find anything.",
-                help_text="The text to send the player, either set by GM or generated automatically by script if automate_result is set.",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="silver",
-            field=models.PositiveSmallIntegerField(
-                blank=0, default=0, help_text="Additional silver added by the player"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="skill_used",
-            field=models.CharField(
-                blank=True,
-                default="investigation",
-                help_text="The skill the player chose to use",
-                max_length=80,
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="social",
-            field=models.PositiveSmallIntegerField(
-                blank=0,
-                default=0,
-                help_text="Additional social resources added by the player",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="investigation",
-            name="stat_used",
-            field=models.CharField(
-                blank=True,
-                default="perception",
-                help_text="The stat the player chose to use",
-                max_length=80,
-            ),
         ),
         migrations.CreateModel(
             name="InvestigationAssistant",
@@ -2024,34 +1742,6 @@ class Migration(migrations.Migration):
             options={
                 "unique_together": {("char", "investigation")},
             },
-        ),
-        migrations.AlterField(
-            model_name="revelation",
-            name="desc",
-            field=models.TextField(
-                blank=True,
-                help_text="Description of the revelation given to the player",
-                verbose_name="Description",
-            ),
-        ),
-        migrations.AddField(
-            model_name="revelation",
-            name="gm_notes",
-            field=models.TextField(blank=True, help_text="OOC Notes about this topic"),
-        ),
-        migrations.AlterField(
-            model_name="revelation",
-            name="red_herring",
-            field=models.BooleanField(
-                default=False, help_text="Whether this revelation is totally fake"
-            ),
-        ),
-        migrations.AlterField(
-            model_name="revelation",
-            name="required_clue_value",
-            field=models.PositiveSmallIntegerField(
-                blank=0, default=0, help_text="The total value of clues to trigger this"
-            ),
         ),
         migrations.CreateModel(
             name="RPScene",

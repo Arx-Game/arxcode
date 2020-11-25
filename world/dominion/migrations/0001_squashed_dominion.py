@@ -8,43 +8,6 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        # ("dominion", "0001_initial"),
-        # ("dominion", "0002_organization_category"),
-        # ("dominion", "0003_auto_20170118_0512"),
-        # ("dominion", "0004_crisis_required_clue"),
-        # ("dominion", "0005_auto_20170122_0200"),
-        # ("dominion", "0006_auto_20170201_0444"),
-        # ("dominion", "0007_tasksupporter_additional_points"),
-        # ("dominion", "0008_auto_20170211_0439"),
-        # ("dominion", "0009_auto_20170413_0308"),
-        # ("dominion", "0010_auto_20170511_0645"),
-        # ("dominion", "0011_organization_theories"),
-        # ("dominion", "0012_auto_20170920_0148"),
-        # ("dominion", "0013_auto_20171029_1416"),
-        # ("dominion", "0014_auto_20171106_2257"),
-        # ("dominion", "0015_auto_20171109_2244"),
-        # ("dominion", "0016_auto_20171208_1328"),
-        # ("dominion", "0017_auto_20171217_0306"),
-        # ("dominion", "0018_auto_20171226_0208"),
-        # ("dominion", "0019_auto_20171228_0839"),
-        # ("dominion", "0020_auto_20180102_0655"),
-        # ("dominion", "0021_auto_20180102_0656"),
-        # ("dominion", "0022_auto_20180118_1856"),
-        # ("dominion", "0023_worksetting"),
-        # ("dominion", "0024_charitabledonation"),
-        # ("dominion", "0025_praiseorcondemn"),
-        # ("dominion", "0026_rpevent_risk"),
-        # ("dominion", "0027_honorific_propriety"),
-        # ("dominion", "0028_auto_20180728_0224"),
-        # ("dominion", "0029_auto_20180731_0001"),
-        # ("dominion", "0030_auto_20180804_1530"),
-        # ("dominion", "0031_auto_20180804_2115"),
-        # ("dominion", "0032_auto_20180831_0557"),
-        # ("dominion", "0033_auto_20181105_1756"),
-        # ("dominion", "0034_auto_20181105_1756"),
-    ]
-
     initial = True
 
     dependencies = [
@@ -77,13 +40,13 @@ class Migration(migrations.Migration):
                     "type",
                     models.PositiveSmallIntegerField(
                         choices=[
-                            (0, b"Guard"),
-                            (1, b"Thug"),
-                            (2, b"Spy"),
-                            (3, b"Assistant"),
-                            (4, b"Champion"),
-                            (5, b"Animal"),
-                            (6, b"Small Animal"),
+                            (0, "Guard"),
+                            (1, "Thug"),
+                            (2, "Spy"),
+                            (3, "Assistant"),
+                            (4, "Champion"),
+                            (5, "Animal"),
+                            (6, "Small Animal"),
                         ],
                         default=0,
                     ),
@@ -430,15 +393,15 @@ class Migration(migrations.Migration):
                 ),
                 ("special_modifiers", models.TextField(blank=True, null=True)),
                 ("motd", models.TextField(blank=True, null=True)),
-                ("base_support_value", models.SmallIntegerField(blank=5, default=5)),
+                ("base_support_value", models.SmallIntegerField(default=5)),
                 (
                     "member_support_multiplier",
-                    models.SmallIntegerField(blank=5, default=5),
+                    models.SmallIntegerField(default=5),
                 ),
                 (
                     "category",
                     models.CharField(
-                        blank=True, default=b"noble", max_length=255, null=True
+                        blank=True, default="noble", max_length=255, null=True
                     ),
                 ),
             ],
@@ -1791,16 +1754,6 @@ class Migration(migrations.Migration):
             name="social_influence",
             field=models.IntegerField(default=0),
         ),
-        migrations.AlterField(
-            model_name="organization",
-            name="base_support_value",
-            field=models.SmallIntegerField(default=5),
-        ),
-        migrations.AlterField(
-            model_name="organization",
-            name="member_support_multiplier",
-            field=models.SmallIntegerField(default=5),
-        ),
         migrations.CreateModel(
             name="OrgPlotInvolvement",
             fields=[
@@ -2096,22 +2049,6 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-        ),
-        migrations.AlterField(
-            model_name="agent",
-            name="type",
-            field=models.PositiveSmallIntegerField(
-                choices=[
-                    (0, "Guard"),
-                    (1, "Thug"),
-                    (2, "Spy"),
-                    (3, "Assistant"),
-                    (4, "Champion"),
-                    (5, "Animal"),
-                    (6, "Small Animal"),
-                ],
-                default=0,
-            ),
         ),
         migrations.CreateModel(
             name="AgentMission",
