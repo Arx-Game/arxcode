@@ -6,15 +6,16 @@ abstraction layer both allows for caching and hiding data storage, allowing for 
 of refactoring.
 """
 import random
-from typing import Dict, List, Any, Union
+from collections import defaultdict, namedtuple
+from typing import Dict, List
+
+from world.conditions.constants import SERIOUS_WOUND
 from world.stats_and_skills import (
     _parent_abilities_,
     DOM_SKILLS,
 )
-from world.conditions.constants import SERIOUS_WOUND
-from world.traits.models import CharacterTraitValue, Trait
 from world.traits.exceptions import InvalidTrait
-from collections import defaultdict, namedtuple
+from world.traits.models import CharacterTraitValue, Trait
 
 TraitValue = namedtuple("TraitValue", "name value")
 

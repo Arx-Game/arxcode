@@ -185,10 +185,12 @@ class CmdHarm(ArxCommand):
             self.msg(err)
 
     def do_harm(self):
+        damage = ""
         target = self.caller.search(self.lhs)
         if not target:
             return
-        damage = DamageRating.get_instance_by_name(self.rhs or "")
+        if self.rhslist:
+            damage = DamageRating.get_instance_by_name(self.rhslist[0])
         if not damage:
             raise self.error_class("No damage rating found by that name.")
         if target != self.caller and not self.caller.check_staff_or_gm():

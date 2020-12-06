@@ -413,7 +413,7 @@ class Character(
             return msg + "is currently dead."
         elif wounds <= 0:
             msg += "is in perfect health"
-        elif self.check_past_death_threshold():
+        elif not self.check_past_death_threshold():
             msg += "seems to have %s injuries" % self.get_wound_descriptor(self.dmg)
         else:
             msg += "is in critical condition - possibly dying"
