@@ -9,6 +9,8 @@ from django.db import models
 
 from evennia.utils.idmapper.models import SharedMemoryModel
 
+from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
+
 
 class RollModifier(SharedMemoryModel):
     """
@@ -334,7 +336,7 @@ class EffectTrigger(SharedMemoryModel):
                     triggered = False
         elif self.conditional_check == self.CURRENT_HEALTH_PERCENTAGE:
             try:
-                health = target.get_health_percentage() * 100
+                health = target.get_health_percentage()
                 if health > self.max_value or health < self.min_value:
                     triggered = False
             except (AttributeError, ValueError, TypeError):
@@ -377,3 +379,23 @@ class EffectTrigger(SharedMemoryModel):
         """On save, we'll refresh the cache of ou"""
         super(EffectTrigger, self).save(*args, **kwargs)
         self.object.triggerhandler.add_trigger_to_cache(self)
+
+
+class Wound(SharedMemoryModel):
+    """
+    A wound that a character has taken. It may be serious (temporary) or
+    permanent, and affects one of their traits.
+    """
+
+    SERIOUS, PERMANENT = SERIOUS_WOUND, PERMANENT_WOUND
+    WOUND_TYPES = (
+        (SERIOUS, "serious wound"),
+        (PERMANENT, "permanent wound"),
+    )
+    character = models.ForeignKey(
+        "objects.ObjectDB", related_name="wounds", on_delete=models.CASCADE
+    )
+    trait = models.ForeignKey(
+        "traits.Trait", related_name="wounds", on_delete=models.CASCADE
+    )
+    severity = models.PositiveSmallIntegerField(default=SERIOUS, choices=WOUND_TYPES)

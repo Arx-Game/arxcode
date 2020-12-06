@@ -1,4 +1,5 @@
 from random import randint
+from functools import total_ordering
 
 from world.conditions.modifiers_handlers import ModifierHandler
 from world.stat_checks.models import (
@@ -6,6 +7,7 @@ from world.stat_checks.models import (
     RollResult,
     StatWeight,
     NaturalRollType,
+    StatCheck,
 )
 
 
@@ -13,11 +15,12 @@ TIE_THRESHOLD = 5
 
 
 def check_rolls_tied(roll1, roll2, tie_value=TIE_THRESHOLD):
-    if roll1.roll_result != roll2.roll_result:
+    if roll1.roll_result_object != roll2.roll_result_object:
         return False
     return abs(roll1.result_value - roll2.result_value) < tie_value
 
 
+@total_ordering
 class SimpleRoll:
     def __init__(
         self,
@@ -26,6 +29,8 @@ class SimpleRoll:
         skill=None,
         rating: DifficultyRating = None,
         receivers: list = None,
+        tie_threshold: int = TIE_THRESHOLD,
+        **kwargs,
     ):
         self.character = character
         self.receivers = receivers or []
@@ -36,24 +41,55 @@ class SimpleRoll:
         self.room = character and character.location
         self.rating = rating
         self.raw_roll = None
-        self.roll_result = None
+        self.roll_result_object = None
         self.natural_roll_type = None
+        self.tie_threshold = tie_threshold
+        self.roll_kwargs = kwargs
+
+    def __lt__(self, other: "SimpleRoll"):
+        """
+        We treat a roll as being less than another if the Result is lower,
+        or same result is outside tie threshold for the result values.
+        """
+        try:
+            if self.roll_result_object == other.roll_result_object:
+                return (self.result_value + self.tie_threshold) < other.result_value
+            return self.roll_result_object.value < other.roll_result_object.value
+        except AttributeError:
+            return NotImplemented
+
+    def __eq__(self, other: "SimpleRoll"):
+        """Equal if they have the same apparent result object and the """
+        return (self.roll_result_object == other.roll_result_object) and abs(
+            self.result_value - other.result_value
+        ) <= self.tie_threshold
+
+    def get_roll_value_for_rating(self):
+        return self.rating.value
 
     def execute(self):
         """Does the actual roll"""
         self.raw_roll = randint(1, 100)
-        val = self.get_roll_value_for_stat()
-        val += self.get_roll_value_for_skill()
+        val = self.get_roll_value_for_traits()
         val += self.get_roll_value_for_knack()
-        val -= self.rating.value
+        val -= self.get_roll_value_for_rating()
         val += self.raw_roll
         self.result_value = val
         # we use our raw roll and modified toll to determine if our roll is special
         self.natural_roll_type = self.check_for_crit_or_botch()
-        self.roll_result = RollResult.get_instance_for_roll(
+        self.roll_result_object = RollResult.get_instance_for_roll(
             val, natural_roll_type=self.natural_roll_type
         )
-        self.result_message = self.roll_result.render(**self.get_context())
+        self.result_message = self.roll_result_object.render(**self.get_context())
+
+    @property
+    def is_success(self):
+        return self.roll_result_object.is_success
+
+    def get_roll_value_for_traits(self):
+        val = self.get_roll_value_for_stat()
+        val += self.get_roll_value_for_skill()
+        return val
 
     def get_context(self) -> dict:
         crit = None
@@ -66,7 +102,7 @@ class SimpleRoll:
         return {
             "character": self.character,
             "roll": self.result_value,
-            "result": self.roll_result,
+            "result": self.roll_result_object,
             "natural_roll_type": self.natural_roll_type,
             "crit": crit,
             "botch": botch,
@@ -115,7 +151,7 @@ class SimpleRoll:
             ob for ob in set(self.receivers) if ob.name.lower() not in self_list
         ]
         staff_receiver_names = [
-            "|c%s|n" % (ob.name)
+            "|c%s|n" % ob.name
             for ob in set(self.receivers)
             if ob.check_permstring("Builders")
         ]
@@ -129,7 +165,7 @@ class SimpleRoll:
         if len(receiver_list) == 0:
             receiver_suffix = "(Shared with: self-only)"
         else:
-            receiver_suffix = "(Shared with: %s)" % (", ").join(all_receiver_names)
+            receiver_suffix = "(Shared with: %s)" % ", ".join(all_receiver_names)
 
         # Now that we know who is getting it, build the private message string.
         private_msg = f"|w[Private Roll]|n {self.roll_message} {receiver_suffix}"
@@ -198,12 +234,64 @@ class SimpleRoll:
         return NaturalRollType.get_roll_type(self.raw_roll)
 
 
+class DefinedRoll(SimpleRoll):
+    """
+    Roll for a pre-created check that's saved in the database, which will be used
+    to populate the values for the roll.
+    """
+
+    def __init__(self, character, check: StatCheck = None, **kwargs):
+        super().__init__(character, **kwargs)
+        self.check = check
+
+    def get_roll_value_for_traits(self) -> int:
+        """
+        Get the value for our traits from our check
+        """
+        return self.check.get_value_for_traits(self.character)
+
+    def get_roll_value_for_rating(self) -> int:
+        """
+        Get the value for the difficult rating from our check
+        """
+        if self.rating:
+            return super().get_roll_value_for_rating()
+        self.rating = self.check.get_difficulty_rating(
+            self.character, **self.roll_kwargs
+        )
+        return self.rating.value
+
+    def get_roll_value_for_knack(self) -> int:
+        """Looks up the value for the character's knacks, if any."""
+        # get stats and skills for our check
+        try:
+            mods: ModifierHandler = self.character.mods
+            base = mods.get_total_roll_modifiers(
+                self.check.get_stats_list(), self.check.get_skills_list()
+            )
+        except AttributeError:
+            return 0
+        return StatWeight.get_weighted_value_for_knack(base)
+
+    @property
+    def outcome(self):
+        return self.check.get_outcome_for_result(self.roll_result_object)
+
+    @property
+    def roll_prefix(self):
+        roll_message = f"{self.character} checks '{self.check}' at {self.rating}"
+        return roll_message
+
+
 class BaseCheckMaker:
     roll_class = SimpleRoll
 
-    def __init__(self, character, **kwargs):
+    def __init__(self, character, roll_class=None, **kwargs):
         self.character = character
         self.kwargs = kwargs
+        if roll_class:
+            self.roll_class = roll_class
+        self.roll = None
 
     @classmethod
     def perform_check_for_character(cls, character, **kwargs):
@@ -211,17 +299,23 @@ class BaseCheckMaker:
         check.make_check_and_announce()
 
     def make_check_and_announce(self):
-        roll = self.roll_class(character=self.character, **self.kwargs)
-        roll.execute()
-        roll.announce_to_room()
+        self.roll = self.roll_class(character=self.character, **self.kwargs)
+        self.roll.execute()
+        self.roll.announce_to_room()
+
+    @property
+    def is_success(self):
+        return self.roll.is_success
 
 
 class PrivateCheckMaker:
     roll_class = SimpleRoll
 
-    def __init__(self, character, **kwargs):
+    def __init__(self, character, roll_class=None, **kwargs):
         self.character = character
         self.kwargs = kwargs
+        if roll_class:
+            self.roll_class = roll_class
 
     @classmethod
     def perform_check_for_character(cls, character, **kwargs):
@@ -240,7 +334,7 @@ class RollResults:
     tie_threshold = TIE_THRESHOLD
 
     def __init__(self, rolls):
-        self.raw_rolls = sorted(rolls, key=lambda x: x.result_value, reverse=True)
+        self.raw_rolls = sorted(rolls, reverse=True)
         # list of lists of rolls. multiple rolls in a list indicates a tie
         self.results = []
 
@@ -249,9 +343,7 @@ class RollResults:
             is_tie = False
             if self.results:
                 last_results = self.results[-1]
-                if last_results and check_rolls_tied(
-                    last_results[0], roll, self.tie_threshold
-                ):
+                if last_results and last_results[0] == roll:
                     is_tie = True
             if is_tie:
                 self.results[-1].append(roll)
@@ -276,11 +368,13 @@ class RollResults:
 class ContestedCheckMaker:
     roll_class = SimpleRoll
 
-    def __init__(self, characters, caller, prefix_string="", **kwargs):
+    def __init__(self, characters, caller, prefix_string="", roll_class=None, **kwargs):
         self.characters = list(characters)
         self.caller = caller
         self.kwargs = kwargs
         self.prefix_string = prefix_string
+        if roll_class:
+            self.roll_class = roll_class
 
     @classmethod
     def perform_contested_check(cls, characters, caller, prefix_string, **kwargs):
@@ -308,13 +402,19 @@ class OpposingRolls:
     def announce(self):
         self.roll1.execute()
         self.roll2.execute()
-        rolls = sorted(
-            [self.roll1, self.roll2], key=lambda x: x.result_value, reverse=True
-        )
-        if check_rolls_tied(self.roll1, self.roll2):
+        rolls = sorted([self.roll1, self.roll2], reverse=True)
+        if self.roll1 == self.roll2:
             result = "*** The rolls are |ctied|n. ***"
         else:
             result = f"*** |c{rolls[0].character}|n is the winner. ***"
         msg = f"\n|w*** {self.caller} has called for an opposing check with {self.target}. ***|n\n"
         msg += f"{self.roll1.roll_message}\n{self.roll2.roll_message}\n{result}"
         self.caller.msg_location_or_contents(msg, options={"roll": True})
+
+
+class DefinedCheckMaker(BaseCheckMaker):
+    roll_class = DefinedRoll
+
+    @property
+    def outcome(self):
+        return self.roll.outcome

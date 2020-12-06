@@ -159,7 +159,7 @@ class CombatHandler(object):
         weapon = self.char.db.weapon
         try:
             max_hp = self.char.max_hp
-            hp = "%s/%s" % (max_hp - self.char.dmg, max_hp)
+            hp = "%s/%s" % (self.char.current_hp, max_hp)
         except AttributeError:
             hp = "?/?"
         fdiff = 20
@@ -293,7 +293,9 @@ class CombatHandler(object):
     @property
     def modifier_tags(self):
         """Returns tags for our attack or that they're physical and mundane"""
-        tags = self.char.modifier_tags + self.weapon.get("modifier_tags", [])
+        tags = self.char.modifier_tags
+        if self.weapon:
+            tags += self.weapon.get("modifier_tags", [])
         return tags or ["mundane"]
 
     @property

@@ -11,12 +11,25 @@ from evennia.commands.default.tests import CommandTest
 from evennia.server.sessionhandler import SESSIONS
 from evennia.utils import ansi, utils
 from evennia.utils.test_resources import EvenniaTest
-from typeclasses.characters import Character
 from typeclasses.accounts import Account
+from typeclasses.characters import Character
+from typeclasses.exits import Exit
 from typeclasses.objects import Object
 from typeclasses.rooms import ArxRoom
-from typeclasses.exits import Exit
-
+from world.stat_checks.models import (
+    DifficultyRating,
+    RollResult,
+    StatWeight,
+    StatCheckOutcome,
+    DamageRating,
+    StatCombination,
+    StatCheck,
+    TraitsInCombination,
+    CheckCondition,
+    CheckDifficultyRule,
+    NaturalRollType,
+)
+from world.traits.models import Trait
 
 # set up signal here since we are not starting the server
 
@@ -41,6 +54,8 @@ class ArxTestConfigMixin(object):
     assetowner2 = None
     roster_entry = None
     roster_entry2 = None
+    # series of flags for generating other data
+    HAS_COMBAT_DATA = False
 
     @property
     def total_num_characters(self):
@@ -65,6 +80,11 @@ class ArxTestConfigMixin(object):
         self.setup_aliases()
         self.setup_arx_characters()
         Trait._cache_set = False
+        StatWeight._cache_set = False
+        StatCheck._cache_set = False
+        RollResult._cache_set = False
+        DamageRating._cache_set = False
+        DifficultyRating._cache_set = False
 
     def setup_arx_characters(self):
         """
@@ -131,6 +151,339 @@ class ArxTestConfigMixin(object):
         import datetime
 
         return datetime.datetime(1978, 8, 27, 12, 8, 0)
+
+    @classmethod
+    def get_or_create(cls, targcls, **kwargs):
+        obj, _ = targcls.objects.get_or_create(**kwargs)
+        targcls._cache_set = False
+        return obj
+
+    @classmethod
+    def setUpTestData(cls):
+        if cls.HAS_COMBAT_DATA:
+            cls.generate_combat_data()
+
+    @classmethod
+    def generate_combat_data(cls):
+        cls.get_or_create(
+            DamageRating, name="severe", value=70, max_value=110, armor_percentage=25
+        )
+        # all the stuff needed for harm
+        StatCheck.objects.all().delete()
+        StatCombination.objects.filter(combined_into__isnull=False).delete()
+        StatCombination.objects.all().delete()
+        death_save_system = StatCombination.objects.create()
+        death_save = cls.get_or_create(
+            StatCheck,
+            name="death save",
+            dice_system=death_save_system,
+            description="A check to stay alive. Success indicates the character lives.",
+        )
+        # set traits used for death save
+        armor_class = cls.get_or_create(
+            Trait,
+            name="armor_class",
+            defaults=dict(category="combat", trait_type=Trait.OTHER),
+        )
+        cls.get_or_create(
+            Trait,
+            name="boss_rating",
+            defaults=dict(category="combat", trait_type=Trait.OTHER),
+        )
+        cls.get_or_create(
+            Trait,
+            name="bonus_max_hp",
+            defaults=dict(category="combat", trait_type=Trait.OTHER),
+        )
+        stamina = cls.get_or_create(Trait, name="stamina")
+        willpower = cls.get_or_create(Trait, name="willpower")
+        luck = cls.get_or_create(Trait, name="luck")
+        cls.get_or_create(Trait, name="strength")
+        cls.get_or_create(Trait, name="dexterity")
+        cls.get_or_create(Trait, name="charm")
+        cls.get_or_create(Trait, name="command")
+        cls.get_or_create(Trait, name="composure")
+        cls.get_or_create(Trait, name="intellect")
+        cls.get_or_create(Trait, name="mana")
+        cls.get_or_create(Trait, name="wits")
+        cls.get_or_create(Trait, name="perception")
+        cls.get_or_create(Trait, name="archery", defaults=dict(trait_type=Trait.SKILL))
+        cls.get_or_create(
+            Trait, name="athletics", defaults=dict(trait_type=Trait.SKILL)
+        )
+        cls.get_or_create(Trait, name="brawl", defaults=dict(trait_type=Trait.SKILL))
+        cls.get_or_create(Trait, name="dodge", defaults=dict(trait_type=Trait.SKILL))
+        cls.get_or_create(Trait, name="huge wpn", defaults=dict(trait_type=Trait.SKILL))
+        cls.get_or_create(
+            Trait, name="medium wpn", defaults=dict(trait_type=Trait.SKILL)
+        )
+        cls.get_or_create(
+            Trait, name="small wpn", defaults=dict(trait_type=Trait.SKILL)
+        )
+        cls.get_or_create(Trait, name="stealth", defaults=dict(trait_type=Trait.SKILL))
+        cls.get_or_create(Trait, name="survival", defaults=dict(trait_type=Trait.SKILL))
+        cls.get_or_create(Trait, name="ride", defaults=dict(trait_type=Trait.SKILL))
+        cls.get_or_create(
+            Trait, name="leadership", defaults=dict(trait_type=Trait.SKILL)
+        )
+        cls.get_or_create(Trait, name="war", defaults=dict(trait_type=Trait.SKILL))
+        higher_of_willpower_or_luck = cls.get_or_create(
+            StatCombination,
+            combination_type=StatCombination.USE_HIGHEST,
+            combined_into=death_save_system,
+        )
+        cls.get_or_create(
+            TraitsInCombination,
+            trait=willpower,
+            stat_combination=higher_of_willpower_or_luck,
+        )
+        cls.get_or_create(
+            TraitsInCombination,
+            trait=luck,
+            stat_combination=higher_of_willpower_or_luck,
+        )
+        cls.get_or_create(
+            TraitsInCombination, trait=stamina, stat_combination=death_save_system
+        )
+        cls.get_or_create(
+            TraitsInCombination, trait=armor_class, stat_combination=death_save_system
+        )
+        # we map different difficulties to check conditions that are the percent of missing health
+        # easy is when they have 100% of their health missing - they just hit 0
+        easy_condition = cls.get_or_create(CheckCondition, value=100)
+        easy = cls.get_or_create(DifficultyRating, name="easy", defaults={"value": 25})
+        normal_condition = cls.get_or_create(CheckCondition, value=125)
+        normal = cls.get_or_create(
+            DifficultyRating, name="normal", defaults={"value": 50}
+        )
+        hard_condition = cls.get_or_create(CheckCondition, value=150)
+        hard = cls.get_or_create(DifficultyRating, name="hard", defaults={"value": 75})
+        daunting_condition = cls.get_or_create(CheckCondition, value=195)
+        daunting = cls.get_or_create(
+            DifficultyRating, name="daunting", defaults={"value": 95}
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=death_save,
+            situation=easy_condition,
+            difficulty=easy,
+            description="The character is expected to survive, but can still die.",
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=death_save,
+            situation=normal_condition,
+            difficulty=normal,
+            description="Seriously wounded - the character has a good chance of death.",
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=death_save,
+            situation=hard_condition,
+            difficulty=hard,
+            description="Very serious wounds - more fragile characters are likely to die.",
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=death_save,
+            situation=daunting_condition,
+            difficulty=daunting,
+            description="Extremely dire wounds - the character is very likely to die.",
+        )
+        fail = cls.get_or_create(
+            RollResult,
+            name="marginally fails",
+            defaults=dict(value=-15, template="{{character}} |512{{result}}|n."),
+        )
+        success = cls.get_or_create(
+            RollResult,
+            name="marginally successful",
+            defaults=dict(value=0, template="{{character}} is |240{{result}}|n."),
+        )
+        cls.get_or_create(
+            RollResult,
+            name="inhumanly successful",
+            defaults=dict(
+                value=151,
+                template="|542{% if crit %}{{ crit|title }}! {% endif %}{{character}} is "
+                "{{result}} in a way that defies expectations.|n",
+            ),
+        )
+        cls.get_or_create(
+            StatCheckOutcome,
+            stat_check=death_save,
+            result=fail,
+            description="The character dies on any failure result.",
+        )
+        cls.get_or_create(
+            StatCheckOutcome,
+            stat_check=death_save,
+            result=success,
+            description="The character lives on any success result.",
+        )
+        # unconsciousness save
+        uncon_save_system = StatCombination.objects.create()
+        uncon_save = cls.get_or_create(
+            StatCheck,
+            name="unconsciousness save",
+            dice_system=uncon_save_system,
+            description="A check to stay conscious. Failure is being knocked out.",
+        )
+        cls.get_or_create(
+            TraitsInCombination, trait=stamina, stat_combination=uncon_save_system
+        )
+        easy_condition = cls.get_or_create(
+            CheckCondition, value=1, condition_type=CheckCondition.HEALTH_BELOW_100
+        )
+        normal_condition = cls.get_or_create(
+            CheckCondition, value=26, condition_type=CheckCondition.HEALTH_BELOW_100
+        )
+        hard_condition = cls.get_or_create(
+            CheckCondition, value=51, condition_type=CheckCondition.HEALTH_BELOW_100
+        )
+        daunting_condition = cls.get_or_create(
+            CheckCondition, value=76, condition_type=CheckCondition.HEALTH_BELOW_100
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=uncon_save,
+            situation=easy_condition,
+            difficulty=easy,
+            description="The character is expected to stay conscious, "
+            "but can still be knocked out.",
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=uncon_save,
+            situation=normal_condition,
+            difficulty=normal,
+            description="The character has a good chance of being knocked out.",
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=uncon_save,
+            situation=hard_condition,
+            difficulty=hard,
+            description="The character is likely to be knocked out.",
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=uncon_save,
+            situation=daunting_condition,
+            difficulty=daunting,
+            description="The character is very likely to lose consciousness.",
+        )
+        cls.get_or_create(
+            StatCheckOutcome,
+            stat_check=uncon_save,
+            result=fail,
+            description="The character falls unconscious on any failure result.",
+        )
+        cls.get_or_create(
+            StatCheckOutcome,
+            stat_check=uncon_save,
+            result=success,
+            description="The character remains conscious on any success result.",
+        )
+
+        # permanent wound save
+        perm_wound_system = StatCombination.objects.create()
+        perm_wound_save = cls.get_or_create(
+            StatCheck,
+            name="permanent wound save",
+            dice_system=perm_wound_system,
+            description="A check to avoid suffering permanent effects from wounds.",
+        )
+        cls.get_or_create(
+            TraitsInCombination, trait=stamina, stat_combination=perm_wound_system
+        )
+        normal_condition = cls.get_or_create(
+            CheckCondition,
+            value=30,
+            condition_type=CheckCondition.PERCENT_HEALTH_INFLICTED,
+        )
+        hard_condition = cls.get_or_create(
+            CheckCondition,
+            value=45,
+            condition_type=CheckCondition.PERCENT_HEALTH_INFLICTED,
+        )
+        daunting_condition = cls.get_or_create(
+            CheckCondition,
+            value=60,
+            condition_type=CheckCondition.PERCENT_HEALTH_INFLICTED,
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=perm_wound_save,
+            situation=normal_condition,
+            difficulty=normal,
+            description="The character has a good chance of taking a lingering wound.",
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=perm_wound_save,
+            situation=hard_condition,
+            difficulty=hard,
+            description="The character is likely to have a lingering wound.",
+        )
+        cls.get_or_create(
+            CheckDifficultyRule,
+            stat_check=perm_wound_save,
+            situation=daunting_condition,
+            difficulty=daunting,
+            description="The character is very likely to have a permanent, lasting wound.",
+        )
+        botch = cls.get_or_create(
+            RollResult,
+            name="catastrophically fails",
+            defaults=dict(
+                value=-160,
+                template="{% if botch %}{{ botch|title }}! {% endif %}{{character}} |505{{result}}|n.",
+            ),
+        )
+        normal_fail = cls.get_or_create(
+            RollResult,
+            name="fails",
+            defaults=dict(value=-60, template="{{character}} |r{{result}}|n."),
+        )
+        cls.get_or_create(
+            NaturalRollType,
+            name="critical success",
+            defaults=dict(value=96, result_shift=1),
+        )
+        cls.get_or_create(
+            NaturalRollType,
+            name="botch",
+            defaults=dict(value=5, value_type=1, result_shift=-1),
+        )
+        cls.get_or_create(
+            StatCheckOutcome,
+            stat_check=perm_wound_save,
+            result=botch,
+            description="The character takes a permanent wound on botches/catastrophic failures.",
+        )
+        cls.get_or_create(
+            StatCheckOutcome,
+            stat_check=perm_wound_save,
+            result=normal_fail,
+            description="The character takes a serious wound on failure/marginal failure.",
+        )
+        cls.get_or_create(
+            StatCheckOutcome,
+            stat_check=perm_wound_save,
+            result=success,
+            description="The character does not suffer a permanent wound on success.",
+        )
+        cls.get_or_create(
+            StatWeight, stat_type=StatWeight.HEALTH_STA, level=0, weight=75
+        )
+        cls.get_or_create(
+            StatWeight, stat_type=StatWeight.HEALTH_STA, level=1, weight=25
+        )
+        cls.get_or_create(
+            StatWeight, stat_type=StatWeight.HEALTH_BOSS, level=1, weight=100
+        )
+        cls.get_or_create(StatWeight, stat_type=StatWeight.MISC)
 
 
 class ArxTest(ArxTestConfigMixin, EvenniaTest):

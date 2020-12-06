@@ -263,5 +263,6 @@ class Migration(migrations.Migration):
                 "abstract": False,
             },
         ),
-        migrations.RunPython(add_defaults, migrations.RunPython.noop),
+        # not elidable: these defaults should always be present in the database
+        migrations.RunPython(add_defaults, migrations.RunPython.noop, elidable=False),
     ]

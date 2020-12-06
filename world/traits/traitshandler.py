@@ -6,11 +6,12 @@ abstraction layer both allows for caching and hiding data storage, allowing for 
 of refactoring.
 """
 import random
-from typing import Dict, List
+from typing import Dict, List, Any, Union
 from world.stats_and_skills import (
     _parent_abilities_,
     DOM_SKILLS,
 )
+from world.conditions.constants import SERIOUS_WOUND
 from world.traits.models import CharacterTraitValue, Trait
 from world.traits.exceptions import InvalidTrait
 from collections import defaultdict, namedtuple
@@ -33,27 +34,52 @@ class Traitshandler:
             "ability": defaultdict(CharacterTraitValue),
             "other": defaultdict(CharacterTraitValue),
         }
+        self._wounds_cache = defaultdict(list)
         self.initialized = False
-        self.setup_cache()
+        self.setup_caches()
 
-    def setup_cache(self, reset=False):
+    def setup_caches(self, reset=False):
         """Set our character's trait values in the cache, with case-insensitive keys by trait name"""
         if not reset and self.initialized:
             return
         for trait_value in self.character.trait_values.all():
             self.add_trait_value_to_cache(trait_value)
+        for wound in self.character.wounds.all():
+            self.add_wound_to_cache(wound)
         self.initialized = True
+
+    def get_value_by_trait(self, trait: Trait) -> int:
+        name = trait.name.lower()
+        trait_type = trait.get_trait_type_display()
+        return self.adjust_by_wounds(self._cache[trait_type][name].value, name)
+
+    def get_wound_count_for_trait_name(self, name):
+        return len(self._wounds_cache[name])
+
+    def get_total_wound_count(self):
+        return sum(len(ob) for ob in self._wounds_cache.values())
 
     def add_trait_value_to_cache(self, trait_value: CharacterTraitValue):
         self._cache[trait_value.trait.get_trait_type_display()][
             trait_value.trait.name.lower()
         ] = trait_value
 
+    def add_wound_to_cache(self, wound):
+        trait_name = wound.trait.name.lower()
+        self._wounds_cache[trait_name].append(wound)
+
+    def adjust_by_wounds(self, value, name):
+        num = self.get_wound_count_for_trait_name(name)
+        value -= num
+        if value < 0:
+            return 0
+        return value
+
     def get_skill_value(self, name: str) -> int:
-        return self.skills.get(name, 0)
+        return self.adjust_by_wounds(self.skills.get(name, 0), name)
 
     def get_stat_value(self, name: str) -> int:
-        return self.stats.get(name, 0)
+        return self.adjust_by_wounds(self.stats.get(name, 0), name)
 
     def set_stat_value(self, name: str, value: int):
         self.set_trait_value("stat", name, value)
@@ -66,6 +92,12 @@ class Traitshandler:
 
     def set_ability_value(self, name: str, value: int):
         self.set_trait_value("ability", name, value)
+
+    def get_other_value(self, name: str) -> int:
+        return self.other.get(name, 0)
+
+    def set_other_value(self, name: str, value: int):
+        self.set_trait_value("other", name, value)
 
     def set_trait_value(self, trait_type: str, name: str, value: int):
         """Deletes or sets up a trait value for a character, updating our cache"""
@@ -106,12 +138,15 @@ class Traitshandler:
             # no match, get one at random
             return TraitValue(random.choice(namelist), 0)
 
-    # physical stats
+    # stats or other traits
     def __getattr__(self, name):
-        names = Trait.get_valid_stat_names()
-        if name in names:
+        stat_names = Trait.get_valid_stat_names()
+        if name in stat_names:
             return self.stats.get(name, 0)
-        raise AttributeError(f"{name} not found in {names}.")
+        other_names = Trait.get_valid_other_names()
+        if name in other_names:
+            return self.other.get(name, 0)
+        raise AttributeError(f"{name} not found in {stat_names + other_names}.")
 
     @property
     def skills(self) -> Dict[str, int]:
@@ -151,6 +186,12 @@ class Traitshandler:
     def stats(self) -> Dict[str, int]:
         return {
             name: char_trait.value for name, char_trait in self._cache["stat"].items()
+        }
+
+    @property
+    def other(self) -> Dict[str, int]:
+        return {
+            name: char_trait.value for name, char_trait in self._cache["other"].items()
         }
 
     def wipe_all_skills(self):
@@ -243,3 +284,24 @@ class Traitshandler:
 
     def get_total_stats(self) -> int:
         return sum(self.stats.values())
+
+    def get_max_hp(self) -> int:
+        from world.stat_checks.models import StatWeight
+
+        base = StatWeight.get_health_value_for_stamina(self.stamina)
+        bonus = self.bonus_max_hp
+        hp = base + bonus
+        boss = StatWeight.get_health_value_for_boss_rating(self.boss_rating)
+        hp += boss
+        if hp <= 0:
+            raise ValueError(
+                f"Max hp is negative, this should never happen. base: {base}, bonus: {bonus}, boss: {boss}"
+            )
+        return hp
+
+    def create_wound(self, severity=SERIOUS_WOUND):
+        from world.traits.models import Trait
+
+        trait = Trait.get_random_physical_stat()
+        wound = self.character.wounds.create(severity=severity, trait=trait)
+        self.add_wound_to_cache(wound)

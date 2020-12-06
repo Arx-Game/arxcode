@@ -1,13 +1,18 @@
+from unittest.mock import Mock, patch, PropertyMock
+
 from server.utils.test_utils import ArxCommandTest
 from world.stat_checks import check_commands
+from world.stat_checks.check_maker import SimpleRoll
+from world.stat_checks.constants import DEATH_SAVE
 from world.stat_checks.models import (
     DifficultyRating,
     RollResult,
     NaturalRollType,
     StatWeight,
+    StatCheckOutcome,
 )
+from world.stat_checks.utils import get_check_by_name
 from world.traits.models import Trait
-from unittest.mock import Mock, patch
 
 
 @patch("world.stat_checks.check_maker.randint")
@@ -17,6 +22,7 @@ class TestCheckCommands(ArxCommandTest):
         DifficultyRating.objects.all().delete()
         StatWeight.objects.all().delete()
         NaturalRollType.objects.all().delete()
+        StatCheckOutcome.objects.all().delete()
         RollResult.objects.all().delete()
         self.easy = DifficultyRating.objects.create(name="easy", value=0)
         self.normal = DifficultyRating.objects.create(name="Normal", value=25)
@@ -165,4 +171,67 @@ class TestCheckCommands(ArxCommandTest):
             "Char2 checks intelligence at easy. Char2 rolls okay.\n"
             "*** |cChar2|n is the winner. ***",
             options=self.options,
+        )
+        # test rolls ordering
+        roll1 = SimpleRoll()
+        # normal - diff results, diff values
+        roll1.result_value = 20
+        roll1.roll_result_object = self.okay
+        roll2 = SimpleRoll()
+        roll2.result_value = 0
+        roll2.roll_result_object = self.omg
+        self.assertLess(roll1, roll2)
+        # same result, diff values
+        roll1.roll_result_object = self.omg
+        self.assertGreater(roll1, roll2)
+        # tie
+        roll2.result_value = 15
+        self.assertEqual(roll1, roll2)
+
+
+@patch("typeclasses.characters.Character.armor", new_callable=PropertyMock)
+@patch("world.stat_checks.models.randint")
+@patch("world.stat_checks.check_maker.randint")
+class TestHarmCommands(ArxCommandTest):
+    HAS_COMBAT_DATA = True
+
+    def test_harm(self, mock_check_randint, mock_damage_randint, mock_armor):
+        self.setup_cmd(check_commands.CmdHarm, self.char2)
+        mock_damage_randint.return_value = 110
+        mock_armor.return_value = 125
+        self.char1.traits.set_other_value("armor_class", 25)
+        mock_check_randint.return_value = 500
+        self.call_cmd("foo", "Could not find 'foo'.")
+        self.call_cmd(f"{self.char1}", "No damage rating found by that name.")
+        self.call_cmd(
+            f"{self.char1}=severe", "You may only harm others if GMing an event."
+        )
+        self.char2.permissions.add("builders")
+        self.assertTrue(self.char.conscious)
+        self.assertEqual(self.char.damage, 0)
+        self.call_cmd(
+            f"{self.char1}=severe",
+            "Inflicting severe on Char.|"
+            "Char checks 'permanent wound save' at hard. Critical Success! "
+            "Char is inhumanly successful in a way that defies expectations.|"
+            "Despite the terrible damage, Char does not take a permanent wound.|"
+            "Char checks 'unconsciousness save' at daunting. Critical Success! "
+            "Char is inhumanly successful in a way that defies expectations.|"
+            "Char remains capable of fighting.",
+        )
+        self.assertEqual(self.char.damage, 60)
+        mock_check_randint.return_value = 50
+        self.call_cmd(
+            f"{self.char1}=severe",
+            "Inflicting severe on Char.|"
+            "Char checks 'death save' at hard. Char is marginally successful.|"
+            "Char remains alive, but close to death.|"
+            "Char is incapacitated and falls unconscious.|"
+            "Char checks 'permanent wound save' at hard. Char fails.",
+        )
+        self.assertFalse(self.char.conscious)
+        self.assertEqual(self.char.damage, 120)
+        self.assertEqual(
+            str(get_check_by_name(DEATH_SAVE).dice_system),
+            "Add Values Together: [Use the Highest Value: [luck, willpower], armor_class, stamina]",
         )

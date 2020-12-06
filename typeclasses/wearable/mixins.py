@@ -131,7 +131,7 @@ class UseEquipmentMixins(object):
         Returns armor value of all items the character is wearing plus any
         armor in their attributes.
         """
-        armor = self.db.armor_class or 0
+        armor = self.traits.armor_class
         for ob in self.worn:
             try:
                 ob_armor = ob.armor or 0
@@ -142,7 +142,7 @@ class UseEquipmentMixins(object):
 
     @armor.setter
     def armor(self, value):
-        self.db.armor_class = value
+        self.traits.set_other_value("armor_class", value)
 
     @property
     def armor_penalties(self):

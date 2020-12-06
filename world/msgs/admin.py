@@ -15,6 +15,7 @@ from evennia.help.models import HelpEntry
 from .models import Inform, Messenger, Post, Journal, Rumor
 from web.character.models import Clue
 from world.traits.models import CharacterTraitValue, Trait
+from world.conditions.models import Wound
 
 
 class InformFilter(admin.SimpleListFilter):
@@ -157,11 +158,17 @@ class CharacterTraitValueInline(admin.TabularInline):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
+class CharacterWoundsInline(admin.TabularInline):
+    model = Wound
+    extra = 0
+
+
 class ArxObjectDBAdmin(ObjectDBAdmin):
     search_fields = ["=id", "db_key"]
     inlines = list(ObjectDBAdmin.inlines) + [
         ClueForCharacterInline,
         CharacterTraitValueInline,
+        CharacterWoundsInline,
     ]
 
 

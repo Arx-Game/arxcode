@@ -100,7 +100,7 @@ class Monster(SharedMemoryModel):
             self.instances.add(result)
 
         if self.npc_type == self.BOSS:
-            result.db.boss_rating = self.boss_rating
+            result.traits.set_other_value("boss_rating", self.boss_rating)
 
         result.setup_npc(
             self.npc_template,

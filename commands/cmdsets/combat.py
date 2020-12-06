@@ -1548,7 +1548,7 @@ class CmdCreateAntagonist(ArxCommand):
             self.msg("%s quantity set to %s." % (npc, self.rhs))
 
 
-class CmdHarm(ArxCommand):
+class CmdOldHarm(ArxCommand):
     """
     Note: Deprecated, and will be removed eventually. Use new @harm
     Harms characters and sends them a message
@@ -1565,7 +1565,7 @@ class CmdHarm(ArxCommand):
     is sent only to the characters involved.
     """
 
-    key = "@harm"
+    key = "old_harm"
     locks = "cmd:all()"
     help_category = "GMing"
 

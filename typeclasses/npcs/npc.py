@@ -277,8 +277,12 @@ class Npc(Character):
             skills[skill] += threat
         self.traits.skills = skills
         self.db.fakeweapon = get_npc_weapon(ntype, threat)
-        self.db.armor_class = get_armor_bonus(self._get_npc_type(), self._get_quality())
-        self.db.bonus_max_hp = get_hp_bonus(self._get_npc_type(), self._get_quality())
+        self.traits.set_other_value(
+            "armor_class", get_armor_bonus(self._get_npc_type(), self._get_quality())
+        )
+        self.traits.set_other_value(
+            "bonus_max_hp", get_hp_bonus(self._get_npc_type(), self._get_quality())
+        )
 
     @property
     def num_armed_guards(self):
@@ -380,6 +384,13 @@ class MultiNpc(Npc):
         else:
             self.temp_losses += num
             self.temp_dmg = self.ae_dmg
+        self.post_death()
+        return True
+
+    def post_death(self):
+        if self.quantity <= 0:
+            if self.combat.combat:
+                self.combat.combat.remove_combatant(self)
 
     def fall_asleep(self, uncon=False, quiet=False, verb=None, **kwargs):
         """
@@ -403,6 +414,7 @@ class MultiNpc(Npc):
         else:
             self.temp_losses += 1
         # don't reset damage here since it's used for death check. Reset in combat process
+        self.post_death()
 
     # noinspection PyAttributeOutsideInit
     def setup_name(self):

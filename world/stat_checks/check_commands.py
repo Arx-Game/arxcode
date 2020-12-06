@@ -1,5 +1,6 @@
 from commands.base import ArxCommand
 from world.stat_checks.models import DifficultyRating, DamageRating
+from world.traits.models import Trait
 from world.stat_checks.check_maker import (
     BaseCheckMaker,
     PrivateCheckMaker,
@@ -22,14 +23,16 @@ class CmdStatCheck(ArxCommand):
         msg = """
     Usage:
         @check stat + skill at <difficulty rating>[=<player1>,<player2>,etc.]
-        @check/contest name1,name2,name3,name4,name5,etc=stat (+ skill) at <rating>
+        @check/contest name1,name2,name3,etc=stat (+ skill) at <rating>
         @check/contest/here stat (+ skill) at <difficulty rating>
         @check/vs stat (+ skill) vs stat(+skill)=<target name>
 
-    Normal check is at a difficulty rating. Rating must be one of {difficulty_ratings}.
-    check/contest allows a GM to have everyone selected to make a check, listing the
-    results in order of results. check/contest/here is shorthand to check everyone in
-    a room aside from the GM.
+    Normal check is at a difficulty rating. Rating must be one of 
+    {difficulty_ratings}.
+    
+    check/contest allows a GM to have everyone selected to make a check,
+    listing the results in order of results. check/contest/here is 
+    shorthand to check everyone in a room aside from the GM.
     """
         ratings = ", ".join(str(ob) for ob in DifficultyRating.get_all_instances())
         return msg.format(difficulty_ratings=ratings)
@@ -83,15 +86,18 @@ class CmdStatCheck(ArxCommand):
             )
         return stat, skill, rating
 
-    @staticmethod
-    def get_stat_and_skill_from_args(stats_string):
+    def get_stat_and_skill_from_args(self, stats_string):
         skill = None
         try:
             stat, skill = stats_string.split("+")
-            stat = stat.strip()
-            skill = skill.strip()
+            stat = stat.strip().lower()
+            skill = skill.strip().lower()
         except (TypeError, ValueError):
-            stat = stats_string.strip()
+            stat = stats_string.strip().lower()
+        if stat not in Trait.get_valid_stat_names():
+            raise self.error_class(f"{stat} is not a valid stat name.")
+        if skill and skill not in Trait.get_valid_skill_names():
+            raise self.error_class(f"{skill} is not a valid skill name.")
         return stat, skill
 
     def do_contested_check(self):
@@ -153,8 +159,9 @@ class CmdHarm(ArxCommand):
     CmdHarm is a new replacement for the older, deprecated harm command.
     """
 
-    key = "new_harm"
+    key = "harm"
     locks = "cmd:all()"
+    help_category = "GMing"
 
     def get_help(self, caller, cmdset):
         msg = """
@@ -168,8 +175,23 @@ class CmdHarm(ArxCommand):
 
         Ratings: {damage_ratings}
         """
-        ratings = ", ".join(str(ob) for ob in DifficultyRating.get_all_instances())
+        ratings = ", ".join(str(ob) for ob in DamageRating.get_all_instances())
         return msg.format(damage_ratings=ratings)
 
     def func(self):
-        pass
+        try:
+            return self.do_harm()
+        except self.error_class as err:
+            self.msg(err)
+
+    def do_harm(self):
+        target = self.caller.search(self.lhs)
+        if not target:
+            return
+        damage = DamageRating.get_instance_by_name(self.rhs or "")
+        if not damage:
+            raise self.error_class("No damage rating found by that name.")
+        if target != self.caller and not self.caller.check_staff_or_gm():
+            raise self.error_class("You may only harm others if GMing an event.")
+        self.msg(f"Inflicting {damage} on {target}.")
+        damage.do_damage(target)

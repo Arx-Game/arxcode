@@ -1,7 +1,9 @@
 from django.db import models
+from server.utils.arx_utils import CachedProperty
 from evennia.utils.idmapper.models import SharedMemoryModel
 from jinja2 import Environment, BaseLoader
-from typing import Union
+from typing import Union, List
+from random import randint
 
 from server.utils.abstract_models import NameLookupModel, NameIntegerLookupModel
 
@@ -10,22 +12,27 @@ class DifficultyRating(NameIntegerLookupModel):
     """Lookup table for difficulty ratings for stat checks, mapping names
     to minimum values for that range."""
 
-    pass
+    @classmethod
+    def get_average_difficulty(cls) -> "DifficultyRating":
+        instances = cls.get_all_instances()
+        return instances[int(len(instances) / 2)]
 
 
 class StatWeight(SharedMemoryModel):
     """Lookup table for the weights attached to different stat/skill/knack levels"""
 
     _cache_set = False
-    SKILL, STAT, ABILITY, KNACK, ONLY_STAT, HEALTH_STA, HEALTH_BOSS = range(7)
+    SKILL, STAT, ABILITY, KNACK, ONLY_STAT, HEALTH_STA, HEALTH_BOSS, MISC = range(8)
     STAT_CHOICES = (
         (SKILL, "skill"),
         (STAT, "stat"),
         (ABILITY, "ability"),
         (KNACK, "knack"),
         (ONLY_STAT, "stat with no skill"),
+        # if more things start to play into health probably change to FK to traits
         (HEALTH_STA, "health for stamina"),
         (HEALTH_BOSS, "health for boss rating"),
+        (MISC, "miscellaneous values (armor class, etc)"),
     )
     stat_type = models.PositiveSmallIntegerField(choices=STAT_CHOICES, default=SKILL)
     level = models.PositiveSmallIntegerField(
@@ -65,15 +72,27 @@ class StatWeight(SharedMemoryModel):
         return cls.get_weighted_value_for_type(level, cls.SKILL)
 
     @classmethod
+    def get_weighted_value_for_ability(cls, level: int) -> int:
+        return cls.get_weighted_value_for_type(level, cls.ABILITY)
+
+    @classmethod
     def get_weighted_value_for_knack(cls, level: int) -> int:
         return cls.get_weighted_value_for_type(level, cls.KNACK)
 
     @classmethod
     def get_health_value_for_stamina(cls, level: int) -> int:
-        return cls.get_weighted_value_for_type(level, cls.HEALTH_STA)
+        return cls.get_weighted_value_for_type(
+            level, cls.HEALTH_STA, require_matches=True
+        )
 
     @classmethod
-    def get_weighted_value_for_type(cls, level: int, stat_type: int) -> int:
+    def get_health_value_for_boss_rating(cls, level: int) -> int:
+        return cls.get_weighted_value_for_type(level, cls.HEALTH_BOSS)
+
+    @classmethod
+    def get_weighted_value_for_type(
+        cls, level: int, stat_type: int, require_matches=False
+    ) -> int:
         """
         Given a type of stat and the level we have in that stat, get the total amount that
         should be added to rolls for that level. For example, if we have a strength of 3,
@@ -84,6 +103,11 @@ class StatWeight(SharedMemoryModel):
         matches = [
             ob for ob in weights if ob.stat_type == stat_type and ob.level <= level
         ]
+        if require_matches and not matches:
+            raise StatWeight.DoesNotExist(
+                f"No match found for stat_type: {stat_type} level: {level}. "
+                f"Available cached instances: {cls.get_all_instances()}."
+            )
         total = 0
         for stat_weight in matches:
             # number of levels this weight affects is the difference between the PC's stat level and the level + 1
@@ -94,6 +118,11 @@ class StatWeight(SharedMemoryModel):
             # e.g: so if we have +1 for levels 1-3 and +2 for 4-5, we don't get +3 for levels 4 and 5
             level = stat_weight.level
         return total
+
+    def __str__(self):
+        return (
+            f"{self.get_stat_type_display()}: level: {self.level} weight: {self.weight}"
+        )
 
 
 class NaturalRollType(NameIntegerLookupModel):
@@ -161,6 +190,10 @@ class RollResult(NameIntegerLookupModel):
         "for the roller: eg: '{{character}} fumbles.'"
     )
 
+    @property
+    def is_success(self):
+        return self.value >= 0
+
     @classmethod
     def get_instance_for_roll(
         cls, roll: int, natural_roll_type: Union["NaturalRollType", None] = None
@@ -200,10 +233,356 @@ class DamageRating(NameIntegerLookupModel):
 
     value = models.SmallIntegerField("minimum damage")
     max_value = models.SmallIntegerField("maximum damage")
-    armor_cap = models.SmallIntegerField(
-        help_text="Percent of damage armor can prevent. 100 means armor can completely"
-        " negate the attack."
+    armor_percentage = models.SmallIntegerField(
+        "mitigation percentage",
+        help_text="Percentage of armor that is used to reduce damage from max damage "
+        "to minimum damage. 100 means they get full value of mitigation, 0 nothing.",
+        default=100,
     )
 
     def do_damage(self, character):
-        pass
+        # roll damage
+        damage = randint(self.value, self.max_value)
+        # apply mitigation
+        damage = self.mitigate_damage(character, damage)
+        character.take_damage(damage)
+
+    def mitigate_damage(self, character, damage) -> int:
+        # resists aren't affected by armor reduction
+        resists = character.traits.armor_class
+        # reduce damage by mitigation (not including resists) that's reduced by multiplier
+        damage -= (character.armor - resists) * (self.armor_percentage / 100.0)
+        # can only take down to minimum damage value this way
+        if damage < self.value:
+            damage = self.value
+        # resists allow damage to go below min value
+        damage -= resists
+        if damage < 0:
+            damage = 0
+        return int(damage)
+
+
+class StatCheck(NameLookupModel):
+    """
+    Stores data on how a type of check is made. It points to a DiceSystem which
+    defines what combination of stats and skills are rolled. It then has
+    descriptions of different outcomes that correspond to results of the roll.
+    """
+
+    # the system used by this stat check
+    dice_system = models.ForeignKey(
+        "StatCombination", on_delete=models.PROTECT, related_name="stat_checks"
+    )
+    description = models.TextField(blank=True)
+
+    @CachedProperty
+    def cached_difficulty_rules(self):
+        return list(self.difficulty_rules.all())
+
+    @CachedProperty
+    def cached_outcomes(self):
+        return list(self.outcomes.all())
+
+    def get_value_for_traits(self, character) -> int:
+        return self.dice_system.get_value_for_stat_combinations(character)
+
+    def get_value_for_difficulty_rating(self, character, **kwargs) -> int:
+        return self.get_difficulty_rating(character, **kwargs).value
+
+    def get_difficulty_rating(self, character, **kwargs):
+        # get rules for checking the situation
+        for rule in self.triggers:
+            if rule.situation.character_should_trigger(character, **kwargs):
+                return rule.difficulty
+        # return normal difficulty as default
+        return DifficultyRating.get_average_difficulty()
+
+    @property
+    def triggers(self):
+        rules = [rule for rule in self.cached_difficulty_rules if rule.situation]
+        rules.sort(key=lambda x: x.situation.value, reverse=True)
+        return rules
+
+    def get_stats_list(self) -> List[str]:
+        return self.dice_system.get_stats_list()
+
+    def get_skills_list(self) -> List[str]:
+        return self.dice_system.get_skills_list()
+
+    def should_trigger(self, character, **kwargs):
+        for rule in self.triggers:
+            if rule.situation.character_should_trigger(character, **kwargs):
+                return True
+        return False
+
+    def get_outcome_for_result(self, result):
+        if not self.cached_outcomes:
+            return
+        # get direct match
+        try:
+            return [ob for ob in self.cached_outcomes if ob.result == result][0]
+        except IndexError:
+            pass
+        # return highest result we're lower than
+        for ob in self.cached_outcomes:
+            if result.value < ob.result.value:
+                return ob.result
+        # return lowest result we're greater than
+        try:
+            return [
+                ob for ob in self.cached_outcomes if ob.result.value < result.value
+            ][0]
+        except IndexError:
+            pass
+
+
+class StatCombination(SharedMemoryModel):
+    """
+    A StatCombination is a way to capture the nested structure of different
+    stat/skill combinations of arbitrary complexity.
+    """
+
+    SUM, USE_HIGHEST, USE_LOWEST = range(3)
+    COMBINATION_CHOICES = (
+        (SUM, "Add Values Together"),
+        (USE_HIGHEST, "Use the Highest Value"),
+        (USE_LOWEST, "Use the Lowest Value"),
+    )
+    combined_into = models.ForeignKey(
+        "self", on_delete=models.PROTECT, related_name="child_combinations", null=True
+    )
+    combination_type = models.PositiveSmallIntegerField(
+        choices=COMBINATION_CHOICES, default=SUM
+    )
+    traits = models.ManyToManyField(
+        "traits.Trait", through="TraitsInCombination", related_name="stat_combinations"
+    )
+
+    @CachedProperty
+    def should_be_stat_only(self):
+        """Checks the tree to see if we should use the weight for having a stat alone"""
+        if self.combined_into:
+            return self.combined_into.should_be_stat_only
+        if self.combination_type == self.SUM:
+            return (
+                len(self.cached_traits_in_combination)
+                + len(self.cached_child_combinations)
+                <= 1
+            )
+        return True
+
+    @CachedProperty
+    def cached_traits_in_combination(self):
+        return list(self.trait_combination_values.all())
+
+    @CachedProperty
+    def cached_child_combinations(self):
+        return list(self.child_combinations.all())
+
+    @CachedProperty
+    def cached_stat_checks(self):
+        return list(self.stat_checks.all())
+
+    def get_value_for_stat_combinations(self, character) -> int:
+        values = []
+        for trait in self.cached_traits_in_combination:
+            values.append(trait.get_roll_value_for_character(character))
+        for combination in self.cached_child_combinations:
+            values.append(combination.get_value_for_stat_combinations(character))
+        if self.combination_type == self.SUM:
+            return sum(values)
+        if self.combination_type == self.USE_HIGHEST:
+            return max(values)
+        if self.combination_type == self.USE_LOWEST:
+            return min(values)
+        raise ValueError(f"Using undefined combination type: {self.combination_type}")
+
+    def get_all_traits(self):
+        traits = []
+        for trait in self.cached_traits_in_combination:
+            traits.append(trait.trait)
+        for child in self.cached_child_combinations:
+            traits.extend(child.get_all_traits())
+        return traits
+
+    def get_stats_list(self) -> List[str]:
+        return [
+            trait.name.lower()
+            for trait in self.get_all_traits()
+            if trait.trait.trait_type == trait.trait.STAT
+        ]
+
+    def get_skills_list(self) -> List[str]:
+        return [
+            trait.name.lower()
+            for trait in self.get_all_traits()
+            if trait.trait.trait_type == trait.trait.SKILL
+        ]
+
+    def __str__(self):
+        children = self.cached_child_combinations + self.cached_traits_in_combination
+        child_strings = sorted([str(ob) for ob in children])
+        return f"{self.get_combination_type_display()}: [{', '.join(child_strings)}]"
+
+
+class TraitsInCombination(SharedMemoryModel):
+    """
+    This represents traits that are used in a stat combination for a check.
+    The trait can have a multiplier/divisor attached to it to allow for weighting
+    its value. The stat combination then determines how these values are used -
+    whether added together, using the highest, etc. For example, to have an average
+    of stats used for a roll, the StatCombination's combination_type would be SUM,
+    and you would set the value_divisor for each trait to be the number of traits
+    in the combination.
+    """
+
+    trait = models.ForeignKey(
+        "traits.Trait",
+        on_delete=models.CASCADE,
+        related_name="trait_combination_values",
+    )
+    stat_combination = models.ForeignKey(
+        "StatCombination",
+        on_delete=models.CASCADE,
+        related_name="trait_combination_values",
+    )
+    value_multiplier = models.PositiveSmallIntegerField(
+        default=1, help_text="This is to make a value count more."
+    )
+    value_divisor = models.PositiveSmallIntegerField(
+        default=1, help_text="This can be used to average values in a combination."
+    )
+
+    class Meta:
+        unique_together = ("stat_combination", "trait")
+
+    def __str__(self):
+        base = str(self.trait)
+        if self.value_multiplier != 1:
+            base += f"* {self.value_multiplier}"
+        if self.value_divisor != 1:
+            base += f"/ {self.value_divisor}"
+        return base
+
+    @property
+    def should_be_stat_only(self):
+        return self.stat_combination.should_be_stat_only
+
+    def get_roll_value_for_character(self, character) -> int:
+        base_value = character.traits.get_value_by_trait(self.trait)
+        # if it's a trait type we have weights for, we'll return that
+        if self.trait.trait_type == self.trait.STAT:
+            return StatWeight.get_weighted_value_for_stat(
+                base_value, self.should_be_stat_only
+            )
+        if self.trait.trait_type == self.trait.SKILL:
+            return StatWeight.get_weighted_value_for_skill(base_value)
+        if self.trait.trait_type == self.trait.ABILITY:
+            return StatWeight.get_weighted_value_for_ability(base_value)
+        # it's an 'other' trait, it'll be unweighted
+        return base_value
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        try:
+            del self.stat_combination.cached_traits_in_combination
+        except AttributeError:
+            pass
+
+
+class StatCheckOutcome(SharedMemoryModel):
+    """Provides a way to have a description of what happens for a given result"""
+
+    # these will be converted to a model at some point, choices field will do for now
+    NONE, DEATH, UNCONSCIOUSNESS, SERIOUS_WOUND, PERMANENT_WOUND = range(5)
+    EFFECT_CHOICES = (
+        (NONE, "none"),
+        (DEATH, "death"),
+        (UNCONSCIOUSNESS, "unconsciousness"),
+        (SERIOUS_WOUND, "serious wound"),
+        (PERMANENT_WOUND, "permanent wound"),
+    )
+
+    stat_check = models.ForeignKey(
+        "StatCheck", related_name="outcomes", on_delete=models.CASCADE
+    )
+    result = models.ForeignKey(
+        "RollResult", related_name="outcomes", on_delete=models.PROTECT
+    )
+    description = models.TextField(
+        help_text="A description for players/GMs of what this given result "
+        "means in game"
+    )
+
+    effect = models.PositiveSmallIntegerField(
+        default=NONE,
+        help_text="A coded effect that you want to have trigger.",
+        choices=EFFECT_CHOICES,
+    )
+
+    class Meta:
+        unique_together = ("stat_check", "result")
+        ordering = ("result__value",)
+
+
+class CheckDifficultyRule(SharedMemoryModel):
+    """Maps different difficulties to a stat check with reasons why"""
+
+    stat_check = models.ForeignKey(
+        "StatCheck", related_name="difficulty_rules", on_delete=models.CASCADE
+    )
+    difficulty = models.ForeignKey(
+        "DifficultyRating", related_name="difficulty_rules", on_delete=models.CASCADE
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Description for GMs of when this difficulty rating applies.",
+    )
+
+    situation = models.ForeignKey(
+        "CheckCondition",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        help_text="Allows you to define a specific circumstance of when this difficulty "
+        "rating should apply, usually in automated checks.",
+    )
+
+
+class CheckCondition(SharedMemoryModel):
+    """
+    A circumstance for either calling for a check or for mapping to a specific difficulty
+    for a check. This will determine things like at what percent health a death save is called for,
+    or an unconsciousness check, or a check for a permanent wound from a large single attack, or
+    the difficulty for these checks by an associated CheckDifficultyRule.
+    """
+
+    MISSING_PERCENT_HEALTH, PERCENT_HEALTH_INFLICTED, HEALTH_BELOW_100 = range(3)
+    CONDITION_CHOICES = (
+        (MISSING_PERCENT_HEALTH, "Percentage of health missing"),
+        (PERCENT_HEALTH_INFLICTED, "Percent health inflicted by attack"),
+        (HEALTH_BELOW_100, "Flat value of health below 100"),
+    )
+    condition_type = models.PositiveSmallIntegerField(
+        choices=CONDITION_CHOICES, default=MISSING_PERCENT_HEALTH
+    )
+    value = models.SmallIntegerField(default=0)
+
+    class Meta:
+        unique_together = ("condition_type", "value")
+
+    def character_should_trigger(self, character, **kwargs):
+        if self.condition_type == self.MISSING_PERCENT_HEALTH:
+            return character.get_damage_percentage() >= self.value
+        elif self.condition_type == self.PERCENT_HEALTH_INFLICTED:
+            percent_damage = kwargs.get("percent_damage", 0)
+            return percent_damage >= self.value
+        elif self.condition_type == self.HEALTH_BELOW_100:
+            return (100 - character.current_hp) >= self.value
+
+        raise ValueError(
+            f"Invalid condition_type set in this CheckCondition: {self.condition_type}"
+        )
+
+    def __str__(self):
+        return f"{self.get_condition_type_display()}: {self.value}"

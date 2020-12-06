@@ -25,7 +25,6 @@ class Wearable(FashionableMixins, Object):
         Run at Wearable creation.
         """
         self.is_worn = False
-        self.db.armor_class = 0
         self.at_init()
 
     def softdelete(self):
@@ -111,7 +110,7 @@ class Wearable(FashionableMixins, Object):
         recipe = self.recipe
         if not recipe:
             return (
-                self.db.armor_class or 0,
+                0,
                 self.db.penalty or 0,
                 self.db.armor_resilience or 0,
             )
@@ -157,21 +156,12 @@ class Wearable(FashionableMixins, Object):
 
     @property
     def armor(self):
-        # if we have no recipe or we are set to ignore it, use armor_class
-        if not self.recipe or self.db.ignore_crafted:
-            return self.db.armor_class
+        # if we have no recipe or we are set to ignore it, 0
+        if not self.recipe:
+            return 0
         if self.ndb.cached_armor_value is not None:
             return self.ndb.cached_armor_value
         return self.calc_armor()[0]
-
-    @armor.setter
-    def armor(self, value):
-        """
-        Manually sets the value of our armor, ignoring any crafting recipe we have.
-        """
-        self.db.armor_class = value
-        self.db.ignore_crafted = True
-        self.ndb.cached_armor_value = value
 
     @property
     def penalty(self):

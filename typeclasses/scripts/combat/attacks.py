@@ -28,7 +28,7 @@ Flow of how a typical attack goes, from the intial call to assigning damage:
         send_message_to_attacker()
         build_and_broadcast_story() - translates dict into self.story
             send_story_to_combat() - sends self.story to combat's messaging
-    take_damage() - to targets, then again from ripostes to attacker
+    inflict_damage_from_attack() - to targets, then again from ripostes to attacker
         change_health()
         do_dice_check() - several times, unconscious/death checks
         modify_difficulty_by_risk()
@@ -223,9 +223,9 @@ class Attack(object):
             return self
         # apply damage to everyone who took it
         for target, dmg in self.attack_dmgs.items():
-            self.take_damage(target, dmg)
+            self.inflict_damage_from_attack(target, dmg)
         for riposte in self.riposte_dmgs:
-            riposte.take_damage(self.attacker, riposte.riposte_dmg)
+            riposte.inflict_damage_from_attack(self.attacker, riposte.riposte_dmg)
 
     def make_attacks(self, attack_list):
         """
@@ -593,7 +593,7 @@ class Attack(object):
         if hasattr(target, "armor"):
             armor = target.armor
         else:
-            armor = target.db.armor_class or 0
+            armor = target.traits.armor_class
         # our soak is sta+willpower+survival
         armor += randint(0, (target.combat.soak * 2) + 1)
         # if the resulting difference of attack/defense rolls is huge, like
@@ -637,7 +637,7 @@ class Attack(object):
             dmg = int(dmg * dmgmult)
         return dmg, mit_msg
 
-    def take_damage(self, victim, dmg):
+    def inflict_damage_from_attack(self, victim, dmg):
         """
         This is where the consequences of final damage are applied to a victim. They can
         be knocked unconscious or killed, and any combat they're in is informed.
@@ -653,114 +653,14 @@ class Attack(object):
                 victim: Our target
                 dmg: The amount of damage after all mitgation/reductions
         """
-        allow_one_shot = True
-        affect_real_dmg = self.affect_real_dmg
-        can_kill = self.can_kill
-        if self.combat:
-            allow_one_shot = self.combat.ndb.random_deaths
-        loc = victim.location
-        # some flags so messaging is in proper order
-        knock_uncon = False
-        kill = False
-        remove = False
-        glass_jaw = victim.glass_jaw
-        is_npc = victim.is_npc
-        message = ""
-        # max hp is (stamina * 10) + 10
-        max_hp = victim.max_hp
-        # apply AE damage to multinpcs if we're cleaving
-        if self.cleaving and hasattr(victim, "ae_dmg"):
-            victim.ae_dmg += dmg
-        victim.change_health(
-            -dmg, quiet=True, affect_real_dmg=affect_real_dmg, wake=False
+        victim.take_damage(
+            dmg,
+            self.affect_real_dmg,
+            self.can_kill,
+            self.cleaving,
+            self.private,
+            self.can_kill,
         )
-        grace_period = (
-            False  # one round delay between incapacitation and death for PCs if allowed
-        )
-        if victim.dmg > max_hp:
-            # if we're not incapacitated, we start making checks for it
-            if victim.conscious and not victim.sleepless:
-                # check is sta + willpower against % dmg past uncon to stay conscious
-                if not glass_jaw:
-                    diff = int((float(victim.dmg - max_hp) / max_hp) * 100)
-                    consc_check = do_dice_check(
-                        victim,
-                        stat_list=["stamina", "willpower"],
-                        skill="survival",
-                        stat_keep=True,
-                        difficulty=diff,
-                        quiet=False,
-                    )
-                else:
-                    consc_check = -1
-                if consc_check >= 0:
-                    if not self.private:
-                        message = "%s remains capable of fighting." % victim
-                    grace_period = True  # we can't be killed if we succeeded this check to remain standing
-                    # we're done, so send the message for the attack
-                else:
-                    knock_uncon = True
-                # for PCs who were knocked unconscious this round
-                if not is_npc and not grace_period and not allow_one_shot:
-                    grace_period = (
-                        True  # if allow_one_shot is off, we can't be killed yet
-                    )
-            # PC/NPC who was already unconscious before attack, or an NPC who was knocked unconscious by our attack
-            if not grace_period:  # we are allowed to kill the character
-                dt = victim.death_threshold
-                diff = int(
-                    (float(victim.dmg - int(dt * max_hp)) / int(dt * max_hp)) * 100
-                )
-                if affect_real_dmg and not is_npc and not glass_jaw:
-                    diff = self.modify_difficulty_by_risk(diff)
-                if diff < 0:
-                    diff = 0
-                # npcs always die. Sucks for them.
-                if (
-                    not glass_jaw
-                    and do_dice_check(
-                        victim,
-                        stat_list=["stamina", "willpower"],
-                        skill="survival",
-                        stat_keep=True,
-                        difficulty=diff,
-                        quiet=False,
-                    )
-                    >= 0
-                ):
-                    message = "%s remains alive, but close to death." % victim
-                    if victim.combat.multiple:
-                        # was incapacitated but not killed, but out of fight and now we're on another targ
-                        if affect_real_dmg:
-                            victim.real_dmg = victim.ae_dmg
-                        else:
-                            victim.temp_dmg = victim.ae_dmg
-                elif not victim.combat.multiple:
-                    if affect_real_dmg:
-                        kill = can_kill
-                    # remove a 'killed' character from combat whether it was a real death or fake
-                    remove = True
-                else:
-                    if affect_real_dmg:
-                        kill = can_kill
-                    else:
-                        knock_uncon = True
-        if loc and message:
-            loc.msg_contents(message, options={"roll": True})
-        if knock_uncon:
-            victim.fall_asleep(
-                uncon=True, verb="incapacitated", affect_real_dmg=affect_real_dmg
-            )
-        if kill:
-            victim.death_process(affect_real_dmg=affect_real_dmg)
-        if victim.combat.multiple:
-            try:
-                if victim.quantity <= 0:
-                    remove = True
-            except AttributeError:
-                pass
-        if self.combat and remove:
-            self.combat.remove_combatant(victim)
 
     def modify_difficulty_by_risk(self, difficulty):
         """Calculate difference in difficulty based on the risk"""

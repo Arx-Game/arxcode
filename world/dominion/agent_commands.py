@@ -702,7 +702,7 @@ class CmdRetainers(ArxPlayerCommand):
         if category == "level":
             current = agent.dbobj.attributes.get(attr) or 0
         elif category == "armor":
-            current = agent.dbobj.db.armor_class
+            current = agent.dbobj.traits.armor_class
         elif category == "stat":
             current = agent.dbobj.traits.get_stat_value(attr)
         elif category == "skill":
@@ -894,7 +894,7 @@ class CmdRetainers(ArxPlayerCommand):
         of armor at a time, which is kind of tedious but allows us to easily
         have increasing costs.
         """
-        current = agent.dbobj.db.armor_class
+        current = agent.dbobj.traits.armor_class
         if not self.check_max_for_attr(agent, "armor", category="armor"):
             return
         xp_cost, res_cost, res_type = self.get_attr_cost(
@@ -902,7 +902,7 @@ class CmdRetainers(ArxPlayerCommand):
         )
         if not self.pay_xp_and_resources(agent, xp_cost, res_cost, res_type):
             return
-        agent.dbobj.db.armor_class = current + 1
+        agent.dbobj.traits.set_other_value("armor_class", current + 1)
         self.msg("You have raised %s's armor to %s." % (agent, current + 1))
         return
 

@@ -4,6 +4,7 @@ from evennia.utils.idmapper.models import SharedMemoryModel
 from server.utils.abstract_models import NameIntegerLookupModel, NameLookupModel
 
 from typing import List
+from random import choice
 
 
 class Trait(NameLookupModel):
@@ -57,6 +58,12 @@ class Trait(NameLookupModel):
         return cls.get_valid_trait_names_by_type(cls.ABILITY)
 
     @classmethod
+    def get_valid_other_names(cls, category=None):
+        if category:
+            return cls.get_valid_trait_names_by_category_and_type(category, cls.OTHER)
+        return cls.get_valid_trait_names_by_type(cls.OTHER)
+
+    @classmethod
     def get_valid_trait_names_by_type(cls, trait_type: int) -> List[str]:
         return [
             ob.name.lower()
@@ -73,6 +80,15 @@ class Trait(NameLookupModel):
             for ob in cls.get_all_instances()
             if ob.category == category and ob.trait_type == trait_type
         ]
+
+    @classmethod
+    def get_random_physical_stat(cls):
+        physical_stats = [
+            ob
+            for ob in cls.get_all_instances()
+            if ob.category == cls.PHYSICAL and ob.trait_type == cls.STAT
+        ]
+        return choice(physical_stats)
 
 
 class CharacterTraitValue(SharedMemoryModel):
