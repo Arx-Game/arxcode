@@ -99,7 +99,7 @@ class StatWeight(SharedMemoryModel):
         what does that modify rolls by? 3? 20? Over NINE THOUSAND? This gets our weights
         that are applicable and aggregates them.
         """
-        weights = sorted(cls.get_all_instances(), key=lambda x: x.level, reverse=True)
+        weights = sorted(cls.get_all_instances(), key=lambda x: x.level)
         matches = [
             ob for ob in weights if ob.stat_type == stat_type and ob.level <= level
         ]
@@ -110,13 +110,19 @@ class StatWeight(SharedMemoryModel):
             )
         total = 0
         for stat_weight in matches:
-            # number of levels this weight affects is the difference between the PC's stat level and the level + 1
-            # e.g: if a stat_weight affects all stats 4 and higher, and the PC has a level of 5, they get 2*weight
-            num_levels = (level - stat_weight.level) + 1
-            total += num_levels * stat_weight.weight
-            # reduce our level so that the weights aren't counted multiple times
-            # e.g: so if we have +1 for levels 1-3 and +2 for 4-5, we don't get +3 for levels 4 and 5
-            level = stat_weight.level
+            # determine how many times this stat_weight should apply
+            index = matches.index(stat_weight)
+            # if we're the last match in the stat weights that applies to this level:
+            if (index + 1) == len(matches):
+                # number of levels this weight affects is the difference between the PC's stat level and the level + 1
+                # e.g: if a stat_weight affects all stats 4 and higher, and the PC has a level of 5, they get 2*weight
+                num_levels = (level - stat_weight.level) + 1
+                total += num_levels * stat_weight.weight
+            else:  # get the number of times to apply between this and our next match
+                next_weight = matches[index + 1]
+                num_levels = next_weight.level - stat_weight.level
+                total += num_levels * stat_weight.weight
+
         return total
 
     def __str__(self):
