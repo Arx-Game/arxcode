@@ -103,7 +103,7 @@ class Traitshandler:
     def set_trait_value(self, trait_type: str, name: str, value: int):
         """Deletes or sets up a trait value for a character, updating our cache"""
         # if our value is 0 or lower, delete the trait value
-        if value <= 0:
+        if value <= 0 and name in self._cache[trait_type]:
             trait_value = self._cache[trait_type].pop(name)
             if trait_value.pk:
                 trait_value.delete()
