@@ -2418,6 +2418,7 @@ class Organization(InformMixin, SharedMemoryModel):
         # msg += "{wSpheres of Influence:{n %s\n" % ", ".join("{w%s{n: %s" % (ob.category, ob.rating)
         #                                                     for ob in self.spheres.all())
         msg += self.display_work_settings()
+        msg += self.display_story_coordinators()
         clues = self.clues.all()
         if display_clues:
             if viewing_member:
@@ -2460,6 +2461,12 @@ class Organization(InformMixin, SharedMemoryModel):
         for setting in work_settings:
             table.add_row([setting.get_resource_display(), setting.stat, setting.skill])
         msg += "\n" + str(table) + "\n"
+        return msg
+
+    def display_story_coordinators(self):
+        """Shows the story coordinators in the org"""
+        sc = self.active_members.filter(story_coordinator=True)
+        msg = "\n{wStory Coordinators:{n " + ", ".join(str(ob) for ob in sc)
         return msg
 
     def __init__(self, *args, **kwargs):
