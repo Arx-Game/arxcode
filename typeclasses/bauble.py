@@ -84,3 +84,38 @@ class CmdAttuneCrystal(ArxCommand):
             return
         self.obj.db.port_target = self.caller.location
         self.msg(f"{self.obj} glows as it is attuned to this location.")
+
+
+class GlitterMawDustPouch(DefaultObject):
+    """
+    This is the GlitterMaw dust pouch that has his glitter and holds the cmdsets
+    """
+
+    def at_after_move(self, source_location, **kwargs):
+        location = self.location
+
+        if location and location.is_character:
+            self.cmdset.add_default(SprinkleCmdSet, permanent=True)
+
+        else:
+            self.cmdset.delete_default()
+
+
+class SprinkleCmdSet(CmdSet):
+    key = "SprinkleCmd"
+    priority = 0
+    duplicates = True
+
+    def at_cmdset_creation(self):
+        self.add(CmdSprinkleGlitter())
+
+
+class CmdSprinkleGlitter(ArxCommand):
+    """
+    Congratulations, you are a friend of Glittermaw and carry around his glitter! Sprinkling his glitter may improve the
+     quality of an object.
+    Usage: "sprinkle glitter on <object name>"
+    """
+
+    key = "sprinkle glitter"
+    locks = "cmd:all()"
