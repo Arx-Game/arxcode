@@ -319,7 +319,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
             "\nResources: Economic: 0, Military: 0, Social: 0\n"
             "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\n"
             "Work Settings: None found.\n\n"
-            "Story Coordinators: \n"
+            "Story Coordinators: \n\n"
             "Member stats for Testaccount\n\nRank: 9\nSupport Pool Share: 10/10\nTotal Work: 0\n"
             "Tasks Completed: 0, Total Rating: 0",
         )
@@ -336,7 +336,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
             "Military: 0, Social: 0\n"
             "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n"
             "\nWork Settings: None found.\n"
-            "\nStory Coordinators: "
+            "\nStory Coordinators: \n"
             "\nClues Known: Org test clue 1; Org test clue 2;\n\n"
             "Member stats for Testaccount\n\nRank: 9\nSupport Pool Share: 10/10\nTotal Work: 0\n"
             "Tasks Completed: 0, Total Rating: 0",
