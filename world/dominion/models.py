@@ -2466,7 +2466,7 @@ class Organization(InformMixin, SharedMemoryModel):
     def display_story_coordinators(self):
         """Shows the story coordinators in the org"""
         sc = self.active_members.filter(story_coordinator=True)
-        msg = "\n{wStory Coordinators:{n " + ", ".join(str(ob) for ob in sc)
+        msg = "\n{wStory Coordinators:{n " + ", ".join(str(ob) for ob in sc) + "\n"
         return msg
 
     def __init__(self, *args, **kwargs):
