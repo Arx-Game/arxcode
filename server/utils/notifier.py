@@ -39,9 +39,16 @@ class NotifyError(Exception):
 
 
 class Notifier:
+    """
+    Base class for sending notifications to the game.
+    This class is meant to be derived from and its ('private') code
+    utilized in derived classes (to lower code duplication).
+    """
+
     def __init__(
         self,
         caller,
+        to_caller=False,
         to_player=False,
         to_gm=False,
         to_staff=False,
@@ -49,6 +56,7 @@ class Notifier:
     ):
         self.caller = caller
         self.to_player = to_player
+        self.to_caller = to_caller
         self.to_gm = to_gm
         self.to_staff = to_staff
         self.options = options
@@ -90,7 +98,7 @@ class Notifier:
         }
         return staff_set
 
-    def _sort_receivers(self) -> set:
+    def _filter_receivers(self) -> set:
         player_set = set()
         gm_set = set()
         staff_set = set()
@@ -108,59 +116,75 @@ class Notifier:
 
 
 class RoomNotifier(Notifier):
+    """
+    Notifier for sending to everyone in a room, filtered by
+    the to_ flags.
+    """
+
     def __init__(
         self,
         caller,
         room: ArxRoom,
+        to_caller=False,
         to_player=False,
         to_gm=False,
         to_staff=False,
         options: dict = None,
     ):
-        super().__init__(caller, to_player, to_gm, to_staff, options)
+        super().__init__(caller, to_caller, to_player, to_gm, to_staff, options)
         self.room = room
 
         self._generate_receivers()
 
     def _generate_receivers(self):
         self.receiver_set = self._get_room_characters()
-        self.receiver_set = self._sort_receivers()
+        self.receiver_set = self._filter_receivers()
 
     def _get_room_characters(self) -> set:
         room_set = {char for char in self.room.contents if char.is_character}
+
+        # Include the caller in this notification if they aren't already.
+        if self.to_caller:
+            room_set.add(self.caller)
+
         return room_set
 
 
-class PrivateNotifier(Notifier):
+class ListNotifier(Notifier):
+    """
+    Notifier for sending only to the passed in list of receivers, filtered
+    by the delivery flags.
+    """
+
     def __init__(
         self,
         caller,
         receivers: List[str],
+        to_caller=False,
         to_player=False,
         to_gm=False,
         to_staff=False,
         options: dict = None,
     ):
-        super().__init__(caller, to_player, to_gm, to_staff, options)
+        super().__init__(caller, to_caller, to_player, to_gm, to_staff, options)
         self.receiver_list = receivers or []
 
         self._generate_receivers()
 
     def _generate_receivers(self):
         self.receiver_set = self._get_list_characters()
-        self.receiver_set = self._sort_receivers()
+        self.receiver_set = self._filter_receivers()
 
     def _get_list_characters(self) -> set:
-        """Generates the receiver list for a specific-character notificiation."""
+        """Generates the source receiver list from passed in receivers."""
         list_set = set()
         for name in self.receiver_list:
             receiver = self.caller.search(name, use_nicks=True)
             if receiver:
                 list_set.add(receiver)
 
-        # The caller always sees their private notifications.  set()
-        # will handle the redundancy of adding caller if they're not
-        # already in it.
-        list_set.add(self.caller)
+        # Include the caller in this notification if they aren't already.
+        if self.to_caller:
+            list_set.add(self.caller)
 
         return list_set
