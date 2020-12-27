@@ -5,14 +5,20 @@ Contains class for various forms of notifying players, PC GMs, staff, and
 so on.  The purpose of this class is to reduce code for sending messages
 to specific subsets of the game.  (e.g. - send only to staff in a given room)
 
-Notify options:
-- players: sends the msg to all non-staff, non-gm'ing players
-- gm: sends the msg only to player GMs
-- staff: sends the msg only to staff
+RECEIVER OPTIONS
+- caller: sends the msg to the caller
+- player: sends the msg to non-staff, non-gm'ing players
+- gm: sends the msg to player GMs
+- staff: sends the msg to staff
 
-- room: sends the msg only to characters in the provided room
-- global: sends the msg to characters regardless of location
-- private: sends the msg only to the provided receiver names
+NOTE: Each of these flags can be set to True or False; they are used to
+filter out subsets of the player sources.
+
+PLAYER SOURCE OPTIONS
+- room: retrieves all characters in the provided room
+- private: retrieves all characters from the provided receiver names
+
+NOTE: Player source options are mutually exclusive.
 
 
 USAGE (example code):
@@ -55,6 +61,7 @@ class Notifier:
         self.options = options
         self.send_to = send_to or {}
 
+        self.to_caller = send_to.get("caller", False)
         self.to_players = send_to.get("player", False)
         self.to_gms = send_to.get("gm", False)
         self.to_staff = send_to.get("staff", False)
@@ -79,11 +86,17 @@ class Notifier:
         if self.to_gms:
             gm_set = self._filter_gms()
 
-        # And lastly, staff.
+        # And now staff.
         if self.to_staff:
             staff_set = self._filter_staff()
 
+        # Get all the other receivers together.
         self.receiver_set = player_set | gm_set | staff_set
+
+        # Finally, add caller if sending to caller.  set() will
+        # handle redundancy of callers being added.
+        if self.to_caller:
+            self.receiver_set.add(self.caller)
 
     def notify(self, msg: str):
         for rcvr in self.receiver_set:
@@ -99,10 +112,15 @@ class Notifier:
 
     def _do_room_generate(self):
         """Generates the receiver list for a room notification."""
+        if not self.room:
+            raise ValueError("Notifier: received None for room to notify")
         self.receiver_set = {char for char in self.room.contents if char.is_character}
 
     def _do_list_generate(self):
         """Generates the receiver list for a private notificiation."""
+        if not self.receiver_list:
+            raise ValueError("Notifer: received None for list of receivers to notify")
+
         for name in self.receiver_list:
             receiver = self.caller.search(name, use_nicks=True)
             if receiver:
