@@ -61,41 +61,36 @@ class Notifier:
         self.options = options
         self.send_to = send_to or {}
 
-        self.to_caller = send_to.get("caller", False)
-        self.to_players = send_to.get("player", False)
-        self.to_gms = send_to.get("gm", False)
-        self.to_staff = send_to.get("staff", False)
-
         self.source = source
 
         # Get the source players
         if self.source == NotifySource.ROOM:
-            self._do_room_generate()
+            self._get_room_characters()
         elif self.source == NotifySource.LIST:
-            self._do_list_generate()
+            self._get_list_characters()
 
         player_set = set()
         gm_set = set()
         staff_set = set()
 
         # If we're sending to PCs that aren't GMs, get them.
-        if self.to_players:
+        if send_to.get("player", False):
             player_set = self._filter_players()
 
         # Same for players that are GM'ing.
-        if self.to_gms:
+        if send_to.get("gm", False):
             gm_set = self._filter_gms()
 
         # And now staff.
-        if self.to_staff:
+        if send_to.get("staff", False):
             staff_set = self._filter_staff()
 
         # Get all the other receivers together.
         self.receiver_set = player_set | gm_set | staff_set
 
         # Finally, add caller if sending to caller.  set() will
-        # handle redundancy of callers being added.
-        if self.to_caller:
+        # handle the redundancy of extra callers being added.
+        if send_to.get("caller", False):
             self.receiver_set.add(self.caller)
 
     def notify(self, msg: str):
@@ -108,19 +103,18 @@ class Notifier:
 
     @property
     def receiver_names(self) -> list:
-        return sorted([str(player) for player in self.receiver_set])
+        return [str(player) for player in self.receiver_set]
 
-    def _do_room_generate(self):
+    def _get_room_characters(self):
         """Generates the receiver list for a room notification."""
+        # If there isn't a location, there can't be any receivers.
+        # self.receiver_set will still be an empty set()
         if not self.room:
-            raise ValueError("Notifier: received None for room to notify")
+            return
         self.receiver_set = {char for char in self.room.contents if char.is_character}
 
-    def _do_list_generate(self):
-        """Generates the receiver list for a private notificiation."""
-        if not self.receiver_list:
-            raise ValueError("Notifer: received None for list of receivers to notify")
-
+    def _get_list_characters(self):
+        """Generates the receiver list for a specific-character notificiation."""
         for name in self.receiver_list:
             receiver = self.caller.search(name, use_nicks=True)
             if receiver:
