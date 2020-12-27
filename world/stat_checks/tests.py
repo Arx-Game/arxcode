@@ -105,14 +105,14 @@ class TestCheckCommands(ArxCommandTest):
         # Self-only private roll.
         mock_randint.return_value = 25
         self.call_cmd(
-            "dex at normal=me",
-            f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: self-only)",
+            "dex at normal=Char",
+            f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char)",
         )
 
         # Sharing with another character.
         # Note that Char shows up last because of being a staff-flagged PC.
         self.call_cmd(
-            "dex at normal=me,char2",
+            "dex at normal=char,char2",
             f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char2, Char)",
         )
 

@@ -6,7 +6,6 @@ so on.  The purpose of this class is to reduce code for sending messages
 to specific subsets of the game.  (e.g. - send only to staff in a given room)
 
 RECEIVER OPTIONS
-- caller: sends the msg to the caller
 - player: sends the msg to non-staff, non-gm'ing players
 - gm: sends the msg to player GMs
 - staff: sends the msg to staff
@@ -16,7 +15,7 @@ filter out subsets of the player sources.
 
 PLAYER SOURCE OPTIONS
 - room: retrieves all characters in the provided room
-- private: retrieves all characters from the provided receiver names
+- list: retrieves all characters from the provided receiver names
 
 NOTE: Player source options are mutually exclusive.
 
@@ -27,7 +26,7 @@ USAGE (example code):
 # and staff GMs in the given room.
 gm_notifier = Notifier(room=caller.location, rcvr_flags={"gm": True, "staff": True})
 gm_notifier.notify("Hello, world!")
-gm_notifier.notify(msg, options={"roll": True})
+gm_notifier.notify(msg)
 """
 from enum import Enum
 from typing import List, Dict
@@ -39,11 +38,6 @@ class NotifyError(Exception):
     pass
 
 
-class NotifySource(Enum):
-    ROOM = 1
-    LIST = 2
-
-
 class Notifier:
     def __init__(
         self,
@@ -51,7 +45,7 @@ class Notifier:
         room: ArxRoom = None,
         receivers: List[str] = None,
         send_to: Dict[str, bool] = None,
-        source: NotifySource = NotifySource.ROOM,
+        source: Dict[str, bool] = None,
         options: dict = None,
     ):
         self.caller = caller
@@ -60,7 +54,7 @@ class Notifier:
         self.receiver_set = set()
         self.options = options
         self.send_to = send_to or {}
-        self.source = source
+        self.source = source or {}
 
         self._generate_receivers()
 
@@ -77,11 +71,17 @@ class Notifier:
         return [str(player) for player in self.receiver_set]
 
     def _generate_receivers(self):
+        room_set = set()
+        list_set = set()
+
         # Get the source players
-        if self.source == NotifySource.ROOM:
-            self._get_room_characters()
-        elif self.source == NotifySource.LIST:
-            self._get_list_characters()
+        if self.source.get("room", False):
+            room_set = self._get_room_characters()
+        elif self.source.get("list", False):
+            list_set = self._get_list_characters()
+
+        # All the source players in one set.
+        self.receiver_set = room_set | list_set
 
         player_set = set()
         gm_set = set()
@@ -102,25 +102,24 @@ class Notifier:
         # Get all the receivers together.
         self.receiver_set = player_set | gm_set | staff_set
 
-        # Finally, add caller if sending to caller.  set() will
-        # handle the redundancy of extra callers being added.
-        if self.send_to.get("caller", False):
-            self.receiver_set.add(self.caller)
-
-    def _get_room_characters(self):
+    def _get_room_characters(self) -> set:
         """Generates the receiver list for a room notification."""
         # If there isn't a location, there can't be any receivers.
         # self.receiver_set will still be an empty set()
         if not self.room:
             return
-        self.receiver_set = {char for char in self.room.contents if char.is_character}
+        room_set = {char for char in self.room.contents if char.is_character}
+        return room_set
 
-    def _get_list_characters(self):
+    def _get_list_characters(self) -> set:
         """Generates the receiver list for a specific-character notificiation."""
+        list_set = set()
         for name in self.receiver_list:
             receiver = self.caller.search(name, use_nicks=True)
             if receiver:
-                self.receiver_set.add(receiver)
+                list_set.add(receiver)
+
+        return list_set
 
     def _filter_players(self) -> set:
         player_set = {
