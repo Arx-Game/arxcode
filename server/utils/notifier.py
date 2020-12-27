@@ -60,38 +60,9 @@ class Notifier:
         self.receiver_set = set()
         self.options = options
         self.send_to = send_to or {}
-
         self.source = source
 
-        # Get the source players
-        if self.source == NotifySource.ROOM:
-            self._get_room_characters()
-        elif self.source == NotifySource.LIST:
-            self._get_list_characters()
-
-        player_set = set()
-        gm_set = set()
-        staff_set = set()
-
-        # If we're sending to PCs that aren't GMs, get them.
-        if send_to.get("player", False):
-            player_set = self._filter_players()
-
-        # Same for players that are GM'ing.
-        if send_to.get("gm", False):
-            gm_set = self._filter_gms()
-
-        # And now staff.
-        if send_to.get("staff", False):
-            staff_set = self._filter_staff()
-
-        # Get all the other receivers together.
-        self.receiver_set = player_set | gm_set | staff_set
-
-        # Finally, add caller if sending to caller.  set() will
-        # handle the redundancy of extra callers being added.
-        if send_to.get("caller", False):
-            self.receiver_set.add(self.caller)
+        self._generate_receivers()
 
     def notify(self, msg: str):
         for rcvr in self.receiver_set:
@@ -102,8 +73,39 @@ class Notifier:
         return self.receiver_set
 
     @property
-    def receiver_names(self) -> list:
+    def receiver_names(self) -> List[str]:
         return [str(player) for player in self.receiver_set]
+
+    def _generate_receivers(self):
+        # Get the source players
+        if self.source == NotifySource.ROOM:
+            self._get_room_characters()
+        elif self.source == NotifySource.LIST:
+            self._get_list_characters()
+
+        player_set = set()
+        gm_set = set()
+        staff_set = set()
+
+        # If we're sending to PCs that aren't GMs, identify them.
+        if self.send_to.get("player", False):
+            player_set = self._filter_players()
+
+        # Same for players that are GM'ing.
+        if self.send_to.get("gm", False):
+            gm_set = self._filter_gms()
+
+        # And now staff.
+        if self.send_to.get("staff", False):
+            staff_set = self._filter_staff()
+
+        # Get all the receivers together.
+        self.receiver_set = player_set | gm_set | staff_set
+
+        # Finally, add caller if sending to caller.  set() will
+        # handle the redundancy of extra callers being added.
+        if self.send_to.get("caller", False):
+            self.receiver_set.add(self.caller)
 
     def _get_room_characters(self):
         """Generates the receiver list for a room notification."""
