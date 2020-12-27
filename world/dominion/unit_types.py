@@ -528,7 +528,6 @@ class Dromond(UnitStats):
     hiring_cost = 2000
     xp_cost_multiplier = 100
 
-
 @register_unit
 class Caravel(UnitStats):
     id = unit_constants.CARAVEL

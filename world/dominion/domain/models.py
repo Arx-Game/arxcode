@@ -768,6 +768,7 @@ class UnitTypeInfo(models.Model):
     GALLEY = unit_constants.GALLEY
     DROMOND = unit_constants.DROMOND
     COG = unit_constants.COG
+    CARAVEL = unit_constants.CARAVEL
 
     UNIT_CHOICES = (
         (INFANTRY, "Infantry"),
@@ -779,6 +780,7 @@ class UnitTypeInfo(models.Model):
         (GALLEY, "Galley"),
         (COG, "Cog"),
         (DROMOND, "Dromond"),
+        (CARAVEL, "Caravel"),
     )
     # type will be used to derive units and their stats elsewhere
     unit_type = models.PositiveSmallIntegerField(
