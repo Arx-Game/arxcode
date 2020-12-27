@@ -42,21 +42,18 @@ class Notifier:
     def __init__(
         self,
         caller,
-        room: ArxRoom = None,
-        receivers: List[str] = None,
-        send_to: Dict[str, bool] = None,
-        source: Dict[str, bool] = None,
+        to_player=False,
+        to_gm=False,
+        to_staff=False,
         options: dict = None,
     ):
         self.caller = caller
-        self.room = room
-        self.receiver_list = receivers or []
-        self.receiver_set = set()
+        self.to_player = to_player
+        self.to_gm = to_gm
+        self.to_staff = to_staff
         self.options = options
-        self.send_to = send_to or {}
-        self.source = source or {}
 
-        self._generate_receivers()
+        self.receiver_set = set()
 
     def notify(self, msg: str):
         for rcvr in self.receiver_set:
@@ -71,55 +68,7 @@ class Notifier:
         return [str(player) for player in self.receiver_set]
 
     def _generate_receivers(self):
-        room_set = set()
-        list_set = set()
-
-        # Get the source players
-        if self.source.get("room", False):
-            room_set = self._get_room_characters()
-        elif self.source.get("list", False):
-            list_set = self._get_list_characters()
-
-        # All the source players in one set.
-        self.receiver_set = room_set | list_set
-
-        player_set = set()
-        gm_set = set()
-        staff_set = set()
-
-        # If we're sending to PCs that aren't GMs, identify them.
-        if self.send_to.get("player", False):
-            player_set = self._filter_players()
-
-        # Same for players that are GM'ing.
-        if self.send_to.get("gm", False):
-            gm_set = self._filter_gms()
-
-        # And now staff.
-        if self.send_to.get("staff", False):
-            staff_set = self._filter_staff()
-
-        # Get all the receivers together.
-        self.receiver_set = player_set | gm_set | staff_set
-
-    def _get_room_characters(self) -> set:
-        """Generates the receiver list for a room notification."""
-        # If there isn't a location, there can't be any receivers.
-        # self.receiver_set will still be an empty set()
-        if not self.room:
-            return
-        room_set = {char for char in self.room.contents if char.is_character}
-        return room_set
-
-    def _get_list_characters(self) -> set:
-        """Generates the receiver list for a specific-character notificiation."""
-        list_set = set()
-        for name in self.receiver_list:
-            receiver = self.caller.search(name, use_nicks=True)
-            if receiver:
-                list_set.add(receiver)
-
-        return list_set
+        pass
 
     def _filter_players(self) -> set:
         player_set = {
@@ -140,3 +89,78 @@ class Notifier:
             char for char in self.receiver_set if char.check_permstring("builder")
         }
         return staff_set
+
+    def _sort_receivers(self) -> set:
+        player_set = set()
+        gm_set = set()
+        staff_set = set()
+
+        if self.to_player:
+            player_set = self._filter_players()
+
+        if self.to_gm:
+            gm_set = self._filter_gms()
+
+        if self.to_staff:
+            staff_set = self._filter_staff()
+
+        return player_set | gm_set | staff_set
+
+
+class RoomNotifier(Notifier):
+    def __init__(
+        self,
+        caller,
+        room: ArxRoom,
+        to_player=False,
+        to_gm=False,
+        to_staff=False,
+        options: dict = None,
+    ):
+        super().__init__(caller, to_player, to_gm, to_staff, options)
+        self.room = room
+
+        self._generate_receivers()
+
+    def _generate_receivers(self):
+        self.receiver_set = self._get_room_characters()
+        self.receiver_set = self._sort_receivers()
+
+    def _get_room_characters(self) -> set:
+        room_set = {char for char in self.room.contents if char.is_character}
+        return room_set
+
+
+class PrivateNotifier(Notifier):
+    def __init__(
+        self,
+        caller,
+        receivers: List[str],
+        to_player=False,
+        to_gm=False,
+        to_staff=False,
+        options: dict = None,
+    ):
+        super().__init__(caller, to_player, to_gm, to_staff, options)
+        self.receiver_list = receivers or []
+
+        self._generate_receivers()
+
+    def _generate_receivers(self):
+        self.receiver_set = self._get_list_characters()
+        self.receiver_set = self._sort_receivers()
+
+    def _get_list_characters(self) -> set:
+        """Generates the receiver list for a specific-character notificiation."""
+        list_set = set()
+        for name in self.receiver_list:
+            receiver = self.caller.search(name, use_nicks=True)
+            if receiver:
+                list_set.add(receiver)
+
+        # The caller always sees their private notifications.  set()
+        # will handle the redundancy of adding caller if they're not
+        # already in it.
+        list_set.add(self.caller)
+
+        return list_set
