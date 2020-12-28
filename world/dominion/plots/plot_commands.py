@@ -1081,14 +1081,14 @@ class CmdGMPlots(ArxCommand):
 
 class CmdStoryCoordinators(ArxPlayerCommand):
     """
-    Lists story coordinator stuff
+    Lists story coordinator stuff, renamed from story to avoid confusion. Very rough draft form
 
-    story <story coordinator name>
-    story/old <org name>
-    story/org <org name>
+    gmstory <story coordinator name>
+    gmstory/old <org name>
+    gmstory/org <org name>
     """
 
-    key = "story"
+    key = "gmstory"
     locks = "cmd:perm(builders)"
     help_category = "GMing"
 
