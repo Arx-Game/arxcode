@@ -10,7 +10,7 @@ from world.stat_checks.models import (
     StatCheck,
 )
 
-from server.utils.notifier import RoomNotifier, ListNotifier
+from server.utils.notifier import RoomNotifier, SelfListNotifier
 
 
 TIE_THRESHOLD = 5
@@ -139,19 +139,25 @@ class SimpleRoll:
         """
         # Notifiers will source nothing if self.character.location is None
         # or if self.receivers is None.
-        # It will have empty receiver lists, and thus not do anything.
-        player_notifier = ListNotifier(
+        # They will have empty receiver lists, and thus not do anything.
+
+        # SelfListNotifier will notify the caller if a player.
+        player_notifier = SelfListNotifier(
             self.character,
             receivers=self.receivers,
-            to_caller=True,
             to_player=True,
         )
+        # RoomNotifier will notify the caller if they're a GM/staff.
         gm_notifier = RoomNotifier(
             self.character,
             room=self.character.location,
             to_gm=True,
             to_staff=True,
         )
+
+        # Generate the receivers of the notifications.
+        player_notifier.generate()
+        gm_notifier.generate()
 
         # GM names get highlighted because they're fancy
         gm_names = [f"|c{name}|n" for name in sorted(gm_notifier.receiver_names)]

@@ -32,16 +32,10 @@ class Notifier:
     def __init__(
         self,
         caller,
-        to_caller=False,
-        to_player=False,
-        to_gm=False,
-        to_staff=False,
+        **to_flags,
     ):
         self.caller = caller
-        self.to_player = to_player
-        self.to_caller = to_caller
-        self.to_gm = to_gm
-        self.to_staff = to_staff
+        self.to_flags = to_flags
 
         self.receiver_set = set()
 
@@ -58,7 +52,7 @@ class Notifier:
     def receiver_names(self) -> List[str]:
         return [str(player) for player in self.receiver_set]
 
-    def _generate_receivers(self):
+    def generate(self):
         pass
 
     def _filter_players(self) -> set:
@@ -84,22 +78,22 @@ class Notifier:
         }
         return staff_set
 
-    def _filter_receivers(self) -> set:
+    def _filter_receivers(self):
         """Returns all receivers designated by the given receiver flags."""
         player_set = set()
         gm_set = set()
         staff_set = set()
 
-        if self.to_player:
+        if self.to_flags.get("to_player", False):
             player_set = self._filter_players()
 
-        if self.to_gm:
+        if self.to_flags.get("to_gm", False):
             gm_set = self._filter_gms()
 
-        if self.to_staff:
+        if self.to_flags.get("to_staff", False):
             staff_set = self._filter_staff()
 
-        return player_set | gm_set | staff_set
+        self.receiver_set = player_set | gm_set | staff_set
 
 
 class RoomNotifier(Notifier):
@@ -112,71 +106,72 @@ class RoomNotifier(Notifier):
         self,
         caller,
         room: ArxRoom,
-        to_caller=False,
-        to_player=False,
-        to_gm=False,
-        to_staff=False,
+        **to_flags,
     ):
-        super().__init__(caller, to_caller, to_player, to_gm, to_staff)
+        super().__init__(caller, **to_flags)
         self.room = room
 
-        self._generate_receivers()
+    def generate(self):
+        self._get_room_characters()
+        self._filter_receivers()
 
-    def _generate_receivers(self):
-        self.receiver_set = self._get_room_characters()
-        self.receiver_set = self._filter_receivers()
-
-    def _get_room_characters(self) -> set:
+    def _get_room_characters(self):
         """
         Generates the source receiver list from all characters
         in the given room.
         """
-        if self.room is None:
-            return set()
-
-        room_set = {char for char in self.room.contents if char.is_character}
-
-        # Include the caller in this notification if they aren't already.
-        if self.to_caller:
-            room_set.add(self.caller)
-
-        return room_set
+        if self.room is not None:
+            self.receiver_set = {
+                char for char in self.room.contents if char.is_character
+            }
 
 
 class ListNotifier(Notifier):
     """
-    Notifier for sending only to the passed in list of receivers, filtered
-    by the delivery flags.
+    Notifier for sending only to the passed in list of receivers,
+    then filtered by the to_flags.
+
+    NOTE: The caller is not notified when using ListNotifier.  Use
+    PrivateListNotifier to get this behavior.
+    """
+
+    def __init__(self, caller, receivers: List[str] = None, **to_flags):
+        super().__init__(caller, **to_flags)
+
+        self.receiver_list = receivers or []
+
+    def generate(self):
+        self._get_list_characters()
+        self._filter_receivers()
+
+    def _get_list_characters(self):
+        for name in self.receiver_list:
+            receiver = self.caller.search(name, use_nicks=True)
+            if receiver:
+                self.receiver_set.add(receiver)
+
+
+class SelfListNotifier(ListNotifier):
+    """
+    Notifier for sending only to the passed in list of receivers and
+    the caller, then filtered by the to_flags.
     """
 
     def __init__(
         self,
         caller,
         receivers: List[str],
-        to_caller=False,
-        to_player=False,
-        to_gm=False,
-        to_staff=False,
+        **to_flags,
     ):
-        super().__init__(caller, to_caller, to_player, to_gm, to_staff)
-        self.receiver_list = receivers or []
+        super().__init__(caller, receivers, **to_flags)
 
-        self._generate_receivers()
-
-    def _generate_receivers(self):
-        self.receiver_set = self._get_list_characters()
-        self.receiver_set = self._filter_receivers()
+    def generate(self):
+        self._get_list_characters()
+        self._filter_receivers()
 
     def _get_list_characters(self) -> set:
         """Generates the source receiver list from passed in receivers."""
-        list_set = set()
-        for name in self.receiver_list:
-            receiver = self.caller.search(name, use_nicks=True)
-            if receiver:
-                list_set.add(receiver)
+        super()._get_list_characters()
 
-        # Include the caller in this notification if they aren't already.
-        if self.to_caller:
-            list_set.add(self.caller)
-
-        return list_set
+        # Caller always sees their notifications in this notifier.
+        self.receiver_set.add(self.caller)
