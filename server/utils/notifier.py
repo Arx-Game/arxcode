@@ -52,20 +52,18 @@ class Notifier:
         to_player=False,
         to_gm=False,
         to_staff=False,
-        options: dict = None,
     ):
         self.caller = caller
         self.to_player = to_player
         self.to_caller = to_caller
         self.to_gm = to_gm
         self.to_staff = to_staff
-        self.options = options
 
         self.receiver_set = set()
 
-    def notify(self, msg: str):
+    def notify(self, msg: str, options: dict = None):
         for rcvr in self.receiver_set:
-            rcvr.msg(msg, self.options)
+            rcvr.msg(msg, options)
 
     @property
     def receivers(self) -> set:
@@ -129,9 +127,8 @@ class RoomNotifier(Notifier):
         to_player=False,
         to_gm=False,
         to_staff=False,
-        options: dict = None,
     ):
-        super().__init__(caller, to_caller, to_player, to_gm, to_staff, options)
+        super().__init__(caller, to_caller, to_player, to_gm, to_staff)
         self.room = room
 
         self._generate_receivers()
@@ -164,9 +161,8 @@ class ListNotifier(Notifier):
         to_player=False,
         to_gm=False,
         to_staff=False,
-        options: dict = None,
     ):
-        super().__init__(caller, to_caller, to_player, to_gm, to_staff, options)
+        super().__init__(caller, to_caller, to_player, to_gm, to_staff)
         self.receiver_list = receivers or []
 
         self._generate_receivers()

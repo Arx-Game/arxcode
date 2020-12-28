@@ -145,14 +145,12 @@ class SimpleRoll:
             receivers=self.receivers,
             to_caller=True,
             to_player=True,
-            options={"roll": True},
         )
         gm_notifier = RoomNotifier(
             self.character,
             room=self.character.location,
             to_gm=True,
             to_staff=True,
-            options={"roll": True},
         )
 
         # GM names get highlighted because they're fancy
@@ -172,8 +170,8 @@ class SimpleRoll:
         private_msg = f"|w[Private Roll]|n {self.roll_message} {receiver_suffix}"
 
         # Notify everyone of the roll result.
-        player_notifier.notify(private_msg)
-        gm_notifier.notify(private_msg)
+        player_notifier.notify(private_msg, options={"roll": True})
+        gm_notifier.notify(private_msg, options={"roll": True})
 
     def get_roll_value_for_stat(self) -> int:
         """
