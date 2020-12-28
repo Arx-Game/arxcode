@@ -527,3 +527,20 @@ class Dromond(UnitStats):
     structure_damage_multiplier = 20
     hiring_cost = 2000
     xp_cost_multiplier = 100
+
+
+@register_unit
+class Caravel(UnitStats):
+    id = unit_constants.CARAVEL
+    name = "Caravels"
+    silver_upkeep = 10000
+    food_upkeep = 500
+    movement = 6
+    melee_damage = 5000
+    range_damage = 15000
+    hp = 50000
+    environment = "naval"
+    strategic_speed = 12
+    structure_damage_multiplier = 20
+    hiring_cost = 10000
+    xp_cost_multiplier = 100
