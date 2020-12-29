@@ -1,7 +1,6 @@
 from unittest.mock import Mock, patch, PropertyMock
 
 from server.utils.test_utils import ArxCommandTest
-from world.dominion.models import RPEvent
 from world.stat_checks import check_commands
 from world.stat_checks.check_maker import SimpleRoll
 from world.stat_checks.constants import DEATH_SAVE

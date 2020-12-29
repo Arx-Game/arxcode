@@ -13,7 +13,7 @@ gm_notifier = RoomNotifier(caller, room=caller.location, to_gm=True, to_staff=Tr
 gm_notifier.notify("Hello, world!")
 gm_notifier.notify(msg)
 """
-from typing import List, Dict
+from typing import List
 
 from typeclasses.rooms import ArxRoom
 
