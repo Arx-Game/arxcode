@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch, PropertyMock
 
 from server.utils.test_utils import ArxCommandTest
+from world.dominion.models import RPEvent
 from world.stat_checks import check_commands
 from world.stat_checks.check_maker import SimpleRoll
 from world.stat_checks.constants import DEATH_SAVE
@@ -100,20 +101,64 @@ class TestCheckCommands(ArxCommandTest):
             options=self.options,
         )
 
-    def test_stat_check_cmd_private(self, mock_randint):
+    @patch("typeclasses.characters.Character.check_staff_or_gm")
+    def test_stat_check_cmd_private(self, mock_is_gm, mock_randint):
         """Test private roll messaging."""
-        # Self-only private roll.
+        # Setup extra characters.
+        self.add_character(3)
+        self.add_character(4)
+        self.setup_character_and_account(self.char3, self.account3, 3)
+        self.setup_character_and_account(self.char4, self.account4, 4)
+
+        # Char shares with self -> Char only gets it.
         mock_randint.return_value = 25
         self.call_cmd(
             "dex at normal=Char",
             f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char)",
         )
 
-        # Sharing with another character.
-        # Note that Char shows up last because of being a staff-flagged PC.
+        # Char3 shares with self -> Char3, Char get it
+        # (Char gets it for being staff)
+        self.call(
+            self.instance,
+            "dex at normal=char3",
+            f"[Private Roll] {self.char3} checks dex at {self.normal}. {self.char3} rolls marginal. (Shared with: Char3, Char)",
+            caller=self.char3,
+        )
+
+        # Char shares with (GM) Char2, Char4 -> Char2, Char4, Char get it
+        # Note Char's name is last because of being a staff-flagged character.
         self.call_cmd(
-            "dex at normal=char,char2",
-            f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char2, Char)",
+            "dex at normal=char2,char4",
+            f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char2, Char4, Char)",
+        )
+
+        # Char4 shares with Char3 -> Char3, Char4, Char get it.
+        # note that Char gets it also as staff
+        self.call(
+            self.instance,
+            "dex at normal=char3",
+            f"[Private Roll] {self.char4} checks dex at {self.normal}. {self.char4} rolls marginal. (Shared with: Char3, Char4, Char)",
+            caller=self.char4,
+        )
+
+        mock_is_gm.return_value = True
+        # (GM) Char3 shares with (GM) Char2 -> Char2, Char3, Char get it.
+        self.call(
+            self.instance,
+            "dex at normal=char2",
+            f"[Private Roll] {self.char3} checks dex at {self.normal}. {self.char3} rolls marginal. (Shared with: Char2, Char3, Char)",
+            caller=self.char3,
+        )
+
+        mock_is_gm.return_value = False
+        # Char4 shares with Char3 -> Char3, Char4, Char get it.
+        # Char2 should NOT get it
+        self.call(
+            self.instance,
+            "dex at normal=char3",
+            f"[Private Roll] {self.char4} checks dex at {self.normal}. {self.char4} rolls marginal. (Shared with: Char3, Char4, Char)",
+            caller=self.char4,
         )
 
     def test_stat_check_cmd_contest(self, mock_randint):
