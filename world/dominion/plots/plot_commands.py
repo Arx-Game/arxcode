@@ -1147,7 +1147,10 @@ class CmdStlist(ArxCommand):
 
     key = "stlist"
     help_category = "Story"
-    admin_switches = ("org",)
+    admin_switches = (
+        "org",
+        "st",
+    )
 
     def func(self):
         try:
@@ -1171,6 +1174,7 @@ class CmdStlist(ArxCommand):
 
     def display_scorg(self, org):
         caller = self.caller
+        org = self.get_by_name_or_id(Organization, self.lhs)
         if org.secret and not org.access(caller, org):
             caller.msg("You are not a member of that secret organization.")
             return
@@ -1182,4 +1186,4 @@ class CmdStlist(ArxCommand):
         for position in only_storytellers:
             st_names = "; ".join(str(ob) for ob in position.players.all())
             msg += f"{position}: {st_names}\n"
-        caller.msg(msg)
+        self.msg(msg)
