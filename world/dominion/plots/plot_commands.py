@@ -1172,7 +1172,7 @@ class CmdStlist(ArxCommand):
             msg += f"{position}: {ppl_names}\n"
         return msg
 
-    def display_scorg(self, org):
+    def display_scorg(self):
         caller = self.caller
         org = self.get_by_name_or_id(Organization, self.lhs)
         if org.secret and not org.access(caller, org):
