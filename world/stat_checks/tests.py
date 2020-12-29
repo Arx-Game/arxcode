@@ -101,8 +101,8 @@ class TestCheckCommands(ArxCommandTest):
             options=self.options,
         )
 
-    @patch("typeclasses.characters.Character.check_staff_or_gm")
-    def test_stat_check_cmd_private(self, mock_is_gm, mock_randint):
+    @patch("server.utils.notifier.Notifier._filter_gms")
+    def test_stat_check_cmd_private(self, mock_gms, mock_randint):
         """Test private roll messaging."""
         # Setup extra characters.
         self.add_character(3)
@@ -110,8 +110,10 @@ class TestCheckCommands(ArxCommandTest):
         self.setup_character_and_account(self.char3, self.account3, 3)
         self.setup_character_and_account(self.char4, self.account4, 4)
 
-        # Char shares with self -> Char only gets it.
         mock_randint.return_value = 25
+
+        mock_gms.return_value = set()
+        # (Staff) Char shares with self -> Char only gets it.
         self.call_cmd(
             "dex at normal=Char",
             f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char)",
@@ -119,6 +121,7 @@ class TestCheckCommands(ArxCommandTest):
 
         # Char3 shares with self -> Char3, Char get it
         # (Char gets it for being staff)
+        # Note Char's name is last because of being a staff-flagged character.
         self.call(
             self.instance,
             "dex at normal=char3",
@@ -126,15 +129,17 @@ class TestCheckCommands(ArxCommandTest):
             caller=self.char3,
         )
 
-        # Char shares with (GM) Char2, Char4 -> Char2, Char4, Char get it
-        # Note Char's name is last because of being a staff-flagged character.
+        mock_gms.return_value = {self.char2}
+        # (Staff) Char shares with (GM) Char2, Char4 -> Char2, Char4, Char get it
+        # Char3 should NOT get it.
         self.call_cmd(
             "dex at normal=char2,char4",
             f"[Private Roll] {self.char1} checks dex at {self.normal}. {self.char1} rolls marginal. (Shared with: Char2, Char4, Char)",
         )
 
+        mock_gms.return_value = set()
         # Char4 shares with Char3 -> Char3, Char4, Char get it.
-        # note that Char gets it also as staff
+        # Char2 should NOT get it.
         self.call(
             self.instance,
             "dex at normal=char3",
@@ -142,8 +147,9 @@ class TestCheckCommands(ArxCommandTest):
             caller=self.char4,
         )
 
-        mock_is_gm.return_value = True
-        # (GM) Char3 shares with (GM) Char2 -> Char2, Char3, Char get it.
+        mock_gms.return_value = {self.char2}
+        # Char3 shares with (GM) Char2 -> Char2, Char3, Char get it.
+        # Char4 should NOT get it.
         self.call(
             self.instance,
             "dex at normal=char2",
@@ -151,9 +157,9 @@ class TestCheckCommands(ArxCommandTest):
             caller=self.char3,
         )
 
-        mock_is_gm.return_value = False
+        mock_gms.return_value = set()
         # Char4 shares with Char3 -> Char3, Char4, Char get it.
-        # Char2 should NOT get it
+        # Char2 should NOT get it.
         self.call(
             self.instance,
             "dex at normal=char3",
