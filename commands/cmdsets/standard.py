@@ -305,6 +305,7 @@ class MobileCmdSet(CmdSet):
         self.add(petitions_commands.CmdPetition())
         self.add(condition_commands.CmdKnacks())
         self.add(prayer_commands.CmdPray())
+        self.add(plot_commands.CmdStlist())
 
 
 class StaffCmdSet(CmdSet):
