@@ -1178,7 +1178,7 @@ class CmdStlist(ArxCommand):
         if org.secret and not org.access(caller, org):
             caller.msg("You are not a member of that secret organization.")
             return
-        caller.msg(f"{org.sc} is Story Coordinator for {org.name}")
+        caller.msg(f"|w{org.name} Story Coordinator:|n {org.story_coordinator_names}")
 
     def display_stonly(self):
         only_storytellers = PlayerPosition.objects.filter(name__icontains="Storyteller")
