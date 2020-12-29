@@ -1170,7 +1170,7 @@ class CmdStlist(ArxCommand):
             ppl = position.players.all()
             ppl_names = ", ".join(str(ob) for ob in ppl)
             msg += f"{position}: {ppl_names}\n"
-        return msg
+        self.msg(msg)
 
     def display_scorg(self):
         caller = self.caller
