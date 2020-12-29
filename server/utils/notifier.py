@@ -13,9 +13,7 @@ gm_notifier = RoomNotifier(caller, room=caller.location, to_gm=True, to_staff=Tr
 gm_notifier.notify("Hello, world!")
 gm_notifier.notify(msg)
 """
-from typing import List
-
-from typeclasses.rooms import ArxRoom
+from typing import List, Dict, Union
 
 
 class NotifyError(Exception):
@@ -39,7 +37,7 @@ class Notifier:
 
         self.receiver_set = set()
 
-    def notify(self, msg: str, options: dict = None):
+    def notify(self, msg: str, options: Union[Dict, None] = None):
         """Notifies each receiver of msg with the given options, if any."""
         for rcvr in self.receiver_set:
             rcvr.msg(msg, options)
@@ -105,7 +103,7 @@ class RoomNotifier(Notifier):
     def __init__(
         self,
         caller,
-        room: ArxRoom,
+        room,
         **to_flags,
     ):
         super().__init__(caller, **to_flags)
@@ -132,7 +130,7 @@ class ListNotifier(Notifier):
     then filtered by the to_flags.
 
     NOTE: The caller is not notified when using ListNotifier.  Use
-    PrivateListNotifier to get this behavior.
+    SelfListNotifier to get this behavior.
     """
 
     def __init__(self, caller, receivers: List[str] = None, **to_flags):
@@ -173,5 +171,6 @@ class SelfListNotifier(ListNotifier):
         """Generates the source receiver list from passed in receivers."""
         super()._get_list_characters()
 
-        # Caller always sees their notifications in this notifier.
+        # Caller always sees their notifications in this notifier if
+        # they're part of the to_flags set.
         self.receiver_set.add(self.caller)
