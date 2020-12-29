@@ -10,6 +10,8 @@ from world.stat_checks.models import (
     StatCheck,
 )
 
+from server.utils.notifier import RoomNotifier, SelfListNotifier
+
 
 TIE_THRESHOLD = 5
 
@@ -133,67 +135,50 @@ class SimpleRoll:
     def announce_to_players(self):
         """
         Sends a private roll result message to specific players as well as
-        all staff at self.character's location.
+        to all GMs (player and staff) at that character's location.
         """
-        self_list = (
-            "me",
-            "self",
-            str(self.character).lower(),
-            str(self.character.key).lower(),
+        # Notifiers will source nothing if self.character.location is None
+        # or if self.receivers is None.
+        # They will have empty receiver lists, and thus not do anything.
+
+        # SelfListNotifier will notify the caller if a player or
+        # player GM, and notify every player/player-GM on the list.
+        player_notifier = SelfListNotifier(
+            self.character,
+            receivers=self.receivers,
+            to_player=True,
+            to_gm=True,
+        )
+        # RoomNotifier will notify every staff member in the room
+        staff_notifier = RoomNotifier(
+            self.character,
+            room=self.character.location,
+            to_staff=True,
         )
 
-        # Build the list of who is seeing the roll, and the lists of names
-        # for the msg of who is seeing the roll.  Staff names are highlighted
-        # and last in the lists to draw attention to the fact it was successfully
-        # shared with a GM.  The names are also sorted because my left brain
-        # insisted that it's more organized this way.
-        receiver_list = [
-            ob for ob in set(self.receivers) if ob.name.lower() not in self_list
-        ]
-        staff_receiver_names = [
-            "|c%s|n" % ob.name
-            for ob in set(self.receivers)
-            if ob.check_permstring("Builders")
-        ]
-        pc_receiver_names = [
-            ob.name for ob in set(self.receivers) if not ob.check_permstring("Builders")
-        ]
+        # Generate the receivers of the notifications.
+        player_notifier.generate()
+        staff_notifier.generate()
 
-        all_receiver_names = sorted(pc_receiver_names) + sorted(staff_receiver_names)
+        # Staff names get highlighted because they're fancy
+        staff_names = [f"|c{name}|n" for name in sorted(staff_notifier.receiver_names)]
 
-        # Am I the only (non-staff) recipient?
-        if len(receiver_list) == 0:
-            receiver_suffix = "(Shared with: self-only)"
+        # Build list of who is receiving this private roll.  Staff are last
+        receiver_names = sorted(player_notifier.receiver_names) + staff_names
+
+        # If only the caller is here to see it, only the caller will be
+        # listed for who saw it.
+        if receiver_names:
+            receiver_suffix = f"(Shared with: {', '.join(receiver_names)})"
         else:
-            receiver_suffix = "(Shared with: %s)" % ", ".join(all_receiver_names)
+            receiver_suffix = f"(Shared with: {self.character})"
 
         # Now that we know who is getting it, build the private message string.
         private_msg = f"|w[Private Roll]|n {self.roll_message} {receiver_suffix}"
 
-        # Always sent to yourself.
-        self.character.msg(private_msg, options={"roll": True})
-
-        # If caller doesn't have a location, we're done; there's no one
-        # else to hear it!
-        if not self.character.location:
-            return
-
-        # Otherwise, send result to all staff in location.
-        staff_list = [
-            gm
-            for gm in self.character.location.contents
-            if gm.check_permstring("Builders")
-        ]
-        for staff in staff_list:
-            # If this GM is the caller or a private receiver, skip them.
-            # They were or will be notified.
-            if staff == self.character or staff in receiver_list:
-                continue
-            staff.msg(private_msg, options={"roll": True})
-
-        # Send result message to receiver list, if any.
-        for receiver in receiver_list:
-            receiver.msg(private_msg, options={"roll": True})
+        # Notify everyone of the roll result.
+        player_notifier.notify(private_msg, options={"roll": True})
+        staff_notifier.notify(private_msg, options={"roll": True})
 
     def get_roll_value_for_stat(self) -> int:
         """
