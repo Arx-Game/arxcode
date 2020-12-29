@@ -2534,6 +2534,14 @@ class Organization(InformMixin, SharedMemoryModel):
         ).distinct()
 
     @property
+    def story_coordinators(self):
+        return self.active_members.filter(story_coordinator=True)
+
+    @property
+    def story_coordinator_names(self):
+        return "; ".join(str(ob) for ob in self.story_coordinators)
+
+    @property
     def living_members(self):
         """Returns queryset of players in active or available roster and not deguilded"""
         return self.members.filter(
