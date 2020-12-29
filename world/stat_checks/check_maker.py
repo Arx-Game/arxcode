@@ -141,29 +141,30 @@ class SimpleRoll:
         # or if self.receivers is None.
         # They will have empty receiver lists, and thus not do anything.
 
-        # SelfListNotifier will notify the caller if a player.
+        # SelfListNotifier will notify the caller if a player or
+        # player GM, and notify every player/player-GM on the list.
         player_notifier = SelfListNotifier(
             self.character,
             receivers=self.receivers,
             to_player=True,
+            to_gm=True,
         )
-        # RoomNotifier will notify the caller if they're a GM/staff.
-        gm_notifier = RoomNotifier(
+        # RoomNotifier will notify every staff member in the room
+        staff_notifier = RoomNotifier(
             self.character,
             room=self.character.location,
-            to_gm=True,
             to_staff=True,
         )
 
         # Generate the receivers of the notifications.
         player_notifier.generate()
-        gm_notifier.generate()
+        staff_notifier.generate()
 
-        # GM names get highlighted because they're fancy
-        gm_names = [f"|c{name}|n" for name in sorted(gm_notifier.receiver_names)]
+        # Staff names get highlighted because they're fancy
+        staff_names = [f"|c{name}|n" for name in sorted(staff_notifier.receiver_names)]
 
-        # Build list of who is receiving this private roll.  GMs are last
-        receiver_names = sorted(player_notifier.receiver_names) + gm_names
+        # Build list of who is receiving this private roll.  Staff are last
+        receiver_names = sorted(player_notifier.receiver_names) + staff_names
 
         # If only the caller is here to see it, only the caller will be
         # listed for who saw it.
@@ -177,7 +178,7 @@ class SimpleRoll:
 
         # Notify everyone of the roll result.
         player_notifier.notify(private_msg, options={"roll": True})
-        gm_notifier.notify(private_msg, options={"roll": True})
+        staff_notifier.notify(private_msg, options={"roll": True})
 
     def get_roll_value_for_stat(self) -> int:
         """

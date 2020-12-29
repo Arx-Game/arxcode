@@ -120,7 +120,7 @@ class RoomNotifier(Notifier):
         Generates the source receiver list from all characters
         in the given room.
         """
-        if self.room is not None:
+        if self.room:
             self.receiver_set = {
                 char for char in self.room.contents if char.is_character
             }
