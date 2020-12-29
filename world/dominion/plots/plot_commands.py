@@ -1175,7 +1175,7 @@ class CmdStlist(ArxCommand):
     def display_scorg(self):
         caller = self.caller
         org = self.get_by_name_or_id(Organization, self.lhs)
-        if org.secret and not org.access(caller, org):
+        if org.secret and org not in self.caller.player_ob.current_orgs:
             caller.msg("You are not a member of that secret organization.")
             return
         caller.msg(f"|w{org.name} Story Coordinator:|n {org.story_coordinator_names}")
