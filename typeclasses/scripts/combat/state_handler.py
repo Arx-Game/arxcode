@@ -176,6 +176,7 @@ class CombatantStateHandler(object):
         self.recent_actions = []
         if reset:
             self.reset()
+        self.trigger_combat_entry_hooks()
 
     def __str__(self):
         return self.combat_handler.name
@@ -996,3 +997,6 @@ class CombatantStateHandler(object):
             return self.recent_actions[-1]
         except IndexError:
             return None
+
+    def trigger_combat_entry_hooks(self):
+        self.character.health_status.at_enter_combat()

@@ -45,7 +45,7 @@ class Traitshandler:
             return
         for trait_value in self.character.trait_values.all():
             self.add_trait_value_to_cache(trait_value)
-        for wound in self.character.wounds.all():
+        for wound in self.character.health_status.wounds.all():
             self.add_wound_to_cache(wound)
         self.initialized = True
 
@@ -304,5 +304,13 @@ class Traitshandler:
         from world.traits.models import Trait
 
         trait = Trait.get_random_physical_stat()
-        wound = self.character.wounds.create(severity=severity, trait=trait)
+        wound = self.character.health_status.wounds.create(
+            severity=severity, trait=trait
+        )
         self.add_wound_to_cache(wound)
+
+    def remove_wound_from_cache(self, wound):
+        try:
+            self._wounds_cache[wound.trait.name].remove(wound)
+        except ValueError:
+            pass

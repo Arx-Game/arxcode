@@ -313,7 +313,7 @@ class CombatHandler(object):
             return 0
         # noinspection PyBroadException
         try:
-            dmg = self.char.db.damage or 0
+            dmg = self.char.damage
             base = int((dmg * 100.0) / (self.char.max_hp * 10.0))
             base -= self.char.boss_rating * 10
             if base < 0:

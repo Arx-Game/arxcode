@@ -225,9 +225,11 @@ class DefinedRoll(SimpleRoll):
     to populate the values for the roll.
     """
 
-    def __init__(self, character, check: StatCheck = None, **kwargs):
+    def __init__(self, character, check: StatCheck = None, target=None, **kwargs):
         super().__init__(character, **kwargs)
         self.check = check
+        # target is the value that determines difficulty rating
+        self.target = target or character
 
     def get_roll_value_for_traits(self) -> int:
         """
@@ -241,9 +243,7 @@ class DefinedRoll(SimpleRoll):
         """
         if self.rating:
             return super().get_roll_value_for_rating()
-        self.rating = self.check.get_difficulty_rating(
-            self.character, **self.roll_kwargs
-        )
+        self.rating = self.check.get_difficulty_rating(self.target, **self.roll_kwargs)
         return self.rating.value
 
     def get_roll_value_for_knack(self) -> int:
@@ -403,3 +403,7 @@ class DefinedCheckMaker(BaseCheckMaker):
     @property
     def outcome(self):
         return self.roll.outcome
+
+    @property
+    def value_for_outcome(self):
+        return self.outcome.get_value(self.character)

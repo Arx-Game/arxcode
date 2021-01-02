@@ -463,8 +463,7 @@ class Attack(object):
     @staticmethod
     def wake_up_sleeper(target):
         """Wakes up our target if they are asleep."""
-        if not target.conscious and target.db.sleep_status == "asleep":
-            target.wake_up()
+        target.wake_up(light_waking=True)
 
     def roll_defense(self, target, penalty=0):
         """
