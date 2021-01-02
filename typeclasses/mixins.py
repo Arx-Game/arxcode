@@ -3,6 +3,7 @@ import re
 from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import parse_ansi
 
+from typeclasses.exceptions import InvalidTargetError
 from world.conditions.triggerhandler import TriggerHandler
 from world.templates.models import Template
 from world.templates.mixins import TemplateMixins
@@ -132,26 +133,8 @@ class DescMixins(object):
     volume = property(__get_volume)
 
     @property
-    def health_status(self):
-        """
-        :type self: ObjectDB
-        """
-        return self.db.health_status or "nonliving"
-
-    @health_status.setter
-    def health_status(self, value):
-        """
-        :type self: ObjectDB
-        """
-        self.db.health_status = value
-
-    @property
     def dead(self):
-        return self.health_status == "dead"
-
-    @property
-    def alive(self):
-        return self.health_status == "alive"
+        return False
 
     @property
     def additional_desc(self):
@@ -351,6 +334,13 @@ class BaseObjectMixins(object):
             return self
         # recursive call to get the room
         return self.location.get_room()
+
+    @lazy_property
+    def health_status(self):
+        try:
+            return self.character_health_status
+        except AttributeError:
+            raise InvalidTargetError(f"{self} is not a valid target.")
 
 
 class AppearanceMixins(BaseObjectMixins, TemplateMixins):

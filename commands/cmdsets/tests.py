@@ -6,15 +6,12 @@ from unittest import skip
 
 from server.utils.test_utils import ArxCommandTest
 from . import combat, market, home
-from world.traits.models import Trait
 
 
 # noinspection PyUnresolvedReferences
 # noinspection PyUnusedLocal
 @patch.object(combat, "inform_staff")
 class CombatCommandsTests(ArxCommandTest):
-    HAS_COMBAT_DATA = True
-
     def start_fight(self, *args):
         """Helper function for starting a fight in our test"""
         fight = combat.start_fight_at_room(self.room1)
@@ -22,15 +19,13 @@ class CombatCommandsTests(ArxCommandTest):
             fight.add_combatant(ob)
         return fight
 
-    @patch.object(combat, "do_dice_check")
-    def test_cmd_heal(self, mock_dice_check, mock_inform_staff):
+    @patch("world.stat_checks.check_maker.randint")
+    def test_cmd_heal(self, mock_randint, mock_inform_staff):
         from world.dominion.models import RPEvent
+        from world.stat_checks.models import StatCheck
 
         event = RPEvent.objects.create(name="test")
-        mock_dice_check.return_value = 10
         self.setup_cmd(combat.CmdHeal, self.char1)
-        self.call_cmd("char2", "Char2 does not require any medical attention.")
-        self.char2.dmg = 20
         self.call_cmd(
             "char2",
             "Char2 has not granted you permission to heal them. Have them use +heal/permit.",
@@ -52,12 +47,31 @@ class CombatCommandsTests(ArxCommandTest):
             "There is an event here and you have not been granted GM permission to use +heal.",
         )
         self.call_cmd(
-            "/gmallow char=10",
-            "You have allowed Char to use +heal, with a bonus to their roll of 10.",
+            "/gmallow char",
+            "You have allowed Char to use +heal.",
         )
-        self.assertEqual(self.char1.ndb.healing_gm_allow, 10)
+        self.assertTrue(self.char1.ndb.healing_gm_allow)
         self.caller = self.char1
-        self.call_cmd("char2", "You rolled a 10 on your heal roll.")
+        self.call_cmd("char2", "Char2 does not require any medical attention.")
+        self.char2.dmg = 20
+        mock_randint.return_value = 30
+        self.call_cmd(
+            "char2",
+            "Char checks 'recovery treatment' at easy. Char is marginally successful.|"
+            "You have provided aid to Char2 to help them recover from injury.",
+        )
+        self.call_cmd(
+            "char2", "Char has attempted to assist with their recovery too recently."
+        )
+        self.char2.health_status.set_unconscious()
+        self.call_cmd(
+            "/revive char2",
+            "Char checks 'revive treatment' at hard. Char fails.|"
+            "You have provided aid to Char2 to help them regain consciousness.",
+        )
+        self.call_cmd(
+            "/revive char2", "Char has attempted to revive them too recently."
+        )
 
     def test_cmd_start_combat(self, mock_inform_staff):
         self.setup_cmd(combat.CmdStartCombat, self.char1)
@@ -415,7 +429,7 @@ class CombatCommandsTests(ArxCommandTest):
         self.char2.tags.remove("unattackable")
         self.call_cmd("Char2", "They are not in combat.")
         fight.add_combatant(self.char2, adder=self.char1)
-        self.char1.db.sleep_status = "unconscious"
+        self.char1.health_status.set_unconscious()
         self.call_cmd("Char2", "You are not conscious.")
         self.caller = self.char2
         self.call_cmd(
@@ -423,7 +437,7 @@ class CombatCommandsTests(ArxCommandTest):
             "Char is incapacitated. To kill an incapacitated character, you must use the "
             "+coupdegrace command.",
         )
-        self.char1.db.sleep_status = "awake"
+        self.char1.health_status.set_awake()
         self.call_cmd(
             "/critical/accuracy Char", "These switches cannot be used together."
         )
@@ -538,7 +552,7 @@ class CombatCommandsTests(ArxCommandTest):
     def test_cmd_slay(self, mock_dice_check, mock_randint, mock_inform_staff):
         self.setup_cmd(combat.CmdSlay, self.char1)
         self.start_fight(self.char1, self.char2)
-        self.char2.db.sleep_status = "unconscious"
+        self.char2.health_status.set_unconscious()
         mock_dice_check.return_value = 10
         mock_randint.return_value = 5
         # dmg 10--> *dmgmult 2.0 //4 + 5 = 10--> -mit (wiped out by uncon)

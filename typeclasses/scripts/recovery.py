@@ -3,6 +3,8 @@ Script for characters healing.
 """
 
 from .scripts import Script
+from server.utils.arx_utils import CachedProperty
+from datetime import datetime
 
 
 class Recovery(Script):
@@ -18,78 +20,43 @@ class Recovery(Script):
         """
         self.key = "Recovery"
         self.desc = "Healing over time"
-        self.interval = 28800
+        self.interval = 60
         self.persistent = True
         self.start_delay = True
-        self.db.highest_heal = 0
+
+    @CachedProperty
+    def runner(self):
+        try:
+            return self.recovery_runner
+        except AttributeError:
+            from world.conditions.models import RecoveryRunner
+
+            return RecoveryRunner.objects.create(script=self)
 
     def at_repeat(self):
         """
         Called every 8 hours until we're all better.
         """
-        # slowly reduce the impact of the highest heal we've gotten
-        self.db.highest_heal = (self.db.highest_heal or 0) / 2
-        if not self.obj:
-            self.stop()
-            return
-        # RIP in pepperinos
-        try:
-            if self.obj.dead:
-                self.stop()
-                return
-        except AttributeError:
-            self.stop()
-            return
-        if self.obj.db.damage and self.obj.db.damage > 0:
-            self.obj.recovery_test(diff_mod=15 - self.db.highest_heal)
-        else:
-            self.stop()
+        if self.recovery_checks_due:
+            self.runner.run_recovery_checks()
+        if self.revive_checks_due:
+            self.runner.run_revive_checks()
 
-    def is_valid(self):
-        try:
-            if self.obj and self.obj.db.damage > 0:
-                return True
-        except (AttributeError, TypeError, ValueError):
-            return False
-        return False
+    @property
+    def recovery_checks_due(self):
+        return self.check_timer("recovery")
 
-    def attempt_heal(self, amt=0, healer=None):
+    @property
+    def revive_checks_due(self):
+        return self.check_timer("revive")
+
+    def check_timer(self, attribute):
+        """Checks the timer for fields that store the last run timestamp in a field
+        called <name>_last_run, with a specified interval in seconds stored in a field
+        called <name>_interval.
         """
-        Attempt to heal the character. If amt is less than the current max heal
-        amount, then it does nothing. If it's greater, then we use the difference
-        between the new high and previous to either give them a recovery test or
-        just heal them straight up by that value.
-
-            Args:
-                amt (int): Heal amount
-                healer (ObjectDB): Healing character
-        """
-        from datetime import datetime, timedelta
-
-        max_heal = self.db.highest_heal or 0
-        if amt < max_heal:
-            if healer:
-                healer.msg(
-                    "They have received better care already. You can't help them."
-                )
-                self.obj.msg(
-                    "You have received better care already. %s isn't able to help you."
-                    % healer
-                )
-            return
-        # get difference, record new high
-        diff = amt - self.db.highest_heal
-        self.db.highest_heal = amt
-        # check our heal time to see if we can do another recovery test
-        last_healed = self.db.last_healed
-        if last_healed and last_healed > (datetime.now() - timedelta(hours=8)):
-            # not enough time has passed so we'll just increase their health by the difference
-            if healer:
-                healer.msg(
-                    "They have been healed recently, but you're able to improve them somewhat."
-                )
-            self.obj.change_health(diff)
-            return
-        # enough time has passed, so we give them a full recovery test
-        self.db.last_healed = datetime.now()
-        self.obj.recovery_test(diff_mod=-diff)
+        last = getattr(self.runner, f"{attribute}_last_run")
+        if not last:
+            return True
+        now = datetime.now()
+        return (now - last).seconds >= getattr(self.runner, f"{attribute}_interval")

@@ -13,10 +13,16 @@ def add_armor_class_and_boss_rating_traits(apps, schema_editor):
     StatWeight = apps.get_model("stat_checks", "StatWeight")
     OTHER = 3
     MISC = 7
-    Trait.objects.create(name="armor_class", category="combat", trait_type=OTHER)
-    Trait.objects.create(name="boss_rating", category="combat", trait_type=OTHER)
-    Trait.objects.create(name="bonus_max_hp", category="combat", trait_type=OTHER)
-    StatWeight.objects.create(stat_type=MISC)
+    Trait.objects.get_or_create(
+        name="armor_class", defaults=dict(category="combat", trait_type=OTHER)
+    )
+    Trait.objects.get_or_create(
+        name="boss_rating", defaults=dict(category="combat", trait_type=OTHER)
+    )
+    Trait.objects.get_or_create(
+        name="bonus_max_hp", defaults=dict(category="combat", trait_type=OTHER)
+    )
+    StatWeight.objects.get_or_create(stat_type=MISC)
 
 
 def change_armor_class_and_boss_rating_attributes_to_traits(apps, schema_editor):
@@ -521,6 +527,10 @@ class Migration(migrations.Migration):
                             (2, "unconsciousness"),
                             (3, "serious wound"),
                             (4, "permanent wound"),
+                            (5, "healing"),
+                            (6, "healing and cure a wound"),
+                            (7, "regain below-0% health"),
+                            (8, "recover from unconsciousness"),
                         ),
                     ),
                 ),

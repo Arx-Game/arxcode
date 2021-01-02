@@ -98,94 +98,8 @@ class Npc(Character):
         """
         Called once, when this object is first created.
         """
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
         self.db.automate_combat = True
-        self.db.damage = 0
         self.at_init()
-
-    def resurrect(self, *args, **kwargs):
-        """
-        Cue 'Bring Me Back to Life' by Evanessence.
-        """
-        self.db.health_status = "alive"
-        if self.location:
-            self.location.msg_contents("{w%s has returned to life.{n" % self.name)
-
-    def fall_asleep(self, uncon=False, quiet=False, verb=None, **kwargs):
-        """
-        Falls asleep. Uncon flag determines if this is regular sleep,
-        or unconsciousness.
-        """
-        reason = " is %s and" % verb if verb else ""
-        if uncon:
-            self.db.sleep_status = "unconscious"
-        else:
-            self.db.sleep_status = "asleep"
-        if self.location and not quiet:
-            self.location.msg_contents(
-                "%s%s falls %s." % (self.name, reason, self.db.sleep_status)
-            )
-
-    def wake_up(self, quiet=False):
-        """
-        Wakes up.
-        """
-        self.db.sleep_status = "awake"
-        if self.location:
-            self.location.msg_contents("%s wakes up." % self.name)
-
-    def get_health_appearance(self):
-        """
-        Return a string based on our current health.
-        """
-        name = self.name
-        if self.db.health_status == "dead":
-            return "%s is currently dead." % name
-        wound = float(self.dmg) / float(self.max_hp)
-        if wound <= 0:
-            msg = "%s is in perfect health." % name
-        elif 0 < wound <= 0.1:
-            msg = "%s is very slightly hurt." % name
-        elif 0.1 < wound <= 0.25:
-            msg = "%s is moderately wounded." % name
-        elif 0.25 < wound <= 0.5:
-            msg = "%s is seriously wounded." % name
-        elif 0.5 < wound <= 0.75:
-            msg = "%s is very seriously wounded." % name
-        elif 0.75 < wound <= 2.0:
-            msg = "%s is critically wounded." % name
-        else:
-            msg = "%s is very critically wounded, possibly dying." % name
-        awake = self.db.sleep_status
-        if awake and awake != "awake":
-            msg += " They are %s." % awake
-        return msg
-
-    def recovery_test(self, diff_mod=0, free=False):
-        """
-        A mechanism for healing characters. Whenever they get a recovery
-        test, they heal the result of a willpower+stamina roll, against
-        a base difficulty of 0. diff_mod can change that difficulty value,
-        and with a higher difficulty can mean it can heal a negative value,
-        resulting in the character getting worse off. We go ahead and change
-        the player's health now, but leave the result of the roll in the
-        caller's hands to trigger other checks - death checks if we got
-        worse, unconsciousness checks, whatever.
-        """
-        diff = 0 + diff_mod
-        roll = do_dice_check(self, stat_list=["willpower", "stamina"], difficulty=diff)
-        if roll > 0:
-            self.msg("You feel better.")
-        else:
-            self.msg("You feel worse.")
-        applied_damage = self.dmg - roll  # how much dmg character has after the roll
-        if applied_damage < 0:
-            applied_damage = 0  # no remaining damage
-        self.db.damage = applied_damage
-        if not free:
-            self.db.last_recovery_test = time.time()
-        return roll
 
     def sensing_check(self, difficulty=15, invis=False, allow_wake=False):
         """
@@ -300,12 +214,11 @@ class Npc(Character):
         desc=None,
         keepold=False,
     ):
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
+        self.health_status.full_restore()
 
-        from commands.cmdsets import death
+        from commands.cmdsets import death, sleep
 
+        self.cmdset.delete(sleep.SleepCmdSet)
         self.cmdset.delete(death.DeathCmdSet)
 
         # if we don't
@@ -448,9 +361,7 @@ class MultiNpc(Npc):
         self.db.num_living = num
         self.db.num_dead = 0
         self.db.num_incap = 0
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
+        self.health_status.full_restore()
         # if we don't
         if not keepold:
             self.db.npc_type = ntype
@@ -918,10 +829,15 @@ class Retainer(AgentMixin, Npc):
         desc=None,
         keepold=False,
     ):
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
-        self.setup_stats(ntype, threat)
+        super().setup_npc(
+            ntype=ntype,
+            threat=threat,
+            num=num,
+            sing_name=sing_name,
+            plural_name=plural_name,
+            desc=desc,
+            keepold=True,
+        )
         self.name = self.agentob.agent_class.name
 
     @property

@@ -243,8 +243,6 @@ class TestCheckCommands(ArxCommandTest):
 @patch("world.stat_checks.models.randint")
 @patch("world.stat_checks.check_maker.randint")
 class TestHarmCommands(ArxCommandTest):
-    HAS_COMBAT_DATA = True
-
     def test_harm(self, mock_check_randint, mock_damage_randint, mock_armor):
         self.setup_cmd(check_commands.CmdHarm, self.char2)
         mock_damage_randint.return_value = 110
@@ -277,7 +275,8 @@ class TestHarmCommands(ArxCommandTest):
             "Char checks 'death save' at hard. Char is marginally successful.|"
             "Char remains alive, but close to death.|"
             "Char is incapacitated and falls unconscious.|"
-            "Char checks 'permanent wound save' at hard. Char fails.",
+            "Char checks 'permanent wound save' at hard. Char fails.|"
+            "Char has suffered a serious wound!",
         )
         self.assertFalse(self.char.conscious)
         self.assertEqual(self.char.damage, 120)

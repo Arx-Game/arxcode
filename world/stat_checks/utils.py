@@ -20,4 +20,6 @@ def get_check_by_name(name: str):
 def get_check_maker_by_name(name: str, character, **kwargs):
     from world.stat_checks.check_maker import DefinedCheckMaker
 
-    return DefinedCheckMaker(character=character, check=get_check_by_name(name))
+    return DefinedCheckMaker(
+        character=character, check=get_check_by_name(name), **kwargs
+    )
