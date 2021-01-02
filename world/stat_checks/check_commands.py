@@ -1,9 +1,12 @@
+from collections import namedtuple
+
 from commands.base import ArxCommand
 from world.stat_checks.models import DifficultyRating, DamageRating
 from world.traits.models import Trait
 from world.stat_checks.check_maker import (
     BaseCheckMaker,
     PrivateCheckMaker,
+    SpoofCheckMaker,
     ContestedCheckMaker,
     SimpleRoll,
     OpposingRolls,
@@ -191,3 +194,124 @@ class CmdHarm(ArxCommand):
             raise self.error_class("You may only harm others if GMing an event.")
         self.msg(f"Inflicting {damage} on {target}.")
         damage.do_damage(target)
+
+
+class CmdSpoofCheck(ArxCommand):
+
+    key = "@gmcheck"
+    locks = "cmd:all()"
+
+    STAT_LIMIT = 5
+    SKILL_LIMIT = 6
+
+    def get_help(self, caller, cmdset):
+        ratings = ", ".join(str(obj) for obj in DifficultyRating.get_all_instances())
+        msg = f"""
+    @gmcheck
+
+    Usage:
+        @gmcheck <stat>/<value> [+ <skill>/<value>] at <difficulty>=<npc name>
+
+    Performs a stat + skill at difficulty check with specified values.  Intended
+    for GMs to make rolls for NPCs that don't necessarily exist as characters
+    in-game. The /crit switch allows the roll to crit. The /flub switch
+    intentionally, silently fails.
+
+    NPC name allows for a GM to assign a name to their roll to identify NPCs.
+
+    Difficulty ratings are as follows: {ratings}
+    """
+        return msg
+
+    def func(self):
+        try:
+            self.do_spoof_roll()
+        except self.error_class as err:
+            self.msg(err)
+
+    def do_spoof_roll(self):
+        args = self.lhs
+        syntax_error = (
+            "Usage: <stat>/<value> [+ <skill>/<value>] at difficulty=<npc name>"
+        )
+
+        if not self.rhs:
+            raise self.error_class(syntax_error)
+
+        # Split string at ' at '
+        args, diff_rating = self._extract_difficulty(args, syntax_error)
+
+        # Split string at '+', if possible, and strip.
+        stat_str, skill_str = self._extract_stat_skill_string(args, syntax_error)
+
+        # Get Stat value
+        stat, stat_value = self._get_values(stat_str)
+        if stat and stat not in Trait.get_valid_stat_names():
+            raise self.error_class(f"{stat} is not a valid stat name.")
+
+        if stat_value > self.STAT_LIMIT:
+            raise self.error_class("Stats cannot be higher than 5.")
+
+        # Get skill value, if applicable (None if not)
+        skill = None
+        skill_value = None
+        if skill_str:
+            skill, skill_value = self._get_values(skill_str)
+            if skill and skill not in Trait.get_valid_skill_names():
+                raise self.error_class(f"{skill} is not a valid skill name.")
+
+            if skill_value > self.SKILL_LIMIT:
+                raise self.error_class("Skills cannot be higher than 6.")
+
+        npc_name = self.rhs
+
+        SpoofCheckMaker.perform_check_for_character(
+            self.caller,
+            stat=stat,
+            stat_value=stat_value,
+            skill=skill,
+            skill_value=skill_value,
+            rating=diff_rating,
+            npc_name=npc_name,
+        )
+
+    def _extract_difficulty(self, args: str, syntax: str) -> (str, DifficultyRating):
+        try:
+            lhs, rhs, *remainder = args.split(" at ")
+        except ValueError:
+            raise self.error_class(syntax)
+        else:
+            if remainder:
+                raise self.error_class(syntax)
+
+        rhs = rhs.strip().lower()
+        difficulty = DifficultyRating.get_instance_by_name(rhs)
+        if not difficulty:
+            raise self.error_class(f"{rhs} is not a valid difficulty rating.")
+
+        return lhs, difficulty
+
+    def _extract_stat_skill_string(self, args: str, syntax: str) -> (str, str):
+        try:
+            stat_str, skill_str, *remainder = args.split("+")
+        except ValueError:
+            raise self.error_class(syntax)
+        else:
+            if remainder:
+                raise self.error_class(syntax)
+            stat_str = stat_str.strip().lower()
+            if skill_str:
+                skill_str = skill_str.strip().lower()
+
+        return stat_str, skill_str
+
+    def _get_values(self, args: str) -> (str, int):
+        try:
+            lhs, rhs = args.split("/")
+        except ValueError:
+            raise self.error_class('Specify "name/value" for stats and skills.')
+
+        if not rhs.isdigit():
+            raise self.error_class("Stat/skill values must be a number.")
+
+        return lhs, int(rhs)

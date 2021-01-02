@@ -268,6 +268,105 @@ class DefinedRoll(SimpleRoll):
         return roll_message
 
 
+class SpoofRoll(SimpleRoll):
+    def __init__(
+        self,
+        character,
+        stat,
+        stat_value,
+        skill,
+        skill_value,
+        rating,
+        npc_name,
+        **kwargs,
+    ):
+        super().__init__(character, stat, skill, rating, **kwargs)
+        self.stat_value = stat_value
+        self.skill_value = skill_value
+        self.npc_name = npc_name
+
+    def execute(self):
+        # Unlike SimpleRoll, SpoofRoll does not take knacks into account.
+        self.raw_roll = randint(1, 100)
+        stat_roll = self.get_roll_value_for_stat()
+        skill_roll = self.get_roll_value_for_skill()
+        diff_adj = self.get_roll_value_for_rating()
+
+        self.result_value = self.raw_roll + stat_roll + skill_roll - diff_adj
+
+        # TODO: crit/flub switch
+        self.natural_roll_type = self.check_for_crit_or_botch()
+        self.roll_result_object = RollResult.get_instance_for_roll(
+            self.result_value, natural_roll_type=self.natural_roll_type
+        )
+        self.result_message = self.roll_result_object.render(**self.get_context())
+
+    def do_non_crit_roll(self):
+        pass
+
+    def do_flub_roll(self):
+        pass
+
+    def get_roll_value_for_stat(self) -> int:
+        if not self.stat:
+            return 0
+
+        only_stat = not self.skill
+        return StatWeight.get_weighted_value_for_stat(self.stat_value, only_stat)
+
+    def get_roll_value_for_skill(self) -> int:
+        if not self.skill:
+            return 0
+
+        return StatWeight.get_weighted_value_for_skill(self.skill_value)
+
+    @property
+    def spoof_check_str(self):
+        if self.skill:
+            return (
+                f"{self.stat} ({self.stat_value}) and {self.skill} ({self.skill_value})"
+            )
+        return f"{self.stat} ({self.stat_value})"
+
+    @property
+    def player_check_str(self):
+        if self.skill:
+            return f"{self.stat} and {self.skill}"
+        return f"{self.stat}"
+
+    @property
+    def spoof_roll_prefix(self):
+        return f"{self.npc_name} ({self.character}) checks {self.spoof_check_str} at {self.rating}."
+
+    @property
+    def player_roll_prefix(self):
+        return f"{self.npc_name} ({self.character}) checks {self.player_check_str} at {self.rating}."
+
+    def announce_to_room(self):
+        # I foresee two different messages going out here:
+        # - To players: only seeing the stat and skill;
+        # - To GMs/Staff: the value of the spoofed rolls (for adjudication)
+        player_notifier = RoomNotifier(
+            self.character, self.character.location, to_player=True
+        )
+        gm_notifier = RoomNotifier(
+            self.character,
+            self.character.location,
+            to_gm=True,
+            to_staff=True,
+        )
+
+        player_notifier.generate()
+        gm_notifier.generate()
+
+        player_notifier.notify(
+            f"{self.player_roll_prefix} {self.result_message}", options={"roll": True}
+        )
+        gm_notifier.notify(
+            f"{self.spoof_roll_prefix} {self.result_message}", options={"roll": True}
+        )
+
+
 class BaseCheckMaker:
     roll_class = SimpleRoll
 
@@ -311,6 +410,26 @@ class PrivateCheckMaker:
         roll = self.roll_class(character=self.character, **self.kwargs)
         roll.execute()
         roll.announce_to_players()
+
+
+class SpoofCheckMaker:
+    roll_class = SpoofRoll
+
+    def __init__(self, character, roll_class=None, **kwargs):
+        self.character = character
+        self.kwargs = kwargs
+        if roll_class:
+            self.roll_class = roll_class
+
+    @classmethod
+    def perform_check_for_character(cls, character, **kwargs):
+        check = cls(character, **kwargs)
+        check.make_check_and_announce()
+
+    def make_check_and_announce(self):
+        roll = self.roll_class(character=self.character, **self.kwargs)
+        roll.execute()
+        roll.announce_to_room()
 
 
 class RollResults:
