@@ -1,4 +1,4 @@
-from random import randint
+from random import choice, randint
 from functools import total_ordering
 
 from world.conditions.modifiers_handlers import ModifierHandler
@@ -272,12 +272,12 @@ class SpoofRoll(SimpleRoll):
     def __init__(
         self,
         character,
-        stat,
-        stat_value,
-        skill,
-        skill_value,
-        rating,
-        npc_name,
+        stat: str,
+        stat_value: int,
+        skill: str,
+        skill_value: int,
+        rating: str,
+        npc_name: str,
         **kwargs,
     ):
         super().__init__(character, stat, skill, rating, **kwargs)
@@ -285,27 +285,34 @@ class SpoofRoll(SimpleRoll):
         self.skill_value = skill_value
         self.npc_name = npc_name
 
+        self.can_crit = kwargs.get("can_crit", False)
+        self.is_flub = kwargs.get("is_flub", False)
+
     def execute(self):
-        # Unlike SimpleRoll, SpoofRoll does not take knacks into account.
-        self.raw_roll = randint(1, 100)
         stat_roll = self.get_roll_value_for_stat()
         skill_roll = self.get_roll_value_for_skill()
         diff_adj = self.get_roll_value_for_rating()
 
-        self.result_value = self.raw_roll + stat_roll + skill_roll - diff_adj
+        # I don't like hardcoding these values.  Is there a better way???
+        if self.is_flub:
+            self.raw_roll = 1
+            self.result_value = choice([-100, -50, -10, 0])
+        else:
+            # Unlike SimpleRoll, SpoofRoll does not take knacks into account.
+            # (NPCs generally don't have knacks)
+            self.raw_roll = randint(1, 100)
+            self.result_value = self.raw_roll + stat_roll + skill_roll - diff_adj
 
-        # TODO: crit/flub switch
-        self.natural_roll_type = self.check_for_crit_or_botch()
+        # GMCheck rolls don't crit/botch by default
+        if self.can_crit or self.is_flub:
+            self.natural_roll_type = self.check_for_crit_or_botch()
+        else:
+            self.natural_roll_type = None
+
         self.roll_result_object = RollResult.get_instance_for_roll(
             self.result_value, natural_roll_type=self.natural_roll_type
         )
         self.result_message = self.roll_result_object.render(**self.get_context())
-
-    def do_non_crit_roll(self):
-        pass
-
-    def do_flub_roll(self):
-        pass
 
     def get_roll_value_for_stat(self) -> int:
         if not self.stat:
@@ -336,11 +343,11 @@ class SpoofRoll(SimpleRoll):
 
     @property
     def spoof_roll_prefix(self):
-        return f"{self.npc_name} ({self.character}) checks {self.spoof_check_str} at {self.rating}."
+        return f"|c{self.npc_name}|n ({self.character}'s NPC) checks {self.spoof_check_str} at {self.rating}."
 
     @property
     def player_roll_prefix(self):
-        return f"{self.npc_name} ({self.character}) checks {self.player_check_str} at {self.rating}."
+        return f"|c{self.npc_name}|n ({self.character}'s NPC) checks {self.player_check_str} at {self.rating}."
 
     def announce_to_room(self):
         # I foresee two different messages going out here:

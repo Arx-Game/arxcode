@@ -211,11 +211,15 @@ class CmdSpoofCheck(ArxCommand):
 
     Usage:
         @gmcheck <stat>/<value> [+ <skill>/<value>] at <difficulty>=<npc name>
+        @gmcheck/crit <same as above>
+        @gmcheck/flub <same as above>
 
     Performs a stat + skill at difficulty check with specified values.  Intended
     for GMs to make rolls for NPCs that don't necessarily exist as characters
-    in-game. The /crit switch allows the roll to crit. The /flub switch
-    intentionally, silently fails.
+    in-game.
+    
+    The /crit switch allows the roll to crit.
+    The /flub switch intentionally, silently fails.
 
     NPC name allows for a GM to assign a name to their roll to identify NPCs.
 
@@ -230,7 +234,7 @@ class CmdSpoofCheck(ArxCommand):
             self.msg(err)
 
     def do_spoof_roll(self):
-        args = self.lhs
+        args = self.lhs if self.rhs else self.args
         syntax_error = (
             "Usage: <stat>/<value> [+ <skill>/<value>] at difficulty=<npc name>"
         )
@@ -250,7 +254,7 @@ class CmdSpoofCheck(ArxCommand):
             raise self.error_class(f"{stat} is not a valid stat name.")
 
         if stat_value > self.STAT_LIMIT:
-            raise self.error_class("Stats cannot be higher than 5.")
+            raise self.error_class(f"Stats cannot be higher than {self.STAT_LIMIT}.")
 
         # Get skill value, if applicable (None if not)
         skill = None
@@ -261,9 +265,14 @@ class CmdSpoofCheck(ArxCommand):
                 raise self.error_class(f"{skill} is not a valid skill name.")
 
             if skill_value > self.SKILL_LIMIT:
-                raise self.error_class("Skills cannot be higher than 6.")
+                raise self.error_class(
+                    f"Skills cannot be higher than {self.SKILL_LIMIT}."
+                )
 
         npc_name = self.rhs
+
+        can_crit = "crit" in self.switches
+        is_flub = "flub" in self.switches
 
         SpoofCheckMaker.perform_check_for_character(
             self.caller,
@@ -273,6 +282,8 @@ class CmdSpoofCheck(ArxCommand):
             skill_value=skill_value,
             rating=diff_rating,
             npc_name=npc_name,
+            can_crit=can_crit,
+            is_flub=is_flub,
         )
 
     def _extract_difficulty(self, args: str, syntax: str) -> (str, DifficultyRating):

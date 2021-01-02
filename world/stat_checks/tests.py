@@ -314,10 +314,10 @@ class TestSpoofCommands(ArxCommandTest):
         )
         self.okay = RollResult.objects.create(name="okay", value=45, template=template)
         self.omg = RollResult.objects.create(
-            name="a crit yay!!!!", value=300, template=template
+            name="a critical!", value=300, template=template
         )
         self.botch = RollResult.objects.create(
-            name="a botch - boo!!!", value=-100, template=template
+            name="a botch!", value=-100, template=template
         )
 
         StatWeight.objects.create(stat_type=StatWeight.ONLY_STAT, weight=5, level=1)
@@ -337,10 +337,11 @@ class TestSpoofCommands(ArxCommandTest):
             name="strength", trait_type=Trait.STAT, category=Trait.PHYSICAL
         )
         Trait.objects.get_or_create(
-            name="athletics", trait_type=Trait.SKILL, category=Trait.PHYSICAL
+            name="athletics", trait_type=Trait.SKILL, category=Trait.COMBAT
         )
 
-    def test_stat_check_cmd_spoof(self, mock_randint):
+    @patch("random.choice")
+    def test_stat_check_cmd_spoof(self, mock_choice, mock_randint):
         mock_randint.return_value = 25
 
         syntax_error = (
@@ -375,6 +376,17 @@ class TestSpoofCommands(ArxCommandTest):
         self.call_cmd("strength+5 at normal=NPC", syntax_error)
         self.call_cmd("strength//5 + athletics/5 at normal=NPC", syntax_error)
 
-        # Actual, normal rolling from here on out.
-        result = f"NPC ({self.char1}) checks strength (5) and athletics (5) at {self.normal}. {self.char1} rolls marginal."
+        # Non-crit roll (even with a 96)
+        mock_randint.return_value = 99
+        result = f"NPC ({self.char1}'s NPC) checks strength (5) and athletics (5) at {self.normal}. {self.char1} rolls okay."
         self.call_cmd("strength/5 + athletics/5 at normal=NPC", result)
+
+        # Crit roll
+        result = f"NPC ({self.char1}'s NPC) checks strength (5) and athletics (5) at {self.normal}. Crit! {self.char1} rolls a critical!."
+        self.call_cmd("/crit strength/5 + athletics/5 at normal=NPC", result)
+
+        # Flub roll
+        mock_randint.return_value = 25
+        mock_choice.return_value = -100
+        result = f"NPC ({self.char1}'s NPC) checks strength (5) and athletics (5) at {self.normal}. Botch! {self.char1} rolls a botch!."
+        self.call_cmd("/flub strength/5 + athletics/5 at normal=NPC", result)
