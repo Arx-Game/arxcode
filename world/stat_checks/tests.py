@@ -375,7 +375,7 @@ class TestSpoofCommands(ArxCommandTest):
         self.call_cmd("strength+5 at normal=NPC", syntax_error)
         self.call_cmd("strength//5 + athletics/5 at normal=NPC", syntax_error)
 
-        # Non-crit roll (even with a 96)
+        # Non-crit roll (even with a 99)
         mock_randint.return_value = 99
         result = f"NPC ({self.char1}'s NPC) checks strength (5) and athletics (5) at {self.normal}. {self.char1} rolls okay."
         self.call_cmd("strength/5 + athletics/5 at normal=NPC", result)
@@ -386,6 +386,6 @@ class TestSpoofCommands(ArxCommandTest):
 
         # Flub roll
         mock_randint.return_value = 25
-        mock_choice.return_value = -100
+        mock_choice.return_value = self.botch
         result = f"NPC ({self.char1}'s NPC) checks strength (5) and athletics (5) at {self.normal}. Botch! {self.char1} rolls a botch!."
         self.call_cmd("/flub strength/5 + athletics/5 at normal=NPC", result)

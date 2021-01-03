@@ -293,15 +293,15 @@ class SpoofRoll(SimpleRoll):
         skill_roll = self.get_roll_value_for_skill()
         diff_adj = self.get_roll_value_for_rating()
 
-        # I don't like hardcoding these values.  Is there a better way???
+        # Flub rolls are botched rolls.
         if self.is_flub:
             self.raw_roll = 1
-            self.result_value = choice([-100, -50, -10, 0])
         else:
-            # Unlike SimpleRoll, SpoofRoll does not take knacks into account.
-            # (NPCs generally don't have knacks)
             self.raw_roll = randint(1, 100)
-            self.result_value = self.raw_roll + stat_roll + skill_roll - diff_adj
+
+        # Unlike SimpleRoll, SpoofRoll does not take knacks into account.
+        # (NPCs generally don't have knacks)
+        self.result_value = self.raw_roll + stat_roll + skill_roll - diff_adj
 
         # GMCheck rolls don't crit/botch by default
         if self.can_crit or self.is_flub:
@@ -309,9 +309,16 @@ class SpoofRoll(SimpleRoll):
         else:
             self.natural_roll_type = None
 
-        self.roll_result_object = RollResult.get_instance_for_roll(
-            self.result_value, natural_roll_type=self.natural_roll_type
-        )
+        # If the result is a flub, get the failed roll objects and pick one
+        # at random for our resulting roll.
+        if self.is_flub:
+            fail_rolls = RollResult.objects.filter(value__lt=0)
+            self.roll_result_object = choice(fail_rolls)
+        else:
+            self.roll_result_object = RollResult.get_instance_for_roll(
+                self.result_value, natural_roll_type=self.natural_roll_type
+            )
+
         self.result_message = self.roll_result_object.render(**self.get_context())
 
     def get_roll_value_for_stat(self) -> int:
