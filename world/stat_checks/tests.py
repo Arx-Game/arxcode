@@ -339,53 +339,51 @@ class TestSpoofCommands(ArxCommandTest):
             name="athletics", trait_type=Trait.SKILL, category=Trait.COMBAT
         )
 
-    @patch("random.choice")
+    @patch("world.stat_checks.check_maker.choice")
     def test_stat_check_cmd_spoof(self, mock_choice, mock_randint):
-        mock_randint.return_value = 25
-
         syntax_error = (
             "Usage: <stat>/<value> [+ <skill>/<value>] at difficulty=<npc name>"
         )
 
-        # Incorrect syntax - not a normal @check
+        # Syntax error; this is not a normal check.
         self.call_cmd("strength at normal", syntax_error)
 
-        # Incorrect syntax on including a skill
-        self.call_cmd("strength/5 and athletics/5 at normal=NPC", syntax_error)
-        self.call_cmd("strength/5 + athletics=5 at normal=NPC", syntax_error)
+        # Incorrect syntax
+        self.call_cmd("strength+5 at normal", syntax_error)
+        self.call_cmd("strength/5 and athletics/5 at normal", syntax_error)
+        self.call_cmd("strength/5 + athletics=5 at normal", syntax_error)
+        self.call_cmd("strength//5 + athletics/5 at normal", syntax_error)
 
         # Invalid stat/skill
+        self.call_cmd("str/5 + athletics/5 at normal", "str is not a valid stat name.")
+        self.call_cmd("strength/5 + ath/5 at normal", "ath is not a valid skill name.")
+
+        # Stat/skill being too high/low
         self.call_cmd(
-            "str/5 + athletics/5 at normal=NPC", "str is not a valid stat name."
+            "strength/21 + athletics/5 at normal", "Stats must be between 1 and 20."
         )
         self.call_cmd(
-            "strength/5 + ath/5 at normal=NPC", "ath is not a valid skill name."
+            "strength/5 + athletics/0 at normal", "Skills must be between 1 and 20."
         )
 
-        # Stat/skill being too high
-        self.call_cmd(
-            "strength/6 + athletics/5 at normal=NPC", "Stats cannot be higher than 5."
-        )
-        self.call_cmd(
-            "strength/5 + athletics/7 at normal=NPC", "Skills cannot be higher than 6."
-        )
+        # Valid rolls start here
+        mock_randint.return_value = 25
 
-        # Incorrect syntax on values
-        syntax_error = 'Specify "name/value" for stats and skills.'
-        self.call_cmd("strength+5 at normal=NPC", syntax_error)
-        self.call_cmd("strength//5 + athletics/5 at normal=NPC", syntax_error)
+        # Stat-only roll
+        result = f"{self.char1} checks strength (5) at {self.normal}. {self.char1} rolls marginal."
+        self.call_cmd("strength/5 at normal", result)
 
         # Non-crit roll (even with a 99)
         mock_randint.return_value = 99
-        result = f"NPC ({self.char1}'s NPC) checks strength (5) and athletics (5) at {self.normal}. {self.char1} rolls okay."
+        result = f"{self.char1} checks NPC's strength (5) and athletics (5) at {self.normal}. {self.char1} rolls okay."
         self.call_cmd("strength/5 + athletics/5 at normal=NPC", result)
 
         # Crit roll
-        result = f"NPC ({self.char1}'s NPC) checks strength (5) and athletics (5) at {self.normal}. Crit! {self.char1} rolls a critical!."
+        result = f"{self.char1} checks NPC's strength (5) and athletics (5) at {self.normal}. Crit! {self.char1} rolls a critical!."
         self.call_cmd("/crit strength/5 + athletics/5 at normal=NPC", result)
 
         # Flub roll
         mock_randint.return_value = 25
         mock_choice.return_value = self.botch
-        result = f"NPC ({self.char1}'s NPC) checks strength (5) and athletics (5) at {self.normal}. Botch! {self.char1} rolls a botch!."
+        result = f"{self.char1} checks NPC's strength (5) and athletics (5) at {self.normal}. Botch! {self.char1} rolls a botch!."
         self.call_cmd("/flub strength/5 + athletics/5 at normal=NPC", result)

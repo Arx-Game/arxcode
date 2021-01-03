@@ -277,7 +277,7 @@ class SpoofRoll(SimpleRoll):
         skill: str,
         skill_value: int,
         rating: str,
-        npc_name: str,
+        npc_name: str = None,
         **kwargs,
     ):
         super().__init__(character, stat, skill, rating, **kwargs)
@@ -312,7 +312,7 @@ class SpoofRoll(SimpleRoll):
         # If the result is a flub, get the failed roll objects and pick one
         # at random for our resulting roll.
         if self.is_flub:
-            fail_rolls = RollResult.objects.filter(value__lt=0)
+            fail_rolls = self._get_fail_rolls()
             self.roll_result_object = choice(fail_rolls)
         else:
             self.roll_result_object = RollResult.get_instance_for_roll(
@@ -350,35 +350,41 @@ class SpoofRoll(SimpleRoll):
 
     @property
     def spoof_roll_prefix(self):
-        return f"|c{self.npc_name}|n ({self.character}'s NPC) checks {self.spoof_check_str} at {self.rating}."
+        return f"{self.character} checks |c{self.npc_name}'s|n {self.spoof_check_str} at {self.rating}."
 
     @property
     def player_roll_prefix(self):
-        return f"|c{self.npc_name}|n ({self.character}'s NPC) checks {self.player_check_str} at {self.rating}."
+        return f"{self.character} checks |c{self.npc_name}'s|n {self.player_check_str} at {self.rating}."
+
+    @property
+    def no_npc_roll_prefix(self):
+        return f"{self.character} checks {self.spoof_check_str} at {self.rating}."
 
     def announce_to_room(self):
-        # I foresee two different messages going out here:
-        # - To players: only seeing the stat and skill;
-        # - To GMs/Staff: the value of the spoofed rolls (for adjudication)
-        player_notifier = RoomNotifier(
-            self.character, self.character.location, to_player=True
-        )
-        gm_notifier = RoomNotifier(
+        notifier = RoomNotifier(
             self.character,
             self.character.location,
+            to_player=True,
             to_gm=True,
             to_staff=True,
         )
 
-        player_notifier.generate()
-        gm_notifier.generate()
+        notifier.generate()
 
-        player_notifier.notify(
-            f"{self.player_roll_prefix} {self.result_message}", options={"roll": True}
-        )
-        gm_notifier.notify(
-            f"{self.spoof_roll_prefix} {self.result_message}", options={"roll": True}
-        )
+        # Build message.
+        if not self.npc_name:
+            msg = f"{self.no_npc_roll_prefix} {self.result_message}"
+        else:
+            msg = f"{self.spoof_roll_prefix} {self.result_message}"
+
+        notifier.notify(msg, options={"roll": True})
+
+    def _get_fail_rolls(self) -> list:
+        rolls = RollResult.get_all_cached_instances()
+        if not rolls:
+            return RollResult.objects.filter(value__lt=0)
+        else:
+            return [obj for obj in rolls if obj.value < 0]
 
 
 class BaseCheckMaker:

@@ -201,8 +201,8 @@ class CmdSpoofCheck(ArxCommand):
     key = "@gmcheck"
     locks = "cmd:all()"
 
-    STAT_LIMIT = 5
-    SKILL_LIMIT = 6
+    STAT_LIMIT = 20
+    SKILL_LIMIT = 20
 
     def get_help(self, caller, cmdset):
         ratings = ", ".join(str(obj) for obj in DifficultyRating.get_all_instances())
@@ -210,7 +210,7 @@ class CmdSpoofCheck(ArxCommand):
     @gmcheck
 
     Usage:
-        @gmcheck <stat>/<value> [+ <skill>/<value>] at <difficulty>=<npc name>
+        @gmcheck <stat>/<value> [+ <skill>/<value>] at <difficulty>[=<npc name>]
         @gmcheck/crit <same as above>
         @gmcheck/flub <same as above>
 
@@ -221,7 +221,7 @@ class CmdSpoofCheck(ArxCommand):
     The /crit switch allows the roll to crit.
     The /flub switch intentionally, silently fails.
 
-    NPC name allows for a GM to assign a name to their roll to identify NPCs.
+    NPC name allows for a GM to optionally assign an NPC name to their roll.
 
     Difficulty ratings are as follows: {ratings}
     """
@@ -240,7 +240,7 @@ class CmdSpoofCheck(ArxCommand):
         )
 
         if not self.rhs:
-            raise self.error_class(syntax_error)
+            npc_name = None
 
         # Split string at ' at '
         args, diff_rating = self._extract_difficulty(args, syntax_error)
@@ -253,8 +253,8 @@ class CmdSpoofCheck(ArxCommand):
         if stat and stat not in Trait.get_valid_stat_names():
             raise self.error_class(f"{stat} is not a valid stat name.")
 
-        if stat_value > self.STAT_LIMIT:
-            raise self.error_class(f"Stats cannot be higher than {self.STAT_LIMIT}.")
+        if stat_value < 1 or stat_value > self.STAT_LIMIT:
+            raise self.error_class(f"Stats must be between 1 and {self.STAT_LIMIT}.")
 
         # Get skill value, if applicable (None if not)
         skill = None
@@ -264,9 +264,9 @@ class CmdSpoofCheck(ArxCommand):
             if skill and skill not in Trait.get_valid_skill_names():
                 raise self.error_class(f"{skill} is not a valid skill name.")
 
-            if skill_value > self.SKILL_LIMIT:
+            if skill_value < 1 or skill_value > self.SKILL_LIMIT:
                 raise self.error_class(
-                    f"Skills cannot be higher than {self.SKILL_LIMIT}."
+                    f"Skills must be between 1 and {self.SKILL_LIMIT}."
                 )
 
         npc_name = self.rhs
@@ -303,16 +303,25 @@ class CmdSpoofCheck(ArxCommand):
         return lhs, difficulty
 
     def _extract_stat_skill_string(self, args: str, syntax: str) -> (str, str):
+        # If syntax error on stat only
+        if args.count("+") == 0 and args.count("/") != 1:
+            raise self.error_class(syntax)
+        # If syntax error on stat+skill
+        elif args.count("+") == 1 and args.count("/") != 2:
+            raise self.error_class(syntax)
+
         try:
             stat_str, skill_str, *remainder = args.split("+")
         except ValueError:
-            raise self.error_class(syntax)
+            stat_str = args
+            skill_str = None
         else:
             if remainder:
                 raise self.error_class(syntax)
-            stat_str = stat_str.strip().lower()
-            if skill_str:
-                skill_str = skill_str.strip().lower()
+
+        stat_str = stat_str.strip().lower()
+        if skill_str:
+            skill_str = skill_str.strip().lower()
 
         return stat_str, skill_str
 
