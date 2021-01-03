@@ -216,8 +216,8 @@ class CmdSpoofCheck(ArxCommand):
     for GMs to make rolls for NPCs that don't necessarily exist as characters
     in-game.
     
-    The /crit switch allows the roll to crit.
-    The /flub switch intentionally, silently fails.
+    The /crit switch allows the roll to crit or botch.
+    The /flub switch intentionally fails the roll.
 
     NPC name allows for a GM to optionally assign an NPC name to their roll.
 
@@ -236,9 +236,6 @@ class CmdSpoofCheck(ArxCommand):
         syntax_error = (
             "Usage: <stat>/<value> [+ <skill>/<value>] at difficulty=<npc name>"
         )
-
-        if not self.rhs:
-            npc_name = None
 
         # Split string at ' at '
         args, diff_rating = self._extract_difficulty(args, syntax_error)
@@ -267,6 +264,7 @@ class CmdSpoofCheck(ArxCommand):
                     f"Skills must be between 1 and {self.SKILL_LIMIT}."
                 )
 
+        # Will be None if not self.rhs, which is what we want.
         npc_name = self.rhs
 
         can_crit = "crit" in self.switches
