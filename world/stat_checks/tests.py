@@ -370,20 +370,23 @@ class TestSpoofCommands(ArxCommandTest):
         mock_randint.return_value = 25
 
         # Stat-only roll
-        result = f"{self.char1} checks strength (5) at {self.normal}. {self.char1} rolls marginal."
+        result = f"{self.char1} GM checks strength (5) at {self.normal}. {self.char1} rolls marginal."
         self.call_cmd("strength/5 at normal", result)
+
+        result = f"{self.char1} GM checks strength (5) and athletics (5) at {self.normal}. {self.char1} rolls marginal."
+        self.call_cmd("strength/5 + athletics/5 at normal", result)
 
         # Non-crit roll (even with a 99)
         mock_randint.return_value = 99
-        result = f"{self.char1} checks NPC's strength (5) and athletics (5) at {self.normal}. {self.char1} rolls okay."
+        result = f"{self.char1} GM checks NPC's strength (5) and athletics (5) at {self.normal}. {self.char1} rolls okay."
         self.call_cmd("strength/5 + athletics/5 at normal=NPC", result)
 
         # Crit roll
-        result = f"{self.char1} checks NPC's strength (5) and athletics (5) at {self.normal}. Crit! {self.char1} rolls a critical!."
+        result = f"{self.char1} GM checks NPC's strength (5) and athletics (5) at {self.normal}. Crit! {self.char1} rolls a critical!."
         self.call_cmd("/crit strength/5 + athletics/5 at normal=NPC", result)
 
         # Flub roll
         mock_randint.return_value = 25
         mock_choice.return_value = self.botch
-        result = f"{self.char1} checks NPC's strength (5) and athletics (5) at {self.normal}. Botch! {self.char1} rolls a botch!."
+        result = f"{self.char1} GM checks NPC's strength (5) and athletics (5) at {self.normal}. Botch! {self.char1} rolls a botch!."
         self.call_cmd("/flub strength/5 + athletics/5 at normal=NPC", result)

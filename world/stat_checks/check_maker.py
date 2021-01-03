@@ -350,15 +350,17 @@ class SpoofRoll(SimpleRoll):
 
     @property
     def spoof_roll_prefix(self):
-        return f"{self.character} checks |c{self.npc_name}'s|n {self.spoof_check_str} at {self.rating}."
+        return f"{self.character} GM checks |c{self.npc_name}'s|n {self.spoof_check_str} at {self.rating}."
 
     @property
     def player_roll_prefix(self):
-        return f"{self.character} checks |c{self.npc_name}'s|n {self.player_check_str} at {self.rating}."
+        return f"{self.character} GM checks |c{self.npc_name}'s|n {self.player_check_str} at {self.rating}."
 
     @property
     def no_npc_roll_prefix(self):
-        return f"{self.character} checks {self.spoof_check_str} at {self.rating}."
+        return (
+            f"|c{self.character}|n GM checks {self.spoof_check_str} at {self.rating}."
+        )
 
     def announce_to_room(self):
         notifier = RoomNotifier(
