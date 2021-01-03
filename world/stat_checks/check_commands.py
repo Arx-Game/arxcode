@@ -1,5 +1,3 @@
-from collections import namedtuple
-
 from commands.base import ArxCommand
 from world.stat_checks.models import DifficultyRating, DamageRating
 from world.traits.models import Trait
