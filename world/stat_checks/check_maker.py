@@ -381,7 +381,7 @@ class SpoofRoll(SimpleRoll):
 
         notifier.notify(msg, options={"roll": True})
 
-    def _get_fail_rolls(self) -> list:
+    def _get_fail_rolls(self):
         rolls = RollResult.get_all_cached_instances()
         if not rolls:
             return RollResult.objects.filter(value__lt=0)
