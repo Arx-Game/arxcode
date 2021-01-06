@@ -1,4 +1,4 @@
-from random import randint
+from random import choice, randint
 from functools import total_ordering
 
 from world.conditions.modifiers_handlers import ModifierHandler
@@ -268,6 +268,127 @@ class DefinedRoll(SimpleRoll):
         return roll_message
 
 
+class SpoofRoll(SimpleRoll):
+    def __init__(
+        self,
+        character,
+        stat: str,
+        stat_value: int,
+        skill: str,
+        skill_value: int,
+        rating: str,
+        npc_name: str = None,
+        **kwargs,
+    ):
+        super().__init__(character, stat, skill, rating, **kwargs)
+        self.stat_value = stat_value
+        self.skill_value = skill_value
+        self.npc_name = npc_name
+
+        self.can_crit = kwargs.get("can_crit", False)
+        self.is_flub = kwargs.get("is_flub", False)
+
+    def execute(self):
+        stat_roll = self.get_roll_value_for_stat()
+        skill_roll = self.get_roll_value_for_skill()
+        diff_adj = self.get_roll_value_for_rating()
+
+        # Flub rolls are botched rolls.
+        if self.is_flub:
+            self.raw_roll = 1
+        else:
+            self.raw_roll = randint(1, 100)
+
+        # Unlike SimpleRoll, SpoofRoll does not take knacks into account.
+        # (NPCs generally don't have knacks)
+        self.result_value = self.raw_roll + stat_roll + skill_roll - diff_adj
+
+        # GMCheck rolls don't crit/botch by default
+        if self.can_crit or self.is_flub:
+            self.natural_roll_type = self.check_for_crit_or_botch()
+        else:
+            self.natural_roll_type = None
+
+        # If the result is a flub, get the failed roll objects and pick one
+        # at random for our resulting roll.
+        if self.is_flub:
+            fail_rolls = self._get_fail_rolls()
+            self.roll_result_object = choice(fail_rolls)
+        else:
+            self.roll_result_object = RollResult.get_instance_for_roll(
+                self.result_value, natural_roll_type=self.natural_roll_type
+            )
+
+        self.result_message = self.roll_result_object.render(**self.get_context())
+
+    def get_roll_value_for_stat(self) -> int:
+        if not self.stat:
+            return 0
+
+        only_stat = not self.skill
+        return StatWeight.get_weighted_value_for_stat(self.stat_value, only_stat)
+
+    def get_roll_value_for_skill(self) -> int:
+        if not self.skill:
+            return 0
+
+        return StatWeight.get_weighted_value_for_skill(self.skill_value)
+
+    @property
+    def spoof_check_str(self):
+        if self.skill:
+            return (
+                f"{self.stat} ({self.stat_value}) and {self.skill} ({self.skill_value})"
+            )
+        return f"{self.stat} ({self.stat_value})"
+
+    @property
+    def player_check_str(self):
+        if self.skill:
+            return f"{self.stat} and {self.skill}"
+        return f"{self.stat}"
+
+    @property
+    def spoof_roll_prefix(self):
+        return f"{self.character} GM checks |c{self.npc_name}'s|n {self.spoof_check_str} at {self.rating}."
+
+    @property
+    def player_roll_prefix(self):
+        return f"{self.character} GM checks |c{self.npc_name}'s|n {self.player_check_str} at {self.rating}."
+
+    @property
+    def no_npc_roll_prefix(self):
+        return (
+            f"|c{self.character}|n GM checks {self.spoof_check_str} at {self.rating}."
+        )
+
+    def announce_to_room(self):
+        notifier = RoomNotifier(
+            self.character,
+            self.character.location,
+            to_player=True,
+            to_gm=True,
+            to_staff=True,
+        )
+
+        notifier.generate()
+
+        # Build message.
+        if not self.npc_name:
+            msg = f"{self.no_npc_roll_prefix} {self.result_message}"
+        else:
+            msg = f"{self.spoof_roll_prefix} {self.result_message}"
+
+        notifier.notify(msg, options={"roll": True})
+
+    def _get_fail_rolls(self):
+        rolls = RollResult.get_all_cached_instances()
+        if not rolls:
+            return RollResult.objects.filter(value__lt=0)
+        else:
+            return [obj for obj in rolls if obj.value < 0]
+
+
 class BaseCheckMaker:
     roll_class = SimpleRoll
 
@@ -311,6 +432,26 @@ class PrivateCheckMaker:
         roll = self.roll_class(character=self.character, **self.kwargs)
         roll.execute()
         roll.announce_to_players()
+
+
+class SpoofCheckMaker:
+    roll_class = SpoofRoll
+
+    def __init__(self, character, roll_class=None, **kwargs):
+        self.character = character
+        self.kwargs = kwargs
+        if roll_class:
+            self.roll_class = roll_class
+
+    @classmethod
+    def perform_check_for_character(cls, character, **kwargs):
+        check = cls(character, **kwargs)
+        check.make_check_and_announce()
+
+    def make_check_and_announce(self):
+        roll = self.roll_class(character=self.character, **self.kwargs)
+        roll.execute()
+        roll.announce_to_room()
 
 
 class RollResults:

@@ -284,3 +284,109 @@ class TestHarmCommands(ArxCommandTest):
             str(get_check_by_name(DEATH_SAVE).dice_system),
             "Add Values Together: [Use the Highest Value: [luck, willpower], armor_class, stamina]",
         )
+
+
+@patch("world.stat_checks.check_maker.randint")
+class TestSpoofCommands(ArxCommandTest):
+    """
+    Tests the @gmcheck comand under the new @check system.
+    """
+
+    def setUp(self):
+        super().setUp()
+        DifficultyRating.objects.all().delete()
+        StatWeight.objects.all().delete()
+        NaturalRollType.objects.all().delete()
+        StatCheckOutcome.objects.all().delete()
+        RollResult.objects.all().delete()
+
+        self.setup_cmd(check_commands.CmdSpoofCheck, self.char1)
+        self.mock_announce = Mock()
+        self.char1.msg_location_or_contents = self.mock_announce
+        self.options = {"roll": True}
+
+        self.easy = DifficultyRating.objects.create(name="easy", value=0)
+        self.normal = DifficultyRating.objects.create(name="Normal", value=25)
+        template = "{% if natural_roll_type %}{{natural_roll_type|title}}! {% endif %}{{character}} rolls {{result}}."
+        self.marginal = RollResult.objects.create(
+            name="marginal", value=-20, template=template
+        )
+        self.okay = RollResult.objects.create(name="okay", value=45, template=template)
+        self.omg = RollResult.objects.create(
+            name="a critical!", value=300, template=template
+        )
+        self.botch = RollResult.objects.create(
+            name="a botch!", value=-100, template=template
+        )
+
+        StatWeight.objects.create(stat_type=StatWeight.ONLY_STAT, weight=5, level=1)
+        StatWeight.objects.create(stat_type=StatWeight.STAT, weight=1, level=1)
+        StatWeight.objects.create(stat_type=StatWeight.SKILL, weight=5, level=1)
+        StatWeight.objects.create(stat_type=StatWeight.KNACK, weight=50, level=1)
+
+        NaturalRollType.objects.create(name="crit", value=99, result_shift=2)
+        NaturalRollType.objects.create(
+            name="botch",
+            value=2,
+            value_type=NaturalRollType.UPPER_BOUND,
+            result_shift=-2,
+        )
+
+        Trait.objects.get_or_create(
+            name="strength", trait_type=Trait.STAT, category=Trait.PHYSICAL
+        )
+        Trait.objects.get_or_create(
+            name="athletics", trait_type=Trait.SKILL, category=Trait.COMBAT
+        )
+
+    @patch("world.stat_checks.check_maker.choice")
+    def test_stat_check_cmd_spoof(self, mock_choice, mock_randint):
+        syntax_error = (
+            "Usage: <stat>/<value> [+ <skill>/<value>] at difficulty=<npc name>"
+        )
+
+        # Syntax error; this is not a normal check.
+        self.call_cmd("strength at normal", syntax_error)
+
+        # Incorrect syntax
+        self.call_cmd("strength+5 at normal", syntax_error)
+        self.call_cmd("strength/5 and athletics/5 at normal", syntax_error)
+        self.call_cmd("strength/5 + athletics=5 at normal", syntax_error)
+        self.call_cmd("strength//5 + athletics/5 at normal", syntax_error)
+
+        # Invalid stat/skill
+        self.call_cmd("str/5 + athletics/5 at normal", "str is not a valid stat name.")
+        self.call_cmd("strength/5 + ath/5 at normal", "ath is not a valid skill name.")
+
+        # Stat/skill being too high/low
+        self.call_cmd(
+            "strength/21 + athletics/5 at normal", "Stats must be between 1 and 20."
+        )
+        self.call_cmd(
+            "strength/5 + athletics/0 at normal", "Skills must be between 1 and 20."
+        )
+
+        # Valid rolls start here
+        mock_randint.return_value = 25
+
+        # Stat-only roll
+        result = f"{self.char1} GM checks strength (5) at {self.normal}. {self.char1} rolls marginal."
+        self.call_cmd("strength/5 at normal", result)
+
+        result = f"{self.char1} GM checks strength (5) and athletics (5) at {self.normal}. {self.char1} rolls marginal."
+        self.call_cmd("strength/5 + athletics/5 at normal", result)
+
+        # Non-crit roll (even with a 99)
+        mock_randint.return_value = 99
+        result = f"{self.char1} GM checks NPC's strength (5) and athletics (5) at {self.normal}. {self.char1} rolls okay."
+        self.call_cmd("strength/5 + athletics/5 at normal=NPC", result)
+
+        # Crit roll
+        result = f"{self.char1} GM checks NPC's strength (5) and athletics (5) at {self.normal}. Crit! {self.char1} rolls a critical!."
+        self.call_cmd("/crit strength/5 + athletics/5 at normal=NPC", result)
+
+        # Flub roll
+        mock_randint.return_value = 25
+        mock_choice.return_value = self.botch
+        result = f"{self.char1} GM checks NPC's strength (5) and athletics (5) at {self.normal}. Botch! {self.char1} rolls a botch!."
+        self.call_cmd("/flub strength/5 + athletics/5 at normal=NPC", result)
