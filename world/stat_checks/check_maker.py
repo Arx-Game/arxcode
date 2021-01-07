@@ -400,7 +400,9 @@ class SpoofRoll(SimpleRoll):
         return {
             "character": self.character,
             "npc_name": self.npc_name,
+            "roll": self.result_value,
             "result": self.roll_result_object,
+            "natural_roll_type": self.natural_roll_type,
             "crit": crit,
             "botch": botch,
         }
@@ -484,8 +486,9 @@ class RetainerRoll(SimpleRoll):
             short_name = self.retainer.name
 
         return {
-            "character": self.character,
-            "short_name": short_name,
+            "retainer": short_name,
+            "roll": self.result_value,
+            "natural_roll_type": self.natural_roll_type,
             "result": self.roll_result_object,
             "crit": crit,
             "botch": botch,
