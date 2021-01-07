@@ -388,6 +388,109 @@ class SpoofRoll(SimpleRoll):
         else:
             return [obj for obj in rolls if obj.value < 0]
 
+    def get_context(self) -> dict:
+        crit = None
+        botch = None
+        if self.natural_roll_type:
+            if self.natural_roll_type.is_crit:
+                crit = self.natural_roll_type
+            else:
+                botch = self.natural_roll_type
+
+        return {
+            "character": self.character,
+            "npc_name": self.npc_name,
+            "result": self.roll_result_object,
+            "crit": crit,
+            "botch": botch,
+        }
+
+
+class RetainerRoll(SimpleRoll):
+    def __init__(self, character, retainer, stat, skill, rating, **kwargs):
+        super().__init__(character, stat, skill, rating, **kwargs)
+
+        self.retainer = retainer
+
+    def execute(self):
+        self.raw_roll = randint(1, 100)
+
+        # Get retainer's roll values; they don't have knacks
+        # so those are ignored here.
+        stat_val = self.get_roll_value_for_stat()
+        skill_val = self.get_roll_value_for_skill()
+        rating_val = self.get_roll_value_for_rating()
+
+        self.result_value = self.raw_roll + stat_val + skill_val - rating_val
+
+        self.natural_roll_type = self.check_for_crit_or_botch()
+        self.roll_result_object = RollResult.get_instance_for_roll(
+            self.result_value, natural_roll_type=self.natural_roll_type
+        )
+
+        self.result_message = self.roll_result_object.render(**self.get_context())
+
+    def get_roll_value_for_stat(self) -> int:
+        if not self.stat:
+            return 0
+
+        stat_val = self.retainer.dbobj.traits.get_stat_value(self.stat)
+        return StatWeight.get_weighted_value_for_stat(stat_val, not self.skill)
+
+    def get_roll_value_for_skill(self) -> int:
+        if not self.skill:
+            return 0
+
+        skill_val = self.retainer.dbobj.traits.get_skill_value(self.skill)
+        return StatWeight.get_weighted_value_for_skill(skill_val)
+
+    @property
+    def check_string(self) -> str:
+        if self.skill:
+            return f"{self.stat} and {self.skill} at {self.rating}"
+        return f"{self.stat} at {self.rating}"
+
+    @property
+    def retainer_prefix(self) -> str:
+        return f"{self.character}'s retainer ({self.retainer.pretty_name}) checks {self.check_string}."
+
+    def announce_to_room(self):
+        notifier = RoomNotifier(
+            self.character,
+            self.character.location,
+            to_player=True,
+            to_gm=True,
+            to_staff=True,
+        )
+
+        msg = f"{self.retainer_prefix} {self.result_message}"
+
+        notifier.generate()
+        notifier.notify(msg, options={"roll": True})
+
+    def get_context(self) -> dict:
+        crit = None
+        botch = None
+        if self.natural_roll_type:
+            if self.natural_roll_type.is_crit:
+                crit = self.natural_roll_type
+            else:
+                botch = self.natural_roll_type
+
+        try:
+            short_name = self.retainer.name.split(",", 1)
+            short_name = short_name[0]
+        except (ValueError, IndexError):
+            short_name = self.retainer.name
+
+        return {
+            "character": self.character,
+            "short_name": short_name,
+            "result": self.roll_result_object,
+            "crit": crit,
+            "botch": botch,
+        }
+
 
 class BaseCheckMaker:
     roll_class = SimpleRoll
@@ -432,26 +535,6 @@ class PrivateCheckMaker:
         roll = self.roll_class(character=self.character, **self.kwargs)
         roll.execute()
         roll.announce_to_players()
-
-
-class SpoofCheckMaker:
-    roll_class = SpoofRoll
-
-    def __init__(self, character, roll_class=None, **kwargs):
-        self.character = character
-        self.kwargs = kwargs
-        if roll_class:
-            self.roll_class = roll_class
-
-    @classmethod
-    def perform_check_for_character(cls, character, **kwargs):
-        check = cls(character, **kwargs)
-        check.make_check_and_announce()
-
-    def make_check_and_announce(self):
-        roll = self.roll_class(character=self.character, **self.kwargs)
-        roll.execute()
-        roll.announce_to_room()
 
 
 class RollResults:
