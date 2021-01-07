@@ -454,7 +454,7 @@ class RetainerRoll(SimpleRoll):
 
     @property
     def retainer_prefix(self) -> str:
-        return f"{self.character}'s retainer ({self.retainer.pretty_name}) checks {self.check_string}."
+        return f"{self.character}'s retainer ({self.retainer.pretty_name}|n) checks {self.check_string}."
 
     def announce_to_room(self):
         notifier = RoomNotifier(
@@ -480,10 +480,16 @@ class RetainerRoll(SimpleRoll):
                 botch = self.natural_roll_type
 
         try:
-            short_name = self.retainer.name.split(",", 1)
-            short_name = short_name[0]
+            if self.retainer.name.count(",") >= 1:
+                short_name = self.retainer.pretty_name.split(",", 1)
+                short_name = short_name[0].strip() + "|n"
+            elif self.retainer.name.count("-") >= 1:
+                short_name = self.retainer.pretty_name.split("-", 1)
+                short_name = short_name[0].strip() + "|n"
+            else:
+                short_name = self.retainer.pretty_name + "|n"
         except (ValueError, IndexError):
-            short_name = self.retainer.name
+            short_name = self.retainer.pretty_name + "|n"
 
         return {
             "retainer": short_name,
