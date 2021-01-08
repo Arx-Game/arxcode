@@ -16,9 +16,7 @@ from world.stat_checks.utils import get_check_by_name
 from world.traits.models import Trait
 
 # For retainer tests
-from world.dominion.agent_commands import CmdGuards
 from world.dominion.models import Agent
-from commands.base_commands.general import CmdDitch
 
 
 @patch("world.stat_checks.check_maker.randint")
