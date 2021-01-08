@@ -487,14 +487,14 @@ class RetainerRoll(SimpleRoll):
         try:
             if self.retainer.name.count(",") >= 1:
                 short_name = self.retainer.name.split(",", 1)
-                short_name = short_name[0].strip() + "|n"
+                short_name = short_name[0].strip()
             elif self.retainer.name.count("-") >= 1:
                 short_name = self.retainer.name.split("-", 1)
-                short_name = short_name[0].strip() + "|n"
+                short_name = short_name[0].strip()
             else:
-                short_name = self.retainer.name + "|n"
+                short_name = self.retainer.name
         except (ValueError, IndexError):
-            short_name = self.retainer.name + "|n"
+            short_name = self.retainer.name
 
         return {
             "retainer": short_name,
