@@ -30,7 +30,7 @@ class CmdStatCheck(ArxCommand):
         @check/contest name1,name2,name3,etc=stat (+ skill) at <rating>
         @check/contest/here stat (+ skill) at <difficulty rating>
         @check/vs stat (+ skill) vs stat(+skill)=<target name>
-        @check/retainer <id/name>/<stat> [+ <skill>] at <difficulty rating>
+        @check/retainer <id/name>/<stat> [+ <skill>] at <difficulty rating>[=<player1>,<player2>,etc.]
 
     Normal check is at a difficulty rating. Rating must be one of 
     {difficulty_ratings}.
@@ -77,20 +77,32 @@ class CmdStatCheck(ArxCommand):
         syntax_error = "Usage: <id/name>/<stat> [+ <skill>] at <difficulty rating>"
 
         # Get retainer ID/name
-        args, retainer = self._get_retainer_from_args(self.args, syntax_error)
+        args, retainer = self._get_retainer_from_args(self.lhs, syntax_error)
         stat, skill, rating = self.get_check_values_from_args(args, syntax_error)
 
         if retainer.dbobj.location != self.caller.location:
             raise self.error_class("Your retainer must be in the room with you.")
 
-        BaseCheckMaker.perform_check_for_character(
-            character=self.caller,
-            roll_class=RetainerRoll,
-            retainer=retainer,
-            stat=stat,
-            skill=skill,
-            rating=rating,
-        )
+        if not self.rhslist:
+            BaseCheckMaker.perform_check_for_character(
+                character=self.caller,
+                receivers=None,
+                roll_class=RetainerRoll,
+                retainer=retainer,
+                stat=stat,
+                skill=skill,
+                rating=rating,
+            )
+        else:
+            PrivateCheckMaker.perform_check_for_character(
+                character=self.caller,
+                receivers=self.rhslist,
+                roll_class=RetainerRoll,
+                retainer=retainer,
+                stat=stat,
+                skill=skill,
+                rating=rating,
+            )
 
     def _get_retainer_from_args(self, args: str, syntax: str):
         try:

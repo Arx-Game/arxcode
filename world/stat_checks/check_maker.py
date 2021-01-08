@@ -409,8 +409,15 @@ class SpoofRoll(SimpleRoll):
 
 
 class RetainerRoll(SimpleRoll):
-    def __init__(self, character, retainer, stat, skill, rating, **kwargs):
-        super().__init__(character, stat, skill, rating, **kwargs)
+    def __init__(self, character, receivers, retainer, stat, skill, rating, **kwargs):
+        super().__init__(
+            character=character,
+            receivers=receivers,
+            stat=stat,
+            skill=skill,
+            rating=rating,
+            **kwargs,
+        )
 
         self.retainer = retainer
 
@@ -453,8 +460,8 @@ class RetainerRoll(SimpleRoll):
         return f"{self.stat} at {self.rating}"
 
     @property
-    def retainer_prefix(self) -> str:
-        return f"{self.character}'s retainer ({self.retainer.pretty_name}|n) checks {self.check_string}."
+    def roll_prefix(self) -> str:
+        return f"{self.character}'s retainer ({self.retainer.pretty_name}|n) checks {self.check_string}"
 
     def announce_to_room(self):
         notifier = RoomNotifier(
@@ -465,10 +472,8 @@ class RetainerRoll(SimpleRoll):
             to_staff=True,
         )
 
-        msg = f"{self.retainer_prefix} {self.result_message}"
-
         notifier.generate()
-        notifier.notify(msg, options={"roll": True})
+        notifier.notify(self.roll_message, options={"roll": True})
 
     def get_context(self) -> dict:
         crit = None

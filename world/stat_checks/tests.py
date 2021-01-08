@@ -328,6 +328,11 @@ class TestRetainerCheck(ArxCommandTest):
         result = f"{self.char1}'s retainer ({self.retainer}) checks intellect and riddles at {self.normal}. {self.retainer} rolls marginal."
         self.call_cmd("/retainer 1/intellect + riddles at normal", result)
 
+        # Private roll
+        # Char is 'staff' so is sorted to the end of the receiver list.
+        result = f"[Private Roll] {self.char1}'s retainer ({self.retainer}) checks intellect and riddles at {self.normal}. {self.retainer} rolls marginal. (Shared with: Char2, Char)"
+        self.call_cmd("/retainer 1/intellect + riddles at normal=char2", result)
+
         # Crit roll
         mock_randint.return_value = 99
         result = f"{self.char1}'s retainer ({self.retainer}) checks intellect and riddles at {self.normal}. Crit! {self.retainer} rolls a critical!."
