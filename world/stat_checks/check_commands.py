@@ -30,7 +30,8 @@ class CmdStatCheck(ArxCommand):
         @check/contest name1,name2,name3,etc=stat (+ skill) at <rating>
         @check/contest/here stat (+ skill) at <difficulty rating>
         @check/vs stat (+ skill) vs stat(+skill)=<target name>
-        @check/retainer <id/name>/<stat> [+ <skill>] at <difficulty rating>[=<player1>,<player2>,etc.]
+        @check/retainer <id/name>/<stat> [+ <skill>] at <difficulty rating>
+            [=<player1>,<player2>,etc.]
 
     Normal check is at a difficulty rating. Rating must be one of 
     {difficulty_ratings}.
