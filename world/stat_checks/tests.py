@@ -304,6 +304,17 @@ class TestRetainerCheck(ArxCommandTest):
         self.retainer.dbobj.traits.set_skill_value("riddles", 5)
         self.retainer.dbobj.summon()
 
+        self.retainer2 = self.char1.player_ob.Dominion.assets.agents.create(
+            name="Retainer2",
+            type=Agent.CHAMPION,
+            quality=0,
+            quantity=1,
+            unique=True,
+            desc="Here's a second retainer!",
+        )
+        self.retainer2.assign(self.char1.char_ob, 1)
+        self.retainer2.dbobj.summon()
+
     def test_cmd_check_retainer(self, mock_randint):
         # Syntax errors
         syntax_error = "Usage: <id/name>/<stat> [+ <skill>] at <difficulty rating>"
@@ -315,6 +326,10 @@ class TestRetainerCheck(ArxCommandTest):
         self.call_cmd("/retainer steve/intellect + riddles at normal", not_found)
         self.call_cmd("/retainer 0/intellect + riddles at normal", not_found)
 
+        # Multiple retainers found
+        too_many = "Multiple retainers found, be more specific or use ID."
+        self.call_cmd("/retainer Ret/intellect + riddles at normal", too_many)
+
         # Invalid stat/skill
         self.call_cmd(
             "/retainer 1/int + riddles at normal", "int is not a valid stat name."
@@ -322,6 +337,12 @@ class TestRetainerCheck(ArxCommandTest):
         self.call_cmd(
             "/retainer 1/intellect + rid at normal", "rid is not a valid skill name."
         )
+
+        # Retainer must be in the room with you
+        self.retainer.dbobj.location = self.room2
+        location_error = "Your retainer must be in the room with you."
+        self.call_cmd("/retainer 1/intellect + riddles at normal", location_error)
+        self.retainer.dbobj.location = self.room1
 
         # Valid rolls start here
         mock_randint.return_value = 25
