@@ -4,11 +4,14 @@ from world.traits.models import Trait
 from world.stat_checks.check_maker import (
     BaseCheckMaker,
     PrivateCheckMaker,
-    SpoofCheckMaker,
     ContestedCheckMaker,
     SimpleRoll,
+    SpoofRoll,
+    RetainerRoll,
     OpposingRolls,
 )
+
+from world.dominion.models import Agent
 
 
 class CmdStatCheck(ArxCommand):
@@ -27,6 +30,8 @@ class CmdStatCheck(ArxCommand):
         @check/contest name1,name2,name3,etc=stat (+ skill) at <rating>
         @check/contest/here stat (+ skill) at <difficulty rating>
         @check/vs stat (+ skill) vs stat(+skill)=<target name>
+        @check/retainer <id/name>/<stat> [+ <skill>] at <difficulty rating>
+            [=<player1>,<player2>,etc.]
 
     Normal check is at a difficulty rating. Rating must be one of 
     {difficulty_ratings}.
@@ -44,6 +49,8 @@ class CmdStatCheck(ArxCommand):
                 return self.do_contested_check()
             if "vs" in self.switches:
                 return self.do_opposing_checks()
+            if "retainer" in self.switches:
+                return self.do_retainer_check()
             if self.rhs:
                 return self.do_private_check()
             return self.do_normal_check()
@@ -66,6 +73,59 @@ class CmdStatCheck(ArxCommand):
         PrivateCheckMaker.perform_check_for_character(
             self.caller, stat=stat, skill=skill, rating=rating, receivers=self.rhslist
         )
+
+    def do_retainer_check(self):
+        syntax_error = "Usage: <id/name>/<stat> [+ <skill>] at <difficulty rating>"
+
+        # Get retainer ID/name
+        args, retainer = self._get_retainer_from_args(self.lhs, syntax_error)
+        stat, skill, rating = self.get_check_values_from_args(args, syntax_error)
+
+        if retainer.dbobj.location != self.caller.location:
+            raise self.error_class("Your retainer must be in the room with you.")
+
+        if not self.rhslist:
+            BaseCheckMaker.perform_check_for_character(
+                character=self.caller,
+                receivers=None,
+                roll_class=RetainerRoll,
+                retainer=retainer,
+                stat=stat,
+                skill=skill,
+                rating=rating,
+            )
+        else:
+            PrivateCheckMaker.perform_check_for_character(
+                character=self.caller,
+                receivers=self.rhslist,
+                roll_class=RetainerRoll,
+                retainer=retainer,
+                stat=stat,
+                skill=skill,
+                rating=rating,
+            )
+
+    def _get_retainer_from_args(self, args: str, syntax: str):
+        try:
+            retainer_id, args = args.split("/")
+        except ValueError:
+            raise self.error_class(syntax)
+
+        try:
+            if retainer_id.isdigit():
+                retainer = self.caller.player_ob.retainers.get(id=retainer_id)
+            else:
+                retainer = self.caller.player_ob.retainers.get(
+                    name__icontains=retainer_id
+                )
+        except Agent.DoesNotExist:
+            raise self.error_class("Unable to find retainer by that name/ID.")
+        except Agent.MultipleObjectsReturned:
+            raise self.error_class(
+                "Multiple retainers found, be more specific or use ID."
+            )
+
+        return args, retainer
 
     def get_check_values_from_args(self, args, syntax):
         try:
@@ -270,8 +330,9 @@ class CmdSpoofCheck(ArxCommand):
         can_crit = "crit" in self.switches
         is_flub = "flub" in self.switches
 
-        SpoofCheckMaker.perform_check_for_character(
+        BaseCheckMaker.perform_check_for_character(
             self.caller,
+            roll_class=SpoofRoll,
             stat=stat,
             stat_value=stat_value,
             skill=skill,
