@@ -35,7 +35,6 @@ class Traitshandler:
             "ability": defaultdict(CharacterTraitValue),
             "other": defaultdict(CharacterTraitValue),
         }
-        self._wounds_cache = defaultdict(list)
         self.initialized = False
         self.setup_caches()
 
@@ -45,8 +44,6 @@ class Traitshandler:
             return
         for trait_value in self.character.trait_values.all():
             self.add_trait_value_to_cache(trait_value)
-        for wound in self.character.health_status.wounds.all():
-            self.add_wound_to_cache(wound)
         self.initialized = True
 
     def get_value_by_trait(self, trait: Trait) -> int:
@@ -55,19 +52,21 @@ class Traitshandler:
         return self.adjust_by_wounds(self._cache[trait_type][name].value, name)
 
     def get_wound_count_for_trait_name(self, name):
-        return len(self._wounds_cache[name])
+        return len(
+            [
+                ob
+                for ob in self.character.health_status.cached_wounds
+                if ob.trait.name.lower() == name
+            ]
+        )
 
     def get_total_wound_count(self):
-        return sum(len(ob) for ob in self._wounds_cache.values())
+        return len(self.character.health_status.cached_wounds)
 
     def add_trait_value_to_cache(self, trait_value: CharacterTraitValue):
         self._cache[trait_value.trait.get_trait_type_display()][
             trait_value.trait.name.lower()
         ] = trait_value
-
-    def add_wound_to_cache(self, wound):
-        trait_name = wound.trait.name.lower()
-        self._wounds_cache[trait_name].append(wound)
 
     def adjust_by_wounds(self, value, name):
         num = self.get_wound_count_for_trait_name(name)
@@ -304,13 +303,8 @@ class Traitshandler:
         from world.traits.models import Trait
 
         trait = Trait.get_random_physical_stat()
-        wound = self.character.health_status.wounds.create(
-            severity=severity, trait=trait
-        )
-        self.add_wound_to_cache(wound)
+        self.character.health_status.wounds.create(severity=severity, trait=trait)
+        del self.character.health_status.cached_wounds
 
     def remove_wound_from_cache(self, wound):
-        try:
-            self._wounds_cache[wound.trait.name].remove(wound)
-        except ValueError:
-            pass
+        del self.character.health_status.cached_wounds

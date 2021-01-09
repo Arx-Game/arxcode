@@ -560,6 +560,14 @@ class CharacterHealthStatus(SharedMemoryModel):
     def cached_wounds(self):
         return list(self.wounds.all())
 
+    def get_wound_string(self):
+        msg = ""
+        if self.cached_wounds:
+            serious = [ob for ob in self.cached_wounds if ob.severity == Wound.SERIOUS]
+            permanent = [ob for ob in self.cached_wounds if ob not in serious]
+            msg += f"\nWounds: Serious: {len(serious)}, Permanent: {len(permanent)}"
+        return msg
+
     def heal_wound(self):
         """Heals a serious, but not permanent wound"""
         serious = [ob for ob in self.cached_wounds if ob.severity == Wound.SERIOUS]
@@ -567,13 +575,7 @@ class CharacterHealthStatus(SharedMemoryModel):
             # get a random wound from our list of serious wounds
             wound = random.choice(serious)
             # remove from caches
-            try:
-                self.character.traits.remove_wound_from_cache(wound)
-            except AttributeError:
-                pass
-            self.cached_character_wounds = [
-                ob for ob in self.cached_wounds if ob != wound
-            ]
+            self.cached_wounds = [ob for ob in self.cached_wounds if ob != wound]
             wound.delete()
 
     def revive_check(self):
