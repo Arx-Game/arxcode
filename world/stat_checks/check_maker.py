@@ -397,9 +397,13 @@ class SpoofRoll(SimpleRoll):
             else:
                 botch = self.natural_roll_type
 
+        if self.npc_name:
+            name = self.npc_name
+        else:
+            name = str(self.character)
+
         return {
-            "character": self.character,
-            "npc_name": self.npc_name,
+            "character": name,
             "roll": self.result_value,
             "result": self.roll_result_object,
             "natural_roll_type": self.natural_roll_type,
@@ -497,7 +501,7 @@ class RetainerRoll(SimpleRoll):
             short_name = self.retainer.name
 
         return {
-            "retainer": short_name,
+            "character": short_name,
             "roll": self.result_value,
             "natural_roll_type": self.natural_roll_type,
             "result": self.roll_result_object,
