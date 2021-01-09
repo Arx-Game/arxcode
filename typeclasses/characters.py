@@ -430,7 +430,9 @@ class Character(
             msg += "is in critical condition - possibly dying"
         if not self.conscious:
             msg += ", and is %s" % self.sleep_description
-        return msg + "."
+        msg += "."
+        msg += self.health_status.get_wound_string()
+        return msg
 
     def get_wound_descriptor(self, dmg):
         wound = self.get_damage_percentage(dmg)
