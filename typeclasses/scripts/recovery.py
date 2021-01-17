@@ -59,4 +59,6 @@ class Recovery(Script):
         if not last:
             return True
         now = datetime.now()
-        return (now - last).seconds >= getattr(self.runner, f"{attribute}_interval")
+        return (now - last).total_seconds() >= getattr(
+            self.runner, f"{attribute}_interval"
+        )
