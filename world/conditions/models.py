@@ -31,7 +31,6 @@ from world.stat_checks.constants import (
     HEAL_AND_CURE_WOUND,
     RECOVERY_TREATMENT,
     REVIVE_TREATMENT,
-    HEAL_EFFECTS,
     REVIVE_EFFECTS,
     AUTO_WAKE,
     HEAL,
@@ -577,6 +576,18 @@ class CharacterHealthStatus(SharedMemoryModel):
             # remove from caches
             self.cached_wounds = [ob for ob in self.cached_wounds if ob != wound]
             wound.delete()
+
+    def heal_permanent_wound_for_trait(self, trait) -> bool:
+        perm = [
+            ob
+            for ob in self.cached_wounds
+            if ob.severity == Wound.PERMANENT and ob.trait == trait
+        ]
+        if perm:
+            perm[0].delete()
+            del self.cached_wounds
+            return True
+        return False
 
     def revive_check(self):
         """The character heals"""

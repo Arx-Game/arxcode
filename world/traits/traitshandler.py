@@ -9,7 +9,7 @@ import random
 from collections import defaultdict, namedtuple
 from typing import Dict, List
 
-from world.conditions.constants import SERIOUS_WOUND
+from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
 from world.stats_and_skills import (
     _parent_abilities_,
     DOM_SKILLS,
@@ -51,14 +51,15 @@ class Traitshandler:
         trait_type = trait.get_trait_type_display()
         return self.adjust_by_wounds(self._cache[trait_type][name].value, name)
 
-    def get_wound_count_for_trait_name(self, name):
-        return len(
-            [
-                ob
-                for ob in self.character.health_status.cached_wounds
-                if ob.trait.name.lower() == name
-            ]
-        )
+    def get_wound_count_for_trait_name(self, name, perm_only=False):
+        wounds = [
+            ob
+            for ob in self.character.health_status.cached_wounds
+            if ob.trait.name.lower() == name
+        ]
+        if perm_only:
+            wounds = [ob for ob in wounds if ob.severity == PERMANENT_WOUND]
+        return len(wounds)
 
     def get_total_wound_count(self):
         return len(self.character.health_status.cached_wounds)
@@ -68,8 +69,8 @@ class Traitshandler:
             trait_value.trait.name.lower()
         ] = trait_value
 
-    def adjust_by_wounds(self, value, name):
-        num = self.get_wound_count_for_trait_name(name)
+    def adjust_by_wounds(self, value, name, perm_only=False):
+        num = self.get_wound_count_for_trait_name(name, perm_only=perm_only)
         value -= num
         if value < 0:
             return 0
@@ -78,8 +79,16 @@ class Traitshandler:
     def get_skill_value(self, name: str) -> int:
         return self.adjust_by_wounds(self.skills.get(name, 0), name)
 
-    def get_stat_value(self, name: str) -> int:
+    def get_stat_value(self, name: str, raw=False) -> int:
+        if raw:
+            return self.stats.get(name, 0)
         return self.adjust_by_wounds(self.stats.get(name, 0), name)
+
+    def check_stat_can_be_raised(self, name: str) -> bool:
+        """Returns True if the stat can be raised (or a permanent wound erased),
+        False otherwise.
+        """
+        return self.adjust_by_wounds(self.stats.get(name, 0), name, perm_only=True) < 5
 
     def set_stat_value(self, name: str, value: int):
         self.set_trait_value("stat", name, value)
@@ -142,7 +151,7 @@ class Traitshandler:
     def __getattr__(self, name):
         stat_names = Trait.get_valid_stat_names()
         if name in stat_names:
-            return self.stats.get(name, 0)
+            return self.get_stat_value(name)
         other_names = Trait.get_valid_other_names()
         if name in other_names:
             return self.other.get(name, 0)
@@ -231,7 +240,9 @@ class Traitshandler:
             raise Exception(
                 "Error in adjust_stat: %s not found as a valid stat." % field
             )
-        current = self.get_stat_value(field)
+        if value == 1 and self.cure_permanent_wound(field):
+            return
+        current = self.get_stat_value(field, raw=True)
         self.set_stat_value(field, current + value)
         self.character.db.trainer = None
 
@@ -306,5 +317,7 @@ class Traitshandler:
         self.character.health_status.wounds.create(severity=severity, trait=trait)
         del self.character.health_status.cached_wounds
 
-    def remove_wound_from_cache(self, wound):
-        del self.character.health_status.cached_wounds
+    def cure_permanent_wound(self, trait_name: str) -> bool:
+        """Returns True if we deleted a permanent wound, False otherwise"""
+        trait = Trait.get_instance_by_name(trait_name)
+        return self.character.health_status.heal_permanent_wound_for_trait(trait)
