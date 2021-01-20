@@ -3,6 +3,8 @@
 Admin commands
 
 """
+from typing import Tuple, Optional
+
 from django.conf import settings
 from django.db.models import Q, Count, Subquery, OuterRef, IntegerField
 
@@ -32,6 +34,7 @@ from web.character.models import (
     CluePlotInvolvement,
 )
 from world.dominion.models import (
+    CraftingMaterialType,
     Organization,
     RPEvent,
     Propriety,
@@ -2346,3 +2349,113 @@ class CmdAdjustFame(ArxPlayerCommand):
             inform_staff("%s %s" % (self.caller, msg))
         except CommandError as err:
             self.msg(err)
+
+
+class CmdAward(ArxPlayerCommand):
+    """
+    Award completely harmless treats to characters.
+
+    @award/material <character>=<material>,<qty>[/<inform msg>]
+    @award/resource <character>=<res type>,<qty>[/<inform msg>]
+    """
+
+    RESOURCE_TYPES = ("economic", "military", "social")
+
+    key = "@award"
+    locks = "cmd: perm(wizards)"
+    help_category = "Admin"
+
+    def func(self):
+        try:
+            if "material" in self.switches:
+                return self.do_award_material()
+            if "resource" in self.switches:
+                return self.do_award_resource()
+        except self.error_class as error:
+            self.caller.msg(error)
+
+    def do_award_material(self):
+        # Get target character.
+        char = self._get_character()
+
+        # Extract data from rhs.
+        mat_qty, inform_msg = self._extract_inform_msg()
+        material_name, qty = mat_qty.split(",")
+
+        # Validate material.
+        try:
+            material = CraftingMaterialType.objects.get(name__iexact=material_name)
+        except CraftingMaterialType.DoesNotExist:
+            raise self.error_class(
+                f"Could not find a material by the name '{material_name}'."
+            )
+
+        if not qty.isdigit():
+            raise self.error_class("Amount must be a number.")
+
+        # Give qty material to character.
+        award_amt = char.player.gain_materials(material, int(qty))
+        if not award_amt:
+            raise self.error_class(f"Failed to award {qty} {material} to {char}")
+
+        # Inform player of the award.
+        if inform_msg:
+            char.player.inform(inform_msg, category="Award")
+            staff_msg = f"{self.caller} has awarded {char} {qty} of {material}. Message sent to player: {inform_msg}"
+        else:
+            staff_msg = f"{self.caller} has awarded {char} {qty} of {material}."
+
+        # Inform staff of the award.
+        inform_staff(staff_msg)
+
+    def do_award_resource(self):
+        char = self._get_character()
+
+        # Extract data from rhs.
+        res_qty, inform_msg = self._extract_inform_msg()
+        resource, qty = res_qty.split(",")
+
+        if resource not in self.RESOURCE_TYPES:
+            raise self.error_class(f"{resource} is not a valid resource type.")
+        if not qty.isdigit():
+            raise self.error_class("Amount must be a number.")
+
+        # Increase player's resource count by the qty of the award.
+        award_amt = char.player.gain_resources(resource, int(qty))
+        if not award_amt:
+            raise self.error_class(
+                f"Failed to award {qty} {resource} resources to {char}."
+            )
+
+        # Inform player of the award.
+        if inform_msg:
+            char.player.inform(inform_msg, category="Award")
+            staff_msg = f"{self.caller} has awarded {char} {award_amt} {resource} resources. Message sent to player: {inform_msg}"
+        else:
+            staff_msg = (
+                f"{self.caller} has awarded {char} {award_amt} {resource} resources."
+            )
+
+        # Inform staff of the award.
+        inform_staff(staff_msg)
+
+    def _get_character(self):
+        target = self.caller.search(self.lhs)
+        if not target:
+            raise self.error_class
+
+        char = target.char_ob
+        if not char:
+            raise self.error_class("No active character for that player.")
+
+        return char
+
+    def _extract_inform_msg(self) -> Tuple[str, Optional[str]]:
+        """Extracts inform msg from self.rhs if it exists."""
+        try:
+            lhs, msg = self.rhs.split("/", 1)
+        except ValueError:
+            lhs = self.rhs
+            msg = None
+
+        return lhs, msg
