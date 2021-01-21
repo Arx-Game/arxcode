@@ -2407,7 +2407,7 @@ class CmdAward(ArxPlayerCommand):
         # Build the inform message.
         award_msg = f"You have been awarded {qty} of {material}."
         if inform_msg:
-            full_inform_msg = f"{award_msg}\n\nMessage from staff: {inform_msg}"
+            full_inform_msg = f"{award_msg}%r%rMessage: {inform_msg}"
             staff_msg = f"{self.caller} has awarded {char} {qty} of {material}. Message sent to player: {inform_msg}"
         else:
             full_inform_msg = award_msg
@@ -2443,7 +2443,7 @@ class CmdAward(ArxPlayerCommand):
         # Build the inform message.
         award_msg = f"You have been awarded {award_amt} {resource} resources."
         if inform_msg:
-            full_inform_msg = f"{award_msg}\n\nMessage from staff: {inform_msg}"
+            full_inform_msg = f"{award_msg}%r%rMessage: {inform_msg}"
             staff_msg = f"{self.caller} has awarded {char} {award_amt} {resource} resources. Message sent to player: {inform_msg}"
         else:
             full_inform_msg = award_msg
@@ -2472,7 +2472,7 @@ class CmdAward(ArxPlayerCommand):
         # Build the inform message.
         award_msg = f"You have been awarded {qty} silver."
         if inform_msg:
-            full_inform_msg = f"{award_msg}\n\nMessage from staff: {inform_msg}"
+            full_inform_msg = f"{award_msg}%r%rMessage: {inform_msg}"
             staff_msg = f"{self.caller} has awarded {char} {qty} silver. Message sent to player: {inform_msg}"
         else:
             full_inform_msg = award_msg

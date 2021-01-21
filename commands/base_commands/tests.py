@@ -2318,7 +2318,7 @@ class AwardCommandTests(ArxCommandTest):
             award_msg,
         )
         self.char2.player.inform.assert_called_with(
-            f"{inform_msg}\n\nMessage from staff: Here is 50 silver.",
+            f"{inform_msg}%r%rMessage: Here is 50 silver.",
             category="Silver Award",
         )
         self.assertEqual(self.char2.db.currency, 100)
