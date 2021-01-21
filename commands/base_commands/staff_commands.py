@@ -2351,37 +2351,40 @@ class CmdAdjustFame(ArxPlayerCommand):
             self.msg(err)
 
 
-class CmdAward(ArxPlayerCommand):
+class CmdAdjust(ArxPlayerCommand):
     """
-    Award completely harmless treats to characters.
+    Adjust a character's precious things.  *gollum*
 
     Usage:
-        @award/material <character>=<material>,<qty>[/<inform msg>]
-        @award/resource <character>=<res type>,<qty>[/<inform msg>]
-        @award/silver <character>=<amount>[/<inform msg>]
+        @adjust/material <character>=<material>,<amount>[/<inform msg>]
+        @adjust/resource <character>=<res type>,<amount>[/<inform msg>]
+        @adjust/silver <character>=<amount>[/<inform msg>]
 
-    Players will receive an inform stating what and how much they were
-    awarded, regardless of whether a message is written to them.
+    Players will receive an inform stating what was adjusted and
+    how much they were adjusted.  An optional message can be
+    appended to the inform.
+
+    Amount values must be integers.
     """
 
     RESOURCE_TYPES = ("economic", "military", "social")
 
-    key = "@award"
+    key = "@adjust"
     locks = "cmd: perm(wizards)"
-    help_category = "Progression"
+    help_category = "Admin"
 
     def func(self):
         try:
             if "material" in self.switches:
-                return self.do_award_material()
+                return self.do_adjust_material()
             if "resource" in self.switches:
-                return self.do_award_resource()
+                return self.do_adjust_resource()
             if "silver" in self.switches:
-                return self.do_award_silver()
+                return self.do_adjust_silver()
         except self.error_class as error:
             self.caller.msg(error)
 
-    def do_award_material(self):
+    def do_adjust_material(self):
         char = self._get_character()
 
         # Extract data from rhs.
@@ -2399,28 +2402,37 @@ class CmdAward(ArxPlayerCommand):
         # Validate quantity.
         qty = self._validate_quantity(qty_str)
 
+        # If reducing, verify that character has enough,
+        # otherwise notify caller and end.
+        if qty < 0:
+            on_hand = char.player.get_material_amt(material)
+            if abs(qty) > on_hand:
+                raise self.error_class(
+                    f"{char} only has {on_hand} of {material} on hand."
+                )
+
         # Give qty material to character.
         awarded = char.player.gain_materials(material, qty)
         if not awarded:
-            raise self.error_class(f"Failed to award {qty} of {material} to {char}.")
+            raise self.error_class(f"Failed to adjust {char}'s {material}.")
 
         # Build the inform message.
-        award_msg = f"You have been awarded {qty} of {material}."
+        adjust_msg = f"You have received an adjustment of {qty} {material}."
         if inform_msg:
-            full_inform_msg = f"{award_msg}%r%rMessage: {inform_msg}"
-            staff_msg = f"{self.caller} has awarded {char} {qty} of {material}. Message sent to player: {inform_msg}"
+            full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
+            staff_msg = f"{self.caller} has adjusted {char}'s {material} by {qty}. Message sent to player: {inform_msg}"
         else:
-            full_inform_msg = award_msg
-            staff_msg = f"{self.caller} has awarded {char} {qty} of {material}."
+            full_inform_msg = adjust_msg
+            staff_msg = f"{self.caller} has adjusted {char}'s {material} by {qty}"
 
         # Inform the player they were awarded this material.
-        char.player.inform(full_inform_msg, category="Material Award")
+        char.player.inform(full_inform_msg, category="Material Adjustment")
 
         # Inform staff of the award.
-        self.caller.msg(f"Awarded {qty} {material} to {char}.")
+        self.caller.msg(f"Adjusted {char}'s {material} by {qty}.")
         inform_staff(staff_msg)
 
-    def do_award_resource(self):
+    def do_adjust_resource(self):
         char = self._get_character()
 
         # Extract data from rhs.
@@ -2433,32 +2445,37 @@ class CmdAward(ArxPlayerCommand):
         # Validate quantity.
         qty = self._validate_quantity(qty_str)
 
-        # Increase player's resource count by the qty of the award.
-        award_amt = char.player.gain_resources(resource, qty)
-        if not award_amt:
-            raise self.error_class(
-                f"Failed to award {qty} {resource} resources to {char}."
-            )
+        # Verify player has enough if reducting.
+        # If not, tell caller what they have and end.
+        if qty < 0:
+            on_hand = char.player.get_resource_amt(resource)
+            if abs(qty) > on_hand:
+                raise self.error_class(
+                    f"{char} only has {on_hand} {resource} resources on hand."
+                )
+
+        # Adjust player's resources by the requested amount.
+        adjust_amt = char.player.gain_resources(resource, qty)
+        if not adjust_amt:
+            raise self.error_class(f"Failed to adjust {char}'s {resource} resources.")
 
         # Build the inform message.
-        award_msg = f"You have been awarded {award_amt} {resource} resources."
+        adjust_msg = f"Your {resource} resources have been adjusted by {adjust_amt}."
         if inform_msg:
-            full_inform_msg = f"{award_msg}%r%rMessage: {inform_msg}"
-            staff_msg = f"{self.caller} has awarded {char} {award_amt} {resource} resources. Message sent to player: {inform_msg}"
+            full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
+            staff_msg = f"{self.caller} has adjusted {char}'s {resource} resources by {adjust_amt}. Message sent to player: {inform_msg}"
         else:
-            full_inform_msg = award_msg
-            staff_msg = (
-                f"{self.caller} has awarded {char} {award_amt} {resource} resources."
-            )
+            full_inform_msg = adjust_msg
+            staff_msg = f"{self.caller} has adjusted {char}'s {resource} resources by {adjust_amt}."
 
         # Inform the player they were given resources!
-        char.player.inform(full_inform_msg, category="Resource Award")
+        char.player.inform(full_inform_msg, category="Resource Adjustment")
 
         # Inform staff of the award.
-        self.caller.msg(f"Awarded {award_amt} {resource} resources to {char}.")
+        self.caller.msg(f"Adjusted {char}'s {resource} resources by {adjust_amt}.")
         inform_staff(staff_msg)
 
-    def do_award_silver(self):
+    def do_adjust_silver(self):
         char = self._get_character()
 
         # Extract data from self.rhs
@@ -2466,23 +2483,29 @@ class CmdAward(ArxPlayerCommand):
 
         qty = self._validate_quantity(qty_str)
 
-        # Increase player's silver.
+        # If reducing, verify player has enough.
+        if qty < 0:
+            on_hand = int(char.db.currency)
+            if abs(qty) > on_hand:
+                raise self.error_class(f"{char} only has {on_hand} silver on hand.")
+
+        # Adjust player's silver
         char.db.currency += qty
 
         # Build the inform message.
-        award_msg = f"You have been awarded {qty} silver."
+        adjust_msg = f"Your silver has been adjusted by {qty}."
         if inform_msg:
-            full_inform_msg = f"{award_msg}%r%rMessage: {inform_msg}"
-            staff_msg = f"{self.caller} has awarded {char} {qty} silver. Message sent to player: {inform_msg}"
+            full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
+            staff_msg = f"{self.caller} has adjusted {char}'s silver by {qty}. Message sent to player: {inform_msg}"
         else:
-            full_inform_msg = award_msg
-            staff_msg = f"{self.caller} has awarded {char} X silver."
+            full_inform_msg = adjust_msg
+            staff_msg = f"{self.caller} has adjusted {char}'s silver by {qty}."
 
         # Inform the player they were given silver!
-        char.player.inform(full_inform_msg, category="Silver Award")
+        char.player.inform(full_inform_msg, category="Silver Adjustment")
 
         # Inform caller and staff of the award.
-        self.caller.msg(f"Awarded {qty} silver to {char}.")
+        self.caller.msg(f"Adjusted {char}'s silver by {qty}.")
         inform_staff(staff_msg)
 
     def _get_character(self):
@@ -2508,10 +2531,6 @@ class CmdAward(ArxPlayerCommand):
 
     def _validate_quantity(self, amount: str) -> int:
         if not amount.lstrip("-").isdigit():
-            raise self.error_class("Amount must be a number.")
+            raise self.error_class("Amount must be an integer.")
 
-        qty = int(amount)
-        if not qty > 0:
-            raise self.error_class("Amount must be greater than 0.")
-
-        return qty
+        return int(amount)
