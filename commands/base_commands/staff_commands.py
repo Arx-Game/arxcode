@@ -2355,15 +2355,20 @@ class CmdAward(ArxPlayerCommand):
     """
     Award completely harmless treats to characters.
 
-    @award/material <character>=<material>,<qty>[/<inform msg>]
-    @award/resource <character>=<res type>,<qty>[/<inform msg>]
+    Usage:
+        @award/material <character>=<material>,<qty>[/<inform msg>]
+        @award/resource <character>=<res type>,<qty>[/<inform msg>]
+        @award/silver <character>=<amount>[/<inform msg>]
+
+    Players will receive an inform stating what and how much they were
+    awarded, regardless of whether a message is written to them.
     """
 
     RESOURCE_TYPES = ("economic", "military", "social")
 
     key = "@award"
     locks = "cmd: perm(wizards)"
-    help_category = "Admin"
+    help_category = "Progression"
 
     def func(self):
         try:
@@ -2371,78 +2376,119 @@ class CmdAward(ArxPlayerCommand):
                 return self.do_award_material()
             if "resource" in self.switches:
                 return self.do_award_resource()
+            if "silver" in self.switches:
+                return self.do_award_silver()
         except self.error_class as error:
             self.caller.msg(error)
 
     def do_award_material(self):
-        # Get target character.
         char = self._get_character()
 
         # Extract data from rhs.
-        mat_qty, inform_msg = self._extract_inform_msg()
-        material_name, qty = mat_qty.split(",")
+        mat_qty, inform_msg = self._get_inform_msg()
+        material_name, qty_str = mat_qty.split(",")
 
         # Validate material.
         try:
             material = CraftingMaterialType.objects.get(name__iexact=material_name)
         except CraftingMaterialType.DoesNotExist:
             raise self.error_class(
-                f"Could not find a material by the name '{material_name}'."
+                f"Could not find a material with the name '{material_name}'."
             )
 
-        if not qty.isdigit():
-            raise self.error_class("Amount must be a number.")
+        # Validate quantity.
+        qty = self._validate_quantity(qty_str)
 
         # Give qty material to character.
-        award_amt = char.player.gain_materials(material, int(qty))
-        if not award_amt:
-            raise self.error_class(f"Failed to award {qty} {material} to {char}")
+        awarded = char.player.gain_materials(material, qty)
+        if not awarded:
+            raise self.error_class(f"Failed to award {qty} of {material} to {char}.")
 
-        # Inform player of the award.
+        # Build the inform message.
+        award_msg = f"You have been awarded {qty} of {material}."
         if inform_msg:
-            char.player.inform(inform_msg, category="Award")
+            full_inform_msg = f"{award_msg}\n\nMessage from staff: {inform_msg}"
             staff_msg = f"{self.caller} has awarded {char} {qty} of {material}. Message sent to player: {inform_msg}"
         else:
+            full_inform_msg = award_msg
             staff_msg = f"{self.caller} has awarded {char} {qty} of {material}."
 
+        # Inform the player they were awarded this material.
+        char.player.inform(full_inform_msg, category="Material Award")
+
         # Inform staff of the award.
+        self.caller.msg(f"Awarded {qty} {material} to {char}.")
         inform_staff(staff_msg)
 
     def do_award_resource(self):
         char = self._get_character()
 
         # Extract data from rhs.
-        res_qty, inform_msg = self._extract_inform_msg()
-        resource, qty = res_qty.split(",")
+        res_qty, inform_msg = self._get_inform_msg()
+        resource, qty_str = res_qty.split(",")
 
         if resource not in self.RESOURCE_TYPES:
-            raise self.error_class(f"{resource} is not a valid resource type.")
-        if not qty.isdigit():
-            raise self.error_class("Amount must be a number.")
+            raise self.error_class(f"{resource.title()} is not a valid resource type.")
+
+        # Validate quantity.
+        qty = self._validate_quantity(qty_str)
 
         # Increase player's resource count by the qty of the award.
-        award_amt = char.player.gain_resources(resource, int(qty))
+        award_amt = char.player.gain_resources(resource, qty)
         if not award_amt:
             raise self.error_class(
                 f"Failed to award {qty} {resource} resources to {char}."
             )
 
-        # Inform player of the award.
+        # Build the inform message.
+        award_msg = f"You have been awarded {award_amt} {resource} resources."
         if inform_msg:
-            char.player.inform(inform_msg, category="Award")
+            full_inform_msg = f"{award_msg}\n\nMessage from staff: {inform_msg}"
             staff_msg = f"{self.caller} has awarded {char} {award_amt} {resource} resources. Message sent to player: {inform_msg}"
         else:
+            full_inform_msg = award_msg
             staff_msg = (
                 f"{self.caller} has awarded {char} {award_amt} {resource} resources."
             )
 
+        # Inform the player they were given resources!
+        char.player.inform(full_inform_msg, category="Resource Award")
+
         # Inform staff of the award.
+        self.caller.msg(f"Awarded {award_amt} {resource} resources to {char}.")
+        inform_staff(staff_msg)
+
+    def do_award_silver(self):
+        char = self._get_character()
+
+        # Extract data from self.rhs
+        qty_str, inform_msg = self._get_inform_msg()
+
+        qty = self._validate_quantity(qty_str)
+
+        # Increase player's silver.
+        char.db.currency += qty
+
+        # Build the inform message.
+        award_msg = f"You have been awarded {qty} silver."
+        if inform_msg:
+            full_inform_msg = f"{award_msg}\n\nMessage from staff: {inform_msg}"
+            staff_msg = f"{self.caller} has awarded {char} {qty} silver. Message sent to player: {inform_msg}"
+        else:
+            full_inform_msg = award_msg
+            staff_msg = f"{self.caller} has awarded {char} X silver."
+
+        # Inform the player they were given silver!
+        char.player.inform(full_inform_msg, category="Silver Award")
+
+        # Inform caller and staff of the award.
+        self.caller.msg(f"Awarded {qty} silver to {char}.")
         inform_staff(staff_msg)
 
     def _get_character(self):
         target = self.caller.search(self.lhs)
         if not target:
-            raise self.error_class
+            raise self.error_class("Check spelling and try again.")
 
         char = target.char_ob
         if not char:
@@ -2450,7 +2496,7 @@ class CmdAward(ArxPlayerCommand):
 
         return char
 
-    def _extract_inform_msg(self) -> Tuple[str, Optional[str]]:
+    def _get_inform_msg(self) -> Tuple[str, Optional[str]]:
         """Extracts inform msg from self.rhs if it exists."""
         try:
             lhs, msg = self.rhs.split("/", 1)
@@ -2459,3 +2505,13 @@ class CmdAward(ArxPlayerCommand):
             msg = None
 
         return lhs, msg
+
+    def _validate_quantity(self, amount: str) -> int:
+        if not amount.lstrip("-").isdigit():
+            raise self.error_class("Amount must be a number.")
+
+        qty = int(amount)
+        if not qty > 0:
+            raise self.error_class("Amount must be greater than 0.")
+
+        return qty

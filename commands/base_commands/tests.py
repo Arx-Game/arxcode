@@ -2,6 +2,7 @@
 Tests for different general commands.
 """
 
+from os import name
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 
@@ -12,7 +13,7 @@ from server.utils.test_utils import (
     TestTicketMixins,
 )
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent, CraftingRecipe
+from world.dominion.models import CraftingMaterialType, RPEvent, CraftingRecipe
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
@@ -2225,3 +2226,99 @@ class HelpCommandTests(ArxCommandTest):
         expected_return += "\n\nRelated help entries: test entry\n\n"
         expected_return += "Suggested: +plots, +plot, @gmplots, support, globalscript"
         self.call_cmd("plots", expected_return, cmdset=CharacterCmdSet())
+
+
+class AwardCommandTests(ArxCommandTest):
+    def setUp(self):
+        super().setUp()
+
+        self.setup_cmd(staff_commands.CmdAward, self.account1)
+
+        CraftingMaterialType.objects.create(name="test material")
+
+        self.char2.player.inform = Mock()
+
+    @patch("typeclasses.accounts.Account.gain_materials")
+    @patch("typeclasses.accounts.Account.gain_resources")
+    def test_award_failures(self, mock_res_gain, mock_mat_gain):
+
+        not_found = "Could not find 'foo'.|Check spelling and try again."
+        self.call_cmd("/material foo=test material,1", not_found)
+
+        # Value must be a number.
+        amt_number = "Amount must be a number."
+        self.call_cmd("/material Testaccount2=test material,q", amt_number)
+        self.call_cmd("/resource Testaccount2=economic,q", amt_number)
+        self.call_cmd("/silver Testaccount2=q", amt_number)
+
+        # Value must be > 0.
+        amt_positive = "Amount must be greater than 0."
+        self.call_cmd("/material Testaccount2=test material,-1", amt_positive)
+        self.call_cmd("/resource Testaccount2=economic,-1", amt_positive)
+        self.call_cmd("/silver Testaccount2=-1", amt_positive)
+
+        # Failed to find material in db.
+        material_fail = "Could not find a material with the name 'foo'."
+        self.call_cmd("/material Testaccount2=foo,1", material_fail)
+
+        # gain_materials() "failed"
+        mock_mat_gain.return_value = False
+        mat_award_fail = "Failed to award 1 of test material to Char2."
+        self.call_cmd("/material Testaccount2=test material,1", mat_award_fail)
+
+        # Incorrect resource type
+        bad_resource = "Explosive is not a valid resource type."
+        self.call_cmd("/resource Testaccount2=explosive,1", bad_resource)
+
+        # gain_resource() "failed"
+        mock_res_gain.return_value = 0
+        res_award_fail = "Failed to award 50 economic resources to Char2."
+        self.call_cmd("/resource Testaccount2=economic,50", res_award_fail)
+
+    def test_award_resource(self):
+        self.assetowner2.economic = 0
+
+        award_msg = "Awarded 50 economic resources to Char2."
+        self.call_cmd("/resource Testaccount2=economic,50", award_msg)
+
+        inform_msg = "You have been awarded 50 economic resources."
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Resource Award"
+        )
+
+        self.assertEqual(self.assetowner2.economic, 50)
+
+    def test_award_material(self):
+        award_msg = "Awarded 50 test material to Char2."
+        self.call_cmd("/material Testaccount2=test material,50", award_msg)
+
+        inform_msg = "You have been awarded 50 of test material."
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Material Award"
+        )
+
+        mat_type = CraftingMaterialType.objects.get(name__iexact="test material")
+        material = self.assetowner2.materials.get(type=mat_type)
+        self.assertEqual(material.amount, 50)
+
+    def test_award_silver(self):
+        self.char2.db.currency = 0
+
+        award_msg = "Awarded 50 silver to Char2."
+        self.call_cmd("/silver Testaccount2=50", award_msg)
+
+        inform_msg = "You have been awarded 50 silver."
+        self.char2.player.inform.assert_called_with(inform_msg, category="Silver Award")
+
+        self.assertEqual(self.char2.db.currency, 50)
+
+        # Test with message this time.
+        self.call_cmd(
+            "/silver TestAccount2=50/Here is 50 silver.",
+            award_msg,
+        )
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}\n\nMessage from staff: Here is 50 silver.",
+            category="Silver Award",
+        )
+        self.assertEqual(self.char2.db.currency, 100)
