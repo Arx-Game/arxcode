@@ -2,7 +2,6 @@
 Tests for different general commands.
 """
 
-from os import name
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
 
