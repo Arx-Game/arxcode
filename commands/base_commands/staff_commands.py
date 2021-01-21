@@ -2423,7 +2423,7 @@ class CmdAdjust(ArxPlayerCommand):
             staff_msg = f"{self.caller} has adjusted {char}'s {material} by {qty}. Message sent to player: {inform_msg}"
         else:
             full_inform_msg = adjust_msg
-            staff_msg = f"{self.caller} has adjusted {char}'s {material} by {qty}"
+            staff_msg = f"{self.caller} has adjusted {char}'s {material} by {qty}."
 
         # Inform the player they were awarded this material.
         char.player.inform(full_inform_msg, category="Material Adjustment")
