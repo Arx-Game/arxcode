@@ -2405,14 +2405,14 @@ class CmdAdjust(ArxPlayerCommand):
         # If reducing, verify that character has enough,
         # otherwise notify caller and end.
         if qty < 0:
-            on_hand = char.player.get_material_amt(material)
+            on_hand = account.get_material_amt(material)
             if abs(qty) > on_hand:
                 raise self.error_class(
                     f"{char} only has {on_hand} of {material} on hand."
                 )
 
         # Give qty material to character.
-        awarded = char.player.gain_materials(material, qty)
+        awarded = account.gain_materials(material, qty)
         if not awarded:
             raise self.error_class(f"Failed to adjust {char}'s {material}.")
 
@@ -2448,14 +2448,14 @@ class CmdAdjust(ArxPlayerCommand):
         # Verify player has enough if reducting.
         # If not, tell caller what they have and end.
         if qty < 0:
-            on_hand = char.player.get_resource_amt(resource)
+            on_hand = account.get_resource_amt(resource)
             if abs(qty) > on_hand:
                 raise self.error_class(
                     f"{char} only has {on_hand} {resource} resources on hand."
                 )
 
         # Adjust player's resources by the requested amount.
-        adjust_amt = char.player.gain_resources(resource, qty)
+        adjust_amt = account.gain_resources(resource, qty)
         if not adjust_amt:
             raise self.error_class(f"Failed to adjust {char}'s {resource} resources.")
 
