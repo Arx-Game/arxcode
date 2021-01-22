@@ -8,7 +8,7 @@ from typing import Tuple, Optional
 from django.conf import settings
 from django.db.models import Q, Count, Subquery, OuterRef, IntegerField
 
-from evennia.server.sessionhandler import PSTATUS, SESSIONS
+from evennia.server.sessionhandler import SESSIONS
 from evennia.utils import evtable
 from evennia.accounts.models import AccountDB
 from evennia.objects.models import ObjectDB
