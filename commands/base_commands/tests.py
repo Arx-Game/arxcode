@@ -2272,8 +2272,8 @@ class AdjustCommandTests(ArxCommandTest):
         self.assetowner2.economic = 0
 
         # Test increase.
-        adjust_msg = "Adjusted Char2's economic resources by 50."
-        inform_msg = "Your economic resources have been adjusted by 50."
+        adjust_msg = "Awarded 50 economic resources to Char2."
+        inform_msg = "You have been awarded 50 economic resources."
         self.call_cmd("/resource Testaccount2=economic,50", adjust_msg)
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Resource Adjustment"
@@ -2285,8 +2285,8 @@ class AdjustCommandTests(ArxCommandTest):
         self.call_cmd("/resource Testaccount2=economic,-75", res_adjust_fail)
 
         # Test reduction.
-        adjust_msg = "Adjusted Char2's economic resources by -50."
-        inform_msg = "Your economic resources have been adjusted by -50."
+        adjust_msg = "Deducted 50 economic resources from Char2."
+        inform_msg = "You have been deducted 50 economic resources."
         self.call_cmd("/resource Testaccount2=economic,-50", adjust_msg)
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Resource Adjustment"
@@ -2295,8 +2295,8 @@ class AdjustCommandTests(ArxCommandTest):
 
     def test_adjust_material(self):
         # Test increase.
-        adjust_msg = "Adjusted Char2's test material by 50."
-        inform_msg = "You have received an adjustment of 50 test material."
+        adjust_msg = "Awarded 50 test material to Char2."
+        inform_msg = "You have been awarded 50 test material."
         self.call_cmd("/material Testaccount2=test material,50", adjust_msg)
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Material Adjustment"
@@ -2312,8 +2312,8 @@ class AdjustCommandTests(ArxCommandTest):
         self.call_cmd("/material Testaccount2=test material,-75", mat_adjust_fail)
 
         # Test reduction.
-        adjust_msg = "Adjusted Char2's test material by -50."
-        inform_msg = "You have received an adjustment of -50 test material."
+        adjust_msg = "Deducted 50 test material from Char2."
+        inform_msg = "You have been deducted 50 test material."
         self.call_cmd("/material Testaccount2=test material,-50", adjust_msg)
         self.assertEqual(material.amount, 0)
         self.char2.player.inform.assert_called_with(
@@ -2324,8 +2324,8 @@ class AdjustCommandTests(ArxCommandTest):
         self.char2.db.currency = 0
 
         # Test increase.
-        adjust_msg = "Adjusted Char2's silver by 50."
-        inform_msg = "Your silver has been adjusted by 50."
+        adjust_msg = "Awarded 50 silver to Char2."
+        inform_msg = "You have been awarded 50 silver."
         self.call_cmd("/silver Testaccount2=50", adjust_msg)
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Silver Adjustment"
@@ -2349,8 +2349,8 @@ class AdjustCommandTests(ArxCommandTest):
         self.call_cmd("/silver Testaccount2=-150", mny_adjust_fail)
 
         # Test reduction.
-        adjust_msg = "Adjusted Char2's silver by -100."
-        inform_msg = "Your silver has been adjusted by -100."
+        adjust_msg = "Deducted 100 silver from Char2."
+        inform_msg = "You have been deducted 100 silver."
         self.call_cmd("/silver Testaccount2=-100", adjust_msg)
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Silver Adjustment"

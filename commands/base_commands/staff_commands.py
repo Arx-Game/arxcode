@@ -8,7 +8,7 @@ from typing import Tuple, Optional
 from django.conf import settings
 from django.db.models import Q, Count, Subquery, OuterRef, IntegerField
 
-from evennia.server.sessionhandler import SESSIONS
+from evennia.server.sessionhandler import PSTATUS, SESSIONS
 from evennia.utils import evtable
 from evennia.accounts.models import AccountDB
 from evennia.objects.models import ObjectDB
@@ -2417,19 +2417,19 @@ class CmdAdjust(ArxPlayerCommand):
             raise self.error_class(f"Failed to adjust {char}'s {material}.")
 
         # Build the inform message.
-        adjust_msg = f"You have received an adjustment of {qty} {material}."
+        adjust_msg = self._build_adjust_message(qty, f"{material}")
         if inform_msg:
             full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
-            staff_msg = f"{self.caller} has adjusted {char}'s {material} by {qty}. Message sent to player: {inform_msg}"
+            staff_msg = self._build_staff_message(char, qty, f"{material}", inform_msg)
         else:
             full_inform_msg = adjust_msg
-            staff_msg = f"{self.caller} has adjusted {char}'s {material} by {qty}."
+            staff_msg = self._build_staff_message(char, qty, f"{material}", None)
 
         # Inform the player they were awarded this material.
         char.player.inform(full_inform_msg, category="Material Adjustment")
 
         # Inform staff of the award.
-        self.caller.msg(f"Adjusted {char}'s {material} by {qty}.")
+        self.caller.msg(self._build_caller_message(char, qty, f"{material}"))
         inform_staff(staff_msg)
 
     def do_adjust_resource(self):
@@ -2460,19 +2460,25 @@ class CmdAdjust(ArxPlayerCommand):
             raise self.error_class(f"Failed to adjust {char}'s {resource} resources.")
 
         # Build the inform message.
-        adjust_msg = f"Your {resource} resources have been adjusted by {adjust_amt}."
+        adjust_msg = self._build_adjust_message(adjust_amt, f"{resource} resources")
         if inform_msg:
             full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
-            staff_msg = f"{self.caller} has adjusted {char}'s {resource} resources by {adjust_amt}. Message sent to player: {inform_msg}"
+            staff_msg = self._build_staff_message(
+                char, adjust_amt, f"{resource} resources", inform_msg
+            )
         else:
             full_inform_msg = adjust_msg
-            staff_msg = f"{self.caller} has adjusted {char}'s {resource} resources by {adjust_amt}."
+            staff_msg = self._build_staff_message(
+                char, adjust_amt, f"{resource} resources", None
+            )
 
         # Inform the player they were given resources!
         char.player.inform(full_inform_msg, category="Resource Adjustment")
 
         # Inform staff of the award.
-        self.caller.msg(f"Adjusted {char}'s {resource} resources by {adjust_amt}.")
+        self.caller.msg(
+            self._build_caller_message(char, adjust_amt, f"{resource} resources")
+        )
         inform_staff(staff_msg)
 
     def do_adjust_silver(self):
@@ -2493,19 +2499,19 @@ class CmdAdjust(ArxPlayerCommand):
         char.db.currency += qty
 
         # Build the inform message.
-        adjust_msg = f"Your silver has been adjusted by {qty}."
+        adjust_msg = self._build_adjust_message(qty, "silver")
         if inform_msg:
             full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
-            staff_msg = f"{self.caller} has adjusted {char}'s silver by {qty}. Message sent to player: {inform_msg}"
+            staff_msg = self._build_staff_message(char, qty, "silver", inform_msg)
         else:
             full_inform_msg = adjust_msg
-            staff_msg = f"{self.caller} has adjusted {char}'s silver by {qty}."
+            staff_msg = self._build_staff_message(char, qty, "silver", None)
 
         # Inform the player they were given silver!
         char.player.inform(full_inform_msg, category="Silver Adjustment")
 
         # Inform caller and staff of the award.
-        self.caller.msg(f"Adjusted {char}'s silver by {qty}.")
+        self.caller.msg(self._build_caller_message(char, qty, "silver"))
         inform_staff(staff_msg)
 
     def _get_character(self):
@@ -2534,3 +2540,28 @@ class CmdAdjust(ArxPlayerCommand):
             raise self.error_class("Amount must be an integer.")
 
         return int(amount)
+
+    def _build_adjust_message(self, qty: int, item: str) -> str:
+        if qty > 0:
+            return f"You have been awarded {qty} {item}."
+        else:
+            return f"You have been deducted {abs(qty)} {item}."
+
+    def _build_staff_message(
+        self, char, qty: int, item: str, inform_msg: Optional[str]
+    ) -> str:
+        if qty > 0:
+            staff_msg = f"{self.caller} has awarded {qty} {item} to {char}."
+        else:
+            staff_msg = f"{self.caller} has deducted {abs(qty)} {item} from {char}."
+
+        if inform_msg:
+            staff_msg = f"{staff_msg} Message sent to player: {inform_msg}"
+
+        return staff_msg
+
+    def _build_caller_message(self, char, qty, item) -> str:
+        if qty > 0:
+            return f"Awarded {qty} {item} to {char}."
+        else:
+            return f"Deducted {abs(qty)} {item} from {char}."
