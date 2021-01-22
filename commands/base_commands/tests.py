@@ -2336,7 +2336,7 @@ class AdjustCommandTests(ArxCommandTest):
         # Test with message this time.
         self.call_cmd(
             "/silver Testaccount2=50/Here is 50 silver.",
-            adjust_msg,
+            f"{adjust_msg} Message sent to player: Here is 50 silver.",
         )
         self.char2.player.inform.assert_called_with(
             f"{inform_msg}%r%rMessage: Here is 50 silver.",

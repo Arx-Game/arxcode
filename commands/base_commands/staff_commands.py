@@ -2429,7 +2429,8 @@ class CmdAdjust(ArxPlayerCommand):
         account.inform(full_inform_msg, category="Material Adjustment")
 
         # Inform staff of the award.
-        self.caller.msg(self._build_caller_message(char, qty, f"{material}"))
+        caller_msg = self._build_caller_message(char, qty, f"{material}", inform_msg)
+        self.caller.msg(caller_msg)
         inform_staff(staff_msg)
 
     def do_adjust_resource(self):
@@ -2472,13 +2473,14 @@ class CmdAdjust(ArxPlayerCommand):
                 char, adjust_amt, f"{resource} resources", None
             )
 
-        # Inform the player they were given resources!
+        # Inform the player their resource was adjusted.
         account.inform(full_inform_msg, category="Resource Adjustment")
 
         # Inform staff of the award.
-        self.caller.msg(
-            self._build_caller_message(char, adjust_amt, f"{resource} resources")
+        caller_msg = self._build_caller_message(
+            char, adjust_amt, f"{resource} resources", inform_msg
         )
+        self.caller.msg(caller_msg)
         inform_staff(staff_msg)
 
     def do_adjust_silver(self):
@@ -2507,11 +2509,12 @@ class CmdAdjust(ArxPlayerCommand):
             full_inform_msg = adjust_msg
             staff_msg = self._build_staff_message(char, qty, "silver", None)
 
-        # Inform the player they were given silver!
+        # Inform the player their silver was adjusted.
         account.inform(full_inform_msg, category="Silver Adjustment")
 
         # Inform caller and staff of the award.
-        self.caller.msg(self._build_caller_message(char, qty, "silver"))
+        caller_msg = self._build_caller_message(char, qty, "silver", inform_msg)
+        self.caller.msg(caller_msg)
         inform_staff(staff_msg)
 
     def _get_character(self):
@@ -2560,8 +2563,15 @@ class CmdAdjust(ArxPlayerCommand):
 
         return staff_msg
 
-    def _build_caller_message(self, char, qty, item) -> str:
+    def _build_caller_message(
+        self, char, qty: int, item: str, inform_msg: Optional[str]
+    ) -> str:
         if qty > 0:
-            return f"Awarded {qty} {item} to {char}."
+            caller_msg = f"Awarded {qty} {item} to {char}."
         else:
-            return f"Deducted {abs(qty)} {item} from {char}."
+            caller_msg = f"Deducted {abs(qty)} {item} from {char}."
+
+        if inform_msg:
+            caller_msg = f"{caller_msg} Message sent to player: {inform_msg}"
+
+        return caller_msg
