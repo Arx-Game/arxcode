@@ -2385,7 +2385,7 @@ class CmdAdjust(ArxPlayerCommand):
             self.caller.msg(error)
 
     def do_adjust_material(self):
-        char = self._get_character()
+        account, char = self._get_character()
 
         # Extract data from rhs.
         mat_qty, inform_msg = self._get_inform_msg()
@@ -2426,14 +2426,14 @@ class CmdAdjust(ArxPlayerCommand):
             staff_msg = self._build_staff_message(char, qty, f"{material}", None)
 
         # Inform the player they were awarded this material.
-        char.player.inform(full_inform_msg, category="Material Adjustment")
+        account.inform(full_inform_msg, category="Material Adjustment")
 
         # Inform staff of the award.
         self.caller.msg(self._build_caller_message(char, qty, f"{material}"))
         inform_staff(staff_msg)
 
     def do_adjust_resource(self):
-        char = self._get_character()
+        account, char = self._get_character()
 
         # Extract data from rhs.
         res_qty, inform_msg = self._get_inform_msg()
@@ -2473,7 +2473,7 @@ class CmdAdjust(ArxPlayerCommand):
             )
 
         # Inform the player they were given resources!
-        char.player.inform(full_inform_msg, category="Resource Adjustment")
+        account.inform(full_inform_msg, category="Resource Adjustment")
 
         # Inform staff of the award.
         self.caller.msg(
@@ -2482,7 +2482,7 @@ class CmdAdjust(ArxPlayerCommand):
         inform_staff(staff_msg)
 
     def do_adjust_silver(self):
-        char = self._get_character()
+        account, char = self._get_character()
 
         # Extract data from self.rhs
         qty_str, inform_msg = self._get_inform_msg()
@@ -2508,22 +2508,22 @@ class CmdAdjust(ArxPlayerCommand):
             staff_msg = self._build_staff_message(char, qty, "silver", None)
 
         # Inform the player they were given silver!
-        char.player.inform(full_inform_msg, category="Silver Adjustment")
+        account.inform(full_inform_msg, category="Silver Adjustment")
 
         # Inform caller and staff of the award.
         self.caller.msg(self._build_caller_message(char, qty, "silver"))
         inform_staff(staff_msg)
 
     def _get_character(self):
-        target = self.caller.search(self.lhs)
-        if not target:
+        account = self.caller.search(self.lhs)
+        if not account:
             raise self.error_class("Check spelling and try again.")
 
-        char = target.char_ob
+        char = account.char_ob
         if not char:
             raise self.error_class("No active character for that player.")
 
-        return char
+        return account, char
 
     def _get_inform_msg(self) -> Tuple[str, Optional[str]]:
         """Extracts inform msg from self.rhs if it exists."""
