@@ -2252,7 +2252,7 @@ class AdjustCommandTests(ArxCommandTest):
             "Usage: @adjust/resource <character>=<res type>,<amount>[/<inform msg>]"
         )
         self.call_cmd("/material Testaccount2=test material,,5", mat_syntax_error)
-        self.call_cmd("/resource Testaccount2=economic..5")
+        self.call_cmd("/resource Testaccount2=economic..5", res_syntax_error)
 
         # Value must be a number.
         amt_number = "Amount must be an integer."
@@ -2290,9 +2290,20 @@ class AdjustCommandTests(ArxCommandTest):
         )
         self.assertEqual(self.assetowner2.economic, 50)
 
+        # Test award with message.
+        self.call_cmd(
+            "/resource Testaccount2=economic,50/Here is 50 resources.",
+            f"{adjust_msg} Message sent to player: Here is 50 resources.",
+        )
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}%r%rMessage: Here is 50 resources.",
+            category="Resource Adjustment",
+        )
+        self.assertEqual(self.assetowner2.economic, 100)
+
         # Test reduction failure.
-        res_adjust_fail = "Char2 only has 50 economic resources on hand."
-        self.call_cmd("/resource Testaccount2=economic,-75", res_adjust_fail)
+        res_adjust_fail = "Char2 only has 100 economic resources on hand."
+        self.call_cmd("/resource Testaccount2=economic,-150", res_adjust_fail)
 
         # Test reduction.
         adjust_msg = "Deducted 50 economic resources from Char2."
@@ -2301,7 +2312,7 @@ class AdjustCommandTests(ArxCommandTest):
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Resource Adjustment"
         )
-        self.assertEqual(self.assetowner2.economic, 0)
+        self.assertEqual(self.assetowner2.economic, 50)
 
     def test_adjust_material(self):
         # Test increase.
@@ -2317,15 +2328,26 @@ class AdjustCommandTests(ArxCommandTest):
         material = self.assetowner2.materials.get(type=mat_type)
         self.assertEqual(material.amount, 50)
 
+        # Test award with message.
+        self.call_cmd(
+            "/material Testaccount2=test material,50/Here is 50 material.",
+            f"{adjust_msg} Message sent to player: Here is 50 material.",
+        )
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}%r%rMessage: Here is 50 material.",
+            category="Material Adjustment",
+        )
+        self.assertEqual(material.amount, 100)
+
         # Test reduction failure.
-        mat_adjust_fail = "Char2 only has 50 of test material on hand."
-        self.call_cmd("/material Testaccount2=test material,-75", mat_adjust_fail)
+        mat_adjust_fail = "Char2 only has 100 of test material on hand."
+        self.call_cmd("/material Testaccount2=test material,-150", mat_adjust_fail)
 
         # Test reduction.
         adjust_msg = "Deducted 50 test material from Char2."
         inform_msg = "You have been deducted 50 test material."
         self.call_cmd("/material Testaccount2=test material,-50", adjust_msg)
-        self.assertEqual(material.amount, 0)
+        self.assertEqual(material.amount, 50)
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Material Adjustment"
         )
