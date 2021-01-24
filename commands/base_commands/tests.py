@@ -2244,6 +2244,16 @@ class AdjustCommandTests(ArxCommandTest):
         not_found = "Could not find 'foo'.|Check spelling and try again."
         self.call_cmd("/material foo=test material,1", not_found)
 
+        # Syntax error
+        mat_syntax_error = (
+            "Usage: @adjust/material <character>=<material>,<amount>[/<inform msg>]"
+        )
+        res_syntax_error = (
+            "Usage: @adjust/resource <character>=<res type>,<amount>[/<inform msg>]"
+        )
+        self.call_cmd("/material Testaccount2=test material,,5", mat_syntax_error)
+        self.call_cmd("/resource Testaccount2=economic..5")
+
         # Value must be a number.
         amt_number = "Amount must be an integer."
         self.call_cmd("/material Testaccount2=test material,q", amt_number)

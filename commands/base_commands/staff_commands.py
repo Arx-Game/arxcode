@@ -2385,11 +2385,18 @@ class CmdAdjust(ArxPlayerCommand):
             self.caller.msg(error)
 
     def do_adjust_material(self):
+        syntax_error = (
+            "Usage: @adjust/material <character>=<material>,<amount>[/<inform msg>]"
+        )
+
         account, char = self._get_character()
 
         # Extract data from rhs.
-        mat_qty, inform_msg = self._get_inform_msg()
-        material_name, qty_str = mat_qty.split(",")
+        try:
+            mat_qty, inform_msg = self._get_inform_msg()
+            material_name, qty_str = mat_qty.split(",")
+        except ValueError:
+            raise self.error_class(syntax_error)
 
         # Validate material.
         try:
@@ -2434,11 +2441,18 @@ class CmdAdjust(ArxPlayerCommand):
         inform_staff(staff_msg)
 
     def do_adjust_resource(self):
+        syntax_error = (
+            "Usage: @adjust/resource <character>=<res type>,<amount>[/<inform msg>]"
+        )
+
         account, char = self._get_character()
 
         # Extract data from rhs.
-        res_qty, inform_msg = self._get_inform_msg()
-        resource, qty_str = res_qty.split(",")
+        try:
+            res_qty, inform_msg = self._get_inform_msg()
+            resource, qty_str = res_qty.split(",")
+        except ValueError:
+            raise self.error_class(syntax_error)
 
         if resource not in self.RESOURCE_TYPES:
             raise self.error_class(f"{resource.title()} is not a valid resource type.")
