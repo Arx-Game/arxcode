@@ -14,7 +14,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
     def test_outfit_cmd(self, mock_dice_check, mock_get_week):
         mock_get_week.return_value = 1
         fake_dt = self.fake_datetime
-        self.mask1.db.quality_level = 11
+        self.mask1.craft_handler.quality_level = 11
         to_be_worn = [
             self.top2,
             self.catsuit1,
@@ -124,7 +124,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         mock_get_week.return_value = 1
         fake_dt = self.fake_datetime
         self.obj1.location, self.top1.location = self.char1, self.char1
-        self.mask1.db.quality_level = 11
+        self.mask1.craft_handler.quality_level = 11
         ap_cost = self.top1.fashion_ap_cost
         self.setup_cmd(fashion_commands.CmdFashionModel, self.char1)
         self.call_cmd("catsuit", "Please specify <item>=<organization>")
@@ -138,14 +138,14 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
             "Top1 was wrought by no mortal hand, and from it no mortal fame can be "
             "earned.",
         )
-        self.top1.db.recipe = 1
-        self.top1.db.crafted_by = self.char1
+        self.top1.craft_handler.recipe = 1
+        self.top1.craft_handler.crafted_by = self.char1
         self.call_cmd(
             "Top1=Orgtest",
             "Top1 was wrought by no mortal hand, and from it no mortal fame can be "
             "earned.",
         )
-        self.top1.db.crafted_by = self.char2
+        self.top1.craft_handler.crafted_by = self.char2
         self.call_cmd(
             "Top1=Orgtest", "Please wear Top1 before trying to model it as fashion."
         )

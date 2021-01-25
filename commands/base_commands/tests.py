@@ -18,7 +18,7 @@ from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
 from web.character.models import PlayerAccount, Clue, Revelation
 
-from typeclasses.readable.readable import CmdWrite
+from typeclasses.readable.readable_commands import CmdWrite
 
 from . import (
     story_actions,
@@ -773,7 +773,7 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("a fox mask in purse1", "You'll have to unlock Purse1 first.")
         self.purse1.db.locked = False
         self.call_cmd("hairpins1 in purse1", "You put Hairpins1 in Purse1.")
-        self.mask1.db.quality_level = 11
+        self.mask1.craft_handler.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
@@ -819,7 +819,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.obj1.location, self.char2)
         self.assertEqual(self.char2.db.currency, 5.0)
         self.assertEqual(self.purse1.db.currency, 25.0)
-        self.mask1.db.quality_level = 11
+        self.mask1.craft_handler.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
@@ -917,7 +917,7 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/cancel", f"{head}Your trade has been cancelled.")
         self.assertEqual(self.char2.ndb.personal_trade_in_progress, None)
         self.top2.wear(self.char2)
-        self.mask1.db.quality_level = 11
+        self.mask1.craft_handler.quality_level = 11
         self.mask1.wear(self.char2)
         self.call_cmd(
             "Char",

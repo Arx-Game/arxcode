@@ -186,8 +186,8 @@ class Wieldable(Wearable):
         If we have crafted armor, return the value from the recipe and
         quality.
         """
-        quality = self.quality_level
-        recipe = self.recipe
+        quality = self.craft_handler.quality_level
+        recipe = self.craft_handler.recipe
         diffmod = self.db.difficulty_mod or 0
         flat_damage_bonus = self.db.flat_damage_bonus or 0
         if self.db.attack_skill == "huge wpn":
@@ -201,7 +201,7 @@ class Wieldable(Wearable):
             return self.db.damage_bonus or 0, diffmod, flat_damage_bonus
         base = float(recipe.resultsdict.get("baseval", 0))
         if quality >= 10:
-            crafter = self.db.crafted_by
+            crafter = self.craft_handler.crafted_by
             if (
                 (recipe.level > 3)
                 or not crafter
@@ -267,7 +267,7 @@ class Wieldable(Wearable):
 
     @property
     def difficulty_mod(self):
-        if not self.db.recipe or self.db.ignore_crafted:
+        if not self.craft_handler.recipe or self.db.ignore_crafted:
             return self.db.difficulty_mod or 0
         if self.ndb.cached_difficulty_mod is not None:
             return self.ndb.cached_difficulty_mod
@@ -275,7 +275,7 @@ class Wieldable(Wearable):
 
     @property
     def flat_damage(self):
-        if not self.db.recipe or self.db.ignore_crafted:
+        if not self.craft_handler.recipe or self.db.ignore_crafted:
             return self.db.flat_damage_bonus or 0
         if self.ndb.cached_flat_damage_bonus is not None:
             return self.ndb.cached_flat_damage_bonus

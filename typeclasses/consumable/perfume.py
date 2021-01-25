@@ -29,7 +29,7 @@ class Perfume(Consumable):
 
     @property
     def quality_prefix(self):
-        recipe_id = self.db.recipe
+        recipe_id = self.craft_handler.recipe
         from world.dominion.models import CraftingRecipe
 
         try:

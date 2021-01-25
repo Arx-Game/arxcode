@@ -49,8 +49,8 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
     def test_wear_cmd(self):
         self.setup_cmd(CmdWear, self.char2)
         self.char2.additional_desc = "Also Sly is super hot."
-        self.top1.db.recipe = 1
-        self.top1.db.crafted_by = self.char1
+        self.top1.craft_handler.recipe = 1
+        self.top1.craft_handler.crafted_by = self.char1
         self.call_cmd("", "What are you trying to wear?")
         self.obj1.location = self.char2
         self.call_cmd("obj", "Could not put on Obj (wrong item type).")
@@ -62,13 +62,13 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.assertTrue(self.top1.is_worn)
         self.assertTrue(self.catsuit1.is_worn)
         self.call_cmd("a fox mask", "Could not put on A Fox Mask (needs repair).")
-        self.mask1.db.quality_level = 8
+        self.mask1.craft_handler.quality_level = 8
         self.call_cmd(
             "a fox mask",
             "You currently have a +tempdesc set, which you may want to remove "
             "with +tempdesc.|You put on A Fox Mask.",
         )
-        self.assertEqual(self.mask1.db.quality_level, 7)
+        self.assertEqual(self.mask1.craft_handler.quality_level, 7)
         self.assertEqual(self.char2.fakename, "Someone wearing A Fox Mask")
         self.assertEqual(self.char2.temp_desc, "A very Slyyyy Fox...")
         self.mask1.tags.add("mirrormask")  # final test re-checks quality level
@@ -156,7 +156,7 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.assertTrue(outfit1.is_equipped)
         self.char2.undress()
         self.mask1.wear(self.char2)
-        self.catsuit1.db.recipe = 1  # creates a slot_limit conflict
+        self.catsuit1.craft_handler.recipe = 1  # creates a slot_limit conflict
         self.call_cmd(
             "/outfit friendly shadows",
             "A Fox Mask is no longer altering your identity or description.|"
@@ -172,7 +172,7 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
             "Top1, and Hairpins1.",
             cmdstring="remove",
         )
-        self.catsuit1.db.recipe = 2
+        self.catsuit1.craft_handler.recipe = 2
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         # the /outfit switch halts at combaterror but continues for equiperrors, so we'll combat test here too.
@@ -191,4 +191,4 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
             cmdstring="remove",
         )
         self.assertTrue(self.mask1.is_worn)
-        self.assertEqual(self.mask1.db.quality_level, 7)
+        self.assertEqual(self.mask1.craft_handler.quality_level, 7)

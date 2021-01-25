@@ -1,11 +1,10 @@
 from world.magic.models import *
 from .conditional_parser import ConditionalHandler
-from world.dominion.models import CraftingRecipe
 from world.weather.models import WeatherType, WeatherEmit
 from evennia.server.models import ServerConfig
 from .test_utils import ArxMagicTest, pending_magic_text
 from server.utils.test_utils import ArxTest
-from mock import patch, Mock, PropertyMock
+from unittest.mock import patch, PropertyMock
 
 
 class TestMagicConditions(ArxTest):

@@ -5,6 +5,8 @@ from evennia.utils.ansi import parse_ansi
 
 from typeclasses.exceptions import InvalidTargetError
 from world.conditions.triggerhandler import TriggerHandler
+from world.crafting.craft_handlers import CraftHandler
+from world.crafting.junk_handlers import RefundMaterialsJunkHandler
 from world.templates.models import Template
 from world.templates.mixins import TemplateMixins
 
@@ -521,6 +523,17 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         string = "coins worth a total of {:,.2f} silver pieces".format(currency)
         return string
 
+    @property
+    def should_format_desc(self):
+        """
+        :type self: ObjectDB
+        Returns:
+            True if desc should get newlines, False if not
+        """
+        return (
+            not self.db.do_not_format_desc and "player_made_room" not in self.tags.all()
+        )
+
     def return_appearance(
         self, pobject, detailed=False, format_desc=False, show_contents=True
     ):
@@ -553,12 +566,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 desc = parse_ansi(desc, strip_ansi=True)
             except (AttributeError, ValueError, TypeError):
                 pass
-        if (
-            desc
-            and not self.db.recipe
-            and not self.db.do_not_format_desc
-            and "player_made_room" not in self.tags.all()
-        ):
+        if desc and self.should_format_desc:
             if format_desc:
                 string += "\n\n%s{n\n" % desc
             else:
@@ -713,235 +721,36 @@ class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
 
 
 class CraftingMixins(object):
+    craft_handler_class = CraftHandler
+    junk_handler_class = RefundMaterialsJunkHandler
+    default_type_description_name = None
+    should_format_desc = False
+
+    @lazy_property
+    def craft_handler(self):
+        return self.craft_handler_class(self)
+
+    @lazy_property
+    def junk_handler(self):
+        return self.junk_handler_class(self)
+
     def return_appearance(
         self, pobject, detailed=False, format_desc=False, show_contents=True
     ):
-        """
-        This is a convenient hook for a 'look'
-        command to call.
-        :type self: ObjectDB
-        :param pobject: ObjectDB
-        :param detailed: bool
-        :param format_desc: bool
-        :param show_contents: bool
-        """
         string = super(CraftingMixins, self).return_appearance(
             pobject,
             detailed=detailed,
             format_desc=format_desc,
             show_contents=show_contents,
         )
-        string += self.return_crafting_desc()
-        return string
-
-    def junk(self, caller):
-        """Checks our ability to be junked out."""
-        from server.utils.exceptions import CommandError
-
-        if self.location != caller:
-            raise CommandError("You can only +junk objects you are holding.")
-        if self.contents:
-            raise CommandError("It contains objects that must first be removed.")
-        if not self.junkable:
-            raise CommandError("This object cannot be destroyed.")
-        self.do_junkout(caller)
-
-    def do_junkout(self, caller):
-        """Attempts to salvage materials from crafted item, then junks it."""
-        from world.dominion.models import CraftingMaterials, CraftingMaterialType
-
-        def get_refund_chance():
-            """Gets our chance of material refund based on a skill check"""
-            from world.stats_and_skills import do_dice_check
-
-            roll = do_dice_check(
-                caller, stat="dexterity", skill="legerdemain", quiet=False
-            )
-            return max(roll, 1)
-
-        def randomize_amount(amt):
-            """Helper function to determine amount kept when junking"""
-            from random import randint
-
-            num_kept = 0
-            for _ in range(amt):
-                if randint(0, 100) <= roll:
-                    num_kept += 1
-            return num_kept
-
-        pmats = caller.player.Dominion.assets.materials
-        mats = self.db.materials or {}
-        adorns = self.db.adorns or {}
-        refunded = []
-        roll = get_refund_chance()
-        for mat in adorns:
-            cmat = CraftingMaterialType.objects.get(id=mat)
-            amount = adorns[mat]
-            amount = randomize_amount(amount)
-            if amount:
-                try:
-                    pmat = pmats.get(type=cmat)
-                except CraftingMaterials.DoesNotExist:
-                    pmat = pmats.create(type=cmat)
-                pmat.amount += amount
-                pmat.save()
-                refunded.append("%s %s" % (amount, cmat.name))
-        for mat in mats:
-            amount = mats[mat]
-            if mat in adorns:
-                amount -= adorns[mat]
-            amount = randomize_amount(amount)
-            if amount <= 0:
-                continue
-            cmat = CraftingMaterialType.objects.get(id=mat)
-            try:
-                pmat = pmats.get(type=cmat)
-            except CraftingMaterials.DoesNotExist:
-                pmat = pmats.create(type=cmat)
-            pmat.amount += amount
-            pmat.save()
-            refunded.append("%s %s" % (amount, cmat.name))
-        destroy_msg = "You destroy %s." % self
-        if refunded:
-            destroy_msg += " Salvaged materials: %s" % ", ".join(refunded)
-        caller.msg(destroy_msg)
-        self.softdelete()
-
-    @property
-    def recipe(self):
-        """
-        Gets the crafting recipe used to create us if one exists.
-
-        :type self: ObjectDB
-        Returns:
-            The crafting recipe used to create this object.
-        """
-        if self.db.recipe:
-            from world.dominion.models import CraftingRecipe
-
-            try:
-                recipe = CraftingRecipe.objects.get(id=self.db.recipe)
-                return recipe
-            except CraftingRecipe.DoesNotExist:
-                pass
-
-    @property
-    def adorns(self):
-        """
-        Returns a dict of crafting materials we have.
-
-        :type self: ObjectDB
-            Returns:
-                ret (dict): dict of crafting materials as keys to amt
-
-        SharedMemoryModel causes all .get by ID to be cached inside the class,
-        so these queries will only hit the database once. After that, we're just
-        building a dict so it'll be insignificant.
-        """
-        from world.dominion.models import CraftingMaterialType
-
-        ret = {}
-        adorns = self.db.adorns or {}
-        for adorn_id in adorns:
-            try:
-                mat = CraftingMaterialType.objects.get(id=adorn_id)
-            except CraftingMaterialType.DoesNotExist:
-                continue
-            ret[mat] = adorns[adorn_id]
-        return ret
-
-    def return_crafting_desc(self):
-        """
-        :type self: ObjectDB
-        """
-        string = ""
-        adorns = self.adorns
-        # adorns are a dict of the ID of the crafting material type to amount
-        if adorns:
-            adorn_strs = ["%s %s" % (amt, mat.name) for mat, amt in adorns.items()]
-            string += "\nAdornments: %s" % ", ".join(adorn_strs)
-        # recipe is an integer matching the CraftingRecipe ID
-        if hasattr(self, "type_description") and self.type_description:
-            from server.utils.arx_utils import a_or_an
-
-            td = self.type_description
-            part = a_or_an(td)
-            string += "\nIt is %s %s." % (part, td)
-        if self.db.quality_level:
-            string += self.get_quality_appearance()
-        if self.db.quantity:
-            string += "\nThere are %d units." % self.db.quantity
-        if hasattr(self, "origin_description") and self.origin_description:
-            string += self.origin_description
-        if self.db.translation:
-            string += "\nIt contains script in a foreign tongue."
-        # signed_by is a crafter's character object
-        signed = self.db.signed_by
-        if signed:
-            string += "\n%s" % (signed.db.crafter_signature or "")
+        string += self.craft_handler.get_crafting_desc()
         return string
 
     @property
     def type_description(self):
-        if self.recipe:
-            return self.recipe.name
-
-        return None
-
-    @property
-    def origin_description(self):
-        if self.db.found_shardhaven:
-            return "\nIt was found in %s." % self.db.found_shardhaven
-        return None
-
-    @property
-    def quality_level(self):
-        return self.db.quality_level or 0
-
-    def get_quality_appearance(self):
-        """
-        :type self: ObjectDB
-        :return str:
-        """
-        if self.quality_level < 0:
-            return ""
-        from commands.base_commands.crafting import QUALITY_LEVELS
-
-        qual = min(self.quality_level, 11)
-        qual = QUALITY_LEVELS.get(qual, "average")
-        return "\nIts level of craftsmanship is %s." % qual
-
-    def add_adorn(self, material, quantity):
-        """
-        Adds an adornment to this crafted object.
-        :type self: ObjectDB
-        :type material: CraftingMaterialType
-        :type quantity: int
-
-        Args:
-            material: The crafting material type that we're adding
-            quantity: How much we're adding
-        """
-        adorns = self.db.adorns or {}
-        amt = adorns.get(material.id, 0)
-        adorns[material.id] = amt + quantity
-        self.db.adorns = adorns
-
-    @property
-    def is_plot_related(self):
-        if (
-            "plot" in self.tags.all()
-            or self.search_tags.all().exists()
-            or self.clues.all().exists()
-        ):
-            return True
-
-    @property
-    def junkable(self):
-        """A check for this object's plot connections."""
-        if not self.recipe:
-            raise AttributeError
-        return not self.is_plot_related
+        if self.craft_handler.recipe:
+            return self.craft_handler.recipe.name
+        return self.default_type_description_name
 
 
 # regex removes the ascii inside an ascii tag

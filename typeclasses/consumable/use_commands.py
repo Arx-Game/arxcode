@@ -34,7 +34,7 @@ class CmdApplyConsumable(ArxCommand):
             if not potion.check_target(target, self.caller):
                 self.msg("%s is not a valid target for %s." % (target, potion))
                 return
-            if not potion.consume():
+            if not potion.craft_handler.consume():
                 self.msg(
                     "%s doesn't have enough left to use. It needs to be replenished."
                     % potion
