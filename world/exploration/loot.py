@@ -14,7 +14,7 @@ class Trinket(Bauble):
 
     @property
     def potential(self):
-        return 20 + (self.db.quality_level * 10)
+        return 20 + (self.craft_handler.quality_level * 10)
 
     def quality_level_from_primum(self, primum):
         return max(int((primum - 20) / 10), 0)
@@ -23,15 +23,9 @@ class Trinket(Bauble):
 class AncientWeapon(Wieldable):
     @property
     def type_description(self):
-        if self.recipe:
-            return "ancient %s" % self.recipe.name
+        if self.craft_handler.recipe:
+            return "ancient %s" % self.craft_handler.recipe.name
         return "ancient weapon"
-
-    def do_junkout(self, caller):
-        """Junks us as if we were a crafted item."""
-        caller.msg("You destroy %s." % self)
-        self.softdelete()
-        return
 
 
 class LootGenerator(object):
@@ -83,7 +77,7 @@ class LootGenerator(object):
         quality_picker.add_option(8, 3)
         quality_picker.add_option(9, 1)
 
-        trinket.db.quality_level = quality_picker.pick()
+        trinket.craft_handler.quality_level = quality_picker.pick()
         trinket.db.found_shardhaven = haven.name
 
         cls.set_alignment_and_affinity(haven, trinket)
@@ -205,9 +199,11 @@ class LootGenerator(object):
         quality_picker.add_option(8, 3)
         quality_picker.add_option(9, 1)
 
-        weapon.db.quality_level = quality_picker.pick()
+        weapon.craft_handler.quality_level = quality_picker.pick()
         weapon.db.found_shardhaven = haven.name
-        weapon.db.recipe = LootGenerator.get_weapon_recipe(material, wpn_type=wpn_type)
+        weapon.craft_handler.recipe = LootGenerator.get_weapon_recipe(
+            material, wpn_type=wpn_type
+        )
 
         cls.set_alignment_and_affinity(haven, weapon)
 

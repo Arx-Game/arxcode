@@ -33,7 +33,7 @@ class CmdChestKey(ArxCommand):
         caller = self.caller
         chestkeys = caller.db.chestkeylist or []
         if (
-            caller != self.obj.db.crafted_by
+            caller != self.obj.craft_handler.crafted_by
             and not caller.check_permstring("builders")
             and self.obj not in chestkeys
         ):
