@@ -451,7 +451,11 @@ class CmdCraft(ArxCommand, TemplateMixins):
             targ = caller.search(self.lhs, location=caller)
             if not targ:
                 return
-            recipe = getattr(targ, "recipe", None)
+            recipe = None
+            try:
+                recipe = targ.craft_handler.recipe
+            except AttributeError:
+                pass
             if not recipe:
                 caller.msg("No recipe found for that item.")
                 return
