@@ -75,10 +75,9 @@ class FashionableMixins(object):
         if not self.crafted_by_mortals:
             return 0
         value = self.craft_handler.recipe.value * self.fashion_mult
-        if self.craft_handler.adorns:
-            adorns = dict(self.craft_handler.adorns)
-            for material, quantity in adorns.items():
-                value += material.value * quantity
+        adorns = dict(self.craft_handler.adorn_objects)
+        for material, quantity in adorns.items():
+            value += material.value * quantity
         return int(value)
 
     @property

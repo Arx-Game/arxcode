@@ -15,7 +15,7 @@ class CraftHandler:
         :type self: ObjectDB
         """
         string = ""
-        adorns = self.adorns
+        adorns = self.adorn_objects
         # adorns are a dict of the ID of the crafting material type to amount
         if adorns:
             adorn_strs = ["%s %s" % (amt, mat.name) for mat, amt in adorns.items()]
@@ -40,7 +40,7 @@ class CraftHandler:
         return string
 
     @property
-    def adorns(self):
+    def adorn_objects(self):
         """
         Returns a dict of crafting materials we have.
 
@@ -55,14 +55,23 @@ class CraftHandler:
         from world.dominion.models import CraftingMaterialType
 
         ret = {}
-        adorns = self.obj.db.adorns or {}
+        adorns = self.adorns
         for adorn_id in adorns:
-            try:
-                mat = CraftingMaterialType.objects.get(id=adorn_id)
-            except CraftingMaterialType.DoesNotExist:
-                continue
+            if isinstance(adorn_id, CraftingMaterialType):
+                mat = adorn_id
+                amt = self.obj.db.adorns.pop(adorn_id)
+                self.obj.db.adorns[adorn_id.id] = amt
+            else:
+                try:
+                    mat = CraftingMaterialType.objects.get(id=adorn_id)
+                except CraftingMaterialType.DoesNotExist:
+                    continue
             ret[mat] = adorns[adorn_id]
         return ret
+
+    @property
+    def adorns(self):
+        return self.obj.db.adorns or {}
 
     @adorns.setter
     def adorns(self, value):
@@ -161,7 +170,7 @@ class CraftHandler:
             material: The crafting material type that we're adding
             quantity: How much we're adding
         """
-        adorns = self.adorns
+        adorns = dict(self.obj.db.adorns or {})
         amt = adorns.get(material.id, 0)
         adorns[material.id] = amt + quantity
         self.adorns = adorns
