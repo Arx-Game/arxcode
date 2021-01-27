@@ -46,7 +46,7 @@ class RefundMaterialsJunkHandler(BaseJunkHandler):
 
     def __init__(self, obj):
         super().__init__(obj)
-        self.craft_handler = obj
+        self.craft_handler = obj.craft_handler
 
     @property
     def junkable(self):
@@ -110,7 +110,7 @@ class RefundMaterialsJunkHandler(BaseJunkHandler):
             pmat.amount += amount
             pmat.save()
             refunded.append("%s %s" % (amount, cmat.name))
-        destroy_msg = "You destroy %s." % self
+        destroy_msg = "You destroy %s." % self.obj
         if refunded:
             destroy_msg += " Salvaged materials: %s" % ", ".join(refunded)
         caller.msg(destroy_msg)

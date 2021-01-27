@@ -260,7 +260,6 @@ def change_quality(crafting_object, new_quality):
     based on its new quality level and recipe.
     """
     recipe = crafting_object.craft_handler.recipe
-    recipe = CraftingRecipe.objects.get(id=recipe)
     otype = recipe.type
     scaling = float(recipe.resultsdict.get("scaling", 0))
     base = float(recipe.resultsdict.get("baseval", 0))
@@ -1098,7 +1097,7 @@ class CmdJunk(ArxCommand):
         try:
             if obj.player_ob or obj.player:
                 raise CommandError("You cannot +junk a character.")
-            obj.craft_handler.junk(self.caller)
+            obj.junk_handler.junk(self.caller)
         except AttributeError:
             self.msg("You may only +junk crafted objects.")
         except CommandError as err:

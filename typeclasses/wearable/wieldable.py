@@ -250,7 +250,7 @@ class Wieldable(Wearable):
 
     @property
     def damage_bonus(self):
-        if not self.recipe or self.db.ignore_crafted:
+        if not self.craft_handler.recipe or self.db.ignore_crafted:
             return self.db.damage_bonus
         if self.ndb.cached_damage_bonus is not None:
             return self.ndb.cached_damage_bonus
