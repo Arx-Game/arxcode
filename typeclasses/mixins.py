@@ -449,7 +449,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 elif self.db.places and con not in self.db.places:
                     things.append(con)
         if worn:
-            worn = sorted(worn, key=lambda x: (x.db.worn_time or 0))
+            worn = sorted(worn, key=lambda x: x.craft_handler.worn_time)
             string += (
                 "\n"
                 + "{wWorn items of note:{n "

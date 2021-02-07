@@ -9,6 +9,7 @@ from time import time
 from typeclasses.containers.container import Container
 from world.fashion.mixins import FashionableMixins
 from typeclasses.exceptions import EquipError
+from world.crafting.craft_handlers import WearableCraftHandler
 
 
 # noinspection PyMethodMayBeStatic
@@ -17,6 +18,8 @@ class Wearable(FashionableMixins, Object):
     """
     Class for wearable objects
     """
+
+    craft_handler_class = WearableCraftHandler
 
     default_desc = "A piece of clothing or armor."
 
@@ -79,7 +82,7 @@ class Wearable(FashionableMixins, Object):
         self.at_pre_wear(wearer)
         self.is_worn = True
         if self.decorative:
-            self.db.worn_time = time()
+            self.craft_handler.worn_time = time()
         self.at_post_wear(wearer)
 
     def at_pre_wear(self, wearer):
@@ -206,12 +209,12 @@ class Wearable(FashionableMixins, Object):
 
     @property
     def is_worn(self):
-        return self.db.currently_worn
+        return self.craft_handler.currently_worn
 
     @is_worn.setter
     def is_worn(self, bull):
         """Bool luvs u"""
-        self.db.currently_worn = bull
+        self.craft_handler.currently_worn = bull
 
     @property
     def is_equipped(self):

@@ -218,7 +218,7 @@ class UseEquipmentMixins(object):
     def worn(self):
         """Returns list of items worn as attire."""
         worn = [ob for ob in self.equipment if ob.decorative and ob.is_worn]
-        return sorted(worn, key=lambda x: x.db.worn_time)
+        return sorted(worn, key=lambda x: x.craft_handler.worn_time)
 
     @property
     def sheathed(self):

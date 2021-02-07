@@ -566,8 +566,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                 else:
                     diffmod = get_difficulty_mod(recipe, invest, action_points, ability)
                 # difficulty gets easier by 1 each time we attempt it
-                refine_attempts = crafter.db.refine_attempts or {}
-                attempts = refine_attempts.get(targ.id, 0)
+                attempts = targ.craft_handler.get_refine_attempts_for_character(crafter)
                 if attempts > 60:
                     attempts = 60
                 diffmod += attempts
@@ -608,8 +607,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                 quality = get_quality_lvl(roll, recipe.difficulty)
                 old = targ.craft_handler.quality_level or 0
                 attempts += 1
-                refine_attempts[targ.id] = attempts
-                crafter.db.refine_attempts = refine_attempts
+                targ.craft_handler.set_refine_attempts_for_character(attempts)
                 self.msg(
                     "The roll is %s, a quality level of %s."
                     % (roll, QUALITY_LEVELS[quality])

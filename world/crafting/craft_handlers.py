@@ -175,6 +175,15 @@ class CraftHandler:
         adorns[material.id] = amt + quantity
         self.adorns = adorns
 
+    def get_refine_attempts_for_character(self, crafter):
+        refine_attempts = crafter.db.refine_attempts or {}
+        return refine_attempts.get(self.obj.id, 0)
+
+    def set_refine_attempts_for_character(self, crafter, attempts):
+        refine_attempts = dict(crafter.db.refine_attempts or {})
+        refine_attempts[self.obj.id] = attempts
+        crafter.db.refine_attempts = refine_attempts
+
 
 class ConsumableCraftHandler(CraftHandler):
     def get_quality_appearance(self):
@@ -204,7 +213,25 @@ class ConsumableCraftHandler(CraftHandler):
         self.quality_level = val
 
 
-class MaskCraftHandler(CraftHandler):
+class WearableCraftHandler(CraftHandler):
+    @property
+    def worn_time(self):
+        return self.obj.db.worn_time or 0
+
+    @worn_time.setter
+    def worn_time(self, value):
+        self.obj.db.worn_time = value
+
+    @property
+    def currently_worn(self):
+        return self.obj.db.currently_worn
+
+    @currently_worn.setter
+    def currently_worn(self, value):
+        self.obj.db.currently_worn = value
+
+
+class MaskCraftHandler(WearableCraftHandler):
     @property
     def mask_desc(self):
         return self.obj.db.maskdesc
