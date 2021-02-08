@@ -23,9 +23,10 @@ from world.stat_checks.constants import (
     DEATH_SAVE,
     UNCON_SAVE,
     PERMANENT_WOUND_SAVE,
-    SERIOUS_WOUND,
-    PERMANENT_WOUND,
+    CAUSE_SERIOUS_WOUND,
+    CAUSE_PERMANENT_WOUND,
 )
+from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
 from world.traits.traitshandler import Traitshandler
 
 
@@ -1373,9 +1374,9 @@ class Character(
             )
             return
 
-        if roller.outcome.effect == SERIOUS_WOUND:
+        if roller.outcome.effect == CAUSE_SERIOUS_WOUND:
             self.traits.create_wound(SERIOUS_WOUND)
             self.msg_location_or_contents(f"{self} has suffered a serious wound!")
-        if roller.outcome.effect == PERMANENT_WOUND:
+        if roller.outcome.effect == CAUSE_PERMANENT_WOUND:
             self.traits.create_wound(PERMANENT_WOUND)
             self.msg_location_or_contents(f"{self} has suffered a permanent wound!")

@@ -607,7 +607,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                 quality = get_quality_lvl(roll, recipe.difficulty)
                 old = targ.craft_handler.quality_level or 0
                 attempts += 1
-                targ.craft_handler.set_refine_attempts_for_character(attempts)
+                targ.craft_handler.set_refine_attempts_for_character(crafter, attempts)
                 self.msg(
                     "The roll is %s, a quality level of %s."
                     % (roll, QUALITY_LEVELS[quality])
