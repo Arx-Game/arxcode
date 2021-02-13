@@ -643,7 +643,9 @@ class CharacterHealthStatus(SharedMemoryModel):
             RECOVERY,
             f"{healer} has attempted to assist with their recovery too recently.",
         )
-        check = get_check_maker_by_name(RECOVERY_TREATMENT, healer)
+        check = get_check_maker_by_name(
+            RECOVERY_TREATMENT, healer, target=self.character
+        )
         check.make_check_and_announce()
         self.add_treatment_for_check(check, TreatmentAttempt.RECOVERY)
 
@@ -663,7 +665,7 @@ class CharacterHealthStatus(SharedMemoryModel):
         self.check_treatment_too_recent(
             healer, REVIVE, f"{healer} has attempted to revive them too recently."
         )
-        check = get_check_maker_by_name(REVIVE_TREATMENT, healer)
+        check = get_check_maker_by_name(REVIVE_TREATMENT, healer, target=self.character)
         check.make_check_and_announce()
         self.add_treatment_for_check(check, TreatmentAttempt.REVIVE)
 

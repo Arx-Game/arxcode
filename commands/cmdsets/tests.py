@@ -53,7 +53,7 @@ class CombatCommandsTests(ArxCommandTest):
         self.assertTrue(self.char1.ndb.healing_gm_allow)
         self.caller = self.char1
         self.call_cmd("char2", "Char2 does not require any medical attention.")
-        self.char2.dmg = 20
+        self.char2.dmg = 1
         mock_randint.return_value = 30
         self.call_cmd(
             "char2",
@@ -63,14 +63,42 @@ class CombatCommandsTests(ArxCommandTest):
         self.call_cmd(
             "char2", "Char has attempted to assist with their recovery too recently."
         )
+        self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.dmg = 20
+        self.call_cmd(
+            "char2",
+            "Char checks 'recovery treatment' at normal. Char fails.|"
+            "You have provided aid to Char2 to help them recover from injury.",
+        )
+        self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.dmg = 100
+        self.call_cmd(
+            "char2",
+            "Char checks 'recovery treatment' at hard. Char fails.|"
+            "You have provided aid to Char2 to help them recover from injury.",
+        )
         self.char2.health_status.set_unconscious()
+        self.call_cmd(
+            "/revive char2",
+            "Char checks 'revive treatment' at normal. Char fails.|"
+            "You have provided aid to Char2 to help them regain consciousness.",
+        )
+        self.call_cmd(
+            "/revive char2", "Char has attempted to revive them too recently."
+        )
+        self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.dmg = 115
         self.call_cmd(
             "/revive char2",
             "Char checks 'revive treatment' at hard. Char fails.|"
             "You have provided aid to Char2 to help them regain consciousness.",
         )
+        self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.dmg = 200
         self.call_cmd(
-            "/revive char2", "Char has attempted to revive them too recently."
+            "/revive char2",
+            "Char checks 'revive treatment' at daunting. Char catastrophically fails.|"
+            "You have provided aid to Char2 to help them regain consciousness.",
         )
 
     def test_cmd_start_combat(self, mock_inform_staff):
