@@ -53,7 +53,7 @@ class CombatCommandsTests(ArxCommandTest):
         self.assertTrue(self.char1.ndb.healing_gm_allow)
         self.caller = self.char1
         self.call_cmd("char2", "Char2 does not require any medical attention.")
-        self.char2.dmg = 1
+        self.char2.traits.create_wound()
         mock_randint.return_value = 30
         self.call_cmd(
             "char2",
@@ -64,6 +64,7 @@ class CombatCommandsTests(ArxCommandTest):
             "char2", "Char has attempted to assist with their recovery too recently."
         )
         self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.health_status.heal_wound()
         self.char2.dmg = 20
         self.call_cmd(
             "char2",

@@ -559,17 +559,25 @@ class CharacterHealthStatus(SharedMemoryModel):
     def cached_wounds(self):
         return list(self.wounds.all())
 
+    @property
+    def serious_wounds(self):
+        return [ob for ob in self.cached_wounds if ob.severity == Wound.SERIOUS]
+
+    @property
+    def needs_treatment(self):
+        return bool(self.damage or self.serious_wounds)
+
     def get_wound_string(self):
         msg = ""
         if self.cached_wounds:
-            serious = [ob for ob in self.cached_wounds if ob.severity == Wound.SERIOUS]
+            serious = self.serious_wounds
             permanent = [ob for ob in self.cached_wounds if ob not in serious]
             msg += f"\nWounds: Serious: {len(serious)}, Permanent: {len(permanent)}"
         return msg
 
     def heal_wound(self):
         """Heals a serious, but not permanent wound"""
-        serious = [ob for ob in self.cached_wounds if ob.severity == Wound.SERIOUS]
+        serious = self.serious_wounds
         if serious:
             # get a random wound from our list of serious wounds
             wound = random.choice(serious)

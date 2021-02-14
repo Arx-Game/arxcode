@@ -1717,7 +1717,7 @@ class CmdHeal(ArxCommand):
                     % targ
                 )
             else:
-                if not targ.dmg:
+                if not targ.health_status.needs_treatment:
                     raise self.error_class(
                         "%s does not require any medical attention." % targ
                     )
