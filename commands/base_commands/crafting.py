@@ -54,7 +54,7 @@ def create_weapon(recipe, roll, proj, caller):
     skill = recipe.resultsdict.get("weapon_skill", "medium wpn")
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(WIELD, proj[1], caller, caller, quality)
-    obj.db.attack_skill = skill
+    obj.craft_handler.attack_skill = skill
     if skill == "archery":
         obj.ranged_mode()
     return obj, quality
@@ -70,7 +70,7 @@ def create_decorative_weapon(recipe, roll, proj, caller):
     skill = recipe.resultsdict.get("weapon_skill", "small wpn")
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(DECORATIVE_WIELD, proj[1], caller, caller, quality)
-    obj.db.attack_skill = skill
+    obj.craft_handler.attack_skill = skill
     return obj, quality
 
 

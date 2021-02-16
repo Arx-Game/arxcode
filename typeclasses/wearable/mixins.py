@@ -162,7 +162,7 @@ class UseEquipmentMixins(object):
         wpndict = dict(self.get_fakeweapon() or {})
         wpn = self.weapon
         if wpn:
-            wpndict["attack_skill"] = wpn.db.attack_skill or "crushing melee"
+            wpndict["attack_skill"] = wpn.craft_handler.attack_skill or "crushing melee"
             wpndict["attack_stat"] = wpn.db.attack_stat or "dexterity"
             wpndict["damage_stat"] = wpn.db.damage_stat or "strength"
             try:

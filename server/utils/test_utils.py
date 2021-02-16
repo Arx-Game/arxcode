@@ -412,8 +412,8 @@ class TestEquipmentMixins(object):
         self.knife1.craft_handler.quality_level = 11
         self.knife1.craft_handler.recipe = 4
         self.knife1.craft_handler.crafted_by = self.char2
-        self.knife1.db.attack_skill = self.knife1.craft_handler.resultsdict.get(
-            "weapon_skill", "medium wpn"
+        self.knife1.craft_handler.attack_skill = (
+            self.knife1.craft_handler.resultsdict.get("weapon_skill", "medium wpn")
         )
         # A larger weapon
         self.sword1 = create.create_object(
@@ -422,8 +422,8 @@ class TestEquipmentMixins(object):
         self.sword1.craft_handler.quality_level = 6
         self.sword1.craft_handler.recipe = 7
         self.sword1.craft_handler.crafted_by = self.char2
-        self.sword1.db.attack_skill = self.sword1.craft_handler.resultsdict.get(
-            "weapon_skill", "medium wpn"
+        self.sword1.craft_handler.attack_skill = (
+            self.sword1.craft_handler.resultsdict.get("weapon_skill", "medium wpn")
         )
         # Hairpins1 is a decorative weapon and should always show as 'worn' rather than 'sheathed'
         self.hairpins1 = create.create_object(
@@ -432,8 +432,8 @@ class TestEquipmentMixins(object):
         self.hairpins1.craft_handler.quality_level = 4
         self.hairpins1.craft_handler.recipe = 5
         self.hairpins1.craft_handler.crafted_by = self.char2
-        self.hairpins1.db.attack_skill = self.hairpins1.craft_handler.resultsdict.get(
-            "weapon_skill", "small wpn"
+        self.hairpins1.craft_handler.attack_skill = (
+            self.hairpins1.craft_handler.resultsdict.get("weapon_skill", "small wpn")
         )
         # Masks change wearer identity and are restricted from being worn by 0 quality
         self.mask1 = create.create_object(

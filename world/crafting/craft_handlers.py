@@ -239,3 +239,13 @@ class MaskCraftHandler(WearableCraftHandler):
     @mask_desc.setter
     def mask_desc(self, value):
         self.obj.db.maskdesc = value
+
+
+class WieldableCraftHandler(WearableCraftHandler):
+    @property
+    def attack_skill(self):
+        return self.obj.db.attack_skill or "crushing"
+
+    @attack_skill.setter
+    def attack_skill(self, skill):
+        self.obj.db.attack_skill = skill

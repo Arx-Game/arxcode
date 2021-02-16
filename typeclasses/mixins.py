@@ -421,14 +421,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 else:
                     sheathed.append(key)
             elif hasattr(con, "wield") and con.is_wielded:
-                if not con.db.stealth:
-                    wielded.append(key)
-                elif (
-                    hasattr(pobject, "sensing_check")
-                    and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0
-                ):
-                    key += "|w (hidden)|n"
-                    wielded.append(key)
+                wielded.append(key)
             elif con.has_account:
                 # we might have either a permapose or a fake name
                 lname = con.name

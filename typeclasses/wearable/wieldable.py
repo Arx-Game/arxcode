@@ -8,6 +8,7 @@ object. is_wielded is a boolean saying our wielded state
 from typeclasses.exceptions import EquipError
 from typeclasses.wearable.cmdset_wieldable import WeaponCmdSet
 from typeclasses.wearable.wearable import Wearable
+from world.crafting.craft_handlers import WieldableCraftHandler
 
 
 # noinspection PyMethodMayBeStatic
@@ -25,6 +26,7 @@ class Wieldable(Wearable):
 
     default_desc = "A weapon of some kind."
     SHEATHED_LIMIT = 6
+    craft_handler_class = WieldableCraftHandler
 
     def at_object_creation(self):
         """
@@ -35,9 +37,7 @@ class Wieldable(Wearable):
         self.db.is_wieldable = True
         self.is_wielded = False
         # phrase that is seen when we equip it
-        self.db.stealth = False  # whether it can be seen in character desc
-        self.db.sense_difficulty = 15  # default if stealth is set to true
-        self.db.attack_skill = "medium wpn"
+        self.craft_handler.attack_skill = "medium wpn"
         self.db.attack_stat = "dexterity"
         self.db.damage_stat = "strength"
         self.db.damage_bonus = 1
@@ -168,16 +168,6 @@ class Wieldable(Wearable):
         been wielded, and tells them.
         """
         exclude = [wielder]
-        if self.db.stealth:
-            # checks for sensing a stealthed weapon being wielded. those who fail are put in exclude list
-            chars = [
-                char
-                for char in wielder.location.contents
-                if hasattr(char, "sensing_check") and char != wielder
-            ]
-            for char in chars:
-                if char.sensing_check(self, diff=self.db.sensing_difficulty) < 1:
-                    exclude.append(char)
         msg = self.db.ready_phrase or "wields %s" % self.name
         wielder.location.msg_contents("%s %s." % (wielder.name, msg), exclude=exclude)
 
@@ -190,12 +180,12 @@ class Wieldable(Wearable):
         recipe = self.craft_handler.recipe
         diffmod = self.db.difficulty_mod or 0
         flat_damage_bonus = self.db.flat_damage_bonus or 0
-        if self.db.attack_skill == "huge wpn":
+        if self.craft_handler.attack_skill == "huge wpn":
             diffmod += 1
-        elif self.db.attack_skill == "archery":
+        elif self.craft_handler.attack_skill == "archery":
             self.ranged_mode()
             diffmod -= 10
-        elif self.db.attack_skill == "small wpn":
+        elif self.craft_handler.attack_skill == "small wpn":
             diffmod -= 1
         if not recipe:
             return self.db.damage_bonus or 0, diffmod, flat_damage_bonus
