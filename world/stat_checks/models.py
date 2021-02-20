@@ -590,6 +590,7 @@ class StatCheckOutcome(SharedMemoryModel):
     stat_combination = models.ForeignKey(
         "StatCombination",
         null=True,
+        blank=True,
         on_delete=models.SET_NULL,
         related_name="stat_check_outcomes",
         help_text="If defined, this stat combination is used to calculate a value for the effect.",

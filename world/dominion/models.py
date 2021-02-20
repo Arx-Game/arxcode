@@ -69,7 +69,7 @@ from django.urls import reverse
 from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
 from .reports import WeeklyReport
 from .agenthandler import AgentHandler
-from .managers import OrganizationManager, LandManager
+from .managers import OrganizationManager, LandManager, RPEventQuerySet
 from server.utils.arx_utils import (
     get_week,
     inform_staff,
@@ -4248,6 +4248,8 @@ class RPEvent(SharedMemoryModel):
     search_tags = models.ManyToManyField(
         "character.SearchTag", blank=True, related_name="events"
     )
+
+    objects = RPEventQuerySet.as_manager()
 
     @property
     def prestige(self):

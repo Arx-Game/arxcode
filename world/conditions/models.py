@@ -718,9 +718,26 @@ class RecoveryRunner(SharedMemoryModel):
 
     def run_recovery_checks(self):
         """Called by our script, this runs recovery checks for every damaged character"""
+        from world.dominion.models import RPEvent
+
         # get the health status of all living characters with damage
         qs = CharacterHealthStatus.objects.get_recovery_queryset()
+        # Get IDs of all locations that have an active GM Event or PRP
+        room_ids = (
+            RPEvent.objects.active_events()
+            .gm_or_prp()
+            .values_list("location", flat=True)
+        )
         for status in qs:
+            # if the character is in a PRP/GM Event, skip their recovery
+            if status.character.db_location_id in room_ids:
+                continue
+            # if the character is in combat, skip their recovery
+            try:
+                if status.character.combat.combat:
+                    continue
+            except AttributeError:
+                pass
             status.recovery_check()
         # delete all old recovery treatments after
         TreatmentAttempt.objects.decrement_treatments(treatment_type=RECOVERY)

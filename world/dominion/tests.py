@@ -1,7 +1,7 @@
 """
 Tests for dominion stuff. Crisis commands, etc.
 """
-from mock import patch, Mock
+from unittest.mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
 
@@ -29,6 +29,7 @@ from world.dominion.plots.models import (
     PlotUpdate,
     OrgPlotInvolvement,
 )
+from django.urls import reverse
 
 
 class TestCraftingCommands(ArxCommandTest):
@@ -812,3 +813,12 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
             "Plot: testrfr (#7)\nGM Resolution: None",
         )
         self.call_cmd("/rfr/close 10=ok whatever", "You have marked the rfr as closed.")
+
+
+class TestDominionViews(ArxCommandTest):
+    url_name = "dominion:list_events"
+
+    def test_cal_view(self):
+        self.client.login(username="TestAccount", password="testpassword")
+        resp = self.client.get(reverse(self.url_name))
+        self.assertEqual(200, resp.status_code)
