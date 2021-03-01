@@ -38,8 +38,12 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
             "Emperor Testaccount2's New Clothes? Put something on " "and try again.",
         )
         self.knife1.wield(self.char2)
+        x = 0
         for item in to_be_worn:
             item.wear(self.char2)
+            # need to prevent ties or it fucks everything up
+            item.craft_handler.worn_time += x
+            x += 1
         to_be_removed = to_be_worn[1:] + [self.knife1]
         with patch("django.utils.timezone.now", Mock(return_value=fake_dt)):
             self.call_cmd(

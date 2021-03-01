@@ -98,7 +98,7 @@ class Wearable(FashionableMixins, Object):
         if slot and slot_limit:
             worn = [ob for ob in wearer.worn if ob.slot == slot]
             if len(worn) >= slot_limit:
-                raise EquipError("%s slot full" % slot)
+                raise EquipError(f"{slot} slot full. Worn there: {worn}")
 
     def at_post_wear(self, wearer):
         """Hook called after wearing succeeds."""

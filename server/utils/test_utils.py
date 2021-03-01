@@ -425,6 +425,15 @@ class TestEquipmentMixins(object):
         self.sword1.craft_handler.attack_skill = (
             self.sword1.craft_handler.resultsdict.get("weapon_skill", "medium wpn")
         )
+        # Masks change wearer identity and are restricted from being worn by 0 quality
+        self.mask1 = create.create_object(
+            mask_typeclass, key="A Fox Mask", location=self.char2, home=self.room1
+        )
+        self.mask1.craft_handler.quality_level = 0
+        self.mask1.craft_handler.recipe = 6  # mask also has fashion_mult:6
+        self.mask1.craft_handler.crafted_by = self.char2
+        self.mask1.craft_handler.mask_desc = "A very Slyyyy Fox..."
+        self.mask1.craft_handler.adorns = {1: 20}
         # Hairpins1 is a decorative weapon and should always show as 'worn' rather than 'sheathed'
         self.hairpins1 = create.create_object(
             hairpin_typeclass, key="Hairpins1", location=self.char2, home=self.room1
@@ -435,15 +444,6 @@ class TestEquipmentMixins(object):
         self.hairpins1.craft_handler.attack_skill = (
             self.hairpins1.craft_handler.resultsdict.get("weapon_skill", "small wpn")
         )
-        # Masks change wearer identity and are restricted from being worn by 0 quality
-        self.mask1 = create.create_object(
-            mask_typeclass, key="A Fox Mask", location=self.char2, home=self.room1
-        )
-        self.mask1.craft_handler.quality_level = 0
-        self.mask1.craft_handler.recipe = 6  # mask also has fashion_mult:6
-        self.mask1.craft_handler.crafted_by = self.char2
-        self.mask1.craft_handler.mask_desc = "A very Slyyyy Fox..."
-        self.mask1.craft_handler.adorns = {1: 20}
 
     def start_ze_fight(self):
         """Helper to start a fight and add the current caller."""

@@ -4,11 +4,46 @@ behind an abstraction layer
 """
 
 
+def get_storage_prop(attr_name, default=None):
+    """Helper function to create a property with closures of the given values we provide."""
+
+    def get_func(self):
+        return self.get_db_or_default(attr_name, default)
+
+    def set_func(self, value):
+        self.set_db_value(attr_name, value)
+
+    return property(get_func, set_func)
+
+
 class CraftHandler:
     """Encapsulates data/methods for any crafted object in game"""
 
     def __init__(self, obj):
         self.obj = obj
+
+    def get_db_or_default(self, attr, default=None):
+        """
+        Gets a value from AttributeHolder if it exists. If not, we'll check
+        for a default value as an attribute on the object, or return a default
+        passed to the function.
+        Args:
+            attr (str): The name of the attribute
+            default: The default value to be returned if the attribute doesn't exist
+
+        Returns:
+            The value of the attribute or the default
+        """
+        val = self.obj.attributes.get(attr)
+        if val is not None:
+            return val
+        # default values are in the form of default_<attrname>,
+        # for example: "attack_speed" -> "default_attack_speed"
+        default_attr_name = f"default_{attr}"
+        return getattr(self.obj, default_attr_name, default)
+
+    def set_db_value(self, attr, value):
+        self.obj.attributes.add(attr, value)
 
     def get_crafting_desc(self):
         """
@@ -29,7 +64,7 @@ class CraftHandler:
             string += "\nIt is %s %s." % (part, td)
         if self.quality_level:
             string += self.get_quality_appearance()
-        if hasattr(self, "origin_description") and self.origin_description:
+        if self.origin_description:
             string += self.origin_description
         if self.translation:
             string += "\nIt contains script in a foreign tongue."
@@ -69,21 +104,8 @@ class CraftHandler:
             ret[mat] = adorns[adorn_id]
         return ret
 
-    @property
-    def adorns(self):
-        return self.obj.db.adorns or {}
-
-    @adorns.setter
-    def adorns(self, value):
-        self.obj.db.adorns = value
-
-    @property
-    def materials(self):
-        return self.obj.db.materials or {}
-
-    @materials.setter
-    def materials(self, value):
-        self.obj.db.materials = value
+    adorns = get_storage_prop("adorns", {})
+    materials = get_storage_prop("materials", {})
 
     def get_quality_appearance(self):
         """
@@ -107,59 +129,37 @@ class CraftHandler:
         Returns:
             The crafting recipe used to create this object.
         """
-        if self.obj.db.recipe:
+        recipe_pk = self.get_db_or_default("recipe")
+        if recipe_pk:
             from world.dominion.models import CraftingRecipe
 
             try:
-                recipe = CraftingRecipe.objects.get(id=self.obj.db.recipe)
+                recipe = CraftingRecipe.objects.get(id=recipe_pk)
                 return recipe
             except CraftingRecipe.DoesNotExist:
                 pass
 
-    @property
-    def translation(self):
-        return self.obj.db.translation or {}
-
-    @translation.setter
-    def translation(self, value):
-        self.obj.db.translation = value
+    translation = get_storage_prop("translation", {})
 
     @recipe.setter
     def recipe(self, value):
-        self.obj.db.recipe = value
+        self.set_db_value("recipe", value)
 
     @property
     def resultsdict(self):
         return self.recipe.resultsdict
 
-    @property
-    def quality_level(self):
-        return self.obj.db.quality_level or 0
+    quality_level = get_storage_prop("quality_level", 0)
 
-    @quality_level.setter
-    def quality_level(self, value):
-        self.obj.db.quality_level = value
+    crafted_by = get_storage_prop("crafted_by")
 
-    @property
-    def crafted_by(self):
-        return self.obj.db.crafted_by
-
-    @crafted_by.setter
-    def crafted_by(self, value):
-        self.obj.db.crafted_by = value
-
-    @property
-    def signed_by(self):
-        return self.obj.db.signed_by
-
-    @signed_by.setter
-    def signed_by(self, value):
-        self.obj.db.signed_by = value
+    signed_by = get_storage_prop("signed_by")
 
     @property
     def origin_description(self):
-        if self.obj.db.found_shardhaven:
-            return "\nIt was found in %s." % self.obj.db.found_shardhaven
+        found = self.get_db_or_default("found_shardhaven")
+        if found:
+            return "\nIt was found in %s." % found
         return None
 
     def add_adorn(self, material, quantity):
@@ -170,7 +170,7 @@ class CraftHandler:
             material: The crafting material type that we're adding
             quantity: How much we're adding
         """
-        adorns = dict(self.obj.db.adorns or {})
+        adorns = dict(self.adorns)
         amt = adorns.get(material.id, 0)
         adorns[material.id] = amt + quantity
         self.adorns = adorns
@@ -214,38 +214,25 @@ class ConsumableCraftHandler(CraftHandler):
 
 
 class WearableCraftHandler(CraftHandler):
-    @property
-    def worn_time(self):
-        return self.obj.db.worn_time or 0
-
-    @worn_time.setter
-    def worn_time(self, value):
-        self.obj.db.worn_time = value
-
-    @property
-    def currently_worn(self):
-        return self.obj.db.currently_worn
-
-    @currently_worn.setter
-    def currently_worn(self, value):
-        self.obj.db.currently_worn = value
+    worn_time = get_storage_prop("worn_time", 0)
+    currently_worn = get_storage_prop("currently_worn", False)
 
 
 class MaskCraftHandler(WearableCraftHandler):
-    @property
-    def mask_desc(self):
-        return self.obj.db.maskdesc
-
-    @mask_desc.setter
-    def mask_desc(self, value):
-        self.obj.db.maskdesc = value
+    mask_desc = get_storage_prop("maskdesc")
 
 
 class WieldableCraftHandler(WearableCraftHandler):
-    @property
-    def attack_skill(self):
-        return self.obj.db.attack_skill or "crushing"
-
-    @attack_skill.setter
-    def attack_skill(self, skill):
-        self.obj.db.attack_skill = skill
+    attack_skill = get_storage_prop("attack_skill", "medium wpn")
+    attack_stat = get_storage_prop("attack_stat", "dexterity")
+    currently_wielded = get_storage_prop("currently_wielded", False)
+    damage_stat = get_storage_prop("damage_stat", "strength")
+    damage_bonus = get_storage_prop("damage_bonus", 1)
+    attack_type = get_storage_prop("attack_type", "melee")
+    can_be_parried = get_storage_prop("can_be_parried", True)
+    can_be_blocked = get_storage_prop("can_be_blocked", True)
+    can_be_dodged = get_storage_prop("can_be_dodged", True)
+    can_be_countered = get_storage_prop("can_be_countered", True)
+    can_parry = get_storage_prop("can_parry", True)
+    can_riposte = get_storage_prop("can_riposte", True)
+    difficulty_mod = get_storage_prop("difficulty_mod", 0)
