@@ -7,15 +7,10 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 from evennia.comms.models import Msg
 from evennia.typeclasses.admin import TagInline
-from evennia.objects.models import ObjectDB
-from evennia.objects.admin import ObjectDBAdmin
 from evennia.help.admin import HelpEntryAdmin
 from evennia.help.models import HelpEntry
 
 from .models import Inform, Messenger, Post, Journal, Rumor
-from web.character.models import Clue
-from world.traits.models import CharacterTraitValue, Trait
-from world.conditions.models import Wound
 
 
 class InformFilter(admin.SimpleListFilter):
@@ -135,43 +130,10 @@ admin.site.register(Post, MsgAdmin)
 admin.site.register(Rumor, MsgAdmin)
 
 
-class ClueForCharacterInline(admin.StackedInline):
-    model = Clue
-    extra = 0
-    raw_id_fields = (
-        "tangible_object",
-        "author",
-    )
-    filter_horizontal = ("search_tags",)
-    show_change_link = True
-
-
-class CharacterTraitValueInline(admin.TabularInline):
-    model = CharacterTraitValue
-    extra = 0
-    ordering = ("trait__trait_type", "trait__name")
-
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """Orders the material type selection"""
-        if db_field.name == "trait":
-            kwargs["queryset"] = Trait.objects.order_by("name")
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-
-class ArxObjectDBAdmin(ObjectDBAdmin):
-    search_fields = ["=id", "db_key"]
-    inlines = list(ObjectDBAdmin.inlines) + [
-        ClueForCharacterInline,
-        CharacterTraitValueInline,
-    ]
-
-
 class ArxHelpDBAdmin(HelpEntryAdmin):
     search_fields = ["db_key", "db_entrytext"]
 
 
-admin.site.unregister(ObjectDB)
-admin.site.register(ObjectDB, ArxObjectDBAdmin)
 admin.site.unregister(HelpEntry)
 admin.site.register(HelpEntry, ArxHelpDBAdmin)
 try:

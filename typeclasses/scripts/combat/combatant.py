@@ -41,7 +41,7 @@ class CombatHandler(object):
         self.state = None
         self.char = character
         self.spectated_combat = None
-        if character.db.num_living:
+        if character.item_data.quantity > 1:
             self.multiple = True
             self.switch_chance = 50
             try:

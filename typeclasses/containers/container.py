@@ -33,7 +33,7 @@ class CmdChestKey(ArxCommand):
         caller = self.caller
         chestkeys = caller.db.chestkeylist or []
         if (
-            caller != self.obj.craft_handler.crafted_by
+            caller != self.obj.item_data.crafted_by
             and not caller.check_permstring("builders")
             and self.obj not in chestkeys
         ):
@@ -131,6 +131,8 @@ class Container(LockMixins, DefaultObject):
     lock/unlock containers.
     """
 
+    default_capacity = 1
+
     # noinspection PyMethodMayBeStatic
     def create_container_cmdset(self, contdbobj):
         """
@@ -177,7 +179,7 @@ class Container(LockMixins, DefaultObject):
         """Called once, when object is first created (after basetype_setup)."""
         self.locks.add("usekey: chestkey(%s)" % self.id)
         self.db.container = True
-        self.db.max_volume = 1
+        self.item_data.capacity = 1
         self.at_init()
 
     def grantkey(self, char):

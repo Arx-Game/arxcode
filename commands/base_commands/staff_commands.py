@@ -342,7 +342,9 @@ class CmdRestore(ArxPlayerCommand):
             ]
             dobjs = [
                 "%s (ID:%s)" % (ob.key, ob.id)
-                for ob in ObjectDB.objects.filter(db_tags__db_key__iexact="deleted")
+                for ob in ObjectDB.objects.filter(
+                    permanence__deleted_time__isnull=False
+                )
             ]
             caller.msg("Deleted players: %s" % ", ".join(dplayers))
             caller.msg("Deleted objects: %s" % ", ".join(dobjs))
@@ -359,7 +361,7 @@ class CmdRestore(ArxPlayerCommand):
                 return
         try:
             targ = ObjectDB.objects.get(id=self.args)
-            if "deleted" not in str(targ.tags).split(","):
+            if not targ.item_data.deleted_time:
                 caller.msg("%s does not appear to be deleted." % targ)
                 return
             char = caller.char_ob
@@ -405,14 +407,16 @@ class CmdPurgeJunk(ArxPlayerCommand):
             ]
             dobjs = [
                 "%s (ID:%s)" % (ob.key, ob.id)
-                for ob in ObjectDB.objects.filter(db_tags__db_key__iexact="deleted")
+                for ob in ObjectDB.objects.filter(
+                    permanence__deleted_time__isnull=False
+                )
             ]
             caller.msg("Deleted players: %s" % ", ".join(dplayers))
             caller.msg("Deleted objects: %s" % ", ".join(dobjs))
             return
         try:
             targ = ObjectDB.objects.get(id=self.args)
-            if "deleted" not in str(targ.tags).split(","):
+            if not targ.item_data.deleted_time:
                 caller.msg("%s does not appear to be deleted." % targ)
                 return
             if (

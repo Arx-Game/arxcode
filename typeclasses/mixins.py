@@ -1,11 +1,13 @@
+from evennia_extensions.object_extensions.item_data_handler import ItemDataHandler
 from server.utils.arx_utils import sub_old_ansi, text_box, lowercase_kwargs
 import re
+from datetime import datetime
 from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import parse_ansi
 
 from typeclasses.exceptions import InvalidTargetError
 from world.conditions.triggerhandler import TriggerHandler
-from world.crafting.craft_handlers import CraftHandler
+from world.crafting.craft_data_handlers import CraftDataHandler
 from world.crafting.junk_handlers import RefundMaterialsJunkHandler
 from world.templates.models import Template
 from world.templates.mixins import TemplateMixins
@@ -38,6 +40,9 @@ class DescMixins(object):
     """
 
     default_desc = ""
+    default_size = 1
+    default_capacity = 100
+    default_quantity = 1
 
     @property
     def base_desc(self):
@@ -121,18 +126,17 @@ class DescMixins(object):
 
     perm_desc = property(__perm_desc_get, __perm_desc_set)
 
-    def __get_volume(self):
+    @property
+    def used_capacity(self):
         """
         :type self: ObjectDB
         """
         total = 0
         for obj in self.contents:
-            if not obj.db.currently_worn and obj.db.sheathed_by != self:
-                vol = obj.db.volume or 1
+            if not obj.item_data.currently_worn and obj.item_data.sheathed_by != self:
+                vol = obj.item_data.total_size
                 total += vol
         return total
-
-    volume = property(__get_volume)
 
     @property
     def dead(self):
@@ -236,6 +240,9 @@ class NameMixins(object):
 
 # noinspection PyAttributeOutsideInit
 class BaseObjectMixins(object):
+    default_put_time = 0
+    default_deleted_time = None
+
     @property
     def is_room(self):
         return False
@@ -262,11 +269,8 @@ class BaseObjectMixins(object):
 
         :type self: ObjectDB
         """
-        import time
-
         self.location = None
-        self.tags.add("deleted")
-        self.db.deleted_time = time.time()
+        self.item_data.deleted_time = datetime.now()
 
     def undelete(self, move=True):
         """
@@ -274,8 +278,7 @@ class BaseObjectMixins(object):
         :type move: Boolean
         :return:
         """
-        self.tags.remove("deleted")
-        self.attributes.remove("deleted_time")
+        self.item_data.deleted_time = None
         if move:
             from typeclasses.rooms import ArxRoom
 
@@ -442,7 +445,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 elif self.db.places and con not in self.db.places:
                     things.append(con)
         if worn:
-            worn = sorted(worn, key=lambda x: x.craft_handler.worn_time)
+            worn = sorted(worn, key=lambda x: x.item_data.worn_time)
             string += (
                 "\n"
                 + "{wWorn items of note:{n "
@@ -462,7 +465,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                     users + [get_key(ob) for ob in npcs]
                 )
             if things:
-                things = sorted(things, key=lambda x: x.db.put_time or 0.0)
+                things = sorted(things, key=lambda x: x.item_data.put_time)
                 string += "\n{wObjects:{n " + sep.join([get_key(ob) for ob in things])
             if currency:
                 string += "\n{wMoney:{n %s" % currency
@@ -710,18 +713,18 @@ class TriggersMixin(object):
 
 
 class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
-    pass
+    item_data_class = ItemDataHandler
+
+    @lazy_property
+    def item_data(self):
+        return self.item_data_class(self)
 
 
 class CraftingMixins(object):
-    craft_handler_class = CraftHandler
+    item_data_class = CraftDataHandler
     junk_handler_class = RefundMaterialsJunkHandler
     default_type_description_name = None
     should_format_desc = False
-
-    @lazy_property
-    def craft_handler(self):
-        return self.craft_handler_class(self)
 
     @lazy_property
     def junk_handler(self):
@@ -736,13 +739,13 @@ class CraftingMixins(object):
             format_desc=format_desc,
             show_contents=show_contents,
         )
-        string += self.craft_handler.get_crafting_desc()
+        string += self.item_data.get_crafting_desc()
         return string
 
     @property
     def type_description(self):
-        if self.craft_handler.recipe:
-            return self.craft_handler.recipe.name
+        if self.item_data.recipe:
+            return self.item_data.recipe.name
         return self.default_type_description_name
 
 

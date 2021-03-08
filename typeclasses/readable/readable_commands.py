@@ -125,10 +125,10 @@ class CmdWrite(ArxCommand, TemplateMixins):
             if not desc:
                 caller.msg("Still needs a description set.")
                 return
-            if obj.db.num_instances > 1:
+            if obj.item_data.quantity > 1:
                 from evennia.utils.create import create_object
 
-                remain = obj.db.num_instances - 1
+                remain = obj.item_data.quantity - 1
                 newobj = create_object(
                     typeclass="typeclasses.readable.readable.Readable",
                     key="book",
@@ -136,11 +136,11 @@ class CmdWrite(ArxCommand, TemplateMixins):
                     home=caller,
                 )
                 newobj.set_num(remain)
-            obj.db.num_instances = 1
+            obj.item_data.quantity = 1
             obj.name = name
             obj.desc = desc
             if obj.ndb.transtext:
-                obj.craft_handler.translation = obj.ndb.transtext
+                obj.item_data.translation = obj.ndb.transtext
             obj.save()
 
             self.apply_templates_to(obj)

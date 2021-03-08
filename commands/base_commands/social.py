@@ -3674,7 +3674,7 @@ class CmdLanguages(ArxCommand):
             obj = self.caller.search(self.args)
             if not obj:
                 return
-            translation = obj.craft_handler.translation or {}
+            translation = obj.item_data.translation or {}
             matches = False
             for lang in self.caller.languages.known_languages:
                 if lang in translation:

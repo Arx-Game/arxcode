@@ -14,7 +14,7 @@ class Trinket(Bauble):
 
     @property
     def potential(self):
-        return 20 + (self.craft_handler.quality_level * 10)
+        return 20 + (self.item_data.quality_level * 10)
 
     def quality_level_from_primum(self, primum):
         return max(int((primum - 20) / 10), 0)
@@ -23,8 +23,8 @@ class Trinket(Bauble):
 class AncientWeapon(Wieldable):
     @property
     def type_description(self):
-        if self.craft_handler.recipe:
-            return "ancient %s" % self.craft_handler.recipe.name
+        if self.item_data.recipe:
+            return "ancient %s" % self.item_data.recipe.name
         return "ancient weapon"
 
 
@@ -77,7 +77,7 @@ class LootGenerator(object):
         quality_picker.add_option(8, 3)
         quality_picker.add_option(9, 1)
 
-        trinket.craft_handler.quality_level = quality_picker.pick()
+        trinket.item_data.quality_level = quality_picker.pick()
         trinket.db.found_shardhaven = haven.name
 
         cls.set_alignment_and_affinity(haven, trinket)
@@ -199,9 +199,9 @@ class LootGenerator(object):
         quality_picker.add_option(8, 3)
         quality_picker.add_option(9, 1)
 
-        weapon.craft_handler.quality_level = quality_picker.pick()
+        weapon.item_data.quality_level = quality_picker.pick()
         weapon.db.found_shardhaven = haven.name
-        weapon.craft_handler.recipe = LootGenerator.get_weapon_recipe(
+        weapon.item_data.recipe = LootGenerator.get_weapon_recipe(
             material, wpn_type=wpn_type
         )
 

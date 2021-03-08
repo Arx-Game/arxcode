@@ -105,9 +105,9 @@ def money_from_args(args, fromobj):
 
 def check_volume(obj, char, quiet=False):
     """Helper function to check if a character has enough volune to carry an item"""
-    vol = obj.db.volume or 1
-    v_max = char.db.max_volume or 100
-    if char.volume + vol > v_max:
+    vol = obj.item_data.size
+    v_max = char.item_data.capacity
+    if char.used_capacity + vol > v_max:
         if not quiet:
             char.msg("You can't carry %s." % obj)
         return False
@@ -170,7 +170,7 @@ class CmdInventory(ArxCommand):
         if not items:
             string = "%s not carrying anything." % basemsg
         else:
-            volume = "Volume:{n %s/%s" % (char.volume, char.db.max_volume or 100)
+            volume = "Volume:{n %s/%s" % (char.used_capacity, char.item_data.capacity)
             string = "{w%s carrying (%s{w):%s" % (basemsg, volume, items)
         xp = char.db.xp or 0
         ap = 0
@@ -1030,6 +1030,10 @@ class CmdArxSetAttribute(CmdSetAttribute):
         if trait:
             obj.traits.set_trait_value(trait.get_trait_type_display(), attr, value)
             return f"Set trait {obj.name}/{attr} = {value}"
+        # check for item_data value
+        if hasattr(obj.item_data, attr):
+            setattr(obj.item_data, attr, value)
+            return f"Set item data {obj.name}/{attr} = {value}"
         # normal case
         return super().set_attr(obj, attr, value)
 

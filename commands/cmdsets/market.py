@@ -59,7 +59,7 @@ class OtherMaterial(object):
         ]
         if stacking:
             obj = stacking[0]
-            obj.set_num(obj.db.num_instances + 1)
+            obj.set_num(obj.item_data.quantity + 1)
         else:
             obj = create_object(
                 typeclass=self.path, key=self.name, location=caller, home=caller

@@ -773,10 +773,21 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("a fox mask in purse1", "You'll have to unlock Purse1 first.")
         self.purse1.db.locked = False
         self.call_cmd("hairpins1 in purse1", "You put Hairpins1 in Purse1.")
-        self.mask1.craft_handler.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
+        self.mask1.remove(self.char2)
+        self.call_cmd(
+            "/outfit Bishikiller in purse1",
+            "Slinkity1 is currently worn and cannot be moved.|"
+            "No more room; A Fox Mask won't fit.|"
+            "Nothing moved.",
+        )
+        # currently trying to put away an outfit will remove it
+        # but not move if no room. May want to change in future
+        self.mask1.wear(self.char2)
+        self.purse1.item_data.capacity = 500
         self.mask1.remove(self.char2)
         self.call_cmd(
             "/outfit Bishikiller in purse1",
@@ -819,7 +830,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.obj1.location, self.char2)
         self.assertEqual(self.char2.db.currency, 5.0)
         self.assertEqual(self.purse1.db.currency, 25.0)
-        self.mask1.craft_handler.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
@@ -893,6 +904,14 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
             "Players:\n\nPlayer name Fealty Idle \n\nShowing 0 out of 1 unique account logged in.",
         )
 
+    def test_cmd_set(self):
+        self.setup_cmd(overrides.CmdArxSetAttribute, self.char)
+        self.call_cmd(f" here/capacity=200", "Set item data Room/capacity = 200")
+        self.assertEqual(self.room.item_data.capacity, 200)
+        self.call_cmd(
+            f"/char {self.char2}/strength=10", "Set trait Char2/strength = 10"
+        )
+
 
 # noinspection PyUnresolvedReferences
 class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
@@ -917,7 +936,7 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/cancel", f"{head}Your trade has been cancelled.")
         self.assertEqual(self.char2.ndb.personal_trade_in_progress, None)
         self.top2.wear(self.char2)
-        self.mask1.craft_handler.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.mask1.wear(self.char2)
         self.call_cmd(
             "Char",

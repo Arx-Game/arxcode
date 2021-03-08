@@ -409,9 +409,9 @@ class CombatantStateHandler(object):
         if not defenders:
             return targ, mssg
         # build dict of our defenders to how many dudes they have
-        chance_dict = {obj: obj.db.num_living or 1 for obj in defenders if obj}
+        chance_dict = {obj: obj.item_data.quantity or 1 for obj in defenders if obj}
         # # add original target
-        # chance_dict[targ] = targ.db.num_living or 1
+        # chance_dict[targ] = targ.item_data.quantity or 1
         # do a roll from 0 to the total of all dudes in the dict
         roll = randint(0, sum(chance_dict.values()))
         # now go through and see if we get a new target

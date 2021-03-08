@@ -382,67 +382,67 @@ class TestEquipmentMixins(object):
         self.top1 = create.create_object(
             wearable_typeclass, key="Top1", location=self.room1, home=self.room1
         )
-        self.top1.craft_handler.quality_level = 6
+        self.top1.item_data.quality_level = 6
         # Top2 is a 1-slot_limit chest Wearable made by non-staff char2
         self.top2 = create.create_object(
             wearable_typeclass, key="Top2", location=self.char2, home=self.room1
         )
-        self.top2.craft_handler.quality_level = 6
-        self.top2.craft_handler.recipe = 1
-        self.top2.craft_handler.crafted_by = self.char2
+        self.top2.item_data.quality_level = 6
+        self.top2.item_data.recipe = 1
+        self.top2.item_data.crafted_by = self.char2
         # Slinkity1 is chest 2-slot_limit, so can stack once with chest-wearables. Also has adorns
         self.catsuit1 = create.create_object(
             wearable_typeclass, key="Slinkity1", location=self.char2, home=self.room1
         )
-        self.catsuit1.craft_handler.quality_level = 11
-        self.catsuit1.craft_handler.recipe = 2
-        self.catsuit1.craft_handler.crafted_by = self.char2
-        self.catsuit1.craft_handler.adorns = {1: 200}
+        self.catsuit1.item_data.quality_level = 11
+        self.catsuit1.item_data.recipe = 2
+        self.catsuit1.item_data.crafted_by = self.char2
+        self.catsuit1.item_data.adorns = {1: 200}
         # Purse1 is a wearable container; baseval is their capacity
         self.purse1 = create.create_object(
             purse_typeclass, key="Purse1", location=self.char2, home=self.room1
         )
-        self.purse1.craft_handler.quality_level = 4
-        self.purse1.craft_handler.recipe = 3
-        self.purse1.craft_handler.crafted_by = self.char2
+        self.purse1.item_data.quality_level = 4
+        self.purse1.item_data.recipe = 3
+        self.purse1.item_data.crafted_by = self.char2
         # Imps leer when they lick a knife
         self.knife1 = create.create_object(
             weapon_typeclass, key="Lickyknife1", location=self.char2, home=self.room1
         )
-        self.knife1.craft_handler.quality_level = 11
-        self.knife1.craft_handler.recipe = 4
-        self.knife1.craft_handler.crafted_by = self.char2
-        self.knife1.craft_handler.attack_skill = (
-            self.knife1.craft_handler.resultsdict.get("weapon_skill", "medium wpn")
+        self.knife1.item_data.quality_level = 11
+        self.knife1.item_data.recipe = 4
+        self.knife1.item_data.crafted_by = self.char2
+        self.knife1.item_data.attack_skill = self.knife1.item_data.resultsdict.get(
+            "weapon_skill", "medium wpn"
         )
         # A larger weapon
         self.sword1 = create.create_object(
             weapon_typeclass, key="Sword1", location=self.char2, home=self.room1
         )
-        self.sword1.craft_handler.quality_level = 6
-        self.sword1.craft_handler.recipe = 7
-        self.sword1.craft_handler.crafted_by = self.char2
-        self.sword1.craft_handler.attack_skill = (
-            self.sword1.craft_handler.resultsdict.get("weapon_skill", "medium wpn")
+        self.sword1.item_data.quality_level = 6
+        self.sword1.item_data.recipe = 7
+        self.sword1.item_data.crafted_by = self.char2
+        self.sword1.item_data.attack_skill = self.sword1.item_data.resultsdict.get(
+            "weapon_skill", "medium wpn"
         )
         # Masks change wearer identity and are restricted from being worn by 0 quality
         self.mask1 = create.create_object(
             mask_typeclass, key="A Fox Mask", location=self.char2, home=self.room1
         )
-        self.mask1.craft_handler.quality_level = 0
-        self.mask1.craft_handler.recipe = 6  # mask also has fashion_mult:6
-        self.mask1.craft_handler.crafted_by = self.char2
-        self.mask1.craft_handler.mask_desc = "A very Slyyyy Fox..."
-        self.mask1.craft_handler.adorns = {1: 20}
+        self.mask1.item_data.quality_level = 0
+        self.mask1.item_data.recipe = 6  # mask also has fashion_mult:6
+        self.mask1.item_data.crafted_by = self.char2
+        self.mask1.item_data.mask_desc = "A very Slyyyy Fox..."
+        self.mask1.item_data.adorns = {1: 20}
         # Hairpins1 is a decorative weapon and should always show as 'worn' rather than 'sheathed'
         self.hairpins1 = create.create_object(
             hairpin_typeclass, key="Hairpins1", location=self.char2, home=self.room1
         )
-        self.hairpins1.craft_handler.quality_level = 4
-        self.hairpins1.craft_handler.recipe = 5
-        self.hairpins1.craft_handler.crafted_by = self.char2
-        self.hairpins1.craft_handler.attack_skill = (
-            self.hairpins1.craft_handler.resultsdict.get("weapon_skill", "small wpn")
+        self.hairpins1.item_data.quality_level = 4
+        self.hairpins1.item_data.recipe = 5
+        self.hairpins1.item_data.crafted_by = self.char2
+        self.hairpins1.item_data.attack_skill = (
+            self.hairpins1.item_data.resultsdict.get("weapon_skill", "small wpn")
         )
 
     def start_ze_fight(self):

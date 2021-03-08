@@ -162,24 +162,24 @@ class UseEquipmentMixins(object):
         wpndict = dict(self.get_fakeweapon() or {})
         wpn = self.weapon
         if wpn:
-            wpndict["attack_skill"] = wpn.craft_handler.attack_skill
-            wpndict["attack_stat"] = wpn.craft_handler.attack_stat
-            wpndict["damage_stat"] = wpn.craft_handler.damage_stat
+            wpndict["attack_skill"] = wpn.item_data.attack_skill
+            wpndict["attack_stat"] = wpn.item_data.attack_stat
+            wpndict["damage_stat"] = wpn.item_data.damage_stat
             wpndict["weapon_damage"] = wpn.damage_bonus
-            wpndict["attack_type"] = wpn.craft_handler.attack_type
-            wpndict["can_be_parried"] = wpn.craft_handler.can_be_parried
-            wpndict["can_be_blocked"] = wpn.craft_handler.can_be_blocked
-            wpndict["can_be_dodged"] = wpn.craft_handler.can_be_dodged
-            wpndict["can_parry"] = wpn.craft_handler.can_parry or False
+            wpndict["attack_type"] = wpn.item_data.attack_type
+            wpndict["can_be_parried"] = wpn.item_data.can_be_parried
+            wpndict["can_be_blocked"] = wpn.item_data.can_be_blocked
+            wpndict["can_be_dodged"] = wpn.item_data.can_be_dodged
+            wpndict["can_parry"] = wpn.item_data.can_parry or False
             wpndict["can_riposte"] = (
-                wpn.craft_handler.can_parry or wpn.craft_handler.can_riposte or False
+                wpn.item_data.can_parry or wpn.item_data.can_riposte or False
             )
             wpndict["reach"] = wpn.db.weapon_reach or 1
             wpndict["minimum_range"] = wpn.db.minimum_range or 0
             try:
                 wpndict["difficulty_mod"] = wpn.difficulty_mod or 0
             except AttributeError:
-                wpndict["difficulty_mod"] = wpn.craft_handler.difficulty_mod
+                wpndict["difficulty_mod"] = wpn.item_data.difficulty_mod
             try:
                 wpndict["flat_damage"] = wpn.flat_damage or 0
             except AttributeError:
@@ -217,7 +217,7 @@ class UseEquipmentMixins(object):
     def worn(self):
         """Returns list of items worn as attire."""
         worn = [ob for ob in self.equipment if ob.decorative and ob.is_worn]
-        return sorted(worn, key=lambda x: x.craft_handler.worn_time)
+        return sorted(worn, key=lambda x: x.item_data.worn_time)
 
     @property
     def sheathed(self):

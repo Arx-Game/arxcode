@@ -50,10 +50,10 @@ class ArxMagicTest(ArxTest):
         self.test_object = create.create_object(
             typeclass="typeclasses.objects.Object", key="Test Object", nohome=True
         )
-        self.test_object.craft_handler.recipe = self.recipe.id
+        self.test_object.item_data.recipe = self.recipe.id
         self.test_object.db.alignment = self.alignment.id
         self.test_object.db.affinity = self.affinity.id
-        self.test_object.craft_handler.quality_level = 10
+        self.test_object.item_data.quality_level = 10
         self.test_object.db.quantity = 1
 
         self.practitioner = Practitioner.objects.create(

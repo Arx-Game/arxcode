@@ -46,12 +46,12 @@ class RefundMaterialsJunkHandler(BaseJunkHandler):
 
     def __init__(self, obj):
         super().__init__(obj)
-        self.craft_handler = obj.craft_handler
+        self.item_data = obj.item_data
 
     @property
     def junkable(self):
         """A check for this object's plot connections."""
-        if not self.craft_handler.recipe:
+        if not self.item_data.recipe:
             raise AttributeError
         return not self.is_plot_related
 
@@ -79,8 +79,8 @@ class RefundMaterialsJunkHandler(BaseJunkHandler):
             return num_kept
 
         pmats = caller.player.Dominion.assets.materials
-        mats = self.craft_handler.materials
-        adorns = self.craft_handler.adorns
+        mats = self.item_data.materials
+        adorns = self.item_data.adorns
         refunded = []
         roll = get_refund_chance()
         for mat in adorns:

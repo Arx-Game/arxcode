@@ -9,7 +9,7 @@ from time import time
 from typeclasses.containers.container import Container
 from world.fashion.mixins import FashionableMixins
 from typeclasses.exceptions import EquipError
-from world.crafting.craft_handlers import WearableCraftHandler
+from world.crafting.craft_data_handlers import WearableDataHandler
 
 
 # noinspection PyMethodMayBeStatic
@@ -19,7 +19,7 @@ class Wearable(FashionableMixins, Object):
     Class for wearable objects
     """
 
-    craft_handler_class = WearableCraftHandler
+    item_data_class = WearableDataHandler
 
     default_desc = "A piece of clothing or armor."
 
@@ -82,7 +82,7 @@ class Wearable(FashionableMixins, Object):
         self.at_pre_wear(wearer)
         self.is_worn = True
         if self.decorative:
-            self.craft_handler.worn_time = time()
+            self.item_data.worn_time = time()
         self.at_post_wear(wearer)
 
     def at_pre_wear(self, wearer):
@@ -109,8 +109,8 @@ class Wearable(FashionableMixins, Object):
         If we have crafted armor, return the value from the recipe and
         quality.
         """
-        quality = self.craft_handler.quality_level
-        recipe = self.craft_handler.recipe
+        quality = self.item_data.quality_level
+        recipe = self.item_data.recipe
         if not recipe:
             return (
                 0,
@@ -122,7 +122,7 @@ class Wearable(FashionableMixins, Object):
         penalty = float(recipe.resultsdict.get("penalty", 0.0))
         resilience = penalty / 3
         if quality >= 10:
-            crafter = self.craft_handler.crafted_by
+            crafter = self.item_data.crafted_by
             if (
                 (recipe.level > 3)
                 or not crafter
@@ -160,7 +160,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def armor(self):
         # if we have no recipe or we are set to ignore it, 0
-        if not self.craft_handler.recipe:
+        if not self.item_data.recipe:
             return 0
         if self.ndb.cached_armor_value is not None:
             return self.ndb.cached_armor_value
@@ -169,7 +169,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def penalty(self):
         # if we have no recipe or we are set to ignore it, use penalty
-        if not self.craft_handler.recipe or self.db.ignore_crafted:
+        if not self.item_data.recipe or self.db.ignore_crafted:
             return self.db.penalty or 0
         if self.ndb.cached_penalty_value is not None:
             return self.ndb.cached_penalty_value
@@ -178,7 +178,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def armor_resilience(self):
         """How hard the armor is to penetrate"""
-        if not self.craft_handler.recipe or self.db.ignore_crafted:
+        if not self.item_data.recipe or self.db.ignore_crafted:
             return 0
         if self.ndb.cached_resilience is not None:
             return self.ndb.cached_resilience
@@ -187,7 +187,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def slot(self):
         """slot the armor is worn on"""
-        recipe = self.craft_handler.recipe
+        recipe = self.item_data.recipe
         if not recipe:
             return self.db.slot
         return recipe.resultsdict.get("slot", None)
@@ -195,7 +195,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def slot_limit(self):
         """how many can be worn on that slot"""
-        recipe = self.craft_handler.recipe
+        recipe = self.item_data.recipe
         if not recipe:
             return self.db.slot_limit or 1
         try:
@@ -209,12 +209,12 @@ class Wearable(FashionableMixins, Object):
 
     @property
     def is_worn(self):
-        return self.craft_handler.currently_worn
+        return self.item_data.currently_worn
 
     @is_worn.setter
     def is_worn(self, bull):
         """Bool luvs u"""
-        self.craft_handler.currently_worn = bull
+        self.item_data.currently_worn = bull
 
     @property
     def is_equipped(self):

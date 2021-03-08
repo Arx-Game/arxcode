@@ -29,7 +29,7 @@ class Perfume(Consumable):
 
     @property
     def quality_prefix(self):
-        recipe = self.craft_handler.recipe
+        recipe = self.item_data.recipe
         try:
             return "{w%s{n:" % recipe.name
         except AttributeError:

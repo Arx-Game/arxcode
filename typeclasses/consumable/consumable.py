@@ -3,7 +3,7 @@ Consumable object.
 """
 
 from typeclasses.objects import Object
-from world.crafting.craft_handlers import ConsumableCraftHandler
+from world.crafting.craft_data_handlers import ConsumableDataHandler
 from evennia.utils.utils import inherits_from
 
 
@@ -13,7 +13,7 @@ class Consumable(Object):
     the number of uses we have remaining.
     """
 
-    craft_handler_class = ConsumableCraftHandler
+    item_data_class = ConsumableDataHandler
     default_desc = "A consumable object"
 
     @property

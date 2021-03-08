@@ -1431,7 +1431,7 @@ class CmdCreateAntagonist(ArxCommand):
         )
         for npc in npcs:
             ntype = npc_types.get_npc_singular_name(npc.db.npc_type)
-            num = npc.db.num_living if ntype.lower() != "champion" else "Unique"
+            num = npc.item_data.quantity if ntype.lower() != "champion" else "Unique"
             table.add_row(
                 npc.id,
                 npc.key or "None",
@@ -1541,7 +1541,7 @@ class CmdCreateAntagonist(ArxCommand):
 
     def adjust_spawn_quantity(self, npc):
         try:
-            npc.db.num_living = int(self.rhs)
+            npc.item_data.quantity = int(self.rhs)
         except (TypeError, ValueError):
             self.msg("Quantity must be a number.")
         else:

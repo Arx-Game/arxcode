@@ -67,7 +67,7 @@ class MagicMixins(object):
 
     def quality_level_from_primum(self, primum):
         try:
-            recipe = self.craft_handler.recipe
+            recipe = self.item_data.recipe
 
             lower_name = recipe.name.lower()
             if "alaricite" in lower_name:
@@ -88,9 +88,9 @@ class MagicMixins(object):
         if self.practitioner:
             return self.practitioner.potential
 
-        if self.craft_handler.recipe:
+        if self.item_data.recipe:
             try:
-                lower_name = self.craft_handler.recipe.name.lower()
+                lower_name = self.item_data.recipe.name.lower()
             except CraftingRecipe.DoesNotExist:
                 return self.potential
         else:
@@ -134,14 +134,14 @@ class MagicMixins(object):
             except ValueError:
                 pass
 
-        quality_level = self.craft_handler.quality_level
+        quality_level = self.item_data.quality_level
 
         result = quality_level
         lower_name = None
-        if self.craft_handler.recipe and quality_level > 0:
+        if self.item_data.recipe and quality_level > 0:
 
             try:
-                recipe = self.craft_handler.recipe
+                recipe = self.item_data.recipe
 
                 lower_name = recipe.name.lower()
             except AttributeError:
@@ -225,8 +225,8 @@ class MagicMixins(object):
             self.softdelete()
             return
 
-        if self.craft_handler.quality_level:
-            self.craft_handler.quality_level = self.quality_level_from_primum(
+        if self.item_data.quality_level:
+            self.item_data.quality_level = self.quality_level_from_primum(
                 self.db.primum
             )
 
@@ -241,8 +241,8 @@ class MagicMixins(object):
         if self.db.primum > self.potential:
             self.db.potential = self.db.primum
 
-        if self.craft_handler.quality_level:
-            self.craft_handler.quality_level = self.quality_level_from_primum(
+        if self.item_data.quality_level:
+            self.item_data.quality_level = self.quality_level_from_primum(
                 self.db.primum
             )
 

@@ -21,13 +21,12 @@ class Readable(Object):
         Run at Place creation.
         """
         self.db.written = False
-        self.db.num_instances = 1
         self.db.can_stack = True
         self.db.do_not_format_desc = True
         self.at_init()
 
     def at_after_move(self, source_location, **kwargs):
-        if self.db.num_instances > 1 and not self.db.written:
+        if self.item_data.quantity > 1 and not self.db.written:
             self.setup_multiname()
         location = self.location
         # first, remove ourself from the source location's places, if it exists
@@ -52,12 +51,12 @@ class Readable(Object):
 
     # noinspection PyAttributeOutsideInit
     def setup_multiname(self):
-        if self.db.num_instances > 1:
-            self.key = "%s books" % self.db.num_instances
+        if self.item_data.quantity > 1:
+            self.key = "%s books" % self.item_data.quantity
             self.save()
         else:
             self.key = "a book"
 
     def set_num(self, value):
-        self.db.num_instances = value
+        self.item_data.quantity = value
         self.setup_multiname()

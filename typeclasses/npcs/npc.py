@@ -244,10 +244,10 @@ class Npc(Character):
 
 class MultiNpc(Npc):
     def multideath(self, num, death=False):
-        living = self.db.num_living or 0
+        living = self.item_data.quantity or 0
         if num > living:
             num = living
-        self.db.num_living = living - num
+        self.item_data.quantity = living - num
         if death:
             dead = self.db.num_dead or 0
             self.db.num_dead = dead + num
@@ -334,18 +334,18 @@ class MultiNpc(Npc):
         from .npc_types import get_npc_singular_name, get_npc_plural_name
 
         npc_type = self.db.npc_type
-        if self.db.num_living == 1 and not self.db.num_dead:
+        if self.item_data.quantity == 1 and not self.db.num_dead:
             self.key = self.db.singular_name or get_npc_singular_name(npc_type)
         else:
-            if self.db.num_living == 1:
+            if self.item_data.quantity == 1:
                 noun = self.db.singular_name or get_npc_singular_name(npc_type)
             else:
                 noun = self.db.plural_name or get_npc_plural_name(npc_type)
-            if not self.db.num_living and self.db.num_dead:
+            if not self.item_data.quantity and self.db.num_dead:
                 noun = "dead %s" % noun
                 self.key = "%s %s" % (self.db.num_dead, noun)
             else:
-                self.key = "%s %s" % (self.db.num_living, noun)
+                self.key = "%s %s" % (self.item_data.quantity, noun)
         self.save()
 
     def setup_npc(
@@ -358,7 +358,7 @@ class MultiNpc(Npc):
         desc=None,
         keepold=False,
     ):
-        self.db.num_living = num
+        self.item_data.quantity = num
         self.db.num_dead = 0
         self.db.num_incap = 0
         self.health_status.full_restore()
@@ -378,7 +378,7 @@ class MultiNpc(Npc):
 
     @property
     def quantity(self):
-        num = self.db.num_living or 0
+        num = self.item_data.quantity or 0
         return num - self.temp_losses
 
     @property
@@ -972,12 +972,12 @@ class Agent(AgentMixin, MultiNpc):
         a_type = self.agentob.agent_class.type
         noun = self.agentob.agent_class.name
         if not noun:
-            if self.db.num_living == 1:
+            if self.item_data.quantity == 1:
                 noun = get_npc_singular_name(a_type)
             else:
                 noun = get_npc_plural_name(a_type)
-        if self.db.num_living:
-            self.key = "%s %s" % (self.db.num_living, noun)
+        if self.item_data.quantity:
+            self.key = "%s %s" % (self.item_data.quantity, noun)
         else:
             self.key = noun
         self.save()
@@ -997,17 +997,17 @@ class Agent(AgentMixin, MultiNpc):
         """
         if num < 0:
             raise ValueError("Must pass a positive integer to lose_agents.")
-        if num > self.db.num_living:
-            num = self.db.num_living
+        if num > self.item_data.quantity:
+            num = self.item_data.quantity
         self.multideath(num, death)
         self.agentob.lose_agents(num)
         self.setup_name()
-        if self.db.num_living <= 0:
+        if self.item_data.quantity <= 0:
             self.unassign()
         return num
 
     def gain_agents(self, num):
-        self.db.num_living += num
+        self.item_data.quantity += num
         self.setup_name()
 
     def death_process(self, *args, **kwargs):

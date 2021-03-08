@@ -1410,9 +1410,9 @@ class CmdPut(ArxCommand):
             if dest in obj.contents:
                 caller.msg("You can't place an object in something it contains.")
                 continue
-            max_volume = dest.db.max_volume or 0
-            volume = obj.db.volume or 0
-            if dest.volume + volume > max_volume:
+            capacity = dest.item_data.capacity
+            size = obj.item_data.size
+            if dest.used_capacity + size > capacity:
                 caller.msg("No more room; {} won't fit.".format(obj))
                 continue
             if not obj.access(caller, "get"):
@@ -1422,7 +1422,7 @@ class CmdPut(ArxCommand):
             success.append(obj)
             from time import time
 
-            obj.db.put_time = time()
+            obj.item_data.put_time = int(time())
         if success:
             success_str = "%s in %s" % (list_to_string(success), dest.name)
             caller.msg("You put %s." % success_str)
@@ -1815,7 +1815,7 @@ class CmdKeyring(ArxCommand):
         chest_keys = [
             ob
             for ob in chest_keys
-            if hasattr(ob, "tags") and "deleted" not in ob.tags.all()
+            if hasattr(ob, "item_data") and not ob.item_data.deleted_time
         ]
         chest_keys = list(set(chest_keys))
         caller.db.chestkeylist = chest_keys

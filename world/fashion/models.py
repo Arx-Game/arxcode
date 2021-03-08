@@ -525,9 +525,9 @@ class FashionSnapshot(FashionCommonMixins):
         )
         roll = pow(max((roll + char.social_clout * 5), 1), 1.5)
         percentage = max(roll / 100.0, 0.01)
-        level_mod = self.fashion_item.craft_handler.recipe.level / 6.0
+        level_mod = self.fashion_item.item_data.recipe.level / 6.0
         percentage *= max(level_mod, 0.01)
-        percentage *= max((self.fashion_item.craft_handler.quality_level / 40.0), 0.01)
+        percentage *= max((self.fashion_item.item_data.quality_level / 40.0), 0.01)
         percentage = max(percentage, 0.2)
         # they get either their percentage of the item's worth, their modified roll, or 4, whichever is highest
         self.fame = min(
