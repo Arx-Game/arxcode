@@ -66,43 +66,31 @@ class MagicMixins(object):
         return None
 
     def quality_level_from_primum(self, primum):
-        if self.db.recipe:
-            try:
-                recipe_id = int(self.db.recipe)
-            except ValueError:
-                return None
+        try:
+            recipe = self.item_data.recipe
 
-            try:
-                recipe = CraftingRecipe.objects.get(id=recipe_id)
-
-                lower_name = recipe.name.lower()
-                if "alaricite" in lower_name:
-                    return primum / _MAX_PRIMUM_TIER1
-                elif "diamondplate" in lower_name:
-                    return primum / _MAX_PRIMUM_TIER2
-                elif "star iron" in lower_name:
-                    return primum / _MAX_PRIMUM_TIER1
-                elif "iridescite" in lower_name:
-                    return primum / _MAX_PRIMUM_TIER2
-                elif "stygian" in lower_name:
-                    return primum / _MAX_PRIMUM_TIER2
-            except CraftingRecipe.DoesNotExist:
-                pass
+            lower_name = recipe.name.lower()
+            if "alaricite" in lower_name:
+                return primum / _MAX_PRIMUM_TIER1
+            elif "diamondplate" in lower_name:
+                return primum / _MAX_PRIMUM_TIER2
+            elif "star iron" in lower_name:
+                return primum / _MAX_PRIMUM_TIER1
+            elif "iridescite" in lower_name:
+                return primum / _MAX_PRIMUM_TIER2
+            elif "stygian" in lower_name:
+                return primum / _MAX_PRIMUM_TIER2
+        except AttributeError:
+            pass
 
     @property
     def max_potential(self):
         if self.practitioner:
             return self.practitioner.potential
 
-        if self.db.recipe:
+        if self.item_data.recipe:
             try:
-                recipe_id = int(self.db.recipe)
-            except ValueError:
-                return None
-
-            try:
-                recipe = CraftingRecipe.objects.get(id=recipe_id)
-                lower_name = recipe.name.lower()
+                lower_name = self.item_data.recipe.name.lower()
             except CraftingRecipe.DoesNotExist:
                 return self.potential
         else:
@@ -146,26 +134,17 @@ class MagicMixins(object):
             except ValueError:
                 pass
 
-        quality_level = 1
-        if self.db.quality_level:
-            try:
-                quality_level = int(self.db.quality_level)
-            except ValueError:
-                return 0
+        quality_level = self.item_data.quality_level
 
         result = quality_level
         lower_name = None
-        if self.db.recipe and quality_level > 0:
-            try:
-                recipe_id = int(self.db.recipe)
-            except ValueError:
-                return None
+        if self.item_data.recipe and quality_level > 0:
 
             try:
-                recipe = CraftingRecipe.objects.get(id=recipe_id)
+                recipe = self.item_data.recipe
 
                 lower_name = recipe.name.lower()
-            except CraftingRecipe.DoesNotExist:
+            except AttributeError:
                 pass
 
         if self.db.material_type:
@@ -246,8 +225,10 @@ class MagicMixins(object):
             self.softdelete()
             return
 
-        if self.db.quality_level:
-            self.db.quality_level = self.quality_level_from_primum(self.db.primum)
+        if self.item_data.quality_level:
+            self.item_data.quality_level = self.quality_level_from_primum(
+                self.db.primum
+            )
 
     def infuse_primum(self, amount):
         if self.practitioner or self.is_typeclass("typeclasses.characters.Character"):
@@ -260,8 +241,10 @@ class MagicMixins(object):
         if self.db.primum > self.potential:
             self.db.potential = self.db.primum
 
-        if self.db.quality_level:
-            self.db.quality_level = self.quality_level_from_primum(self.db.primum)
+        if self.item_data.quality_level:
+            self.item_data.quality_level = self.quality_level_from_primum(
+                self.db.primum
+            )
 
     @property
     def magic_description(self):

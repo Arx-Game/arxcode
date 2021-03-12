@@ -9,6 +9,7 @@ from time import time
 from typeclasses.containers.container import Container
 from world.fashion.mixins import FashionableMixins
 from typeclasses.exceptions import EquipError
+from world.crafting.craft_data_handlers import WearableDataHandler
 
 
 # noinspection PyMethodMayBeStatic
@@ -18,6 +19,8 @@ class Wearable(FashionableMixins, Object):
     Class for wearable objects
     """
 
+    item_data_class = WearableDataHandler
+
     default_desc = "A piece of clothing or armor."
 
     def at_object_creation(self):
@@ -25,7 +28,6 @@ class Wearable(FashionableMixins, Object):
         Run at Wearable creation.
         """
         self.is_worn = False
-        self.db.armor_class = 0
         self.at_init()
 
     def softdelete(self):
@@ -80,7 +82,7 @@ class Wearable(FashionableMixins, Object):
         self.at_pre_wear(wearer)
         self.is_worn = True
         if self.decorative:
-            self.db.worn_time = time()
+            self.item_data.worn_time = time()
         self.at_post_wear(wearer)
 
     def at_pre_wear(self, wearer):
@@ -96,7 +98,7 @@ class Wearable(FashionableMixins, Object):
         if slot and slot_limit:
             worn = [ob for ob in wearer.worn if ob.slot == slot]
             if len(worn) >= slot_limit:
-                raise EquipError("%s slot full" % slot)
+                raise EquipError(f"{slot} slot full. Worn there: {worn}")
 
     def at_post_wear(self, wearer):
         """Hook called after wearing succeeds."""
@@ -107,11 +109,11 @@ class Wearable(FashionableMixins, Object):
         If we have crafted armor, return the value from the recipe and
         quality.
         """
-        quality = self.quality_level
-        recipe = self.recipe
+        quality = self.item_data.quality_level
+        recipe = self.item_data.recipe
         if not recipe:
             return (
-                self.db.armor_class or 0,
+                0,
                 self.db.penalty or 0,
                 self.db.armor_resilience or 0,
             )
@@ -120,7 +122,7 @@ class Wearable(FashionableMixins, Object):
         penalty = float(recipe.resultsdict.get("penalty", 0.0))
         resilience = penalty / 3
         if quality >= 10:
-            crafter = self.db.crafted_by
+            crafter = self.item_data.crafted_by
             if (
                 (recipe.level > 3)
                 or not crafter
@@ -157,26 +159,17 @@ class Wearable(FashionableMixins, Object):
 
     @property
     def armor(self):
-        # if we have no recipe or we are set to ignore it, use armor_class
-        if not self.recipe or self.db.ignore_crafted:
-            return self.db.armor_class
+        # if we have no recipe or we are set to ignore it, 0
+        if not self.item_data.recipe:
+            return 0
         if self.ndb.cached_armor_value is not None:
             return self.ndb.cached_armor_value
         return self.calc_armor()[0]
 
-    @armor.setter
-    def armor(self, value):
-        """
-        Manually sets the value of our armor, ignoring any crafting recipe we have.
-        """
-        self.db.armor_class = value
-        self.db.ignore_crafted = True
-        self.ndb.cached_armor_value = value
-
     @property
     def penalty(self):
         # if we have no recipe or we are set to ignore it, use penalty
-        if not self.db.recipe or self.db.ignore_crafted:
+        if not self.item_data.recipe or self.db.ignore_crafted:
             return self.db.penalty or 0
         if self.ndb.cached_penalty_value is not None:
             return self.ndb.cached_penalty_value
@@ -185,7 +178,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def armor_resilience(self):
         """How hard the armor is to penetrate"""
-        if not self.db.recipe or self.db.ignore_crafted:
+        if not self.item_data.recipe or self.db.ignore_crafted:
             return 0
         if self.ndb.cached_resilience is not None:
             return self.ndb.cached_resilience
@@ -194,7 +187,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def slot(self):
         """slot the armor is worn on"""
-        recipe = self.recipe
+        recipe = self.item_data.recipe
         if not recipe:
             return self.db.slot
         return recipe.resultsdict.get("slot", None)
@@ -202,7 +195,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def slot_limit(self):
         """how many can be worn on that slot"""
-        recipe = self.recipe
+        recipe = self.item_data.recipe
         if not recipe:
             return self.db.slot_limit or 1
         try:
@@ -216,12 +209,12 @@ class Wearable(FashionableMixins, Object):
 
     @property
     def is_worn(self):
-        return self.db.currently_worn
+        return self.item_data.currently_worn
 
     @is_worn.setter
     def is_worn(self, bull):
         """Bool luvs u"""
-        self.db.currently_worn = bull
+        self.item_data.currently_worn = bull
 
     @property
     def is_equipped(self):

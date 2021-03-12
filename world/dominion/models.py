@@ -56,6 +56,7 @@ from datetime import datetime, timedelta
 from random import randint, choice as random_choice
 from typing import List
 
+import typeclasses.npcs.constants
 from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils import create
@@ -68,7 +69,7 @@ from django.urls import reverse
 from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
 from .reports import WeeklyReport
 from .agenthandler import AgentHandler
-from .managers import OrganizationManager, LandManager
+from .managers import OrganizationManager, LandManager, RPEventQuerySet
 from server.utils.arx_utils import (
     get_week,
     inform_staff,
@@ -81,7 +82,6 @@ from server.utils.arx_utils import (
     get_full_url,
 )
 from server.utils.exceptions import PayError
-from typeclasses.npcs import npc_types
 from typeclasses.mixins import InformMixin
 from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement
 from world.stats_and_skills import do_dice_check
@@ -2418,6 +2418,7 @@ class Organization(InformMixin, SharedMemoryModel):
         # msg += "{wSpheres of Influence:{n %s\n" % ", ".join("{w%s{n: %s" % (ob.category, ob.rating)
         #                                                     for ob in self.spheres.all())
         msg += self.display_work_settings()
+        msg += self.display_story_coordinators()
         clues = self.clues.all()
         if display_clues:
             if viewing_member:
@@ -2460,6 +2461,12 @@ class Organization(InformMixin, SharedMemoryModel):
         for setting in work_settings:
             table.add_row([setting.get_resource_display(), setting.stat, setting.skill])
         msg += "\n" + str(table) + "\n"
+        return msg
+
+    def display_story_coordinators(self):
+        """Shows the story coordinators in the org"""
+        sc = self.active_members.filter(story_coordinator=True)
+        msg = "\n{wStory Coordinators:{n " + ", ".join(str(ob) for ob in sc) + "\n"
         return msg
 
     def __init__(self, *args, **kwargs):
@@ -2525,6 +2532,14 @@ class Organization(InformMixin, SharedMemoryModel):
         return self.members.filter(
             Q(player__player__roster__roster__name="Active") & Q(deguilded=False)
         ).distinct()
+
+    @property
+    def story_coordinators(self):
+        return self.active_members.filter(story_coordinator=True)
+
+    @property
+    def story_coordinator_names(self):
+        return "; ".join(str(ob) for ob in self.story_coordinators)
 
     @property
     def living_members(self):
@@ -2713,13 +2728,13 @@ class Agent(SharedMemoryModel):
     as a foreignkey, and we access that set through self.agent_objects.
     """
 
-    GUARD = npc_types.GUARD
-    THUG = npc_types.THUG
-    SPY = npc_types.SPY
-    ASSISTANT = npc_types.ASSISTANT
-    CHAMPION = npc_types.CHAMPION
-    ANIMAL = npc_types.ANIMAL
-    SMALL_ANIMAL = npc_types.SMALL_ANIMAL
+    GUARD = typeclasses.npcs.constants.GUARD
+    THUG = typeclasses.npcs.constants.THUG
+    SPY = typeclasses.npcs.constants.SPY
+    ASSISTANT = typeclasses.npcs.constants.ASSISTANT
+    CHAMPION = typeclasses.npcs.constants.CHAMPION
+    ANIMAL = typeclasses.npcs.constants.ANIMAL
+    SMALL_ANIMAL = typeclasses.npcs.constants.SMALL_ANIMAL
     NPC_TYPE_CHOICES = (
         (GUARD, "Guard"),
         (THUG, "Thug"),
@@ -4233,6 +4248,8 @@ class RPEvent(SharedMemoryModel):
     search_tags = models.ManyToManyField(
         "character.SearchTag", blank=True, related_name="events"
     )
+
+    objects = RPEventQuerySet.as_manager()
 
     @property
     def prestige(self):

@@ -1,7 +1,7 @@
 """
 Tests for dominion stuff. Crisis commands, etc.
 """
-from mock import patch, Mock
+from unittest.mock import patch, Mock
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
 
@@ -29,6 +29,7 @@ from world.dominion.plots.models import (
     PlotUpdate,
     OrgPlotInvolvement,
 )
+from django.urls import reverse
 
 
 class TestCraftingCommands(ArxCommandTest):
@@ -319,6 +320,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
             "\nResources: Economic: 0, Military: 0, Social: 0\n"
             "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n\n"
             "Work Settings: None found.\n\n"
+            "Story Coordinators: \n\n"
             "Member stats for Testaccount\n\nRank: 9\nSupport Pool Share: 10/10\nTotal Work: 0\n"
             "Tasks Completed: 0, Total Rating: 0",
         )
@@ -335,6 +337,7 @@ class TestGeneralDominionCommands(ArxCommandTest):
             "Military: 0, Social: 0\n"
             "Mods: Economic: 0 (0/100), Military: 0 (0/100), Social: 0 (0/100)\n"
             "\nWork Settings: None found.\n"
+            "\nStory Coordinators: \n"
             "\nClues Known: Org test clue 1; Org test clue 2;\n\n"
             "Member stats for Testaccount\n\nRank: 9\nSupport Pool Share: 10/10\nTotal Work: 0\n"
             "Tasks Completed: 0, Total Rating: 0",
@@ -810,3 +813,12 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
             "Plot: testrfr (#7)\nGM Resolution: None",
         )
         self.call_cmd("/rfr/close 10=ok whatever", "You have marked the rfr as closed.")
+
+
+class TestDominionViews(ArxCommandTest):
+    url_name = "dominion:list_events"
+
+    def test_cal_view(self):
+        self.client.login(username="TestAccount", password="testpassword")
+        resp = self.client.get(reverse(self.url_name))
+        self.assertEqual(200, resp.status_code)

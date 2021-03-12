@@ -4,7 +4,7 @@ Commands for the conditions app.
 from commands.base import ArxCommand
 from server.utils.exceptions import PayError
 from world.conditions.models import RollModifier
-from world.stats_and_skills import VALID_SKILLS, VALID_STATS
+from world.traits.models import Trait
 
 
 class CmdModifiers(ArxCommand):
@@ -174,9 +174,9 @@ class CmdKnacks(ArxCommand):
         if self.caller.mods.get_knack_by_name(name):
             raise self.error_class("You already have a knack by that name.")
         stat, skill = stat.lower(), skill.lower()
-        if stat not in VALID_STATS:
+        if stat not in Trait.get_valid_stat_names():
             raise self.error_class("{} is not a valid stat.".format(stat))
-        if skill not in VALID_SKILLS:
+        if skill not in Trait.get_valid_skill_names():
             raise self.error_class("{} is not a valid skill.".format(skill))
         if any(
             [

@@ -35,6 +35,7 @@ from .models import (
     PlayerInfoEntry,
     Goal,
     GoalUpdate,
+    PlayerPosition,
 )
 from django.db.models import (
     F,
@@ -733,6 +734,11 @@ class GoalAdmin(BaseCharAdmin):
     inlines = (GoalUpdateInline,)
 
 
+class PlayerPositionsAdmin(BaseCharAdmin):
+    list_display = ("name",)
+    filter_horizontal = ("players",)
+
+
 # Register your models here.
 admin.site.register(Roster, BaseCharAdmin)
 admin.site.register(RosterEntry, EntryAdmin)
@@ -754,3 +760,4 @@ admin.site.register(Theory, TheoryAdmin)
 admin.site.register(Flashback, FlashbackAdmin)
 admin.site.register(SearchTag, SearchTagAdmin)
 admin.site.register(Goal, GoalAdmin)
+admin.site.register(PlayerPosition, PlayerPositionsAdmin)

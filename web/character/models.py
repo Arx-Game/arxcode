@@ -152,6 +152,7 @@ class RosterEntry(SharedMemoryModel):
         "locks", blank=True, help_text="defined in setup_utils"
     )
     action_points = models.SmallIntegerField(default=100, blank=100)
+    show_positions = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
         super(RosterEntry, self).__init__(*args, **kwargs)
@@ -2816,3 +2817,13 @@ class GoalUpdate(SharedMemoryModel):
         msg = "{wStory Summary:{n %s\n" % self.player_summary
         msg += "{wResult{n: %s" % self.result
         return msg
+
+
+class PlayerPosition(SharedMemoryModel):
+    name = models.CharField(unique=True, max_length=255)
+    players = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, related_name="player_positions"
+    )
+
+    def __str__(self):
+        return self.name

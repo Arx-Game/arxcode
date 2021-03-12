@@ -1,7 +1,8 @@
 """
 Tests for different command sets.
 """
-from mock import patch, Mock
+from unittest.mock import patch, Mock
+from unittest import skip
 
 from server.utils.test_utils import ArxCommandTest
 from . import combat, market, home
@@ -11,11 +12,6 @@ from . import combat, market, home
 # noinspection PyUnusedLocal
 @patch.object(combat, "inform_staff")
 class CombatCommandsTests(ArxCommandTest):
-    def setUp(self):
-        super().setUp()
-        self.char1.traits.initialize_stats()
-        self.char2.traits.initialize_stats()
-
     def start_fight(self, *args):
         """Helper function for starting a fight in our test"""
         fight = combat.start_fight_at_room(self.room1)
@@ -23,15 +19,13 @@ class CombatCommandsTests(ArxCommandTest):
             fight.add_combatant(ob)
         return fight
 
-    @patch.object(combat, "do_dice_check")
-    def test_cmd_heal(self, mock_dice_check, mock_inform_staff):
+    @patch("world.stat_checks.check_maker.randint")
+    def test_cmd_heal(self, mock_randint, mock_inform_staff):
         from world.dominion.models import RPEvent
+        from world.stat_checks.models import StatCheck
 
         event = RPEvent.objects.create(name="test")
-        mock_dice_check.return_value = 10
         self.setup_cmd(combat.CmdHeal, self.char1)
-        self.call_cmd("char2", "Char2 does not require any medical attention.")
-        self.char2.dmg = 20
         self.call_cmd(
             "char2",
             "Char2 has not granted you permission to heal them. Have them use +heal/permit.",
@@ -53,12 +47,60 @@ class CombatCommandsTests(ArxCommandTest):
             "There is an event here and you have not been granted GM permission to use +heal.",
         )
         self.call_cmd(
-            "/gmallow char=10",
-            "You have allowed Char to use +heal, with a bonus to their roll of 10.",
+            "/gmallow char",
+            "You have allowed Char to use +heal.",
         )
-        self.assertEqual(self.char1.ndb.healing_gm_allow, 10)
+        self.assertTrue(self.char1.ndb.healing_gm_allow)
         self.caller = self.char1
-        self.call_cmd("char2", "You rolled a 10 on your heal roll.")
+        self.call_cmd("char2", "Char2 does not require any medical attention.")
+        self.char2.traits.create_wound()
+        mock_randint.return_value = 30
+        self.call_cmd(
+            "char2",
+            "Char checks 'recovery treatment' at easy. Char is marginally successful.|"
+            "You have provided aid to Char2 to help them recover from injury.",
+        )
+        self.call_cmd(
+            "char2", "Char has attempted to assist with their recovery too recently."
+        )
+        self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.health_status.heal_wound()
+        self.char2.dmg = 20
+        self.call_cmd(
+            "char2",
+            "Char checks 'recovery treatment' at normal. Char fails.|"
+            "You have provided aid to Char2 to help them recover from injury.",
+        )
+        self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.dmg = 100
+        self.call_cmd(
+            "char2",
+            "Char checks 'recovery treatment' at hard. Char fails.|"
+            "You have provided aid to Char2 to help them recover from injury.",
+        )
+        self.char2.health_status.set_unconscious()
+        self.call_cmd(
+            "/revive char2",
+            "Char checks 'revive treatment' at normal. Char fails.|"
+            "You have provided aid to Char2 to help them regain consciousness.",
+        )
+        self.call_cmd(
+            "/revive char2", "Char has attempted to revive them too recently."
+        )
+        self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.dmg = 115
+        self.call_cmd(
+            "/revive char2",
+            "Char checks 'revive treatment' at hard. Char fails.|"
+            "You have provided aid to Char2 to help them regain consciousness.",
+        )
+        self.char2.health_status.treatment_attempts.all().delete()
+        self.char2.dmg = 200
+        self.call_cmd(
+            "/revive char2",
+            "Char checks 'revive treatment' at daunting. Char catastrophically fails.|"
+            "You have provided aid to Char2 to help them regain consciousness.",
+        )
 
     def test_cmd_start_combat(self, mock_inform_staff):
         self.setup_cmd(combat.CmdStartCombat, self.char1)
@@ -271,6 +313,8 @@ class CombatCommandsTests(ArxCommandTest):
         )
         self.call_cmd("testboss=testmsg", "You spawn testboss.|testmsg")
 
+    # this command is deprecated and will be removed. test is skipped until then
+    @skip
     @patch("server.utils.arx_utils.inform_staff")
     @patch("typeclasses.scripts.combat.attacks.randint")
     @patch("typeclasses.scripts.combat.attacks.do_dice_check")
@@ -279,7 +323,7 @@ class CombatCommandsTests(ArxCommandTest):
     ):
         mock_dice_check.return_value = 10
         mock_randint.return_value = 5
-        self.setup_cmd(combat.CmdHarm, self.char1)
+        self.setup_cmd(combat.CmdOldHarm, self.char1)
         self.call_cmd(
             "", "Must provide at least one character = number for damage amount."
         )
@@ -313,34 +357,35 @@ class CombatCommandsTests(ArxCommandTest):
         mock_inform_staff.assert_called_with(
             "{cChar{n used @harm for 1 damage on Char2."
         )
-        self.call_cmd(
-            "Char2=500/Nuclear apple.",
-            "Nuclear apple. 500 inflicted and Char2 is harmed for grave damage."
-            "|Nuclear apple. You inflict 500. Char2 is harmed for grave damage."
-            "|Char2 remains capable of fighting.",
-        )
-        mock_inform_staff.assert_called_with(
-            "{cChar{n used @harm for 500 damage on Char2."
-        )
-        self.assertEqual(self.char2.damage, 488)
-        self.call_cmd(
-            "/private/noarmor Char2=400/Apple turret.",
-            "Apple turret. You inflict 400. Char2 is harmed " "for grave damage.",
-        )
-        self.assertEqual(self.char2.damage, 888)
-        mock_dice_check.return_value = -1
-        self.call_cmd(
-            "/mercy Char2=500",
-            "500 inflicted and Char2 is harmed for grave damage."
-            "|You inflict 500. Char2 is harmed for grave damage."
-            "|Char2 is incapacitated and falls unconscious.",
-        )
-        self.call_cmd(
-            "Char2=500/Emerald's Kiss.",
-            "Emerald's Kiss. 500 inflicted and Char2 is harmed for grave damage."
-            "|Emerald's Kiss. You inflict 500. Char2 is harmed for grave damage."
-            "|Char2 has died.",
-        )
+        with patch("typeclasses.characters.do_dice_check", new=mock_dice_check):
+            self.call_cmd(
+                "Char2=500/Nuclear apple.",
+                "Nuclear apple. 500 inflicted and Char2 is harmed for grave damage."
+                "|Nuclear apple. You inflict 500. Char2 is harmed for grave damage."
+                "|Char2 remains capable of fighting.",
+            )
+            mock_inform_staff.assert_called_with(
+                "{cChar{n used @harm for 500 damage on Char2."
+            )
+            self.assertEqual(self.char2.damage, 488)
+            self.call_cmd(
+                "/private/noarmor Char2=400/Apple turret.",
+                "Apple turret. You inflict 400. Char2 is harmed " "for grave damage.",
+            )
+            self.assertEqual(self.char2.damage, 888)
+            mock_dice_check.return_value = -1
+            self.call_cmd(
+                "/mercy Char2=500",
+                "500 inflicted and Char2 is harmed for grave damage."
+                "|You inflict 500. Char2 is harmed for grave damage."
+                "|Char2 is incapacitated and falls unconscious.",
+            )
+            self.call_cmd(
+                "Char2=500/Emerald's Kiss.",
+                "Emerald's Kiss. 500 inflicted and Char2 is harmed for grave damage."
+                "|Emerald's Kiss. You inflict 500. Char2 is harmed for grave damage."
+                "|Char2 has died.",
+            )
         mock_char_inform_staff.assert_called_with(
             "{rDeath{n: Character {cChar2{n has died."
         )
@@ -382,11 +427,11 @@ class CombatCommandsTests(ArxCommandTest):
             "Ending combat.|Char2 has left the fight.",
         )
 
-    @patch("server.utils.arx_utils.inform_staff")
+    @patch("world.stat_checks.check_maker.randint")
     @patch("typeclasses.scripts.combat.attacks.randint")
     @patch("typeclasses.scripts.combat.attacks.do_dice_check")
     def test_cmd_attack(
-        self, mock_dice_check, mock_randint, mock_char_inform_staff, mock_inform_staff
+        self, mock_dice_check, mock_randint, mock_check_randint, mock_char_inform_staff
     ):
         self.setup_cmd(combat.CmdAttack, self.char1)
         from evennia.utils import create
@@ -405,7 +450,6 @@ class CombatCommandsTests(ArxCommandTest):
         self.char1.db.defenders = [self.char3]
         self.char3.db.guarding = self.char1
         self.char3.combat.autoattack = True
-        self.char3.traits.initialize_stats()
         fight = self.start_fight(self.char1)
         self.call_cmd("", "Could not find ''.|Attack who?")
         self.call_cmd("Emerald", "Could not find 'Emerald'.|Attack who?")
@@ -414,7 +458,7 @@ class CombatCommandsTests(ArxCommandTest):
         self.char2.tags.remove("unattackable")
         self.call_cmd("Char2", "They are not in combat.")
         fight.add_combatant(self.char2, adder=self.char1)
-        self.char1.db.sleep_status = "unconscious"
+        self.char1.health_status.set_unconscious()
         self.call_cmd("Char2", "You are not conscious.")
         self.caller = self.char2
         self.call_cmd(
@@ -422,7 +466,7 @@ class CombatCommandsTests(ArxCommandTest):
             "Char is incapacitated. To kill an incapacitated character, you must use the "
             "+coupdegrace command.",
         )
-        self.char1.db.sleep_status = "awake"
+        self.char1.health_status.set_awake()
         self.call_cmd(
             "/critical/accuracy Char", "These switches cannot be used together."
         )
@@ -476,17 +520,25 @@ class CombatCommandsTests(ArxCommandTest):
         self.char2.armor = 5  # 10 mitigation
         self.char1.combat.state.damage_modifier = 100  # 32--> -mit = 22--> *dmgmult 0.5
         self.char2.combat.state.damage_modifier = 30  # 15--> -mit = 7--> *dmgmult 0.5
+        mock_check_randint.return_value = 500
         self.call_cmd(
             "Char2",
-            "You attack Char2. |YOU attack Char2 10 vs 10: graze for severe damage (11).|"
-            "Char attacks Char2 (graze for severe damage).|It is now Char2's turn.|"
-            "Char2 attacks YOU and rolled 10 vs 10: graze for moderate damage (3). "
-            "Your armor mitigated 8 of the damage.|"
-            "Char2 attacks Char (graze for moderate damage).|It is now Char3's turn.|"
-            "Char3 attacks Char2 (graze for no damage).|Setup Phase|\n"
+            "You attack Char2. |"
+            "YOU attack Char2 10 vs 10: graze for moderate damage (11).|"
+            "Char attacks Char2 (graze for moderate damage).|"
+            "Char2 checks 'unconsciousness save' at normal. "
+            "Critical Success! Char2 is inhumanly successful in a way that defies expectations.|"
+            "Char2 remains capable of fighting.|It is now Char2's turn.|"
+            "Char2 attacks YOU and rolled 10 vs 10: graze for minor damage (3). Your armor mitigated 8 of the damage.|"
+            "Char2 attacks Char (graze for minor damage).|"
+            "Char checks 'unconsciousness save' at normal. "
+            "Critical Success! Char is inhumanly successful in a way that defies expectations.|"
+            "Char remains capable of fighting.|"
+            "It is now Char3's turn.|Char3 attacks Char2 (graze for no damage).|"
+            "Setup Phase|\n"
             "Combatant Damage   Fatigue Action       Ready? \n"
-            "Char      moderate 0       None         no     "
-            "Char2     severe   0       None         no     "
+            "Char      minor    0       None         no     "
+            "Char2     moderate 0       None         no     "
             "Char3     no       0       attack Char2 no     \n"
             "Current Round: 1",
         )
@@ -505,8 +557,8 @@ class CombatCommandsTests(ArxCommandTest):
             "/flub Char2=200,-200",
             "You have marked yourself as ready to proceed.|\n"
             "Combatant Damage   Fatigue Action       Ready? \n"
-            "Char      moderate 0       attack Char2 yes    "
-            "Char2     severe   0       None         no     "
+            "Char      minor    0       attack Char2 yes    "
+            "Char2     moderate 0       None         no     "
             "Char3     no       0       attack Char2 no     \n"
             "Current Round: 1|"
             "Queuing action for your turn: You attack Char2. "
@@ -529,18 +581,18 @@ class CombatCommandsTests(ArxCommandTest):
     def test_cmd_slay(self, mock_dice_check, mock_randint, mock_inform_staff):
         self.setup_cmd(combat.CmdSlay, self.char1)
         self.start_fight(self.char1, self.char2)
-        self.char2.db.sleep_status = "unconscious"
+        self.char2.health_status.set_unconscious()
         mock_dice_check.return_value = 10
         mock_randint.return_value = 5
         # dmg 10--> *dmgmult 2.0 //4 + 5 = 10--> -mit (wiped out by uncon)
         self.call_cmd(
             "Char2",
             "You have marked yourself as ready to proceed.|Resolution Phase|You attack Char2. |"
-            "YOU attack Char2 10 vs -9999: no-contest hit for serious damage (10).|"
-            "Char attacks Char2 (no-contest hit for serious damage).|Setup Phase|\n"
-            "Combatant Damage  Fatigue Action Ready? \n"
-            "Char      no      0       None   no     "
-            "Char2     serious 0       None   no     \n"
+            "YOU attack Char2 10 vs -9999: no-contest hit for moderate damage (10).|"
+            "Char attacks Char2 (no-contest hit for moderate damage).|Setup Phase|\n"
+            "Combatant Damage   Fatigue Action Ready? \n"
+            "Char      no       0       None   no     "
+            "Char2     moderate 0       None   no     \n"
             "Current Round: 1",
         )
         self.assertEqual(self.char2.damage, 10)

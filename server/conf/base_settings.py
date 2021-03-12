@@ -158,6 +158,9 @@ INSTALLED_APPS += (
     "world.magic",
     "world.quests.apps.QuestsConfig",
     "world.stat_checks.apps.StatChecksConfig",
+    "world.prayer.apps.PrayerConfig",
+    "world.traits.apps.TraitsConfig",
+    "evennia_extensions.object_extensions.apps.ObjectExtensionsConfig",
 )
 
 CRISPY_TEMPLATE_PACK = "bootstrap3"

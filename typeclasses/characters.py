@@ -16,9 +16,17 @@ from typeclasses.wearable.mixins import UseEquipmentMixins
 from world.msgs.messagehandler import MessageHandler
 from world.msgs.languagehandler import LanguageHandler
 from evennia.utils.utils import lazy_property, variable_from_module
-import time
 from world.stats_and_skills import do_dice_check
 from world.magic.mixins import MagicMixins
+from world.stat_checks.utils import get_check_by_name, get_check_maker_by_name
+from world.stat_checks.constants import (
+    DEATH_SAVE,
+    UNCON_SAVE,
+    PERMANENT_WOUND_SAVE,
+    CAUSE_SERIOUS_WOUND,
+    CAUSE_PERMANENT_WOUND,
+)
+from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
 from world.traits.traitshandler import Traitshandler
 
 
@@ -64,10 +72,6 @@ class Character(
         self.db.marital_status = "single"
         self.db.family = "None"
         self.db.dice_string = "Default Dicestring"
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
-        self.traits.initialize_skills()
-        self.traits.initialize_abilities()
         self.at_init()
         self.locks.add("delete:perm(Immortals);tell:all()")
 
@@ -86,6 +90,28 @@ class Character(
     @lazy_property
     def traits(self):
         return Traitshandler(self)
+
+    @lazy_property
+    def health_status(self):
+        """
+        Gets health_status object for a character that contains their state
+        Returns:
+            status (world.conditions.models.CharacterHealthStatus)
+        """
+        from world.conditions.models import CharacterHealthStatus
+
+        try:
+            return self.character_health_status
+        except CharacterHealthStatus.DoesNotExist:
+            return CharacterHealthStatus.objects.create(character=self)
+
+    @property
+    def sleep_description(self):
+        return self.health_status.get_consciousness_display()
+
+    @property
+    def dead(self):
+        return self.health_status.is_dead
 
     def at_after_move(self, source_location, **kwargs):
         """
@@ -243,10 +269,15 @@ class Character(
         """
         This object dying. Set its state to dead, send out
         death message to location. Add death commandset.
+
+        Returns:
+            True if the character is dead, indicating other rolls for
+            unconsciousness and the like should not proceed. False if
+            they lived and should check for other effects.
         """
-        if self.db.health_status == "dead":
-            return
-        self.db.health_status = "dead"
+        if self.dead:
+            return True
+        self.health_status.set_dead()
         self.db.container = True
         if self.location:
             self.location.msg_contents("{r%s has died.{n" % self.name)
@@ -260,14 +291,20 @@ class Character(
             print("<<ERROR>>: Error when importing death cmdset: %s" % err)
         from server.utils.arx_utils import inform_staff
 
-        if not self.db.npc:
+        if not self.is_npc:
             inform_staff("{rDeath{n: Character {c%s{n has died." % self.key)
+        self.post_death()
+        return True
 
-    def resurrect(self, *args, **kwargs):
+    def post_death(self):
+        if self.combat.combat:
+            self.combat.combat.remove_combatant(self)
+
+    def resurrect(self):
         """
         Cue 'Bring Me Back to Life' by Evanessence.
         """
-        self.db.health_status = "alive"
+        self.health_status.set_alive()
         self.db.container = False
         if self.location:
             self.location.msg_contents("{w%s has returned to life.{n" % self.name)
@@ -285,14 +322,16 @@ class Character(
         Falls asleep. Uncon flag determines if this is regular sleep,
         or unconsciousness.
         """
+        if not self.conscious:
+            return
         reason = " is %s and" % verb if verb else ""
         if uncon:
-            self.db.sleep_status = "unconscious"
+            self.health_status.set_unconscious()
         else:
-            self.db.sleep_status = "asleep"
+            self.health_status.set_asleep()
         if self.location and not quiet:
             self.location.msg_contents(
-                "%s%s falls %s." % (self.name, reason, self.db.sleep_status)
+                "%s%s falls %s." % (self.name, reason, self.sleep_description)
             )
         try:
             from commands.cmdsets import sleep
@@ -305,15 +344,22 @@ class Character(
 
     @property
     def conscious(self):
-        return (
-            self.db.sleep_status != "unconscious" and self.db.sleep_status != "asleep"
-        ) and self.db.health_status != "dead"
+        return not self.dead and self.health_status.is_conscious
 
-    def wake_up(self, quiet=False):
+    def wake_up(self, quiet=False, light_waking=False, inform_character=False):
         """
-        Wakes up.
+        Wakes up. if light_waking is set, only wake up if we're asleep,
+        not unconscious.
         """
-        if self.db.health_status == "dead":
+        if self.dead:
+            if inform_character:
+                self.msg("You are dead and cannot wake.")
+            return
+        if light_waking and not self.health_status.is_asleep:
+            if inform_character:
+                self.msg(
+                    f"You are currently {self.health_status.get_consciousness_display()} and cannot wake."
+                )
             return
         if self.location:
             if not quiet and not self.conscious:
@@ -324,53 +370,31 @@ class Character(
             self.cmdset.delete(sleep.SleepCmdSet)
         except Exception as err:
             print("<<ERROR>>: Error when importing mobile cmdset: %s" % err)
-        self.db.sleep_status = "awake"
-        return
-
-    def recovery_test(self, diff_mod=0, free=False):
-        """
-        A mechanism for healing characters. Whenever they get a recovery
-        test, they heal the result of a willpower+stamina roll, against
-        a base difficulty of 0. diff_mod can change that difficulty value,
-        and with a higher difficulty can mean it can heal a negative value,
-        resulting in the character getting worse off. We go ahead and change
-        the player's health now, but leave the result of the roll in the
-        caller's hands to trigger other checks - death checks if we got
-        worse, unconsciousness checks, whatever.
-        """
-        # no helping us if we're dead
-        if self.db.health_status == "dead":
-            return
-        diff = 0 + diff_mod
-        roll = do_dice_check(self, stat_list=["willpower", "stamina"], difficulty=diff)
-        self.change_health(roll)
-        if not free:
-            self.db.last_recovery_test = time.time()
-        return roll
+        self.health_status.set_awake()
 
     def change_health(self, amount, quiet=False, affect_real_dmg=True, wake=True):
         """
         Change character's health and maybe tell them about it.
         Positive amount will 'heal'. Negative will 'harm'.
-        A character with hp to attempt waking up.
+        Sleeping characters can wake upon taking damage.
         """
-        difference = self.get_health_percentage(abs(amount))
+        difference = self.get_damage_percentage(abs(amount))
         if not quiet:
             msg = "You feel "
             if difference <= 0:
                 msg += "no "
-            elif difference <= 0.1:
+            elif difference <= 10:
                 msg += "a little "
-            elif difference <= 0.25:
+            elif difference <= 25:
                 pass
-            elif difference <= 0.5:
+            elif difference <= 50:
                 msg += "a lot "
-            elif difference <= 0.75:
+            elif difference <= 75:
                 msg += "significantly "
             else:
                 msg += "profoundly "
             msg += "better" if amount > 0 else "worse"
-            punctuation = "." if difference < 0.5 else "!"
+            punctuation = "." if difference < 50 else "!"
             self.msg(msg + punctuation)
         if affect_real_dmg:
             self.real_dmg -= amount
@@ -378,47 +402,52 @@ class Character(
             self.temp_dmg -= amount
         if difference:
             self.triggerhandler.check_health_change_triggers(amount)
-        if wake and self.dmg <= self.max_hp and self.db.sleep_status != "awake":
-            self.wake_up()
+        # if we're alseep, wake up on taking damage
+        if wake and self.dmg <= self.max_hp and not self.conscious:
+            self.wake_up(light_waking=True)
 
-    def get_health_percentage(self, damage=None):
+    def get_damage_percentage(self, damage=None):
         """Returns the float percentage of the health. If damage is not specified, we use self.dmg"""
         if damage is None:
             damage = self.dmg
-        return float(damage) / float(self.max_hp)
+        return int(100 * (float(damage) / float(self.max_hp)))
+
+    def get_health_percentage(self):
+        return 100 - self.get_damage_percentage()
 
     def get_health_appearance(self):
         """
         Return a string based on our current health.
         """
-        wounds = self.get_health_percentage()
+        wounds = self.get_damage_percentage()
         msg = "%s " % self.name
-        if self.db.health_status == "dead":
+        if self.dead:
             return msg + "is currently dead."
         elif wounds <= 0:
             msg += "is in perfect health"
-        elif 0 < wounds <= self.death_threshold:
+        elif not self.check_past_death_threshold():
             msg += "seems to have %s injuries" % self.get_wound_descriptor(self.dmg)
         else:
             msg += "is in critical condition - possibly dying"
-        sleep_status = self.db.sleep_status
-        if sleep_status and sleep_status != "awake":
-            msg += ", and is %s" % sleep_status
-        return msg + "."
+        if not self.conscious:
+            msg += ", and is %s" % self.sleep_description
+        msg += "."
+        msg += self.health_status.get_wound_string()
+        return msg
 
     def get_wound_descriptor(self, dmg):
-        wound = self.get_health_percentage(dmg)
+        wound = self.get_damage_percentage(dmg)
         if wound <= 0:
             wound_desc = "no"
-        elif wound <= 0.1:
+        elif wound <= 10:
             wound_desc = "minor"
-        elif 0.1 < wound <= 0.25:
+        elif wound <= 25:
             wound_desc = "moderate"
-        elif 0.25 < wound <= 0.5:
+        elif wound <= 50:
             wound_desc = "serious"
-        elif 0.5 < wound <= 0.75:
+        elif wound <= 75:
             wound_desc = "severe"
-        elif 0.75 < wound < 2.0:
+        elif wound < 200:
             wound_desc = "grievous"
         else:
             wound_desc = "grave"
@@ -450,24 +479,28 @@ class Character(
     @property
     def max_hp(self):
         """Returns our max hp"""
-        hp = self.db.stamina or 0
-        hp *= 20
-        hp += 20
-        bonus = self.db.bonus_max_hp or 0
-        hp += bonus
-        hp += self.boss_rating * 100
-        return hp
+        return self.traits.get_max_hp()
 
     @property
-    def death_threshold(self):
-        """
-        Multiplier on how much higher our damage must be than our max health for us to
-        roll to survive dying.
+    def current_hp(self):
+        return self.max_hp - self.dmg
 
-        Returns:
-            float: Multiplier before death checks happen
+    def check_past_death_threshold(self):
         """
-        return 1.25
+        Returns whether our character is past the threshold where we should
+        check for death.
+        """
+        check = get_check_by_name(DEATH_SAVE)
+        return check.should_trigger(self)
+
+    def check_past_unconsciousness_threshold(self):
+        check = get_check_by_name(UNCON_SAVE)
+        return check.should_trigger(self)
+
+    def check_past_permanent_wound_threshold(self, damage):
+        check = get_check_by_name(PERMANENT_WOUND_SAVE)
+        percent_damage = (damage * 100.0) / self.max_hp
+        return check.should_trigger(self, percent_damage=percent_damage)
 
     @property
     def dmg(self):
@@ -493,26 +526,14 @@ class Character(
 
     @property
     def real_dmg(self):
-        return self.db.damage or 0
+        return self.health_status.damage
 
     @real_dmg.setter
     def real_dmg(self, dmg):
         if dmg < 1:
             dmg = 0
-        self.db.damage = dmg
-        self.start_recovery_script()
-
-    def start_recovery_script(self):
-        # start the script if we have damage
-        start_script = self.dmg > 0
-        scripts = [ob for ob in self.scripts.all() if ob.key == "Recovery"]
-        if scripts:
-            if start_script:
-                scripts[0].start()
-            else:
-                scripts[0].stop()
-        elif start_script:
-            self.scripts.add("typeclasses.scripts.recovery.Recovery")
+        self.health_status.damage = dmg
+        self.health_status.save()
 
     @property
     def xp(self):
@@ -992,14 +1013,11 @@ class Character(
 
     @property
     def boss_rating(self):
-        try:
-            return int(self.db.boss_rating)
-        except (TypeError, ValueError):
-            return 0
+        return self.traits.boss_rating
 
     @boss_rating.setter
     def boss_rating(self, value):
-        self.db.boss_rating = value
+        self.traits.set_other_value("boss_rating", value)
 
     @property
     def sleepless(self):
@@ -1040,7 +1058,7 @@ class Character(
     ):
         from django.conf import settings
 
-        # if we're staff, we just use the regular search method
+        # if we're staff, we just return the regular search method:
         if self.check_permstring("builders"):
             return super(Character, self).search(
                 searchdata,
@@ -1056,7 +1074,7 @@ class Character(
                 multimatch_string=multimatch_string,
                 use_dbref=use_dbref,
             )
-        # we're not staff. We get search results, then throw out matches of people wearing masks that were by their key
+        # we're not staff. Our search results must filter objects out:
         results = super(Character, self).search(
             searchdata,
             global_search=global_search,
@@ -1071,7 +1089,9 @@ class Character(
             multimatch_string=multimatch_string,
             use_dbref=use_dbref,
         )
-        # we prune results of keys for masked (false_name) objects in results
+        # filter out objects we can't see:
+        results = [ob for ob in results if ob.access(self, "view")]
+        # filter out masked objects unless our search wasn't by their real name:
         results = [
             ob
             for ob in results
@@ -1263,3 +1283,100 @@ class Character(
         if not event:
             return False
         return self.dompc in event.gms.all()
+
+    def take_damage(
+        self,
+        amount: int,
+        affect_real_damage: bool = True,
+        can_kill: bool = True,
+        cleaving: bool = False,
+        private: bool = False,
+        risk: int = 4,
+    ):
+        # apply AE damage to multinpcs if we're cleaving
+        # TODO: move ae_dmg application to subclass
+        if cleaving and hasattr(self, "ae_dmg"):
+            self.ae_dmg += amount
+        self.change_health(
+            -amount, quiet=True, affect_real_dmg=affect_real_damage, wake=False
+        )
+        # check for death
+        if can_kill and affect_real_damage:
+            self.check_for_death(private)
+        # if character is now dead, we're done
+        if self.dead:
+            return
+        # determine if perm save is necessary
+        self.check_for_permanent_wound(affect_real_damage, amount)
+        # determine if unconsciousness save is necessary
+        self.check_for_unconsciousness(private)
+
+    def check_for_death(self, private=False):
+        """Heads you live, tails you die. Okay, it's a bit more granular than that.
+        But still, this is where you make a check to see if a character can die.
+
+        Args:
+            private (bool): Whether to broadcast msg
+
+        Returns:
+            True if the character is dead, indicating nothing else should happen.
+            False if they lived and should check for unconsciousness/permanent wounds.
+        """
+        # Now you're just beating a dead horse
+        if self.dead:
+            return True
+        # we might not even have taken enough damage yet to die. Whew.
+        if not self.check_past_death_threshold():
+            return False
+        # if we're conscious, room for combat not permit us to be one-shot if not an npc
+        if self.combat.combat:
+            allow_one_shot = self.combat.combat.ndb.random_deaths
+            if not self.is_npc and self.conscious and not allow_one_shot:
+                return False
+        # Hold your breath, kids. This is where the roll to live happens
+        roller = get_check_maker_by_name(DEATH_SAVE, self)
+        roller.make_check_and_announce()
+        # if we succeeded our roll, we don't die
+        if roller.is_success:
+            if not private:
+                self.msg_location_or_contents(
+                    "%s remains alive, but close to death." % self
+                )
+            # if we survive, we're still unconscious
+            self.fall_asleep(uncon=True, verb="incapacitated")
+            return False
+        # OH NOES. May flights of angels sing us to our rest.
+        return self.death_process()
+
+    def check_for_unconsciousness(self, private=False):
+        if not self.conscious:
+            return
+        if not self.check_past_unconsciousness_threshold():
+            return
+        roller = get_check_maker_by_name(UNCON_SAVE, self)
+        roller.make_check_and_announce()
+        if roller.is_success:
+            if not private:
+                self.msg_location_or_contents("%s remains capable of fighting." % self)
+            return
+        self.fall_asleep(uncon=True, verb="incapacitated")
+
+    def check_for_permanent_wound(self, affect_real_damage, amount):
+        if not affect_real_damage:
+            return
+        if not self.check_past_permanent_wound_threshold(amount):
+            return
+        roller = get_check_maker_by_name(PERMANENT_WOUND_SAVE, self)
+        roller.make_check_and_announce()
+        if roller.is_success:
+            self.msg_location_or_contents(
+                f"Despite the terrible damage, {self} does not take a permanent wound."
+            )
+            return
+
+        if roller.outcome.effect == CAUSE_SERIOUS_WOUND:
+            self.traits.create_wound(SERIOUS_WOUND)
+            self.msg_location_or_contents(f"{self} has suffered a serious wound!")
+        if roller.outcome.effect == CAUSE_PERMANENT_WOUND:
+            self.traits.create_wound(PERMANENT_WOUND)
+            self.msg_location_or_contents(f"{self} has suffered a permanent wound!")

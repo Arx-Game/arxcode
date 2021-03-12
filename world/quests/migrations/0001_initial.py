@@ -9,8 +9,8 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("character", "0035_auto_20191228_1417"),
-        ("dominion", "0047_actionrequirement"),
+        ("character", "0001_squashed_character"),
+        ("dominion", "0001_squashed_dominion"),
     ]
 
     operations = [

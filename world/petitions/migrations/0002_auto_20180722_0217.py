@@ -9,7 +9,6 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("dominion", "0027_honorific_propriety"),
         ("petitions", "0001_initial"),
     ]
 

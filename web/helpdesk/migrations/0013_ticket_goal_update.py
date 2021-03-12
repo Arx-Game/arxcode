@@ -9,7 +9,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("character", "0033_goal_goalupdate"),
+        ("character", "0001_squashed_character"),
         ("helpdesk", "0012_auto_20181116_0459"),
     ]
 

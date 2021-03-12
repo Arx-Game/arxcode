@@ -10,7 +10,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("dominion", "0012_auto_20170920_0148"),
+        ("dominion", "0001_squashed_dominion"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("msgs", "0004_comment_journal_messenger_post_rumor_vision"),
     ]

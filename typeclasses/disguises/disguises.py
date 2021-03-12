@@ -3,6 +3,7 @@ Disguises and Masks
 """
 from typeclasses.wearable.wearable import Wearable, EquipError
 from typeclasses.consumable.consumable import Consumable
+from world.crafting.craft_data_handlers import MaskDataHandler
 
 
 class Mask(Wearable):
@@ -10,6 +11,8 @@ class Mask(Wearable):
     Wearable mask that replaces name with 'Someone wearing <short desc> mask'.
     Also grants a temp_desc. Charges equal to quality, loses a charge when worn.
     """
+
+    item_data_class = MaskDataHandler
 
     def at_object_creation(self):
         """
@@ -25,7 +28,7 @@ class Mask(Wearable):
     def at_pre_wear(self, wearer):
         """Hook called before wearing for any checks."""
         super(Mask, self).at_pre_wear(wearer)
-        if self.db.quality_level == 0:
+        if self.item_data.quality_level == 0:
             raise EquipError("needs repair")
 
     def at_post_wear(self, wearer):
@@ -42,17 +45,17 @@ class Mask(Wearable):
         """Mirrormasks and GM masks don't need repairs, but others will."""
         if not self.tags.get("mirrormask"):
             # set attr if it's not set to avoid errors
-            if self.db.quality_level is None:
-                self.db.quality_level = 0
+            if self.item_data.quality_level is None:
+                self.item_data.quality_level = 0
             # Negative quality level or above 10 are infinite-use
-            elif 0 < self.db.quality_level < 11:
-                self.db.quality_level -= 1
+            elif 0 < self.item_data.quality_level < 11:
+                self.item_data.quality_level -= 1
 
     def wear_mask(self, wearer):
         """Change the visible identity of our wearer."""
         wearer.db.mask = self
         wearer.fakename = "Someone wearing %s" % self
-        wearer.temp_desc = self.db.maskdesc
+        wearer.temp_desc = self.item_data.mask_desc
 
     def remove_mask(self, wearer):
         """Restore the visible identity of our wearer."""

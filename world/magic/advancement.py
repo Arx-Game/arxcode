@@ -30,7 +30,7 @@ class MagicAdvancementScript(Script, RunDateMixin):
     # noinspection PyMethodMayBeStatic
     def advance_weekly_resonance(self, practitioner):
 
-        mana_base = round_up(practitioner.character.db.mana / 2.0)
+        mana_base = round_up(practitioner.character.traits.mana / 2.0)
         resonance_base = int((practitioner.potential ** (1 / 10.0))) ** 6
         resonance_weekly = (resonance_base * mana_base) / 4.0
 

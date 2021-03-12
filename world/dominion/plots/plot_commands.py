@@ -14,6 +14,7 @@ from web.character.models import StoryEmit, Flashback, Clue, Revelation, Theory
 from web.helpdesk.models import Ticket
 from world.dominion.plots.models import PCPlotInvolvement, PlotUpdate, Plot
 from world.dominion.models import RPEvent, PlotAction, Organization
+from web.character.models import PlayerPosition
 
 from datetime import datetime
 
@@ -1081,14 +1082,14 @@ class CmdGMPlots(ArxCommand):
 
 class CmdStoryCoordinators(ArxPlayerCommand):
     """
-    Lists story coordinator stuff
+    Lists story coordinator stuff, renamed from story to avoid confusion. Very rough draft form
 
-    story <story coordinator name>
-    story/old <org name>
-    story/org <org name>
+    gmstory <story coordinator name>
+    gmstory/old <org name>
+    gmstory/org <org name>
     """
 
-    key = "story"
+    key = "gmstory"
     locks = "cmd:perm(builders)"
     help_category = "GMing"
 
@@ -1127,3 +1128,62 @@ class CmdStoryCoordinators(ArxPlayerCommand):
         resolved = "old" in self.switches
         org = self.get_by_name_or_id(Organization, self.args)
         return Plot.objects.filter(resolved=resolved, orgs=org)
+
+
+class CmdStlist(ArxCommand):
+    """
+    Lists Story Coordinators and Storytellers.
+
+    Usage:
+    stlist
+    - Returns all storytellers and known story coordinators, will not show SCs of secret orgs you are not a member of.
+
+    stlist/org <Org Name>
+    - Returns just the Story Coordinators of that specific org.
+
+    stlist/st
+    - Returns a list of just the Player Storytellers.
+    """
+
+    key = "stlist"
+    help_category = "Story"
+    admin_switches = (
+        "org",
+        "st",
+    )
+
+    def func(self):
+        try:
+            if not self.switches:
+                return self.display_stdefault()
+            if "org" in self.switches:
+                return self.display_scorg()
+            if "st" in self.switches:
+                return self.display_stonly()
+        except self.error_class as err:
+            self.msg(err)
+
+    def display_stdefault(self):
+        positions = PlayerPosition.objects.all()
+        msg = ""
+        for position in positions:
+            ppl = position.players.all()
+            ppl_names = ", ".join(str(ob) for ob in ppl)
+            msg += f"{position}: {ppl_names}\n"
+        self.msg(msg)
+
+    def display_scorg(self):
+        caller = self.caller
+        org = self.get_by_name_or_id(Organization, self.lhs)
+        if org.secret and org not in self.caller.player_ob.current_orgs:
+            caller.msg("You are not a member of that secret organization.")
+            return
+        caller.msg(f"|w{org.name} Story Coordinator:|n {org.story_coordinator_names}")
+
+    def display_stonly(self):
+        only_storytellers = PlayerPosition.objects.filter(name__icontains="Storyteller")
+        msg = ""
+        for position in only_storytellers:
+            st_names = "; ".join(str(ob) for ob in position.players.all())
+            msg += f"{position}: {st_names}\n"
+        self.msg(msg)

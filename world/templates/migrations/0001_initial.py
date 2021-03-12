@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("character", "0025_storyemit_orgs"),
+        ("character", "0001_squashed_character"),
         ("objects", "0009_remove_objectdb_db_player"),
     ]
 

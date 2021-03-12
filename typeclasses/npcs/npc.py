@@ -21,33 +21,11 @@ command, it then summons guards for that player character.
 
 """
 from typeclasses.characters import Character
-from .npc_types import (
-    get_npc_stats,
-    get_npc_desc,
-    get_npc_skills,
-    get_npc_singular_name,
-    get_npc_plural_name,
-    get_npc_weapon,
-    get_armor_bonus,
-    get_hp_bonus,
-    primary_stats,
-    assistant_skills,
-    spy_skills,
-    get_npc_stat_cap,
-    check_passive_guard,
-    COMBAT_TYPES,
-    get_innate_abilities,
-    ABILITY_COSTS,
-    ANIMAL,
-    SMALL_ANIMAL,
-)
+
 from world.stats_and_skills import (
     do_dice_check,
     get_stat_cost,
     get_skill_cost,
-    PHYSICAL_STATS,
-    MENTAL_STATS,
-    SOCIAL_STATS,
 )
 import time
 
@@ -120,94 +98,8 @@ class Npc(Character):
         """
         Called once, when this object is first created.
         """
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
         self.db.automate_combat = True
-        self.db.damage = 0
         self.at_init()
-
-    def resurrect(self, *args, **kwargs):
-        """
-        Cue 'Bring Me Back to Life' by Evanessence.
-        """
-        self.db.health_status = "alive"
-        if self.location:
-            self.location.msg_contents("{w%s has returned to life.{n" % self.name)
-
-    def fall_asleep(self, uncon=False, quiet=False, verb=None, **kwargs):
-        """
-        Falls asleep. Uncon flag determines if this is regular sleep,
-        or unconsciousness.
-        """
-        reason = " is %s and" % verb if verb else ""
-        if uncon:
-            self.db.sleep_status = "unconscious"
-        else:
-            self.db.sleep_status = "asleep"
-        if self.location and not quiet:
-            self.location.msg_contents(
-                "%s%s falls %s." % (self.name, reason, self.db.sleep_status)
-            )
-
-    def wake_up(self, quiet=False):
-        """
-        Wakes up.
-        """
-        self.db.sleep_status = "awake"
-        if self.location:
-            self.location.msg_contents("%s wakes up." % self.name)
-
-    def get_health_appearance(self):
-        """
-        Return a string based on our current health.
-        """
-        name = self.name
-        if self.db.health_status == "dead":
-            return "%s is currently dead." % name
-        wound = float(self.dmg) / float(self.max_hp)
-        if wound <= 0:
-            msg = "%s is in perfect health." % name
-        elif 0 < wound <= 0.1:
-            msg = "%s is very slightly hurt." % name
-        elif 0.1 < wound <= 0.25:
-            msg = "%s is moderately wounded." % name
-        elif 0.25 < wound <= 0.5:
-            msg = "%s is seriously wounded." % name
-        elif 0.5 < wound <= 0.75:
-            msg = "%s is very seriously wounded." % name
-        elif 0.75 < wound <= 2.0:
-            msg = "%s is critically wounded." % name
-        else:
-            msg = "%s is very critically wounded, possibly dying." % name
-        awake = self.db.sleep_status
-        if awake and awake != "awake":
-            msg += " They are %s." % awake
-        return msg
-
-    def recovery_test(self, diff_mod=0, free=False):
-        """
-        A mechanism for healing characters. Whenever they get a recovery
-        test, they heal the result of a willpower+stamina roll, against
-        a base difficulty of 0. diff_mod can change that difficulty value,
-        and with a higher difficulty can mean it can heal a negative value,
-        resulting in the character getting worse off. We go ahead and change
-        the player's health now, but leave the result of the roll in the
-        caller's hands to trigger other checks - death checks if we got
-        worse, unconsciousness checks, whatever.
-        """
-        diff = 0 + diff_mod
-        roll = do_dice_check(self, stat_list=["willpower", "stamina"], difficulty=diff)
-        if roll > 0:
-            self.msg("You feel better.")
-        else:
-            self.msg("You feel worse.")
-        applied_damage = self.dmg - roll  # how much dmg character has after the roll
-        if applied_damage < 0:
-            applied_damage = 0  # no remaining damage
-        self.db.damage = applied_damage
-        if not free:
-            self.db.last_recovery_test = time.time()
-        return roll
 
     def sensing_check(self, difficulty=15, invis=False, allow_wake=False):
         """
@@ -221,6 +113,8 @@ class Npc(Character):
         return roll
 
     def get_fakeweapon(self, force_update=False):
+        from .npc_types import get_npc_weapon
+
         if not self.db.fakeweapon or force_update:
             npctype = self._get_npc_type()
             quality = self._get_quality()
@@ -281,16 +175,28 @@ class Npc(Character):
         return True
 
     def setup_stats(self, ntype, threat):
+        from .npc_types import (
+            get_npc_weapon,
+            get_npc_stats,
+            get_npc_skills,
+            get_armor_bonus,
+            get_hp_bonus,
+        )
+
         self.db.npc_quality = threat
         for stat, value in get_npc_stats(ntype).items():
-            self.attributes.add(stat, value)
+            self.traits.set_stat_value(stat, value)
         skills = get_npc_skills(ntype)
         for skill in skills:
             skills[skill] += threat
         self.traits.skills = skills
         self.db.fakeweapon = get_npc_weapon(ntype, threat)
-        self.db.armor_class = get_armor_bonus(self._get_npc_type(), self._get_quality())
-        self.db.bonus_max_hp = get_hp_bonus(self._get_npc_type(), self._get_quality())
+        self.traits.set_other_value(
+            "armor_class", get_armor_bonus(self._get_npc_type(), self._get_quality())
+        )
+        self.traits.set_other_value(
+            "bonus_max_hp", get_hp_bonus(self._get_npc_type(), self._get_quality())
+        )
 
     @property
     def num_armed_guards(self):
@@ -308,12 +214,11 @@ class Npc(Character):
         desc=None,
         keepold=False,
     ):
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
+        self.health_status.full_restore()
 
-        from commands.cmdsets import death
+        from commands.cmdsets import death, sleep
 
+        self.cmdset.delete(sleep.SleepCmdSet)
         self.cmdset.delete(death.DeathCmdSet)
 
         # if we don't
@@ -328,6 +233,8 @@ class Npc(Character):
 
     @property
     def default_desc(self):
+        from .npc_types import get_npc_desc
+
         return get_npc_desc(self.db.npc_type or 0)
 
     def set_npc_new_desc(self, desc=None):
@@ -337,10 +244,10 @@ class Npc(Character):
 
 class MultiNpc(Npc):
     def multideath(self, num, death=False):
-        living = self.db.num_living or 0
+        living = self.item_data.quantity or 0
         if num > living:
             num = living
-        self.db.num_living = living - num
+        self.item_data.quantity = living - num
         if death:
             dead = self.db.num_dead or 0
             self.db.num_dead = dead + num
@@ -349,9 +256,13 @@ class MultiNpc(Npc):
             self.db.num_incap = incap + num
 
     def get_singular_name(self):
+        from .npc_types import get_npc_singular_name
+
         return self.db.singular_name or get_npc_singular_name(self._get_npc_type())
 
     def get_plural_name(self):
+        from .npc_types import get_npc_plural_name
+
         return self.db.plural_name or get_npc_plural_name(self._get_npc_type())
 
     @property
@@ -368,6 +279,8 @@ class MultiNpc(Npc):
         This object dying. Set its state to dead, send out
         death message to location. Add death commandset.
         """
+        from .npc_types import get_npc_plural_name, get_npc_singular_name
+
         num = 1
         if self.ae_dmg >= self.max_hp:
             num = self.quantity
@@ -384,12 +297,21 @@ class MultiNpc(Npc):
         else:
             self.temp_losses += num
             self.temp_dmg = self.ae_dmg
+        self.post_death()
+        return True
+
+    def post_death(self):
+        if self.quantity <= 0:
+            if self.combat.combat:
+                self.combat.combat.remove_combatant(self)
 
     def fall_asleep(self, uncon=False, quiet=False, verb=None, **kwargs):
         """
         Falls asleep. Uncon flag determines if this is regular sleep,
         or unconsciousness.
         """
+        from .npc_types import get_npc_singular_name
+
         reason = " is %s and " % verb if verb else ""
         if self.location:
             self.location.msg_contents(
@@ -405,22 +327,25 @@ class MultiNpc(Npc):
         else:
             self.temp_losses += 1
         # don't reset damage here since it's used for death check. Reset in combat process
+        self.post_death()
 
     # noinspection PyAttributeOutsideInit
     def setup_name(self):
+        from .npc_types import get_npc_singular_name, get_npc_plural_name
+
         npc_type = self.db.npc_type
-        if self.db.num_living == 1 and not self.db.num_dead:
+        if self.item_data.quantity == 1 and not self.db.num_dead:
             self.key = self.db.singular_name or get_npc_singular_name(npc_type)
         else:
-            if self.db.num_living == 1:
+            if self.item_data.quantity == 1:
                 noun = self.db.singular_name or get_npc_singular_name(npc_type)
             else:
                 noun = self.db.plural_name or get_npc_plural_name(npc_type)
-            if not self.db.num_living and self.db.num_dead:
+            if not self.item_data.quantity and self.db.num_dead:
                 noun = "dead %s" % noun
                 self.key = "%s %s" % (self.db.num_dead, noun)
             else:
-                self.key = "%s %s" % (self.db.num_living, noun)
+                self.key = "%s %s" % (self.item_data.quantity, noun)
         self.save()
 
     def setup_npc(
@@ -433,12 +358,10 @@ class MultiNpc(Npc):
         desc=None,
         keepold=False,
     ):
-        self.db.num_living = num
+        self.item_data.quantity = num
         self.db.num_dead = 0
         self.db.num_incap = 0
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
+        self.health_status.full_restore()
         # if we don't
         if not keepold:
             self.db.npc_type = ntype
@@ -455,7 +378,7 @@ class MultiNpc(Npc):
 
     @property
     def quantity(self):
-        num = self.db.num_living or 0
+        num = self.item_data.quantity or 0
         return num - self.temp_losses
 
     @property
@@ -508,6 +431,8 @@ class AgentMixin(object):
         """
         We'll set up our stats based on the type given by our agent class.
         """
+        from .npc_types import check_passive_guard
+
         agent = self.agentob
         agent_class = agent.agent_class
         quality = agent_class.quality or 0
@@ -709,6 +634,9 @@ class AgentMixin(object):
         Get the cost of a stat based on our current
         rating and the type of agent we are.
         """
+        from .npc_types import primary_stats
+        from world.traits.models import Trait
+
         atype = self.agent.type
         stats = primary_stats.get(atype, [])
         base = get_stat_cost(self, attr)
@@ -716,11 +644,11 @@ class AgentMixin(object):
             base *= 2
         xpcost = base
         rescost = base
-        if attr in MENTAL_STATS:
+        if attr in Trait.get_valid_stat_names(Trait.MENTAL):
             restype = "economic"
-        elif attr in SOCIAL_STATS:
+        elif attr in Trait.get_valid_stat_names(Trait.SOCIAL):
             restype = "social"
-        elif attr in PHYSICAL_STATS:
+        elif attr in Trait.get_valid_stat_names(Trait.PHYSICAL):
             restype = "military"
         else:  # special stats
             restype = "military"
@@ -731,6 +659,8 @@ class AgentMixin(object):
         Get the cost of a skill based on our current rating and the
         type of agent that we are.
         """
+        from .npc_types import get_npc_skills, spy_skills, assistant_skills
+
         restype = "military"
         atype = self.agent.type
         primary_skills = get_npc_skills(atype)
@@ -751,6 +681,8 @@ class AgentMixin(object):
         of agent we are. If it's primary stats, == to our
         quality level. Otherwise, quality - 1.
         """
+        from .npc_types import primary_stats, get_npc_stat_cap
+
         atype = self.agent.type
         pstats = primary_stats.get(atype, [])
         if attr in pstats:
@@ -767,6 +699,8 @@ class AgentMixin(object):
         Get the current max for a skill based on the type
         of agent we are
         """
+        from .npc_types import get_npc_skills
+
         atype = self.agent.type
         primary_skills = get_npc_skills(atype)
         if attr in primary_skills:
@@ -814,6 +748,8 @@ class AgentMixin(object):
     def weaponized(
         self,  # type: Retainer or Agent
     ):
+        from .npc_types import COMBAT_TYPES
+
         if self.npc_type in COMBAT_TYPES:
             return True
         if self.weapons_hidden:
@@ -838,6 +774,9 @@ class AgentMixin(object):
 
     @property
     def uses_training_cap(self):
+        from typeclasses.npcs.constants import SMALL_ANIMAL
+        from typeclasses.npcs.constants import ANIMAL
+
         return self.npc_type not in (ANIMAL, SMALL_ANIMAL)
 
     @property
@@ -890,10 +829,15 @@ class Retainer(AgentMixin, Npc):
         desc=None,
         keepold=False,
     ):
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
-        self.setup_stats(ntype, threat)
+        super().setup_npc(
+            ntype=ntype,
+            threat=threat,
+            num=num,
+            sing_name=sing_name,
+            plural_name=plural_name,
+            desc=desc,
+            keepold=True,
+        )
         self.name = self.agentob.agent_class.name
 
     @property
@@ -901,6 +845,8 @@ class Retainer(AgentMixin, Npc):
         """
         Returns a list of ability names that are valid to buy for this agent
         """
+        from .npc_types import get_innate_abilities
+
         abilities = ()
         innate = get_innate_abilities(self.agent.type)
         abilities += innate
@@ -915,6 +861,8 @@ class Retainer(AgentMixin, Npc):
 
     # noinspection PyMethodMayBeStatic
     def get_ability_cost(self, attr):
+        from .npc_types import ABILITY_COSTS
+
         cost, res_type = ABILITY_COSTS.get(attr)
         return cost, cost, res_type
 
@@ -1019,15 +967,17 @@ class Agent(AgentMixin, MultiNpc):
     # -----------------------------------------------
 
     def setup_name(self):
+        from .npc_types import get_npc_singular_name, get_npc_plural_name
+
         a_type = self.agentob.agent_class.type
         noun = self.agentob.agent_class.name
         if not noun:
-            if self.db.num_living == 1:
+            if self.item_data.quantity == 1:
                 noun = get_npc_singular_name(a_type)
             else:
                 noun = get_npc_plural_name(a_type)
-        if self.db.num_living:
-            self.key = "%s %s" % (self.db.num_living, noun)
+        if self.item_data.quantity:
+            self.key = "%s %s" % (self.item_data.quantity, noun)
         else:
             self.key = noun
         self.save()
@@ -1047,17 +997,17 @@ class Agent(AgentMixin, MultiNpc):
         """
         if num < 0:
             raise ValueError("Must pass a positive integer to lose_agents.")
-        if num > self.db.num_living:
-            num = self.db.num_living
+        if num > self.item_data.quantity:
+            num = self.item_data.quantity
         self.multideath(num, death)
         self.agentob.lose_agents(num)
         self.setup_name()
-        if self.db.num_living <= 0:
+        if self.item_data.quantity <= 0:
             self.unassign()
         return num
 
     def gain_agents(self, num):
-        self.db.num_living += num
+        self.item_data.quantity += num
         self.setup_name()
 
     def death_process(self, *args, **kwargs):
@@ -1065,6 +1015,8 @@ class Agent(AgentMixin, MultiNpc):
         This object dying. Set its state to dead, send out
         death message to location.
         """
+        from .npc_types import get_npc_singular_name, get_npc_plural_name
+
         num = 1
         if self.ae_dmg >= self.max_hp:
             num = self.quantity

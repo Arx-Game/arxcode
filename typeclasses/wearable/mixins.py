@@ -131,7 +131,7 @@ class UseEquipmentMixins(object):
         Returns armor value of all items the character is wearing plus any
         armor in their attributes.
         """
-        armor = self.db.armor_class or 0
+        armor = self.traits.armor_class
         for ob in self.worn:
             try:
                 ob_armor = ob.armor or 0
@@ -142,7 +142,7 @@ class UseEquipmentMixins(object):
 
     @armor.setter
     def armor(self, value):
-        self.db.armor_class = value
+        self.traits.set_other_value("armor_class", value)
 
     @property
     def armor_penalties(self):
@@ -162,25 +162,24 @@ class UseEquipmentMixins(object):
         wpndict = dict(self.get_fakeweapon() or {})
         wpn = self.weapon
         if wpn:
-            wpndict["attack_skill"] = wpn.db.attack_skill or "crushing melee"
-            wpndict["attack_stat"] = wpn.db.attack_stat or "dexterity"
-            wpndict["damage_stat"] = wpn.db.damage_stat or "strength"
-            try:
-                wpndict["weapon_damage"] = wpn.damage_bonus or 0
-            except AttributeError:
-                wpndict["weapon_damage"] = wpn.db.damage_bonus or 0
-            wpndict["attack_type"] = wpn.db.attack_type or "melee"
-            wpndict["can_be_parried"] = wpn.db.can_be_parried
-            wpndict["can_be_blocked"] = wpn.db.can_be_blocked
-            wpndict["can_be_dodged"] = wpn.db.can_be_dodged
-            wpndict["can_parry"] = wpn.db.can_parry or False
-            wpndict["can_riposte"] = wpn.db.can_parry or wpn.db.can_riposte or False
+            wpndict["attack_skill"] = wpn.item_data.attack_skill
+            wpndict["attack_stat"] = wpn.item_data.attack_stat
+            wpndict["damage_stat"] = wpn.item_data.damage_stat
+            wpndict["weapon_damage"] = wpn.damage_bonus
+            wpndict["attack_type"] = wpn.item_data.attack_type
+            wpndict["can_be_parried"] = wpn.item_data.can_be_parried
+            wpndict["can_be_blocked"] = wpn.item_data.can_be_blocked
+            wpndict["can_be_dodged"] = wpn.item_data.can_be_dodged
+            wpndict["can_parry"] = wpn.item_data.can_parry or False
+            wpndict["can_riposte"] = (
+                wpn.item_data.can_parry or wpn.item_data.can_riposte or False
+            )
             wpndict["reach"] = wpn.db.weapon_reach or 1
             wpndict["minimum_range"] = wpn.db.minimum_range or 0
             try:
                 wpndict["difficulty_mod"] = wpn.difficulty_mod or 0
             except AttributeError:
-                wpndict["difficulty_mod"] = wpn.db.difficulty_mod or 0
+                wpndict["difficulty_mod"] = wpn.item_data.difficulty_mod
             try:
                 wpndict["flat_damage"] = wpn.flat_damage or 0
             except AttributeError:
@@ -218,7 +217,7 @@ class UseEquipmentMixins(object):
     def worn(self):
         """Returns list of items worn as attire."""
         worn = [ob for ob in self.equipment if ob.decorative and ob.is_worn]
-        return sorted(worn, key=lambda x: x.db.worn_time)
+        return sorted(worn, key=lambda x: x.item_data.worn_time)
 
     @property
     def sheathed(self):

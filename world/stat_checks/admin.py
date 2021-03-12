@@ -5,6 +5,12 @@ from world.stat_checks.models import (
     StatWeight,
     DifficultyRating,
     DamageRating,
+    StatCheck,
+    StatCombination,
+    StatCheckOutcome,
+    CheckCondition,
+    CheckDifficultyRule,
+    TraitsInCombination,
 )
 
 
@@ -31,8 +37,47 @@ class DifficultyRatingAdmin(admin.ModelAdmin):
 
 
 class DamageRatingAdmin(admin.ModelAdmin):
-    list_display = ("name", "value", "max_value", "armor_cap")
+    list_display = ("name", "value", "max_value", "armor_percentage")
     ordering = ("value",)
+
+
+class CheckDifficultyRuleInline(admin.TabularInline):
+    extra = 0
+    model = CheckDifficultyRule
+
+
+class StatCheckOutcomeInline(admin.TabularInline):
+    extra = 0
+    model = StatCheckOutcome
+
+
+class StatCheckAdmin(admin.ModelAdmin):
+    list_display = ("name", "description")
+    inlines = (CheckDifficultyRuleInline, StatCheckOutcomeInline)
+
+
+class CheckConditionAdmin(admin.ModelAdmin):
+    list_display = ("condition_type", "value")
+    inlines = (CheckDifficultyRuleInline,)
+
+
+class TraitsInCombinationInline(admin.TabularInline):
+    extra = 0
+    model = TraitsInCombination
+
+
+class StatCombinationAdmin(admin.ModelAdmin):
+    list_display = ("combination", "checks")
+    inlines = (TraitsInCombinationInline,)
+    readonly_fields = ("checks",)
+
+    @staticmethod
+    def combination(obj):
+        return str(obj)
+
+    @staticmethod
+    def checks(obj):
+        return ", ".join(str(ob) for ob in obj.cached_stat_checks)
 
 
 admin.site.register(NaturalRollType, NaturalRollTypeAdmin)
@@ -40,3 +85,6 @@ admin.site.register(RollResult, RollResultadmin)
 admin.site.register(StatWeight, StatWeightAdmin)
 admin.site.register(DifficultyRating, DifficultyRatingAdmin)
 admin.site.register(DamageRating, DamageRatingAdmin)
+admin.site.register(StatCheck, StatCheckAdmin)
+admin.site.register(CheckCondition, CheckConditionAdmin)
+admin.site.register(StatCombination, StatCombinationAdmin)

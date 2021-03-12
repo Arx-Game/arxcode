@@ -27,7 +27,7 @@ from web.character.models import (
 from web.character.forms import ClueCreateForm, RevelationCreateForm
 from world.dominion.models import Agent
 from world.dominion.plots.models import Plot
-from world.stats_and_skills import VALID_STATS, VALID_SKILLS
+from world.traits.models import Trait
 
 
 class InvestigationFormCommand(ArxCommand):
@@ -314,7 +314,7 @@ class InvestigationFormCommand(ArxCommand):
                 self.disp_investigation_form()
                 return True
             if "stat" in self.switches:
-                if not self.caller.attributes.get(self.args.lower()):
+                if not self.caller.traits.get_stat_value(self.args.lower()):
                     self.msg("No stat by the name of %s." % self.args)
                     return
                 investigation[2] = self.args
@@ -802,14 +802,14 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                     field = "story"
                 elif "changestat" in self.switches:
                     rhs = self.rhs.lower()
-                    if rhs not in VALID_STATS:
+                    if rhs not in Trait.get_valid_stat_names():
                         self.msg("Not a valid stat.")
                         return
                     ob.stat_used = rhs
                     field = "stat"
                 elif "changeskill" in self.switches:
                     rhs = self.rhs.lower()
-                    if rhs not in VALID_SKILLS:
+                    if rhs not in Trait.get_valid_skill_names():
                         self.msg("Not a valid skill.")
                         return
                     ob.skill_used = rhs
@@ -1353,7 +1353,7 @@ class CmdInvestigate(InvestigationFormCommand):
                 caller.msg("The new story of your investigation is:\n%s" % self.rhs)
                 return
             if "changestat" in self.switches:
-                if self.rhs not in VALID_STATS:
+                if self.rhs not in Trait.get_valid_stat_names():
                     self.msg("That is not a valid stat name.")
                     return
                 ob.stat_used = self.rhs
@@ -1362,7 +1362,7 @@ class CmdInvestigate(InvestigationFormCommand):
                 return
             if "changeskill" in self.switches:
 
-                if self.rhs not in VALID_SKILLS:
+                if self.rhs not in Trait.get_valid_skill_names():
                     self.msg("That is not a valid skill name.")
                     return
                 ob.skill_used = self.rhs

@@ -20,9 +20,9 @@ from evennia.utils import create, evtable
 from server.utils.arx_utils import inform_staff
 from typeclasses.scripts.combat import combat_settings
 from evennia.objects.models import ObjectDB
-import random
 from typeclasses.npcs import npc_types
-from world.stats_and_skills import do_dice_check
+from typeclasses.exceptions import InvalidTargetError
+from world.conditions.exceptions import TreatmentTooRecentError
 
 CSCRIPT = "typeclasses.scripts.combat.combat_script.CombatManager"
 
@@ -1431,7 +1431,7 @@ class CmdCreateAntagonist(ArxCommand):
         )
         for npc in npcs:
             ntype = npc_types.get_npc_singular_name(npc.db.npc_type)
-            num = npc.db.num_living if ntype.lower() != "champion" else "Unique"
+            num = npc.item_data.quantity if ntype.lower() != "champion" else "Unique"
             table.add_row(
                 npc.id,
                 npc.key or "None",
@@ -1541,14 +1541,14 @@ class CmdCreateAntagonist(ArxCommand):
 
     def adjust_spawn_quantity(self, npc):
         try:
-            npc.db.num_living = int(self.rhs)
+            npc.item_data.quantity = int(self.rhs)
         except (TypeError, ValueError):
             self.msg("Quantity must be a number.")
         else:
             self.msg("%s quantity set to %s." % (npc, self.rhs))
 
 
-class CmdHarm(ArxCommand):
+class CmdOldHarm(ArxCommand):
     """
     Note: Deprecated, and will be removed eventually. Use new @harm
     Harms characters and sends them a message
@@ -1565,7 +1565,7 @@ class CmdHarm(ArxCommand):
     is sent only to the characters involved.
     """
 
-    key = "@harm"
+    key = "old_harm"
     locks = "cmd:all()"
     help_category = "GMing"
 
@@ -1638,12 +1638,16 @@ class CmdHeal(ArxCommand):
         +heal <character>
         +heal/permit <character>
         +heal/global <same as above - GM-Only usage>
-        +heal/gmallow <character>[=<bonus if positive, negative for penalty>]
+        +heal/gmallow <character>
+        +heal/revive
 
     Helps administer medical care to a character who is not
-    presently in combat. This will attempt to wake them up
+    presently in combat. /revive will attempt to wake them up
     if they have been knocked unconscious. You must have permission
     to attempt to heal someone, which is granted via the /permit switch.
+
+    Healing is not immediate. They'll receive the benefit of your
+    aid periodically, and when it expires you can offer treatment again.
     """
 
     key = "+heal"
@@ -1652,130 +1656,78 @@ class CmdHeal(ArxCommand):
 
     def func(self):
         """Execute command."""
-        caller = self.caller
-        global_search = "global" in self.switches and caller.check_permstring(
-            "builders"
-        )
-        targ = caller.search(self.lhs, global_search=global_search)
-        if not targ:
-            return
-        if "permit" in self.switches:
-            permits = targ.ndb.healing_permits or set()
-            permits.add(caller)
-            targ.ndb.healing_permits = permits
-            self.msg("{wYou permit {c%s {wto heal you." % targ)
-            targ.msg("{c%s {whas permitted you to heal them." % caller)
-            return
-        event = caller.location.event
-        if "gmallow" in self.switches:
-            if (
-                not event
-                or caller.player.Dominion not in event.gms.all()
-                and not caller.check_permstring("builders")
-            ):
-                self.msg("This may only be used by the GM of an event.")
-                return
-            modifier = 0
-            if self.rhs:
-                try:
-                    modifier = int(self.rhs)
-                except ValueError:
-                    self.msg("Modifier must be a number.")
-                    return
-            targ.ndb.healing_gm_allow = modifier
-            noun = "bonus" if modifier > 0 else "penalty"
-            self.msg(
-                "You have allowed %s to use +heal, with a %s to their roll of %s."
-                % (targ, noun, abs(modifier))
-            )
-            return
-        if not caller.conscious:
-            self.msg("You must be awake to heal.")
-            return
-        if not targ.dmg:
-            caller.msg("%s does not require any medical attention." % targ)
-            return
-        if not hasattr(targ, "recovery_test"):
-            caller.msg("%s is not capable of being healed." % targ)
-            return
-        combat = check_combat(caller, quiet=True)
-        if combat:
-            if caller in combat.ndb.combatants or targ in combat.ndb.combatants:
-                caller.msg("You cannot heal someone in combat.")
-                return
-        if event and event.gms.all() and caller.ndb.healing_gm_allow is None:
-            self.msg(
-                "There is an event here and you have not been granted GM permission to use +heal."
-            )
-            return
-        aid_given = caller.db.administered_aid or {}
-        # timestamp of aid time
-        aid_time = aid_given.get(targ.id, 0)
-        import time
-
-        timediff = time.time() - aid_time
-        if timediff < 3600:
-            caller.msg("You have assisted them too recently.")
-            caller.msg("You can help again in %s seconds." % (3600 - timediff))
-            return
-        permits = caller.ndb.healing_permits or set()
-        if targ.player and targ not in permits:
-            self.msg(
-                "%s has not granted you permission to heal them. Have them use +heal/permit."
-                % targ
-            )
-            targ.msg(
-                "%s wants to heal you, but isn't permitted. You can let them with +heal/permit."
-                % caller
-            )
-            return
-        # record healing timestamp
-        aid_given[targ.id] = time.time()
-        caller.db.administered_aid = aid_given
-        modifier = 0
-        if caller.ndb.healing_gm_allow is not None:
-            modifier = caller.ndb.healing_gm_allow
-            caller.ndb.healing_gm_allow = None
-        # give healin'
-        blessed = caller.db.blessed_by_lagoma
-        antimagic_aura = random.randint(0, 5)
         try:
-            antimagic_aura += int(caller.location.db.antimagic_aura or 0)
-        except (TypeError, ValueError):
-            pass
-        # if they have Lagoma's favor, we see if the Despite of Fable stops it
-        if blessed:
-            try:
-                blessed = random.randint(0, blessed + 1)
-            except (TypeError, ValueError):
-                blessed = 0
-            blessed -= antimagic_aura
-            if blessed > 0:
-                caller.msg("{cYou feel Lagoma's favor upon you.{n")
+            caller = self.caller
+            global_search = "global" in self.switches and caller.check_permstring(
+                "builders"
+            )
+            targ = caller.search(self.lhs, global_search=global_search)
+            if not targ:
+                return
+            if "permit" in self.switches:
+                permits = targ.ndb.healing_permits or set()
+                permits.add(caller)
+                targ.ndb.healing_permits = permits
+                self.msg("{wYou permit {c%s {wto heal you." % targ)
+                targ.msg("{c%s {whas permitted you to heal them." % caller)
+                return
+            event = caller.location.event
+            if "gmallow" in self.switches:
+                if (
+                    not event
+                    or caller.player.Dominion not in event.gms.all()
+                    and not caller.check_permstring("builders")
+                ):
+                    self.msg("This may only be used by the GM of an event.")
+                    return
+                targ.ndb.healing_gm_allow = True
+                self.msg("You have allowed %s to use +heal." % targ)
+                return
+            if not caller.conscious:
+                self.msg("You must be awake to heal.")
+                return
+            combat = check_combat(caller, quiet=True)
+            if combat:
+                if caller in combat.ndb.combatants or targ in combat.ndb.combatants:
+                    caller.msg("You cannot heal someone in combat.")
+                    return
+            if event and event.gms.all() and caller.ndb.healing_gm_allow is None:
+                self.msg(
+                    "There is an event here and you have not been granted GM permission to use +heal."
+                )
+                return
+            permits = caller.ndb.healing_permits or set()
+            if targ.player and targ not in permits:
+                self.msg(
+                    "%s has not granted you permission to heal them. Have them use +heal/permit."
+                    % targ
+                )
+                targ.msg(
+                    "%s wants to heal you, but isn't permitted. You can let them with +heal/permit."
+                    % caller
+                )
+                return
+            # give healin'
+            if "revive" in self.switches:
+                if targ.conscious:
+                    raise self.error_class("They are already conscious.")
+                targ.health_status.add_revive_treatment(self.caller)
+                self.msg(
+                    "You have provided aid to %s to help them regain consciousness."
+                    % targ
+                )
             else:
-                blessed = 0
-            keep = blessed + caller.traits.get_skill_value("medicine") + 2
-            modifier += 5 * blessed
-            heal_roll = do_dice_check(
-                caller,
-                stat_list=["mana", "intellect"],
-                skill="medicine",
-                difficulty=15 - modifier,
-                keep_override=keep,
-            )
-        else:
-            heal_roll = do_dice_check(
-                caller, stat="intellect", skill="medicine", difficulty=15 - modifier
-            )
-        caller.msg("You rolled a %s on your heal roll." % heal_roll)
-        targ.msg(
-            "%s tends to your wounds, rolling %s on their heal roll."
-            % (caller, heal_roll)
-        )
-        script = targ.scripts.get("Recovery")
-        if script:
-            script = script[0]
-            script.attempt_heal(heal_roll, caller)
+                if not targ.health_status.needs_treatment:
+                    raise self.error_class(
+                        "%s does not require any medical attention." % targ
+                    )
+                targ.health_status.add_recovery_treatment(self.caller)
+                self.msg(
+                    "You have provided aid to %s to help them recover from injury."
+                    % targ
+                )
+        except (self.error_class, InvalidTargetError, TreatmentTooRecentError) as err:
+            self.msg(err)
 
 
 class CmdStandYoAssUp(ArxCommand):

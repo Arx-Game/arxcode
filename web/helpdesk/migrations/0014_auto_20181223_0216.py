@@ -97,7 +97,6 @@ def convert_help_entries_and_posts_to_kb_items(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("character", "0033_goal_goalupdate"),
         ("helpdesk", "0013_ticket_goal_update"),
     ]
 
@@ -187,5 +186,5 @@ class Migration(migrations.Migration):
             name="title",
             field=models.CharField(max_length=100, unique=True, verbose_name="Title"),
         ),
-        migrations.RunPython(convert_help_entries_and_posts_to_kb_items),
+        migrations.RunPython(convert_help_entries_and_posts_to_kb_items, elidable=True),
     ]

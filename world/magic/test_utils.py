@@ -2,6 +2,7 @@ from world.magic.models import *
 from server.utils.test_utils import ArxTest
 from evennia.utils import create
 from world.dominion.models import CraftingRecipe
+from world.traits.models import Trait
 
 _PENDING_MAGIC_NOTIFY = []
 
@@ -49,10 +50,10 @@ class ArxMagicTest(ArxTest):
         self.test_object = create.create_object(
             typeclass="typeclasses.objects.Object", key="Test Object", nohome=True
         )
-        self.test_object.db.recipe = self.recipe.id
+        self.test_object.item_data.recipe = self.recipe.id
         self.test_object.db.alignment = self.alignment.id
         self.test_object.db.affinity = self.affinity.id
-        self.test_object.db.quality_level = 10
+        self.test_object.item_data.quality_level = 10
         self.test_object.db.quantity = 1
 
         self.practitioner = Practitioner.objects.create(
@@ -66,9 +67,17 @@ class ArxMagicTest(ArxTest):
         self.practitioner.roll_magic = override_roll_magic
 
         self.char2.msg = override_msg
-
+        Trait.objects.get_or_create(
+            name="mana", trait_type=Trait.STAT, category=Trait.MAGIC
+        )
         self.char2.traits.set_stat_value("mana", 5)
+        Trait.objects.get_or_create(
+            name="intellect", trait_type=Trait.STAT, category=Trait.MENTAL
+        )
         self.char2.traits.set_stat_value("intellect", 5)
+        Trait.objects.get_or_create(
+            name="occult", trait_type=Trait.SKILL, category=Trait.GENERAL
+        )
         self.char2.traits.skills = {"occult": 5}
         self.node = SkillNode.objects.create(name="Test Node")
         self.effect = Effect.objects.create(

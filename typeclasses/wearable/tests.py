@@ -49,26 +49,32 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
     def test_wear_cmd(self):
         self.setup_cmd(CmdWear, self.char2)
         self.char2.additional_desc = "Also Sly is super hot."
-        self.top1.db.recipe = 1
-        self.top1.db.crafted_by = self.char1
+        self.top1.item_data.recipe = 1
+        self.top1.item_data.crafted_by = self.char1
         self.call_cmd("", "What are you trying to wear?")
         self.obj1.location = self.char2
         self.call_cmd("obj", "Could not put on Obj (wrong item type).")
         self.call_cmd("top1", "You don't carry 'top1'.")
         self.top1.location = self.char2
         self.call_cmd("top1", "You put on Top1.")
-        self.call_cmd("top2", "Could not put on Top2 (chest slot full).")
+        self.call_cmd(
+            "top2", "Could not put on Top2 (chest slot full. Worn there: [Top1])."
+        )
         self.call_cmd("slinkity1", "You put on Slinkity1.")
         self.assertTrue(self.top1.is_worn)
         self.assertTrue(self.catsuit1.is_worn)
+        # to prevent ties
+        self.catsuit1.item_data.worn_time += 1
         self.call_cmd("a fox mask", "Could not put on A Fox Mask (needs repair).")
-        self.mask1.db.quality_level = 8
+        self.mask1.item_data.quality_level = 8
         self.call_cmd(
             "a fox mask",
             "You currently have a +tempdesc set, which you may want to remove "
             "with +tempdesc.|You put on A Fox Mask.",
         )
-        self.assertEqual(self.mask1.db.quality_level, 7)
+        # also to prevent ties
+        self.mask1.item_data.worn_time += 10
+        self.assertEqual(self.mask1.item_data.quality_level, 7)
         self.assertEqual(self.char2.fakename, "Someone wearing A Fox Mask")
         self.assertEqual(self.char2.temp_desc, "A very Slyyyy Fox...")
         self.mask1.tags.add("mirrormask")  # final test re-checks quality level
@@ -112,7 +118,10 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.assertTrue(self.knife1.is_wielded)
         self.sword1.wear(self.char2)
         self.assertTrue(self.sword1.is_worn)
+        self.call_cmd("slinkity1", "You remove Slinkity1.", cmdstring="remove")
+        self.assertFalse(self.catsuit1.is_worn)
         self.char2.undress()
+        self.assertFalse(self.top1.is_worn)
         self.assertTrue(
             self.char2.is_naked
         )  # Using this to test 'undress' because item order is unpredictable
@@ -123,7 +132,7 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.caller = self.char2
         self.call_cmd(
             "all",
-            "Could not put on Top2 (chest slot full).\nYou put on A Fox Mask, Lickyknife1, "
+            "Could not put on Top2 (chest slot full. Worn there: [Top1]).\nYou put on A Fox Mask, Lickyknife1, "
             "Sword1, Top1, Hairpins1, Purse1, and Slinkity1.",
         )
         # Tests for "wear/outfit":
@@ -148,20 +157,19 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.hairpins1.location = self.char2
         self.call_cmd(
             "/outfit very friendly shadows",
-            "You remove Slinkity1.|You brandish Lickyknife1.|You "
-            "put on Top1, Slinkity1, A Fox Mask, Hairpins1, and "
-            "Sword1.|Your outfit 'Very Friendly Shadows' is "
-            "successfully equipped.",
+            "You remove Slinkity1.|You brandish Lickyknife1.|"
+            "You put on Top1, Hairpins1, Slinkity1, A Fox Mask, and Sword1.|"
+            "Your outfit 'Very Friendly Shadows' is successfully equipped.",
         )
         self.assertTrue(outfit1.is_equipped)
         self.char2.undress()
         self.mask1.wear(self.char2)
-        self.catsuit1.db.recipe = 1  # creates a slot_limit conflict
+        self.catsuit1.item_data.recipe = 1  # creates a slot_limit conflict
         self.call_cmd(
             "/outfit friendly shadows",
             "A Fox Mask is no longer altering your identity or description.|"
             "You remove A Fox Mask.|Could not put on Slinkity1 (chest slot "
-            "full).\nYou put on Top1, Hairpins1, and Sword1.\nYour outfit "
+            "full. Worn there: [Top1]).\nYou put on Top1, Hairpins1, and Sword1.\nYour outfit "
             "'Friendly Shadows' is not equipped.",
         )
         self.assertFalse(outfit2.is_equipped)
@@ -172,7 +180,7 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
             "Top1, and Hairpins1.",
             cmdstring="remove",
         )
-        self.catsuit1.db.recipe = 2
+        self.catsuit1.item_data.recipe = 2
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         # the /outfit switch halts at combaterror but continues for equiperrors, so we'll combat test here too.
@@ -191,4 +199,4 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
             cmdstring="remove",
         )
         self.assertTrue(self.mask1.is_worn)
-        self.assertEqual(self.mask1.db.quality_level, 7)
+        self.assertEqual(self.mask1.item_data.quality_level, 7)

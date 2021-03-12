@@ -12,18 +12,18 @@ from evennia import CmdSet
 from commands.base import ArxCommand
 
 
-class CmdRoll(ArxCommand):
+class CmdDice(ArxCommand):
     """
     rolls dice
 
     Usage:
-        roll <number of dice>=<size of die>
+        dice <number of dice>=<size of die>
 
     Rolls dice for random checks. You can specify dice of any number of sides,
     and between 1 and 50 dice.
     """
 
-    key = "roll"
+    key = "dice"
     locks = "cmd:all()"
     help_category = "Social"
 
@@ -75,4 +75,4 @@ class DiceCmdSet(CmdSet):
 
     def at_cmdset_creation(self):
         """Init the cmdset"""
-        self.add(CmdRoll())
+        self.add(CmdDice())

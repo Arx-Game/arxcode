@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("dominion", "0027_honorific_propriety"),
+        ("dominion", "0001_squashed_dominion"),
     ]
 
     operations = [

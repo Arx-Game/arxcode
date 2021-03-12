@@ -40,79 +40,39 @@ class RPEventListView(LimitPageMixin, ListView):
         if event_type == "gm_only":
             qs = qs.filter(gm_event=True)
         elif event_type == "prp_only":
-            qs = qs.filter(gm_event=False, pc_event_participation__gm=True)
+            qs = qs.prp()
         text = self.request.GET.get("search_text")
         if text:
-            qs = qs.filter(
-                Q(name__icontains=text)
-                | Q(dompcs__player__username__iexact=text)
-                | Q(desc__icontains=text)
-            )
-        return qs
+            qs = qs.match_search_text(text)
+        return qs.distinct().order_by("-date")
 
     def unfinished(self):
         """Gets queryset of RPEvents that are not finished"""
         user = self.request.user
+        qs = RPEvent.objects.filter(finished=False)
         try:
             if user.is_staff:
-                return self.search_filter(
-                    RPEvent.objects.filter(finished=False).distinct().order_by("-date")
-                )
+                return self.search_filter(qs)
         except AttributeError:
             pass
         if not user.is_authenticated:
-            return self.search_filter(
-                RPEvent.objects.filter(finished=False, public_event=True)
-                .distinct()
-                .order_by("-date")
-            )
+            return self.search_filter(qs.filter(public_event=True))
         else:
-            return self.search_filter(
-                RPEvent.objects.filter(
-                    Q(finished=False)
-                    & (
-                        Q(public_event=True)
-                        | (Q(dompcs__player_id=user.id))
-                        | Q(orgs__in=user.Dominion.current_orgs)
-                    )
-                )
-                .distinct()
-                .order_by("-date")
-            )
+            return self.search_filter(qs.by_user(user))
 
     def get_queryset(self):
         """Gets queryset of RPEvents based on who the user is"""
         user = self.request.user
+        qs = RPEvent.objects.filter(finished=True)
         try:
             if user.is_staff:
-                return self.search_filter(
-                    RPEvent.objects.filter(finished=True, dompcs__isnull=False)
-                    .distinct()
-                    .order_by("-date")
-                )
+                return self.search_filter(qs.has_participants())
         except AttributeError:
             pass
         if not user.is_authenticated:
-            return self.search_filter(
-                RPEvent.objects.filter(
-                    finished=True, dompcs__isnull=False, public_event=True
-                )
-                .distinct()
-                .order_by("-date")
-            )
+            return self.search_filter(qs.has_participants().filter(public_event=True))
         else:
-            return self.search_filter(
-                RPEvent.objects.filter(
-                    Q(finished=True)
-                    & (
-                        Q(public_event=True)
-                        | Q(dompcs__player_id=user.id)
-                        | Q(orgs__in=user.Dominion.current_orgs)
-                    )
-                )
-                .distinct()
-                .order_by("-date")
-            )
+            return self.search_filter(qs.by_user(user))
 
     def get_context_data(self, **kwargs):
         """Passes along search filters to the context"""

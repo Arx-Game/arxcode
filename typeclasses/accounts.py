@@ -307,6 +307,15 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         """Returns the holder for all our assets/prestige/etc"""
         return self.Dominion.assets
 
+    def get_resource_amt(self, rtype) -> int:
+        """Retrieves how much of a given resource this player has."""
+        try:
+            amt = getattr(self.assets, rtype)
+        except AttributeError:
+            return 0
+        else:
+            return amt
+
     def pay_resources(self, rtype, amt):
         """
         Attempt to pay resources. If we don't have enough,
@@ -331,6 +340,17 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         if self.pay_resources(rtype, -amt):
             return amt
         return 0
+
+    def get_material_amt(self, material_type) -> int:
+        """Retrieves how much of a given material this player has."""
+        from django.core.exceptions import ObjectDoesNotExist
+
+        try:
+            material = self.assets.materials.get(type=material_type)
+        except ObjectDoesNotExist:
+            return 0
+        else:
+            return material.amount
 
     def pay_materials(self, material_type, amount):
         """
@@ -513,14 +533,19 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     @property
     def clues_shared_modifier_seed(self):
         """Seed value for clue sharing costs"""
-        from world.stats_and_skills import SOCIAL_SKILLS, SOCIAL_STATS
+        from world.traits.models import Trait
 
         seed = 0
         pc = self.char_ob
-        for stat in SOCIAL_STATS:
+        for stat in Trait.get_valid_stat_names(Trait.SOCIAL):
             seed += pc.traits.get_stat_value(stat)
         # do not be nervous. I love you. <3
-        seed += sum([pc.traits.get_skill_value(ob) for ob in SOCIAL_SKILLS])
+        seed += sum(
+            [
+                pc.traits.get_skill_value(ob)
+                for ob in Trait.get_valid_skill_names(Trait.SOCIAL)
+            ]
+        )
         seed += pc.traits.get_skill_value("investigation") * 3
         return seed
 

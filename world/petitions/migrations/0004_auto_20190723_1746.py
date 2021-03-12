@@ -10,7 +10,6 @@ import django.utils.timezone
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("dominion", "0039_prestigetier"),
         ("petitions", "0003_brokeredsale_broker_type"),
     ]
 

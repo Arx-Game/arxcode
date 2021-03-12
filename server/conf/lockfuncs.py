@@ -138,9 +138,9 @@ def ability(accessing_obj, accessed_obj, *args, **kwargs):
         name = args[0]
         val = int(args[1])
     if name == "all":
-        from world.stats_and_skills import CRAFTING_ABILITIES
+        from world.traits.models import Trait
 
-        ability_list = CRAFTING_ABILITIES
+        ability_list = Trait.get_valid_ability_names(Trait.CRAFTING)
     else:
         ability_list = name.split(",")
     for ability_name in ability_list:
@@ -175,9 +175,9 @@ def skill(accessing_obj, accessed_obj, *args, **kwargs):
         name = args[0]
         val = int(args[1])
     if name == "all":
-        from world.stats_and_skills import CRAFTING_SKILLS
+        from world.traits.models import Trait
 
-        skill_list = CRAFTING_SKILLS
+        skill_list = Trait.get_valid_skill_names(Trait.CRAFTING)
     else:
         skill_list = name.split(",")
     if accessing_obj.char_ob:

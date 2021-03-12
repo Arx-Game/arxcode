@@ -25,10 +25,8 @@ from server.utils.arx_utils import inform_staff, check_break
 from world.stats_and_skills import (
     get_partial_match,
     get_skill_cost,
-    CRAFTING_ABILITIES,
-    VALID_SKILLS,
-    VALID_STATS,
 )
+from world.traits.models import Trait
 
 # limit symbol import for API
 __all__ = (
@@ -243,13 +241,13 @@ def setup_voc(char, args):
     skills = _voc_start_skills_[args]
     stat_tup = _voc_start_stats_[args]
     x = 0
-    for stat in VALID_STATS:
+    for stat in Trait.get_valid_stat_names():
         char.traits.set_stat_value(stat, stat_tup[x])
         x += 1
     char.traits.skills = copy.deepcopy(skills)
     char.traits.wipe_all_abilities()
     # if their vocation is a crafter, give them a starting rank of 2
-    if args in CRAFTING_ABILITIES:
+    if args in Trait.get_valid_ability_names(Trait.CRAFTING):
         char.traits.set_ability_value(args, 3)
 
 
@@ -608,8 +606,6 @@ class CmdGuestLook(ArxPlayerCommand):
             return
         if stage == 4:
             caller.msg(stage_title(stage))
-            char.traits.initialize_skills()
-            char.traits.initialize_abilities()
             if not caller.ndb.seen_stage4_intro:
                 caller.msg(STAGE4)
                 caller.ndb.seen_stage4_intro = True
@@ -626,7 +622,7 @@ class CmdGuestLook(ArxPlayerCommand):
                     % (stat_pts, skill_pts)
                 )
                 stat_str = "{wCurrent stats:{n "
-                for stat in VALID_STATS:
+                for stat in Trait.get_valid_stat_names():
                     val = char.traits.get_stat_value(stat)
                     if not val:
                         val = 0
@@ -913,7 +909,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             char.db.vocation = args
             # set up default stats/skills for a new vocation here
             remove_all_skills()
-            for stat in VALID_STATS:
+            for stat in Trait.get_valid_stat_names():
                 char.traits.set_stat_value(stat, 2)
             char.attributes.add("skill_points", get_total_skill_points())
             char.attributes.add("stat_points", STAT_POINTS)
@@ -1095,7 +1091,6 @@ class CmdGuestAddInput(ArxPlayerCommand):
 
         def check_points(character, arguments, value, category):
             """helper function to see if we can add or remove the points"""
-            char.traits.initialize_skills()
             if not (category == "skill" or category == "stat"):
                 character.msg(
                     "Error: Invalid category for check_points. 'stat' or 'skill' expected."
@@ -1154,7 +1149,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             if category == "stat" and new_val == a_max:
                 # check how many stats we have at maximum. We only allow 2
                 num_max_stats = 0
-                for stat in VALID_STATS:
+                for stat in Trait.get_valid_stat_names():
                     if char.traits.get_stat_value(stat) == 5:
                         num_max_stats += 1
                 if num_max_stats >= 2:
@@ -1175,7 +1170,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             return True
 
         if "stat" in switches:
-            if lhs not in VALID_STATS:
+            if lhs not in Trait.get_valid_stat_names():
                 matches = get_partial_match(lhs, "stat")
                 if not matches:
                     caller.msg(
@@ -1195,7 +1190,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
                 return
 
         if "skill" in switches:
-            if lhs not in VALID_SKILLS:
+            if lhs not in Trait.get_valid_skill_names():
                 matches = get_partial_match(lhs, "skill")
                 if not matches:
                     caller.msg(

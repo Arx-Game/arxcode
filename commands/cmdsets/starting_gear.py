@@ -305,11 +305,11 @@ class CmdStartingGear(ArxCommand):
             # finish stuff universal to all crafted objects
             obj.desc = proj[2]
             obj.save()
-            obj.db.materials = mats
-            obj.db.recipe = recipe.id
-            obj.db.adorns = proj[3]
-            obj.db.crafted_by = caller
-            obj.db.volume = int(recipe.resultsdict.get("volume", 0))
+            obj.item_data.materials = mats
+            obj.item_data.recipe = recipe.id
+            obj.item_data.adorns = proj[3]
+            obj.item_data.crafted_by = caller
+            obj.item_data.size = int(recipe.resultsdict.get("volume", 0))
             caller.msg("You created %s." % obj.name)
             caller.attributes.remove("startgear_project")
             return

@@ -120,40 +120,40 @@
         <tbody>
           <tr>
             <td class="info">Strength</td>
-            <td class="info">{{ character.db.strength }}</td>
+            <td class="info">{{ character.traits.strength }}</td>
             <td class="info">Charm</td>
-            <td class="info">{{ character.db.charm }}</td>
+            <td class="info">{{ character.traits.charm }}</td>
             <td class="info">Intellect</td>
-            <td class="info">{{ character.db.intellect }}</td>
+            <td class="info">{{ character.traits.intellect }}</td>
             <td class="info">Mana</td>
-            <td class="info">{{ character.db.mana }}</td>
+            <td class="info">{{ character.traits.mana }}</td>
           </tr>
           <tr>
             <td class="info">Dexterity</td>
-            <td class="info">{{ character.db.dexterity }}</td>
+            <td class="info">{{ character.traits.dexterity }}</td>
             <td class="info">Command</td>
-            <td class="info">{{ character.db.command }}</td>
+            <td class="info">{{ character.traits.command }}</td>
             <td class="info">Perception</td>
-            <td class="info">{{ character.db.perception }}</td>
+            <td class="info">{{ character.traits.perception }}</td>
             <td class="info">Luck</td>
-            <td class="info">{{ character.db.luck }}</td>
+            <td class="info">{{ character.traits.luck }}</td>
           </tr>
           <tr>
             <td class="info">Stamina</td>
-            <td class="info">{{ character.db.stamina }}</td>
+            <td class="info">{{ character.traits.stamina }}</td>
             <td class="info">Composure</td>
-            <td class="info">{{ character.db.composure }}</td>
+            <td class="info">{{ character.traits.composure }}</td>
             <td class="info">Wits</td>
-            <td class="info">{{ character.db.wits }}</td>
+            <td class="info">{{ character.traits.wits }}</td>
             <td class="info">Willpower</td>
-            <td class="info">{{ character.db.willpower }}</td>
+            <td class="info">{{ character.traits.willpower }}</td>
           </tr>
         </tbody>
       </table>
 
       <h2 class="text-center">Skills</h2>
       <ul class="list-inline text-center">
-        {% for skill,value in character.db.skills.items %}
+        {% for skill,value in character.traits.skills.items %}
           <li class="text-center"><b>{{ skill }}:</b> {{ value }}</li>
         {% empty %}
           <li>This character has no skills yet.</li>

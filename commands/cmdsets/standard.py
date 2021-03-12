@@ -159,6 +159,7 @@ try:
 except Exception as err:
     print("<<ERROR>>: Error encountered in magic commands: %s" % err)
 from world.stat_checks import check_commands
+from world.prayer import prayer_commands
 
 from evennia.commands.cmdset import CmdSet
 
@@ -183,8 +184,10 @@ class OOCCmdSet(CmdSet):
         self.add(default_general.CmdAccess())
         self.add(rolling.CmdDiceString())
         self.add(rolling.CmdDiceCheck())
-        self.add(rolling.CmdSpoofCheck())
+        self.add(rolling.CmdOldSpoofCheck())
         self.add(check_commands.CmdStatCheck())
+        self.add(check_commands.CmdHarm())
+        self.add(check_commands.CmdSpoofCheck())
         self.add(general.CmdBriefMode())
         self.add(general.CmdTidyUp())
         self.add(extended_room.CmdGameTime())
@@ -275,7 +278,7 @@ class MobileCmdSet(CmdSet):
         self.add(combat.CmdProtect())
         self.add(combat.CmdAutoattack())
         self.add(combat.CmdCombatStats())
-        self.add(combat.CmdHarm())
+        self.add(combat.CmdOldHarm())
         self.add(combat.CmdFightStatus())
         self.add(agent_commands.CmdGuards())
         self.add(domcommands.CmdPlotRoom())
@@ -297,11 +300,13 @@ class MobileCmdSet(CmdSet):
         self.add(investigation.CmdAssistInvestigation())
         self.add(general.CmdDump())
         self.add(CmdApplyConsumable())
-        self.add(gambling.CmdRoll())
+        self.add(gambling.CmdDice())
         self.add(fashion_commands.CmdFashionModel())
         self.add(fashion_commands.CmdFashionOutfit())
         self.add(petitions_commands.CmdPetition())
         self.add(condition_commands.CmdKnacks())
+        self.add(prayer_commands.CmdPray())
+        self.add(plot_commands.CmdStlist())
 
 
 class StaffCmdSet(CmdSet):
@@ -365,6 +370,7 @@ class StaffCmdSet(CmdSet):
         self.add(staff_commands.CmdAdminKey())
         self.add(staff_commands.CmdAdminPropriety())
         self.add(staff_commands.CmdAdjustFame())
+        self.add(staff_commands.CmdAdjust())
         self.add(plot_commands.CmdGMPlots())
         self.add(plot_commands.CmdStoryCoordinators())
         self.add(goal_commands.CmdGMGoals())

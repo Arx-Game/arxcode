@@ -9,7 +9,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("dominion", "0035_auto_20180831_0922"),
+        ("dominion", "0001_squashed_dominion"),
         ("helpdesk", "0011_auto_20171109_2244"),
     ]
 

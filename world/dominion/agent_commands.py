@@ -11,6 +11,7 @@ from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils.arx_utils import validate_name, caller_change_field
 from typeclasses.npcs.npc_types import get_npc_type, generate_default_name_and_desc
 from .models import Agent, Organization, AssetOwner
+from world.traits.models import Trait
 
 
 class CmdAgents(ArxPlayerCommand):
@@ -593,7 +594,6 @@ class CmdRetainers(ArxPlayerCommand):
         Helper method that returns the attr that the player is buying
         or displays a failure message and returns None.
         """
-        from world.stats_and_skills import VALID_SKILLS, VALID_STATS
 
         if not self.check_categories(category):
             return
@@ -611,18 +611,20 @@ class CmdRetainers(ArxPlayerCommand):
             return
         attr = rhs.lower()
         if category == "stat":
-            if attr not in VALID_STATS:
+            stat_names = Trait.get_valid_stat_names()
+            if attr not in stat_names:
                 self.msg(
                     "When buying a stat, it must be one of the following: %s"
-                    % ", ".join(VALID_STATS)
+                    % ", ".join(stat_names)
                 )
                 return
             return attr
         if category == "skill":
-            if attr not in VALID_SKILLS:
+            skill_names = Trait.get_valid_skill_names()
+            if attr not in skill_names:
                 self.msg(
                     "When buying a skill, it must be one of the following: %s"
-                    % ", ".join(VALID_SKILLS)
+                    % ", ".join(skill_names)
                 )
                 return
             return attr
@@ -700,7 +702,7 @@ class CmdRetainers(ArxPlayerCommand):
         if category == "level":
             current = agent.dbobj.attributes.get(attr) or 0
         elif category == "armor":
-            current = agent.dbobj.db.armor_class
+            current = agent.dbobj.traits.armor_class
         elif category == "stat":
             current = agent.dbobj.traits.get_stat_value(attr)
         elif category == "skill":
@@ -804,12 +806,12 @@ class CmdRetainers(ArxPlayerCommand):
             return
         if not self.check_max_for_attr(agent, attr, category="stat"):
             return
-        current = agent.dbobj.attributes.get(attr) or 0
+        current = agent.dbobj.traits.get_stat_value(attr)
         xp_cost, res_cost, res_type = self.get_attr_cost(agent, attr, "stat", current)
         if not self.pay_xp_and_resources(agent, xp_cost, res_cost, res_type):
             return
         newval = current + 1
-        agent.dbobj.attributes.add(attr, newval)
+        agent.dbobj.traits.set_stat_value(attr, newval)
         self.msg("You have increased %s to %s." % (attr, newval))
 
     def buy_level(self, agent):
@@ -892,7 +894,7 @@ class CmdRetainers(ArxPlayerCommand):
         of armor at a time, which is kind of tedious but allows us to easily
         have increasing costs.
         """
-        current = agent.dbobj.db.armor_class
+        current = agent.dbobj.traits.armor_class
         if not self.check_max_for_attr(agent, "armor", category="armor"):
             return
         xp_cost, res_cost, res_type = self.get_attr_cost(
@@ -900,7 +902,7 @@ class CmdRetainers(ArxPlayerCommand):
         )
         if not self.pay_xp_and_resources(agent, xp_cost, res_cost, res_type):
             return
-        agent.dbobj.db.armor_class = current + 1
+        agent.dbobj.traits.set_other_value("armor_class", current + 1)
         self.msg("You have raised %s's armor to %s." % (agent, current + 1))
         return
 

@@ -14,6 +14,7 @@ from world import stats_and_skills
 from server.utils.arx_utils import inform_staff
 from evennia.utils.utils import list_to_string
 from evennia.accounts.models import AccountDB
+from world.traits.models import Trait
 
 
 class CmdUseXP(ArxCommand):
@@ -46,21 +47,19 @@ class CmdUseXP(ArxCommand):
         caller.msg("{wCurrent Teacher:{n %s" % caller.db.trainer)
         caller.msg("{wUnspent XP:{n %s" % caller.db.xp)
         caller.msg("{wLifetime Earned XP:{n %s" % caller.db.total_xp)
-        all_stats = ", ".join(stat for stat in stats_and_skills.VALID_STATS)
+        all_stats = ", ".join(Trait.get_valid_stat_names())
         caller.msg("\n{wStat names:{n")
         caller.msg(all_stats)
         caller.msg("\n{wSkill names:{n")
-        caller.msg(", ".join(skill for skill in stats_and_skills.VALID_SKILLS))
+        caller.msg(", ".join(Trait.get_valid_skill_names()))
         caller.msg("\n{wDominion skill names:{n")
         caller.msg(", ".join(skill for skill in stats_and_skills.DOM_SKILLS))
         caller.msg("\n{wAbility names:{n")
-        crafting = stats_and_skills.CRAFTING_ABILITIES
+        crafting = Trait.get_valid_ability_names(Trait.CRAFTING)
         abilities = caller.traits.abilities
         abilities = set(abilities.keys()) | set(crafting)
         if caller.check_permstring("builder"):
-            caller.msg(
-                ", ".join(ability for ability in stats_and_skills.VALID_ABILITIES)
-            )
+            caller.msg(", ".join(Trait.get_valid_ability_names()))
         else:
             caller.msg(", ".join(ability for ability in abilities))
 
@@ -119,14 +118,14 @@ class CmdUseXP(ArxCommand):
             return
         args = self.args.lower()
         # get cost already factors in if we have a trainer, so no need to check
-        if args in stats_and_skills.VALID_STATS:
+        if args in Trait.get_valid_stat_names():
             cost = stats_and_skills.get_stat_cost(caller, args)
-            current = caller.attributes.get(args)
-            if current >= 5:
+            current = caller.traits.get_stat_value(args)
+            if not caller.traits.check_stat_can_be_raised(args):
                 caller.msg("%s is already at its maximum." % args)
                 return
             stype = "stat"
-        elif args in stats_and_skills.VALID_SKILLS:
+        elif args in Trait.get_valid_skill_names():
             current = caller.traits.get_skill_value(args)
             if current >= 6:
                 caller.msg("%s is already at its maximum." % args)
@@ -154,11 +153,11 @@ class CmdUseXP(ArxCommand):
             except AttributeError:
                 caller.msg("Dominion object not found.")
                 return
-        elif args in stats_and_skills.VALID_ABILITIES:
+        elif args in Trait.get_valid_ability_names():
             # if we don't have it, determine if we can learn it
             current = caller.traits.get_ability_value(args)
             if not current:
-                if args in stats_and_skills.CRAFTING_ABILITIES:
+                if args in Trait.get_valid_ability_names(Trait.CRAFTING):
                     # check if we have valid skill:
                     if args == "tailor" and "sewing" not in caller.traits.skills:
                         caller.msg("You must have sewing to be a tailor.")
@@ -195,13 +194,14 @@ class CmdUseXP(ArxCommand):
             if current >= 6:
                 caller.msg("%s is already at its maximum." % args)
                 return
-            if args in stats_and_skills.CRAFTING_ABILITIES:
+            if args in Trait.get_valid_ability_names(Trait.CRAFTING):
                 spec_warning = True
             if current == 5:
                 if any(
                     key
                     for key, value in caller.traits.abilities.items()
-                    if key in stats_and_skills.CRAFTING_ABILITIES and value >= 6
+                    if key in Trait.get_valid_ability_names(Trait.CRAFTING)
+                    and value >= 6
                 ):
                     caller.msg("You have already chosen a crafting specialization.")
                     return
@@ -457,7 +457,7 @@ class CmdTrain(ArxCommand):
                 return
             if "stat" in switches:
                 stat = self.rhs.lower()
-                if not self.check_attribute_name(stats_and_skills.VALID_STATS, "stat"):
+                if not self.check_attribute_name(Trait.get_valid_stat_names(), "stat"):
                     return
                 if not self.check_attribute_value(
                     caller.traits.get_stat_value(stat), targ.traits.get_stat_value(stat)
@@ -466,7 +466,7 @@ class CmdTrain(ArxCommand):
             elif "skill" in switches:
                 skill = self.rhs.lower()
                 if not self.check_attribute_name(
-                    stats_and_skills.VALID_SKILLS, "skill"
+                    Trait.get_valid_skill_names(), "skill"
                 ):
                     return
                 if not self.check_attribute_value(
@@ -477,7 +477,7 @@ class CmdTrain(ArxCommand):
             elif "ability" in switches:
                 ability = self.rhs.lower()
                 if not self.check_attribute_name(
-                    stats_and_skills.VALID_ABILITIES, "ability"
+                    Trait.get_valid_ability_names(), "ability"
                 ):
                     return
                 if not self.check_attribute_value(

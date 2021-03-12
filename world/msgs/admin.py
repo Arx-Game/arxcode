@@ -7,13 +7,10 @@ from django.contrib import admin
 from django.utils.safestring import mark_safe
 from evennia.comms.models import Msg
 from evennia.typeclasses.admin import TagInline
-from evennia.objects.models import ObjectDB
-from evennia.objects.admin import ObjectDBAdmin
 from evennia.help.admin import HelpEntryAdmin
 from evennia.help.models import HelpEntry
 
 from .models import Inform, Messenger, Post, Journal, Rumor
-from web.character.models import Clue
 
 
 class InformFilter(admin.SimpleListFilter):
@@ -133,28 +130,10 @@ admin.site.register(Post, MsgAdmin)
 admin.site.register(Rumor, MsgAdmin)
 
 
-class ClueForCharacterInline(admin.StackedInline):
-    model = Clue
-    extra = 0
-    raw_id_fields = (
-        "tangible_object",
-        "author",
-    )
-    filter_horizontal = ("search_tags",)
-    show_change_link = True
-
-
-class ArxObjectDBAdmin(ObjectDBAdmin):
-    search_fields = ["=id", "db_key"]
-    inlines = tuple(ObjectDBAdmin.inlines) + (ClueForCharacterInline,)
-
-
 class ArxHelpDBAdmin(HelpEntryAdmin):
     search_fields = ["db_key", "db_entrytext"]
 
 
-admin.site.unregister(ObjectDB)
-admin.site.register(ObjectDB, ArxObjectDBAdmin)
 admin.site.unregister(HelpEntry)
 admin.site.register(HelpEntry, ArxHelpDBAdmin)
 try:

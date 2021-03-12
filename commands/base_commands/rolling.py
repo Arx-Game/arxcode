@@ -240,14 +240,14 @@ class CmdDiceCheck(ArxCommand):
             gm.msg(roll_msg, options={"roll": True})
 
 
-class CmdSpoofCheck(ArxCommand):
+class CmdOldSpoofCheck(ArxCommand):
     """
-    @gmcheck
+    @oldgmcheck
 
     Usage:
-        @gmcheck <stat>/<value>[+<skill>/<value>][ at <difficulty>]
-        @gmcheck/can_crit <same as above>
-        @gmcheck/flub <same as above>
+        @oldgmcheck <stat>/<value>[+<skill>/<value>][ at <difficulty>]
+        @oldgmcheck/can_crit <same as above>
+        @oldgmcheck/flub <same as above>
 
     Performs a stat + skill at difficulty check with specified values. If no
     difficulty is set, default is used. Intended for GMs to make rolls for NPCs
@@ -255,7 +255,7 @@ class CmdSpoofCheck(ArxCommand):
     allows the roll to crit. The /flub switch intentionally, silently fails.
     """
 
-    key = "@gmcheck"
+    key = "@oldgmcheck"
     locks = "cmd:all()"
 
     def get_value_pair(self, argstr):

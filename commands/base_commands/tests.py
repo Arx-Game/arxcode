@@ -4,7 +4,6 @@ Tests for different general commands.
 
 from mock import Mock, patch, PropertyMock
 from datetime import datetime, timedelta
-from random import getstate, setstate, seed
 
 from evennia.server.models import ServerConfig
 from server.utils.test_utils import (
@@ -13,13 +12,13 @@ from server.utils.test_utils import (
     TestTicketMixins,
 )
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent, CraftingRecipe, Agent
+from world.dominion.models import CraftingMaterialType, RPEvent, CraftingRecipe
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
 from web.character.models import PlayerAccount, Clue, Revelation
 
-from typeclasses.readable.readable import CmdWrite
+from typeclasses.readable.readable_commands import CmdWrite
 
 from . import (
     story_actions,
@@ -33,7 +32,6 @@ from . import (
     help,
     general,
     exchanges,
-    rolling,
 )
 
 
@@ -775,10 +773,21 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("a fox mask in purse1", "You'll have to unlock Purse1 first.")
         self.purse1.db.locked = False
         self.call_cmd("hairpins1 in purse1", "You put Hairpins1 in Purse1.")
-        self.mask1.db.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
+        self.mask1.remove(self.char2)
+        self.call_cmd(
+            "/outfit Bishikiller in purse1",
+            "Slinkity1 is currently worn and cannot be moved.|"
+            "No more room; A Fox Mask won't fit.|"
+            "Nothing moved.",
+        )
+        # currently trying to put away an outfit will remove it
+        # but not move if no room. May want to change in future
+        self.mask1.wear(self.char2)
+        self.purse1.item_data.capacity = 500
         self.mask1.remove(self.char2)
         self.call_cmd(
             "/outfit Bishikiller in purse1",
@@ -821,7 +830,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.obj1.location, self.char2)
         self.assertEqual(self.char2.db.currency, 5.0)
         self.assertEqual(self.purse1.db.currency, 25.0)
-        self.mask1.db.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
@@ -895,6 +904,14 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
             "Players:\n\nPlayer name Fealty Idle \n\nShowing 0 out of 1 unique account logged in.",
         )
 
+    def test_cmd_set(self):
+        self.setup_cmd(overrides.CmdArxSetAttribute, self.char)
+        self.call_cmd(f" here/capacity=200", "Set item data Room/capacity = 200")
+        self.assertEqual(self.room.item_data.capacity, 200)
+        self.call_cmd(
+            f"/char {self.char2}/strength=10", "Set trait Char2/strength = 10"
+        )
+
 
 # noinspection PyUnresolvedReferences
 class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
@@ -919,7 +936,7 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/cancel", f"{head}Your trade has been cancelled.")
         self.assertEqual(self.char2.ndb.personal_trade_in_progress, None)
         self.top2.wear(self.char2)
-        self.mask1.db.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.mask1.wear(self.char2)
         self.call_cmd(
             "Char",
@@ -2229,94 +2246,164 @@ class HelpCommandTests(ArxCommandTest):
         self.call_cmd("plots", expected_return, cmdset=CharacterCmdSet())
 
 
-class CheckCommandTests(ArxCommandTest):
+class AdjustCommandTests(ArxCommandTest):
     def setUp(self):
-        super(CheckCommandTests, self).setUp()
+        super().setUp()
 
-        # Because PEP8 line lengths.
-        create_agent = self.char1.player_ob.Dominion.assets.agents.create
+        self.setup_cmd(staff_commands.CmdAdjust, self.account1)
 
-        retainer = create_agent(
-            type=Agent.CHAMPION,
-            name="Steve, the Retainer",
-            quality=1,
-            quantity=1,
-            unique=True,
-            desc="I'm a retainer!",
+        CraftingMaterialType.objects.create(name="test material")
+
+        self.char2.player.inform = Mock()
+
+    @patch("typeclasses.accounts.Account.gain_materials")
+    @patch("typeclasses.accounts.Account.gain_resources")
+    def test_adjust_failures(self, mock_res_gain, mock_mat_gain):
+
+        not_found = "Could not find 'foo'.|Check spelling and try again."
+        self.call_cmd("/material foo=test material,1", not_found)
+
+        # Syntax error
+        mat_syntax_error = (
+            "Usage: @adjust/material <character>=<material>,<amount>[/<inform msg>]"
         )
-        retainer.assign(self.char1, 1)
+        res_syntax_error = (
+            "Usage: @adjust/resource <character>=<res type>,<amount>[/<inform msg>]"
+        )
+        self.call_cmd("/material Testaccount2=test material,,5", mat_syntax_error)
+        self.call_cmd("/resource Testaccount2=economic..5", res_syntax_error)
 
-        self.random_state = getstate()
+        # Value must be a number.
+        amt_number = "Amount must be an integer."
+        self.call_cmd("/material Testaccount2=test material,q", amt_number)
+        self.call_cmd("/resource Testaccount2=economic,q", amt_number)
+        self.call_cmd("/silver Testaccount2=q", amt_number)
 
-        # This is to prevent char1 from also receiving GM-only messages
-        # from the @check announcement to the room.
-        self.char1.permissions.remove("Developer")
+        # Failed to find material in db.
+        material_fail = "Could not find a material with the name 'foo'."
+        self.call_cmd("/material Testaccount2=foo,1", material_fail)
 
-    def test_cmd_check_retainer(self):
-        # I need to quell char1 somehow, or change permissions to non-Wizard.
-        self.setup_cmd(rolling.CmdDiceCheck, self.char1)
+        # gain_materials() "failed"
+        mock_mat_gain.return_value = False
+        mat_adjust_fail = "Failed to adjust Char2's test material."
+        self.call_cmd("/material Testaccount2=test material,1", mat_adjust_fail)
 
-        expected_return = "Usage: @check/retainer <id>|<stat>[+<skill>][ at <difficulty number>][=receiver1,receiver2,etc]"
-        self.call_cmd("/retainer", expected_return)
-        self.call_cmd("/retainer X|strength + athletics at 20", expected_return)
-        self.call_cmd("/retainer 1=strength + athletics at 20", expected_return)
+        # Incorrect resource type
+        bad_resource = "Explosive is not a valid resource type."
+        self.call_cmd("/resource Testaccount2=explosive,1", bad_resource)
+
+        # gain_resource() "failed"
+        mock_res_gain.return_value = 0
+        res_adjust_fail = "Failed to adjust Char2's economic resources."
+        self.call_cmd("/resource Testaccount2=economic,50", res_adjust_fail)
+
+    def test_adjust_resource(self):
+        self.assetowner2.economic = 0
+
+        # Test increase.
+        adjust_msg = "Awarded 50 economic resources to Char2."
+        inform_msg = "You have been awarded 50 economic resources."
+        self.call_cmd("/resource Testaccount2=economic,50", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Resource Adjustment"
+        )
+        self.assertEqual(self.assetowner2.economic, 50)
+
+        # Test award with message.
         self.call_cmd(
-            "/retainer -1|strength + athletics at 20",
-            "Retainer ID must be a positive number.",
+            "/resource Testaccount2=economic,50/Here is 50 resources.",
+            f"{adjust_msg} Message sent to player: Here is 50 resources.",
+        )
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}%r%rMessage: Here is 50 resources.",
+            category="Resource Adjustment",
+        )
+        self.assertEqual(self.assetowner2.economic, 100)
+
+        # Test reduction failure.
+        res_adjust_fail = "Char2 only has 100 economic resources on hand."
+        self.call_cmd("/resource Testaccount2=economic,-150", res_adjust_fail)
+
+        # Test reduction.
+        adjust_msg = "Deducted 50 economic resources from Char2."
+        inform_msg = "You have been deducted 50 economic resources."
+        self.call_cmd("/resource Testaccount2=economic,-50", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Resource Adjustment"
+        )
+        self.assertEqual(self.assetowner2.economic, 50)
+
+    def test_adjust_material(self):
+        # Test increase.
+        adjust_msg = "Awarded 50 test material to Char2."
+        inform_msg = "You have been awarded 50 test material."
+        self.call_cmd("/material Testaccount2=test material,50", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Material Adjustment"
         )
 
-        # Wrong difficulty value (X < 1 || X > 100)
+        # Get material and confirm increase.
+        mat_type = CraftingMaterialType.objects.get(name__iexact="test material")
+        material = self.assetowner2.materials.get(type=mat_type)
+        self.assertEqual(material.amount, 50)
+
+        # Test award with message.
         self.call_cmd(
-            "/retainer 1|strength + athletics at 0",
-            "Difficulty must be a number between 1 and 100.",
+            "/material Testaccount2=test material,50/Here is 50 material.",
+            f"{adjust_msg} Message sent to player: Here is 50 material.",
+        )
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}%r%rMessage: Here is 50 material.",
+            category="Material Adjustment",
+        )
+        self.assertEqual(material.amount, 100)
+
+        # Test reduction failure.
+        mat_adjust_fail = "Char2 only has 100 of test material on hand."
+        self.call_cmd("/material Testaccount2=test material,-150", mat_adjust_fail)
+
+        # Test reduction.
+        adjust_msg = "Deducted 50 test material from Char2."
+        inform_msg = "You have been deducted 50 test material."
+        self.call_cmd("/material Testaccount2=test material,-50", adjust_msg)
+        self.assertEqual(material.amount, 50)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Material Adjustment"
         )
 
-        # Using 's' for stat (not-unique stat test)
+    def test_adjust_silver(self):
+        self.char2.db.currency = 0
+
+        # Test increase.
+        adjust_msg = "Awarded 50 silver to Char2."
+        inform_msg = "You have been awarded 50 silver."
+        self.call_cmd("/silver Testaccount2=50", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Silver Adjustment"
+        )
+
+        self.assertEqual(self.char2.db.currency, 50)
+
+        # Test with message this time.
         self.call_cmd(
-            "/retainer 1|s + athletics at 20",
-            "There must be one unique match for a character stat."
-            " Please check spelling and try again.",
+            "/silver Testaccount2=50/Here is 50 silver.",
+            f"{adjust_msg} Message sent to player: Here is 50 silver.",
         )
-
-        # Using 's' for skill (not-unique skill test)
-        self.call_cmd(
-            "/retainer 1|strength + s at 20",
-            "There must be one unique match for a character skill."
-            " Please check spelling and try again.",
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}%r%rMessage: Here is 50 silver.",
+            category="Silver Adjustment",
         )
+        self.assertEqual(self.char2.db.currency, 100)
 
-        # Invalid skill name.
-        self.call_cmd(
-            "/retainer 1|strength + cuddles at 20",
-            "No matches for a skill by that name." " Check spelling and try again.",
+        # Test reduction failure.
+        mny_adjust_fail = "Char2 only has 100 silver on hand."
+        self.call_cmd("/silver Testaccount2=-150", mny_adjust_fail)
+
+        # Test reduction.
+        adjust_msg = "Deducted 100 silver from Char2."
+        inform_msg = "You have been deducted 100 silver."
+        self.call_cmd("/silver Testaccount2=-100", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Silver Adjustment"
         )
-
-        # Couldn't find retainer with that ID.
-        self.call_cmd(
-            "/retainer 10|strength + athletics at 20", "No retainer found with ID 10."
-        )
-
-        seed(1)
-        self.call_cmd(
-            "/retainer 1|strength + athletics at 20",
-            "Char's retainer (Steve, the Retainer) checked strength"
-            " + athletics at difficulty 20, rolling 0 higher.",
-        )
-
-        self.call_cmd(
-            "/retainer/flub 1|strength + athletics at 20",
-            "Char's retainer (Steve, the Retainer) checked strength"
-            " + athletics at difficulty 20, rolling 12 lower.",
-        )
-
-        # This test returns two messages twice because char1 is >= "Builders"
-        # permissions hierarchy, so it will notify both char1, and GM-char1.
-        self.call_cmd(
-            "/retainer 1|strength + athletics at 20=Char",
-            "[Private Roll] Char's retainer (Steve, the Retainer) checked strength"
-            " + athletics at difficulty 20, rolling 5 higher. (Shared with: self-only)",
-        )
-
-    def tearDown(self):
-        setstate(self.random_state)
-        self.char1.permissions.add("Developer")
+        self.assertEqual(self.char2.db.currency, 0)
