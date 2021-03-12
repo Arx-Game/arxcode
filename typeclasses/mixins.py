@@ -133,7 +133,7 @@ class DescMixins(object):
         """
         total = 0
         for obj in self.contents:
-            if not obj.item_data.currently_worn and obj.item_data.sheathed_by != self:
+            if not obj.item_data.currently_worn:
                 vol = obj.item_data.total_size
                 total += vol
         return total
