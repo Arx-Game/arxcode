@@ -123,4 +123,3 @@ class ItemDataHandler:
 
     # properties that will be overridden, but we want sensible defaults
     currently_worn = False
-    sheathed_by = None
