@@ -425,6 +425,7 @@ class Wound(SharedMemoryModel):
         "traits.Trait", related_name="wounds", on_delete=models.CASCADE
     )
     severity = models.PositiveSmallIntegerField(default=SERIOUS, choices=WOUND_TYPES)
+    healing = models.PositiveSmallIntegerField(default=0)
 
 
 class CharacterHealthStatus(SharedMemoryModel):
@@ -517,6 +518,33 @@ class CharacterHealthStatus(SharedMemoryModel):
             or 0
         )
 
+    def get_total_healing_for_wound(self):
+        return (
+            self.treatment_attempts.filter(treatment_type=RECOVERY).aggregate(
+                sum=models.Sum("value", output_field=models.IntegerField(default=0))
+            )["sum"]
+            or 0
+        )
+
+    def apply_treatment_to_wounds(self):
+        from world.game_constants.models import IntegerGameConstant
+
+        if not self.serious_wounds:
+            return
+        wound = self.serious_wounds[0]
+        healing = self.get_total_healing_for_wound()
+        max_healing = IntegerGameConstant.objects.get_max_wound_healing_per_day()
+        if healing > max_healing:
+            healing = max_healing
+        wound.healing += healing
+        if (
+            wound.healing
+            >= IntegerGameConstant.objects.get_amount_needed_to_heal_wound()
+        ):
+            self.delete_wound(wound)
+        else:
+            wound.save()
+
     @CachedProperty
     def cached_highest_revive_treatment_roll(self):
         return self.get_highest_value_for_treatment_type(REVIVE)
@@ -552,6 +580,8 @@ class CharacterHealthStatus(SharedMemoryModel):
             self.character.change_health(healing, wake=False)
             if self.cached_should_heal_wound:
                 self.heal_wound()
+            else:
+                self.apply_treatment_to_wounds()
             # check to see if we would regain consciousness, if needed
             self.check_regain_consciousness()
 
@@ -581,9 +611,12 @@ class CharacterHealthStatus(SharedMemoryModel):
         if serious:
             # get a random wound from our list of serious wounds
             wound = random.choice(serious)
-            # remove from caches
-            self.cached_wounds = [ob for ob in self.cached_wounds if ob != wound]
-            wound.delete()
+            self.delete_wound(wound)
+
+    def delete_wound(self, wound):
+        """Removes wound from our cache and deletes it"""
+        self.cached_wounds = [ob for ob in self.cached_wounds if ob != wound]
+        wound.delete()
 
     def heal_permanent_wound_for_trait(self, trait) -> bool:
         perm = [
@@ -592,8 +625,7 @@ class CharacterHealthStatus(SharedMemoryModel):
             if ob.severity == Wound.PERMANENT and ob.trait == trait
         ]
         if perm:
-            perm[0].delete()
-            del self.cached_wounds
+            self.delete_wound(perm[0])
             return True
         return False
 

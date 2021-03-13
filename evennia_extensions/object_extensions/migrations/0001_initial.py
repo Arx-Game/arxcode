@@ -33,6 +33,7 @@ def convert_tags_and_attributes(apps, schema_editor):
         db_key__in=["max_volume", "num_living"],
         objectdb__db_typeclass_path__in=[
             "typeclasses.containers.container.Container",
+            "typeclasses.wearable.wearable.WearableContainer",
             "typeclasses.npcs.npc.MultiNpc",
             "typeclasses.npcs.npc.Agent",
         ],

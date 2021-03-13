@@ -28,7 +28,7 @@ class BaseJunkHandler:
 
     def do_junkout(self, caller):
         """Junks us as if we were a crafted item."""
-        caller.msg("You destroy %s." % self)
+        caller.msg("You destroy %s." % self.obj)
         self.obj.softdelete()
 
     @property

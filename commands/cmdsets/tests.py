@@ -54,12 +54,16 @@ class CombatCommandsTests(ArxCommandTest):
         self.caller = self.char1
         self.call_cmd("char2", "Char2 does not require any medical attention.")
         self.char2.traits.create_wound()
-        mock_randint.return_value = 30
+        mock_randint.return_value = 20
+        self.char.traits.set_skill_value("medicine", 2)
         self.call_cmd(
             "char2",
             "Char checks 'recovery treatment' at easy. Char is marginally successful.|"
             "You have provided aid to Char2 to help them recover from injury.",
         )
+        self.assertEqual(self.char2.health_status.get_total_healing_for_wound(), 9)
+        self.char2.health_status.apply_treatment_to_wounds()
+        self.assertEqual(self.char2.health_status.serious_wounds[0].healing, 9)
         self.call_cmd(
             "char2", "Char has attempted to assist with their recovery too recently."
         )

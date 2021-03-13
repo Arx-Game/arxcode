@@ -178,4 +178,4 @@ class CmdNoFighting(SleepCommand):
     """Prevents fighting, etc"""
 
     key = "fight"
-    aliases = ["heal", "train"]
+    aliases = ["train"]
