@@ -79,7 +79,7 @@ def create_place(recipe, roll, proj, caller):
     base = int(recipe.resultsdict.get("baseval", 2))
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(PLACE, proj[1], caller, caller, quality)
-    obj.db.max_spots = base + int(scaling * quality)
+    obj.item_data.max_spots = base + int(scaling * quality)
     return obj, quality
 
 
@@ -264,7 +264,7 @@ def change_quality(crafting_object, new_quality):
     scaling = float(recipe.resultsdict.get("scaling", 0))
     base = float(recipe.resultsdict.get("baseval", 0))
     if otype == "place":
-        crafting_object.db.max_spots = int(base) + int(scaling * new_quality)
+        crafting_object.item_data.max_spots = int(base) + int(scaling * new_quality)
     crafting_object.item_data.quality_level = new_quality
     if hasattr(crafting_object, "calc_weapon"):
         crafting_object.calc_weapon()

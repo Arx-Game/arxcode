@@ -70,8 +70,8 @@ class CmdJoin(ArxCommand):
             caller.msg("Number specified does not match any of the places here.")
             return
         table = places[args]
-        occupants = table.db.occupants or []
-        if len(occupants) >= table.db.max_spots:
+        occupants = table.item_data.occupants or []
+        if len(occupants) >= table.item_data.max_spots:
             caller.msg("There is no room at %s." % table.key)
             return
         table.join(caller)
@@ -107,8 +107,8 @@ class CmdListPlaces(ArxCommand):
             return
         for num in range(len(places)):
             p_name = places[num].key
-            max_spots = places[num].db.max_spots or 0
-            occupants = places[num].db.occupants or []
+            max_spots = places[num].item_data.max_spots
+            occupants = places[num].item_data.occupants or []
             spots = max_spots - len(occupants)
             caller.msg("%s (#%s) : %s empty spaces" % (p_name, num + 1, spots))
             if occupants:

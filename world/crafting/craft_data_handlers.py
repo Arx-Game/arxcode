@@ -234,3 +234,8 @@ class WieldableDataHandler(WearableDataHandler):
     can_parry = get_storage_prop("can_parry", True)
     can_riposte = get_storage_prop("can_riposte", True)
     difficulty_mod = get_storage_prop("difficulty_mod", 0)
+
+
+class PlaceDataHandler(CraftDataHandler):
+    max_spots = get_storage_prop("max_spots", 2)
+    occupants = get_storage_prop("occupants", [])

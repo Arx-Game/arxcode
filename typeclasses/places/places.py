@@ -5,6 +5,7 @@ Places for tabletalk
 from typeclasses.objects import Object
 from typeclasses.places.cmdset_places import DefaultCmdSet, SittingCmdSet
 from evennia.utils.utils import make_iter
+from world.crafting.craft_data_handlers import PlaceDataHandler
 
 
 class Place(Object):
@@ -12,6 +13,8 @@ class Place(Object):
     Class for placed objects that allow the 'tabletalk' command.
     """
 
+    item_data_class = PlaceDataHandler
+    default_max_spots = 6
     default_desc = "A place for people to privately chat. Dropping it in a room will make it part of the room."
     PLACE_LOCKS = (
         "call:true();control:perm(Wizards);delete:perm(Wizards);examine:perm(Builders);"
@@ -22,12 +25,14 @@ class Place(Object):
     TT_POSE = 2
     TT_EMIT = 3
 
+    @property
+    def default_occupants(self):
+        return []
+
     def at_object_creation(self):
         """
         Run at Place creation.
         """
-        self.db.occupants = []
-        self.db.max_spots = 6
         # locks so characters cannot 'get' it
         self.locks.add(self.PLACE_LOCKS)
         self.at_init()
@@ -36,10 +41,10 @@ class Place(Object):
         """
         Character leaving the table.
         """
-        occupants = self.db.occupants or []
+        occupants = self.item_data.occupants or []
         if character in occupants:
             occupants.remove(character)
-            self.db.occupants = occupants
+            self.item_data.occupants = occupants
             character.cmdset.delete(SittingCmdSet)
             character.db.sitting_at_table = None
             self.location.msg_contents(
@@ -51,11 +56,11 @@ class Place(Object):
         """
         Character joins the table
         """
-        occupants = self.db.occupants or []
+        occupants = self.item_data.occupants or []
         character.cmdset.add(SittingCmdSet, permanent=True)
         character.db.sitting_at_table = self
         occupants.append(character)
-        self.db.occupants = occupants
+        self.item_data.occupants = occupants
         self.location.msg_contents(
             "%s has joined the %s." % (character.name, self.key), exclude=character
         )
@@ -128,7 +133,7 @@ class Place(Object):
         # utils.make_iter checks to see if an object is a list, set, etc, and encloses it in a list if not
         # needed so that 'ob not in exclude' can function if we're just passed a character
         exclude = make_iter(exclude)
-        for ob in self.db.occupants:
+        for ob in self.item_data.occupants:
             if ob not in exclude:
                 place_msg = self.build_tt_msg(from_obj, ob, message, is_ooc, msg_type)
                 ob.msg(place_msg, from_obj=from_obj, options=options)
