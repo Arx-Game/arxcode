@@ -7,7 +7,7 @@ dnspython==1.16.0
 graphviz==0.13.2
 humanize==0.5.1
 Jinja2==2.11.2
-pillow==7.1.0
+pillow==8.1.1
 python-decouple==3.3
 requests==2.22.0
 Unidecode==1.1.1
