@@ -51,12 +51,8 @@ QUALITY_LEVELS = {
 
 
 def create_weapon(recipe, roll, proj, caller):
-    skill = recipe.resultsdict.get("weapon_skill", "medium wpn")
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(WIELD, proj[1], caller, caller, quality)
-    obj.item_data.attack_skill = skill
-    if skill == "archery":
-        obj.ranged_mode()
     return obj, quality
 
 
@@ -67,16 +63,14 @@ def create_wearable(recipe, roll, proj, caller):
 
 
 def create_decorative_weapon(recipe, roll, proj, caller):
-    skill = recipe.resultsdict.get("weapon_skill", "small wpn")
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(DECORATIVE_WIELD, proj[1], caller, caller, quality)
-    obj.item_data.attack_skill = skill
     return obj, quality
 
 
 def create_place(recipe, roll, proj, caller):
-    scaling = float(recipe.resultsdict.get("scaling", 0))
-    base = int(recipe.resultsdict.get("baseval", 2))
+    scaling = float(recipe.scaling)
+    base = int(recipe.baseval or 2)
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(PLACE, proj[1], caller, caller, quality)
     obj.item_data.max_spots = base + int(scaling * quality)
@@ -90,14 +84,14 @@ def create_book(recipe, roll, proj, caller):
 
 
 def create_container(recipe, roll, proj, caller):
-    scaling = float(recipe.resultsdict.get("scaling", 0))
-    base = int(recipe.resultsdict.get("baseval", 2))
+    scaling = float(recipe.scaling)
+    base = int(recipe.baseval or 2)
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(CONTAINER, proj[1], caller, caller, quality)
     obj.item_data.capacity = base + int(scaling * quality)
-    if recipe.resultsdict.get("displayable") == "true":
+    if recipe.displayable:
         obj.tags.add("displayable")
-    if recipe.resultsdict.get("display_by_line") == "true":
+    if recipe.display_by_line:
         obj.tags.add("display_by_line")
     try:
         obj.grantkey(caller)
@@ -109,8 +103,8 @@ def create_container(recipe, roll, proj, caller):
 
 
 def create_wearable_container(recipe, roll, proj, caller):
-    scaling = float(recipe.resultsdict.get("scaling", 0))
-    base = int(recipe.resultsdict.get("baseval", 2))
+    scaling = float(recipe.scaling)
+    base = int(recipe.baseval or 2)
     quality = get_quality_lvl(roll, recipe.difficulty)
     obj = create_obj(WEARABLE_CONTAINER, proj[1], caller, caller, quality)
     obj.item_data.capacity = base + int(scaling * quality)
@@ -261,15 +255,11 @@ def change_quality(crafting_object, new_quality):
     """
     recipe = crafting_object.item_data.recipe
     otype = recipe.type
-    scaling = float(recipe.resultsdict.get("scaling", 0))
-    base = float(recipe.resultsdict.get("baseval", 0))
+    scaling = float(recipe.scaling)
+    base = float(recipe.baseval)
     if otype == "place":
         crafting_object.item_data.max_spots = int(base) + int(scaling * new_quality)
     crafting_object.item_data.quality_level = new_quality
-    if hasattr(crafting_object, "calc_weapon"):
-        crafting_object.calc_weapon()
-    if hasattr(crafting_object, "calc_armor"):
-        crafting_object.calc_armor()
 
 
 class CmdCraft(ArxCommand, TemplateMixins):
@@ -891,7 +881,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
             obj.item_data.recipe = recipe.id
             obj.item_data.adorns = proj[3]
             obj.item_data.crafted_by = crafter
-            obj.item_data.size = int(recipe.resultsdict.get("volume", 0))
+            obj.item_data.size = recipe.volume
             self.pay_owner(
                 price,
                 "%s has crafted '%s', a %s, at your shop and you earn %s silver."

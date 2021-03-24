@@ -1,5 +1,6 @@
 from server.utils.arx_utils import lowercase_kwargs, list_to_string
 from typeclasses.exceptions import EquipError
+from operator import attrgetter
 
 
 class UseEquipmentMixins(object):
@@ -68,9 +69,7 @@ class UseEquipmentMixins(object):
         """Builds a verb-appropriate list of items from our contents."""
         if verb == "wear":
             equipment = [ob for ob in self.equipment if not ob.is_equipped]
-            from operator import attrgetter
-
-            return sorted(equipment, key=attrgetter("slot_limit", "db_key"))
+            return sorted(equipment, key=attrgetter("item_data.slot_limit", "db_key"))
         else:  # Equipment to be removed
             return [ob for ob in self.equipment if ob.is_equipped]
 
@@ -122,7 +121,7 @@ class UseEquipmentMixins(object):
         """Determines how hard it is to penetrate our armor"""
         value = self.db.armor_resilience or 15
         for ob in self.worn:
-            value += ob.armor_resilience
+            value += ob.item_data.armor_resilience
         return int(value)
 
     @property
@@ -149,7 +148,7 @@ class UseEquipmentMixins(object):
         penalty = 0
         for ob in self.worn:
             try:
-                penalty += ob.penalty
+                penalty += ob.item_data.armor_penalty
             except (AttributeError, ValueError, TypeError):
                 pass
         return penalty
@@ -165,7 +164,7 @@ class UseEquipmentMixins(object):
             wpndict["attack_skill"] = wpn.item_data.attack_skill
             wpndict["attack_stat"] = wpn.item_data.attack_stat
             wpndict["damage_stat"] = wpn.item_data.damage_stat
-            wpndict["weapon_damage"] = wpn.damage_bonus
+            wpndict["weapon_damage"] = wpn.item_data.damage_bonus
             wpndict["attack_type"] = wpn.item_data.attack_type
             wpndict["can_be_parried"] = wpn.item_data.can_be_parried
             wpndict["can_be_blocked"] = wpn.item_data.can_be_blocked
@@ -176,14 +175,8 @@ class UseEquipmentMixins(object):
             )
             wpndict["reach"] = wpn.db.weapon_reach or 1
             wpndict["minimum_range"] = wpn.db.minimum_range or 0
-            try:
-                wpndict["difficulty_mod"] = wpn.difficulty_mod or 0
-            except AttributeError:
-                wpndict["difficulty_mod"] = wpn.item_data.difficulty_mod
-            try:
-                wpndict["flat_damage"] = wpn.flat_damage or 0
-            except AttributeError:
-                wpndict["flat_damage"] = wpn.db.flat_damage_bonus or 0
+            wpndict["difficulty_mod"] = wpn.item_data.difficulty_mod
+            wpndict["flat_damage"] = wpn.item_data.flat_damage_bonus
             wpndict["modifier_tags"] = wpn.modifier_tags
         boss_rating = self.boss_rating
         if boss_rating:

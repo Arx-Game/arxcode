@@ -105,7 +105,7 @@ class FashionableMixins(object):
     @property
     def fashion_mult_override(self):
         """Returns a recipe's overriding fashion multiplier, or None."""
-        return self.item_data.recipe.resultsdict.get("fashion_mult", None)
+        return self.item_data.recipe.fashion_mult
 
     @property
     def modeled_by(self):

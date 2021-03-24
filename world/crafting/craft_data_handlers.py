@@ -127,25 +127,25 @@ class CraftDataHandler(ItemDataHandler):
         Returns:
             The crafting recipe used to create this object.
         """
+        if hasattr(self, "cached_recipe"):
+            return self.cached_recipe
         recipe_pk = self.get_db_or_default("recipe")
         if recipe_pk:
             from world.dominion.models import CraftingRecipe
 
             try:
-                recipe = CraftingRecipe.objects.get(id=recipe_pk)
-                return recipe
-            except CraftingRecipe.DoesNotExist:
-                pass
+                self.cached_recipe = CraftingRecipe.objects.get(id=recipe_pk)
+                return self.cached_recipe
+            except (CraftingRecipe.DoesNotExist, TypeError, ValueError):
+                self.cached_recipe = None
 
     translation = get_storage_prop("translation", {})
 
     @recipe.setter
     def recipe(self, value):
         self.set_db_value("recipe", value)
-
-    @property
-    def resultsdict(self):
-        return self.recipe.resultsdict
+        if hasattr(self, "cached_recipe"):
+            del self.cached_recipe
 
     quality_level = get_storage_prop("quality_level", 0)
 
@@ -214,6 +214,10 @@ class ConsumableDataHandler(CraftDataHandler):
 class WearableDataHandler(CraftDataHandler):
     worn_time = get_storage_prop("worn_time", 0)
     currently_worn = get_storage_prop("currently_worn", False)
+    armor_penalty = get_storage_prop("penalty", 0)
+    armor_resilience = get_storage_prop("armor_resilience", 0)
+    slot_limit = get_storage_prop("slot_limit", 1)
+    slot = get_storage_prop("slot", "")
 
 
 class MaskDataHandler(WearableDataHandler):
@@ -234,6 +238,8 @@ class WieldableDataHandler(WearableDataHandler):
     can_parry = get_storage_prop("can_parry", True)
     can_riposte = get_storage_prop("can_riposte", True)
     difficulty_mod = get_storage_prop("difficulty_mod", 0)
+    flat_damage_bonus = get_storage_prop("flat_damage_bonus", 0)
+    ready_phrase = get_storage_prop("ready_phrase", "")
 
 
 class PlaceDataHandler(CraftDataHandler):

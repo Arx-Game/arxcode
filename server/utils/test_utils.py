@@ -412,8 +412,8 @@ class TestEquipmentMixins(object):
         self.knife1.item_data.quality_level = 11
         self.knife1.item_data.recipe = 4
         self.knife1.item_data.crafted_by = self.char2
-        self.knife1.item_data.attack_skill = self.knife1.item_data.resultsdict.get(
-            "weapon_skill", "medium wpn"
+        self.knife1.item_data.attack_skill = (
+            self.knife1.item_data.recipe.weapon_skill or "medium wpn"
         )
         # A larger weapon
         self.sword1 = create.create_object(
@@ -422,8 +422,8 @@ class TestEquipmentMixins(object):
         self.sword1.item_data.quality_level = 6
         self.sword1.item_data.recipe = 7
         self.sword1.item_data.crafted_by = self.char2
-        self.sword1.item_data.attack_skill = self.sword1.item_data.resultsdict.get(
-            "weapon_skill", "medium wpn"
+        self.sword1.item_data.attack_skill = (
+            self.sword1.item_data.recipe.weapon_skill or "medium wpn"
         )
         # Masks change wearer identity and are restricted from being worn by 0 quality
         self.mask1 = create.create_object(
@@ -442,7 +442,7 @@ class TestEquipmentMixins(object):
         self.hairpins1.item_data.recipe = 5
         self.hairpins1.item_data.crafted_by = self.char2
         self.hairpins1.item_data.attack_skill = (
-            self.hairpins1.item_data.resultsdict.get("weapon_skill", "small wpn")
+            self.hairpins1.item_data.recipe.weapon_skill or "small wpn"
         )
 
     def start_ze_fight(self):
