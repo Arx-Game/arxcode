@@ -162,7 +162,7 @@ class FashionOutfit(FashionCommonMixins):
 
     def add_fashion_item(self, item, slot=None):
         """Creates the through-model for what we assume is a valid item."""
-        slot = slot if slot else item.slot
+        slot = slot if slot else item.item_data.slot
         ModusOrnamenta.objects.create(fashion_outfit=self, fashion_item=item, slot=slot)
 
     def wear(self):

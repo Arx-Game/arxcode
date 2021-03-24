@@ -22,6 +22,8 @@ class Wearable(FashionableMixins, Object):
     item_data_class = WearableDataHandler
 
     default_desc = "A piece of clothing or armor."
+    baseval_scaling_divisor = 10.0
+    default_scaling = 0.2
 
     def at_object_creation(self):
         """
@@ -94,34 +96,21 @@ class Wearable(FashionableMixins, Object):
         self.slot_check(wearer)
 
     def slot_check(self, wearer):
-        slot, slot_limit = self.slot, self.slot_limit
+        slot, slot_limit = self.item_data.slot, self.item_data.slot_limit
         if slot and slot_limit:
-            worn = [ob for ob in wearer.worn if ob.slot == slot]
+            worn = [ob for ob in wearer.worn if ob.item_data.slot == slot]
             if len(worn) >= slot_limit:
                 raise EquipError(f"{slot} slot full. Worn there: {worn}")
 
     def at_post_wear(self, wearer):
         """Hook called after wearing succeeds."""
-        self.calc_armor()
+        return True
 
-    def calc_armor(self):
-        """
-        If we have crafted armor, return the value from the recipe and
-        quality.
-        """
-        quality = self.item_data.quality_level
+    @property
+    def modified_baseval(self):
         recipe = self.item_data.recipe
-        if not recipe:
-            return (
-                0,
-                self.db.penalty or 0,
-                self.db.armor_resilience or 0,
-            )
-        base = float(recipe.resultsdict.get("baseval", 0.0))
-        scaling = float(recipe.resultsdict.get("scaling", (base / 10.0) or 0.2))
-        penalty = float(recipe.resultsdict.get("penalty", 0.0))
-        resilience = penalty / 3
-        if quality >= 10:
+        base = float(recipe.baseval)
+        if self.item_data.quality_level >= 10:
             crafter = self.item_data.crafted_by
             if (
                 (recipe.level > 3)
@@ -129,23 +118,26 @@ class Wearable(FashionableMixins, Object):
                 or crafter.check_permstring("builders")
             ):
                 base += 1
-        if not base:
-            self.ndb.cached_armor_value = 0
-            self.ndb.cached_penalty_value = penalty
-            self.ndb.cached_resilience = resilience
-            return (
-                self.ndb.cached_armor_value,
-                self.ndb.cached_penalty_value,
-                self.ndb.cached_resilience,
-            )
-        try:
-            armor = base + (scaling * quality)
-        except (TypeError, ValueError):
-            armor = 0
-        self.ndb.cached_armor_value = armor
-        self.ndb.cached_penalty_value = penalty
-        self.ndb.cached_resilience = resilience
-        return armor, penalty, resilience
+        return base
+
+    @property
+    def quality_scaling(self):
+        recipe = self.item_data.recipe
+        return float(
+            recipe.scaling
+            or (self.modified_baseval / self.baseval_scaling_divisor)
+            or self.default_scaling
+        )
+
+    @property
+    def default_penalty(self):
+        if self.item_data.recipe:
+            return float(self.item_data.recipe.armor_penalty)
+        return 0
+
+    @property
+    def default_armor_resilience(self):
+        return self.item_data.penalty / 3
 
     def check_fashion_ready(self):
         super(Wearable, self).check_fashion_ready()
@@ -162,44 +154,26 @@ class Wearable(FashionableMixins, Object):
         # if we have no recipe or we are set to ignore it, 0
         if not self.item_data.recipe:
             return 0
-        if self.ndb.cached_armor_value is not None:
-            return self.ndb.cached_armor_value
-        return self.calc_armor()[0]
+        return self.modified_baseval + (
+            self.quality_scaling * self.item_data.quality_level
+        )
 
     @property
-    def penalty(self):
-        # if we have no recipe or we are set to ignore it, use penalty
-        if not self.item_data.recipe or self.db.ignore_crafted:
-            return self.db.penalty or 0
-        if self.ndb.cached_penalty_value is not None:
-            return self.ndb.cached_penalty_value
-        return self.calc_armor()[1]
-
-    @property
-    def armor_resilience(self):
-        """How hard the armor is to penetrate"""
-        if not self.item_data.recipe or self.db.ignore_crafted:
-            return 0
-        if self.ndb.cached_resilience is not None:
-            return self.ndb.cached_resilience
-        return self.calc_armor()[2]
-
-    @property
-    def slot(self):
+    def default_slot(self):
         """slot the armor is worn on"""
         recipe = self.item_data.recipe
         if not recipe:
-            return self.db.slot
-        return recipe.resultsdict.get("slot", None)
+            return ""
+        return recipe.slot
 
     @property
-    def slot_limit(self):
+    def default_slot_limit(self):
         """how many can be worn on that slot"""
         recipe = self.item_data.recipe
         if not recipe:
-            return self.db.slot_limit or 1
+            return 1
         try:
-            return int(recipe.resultsdict.get("slot_limit", 1))
+            return recipe.slot_limit
         except (TypeError, ValueError):
             return 1
 
@@ -248,10 +222,6 @@ class WearableContainer(Wearable, Container):
             # we are resetting, or no container-cmdset was set. Create one dynamically.
             self.cmdset.add_default(self.create_container_cmdset(self), permanent=False)
             self.ndb.container_reset = False
-
-    def calc_armor(self):
-        """Wearable containers have no armor value."""
-        return 0, 0, 0
 
     @property
     def armor(self):

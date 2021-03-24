@@ -55,8 +55,11 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.obj1.location = self.char2
         self.call_cmd("obj", "Could not put on Obj (wrong item type).")
         self.call_cmd("top1", "You don't carry 'top1'.")
+        self.assertEqual(self.char2.armor, 0)
         self.top1.location = self.char2
+        self.assertEqual(self.top1.armor, 1.6)
         self.call_cmd("top1", "You put on Top1.")
+        self.assertEqual(self.char2.armor, 2)
         self.call_cmd(
             "top2", "Could not put on Top2 (chest slot full. Worn there: [Top1])."
         )

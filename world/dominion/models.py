@@ -4064,6 +4064,48 @@ class CraftingRecipe(CachedPropertiesMixin, SharedMemoryModel):
         """Returns baseval used in recipes"""
         return float(self.resultsdict.get("baseval", 0.0))
 
+    @property
+    def scaling(self):
+        return float(self.resultsdict.get("scaling", 0.0))
+
+    @property
+    def armor_penalty(self):
+        return float(self.resultsdict.get("penalty", 0.0))
+
+    @property
+    def fashion_mult(self):
+        return self.resultsdict.get("fashion_mult", None)
+
+    @property
+    def slot(self):
+        return self.resultsdict.get("slot", None)
+
+    @property
+    def slot_limit(self):
+        return int(self.resultsdict.get("slot_limit", 1))
+
+    @property
+    def weapon_skill(self):
+        return self.resultsdict.get("weapon_skill", None)
+
+    @property
+    def displayable(self):
+        return self.resultsdict.get("displayable", False) == "true"
+
+    @property
+    def display_by_line(self):
+        return self.resultsdict.get("display_by_line", False) == "true"
+
+    @property
+    def volume(self):
+        return int(self.resultsdict.get("volume", 0))
+
+    @property
+    def attack_type(self):
+        if self.weapon_skill == "archery":
+            return "ranged"
+        return "melee"
+
 
 class CraftingMaterialType(SharedMemoryModel):
     """

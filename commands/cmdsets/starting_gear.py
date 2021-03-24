@@ -309,7 +309,7 @@ class CmdStartingGear(ArxCommand):
             obj.item_data.recipe = recipe.id
             obj.item_data.adorns = proj[3]
             obj.item_data.crafted_by = caller
-            obj.item_data.size = int(recipe.resultsdict.get("volume", 0))
+            obj.item_data.size = recipe.volume
             caller.msg("You created %s." % obj.name)
             caller.attributes.remove("startgear_project")
             return
