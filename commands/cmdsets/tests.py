@@ -7,11 +7,15 @@ from unittest import skip
 from server.utils.test_utils import ArxCommandTest
 from . import combat, market, home
 
+from web.character.models import PlayerAccount
+
 
 # noinspection PyUnresolvedReferences
 # noinspection PyUnusedLocal
 @patch.object(combat, "inform_staff")
 class CombatCommandsTests(ArxCommandTest):
+    num_additional_characters = 1
+
     def start_fight(self, *args):
         """Helper function for starting a fight in our test"""
         fight = combat.start_fight_at_room(self.room1)
@@ -52,6 +56,22 @@ class CombatCommandsTests(ArxCommandTest):
         )
         self.assertTrue(self.char1.ndb.healing_gm_allow)
         self.caller = self.char1
+        self.call_cmd(
+            "char2", "You must have the medicine skill to heal another character."
+        )
+        self.char1.traits.set_skill_value("medicine", 1)
+        player = PlayerAccount.objects.create(email="foo")
+        self.char1.roster.current_account = player
+        self.char1.roster.save()
+        self.char2.roster.current_account = player
+        self.char2.roster.save()
+        self.assertIn(self.char1, self.char2.alts)
+        self.assertIn(self.char2, self.char1.alts)
+        self.call_cmd(
+            "char2", "You are not allowed to use a command to benefit an alt."
+        )
+        self.char2.roster.current_account = None
+        self.char2.roster.save()
         self.call_cmd("char2", "Char2 does not require any medical attention.")
         self.char2.traits.create_wound()
         mock_randint.return_value = 20
@@ -67,6 +87,21 @@ class CombatCommandsTests(ArxCommandTest):
         self.call_cmd(
             "char2", "Char has attempted to assist with their recovery too recently."
         )
+        self.char3.roster.current_account = player
+        self.char3.roster.save()
+        self.caller = self.char3
+        self.char3.ndb.healing_permits = {self.char2}
+        self.char3.traits.set_skill_value("medicine", 2)
+        self.char3.ndb.healing_gm_allow = True
+        self.call_cmd("char2", "You are not allowed to heal the same target with alts.")
+        self.char3.roster.current_account = None
+        self.char3.roster.save()
+        self.call_cmd(
+            "char2",
+            "Char3 checks 'recovery treatment' at easy. Char3 is marginally successful.|"
+            "You have provided aid to Char2 to help them recover from injury.",
+        )
+        self.caller = self.char1
         self.char2.health_status.treatment_attempts.all().delete()
         self.char2.health_status.heal_wound()
         self.char2.dmg = 20

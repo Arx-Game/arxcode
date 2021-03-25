@@ -1380,3 +1380,12 @@ class Character(
         if roller.outcome.effect == CAUSE_PERMANENT_WOUND:
             self.traits.create_wound(PERMANENT_WOUND)
             self.msg_location_or_contents(f"{self} has suffered a permanent wound!")
+
+    @property
+    def alts(self):
+        if not self.roster or not self.roster.current_account:
+            return Character.objects.none()
+        account = self.roster.current_account
+        return Character.objects.filter(roster__current_account=account).exclude(
+            id=self.id
+        )

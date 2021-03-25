@@ -22,7 +22,7 @@ from world.conditions.constants import (
     REVIVE,
     WOUND,
 )
-from world.conditions.exceptions import TreatmentTooRecentError
+from world.conditions.exceptions import TreatmentTooRecentError, TreatmentAltConflict
 from world.conditions.managers import HealthStatusQuerySet, TreatmentAttemptQuerySet
 from server.utils.arx_utils import CachedProperty
 from world.stat_checks.constants import (
@@ -677,12 +677,21 @@ class CharacterHealthStatus(SharedMemoryModel):
         ).exists():
             raise TreatmentTooRecentError(error_msg)
 
+    def check_treatment_alt_conflict(self, healer, treatment_type):
+        if self.treatment_attempts.filter(
+            treatment_type=treatment_type, healer__in=healer.alts
+        ).exists():
+            raise TreatmentAltConflict(
+                "You are not allowed to heal the same target with alts."
+            )
+
     def add_recovery_treatment(self, healer):
         self.check_treatment_too_recent(
             healer,
             RECOVERY,
             f"{healer} has attempted to assist with their recovery too recently.",
         )
+        self.check_treatment_alt_conflict(healer, RECOVERY)
         check = get_check_maker_by_name(
             RECOVERY_TREATMENT, healer, target=self.character
         )
@@ -705,6 +714,7 @@ class CharacterHealthStatus(SharedMemoryModel):
         self.check_treatment_too_recent(
             healer, REVIVE, f"{healer} has attempted to revive them too recently."
         )
+        self.check_treatment_alt_conflict(healer, REVIVE)
         check = get_check_maker_by_name(REVIVE_TREATMENT, healer, target=self.character)
         check.make_check_and_announce()
         self.add_treatment_for_check(check, TreatmentAttempt.REVIVE)
