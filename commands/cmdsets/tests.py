@@ -473,17 +473,6 @@ class CombatCommandsTests(ArxCommandTest):
         self, mock_dice_check, mock_randint, mock_check_randint, mock_char_inform_staff
     ):
         self.setup_cmd(combat.CmdAttack, self.char1)
-        from evennia.utils import create
-
-        self.account3 = create.create_account(
-            "TestAccount3",
-            email="test@test.com",
-            password="testpassword",
-            typeclass=self.account_typeclass,
-        )
-        self.char3 = create.create_object(
-            self.character_typeclass, key="Char3", location=self.room1, home=self.room1
-        )
         self.char3.account = self.account3
         self.account3.db._last_puppet = self.char3
         self.char1.db.defenders = [self.char3]
