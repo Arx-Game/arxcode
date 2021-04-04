@@ -132,6 +132,7 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
         from typeclasses.places.places import Place
         from typeclasses.wearable.wearable import Wearable
         from typeclasses.wearable.wieldable import Wieldable
+
         if obj:
             final_inlines = list(self.inlines)
             if isinstance(obj, Character):
