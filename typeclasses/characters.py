@@ -7,6 +7,7 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
+from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
 from evennia.objects.objects import DefaultCharacter
 
@@ -119,9 +120,9 @@ class Character(
         :param source_location: Room
         :return:
         """
-        table = self.db.sitting_at_table
-        if table and source_location != self.location:
-            table.leave(self)
+        place = self.sitting_at_place
+        if place and source_location != self.location:
+            place.leave(self)
         if self.db.briefmode:
             string = ""
             # handle cases of self.location being None or not a Room object
@@ -837,9 +838,9 @@ class Character(
         """
         super(Character, self).at_post_unpuppet(player, session)
         if not self.sessions.count():
-            table = self.db.sitting_at_table
-            if table:
-                table.leave(self)
+            place = self.sitting_at_place
+            if place:
+                place.leave(self)
             guards = self.guards
             for guard in guards:
                 try:
@@ -847,6 +848,14 @@ class Character(
                         guard.dismiss()
                 except AttributeError:
                     continue
+
+    @property
+    def sitting_at_place(self):
+        """Places the character is currently sitting at"""
+        try:
+            return self.place_occupation.place
+        except ObjectDoesNotExist:
+            return None
 
     @property
     def portrait(self):

@@ -2,7 +2,7 @@ from django.db import transaction
 
 from commands.base import ArxCommand
 from commands.base_commands.overrides import args_are_currency, check_volume
-from world.dominion.models import CraftingMaterials
+from world.crafting.models import OwnedMaterial
 from server.utils.arx_utils import text_box
 
 
@@ -299,7 +299,7 @@ class CmdGive(ArxCommand):
         if "mats" in self.switches:
             lhslist = self.lhs.split(",")
             try:
-                mat = caller.player_ob.Dominion.assets.materials.get(
+                mat = caller.player_ob.Dominion.assets.owned_materials.get(
                     type__name__iexact=lhslist[0]
                 )
                 amount = int(lhslist[1])
@@ -308,16 +308,20 @@ class CmdGive(ArxCommand):
             except (IndexError, ValueError):
                 caller.msg("Invalid syntax.")
                 return
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 caller.msg("No materials by that name.")
                 return
             if mat.amount < amount:
                 caller.msg("Not enough materials.")
                 return
             try:
-                tmat = target.player_ob.Dominion.assets.materials.get(type=mat.type)
-            except CraftingMaterials.DoesNotExist:
-                tmat = target.player_ob.Dominion.assets.materials.create(type=mat.type)
+                tmat = target.player_ob.Dominion.assets.owned_materials.get(
+                    type=mat.type
+                )
+            except OwnedMaterial.DoesNotExist:
+                tmat = target.player_ob.Dominion.assets.owned_materials.create(
+                    type=mat.type
+                )
             mat.amount -= amount
             tmat.amount += amount
             mat.save()

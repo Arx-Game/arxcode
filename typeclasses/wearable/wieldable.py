@@ -32,6 +32,7 @@ class Wieldable(Wearable):
     default_ready_phrase = ""
     baseval_scaling_divisor = 20.0
     default_scaling = 0.2
+    default_currently_wielded = False
 
     def at_object_creation(self):
         """

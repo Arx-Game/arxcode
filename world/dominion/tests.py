@@ -16,10 +16,10 @@ from web.character.models import (
     TheoryPermissions,
     SearchTag,
 )
+from world.crafting.models import CraftingMaterialType
 from world.dominion.models import (
     RPEvent,
     Organization,
-    CraftingMaterialType,
     ClueForOrg,
 )
 from world.dominion.plots.models import (
@@ -41,9 +41,9 @@ class TestCraftingCommands(ArxCommandTest):
 
     def test_create_material_object(self):
         testobject = self.material.create_instance(3)
-        self.assertEqual(testobject.db.quantity, 3)
-        self.assertEqual(testobject.db.material_type, self.material.id)
-        self.assertEqual(testobject.db.desc, self.material.desc)
+        self.assertEqual(testobject.item_data.quantity, 3)
+        self.assertEqual(testobject.item_data.material_type, self.material)
+        self.assertEqual(testobject.desc, self.material.desc)
         self.assertEqual(testobject.name, "3 testonium")
         self.assertEqual(testobject.type_description, "crafting material, testonium")
 

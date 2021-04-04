@@ -140,7 +140,8 @@ class CmdWrite(ArxCommand, TemplateMixins):
             obj.name = name
             obj.desc = desc
             if obj.ndb.transtext:
-                obj.item_data.translation = obj.ndb.transtext
+                for language, text in obj.ndb.transtext.items():
+                    obj.item_data.add_translation(language, text)
             obj.save()
 
             self.apply_templates_to(obj)

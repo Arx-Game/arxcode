@@ -303,6 +303,8 @@ class TestEquipmentMixins(object):
         from world.dominion.models import (
             Organization,
             AssetOwner,
+        )
+        from world.crafting.models import (
             CraftingRecipe,
             CraftingMaterialType,
         )
@@ -319,51 +321,55 @@ class TestEquipmentMixins(object):
         self.recipe1 = CraftingRecipe.objects.create(
             name="Top 1 Slot",
             ability="tailor",
-            primary_amount=5,
             level=5,
-            result="slot:chest;slot_limit:1;baseval:1;penalty:2",
+            slot="chest",
+            slot_limit=1,
+            base_value=1,
+            armor_penalty=2,
         )
         self.recipe2 = CraftingRecipe.objects.create(
             name="Top 2 Slot",
             ability="leatherworker",
-            primary_amount=6,
             level=6,
-            result="slot:chest;slot_limit:2",
+            slot="chest",
+            slot_limit=2,
         )
         self.recipe3 = CraftingRecipe.objects.create(
             name="Bag",
             ability="leatherworker",
-            primary_amount=5,
             level=5,
-            result="slot:bag;slot_limit:2;baseval:40",
+            slot="bag",
+            slot_limit=2,
+            base_value=40,
         )
         self.recipe4 = CraftingRecipe.objects.create(
             name="Small Weapon",
             ability="weaponsmith",
-            primary_amount=4,
             level=4,
-            result="baseval:1;weapon_skill:small wpn",
+            base_value=1,
+            weapon_skill="small wpn",
         )
         self.recipe5 = CraftingRecipe.objects.create(
             name="Hairpins",
             ability="weaponsmith",
-            primary_amount=4,
             level=4,
-            result="slot:hair;slot_limit:2;baseval:4;",
+            slot="hair",
+            slot_limit=2,
+            base_value=4,
         )
         self.recipe6 = CraftingRecipe.objects.create(
             name="Mask",
             ability="apothecary",
-            primary_amount=4,
             level=4,
-            result="slot:face;slot_limit:1;fashion_mult:6",
+            slot="face",
+            slot_limit=1,
+            fashion_mult=6,
         )
         self.recipe7 = CraftingRecipe.objects.create(
             name="Medium Weapon",
             ability="weaponsmith",
-            primary_amount=4,
             level=4,
-            result="baseval:5",
+            base_value=5,
         )
         self.test_recipes = [
             self.recipe1,
@@ -375,8 +381,8 @@ class TestEquipmentMixins(object):
             self.recipe7,
         ]
         for recipe in self.test_recipes:
-            recipe.primary_materials.add(self.mat1)
             recipe.locks.add("learn:all();teach:all()")
+            recipe.required_materials.create(amount=recipe.level, type=self.mat1)
             recipe.save()
         # Top1 is a wearable object with no recipe or crafter designated
         self.top1 = create.create_object(
@@ -397,7 +403,7 @@ class TestEquipmentMixins(object):
         self.catsuit1.item_data.quality_level = 11
         self.catsuit1.item_data.recipe = 2
         self.catsuit1.item_data.crafted_by = self.char2
-        self.catsuit1.item_data.adorns = {1: 200}
+        self.catsuit1.item_data.add_adorn(1, 200)
         # Purse1 is a wearable container; baseval is their capacity
         self.purse1 = create.create_object(
             purse_typeclass, key="Purse1", location=self.char2, home=self.room1
@@ -433,7 +439,7 @@ class TestEquipmentMixins(object):
         self.mask1.item_data.recipe = 6  # mask also has fashion_mult:6
         self.mask1.item_data.crafted_by = self.char2
         self.mask1.item_data.mask_desc = "A very Slyyyy Fox..."
-        self.mask1.item_data.adorns = {1: 20}
+        self.mask1.item_data.add_adorn(1, 20)
         # Hairpins1 is a decorative weapon and should always show as 'worn' rather than 'sheathed'
         self.hairpins1 = create.create_object(
             hairpin_typeclass, key="Hairpins1", location=self.char2, home=self.room1

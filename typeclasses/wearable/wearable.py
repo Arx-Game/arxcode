@@ -24,6 +24,8 @@ class Wearable(FashionableMixins, Object):
     default_desc = "A piece of clothing or armor."
     baseval_scaling_divisor = 10.0
     default_scaling = 0.2
+    default_currently_worn = False
+    default_worn_time = 0.0
 
     def at_object_creation(self):
         """
@@ -109,7 +111,7 @@ class Wearable(FashionableMixins, Object):
     @property
     def modified_baseval(self):
         recipe = self.item_data.recipe
-        base = float(recipe.baseval)
+        base = float(recipe.base_value)
         if self.item_data.quality_level >= 10:
             crafter = self.item_data.crafted_by
             if (

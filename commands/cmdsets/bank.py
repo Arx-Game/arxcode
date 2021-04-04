@@ -5,8 +5,9 @@ Commands for banking.
 from evennia.commands.cmdset import CmdSet
 from evennia.utils import evtable
 from commands.base import ArxCommand
+from world.crafting.models import OwnedMaterial
 from world.dominion import setup_utils
-from world.dominion.models import CraftingMaterials, AccountTransaction, AssetOwner
+from world.dominion.models import AccountTransaction, AssetOwner
 
 
 class BankCmdSet(CmdSet):
@@ -228,7 +229,7 @@ class CmdBank(ArxCommand):
                 if not account.can_be_viewed_by(self.caller):
                     continue
                 mats = ", ".join(
-                    str(mat) for mat in account.materials.filter(amount__gte=1)
+                    str(mat) for mat in account.owned_materials.filter(amount__gte=1)
                 )
                 actable.add_row(
                     str(account.owner),
@@ -321,7 +322,7 @@ class CmdBank(ArxCommand):
                     caller.msg("You must specify a positive number.")
                     return
                 if usingmats:
-                    source = sender.materials.get(type__name__iexact=matname)
+                    source = sender.owned_materials.get(type__name__iexact=matname)
                     if source.amount < val:
                         caller.msg(
                             "You tried to {} {:,} {}, but only {:,} available.".format(
@@ -330,9 +331,11 @@ class CmdBank(ArxCommand):
                         )
                         return
                     try:
-                        targ = receiver.materials.get(type__name__iexact=matname)
-                    except CraftingMaterials.DoesNotExist:
-                        targ = receiver.materials.create(type=source.type, amount=0)
+                        targ = receiver.owned_materials.get(type__name__iexact=matname)
+                    except OwnedMaterial.DoesNotExist:
+                        targ = receiver.owned_materials.create(
+                            type=source.type, amount=0
+                        )
                     source.amount -= val
                     targ.amount += val
                     samt = source.amount
@@ -372,10 +375,10 @@ class CmdBank(ArxCommand):
                 else:
                     caller.msg("Transaction successful.")
                 self.inform_owner(account, verb, val, attr_type, matname)
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 caller.msg(
                     "No match for that material. Valid materials: %s"
-                    % ", ".join(str(mat) for mat in sender.materials.all())
+                    % ", ".join(str(mat) for mat in sender.owned_materials.all())
                 )
                 return
             except (ValueError, IndexError):

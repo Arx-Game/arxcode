@@ -106,6 +106,8 @@ def money_from_args(args, fromobj):
 def check_volume(obj, char, quiet=False):
     """Helper function to check if a character has enough volune to carry an item"""
     vol = obj.item_data.size
+    if vol is None:
+        raise ValueError(f"Object {obj} has an undefined size")
     v_max = char.item_data.capacity
     if char.used_capacity + vol > v_max:
         if not quiet:
@@ -218,7 +220,7 @@ class CmdInventory(ArxCommand):
                 assets.grandeur, soc
             )
             msg += "\n{{w||__ Propriety:{{n {:>10,}".format(assets.propriety)
-            mats = player.Dominion.assets.materials.filter(amount__gte=1)
+            mats = player.Dominion.assets.owned_materials.filter(amount__gte=1)
             msg += "\n{wMaterials:{n %s" % ", ".join(str(ob) for ob in mats)
         self.msg(msg)
 

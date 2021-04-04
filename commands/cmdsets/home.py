@@ -8,7 +8,8 @@ from django.conf import settings
 from world.dominion.models import LIFESTYLES
 from django.db.models import Q
 from evennia.objects.models import ObjectDB
-from world.dominion.models import AssetOwner, Organization, CraftingRecipe
+from world.crafting.models import CraftingRecipe
+from world.dominion.models import AssetOwner, Organization
 from commands.base_commands.crafting import CmdCraft
 from commands.base_commands.overrides import CmdDig
 from server.utils.prettytable import PrettyTable
@@ -882,7 +883,7 @@ class CmdManageShop(ArxCommand):
         if "addrecipe" in self.switches:
             prices = loc.db.crafting_prices or {}
             try:
-                recipe = caller.player_ob.Dominion.assets.recipes.get(
+                recipe = caller.player_ob.Dominion.assets.crafting_recipes.get(
                     name__iexact=self.lhs
                 )
                 cost = int(self.rhs)
@@ -915,7 +916,7 @@ class CmdManageShop(ArxCommand):
                 elif self.lhs.lower() == "refining":
                     arg = "refining"
                 else:
-                    recipe = caller.player_ob.Dominion.assets.recipes.get(
+                    recipe = caller.player_ob.Dominion.assets.crafting_recipes.get(
                         name__iexact=self.lhs
                     )
                     arg = recipe.id
@@ -1143,8 +1144,10 @@ class CmdBuyFromShop(CmdCraft):
         prices = loc.db.crafting_prices or {}
         msg = "{wCrafting Prices{n\n"
         table = PrettyTable(["{wName{n", "{wCraft Price{n", "{wRefine Price{n"])
-        recipes = loc.db.shopowner.player_ob.Dominion.assets.recipes.all().order_by(
-            "name"
+        recipes = (
+            loc.db.shopowner.player_ob.Dominion.assets.crafting_recipes.all().order_by(
+                "name"
+            )
         )
         # This try/except block corrects 'removed' lists that are corrupted by
         # non-integers, because that was a thing once upon a time.
@@ -1312,7 +1315,7 @@ class CmdBuyFromShop(CmdCraft):
                     caller.msg("Please provide a valid recipe name.")
                     return
                 try:
-                    recipe = self.crafter.player_ob.Dominion.assets.recipes.all().get(
+                    recipe = self.crafter.player_ob.Dominion.assets.crafting_recipes.all().get(
                         name__iexact=self.args
                     )
                 except CraftingRecipe.DoesNotExist:

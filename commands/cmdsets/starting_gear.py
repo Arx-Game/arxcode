@@ -17,10 +17,12 @@ from evennia import CmdSet
 from evennia.utils.logger import log_info
 from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils import arx_utils
-from world.dominion.models import (
+from world.crafting.models import (
     CraftingMaterialType,
-    PlayerOrNpc,
     CraftingRecipe,
+)
+from world.dominion.models import (
+    PlayerOrNpc,
     AssetOwner,
 )
 from commands.base_commands.crafting import (
@@ -28,7 +30,6 @@ from commands.base_commands.crafting import (
     create_wearable,
     create_weapon,
     create_place,
-    create_book,
     create_container,
     create_wearable_container,
     create_generic,
@@ -282,34 +283,36 @@ class CmdStartingGear(ArxCommand):
             # get type from recipe
             otype = recipe.type
             # create object
+            crafter = caller
             if otype == "wieldable":
-                obj, quality = create_weapon(recipe, roll, proj, caller)
+                obj, quality = create_weapon(recipe, roll, proj, caller, crafter)
             elif otype == "wearable":
-                obj, quality = create_wearable(recipe, roll, proj, caller)
+                obj, quality = create_wearable(recipe, roll, proj, caller, crafter)
             elif otype == "place":
-                obj, quality = create_place(recipe, roll, proj, caller)
-            elif otype == "book":
-                obj, quality = create_book(recipe, roll, proj, caller)
+                obj, quality = create_place(recipe, roll, proj, caller, crafter)
             elif otype == "container":
-                obj, quality = create_container(recipe, roll, proj, caller)
+                obj, quality = create_container(recipe, roll, proj, caller, crafter)
             elif otype == "decorative_weapon":
-                obj, quality = create_decorative_weapon(recipe, roll, proj, caller)
+                obj, quality = create_decorative_weapon(
+                    recipe, roll, proj, caller, crafter
+                )
             elif otype == "wearable_container":
-                obj, quality = create_wearable_container(recipe, roll, proj, caller)
+                obj, quality = create_wearable_container(
+                    recipe, roll, proj, caller, crafter
+                )
             elif otype == "perfume":
-                obj, quality = create_consumable(recipe, roll, proj, caller, PERFUME)
+                obj, quality = create_consumable(
+                    recipe, roll, proj, caller, PERFUME, crafter
+                )
             elif otype == "disguise":
-                obj, quality = create_mask(recipe, roll, proj, caller, proj[4])
+                obj, quality = create_mask(recipe, roll, proj, caller, proj[6], crafter)
             else:
-                obj, quality = create_generic(recipe, roll, proj, caller)
+                obj, quality = create_generic(recipe, roll, proj, caller, crafter)
             # finish stuff universal to all crafted objects
             obj.desc = proj[2]
             obj.save()
-            obj.item_data.materials = mats
-            obj.item_data.recipe = recipe.id
-            obj.item_data.adorns = proj[3]
-            obj.item_data.crafted_by = caller
-            obj.item_data.size = recipe.volume
+            for mat_id, amount in proj[3].items():
+                obj.item_data.add_adorn(mat_id, amount)
             caller.msg("You created %s." % obj.name)
             caller.attributes.remove("startgear_project")
             return

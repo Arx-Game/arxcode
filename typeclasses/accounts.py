@@ -346,7 +346,7 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         from django.core.exceptions import ObjectDoesNotExist
 
         try:
-            material = self.assets.materials.get(type=material_type)
+            material = self.assets.owned_materials.get(type=material_type)
         except ObjectDoesNotExist:
             return 0
         else:
@@ -367,9 +367,9 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         assets = self.assets
         try:
             if amount < 0:
-                material, _ = assets.materials.get_or_create(type=material_type)
+                material, _ = assets.owned_materials.get_or_create(type=material_type)
             else:
-                material = assets.materials.get(type=material_type)
+                material = assets.owned_materials.get(type=material_type)
             if material.amount < amount:
                 return False
             material.amount -= amount

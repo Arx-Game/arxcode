@@ -14,7 +14,6 @@ class Place(Object):
     """
 
     item_data_class = PlaceDataHandler
-    default_max_spots = 6
     default_desc = "A place for people to privately chat. Dropping it in a room will make it part of the room."
     PLACE_LOCKS = (
         "call:true();control:perm(Wizards);delete:perm(Wizards);examine:perm(Builders);"
@@ -26,8 +25,13 @@ class Place(Object):
     TT_EMIT = 3
 
     @property
-    def default_occupants(self):
-        return []
+    def default_max_spots(self):
+        if not self.item_data.recipe:
+            return 6
+        base = self.item_data.recipe.base_value
+        scaling = self.item_data.recipe.scaling
+        quality = self.item_data.quality
+        return int(base + int(scaling * quality))
 
     def at_object_creation(self):
         """
@@ -41,12 +45,10 @@ class Place(Object):
         """
         Character leaving the table.
         """
-        occupants = self.item_data.occupants or []
+        occupants = self.item_data.occupants
         if character in occupants:
-            occupants.remove(character)
-            self.item_data.occupants = occupants
+            self.item_data.remove_occupant(character)
             character.cmdset.delete(SittingCmdSet)
-            character.db.sitting_at_table = None
             self.location.msg_contents(
                 "%s has left the %s." % (character.name, self.key), exclude=character
             )
@@ -56,14 +58,13 @@ class Place(Object):
         """
         Character joins the table
         """
-        occupants = self.item_data.occupants or []
-        character.cmdset.add(SittingCmdSet, permanent=True)
-        character.db.sitting_at_table = self
-        occupants.append(character)
-        self.item_data.occupants = occupants
-        self.location.msg_contents(
-            "%s has joined the %s." % (character.name, self.key), exclude=character
-        )
+        occupants = self.item_data.occupants
+        if character not in occupants:
+            character.cmdset.add(SittingCmdSet, permanent=True)
+            self.item_data.add_occupant(character)
+            self.location.msg_contents(
+                "%s has joined the %s." % (character.name, self.key), exclude=character
+            )
 
     def build_tt_msg(
         self, from_obj, to_obj, msg: str, is_ooc=False, msg_type=TT_SAY
@@ -142,20 +143,9 @@ class Place(Object):
     def at_after_move(self, source_location, **kwargs):
         """If new location is not our wearer, remove."""
         location = self.location
-        # first, remove ourself from the source location's places, if it exists
-        if (
-            source_location
-            and hasattr(source_location, "is_room")
-            and source_location.is_room
-        ):
-            if source_location.db.places and self in source_location.db.places:
-                source_location.db.places.remove(self)
         # if location is a room, add cmdset
         if location and location.is_room:
-            places = location.db.places or []
             self.cmdset.add_default(DefaultCmdSet, permanent=True)
-            places.append(self)
-            location.db.places = places
         # if location not a room, remove cmdset
         else:
             self.cmdset.delete_default()

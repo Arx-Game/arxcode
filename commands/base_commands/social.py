@@ -33,12 +33,14 @@ from server.utils.arx_utils import (
 from typeclasses.characters import Character
 from typeclasses.rooms import ArxRoom
 from web.character.models import AccountHistory, FirstContact
+from world.crafting.models import (
+    CraftingMaterialType,
+    OwnedMaterial,
+)
 from world.dominion.forms import RPEventCreateForm
 from world.dominion.models import (
     RPEvent,
     Agent,
-    CraftingMaterialType,
-    CraftingMaterials,
     AssetOwner,
     Reputation,
     Member,
@@ -1033,7 +1035,7 @@ class CmdMessenger(ArxCommand):
             self.msg("You must specify materials to send.")
         except CraftingMaterialType.DoesNotExist:
             self.msg("That is not a valid material type.")
-        except CraftingMaterials.DoesNotExist:
+        except OwnedMaterial.DoesNotExist:
             self.msg("You don't have any of that material.")
         except ValueError as err:
             self.msg(err)
@@ -1358,9 +1360,9 @@ class CmdMessenger(ArxCommand):
         if mats:
             amt = mats[1] * num
             try:
-                pmats = self.caller.player.Dominion.assets.materials
+                pmats = self.caller.player.Dominion.assets.owned_materials
                 pmat = pmats.get(type=mats[0])
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 self.msg("You don't have any of that type of material.")
                 return
             if pmat.amount < amt:
@@ -3674,7 +3676,7 @@ class CmdLanguages(ArxCommand):
             obj = self.caller.search(self.args)
             if not obj:
                 return
-            translation = obj.item_data.translation or {}
+            translation = obj.item_data.translation
             matches = False
             for lang in self.caller.languages.known_languages:
                 if lang in translation:

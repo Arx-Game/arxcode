@@ -12,9 +12,7 @@ def convert_tags_and_attributes(apps, schema_editor):
     Dimensions = apps.get_model("object_extensions", "Dimensions")
 
     # set deleted objects
-    qs = Attribute.objects.filter(db_key="deleted_time").prefetch_related(
-        "objectdb_set"
-    )
+    qs = Attribute.objects.filter(db_key="deleted_time")
     permanence_objects = {}
     for attr in qs:
         try:
@@ -37,7 +35,7 @@ def convert_tags_and_attributes(apps, schema_editor):
             "typeclasses.npcs.npc.MultiNpc",
             "typeclasses.npcs.npc.Agent",
         ],
-    ).prefetch_related("objectdb_set")
+    )
     dimensions_objects = {}
     for attr in qs:
         try:

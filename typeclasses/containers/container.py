@@ -209,10 +209,24 @@ class Container(LockMixins, DefaultObject):
         show_places=True,
         sep=", ",
     ):
-        if self.tags.get("display_by_line"):
+        if self.display_by_line:
             return super(Container, self).return_contents(
                 pobject, detailed, show_ids, strip_ansi, show_places, sep="\n         "
             )
         return super(Container, self).return_contents(
             pobject, detailed, show_ids, strip_ansi, show_places, sep
         )
+
+    @property
+    def displayable(self):
+        if self.item_data.recipe:
+            return self.item_data.recipe.displayable or super().displayable
+        return super().displayable
+
+    @property
+    def display_by_line(self):
+        if self.tags.get("display_by_line"):
+            return True
+        if self.item_data.recipe:
+            return self.item_data.recipe.display_by_line
+        return False

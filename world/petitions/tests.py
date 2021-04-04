@@ -3,16 +3,16 @@ from __future__ import unicode_literals
 from mock import Mock
 
 from server.utils.test_utils import ArxCommandTest
+from world.crafting.models import CraftingMaterialType
 from world.petitions import petitions_commands
+from world.petitions.models import BrokeredSale
+from web.character.models import PlayerAccount
+from evennia.server.models import ServerConfig
 from datetime import date
 
 
 class TestPetitionCommands(ArxCommandTest):
     def test_cmd_broker(self):
-        from world.petitions.models import BrokeredSale
-        from world.dominion.models import CraftingMaterialType
-        from web.character.models import PlayerAccount
-        from evennia.server.models import ServerConfig
 
         mat = CraftingMaterialType.objects.create(name="testium", value=5000)
         sale = BrokeredSale.objects.create(
@@ -111,7 +111,7 @@ class TestPetitionCommands(ArxCommandTest):
         self.assertEqual(self.char1.currency, 19925)
         self.assertEqual(self.char2.currency, 325)
         self.assertEqual(self.assetowner.economic, 5)
-        self.assertEqual(self.assetowner.materials.get(type=mat).amount, 10)
+        self.assertEqual(self.assetowner.owned_materials.get(type=mat).amount, 10)
         self.call_cmd("/sell asdf", "You must ask for both an amount and a price.")
         self.call_cmd("/sell foo=5", "You must ask for both an amount and a price.")
         self.call_cmd(
@@ -157,7 +157,7 @@ class TestPetitionCommands(ArxCommandTest):
             "/sell testium=1,500",
             "Created a new sale of 1 testium for 500 silver each and 500 total.",
         )
-        mat.acquisition_modifiers = "nosell"
+        mat.contraband = True
         mat.save()
         self.call_cmd(
             "/sell testium=2,500",

@@ -29,11 +29,7 @@ class Readable(Object):
         if self.item_data.quantity > 1 and not self.db.written:
             self.setup_multiname()
         location = self.location
-        # first, remove ourself from the source location's places, if it exists
-        if source_location and source_location.is_room:
-            if source_location.db.places and self in source_location.db.places:
-                source_location.db.places.remove(self)
-        # if location is a room, add cmdset
+        # if location is a character, add cmdset
         if location and location.is_character:
             if self.db.written:
                 self.cmdset.add_default(SignCmdSet, permanent=True)

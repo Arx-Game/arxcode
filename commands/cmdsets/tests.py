@@ -8,6 +8,7 @@ from server.utils.test_utils import ArxCommandTest
 from . import combat, market, home
 
 from web.character.models import PlayerAccount
+from world.crafting.models import CraftingRecipe, CraftingMaterialType
 
 
 # noinspection PyUnresolvedReferences
@@ -804,7 +805,6 @@ class CombatCommandsTests(ArxCommandTest):
 class TestMarketCommands(ArxCommandTest):
     @patch.object(market, "do_dice_check")
     def test_cmd_haggle(self, mock_dice_check):
-        from world.dominion.models import CraftingMaterialType
 
         self.setup_cmd(market.CmdHaggle, self.char1)
         self.call_cmd(
@@ -908,7 +908,7 @@ class TestMarketCommands(ArxCommandTest):
         )
         deal = list(self.char1.db.haggling_deal)
         self.call_cmd("/accept", "You have bought 10 testium for 17500.0 silver.")
-        mats = self.assetowner.materials.get(type__name=material.name)
+        mats = self.assetowner.owned_materials.get(type__name=material.name)
         self.assertEqual(mats.amount, 10)
         deal[0] = "sell"
         deal[2] = 30
@@ -972,13 +972,12 @@ class TestMarketCommands(ArxCommandTest):
 
 class TestHomeCommands(ArxCommandTest):
     def test_cmd_shop(self):
-        from world.dominion.models import CraftingRecipe
 
         recipes = {
             CraftingRecipe.objects.create(id=1, name="Item1", additional_cost=10),
             CraftingRecipe.objects.create(id=2, name="Item2"),
         }
-        self.char2.player_ob.Dominion.assets.recipes.set(recipes)
+        self.char2.player_ob.Dominion.assets.crafting_recipes.set(recipes)
         prices = self.room.db.crafting_prices or {}
         prices[1] = 10
         prices["removed"] = {2}

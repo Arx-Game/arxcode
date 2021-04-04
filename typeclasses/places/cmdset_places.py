@@ -8,7 +8,7 @@ cmdset - this way you can often re-use the commands too.
 """
 
 
-from evennia import CmdSet
+from evennia.commands.cmdset import CmdSet
 from commands.base import ArxCommand
 from evennia.utils.utils import list_to_string
 
@@ -51,8 +51,8 @@ class CmdJoin(ArxCommand):
     def func(self):
         """Implements command"""
         caller = self.caller
-        places = caller.location.db.places
-        table = caller.db.sitting_at_table
+        places = caller.location.places
+        table = caller.sitting_at_place
         args = self.args
         if not args or not args.strip("#").strip().isdigit():
             caller.msg("Usage: {wjoin <place #>{n")
@@ -70,7 +70,7 @@ class CmdJoin(ArxCommand):
             caller.msg("Number specified does not match any of the places here.")
             return
         table = places[args]
-        occupants = table.item_data.occupants or []
+        occupants = table.item_data.occupants
         if len(occupants) >= table.item_data.max_spots:
             caller.msg("There is no room at %s." % table.key)
             return
@@ -99,7 +99,7 @@ class CmdListPlaces(ArxCommand):
     def func(self):
         """Implements command"""
         caller = self.caller
-        places = caller.location.db.places
+        places = caller.location.places
         caller.msg("{wPlaces here:{n")
         caller.msg("{w------------{n")
         if not places:
@@ -108,7 +108,7 @@ class CmdListPlaces(ArxCommand):
         for num in range(len(places)):
             p_name = places[num].key
             max_spots = places[num].item_data.max_spots
-            occupants = places[num].item_data.occupants or []
+            occupants = places[num].item_data.occupants
             spots = max_spots - len(occupants)
             caller.msg("%s (#%s) : %s empty spaces" % (p_name, num + 1, spots))
             if occupants:
@@ -182,7 +182,7 @@ class CmdDepart(ArxCommand):
     def func(self):
         """Implements command"""
         caller = self.caller
-        table = caller.db.sitting_at_table
+        table = caller.sitting_at_place
         if not table:
             caller.msg("You are not sitting at a table.")
             return
@@ -222,7 +222,7 @@ class CmdTableTalk(ArxCommand):
             caller.msg("Usage: {wtt <message>{n")
             return
 
-        table = caller.db.sitting_at_table
+        table = caller.sitting_at_place
         if not table:
             caller.msg("You are not sitting at a private table currently.")
             return

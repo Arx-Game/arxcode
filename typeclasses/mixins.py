@@ -407,13 +407,12 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
             [],
         )
         currency = self.return_currency()
-        from typeclasses.places.places import Place
 
-        qs = list(Place.objects.filter(db_location=self))
         for con in visible:
             key = get_key(con)
-            if con in qs and show_places:
-                places.append(key)
+            if con in getattr(self, "places", []):
+                if show_places:
+                    places.append(key)
                 continue
             if con.destination:
                 exits.append(key)
@@ -440,10 +439,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
             elif hasattr(con, "is_character") and con.is_character:
                 npcs.append(con)
             else:
-                if not self.db.places:
-                    things.append(con)
-                elif self.db.places and con not in self.db.places:
-                    things.append(con)
+                things.append(con)
         if worn:
             worn = sorted(worn, key=lambda x: x.item_data.worn_time)
             string += (
@@ -725,6 +721,7 @@ class CraftingMixins(object):
     junk_handler_class = RefundMaterialsJunkHandler
     default_type_description_name = None
     should_format_desc = False
+    default_recipe = None
 
     @lazy_property
     def junk_handler(self):
@@ -747,6 +744,12 @@ class CraftingMixins(object):
         if self.item_data.recipe:
             return self.item_data.recipe.name
         return self.default_type_description_name
+
+    @property
+    def default_size(self):
+        if self.item_data.recipe:
+            return self.item_data.recipe.volume
+        return 1
 
 
 # regex removes the ascii inside an ascii tag
@@ -977,6 +980,18 @@ class LockMixins(object):
         if self.destination:
             self.destination.db.locked = False
 
+    @property
+    def currently_open(self):
+        return not self.db.locked
+
+    @property
+    def displayable(self):
+        return self.tags.get("displayable")
+
+    @property
+    def should_show_contents(self):
+        return self.currently_open or self.displayable
+
     def return_appearance(
         self, pobject, detailed=False, format_desc=False, show_contents=True
     ):
@@ -988,10 +1003,7 @@ class LockMixins(object):
         :param show_contents: bool
         :return: str
         """
-        currently_open = not self.db.locked
-        show_contents = (
-            currently_open or self.tags.get("displayable")
-        ) and show_contents
+        show_contents = self.should_show_contents and show_contents
         base = super(LockMixins, self).return_appearance(
             pobject,
             detailed=detailed,
