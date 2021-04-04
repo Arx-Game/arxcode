@@ -6,12 +6,6 @@ from evennia_extensions.object_extensions.models import Dimensions, Permanence
 
 from web.character.models import Clue
 from world.traits.models import CharacterTraitValue, Trait
-from typeclasses.characters import Character
-from typeclasses.objects import Object as CraftedObject
-from typeclasses.disguises.disguises import Mask
-from typeclasses.places.places import Place
-from typeclasses.wearable.wearable import Wearable
-from typeclasses.wearable.wieldable import Wieldable
 from world.crafting.models import (
     CraftingRecord,
     AdornedMaterial,
@@ -132,6 +126,12 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
     wieldable_inlines = [WeaponOverrideInline]
 
     def get_inline_instances(self, request, obj=None):
+        from typeclasses.characters import Character
+        from typeclasses.objects import Object as CraftedObject
+        from typeclasses.disguises.disguises import Mask
+        from typeclasses.places.places import Place
+        from typeclasses.wearable.wearable import Wearable
+        from typeclasses.wearable.wieldable import Wieldable
         if obj:
             final_inlines = list(self.inlines)
             if isinstance(obj, Character):
