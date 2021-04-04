@@ -265,8 +265,8 @@ class CmdStartingGear(ArxCommand):
             mats = {}
             recipe = CraftingRecipe.objects.get(id=proj[0])
             cost = recipe.value
-            for mat in recipe.materials.all():
-                mats[mat.id] = mats.get(mat.id, 0) + mat.amount
+            for mat in recipe.required_materials.all():
+                mats[mat.id] = mats.get(mat.type_id, 0) + mat.amount
             for adorn in proj[3]:
                 mats[adorn] = mats.get(adorn, 0) + proj[3][adorn]
                 mat = CraftingMaterialType.objects.get(id=adorn)

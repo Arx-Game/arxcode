@@ -46,7 +46,12 @@ class RefineAttemptInline(admin.StackedInline):
 class CraftingRecordAdmin(admin.ModelAdmin):
     list_display = ("object_name", "crafter_name", "quality_level", "recipe")
     raw_id_fields = ("objectdb", "crafted_by", "recipe")
-    search_fields = ("objectdb__db_key", "=objectdb__id", "=crafted_by__db_key", "recipe__name")
+    search_fields = (
+        "objectdb__db_key",
+        "=objectdb__id",
+        "=crafted_by__db_key",
+        "recipe__name",
+    )
     inlines = (RefineAttemptInline,)
 
     @staticmethod

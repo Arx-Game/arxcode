@@ -864,6 +864,7 @@ class CmdManageShop(ArxCommand):
             caller.msg("You have removed %s from your sale list." % obj)
             return
         if "all" in self.switches or "refinecost" in self.switches:
+            prices = loc.db.crafting_prices or {}
             try:
                 cost = int(self.args)
                 if cost < 0:
@@ -872,13 +873,14 @@ class CmdManageShop(ArxCommand):
                 caller.msg("Cost must be a non-negative number.")
                 return
             if "all" in self.switches:
-                loc.db.crafting_prices["all"] = cost
+                prices["all"] = cost
                 caller.msg(
                     "Cost for non-specified recipes set to %s percent markup." % cost
                 )
             else:
-                loc.db.crafting_prices["refine"] = cost
+                prices["refine"] = cost
                 caller.msg("Cost for refining set to %s percent markup." % cost)
+            loc.db.crafting_prices = prices
             return
         if "addrecipe" in self.switches:
             prices = loc.db.crafting_prices or {}

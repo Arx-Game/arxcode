@@ -737,8 +737,8 @@ class CmdCraft(ArxCommand, TemplateMixins):
                         "This kind of item requires craft/altdesc before it can be finished."
                     )
                     return
-            for mat in recipe.materials.all():
-                mats[mat.id] = mats.get(mat.id, 0) + mat.amount
+            for mat in recipe.required_materials.all():
+                mats[mat.id] = mats.get(mat.type_id, 0) + mat.amount
             for adorn in proj[3]:
                 mats[adorn] = mats.get(adorn, 0) + proj[3][adorn]
             # replace with forgeries
