@@ -1,7 +1,7 @@
 """
 Handler for Messengers
 """
-from world.dominion.models import CraftingMaterials, CraftingMaterialType
+from world.crafting.models import CraftingMaterialType, OwnedMaterial
 from world.msgs.handler_mixins.msg_utils import (
     get_initial_queryset,
     lazy_import_from_str,
@@ -219,11 +219,11 @@ class MessengerHandler(MsgHandlerBase):
             material, amt = mats
             dompc = self.obj.player_ob.Dominion
             try:
-                mat = dompc.assets.materials.get(type=material)
+                mat = dompc.assets.owned_materials.get(type=material)
                 mat.amount += amt
                 mat.save()
-            except CraftingMaterials.DoesNotExist:
-                dompc.assets.materials.create(type=material, amount=amt)
+            except OwnedMaterial.DoesNotExist:
+                dompc.assets.owned_materials.create(type=material, amount=amt)
             self.msg("{wYou receive %s %s.{n" % (amt, material))
 
     def notify_of_messenger_arrival(self, messenger_name):
@@ -408,7 +408,7 @@ class MessengerHandler(MsgHandlerBase):
             self.obj.pay_money(total)
         if mats:
             amt = mats[1] * num
-            pmats = self.obj.player.Dominion.assets.materials
+            pmats = self.obj.player.Dominion.assets.owned_materials
             pmat = pmats.get(type=mats[0])
             if pmat.amount < amt:
                 raise ValueError(

@@ -2,46 +2,23 @@
 Handler for hiding implementation details of data storage for a crafted object
 behind an abstraction layer
 """
+from django.core.exceptions import ObjectDoesNotExist
 from evennia_extensions.object_extensions.item_data_handler import ItemDataHandler
-
-
-def get_storage_prop(attr_name, default=None):
-    """Helper function to create a property with closures of the given values we provide."""
-
-    def get_func(self):
-        return self.get_db_or_default(attr_name, default)
-
-    def set_func(self, value):
-        self.set_db_value(attr_name, value)
-
-    return property(get_func, set_func)
+from server.utils.arx_utils import CachedProperty
+from world.crafting.storage_wrappers import (
+    CraftingRecordWrapper,
+    MaterialTypeWrapper,
+    EquippedStatusWrapper,
+    ArmorOverrideWrapper,
+    MaskedDescriptionWrapper,
+    PlaceSpotsOverrideWrapper,
+    WeaponOverrideWrapper,
+)
+from world.crafting.validators import get_material, get_recipe, get_character
 
 
 class CraftDataHandler(ItemDataHandler):
     """Encapsulates data/methods for any crafted object in game"""
-
-    def get_db_or_default(self, attr, default=None):
-        """
-        Gets a value from AttributeHolder if it exists. If not, we'll check
-        for a default value as an attribute on the object, or return a default
-        passed to the function.
-        Args:
-            attr (str): The name of the attribute
-            default: The default value to be returned if the attribute doesn't exist
-
-        Returns:
-            The value of the attribute or the default
-        """
-        val = self.obj.attributes.get(attr)
-        if val is not None:
-            return val
-        # default values are in the form of default_<attrname>,
-        # for example: "attack_speed" -> "default_attack_speed"
-        default_attr_name = f"default_{attr}"
-        return getattr(self.obj, default_attr_name, default)
-
-    def set_db_value(self, attr, value):
-        self.obj.attributes.add(attr, value)
 
     def get_crafting_desc(self):
         """
@@ -66,44 +43,14 @@ class CraftDataHandler(ItemDataHandler):
             string += self.origin_description
         if self.translation:
             string += "\nIt contains script in a foreign tongue."
-        # signed_by is a crafter's character object
-        signed = self.signed_by
-        if signed:
-            string += "\n%s" % (signed.crafter_signature or "")
         return string
 
-    @property
+    @CachedProperty
     def adorn_objects(self):
         """
-        Returns a dict of crafting materials we have.
-
-        :type self: ObjectDB
-            Returns:
-                ret (dict): dict of crafting materials as keys to amt
-
-        SharedMemoryModel causes all .get by ID to be cached inside the class,
-        so these queries will only hit the database once. After that, we're just
-        building a dict so it'll be insignificant.
+        Returns cached dict of our adorned materials
         """
-        from world.dominion.models import CraftingMaterialType
-
-        ret = {}
-        adorns = self.adorns
-        for adorn_id in adorns:
-            if isinstance(adorn_id, CraftingMaterialType):
-                mat = adorn_id
-                amt = self.obj.db.adorns.pop(adorn_id)
-                self.obj.db.adorns[adorn_id.id] = amt
-            else:
-                try:
-                    mat = CraftingMaterialType.objects.get(id=adorn_id)
-                except CraftingMaterialType.DoesNotExist:
-                    continue
-            ret[mat] = adorns[adorn_id]
-        return ret
-
-    adorns = get_storage_prop("adorns", {})
-    materials = get_storage_prop("materials", {})
+        return {ob.type: ob.amount for ob in self.obj.adorned_materials.all()}
 
     def get_quality_appearance(self):
         """
@@ -118,69 +65,44 @@ class CraftDataHandler(ItemDataHandler):
         qual = QUALITY_LEVELS.get(qual, "average")
         return "\nIts level of craftsmanship is %s." % qual
 
-    @property
-    def recipe(self):
-        """
-        Gets the crafting recipe used to create us if one exists.
-
-        :type self: ObjectDB
-        Returns:
-            The crafting recipe used to create this object.
-        """
-        recipe_pk = self.get_db_or_default("recipe")
-        if recipe_pk:
-            from world.dominion.models import CraftingRecipe
-
-            try:
-                recipe = CraftingRecipe.objects.get(id=recipe_pk)
-                return recipe
-            except CraftingRecipe.DoesNotExist:
-                pass
-
-    translation = get_storage_prop("translation", {})
-
-    @recipe.setter
-    def recipe(self, value):
-        self.set_db_value("recipe", value)
-
-    @property
-    def resultsdict(self):
-        return self.recipe.resultsdict
-
-    quality_level = get_storage_prop("quality_level", 0)
-
-    crafted_by = get_storage_prop("crafted_by")
-
-    signed_by = get_storage_prop("signed_by")
+    recipe = CraftingRecordWrapper(validator_func=get_recipe)
+    quality_level = CraftingRecordWrapper()
+    crafted_by = CraftingRecordWrapper(validator_func=get_character)
 
     @property
     def origin_description(self):
-        found = self.get_db_or_default("found_shardhaven")
+        found = self.obj.db.found_shardhaven
         if found:
             return "\nIt was found in %s." % found
         return None
 
-    def add_adorn(self, material, quantity):
+    def add_adorn(self, material, quantity: int):
         """
         Adds an adornment to this crafted object.
 
         Args:
-            material: The crafting material type that we're adding
+            material (CraftingMaterialType): The crafting material type that we're adding
             quantity: How much we're adding
         """
-        adorns = dict(self.adorns)
-        amt = adorns.get(material.id, 0)
-        adorns[material.id] = amt + quantity
-        self.adorns = adorns
+        if isinstance(material, int):
+            ob, _ = self.obj.adorned_materials.get_or_create(type_id=material)
+        else:
+            ob, _ = self.obj.adorned_materials.get_or_create(type=material)
+        ob.amount = quantity
+        ob.save()
+        # clear cache
+        del self.adorn_objects
 
     def get_refine_attempts_for_character(self, crafter):
-        refine_attempts = crafter.db.refine_attempts or {}
-        return refine_attempts.get(self.obj.id, 0)
+        try:
+            return self.obj.crafting_record.refine_attempts.get(
+                crafter=crafter
+            ).num_attempts
+        except ObjectDoesNotExist:
+            return 0
 
     def set_refine_attempts_for_character(self, crafter, attempts):
-        refine_attempts = dict(crafter.db.refine_attempts or {})
-        refine_attempts[self.obj.id] = attempts
-        crafter.db.refine_attempts = refine_attempts
+        self.obj.crafting_record.set_refine_attempts(crafter, attempts)
 
 
 class ConsumableDataHandler(CraftDataHandler):
@@ -212,25 +134,52 @@ class ConsumableDataHandler(CraftDataHandler):
 
 
 class WearableDataHandler(CraftDataHandler):
-    worn_time = get_storage_prop("worn_time", 0)
-    currently_worn = get_storage_prop("currently_worn", False)
+    worn_time = EquippedStatusWrapper()
+    currently_worn = EquippedStatusWrapper()
+    armor_penalty = ArmorOverrideWrapper()
+    armor_resilience = ArmorOverrideWrapper()
+    slot_limit = ArmorOverrideWrapper()
+    slot = ArmorOverrideWrapper()
 
 
 class MaskDataHandler(WearableDataHandler):
-    mask_desc = get_storage_prop("maskdesc")
+    mask_desc = MaskedDescriptionWrapper("description")
 
 
 class WieldableDataHandler(WearableDataHandler):
-    attack_skill = get_storage_prop("attack_skill", "medium wpn")
-    attack_stat = get_storage_prop("attack_stat", "dexterity")
-    currently_wielded = get_storage_prop("currently_wielded", False)
-    damage_stat = get_storage_prop("damage_stat", "strength")
-    damage_bonus = get_storage_prop("damage_bonus", 1)
-    attack_type = get_storage_prop("attack_type", "melee")
-    can_be_parried = get_storage_prop("can_be_parried", True)
-    can_be_blocked = get_storage_prop("can_be_blocked", True)
-    can_be_dodged = get_storage_prop("can_be_dodged", True)
-    can_be_countered = get_storage_prop("can_be_countered", True)
-    can_parry = get_storage_prop("can_parry", True)
-    can_riposte = get_storage_prop("can_riposte", True)
-    difficulty_mod = get_storage_prop("difficulty_mod", 0)
+    currently_wielded = EquippedStatusWrapper()
+    ready_phrase = EquippedStatusWrapper()
+    attack_skill = WeaponOverrideWrapper()
+    attack_stat = WeaponOverrideWrapper()
+    damage_stat = WeaponOverrideWrapper()
+    damage_bonus = WeaponOverrideWrapper()
+    attack_type = WeaponOverrideWrapper()
+    can_be_parried = WeaponOverrideWrapper()
+    can_be_blocked = WeaponOverrideWrapper()
+    can_be_dodged = WeaponOverrideWrapper()
+    can_be_countered = WeaponOverrideWrapper()
+    can_parry = WeaponOverrideWrapper()
+    can_riposte = WeaponOverrideWrapper()
+    difficulty_mod = WeaponOverrideWrapper()
+    flat_damage_bonus = WeaponOverrideWrapper()
+
+
+class PlaceDataHandler(CraftDataHandler):
+    max_spots = PlaceSpotsOverrideWrapper()
+
+    @CachedProperty
+    def occupants(self):
+        return [ob.character for ob in self.obj.occupying_characters.all()]
+
+    def add_occupant(self, character):
+        if character not in self.occupants:
+            self.obj.occupying_characters.create(character=character)
+            del self.occupants
+
+    def remove_occupant(self, character):
+        if any(self.obj.occupying_characters.filter(character=character).delete()):
+            del self.occupants
+
+
+class MaterialObjectDataHandler(ItemDataHandler):
+    material_type = MaterialTypeWrapper(validator_func=get_material)

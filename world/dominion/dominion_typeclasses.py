@@ -1,20 +1,12 @@
 from typeclasses.objects import Object as DefaultObject
-from .models import CraftingMaterialType, CraftingMaterials
 
 
 class CraftingMaterialObject(DefaultObject):
+    default_material_type = None
+
     @property
     def material_type(self):
-        if not self.db.material_type:
-            return None
-        try:
-            material = CraftingMaterialType.objects.get(id=self.db.material_type)
-            return material
-        except (
-            CraftingMaterialType.DoesNotExist,
-            CraftingMaterialType.MultipleObjectsReturned,
-        ):
-            return None
+        return self.item_data.material_type
 
     @property
     def type_description(self):
@@ -25,22 +17,22 @@ class CraftingMaterialObject(DefaultObject):
         return "crafting material, %s" % material.name
 
     def store_into(self, owner):
-        if not self.db.quantity:
+        if not self.item_data.quantity:
             return
 
-        material = self.db.material_type
+        material = self.material_type
         if not material:
             return
 
-        material_records = owner.materials.filter(type=material)
-        if material_records.count() == 0:
-            record = CraftingMaterials(
-                type=material, amount=self.db.quantity, owner=owner
-            )
-            record.save()
-        else:
-            record = material_records.all().first()
-            record.amount = record.amount + self.db.quantity
-            record.save()
+        record, _ = owner.owned_materials.get_or_create(type=material)
+        record.amount += self.item_data.quantity
+        record.save()
 
         self.softdelete()
+
+    @property
+    def desc(self):
+        msg = "Nondescript material."
+        if self.material_type:
+            msg = self.material_type.desc
+        return msg

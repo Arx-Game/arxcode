@@ -435,6 +435,12 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
             self.db.decorators = []
         return self.db.decorators
 
+    @property
+    def places(self):
+        from typeclasses.places.places import Place
+
+        return [ob for ob in self.contents if isinstance(ob, Place)]
+
     # noinspection PyMethodMayBeStatic
     # noinspection PyUnusedLocal
     def at_say(

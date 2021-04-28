@@ -1,7 +1,7 @@
 from world.magic.models import *
 from server.utils.test_utils import ArxTest
 from evennia.utils import create
-from world.dominion.models import CraftingRecipe
+from world.crafting.models import CraftingRecipe
 from world.traits.models import Trait
 
 _PENDING_MAGIC_NOTIFY = []

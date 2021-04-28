@@ -4,9 +4,11 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import render, get_object_or_404
 from evennia.help.models import HelpEntry
-from world.dominion.models import (
+from world.crafting.models import (
     CraftingRecipe,
     CraftingMaterialType,
+)
+from world.dominion.models import (
     Organization,
     Member,
 )
@@ -139,7 +141,7 @@ def list_recipes(request):
     known_recipes = []
     materials = CraftingMaterialType.objects.all().order_by("value")
     try:
-        known_recipes = user.Dominion.assets.recipes.all()
+        known_recipes = user.Dominion.assets.crafting_recipes.all()
     except AttributeError:
         pass
     return render(

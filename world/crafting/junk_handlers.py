@@ -3,12 +3,17 @@ Different handlers for processing junking an item
 """
 from server.utils.exceptions import CommandError
 
+_Object = None
+
 
 class BaseJunkHandler:
     """A basic handler that allows junking an item unless it's flagged as special"""
 
     def __init__(self, obj):
-        self.obj = obj
+        global _Object
+        if not _Object:
+            from typeclasses.objects import Object as _Object
+        self.obj: _Object = obj
 
     def junk(self, caller):
         """Checks our ability to be junked out."""
@@ -28,7 +33,7 @@ class BaseJunkHandler:
 
     def do_junkout(self, caller):
         """Junks us as if we were a crafted item."""
-        caller.msg("You destroy %s." % self)
+        caller.msg("You destroy %s." % self.obj)
         self.obj.softdelete()
 
     @property
@@ -57,7 +62,7 @@ class RefundMaterialsJunkHandler(BaseJunkHandler):
 
     def do_junkout(self, caller):
         """Attempts to salvage materials from crafted item, then junks it."""
-        from world.dominion.models import CraftingMaterials, CraftingMaterialType
+        from world.crafting.models import CraftingMaterialType, OwnedMaterial
 
         def get_refund_chance():
             """Gets our chance of material refund based on a skill check"""
@@ -78,34 +83,37 @@ class RefundMaterialsJunkHandler(BaseJunkHandler):
                     num_kept += 1
             return num_kept
 
-        pmats = caller.player.Dominion.assets.materials
-        mats = self.item_data.materials
-        adorns = self.item_data.adorns
+        pmats = caller.player.Dominion.assets.owned_materials
+        mats = {}
+        if self.obj.item_data.recipe:
+            mats = {
+                req: req.amount
+                for req in self.obj.item_data.recipe.required_materials.all()
+            }
+        adorns = self.obj.adorned_materials.all()
         refunded = []
         roll = get_refund_chance()
         for mat in adorns:
-            cmat = CraftingMaterialType.objects.get(id=mat)
-            amount = adorns[mat]
+            cmat = mat.type
+            amount = mat.amount
             amount = randomize_amount(amount)
             if amount:
                 try:
                     pmat = pmats.get(type=cmat)
-                except CraftingMaterials.DoesNotExist:
+                except OwnedMaterial.DoesNotExist:
                     pmat = pmats.create(type=cmat)
                 pmat.amount += amount
                 pmat.save()
                 refunded.append("%s %s" % (amount, cmat.name))
         for mat in mats:
-            amount = mats[mat]
-            if mat in adorns:
-                amount -= adorns[mat]
+            amount = mat.amount
             amount = randomize_amount(amount)
             if amount <= 0:
                 continue
-            cmat = CraftingMaterialType.objects.get(id=mat)
+            cmat = mat.type
             try:
                 pmat = pmats.get(type=cmat)
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 pmat = pmats.create(type=cmat)
             pmat.amount += amount
             pmat.save()

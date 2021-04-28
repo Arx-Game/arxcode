@@ -33,8 +33,8 @@ from web.character.models import (
     Flashback,
     CluePlotInvolvement,
 )
+from world.crafting.models import CraftingMaterialType
 from world.dominion.models import (
-    CraftingMaterialType,
     Organization,
     RPEvent,
     Propriety,

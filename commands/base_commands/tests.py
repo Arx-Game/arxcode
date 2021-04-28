@@ -11,8 +11,9 @@ from server.utils.test_utils import (
     TestEquipmentMixins,
     TestTicketMixins,
 )
+from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from world.dominion.domain.models import Army
-from world.dominion.models import CraftingMaterialType, RPEvent, CraftingRecipe
+from world.dominion.models import RPEvent
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
@@ -79,10 +80,10 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
     def test_craft_with_templates(self):
         self.setup()
 
-        recipe = CraftingRecipe.objects.create(name="Thing", ability="all", result="")
+        recipe = CraftingRecipe.objects.create(name="Thing", ability="all")
 
-        self.char1.dompc.assets.recipes.add(recipe)
-        self.char2.dompc.assets.recipes.add(recipe)
+        self.char1.dompc.assets.crafting_recipes.add(recipe)
+        self.char2.dompc.assets.crafting_recipes.add(recipe)
 
         self.assertEquals(self.template1.applied_to.count(), 0)
 
@@ -174,12 +175,13 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         )
         self.char2.currency = 100
         self.call_cmd("/learn Mask", "You have learned Mask for 10 silver.")
-        self.assertEqual(list(self.char2.dompc.assets.recipes.all()), [self.recipe6])
+        self.assertEqual(
+            list(self.char2.dompc.assets.crafting_recipes.all()), [self.recipe6]
+        )
         self.assertEqual(self.char2.currency, 90.0)
         self.call_cmd(
             "/info Mask",
-            "Name: Mask\nDescription: None\nSilver: 10\nPrimary Materials:\n"
-            "Mat1: 4 (0/4)",
+            "Name: Mask\nDescription: \nSilver: 10\nMaterials: Mat1: 4(0/4)",
         )
         self.call_cmd("/learn", "Recipes you can learn:")
         rtable.assert_called_with(
@@ -211,7 +213,9 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.recipe6.locks.replace("teach:all();learn:all()")
         self.recipe6.save()
         self.call_cmd("/teach Char=Mask", "Taught Char Mask.")
-        self.assertEqual(list(self.char.dompc.assets.recipes.all()), [self.recipe6])
+        self.assertEqual(
+            list(self.char.dompc.assets.crafting_recipes.all()), [self.recipe6]
+        )
         self.call_cmd("/teach Char=Mask", "They already know Mask.")
         self.recipe5.locks.replace("teach:all();learn:all()")
         self.recipe5.save()
@@ -778,6 +782,8 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
         self.mask1.remove(self.char2)
+        self.mask1.item_data.size = 20
+        self.purse1.item_data.capacity = 10
         self.call_cmd(
             "/outfit Bishikiller in purse1",
             "Slinkity1 is currently worn and cannot be moved.|"
@@ -2344,7 +2350,7 @@ class AdjustCommandTests(ArxCommandTest):
 
         # Get material and confirm increase.
         mat_type = CraftingMaterialType.objects.get(name__iexact="test material")
-        material = self.assetowner2.materials.get(type=mat_type)
+        material = self.assetowner2.owned_materials.get(type=mat_type)
         self.assertEqual(material.amount, 50)
 
         # Test award with message.

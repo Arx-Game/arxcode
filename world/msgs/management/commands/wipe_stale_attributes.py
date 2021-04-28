@@ -19,8 +19,41 @@ def wipe_attributes():
     from evennia.typeclasses.attributes import Attribute
 
     # different attributes that we're dumping due to not being used
-    attr_names = ["stealth", "sense_difficulty", "is_wieldable"]
-
-    print(
-        f"Deleting stale attributes: {Attribute.objects.filter(db_key__in=attr_names).delete()}"
-    )
+    attr_names = [
+        "stealth",
+        "sense_difficulty",
+        "is_wieldable",
+        "damage_bonus",
+        "worn_time",
+        "currently_worn",
+        "currently_wielded",
+        "penalty",
+        "armor_resilience",
+        "slot_limit",
+        "slot",
+        "attack_skill",
+        "attack_stat",
+        "damage_stat",
+        "damage_bonus",
+        "attack_type",
+        "can_be_parried",
+        "can_be_dodged",
+        "can_be_countered",
+        "can_parry",
+        "can_riposte",
+        "difficulty_mod",
+        "flat_damage_bonus",
+        "max_spots",
+        "occupants",
+        "sitting_at_table",
+        "places",
+        "materials",
+        "wielded_by",
+        "sheathed_by",
+        "can_be_blocked",
+        "ready_phrase",
+    ]
+    for attr in attr_names:
+        print(
+            f"Deleted stale attribute {attr}: {Attribute.objects.filter(db_key=attr).delete()}"
+        )

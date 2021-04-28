@@ -19,7 +19,8 @@ from evennia.utils.logger import log_info
 from commands.base import ArxCommand
 from server.utils import prettytable
 from evennia.utils.create import create_object
-from world.dominion.models import CraftingMaterialType, PlayerOrNpc, CraftingMaterials
+from world.crafting.models import OwnedMaterial, CraftingMaterialType
+from world.dominion.models import PlayerOrNpc
 from world.dominion import setup_utils
 from world.stats_and_skills import do_dice_check
 from evennia.server.models import ServerConfig
@@ -146,7 +147,7 @@ class CmdMarket(ArxCommand):
             self.switches.append("sell")
         materials = CraftingMaterialType.objects.filter(value__gte=0).order_by("value")
         if not caller.check_permstring("builders"):
-            materials = materials.exclude(acquisition_modifiers__icontains="nosell")
+            materials = materials.exclude(contraband=True)
         if not self.args:
             mult = get_cost_multipler()
             mtable = prettytable.PrettyTable(["{wMaterial", "{wCategory", "{wCost"])
@@ -156,9 +157,7 @@ class CmdMarket(ArxCommand):
             for mat in other_items:
                 mtable.add_row([mat, other_items[mat][1], other_items[mat][0]])
             caller.msg("\n{w" + "=" * 60 + "{n\n%s" % mtable)
-            pmats = CraftingMaterials.objects.filter(
-                owner__player__player=caller.player
-            )
+            pmats = OwnedMaterial.objects.filter(owner__player__player=caller.player)
             if pmats:
                 caller.msg(
                     "\n{wYour materials:{n %s" % ", ".join(str(ob) for ob in pmats)
@@ -215,11 +214,11 @@ class CmdMarket(ArxCommand):
             paystr = "%s silver" % cost
             if usemats:
                 try:
-                    mat = dompc.assets.materials.get(type=material)
+                    mat = dompc.assets.owned_materials.get(type=material)
                     mat.amount += amt
                     mat.save()
-                except CraftingMaterials.DoesNotExist:
-                    dompc.assets.materials.create(type=material, amount=amt)
+                except OwnedMaterial.DoesNotExist:
+                    dompc.assets.owned_materials.create(type=material, amount=amt)
             else:
                 material.create(caller)
             caller.msg("You buy %s %s for %s." % (amt, material, paystr))
@@ -241,8 +240,8 @@ class CmdMarket(ArxCommand):
             except PlayerOrNpc.DoesNotExist:
                 dompc = setup_utils.setup_dom_for_char(caller)
             try:
-                mat = dompc.assets.materials.get(type=material)
-            except CraftingMaterials.DoesNotExist:
+                mat = dompc.assets.owned_materials.get(type=material)
+            except OwnedMaterial.DoesNotExist:
                 caller.msg("You don't have any of %s." % material.name)
                 return
             if mat.amount < amt:
@@ -481,14 +480,14 @@ class HaggledDeal(object):
         else:  # crafting materials
             err = "You do not have enough %s to sell." % self.material
             try:
-                mats = self.caller.player_ob.Dominion.assets.materials.get(
+                mats = self.caller.player_ob.Dominion.assets.owned_materials.get(
                     type=self.material
                 )
                 if mats.amount < self.amount:
                     raise HaggleError(err)
                 mats.amount -= self.amount
                 mats.save()
-            except CraftingMaterials.DoesNotExist:
+            except OwnedMaterial.DoesNotExist:
                 raise HaggleError(err)
         silver = self.silver_value
         self.caller.pay_money(-silver)
@@ -516,7 +515,10 @@ class HaggledDeal(object):
             cost = self.silver_value
             if cost > self.caller.currency:
                 raise HaggleError(err % cost)
-            mat, _ = self.caller.player_ob.Dominion.assets.materials.get_or_create(
+            (
+                mat,
+                _,
+            ) = self.caller.player_ob.Dominion.assets.owned_materials.get_or_create(
                 type=self.material
             )
             mat.amount += self.amount
@@ -658,9 +660,9 @@ class CmdHaggle(ArxCommand):
             )
         if material not in HaggledDeal.VALID_RESOURCES:
             try:
-                material = CraftingMaterialType.objects.exclude(
-                    acquisition_modifiers__icontains="nosell"
-                ).get(name__iexact=material)
+                material = CraftingMaterialType.objects.exclude(contraband=True).get(
+                    name__iexact=material
+                )
                 material_identifier = material.id
             except CraftingMaterialType.DoesNotExist:
                 raise HaggleError("No material found for the name '%s'." % material)

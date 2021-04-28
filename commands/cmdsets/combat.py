@@ -22,7 +22,7 @@ from typeclasses.scripts.combat import combat_settings
 from evennia.objects.models import ObjectDB
 from typeclasses.npcs import npc_types
 from typeclasses.exceptions import InvalidTargetError
-from world.conditions.exceptions import TreatmentTooRecentError
+from world.conditions.exceptions import TreatmentTooRecentError, TreatmentAltConflict
 
 CSCRIPT = "typeclasses.scripts.combat.combat_script.CombatManager"
 
@@ -1707,6 +1707,14 @@ class CmdHeal(ArxCommand):
                     % caller
                 )
                 return
+            # check if they have the skill
+            if caller.traits.get_skill_value("medicine") < 1:
+                self.msg("You must have the medicine skill to heal another character.")
+                return
+            if targ in caller.alts:
+                self.msg("You are not allowed to use a command to benefit an alt.")
+                return
+
             # give healin'
             if "revive" in self.switches:
                 if targ.conscious:
@@ -1726,7 +1734,12 @@ class CmdHeal(ArxCommand):
                     "You have provided aid to %s to help them recover from injury."
                     % targ
                 )
-        except (self.error_class, InvalidTargetError, TreatmentTooRecentError) as err:
+        except (
+            self.error_class,
+            InvalidTargetError,
+            TreatmentTooRecentError,
+            TreatmentAltConflict,
+        ) as err:
             self.msg(err)
 
 

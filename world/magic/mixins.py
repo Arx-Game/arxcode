@@ -1,5 +1,5 @@
 from .models import Alignment, Affinity, Practitioner
-from world.dominion.models import CraftingRecipe, CraftingMaterialType
+from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from server.utils.arx_utils import a_or_an
 from evennia.utils import logger
 

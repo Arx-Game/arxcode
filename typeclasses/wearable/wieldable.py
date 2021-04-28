@@ -24,18 +24,15 @@ class Wieldable(Wearable):
     default_desc = "A weapon of some kind."
     SHEATHED_LIMIT = 6
     item_data_class = WieldableDataHandler
-    default_attack_skill = "medium wpn"
     default_attack_stat = "dexterity"
     default_damage_stat = "strength"
-    default_damage_bonus = 1
-    default_attack_type = "melee"
-    default_can_be_parried = True
     default_can_be_blocked = True
     default_can_be_dodged = True
     default_can_be_countered = True
-    default_can_parry = True
-    default_can_riposte = True
-    default_difficulty_mod = 0
+    default_ready_phrase = ""
+    baseval_scaling_divisor = 20.0
+    default_scaling = 0.2
+    default_currently_wielded = False
 
     def at_object_creation(self):
         """
@@ -49,17 +46,38 @@ class Wieldable(Wearable):
         self.cease_wield()
         super(Wieldable, self).softdelete()
 
-    def ranged_mode(self):
-        self.item_data.can_be_parried = False
-        self.item_data.can_parry = False
-        self.item_data.can_riposte = False
-        self.item_data.attack_type = "ranged"
+    @property
+    def default_attack_skill(self):
+        if self.item_data.recipe:
+            return self.item_data.recipe.weapon_skill
+        return "medium wpn"
 
-    def melee_mode(self):
-        self.item_data.can_be_parried = True
-        self.item_data.can_parry = True
-        self.item_data.can_parry = True
-        self.item_data.attack_type = "melee"
+    @property
+    def default_attack_type(self):
+        if self.item_data.recipe:
+            return self.item_data.recipe.attack_type
+        return "melee"
+
+    @property
+    def is_ranged(self):
+        """This specifies whether we're a melee or ranged weapon,
+        which implies some default behaviors"""
+        return self.item_data.attack_type == "ranged"
+
+    @property
+    def default_can_be_parried(self):
+        """By default, people cannot parry ranged weapons"""
+        return not self.is_ranged
+
+    @property
+    def default_can_parry(self):
+        """By default, ranged weapons can't be used to parry"""
+        return not self.is_ranged
+
+    @property
+    def default_can_riposte(self):
+        """By default, ranged weapons cannot riposte"""
+        return not self.is_ranged
 
     def at_before_move(self, destination, **kwargs):
         """Checks if the object can be moved"""
@@ -150,7 +168,6 @@ class Wieldable(Wearable):
 
     def at_post_wield(self, wielder):
         """Hook called after wielding succeeds."""
-        self.calc_weapon()
         if wielder:
             wielder.combat.setup_weapon(wielder.weapondata)
         self.announce_wield(wielder)
@@ -161,61 +178,8 @@ class Wieldable(Wearable):
         been wielded, and tells them.
         """
         exclude = [wielder]
-        msg = self.db.ready_phrase or "wields %s" % self.name
+        msg = self.item_data.ready_phrase or "wields %s" % self.name
         wielder.location.msg_contents("%s %s." % (wielder.name, msg), exclude=exclude)
-
-    def calc_weapon(self):
-        """
-        If we have crafted armor, return the value from the recipe and
-        quality.
-        """
-        quality = self.item_data.quality_level
-        recipe = self.item_data.recipe
-        diffmod = self.item_data.difficulty_mod
-        flat_damage_bonus = self.db.flat_damage_bonus or 0
-        if self.item_data.attack_skill == "huge wpn":
-            diffmod += 1
-        elif self.item_data.attack_skill == "archery":
-            self.ranged_mode()
-            diffmod -= 10
-        elif self.item_data.attack_skill == "small wpn":
-            diffmod -= 1
-        if not recipe:
-            return self.item_data.damage_bonus, diffmod, flat_damage_bonus
-        base = float(recipe.resultsdict.get("baseval", 0))
-        if quality >= 10:
-            crafter = self.item_data.crafted_by
-            if (
-                (recipe.level > 3)
-                or not crafter
-                or crafter.check_permstring("builders")
-            ):
-                base += 1
-        scaling = float(recipe.resultsdict.get("scaling", (base / 20) or 0.2))
-        if not base and not scaling:
-            self.ndb.cached_damage_bonus = 0
-            self.ndb.cached_difficulty_mod = diffmod
-            self.ndb.cached_flat_damage_bonus = flat_damage_bonus
-            return (
-                self.ndb.cached_damage_bonus,
-                self.ndb.cached_difficulty_mod,
-                self.ndb.cached_flat_damage_bonus,
-            )
-        try:
-            damage = int(round(base + (scaling * quality)))
-            diffmod -= int(round(0.2 * quality))
-            flat_damage_bonus += (quality - 2) * 2
-        except (TypeError, ValueError):
-            print("Error setting up weapon ID: %s" % self.id)
-            damage = 0
-        self.ndb.cached_damage_bonus = damage
-        self.ndb.cached_difficulty_mod = diffmod
-        self.ndb.cached_flat_damage_bonus = flat_damage_bonus
-        return damage, diffmod, flat_damage_bonus
-
-    def calc_armor(self):
-        """Sheathed/worn weapons have no armor value or other modifiers"""
-        return 0, 0, 0
 
     def check_fashion_ready(self):
         from world.fashion.mixins import FashionableMixins
@@ -232,36 +196,35 @@ class Wieldable(Wearable):
         return True
 
     @property
-    def damage_bonus(self):
-        if not self.item_data.recipe or self.db.ignore_crafted:
-            return self.item_data.damage_bonus
-        if self.ndb.cached_damage_bonus is not None:
-            return self.ndb.cached_damage_bonus
-        return self.calc_weapon()[0]
-
-    @damage_bonus.setter
-    def damage_bonus(self, value):
-        """
-        Manually sets the value of our weapon, ignoring any crafting recipe we have.
-        """
-        self.item_data.damage_bonus = value
-        self.ndb.cached_damage_bonus = value
+    def default_damage_bonus(self):
+        if not self.item_data.recipe:
+            return 1
+        return int(
+            round(
+                self.modified_baseval
+                + (self.quality_scaling * self.item_data.quality_level)
+            )
+        )
 
     @property
-    def difficulty_mod(self):
-        if not self.item_data.recipe or self.db.ignore_crafted:
-            return self.item_data.difficulty_mod
-        if self.ndb.cached_difficulty_mod is not None:
-            return self.ndb.cached_difficulty_mod
-        return self.calc_weapon()[1]
+    def default_difficulty_mod(self):
+        diffmod = 0
+        if self.item_data.attack_skill == "huge wpn":
+            diffmod += 1
+        elif self.item_data.attack_skill == "archery":
+            diffmod -= 10
+        elif self.item_data.attack_skill == "small wpn":
+            diffmod -= 1
+        if not self.item_data.recipe:
+            return diffmod
+        diffmod -= int(round(0.2 * self.item_data.quality_level))
+        return diffmod
 
     @property
-    def flat_damage(self):
-        if not self.item_data.recipe or self.db.ignore_crafted:
-            return self.db.flat_damage_bonus or 0
-        if self.ndb.cached_flat_damage_bonus is not None:
-            return self.ndb.cached_flat_damage_bonus
-        return self.calc_weapon()[2]
+    def default_flat_damage_bonus(self):
+        if not self.item_data.recipe:
+            return 0
+        return (self.item_data.quality_level - 2) * 2
 
     @property
     def armor(self):

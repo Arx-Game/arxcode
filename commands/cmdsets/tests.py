@@ -7,11 +7,16 @@ from unittest import skip
 from server.utils.test_utils import ArxCommandTest
 from . import combat, market, home
 
+from web.character.models import PlayerAccount
+from world.crafting.models import CraftingRecipe, CraftingMaterialType
+
 
 # noinspection PyUnresolvedReferences
 # noinspection PyUnusedLocal
 @patch.object(combat, "inform_staff")
 class CombatCommandsTests(ArxCommandTest):
+    num_additional_characters = 1
+
     def start_fight(self, *args):
         """Helper function for starting a fight in our test"""
         fight = combat.start_fight_at_room(self.room1)
@@ -52,17 +57,52 @@ class CombatCommandsTests(ArxCommandTest):
         )
         self.assertTrue(self.char1.ndb.healing_gm_allow)
         self.caller = self.char1
+        self.call_cmd(
+            "char2", "You must have the medicine skill to heal another character."
+        )
+        self.char1.traits.set_skill_value("medicine", 1)
+        player = PlayerAccount.objects.create(email="foo")
+        self.char1.roster.current_account = player
+        self.char1.roster.save()
+        self.char2.roster.current_account = player
+        self.char2.roster.save()
+        self.assertIn(self.char1, self.char2.alts)
+        self.assertIn(self.char2, self.char1.alts)
+        self.call_cmd(
+            "char2", "You are not allowed to use a command to benefit an alt."
+        )
+        self.char2.roster.current_account = None
+        self.char2.roster.save()
         self.call_cmd("char2", "Char2 does not require any medical attention.")
         self.char2.traits.create_wound()
-        mock_randint.return_value = 30
+        mock_randint.return_value = 20
+        self.char.traits.set_skill_value("medicine", 2)
         self.call_cmd(
             "char2",
             "Char checks 'recovery treatment' at easy. Char is marginally successful.|"
             "You have provided aid to Char2 to help them recover from injury.",
         )
+        self.assertEqual(self.char2.health_status.get_total_healing_for_wound(), 9)
+        self.char2.health_status.apply_treatment_to_wounds()
+        self.assertEqual(self.char2.health_status.serious_wounds[0].healing, 9)
         self.call_cmd(
             "char2", "Char has attempted to assist with their recovery too recently."
         )
+        self.char3.roster.current_account = player
+        self.char3.roster.save()
+        self.caller = self.char3
+        self.char3.ndb.healing_permits = {self.char2}
+        self.char3.traits.set_skill_value("medicine", 2)
+        self.char3.ndb.healing_gm_allow = True
+        self.call_cmd("char2", "You are not allowed to heal the same target with alts.")
+        self.char3.roster.current_account = None
+        self.char3.roster.save()
+        self.call_cmd(
+            "char2",
+            "Char3 checks 'recovery treatment' at easy. Char3 is marginally successful.|"
+            "You have provided aid to Char2 to help them recover from injury.",
+        )
+        self.caller = self.char1
         self.char2.health_status.treatment_attempts.all().delete()
         self.char2.health_status.heal_wound()
         self.char2.dmg = 20
@@ -434,17 +474,6 @@ class CombatCommandsTests(ArxCommandTest):
         self, mock_dice_check, mock_randint, mock_check_randint, mock_char_inform_staff
     ):
         self.setup_cmd(combat.CmdAttack, self.char1)
-        from evennia.utils import create
-
-        self.account3 = create.create_account(
-            "TestAccount3",
-            email="test@test.com",
-            password="testpassword",
-            typeclass=self.account_typeclass,
-        )
-        self.char3 = create.create_object(
-            self.character_typeclass, key="Char3", location=self.room1, home=self.room1
-        )
         self.char3.account = self.account3
         self.account3.db._last_puppet = self.char3
         self.char1.db.defenders = [self.char3]
@@ -776,7 +805,6 @@ class CombatCommandsTests(ArxCommandTest):
 class TestMarketCommands(ArxCommandTest):
     @patch.object(market, "do_dice_check")
     def test_cmd_haggle(self, mock_dice_check):
-        from world.dominion.models import CraftingMaterialType
 
         self.setup_cmd(market.CmdHaggle, self.char1)
         self.call_cmd(
@@ -880,7 +908,7 @@ class TestMarketCommands(ArxCommandTest):
         )
         deal = list(self.char1.db.haggling_deal)
         self.call_cmd("/accept", "You have bought 10 testium for 17500.0 silver.")
-        mats = self.assetowner.materials.get(type__name=material.name)
+        mats = self.assetowner.owned_materials.get(type__name=material.name)
         self.assertEqual(mats.amount, 10)
         deal[0] = "sell"
         deal[2] = 30
@@ -944,13 +972,12 @@ class TestMarketCommands(ArxCommandTest):
 
 class TestHomeCommands(ArxCommandTest):
     def test_cmd_shop(self):
-        from world.dominion.models import CraftingRecipe
 
         recipes = {
             CraftingRecipe.objects.create(id=1, name="Item1", additional_cost=10),
             CraftingRecipe.objects.create(id=2, name="Item2"),
         }
-        self.char2.player_ob.Dominion.assets.recipes.set(recipes)
+        self.char2.player_ob.Dominion.assets.crafting_recipes.set(recipes)
         prices = self.room.db.crafting_prices or {}
         prices[1] = 10
         prices["removed"] = {2}
