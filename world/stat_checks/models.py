@@ -264,7 +264,7 @@ class DamageRating(NameIntegerLookupModel):
         damage = randint(self.value, self.max_value)
         # apply mitigation
         damage = self.mitigate_damage(character, damage)
-        character.take_damage(damage)
+        character.take_damage(damage, quiet=False)
 
     def mitigate_damage(self, character, damage) -> int:
         # resists aren't affected by armor reduction

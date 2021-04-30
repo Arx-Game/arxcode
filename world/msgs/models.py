@@ -169,8 +169,8 @@ class MarkReadMixin(object):
     def get_sender_name(self, viewer):
         sender = self.sender
         if sender:
-            if sender.db.longname:
-                real_name = sender.db.longname
+            if sender.item_data.longname:
+                real_name = sender.item_data.longname
             else:
                 real_name = sender.key
         else:

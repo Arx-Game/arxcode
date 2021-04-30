@@ -59,3 +59,26 @@ class Permanence(SharedMemoryModel):
 
     class Meta:
         verbose_name_plural = "Permanence"
+
+
+class DisplayNames(SharedMemoryModel):
+    """
+    Model for storing values of different display names for an object - such
+    as a color-formatted version of the name, a name with titles, or a fake name
+    from a mask. As with others, these are deliberately nullable because the
+    wrappers explicitly check for a null value to see if an individual field
+    should be ignored.
+    """
+
+    objectdb = models.OneToOneField(
+        to="objects.ObjectDB",
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="display_names",
+    )
+    false_name = models.CharField(null=True, blank=True, max_length=255)
+    colored_name = models.TextField(null=True, blank=True)
+    longname = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = "Display Names"

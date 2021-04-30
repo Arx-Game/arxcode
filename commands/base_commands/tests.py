@@ -1566,7 +1566,7 @@ class SocialTestsPlus(ArxCommandTest):
             "/claim Char2=test test test",
             "You have already claimed a scene with Char2 this week.",
         )
-        self.char2.db.false_name = "asdf"
+        self.char2.item_data.false_name = "asdf"
         self.char2.aliases.add("asdf")
         self.caller = self.char3  # mask test, not staff
         self.call_cmd("/claim Char2=meow", "Could not find 'Char2'.")

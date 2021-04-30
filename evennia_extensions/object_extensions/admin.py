@@ -2,7 +2,11 @@ from django.contrib import admin
 
 from evennia.objects.admin import ObjectDBAdmin
 from evennia.objects.models import ObjectDB
-from evennia_extensions.object_extensions.models import Dimensions, Permanence
+from evennia_extensions.object_extensions.models import (
+    Dimensions,
+    Permanence,
+    DisplayNames,
+)
 
 from web.character.models import Clue
 from world.traits.models import CharacterTraitValue, Trait
@@ -107,18 +111,24 @@ class WeaponOverrideInline(admin.TabularInline):
     raw_id_fields = ("objectdb",)
 
 
+class DisplayNamesInline(admin.TabularInline):
+    model = DisplayNames
+    extra = 0
+
+
 class ArxObjectDBAdmin(ObjectDBAdmin):
     search_fields = ["=id", "db_key"]
     inlines = list(ObjectDBAdmin.inlines) + [
-        SecretsInline,
+        DisplayNamesInline,
         DimensionsInline,
         PermanenceInline,
+        SecretsInline,
     ]
     character_inlines = [CharacterTraitValueInline]
     crafted_inlines = [
         CraftingRecordInline,
-        TranslatedDescriptionInline,
         AdornedMaterialInline,
+        TranslatedDescriptionInline,
     ]
     mask_inlines = [MaskedDescriptionInline]
     place_inlines = [PlaceSpotsOverrideInline]
@@ -147,9 +157,7 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
                 final_inlines += self.wearable_inlines
             if isinstance(obj, Wieldable):
                 final_inlines += self.wieldable_inlines
-            return [
-                inline(self.model, self.admin_site) for inline in set(final_inlines)
-            ]
+            return [inline(self.model, self.admin_site) for inline in final_inlines]
         return []
 
 

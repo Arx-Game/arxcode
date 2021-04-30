@@ -403,7 +403,7 @@ class CmdBuildRoom(CmdDig):
         loc.db.expansions = expansions
         new_room.name = (
             new_room.name
-        )  # this will setup .db.colored_name and strip ansi from key
+        )  # this will setup item_data.colored_name and strip ansi from key
         if cost_increase and assets.id in permits:
             permits[assets.id] += cost_increase
             loc.db.permitted_builders = permits
@@ -835,9 +835,11 @@ class CmdManageShop(ArxCommand):
             )
             if not obj:
                 return
+            item_prices = loc.db.item_prices or {}
             obj.at_drop(caller)
             obj.location = None
-            loc.db.item_prices[obj.id] = price
+            item_prices[obj.id] = price
+            loc.db.item_prices = item_prices
             obj.tags.add("for_sale")
             obj.db.sale_location = loc
             caller.msg("You put %s for sale for %s silver." % (obj, price))

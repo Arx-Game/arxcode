@@ -211,7 +211,7 @@ def character_list(request):
             "personality": char.db.personality,
             "background": char.db.background,
             "status": char.roster.roster.name,
-            "longname": char.db.longname,
+            "longname": char.item_data.longname,
         }
         try:
             if char.portrait:

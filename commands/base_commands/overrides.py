@@ -745,7 +745,7 @@ class CmdWho(ArxPlayerCommand):
         if lname and not sparse:
             char = player.char_ob
             if char:
-                base = char.db.longname or base
+                base = char.item_data.longname or base
         if player.db.afk:
             base += " {w(AFK){n"
         if player.db.lookingforrp:

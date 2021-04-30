@@ -591,7 +591,7 @@ class WeeklyEvents(RunDateMixin, Script):
             try:
                 char = tup[0]
                 votes = tup[1]
-                name = char.db.longname or char.key
+                name = char.item_data.longname or char.key
                 string += "{w%s){n %-35s {wXP{n: %s\n" % (num, name, votes)
             except AttributeError:
                 print("Could not find character of id %s during posting." % str(tup[0]))

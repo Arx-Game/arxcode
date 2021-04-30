@@ -173,6 +173,9 @@ class DescMixins(object):
 
 
 class NameMixins(object):
+    default_false_name = None
+    default_colored_name = None
+
     @property
     def is_disguised(self):
         return bool(self.fakename)
@@ -182,7 +185,7 @@ class NameMixins(object):
         """
         :type self: ObjectDB
         """
-        return self.db.false_name
+        return self.item_data.false_name
 
     @fakename.setter
     def fakename(self, val):
@@ -190,8 +193,8 @@ class NameMixins(object):
         :type self: ObjectDB
         :param val: str
         """
-        old = self.db.false_name
-        self.db.false_name = val
+        old = self.item_data.false_name
+        self.item_data.false_name = val
         if old:
             old = parse_ansi(old, strip_ansi=True)
             self.aliases.remove(old)
@@ -204,35 +207,41 @@ class NameMixins(object):
         """
         :type self: ObjectDB
         """
-        old = self.db.false_name
+        old = self.item_data.false_name
         if old:
             old = parse_ansi(old, strip_ansi=True)
             self.aliases.remove(old)
-        self.attributes.remove("false_name")
+        self.item_data.false_name = None
         self.tags.remove("disguised")
 
-    def __name_get(self):
+    @property
+    def name(self):
         """
         :type self: ObjectDB
         """
-        name = self.fakename or self.db.colored_name or self.key or ""
+        name = self.fakename or self.item_data.colored_name or self.key or ""
         name = name.rstrip("{/").rstrip("|/") + (
             "{n" if ("{" in name or "|" in name or "%" in name) else ""
         )
         return name
 
-    def __name_set(self, val):
+    @name.setter
+    def name(self, val):
         """
         :type self: ObjectDB
         """
         # convert color codes
         val = sub_old_ansi(val)
-        self.db.colored_name = val
-        self.key = parse_ansi(val, strip_ansi=True)
+        uncolored_val = parse_ansi(val, strip_ansi=True)
+        if val == uncolored_val:
+            # if our name isn't colored, wipe the colored_name value
+            del self.item_data.colored_name
+        else:
+            # update the colored_name value
+            self.item_data.colored_name = val
+        self.key = uncolored_val
         self.ndb.cached_template_desc = None
         self.save()
-
-    name = property(__name_get, __name_set)
 
     def __str__(self):
         return self.name
@@ -431,7 +440,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                     lname += "|w (%s)|n" % con.db.room_title
                 elif con == pobject:
                     continue
-                if con.key in lname and not con.db.false_name:
+                if con.key in lname and not con.item_data.false_name:
                     lname = lname.replace(key, "|c%s|n" % key)
                     users.append(lname)
                 else:
@@ -722,6 +731,8 @@ class CraftingMixins(object):
     default_type_description_name = None
     should_format_desc = False
     default_recipe = None
+    default_quality_level = None
+    default_crafted_by = None
 
     @lazy_property
     def junk_handler(self):

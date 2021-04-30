@@ -29,6 +29,7 @@ from world.stat_checks.constants import (
 )
 from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
 from world.traits.traitshandler import Traitshandler
+from evennia_extensions.object_extensions.item_data_handler import CharacterDataHandler
 
 
 class Character(
@@ -58,6 +59,9 @@ class Character(
     at_post_puppet - Echoes "PlayerName has entered the game" to the room.
 
     """
+
+    item_data_class = CharacterDataHandler
+    default_longname = None
 
     def at_object_creation(self):
         """
@@ -471,11 +475,11 @@ class Character(
         """
         Returns either an illusioned name, a long_name with titles, or our key.
         """
-        if self.db.false_name and display_mask:
-            return self.db.false_name
-        if not short and self.db.longname:
-            return self.db.longname
-        return self.db.colored_name or self.key
+        if self.item_data.false_name and display_mask:
+            return self.item_data.false_name
+        if not short and self.item_data.longname:
+            return self.item_data.longname
+        return self.item_data.colored_name or self.key
 
     @property
     def max_hp(self):
@@ -1104,7 +1108,7 @@ class Character(
         results = [
             ob
             for ob in results
-            if not ob.db.false_name or searchdata.lower() != ob.key.lower()
+            if not ob.item_data.false_name or searchdata.lower() != ob.key.lower()
         ]
         # quiet means that messaging is handled elsewhere
         if quiet:
@@ -1301,13 +1305,14 @@ class Character(
         cleaving: bool = False,
         private: bool = False,
         risk: int = 4,
+        quiet: bool = True,
     ):
         # apply AE damage to multinpcs if we're cleaving
         # TODO: move ae_dmg application to subclass
         if cleaving and hasattr(self, "ae_dmg"):
             self.ae_dmg += amount
         self.change_health(
-            -amount, quiet=True, affect_real_dmg=affect_real_damage, wake=False
+            -amount, quiet=quiet, affect_real_dmg=affect_real_damage, wake=False
         )
         # check for death
         if can_kill and affect_real_damage:

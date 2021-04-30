@@ -8,6 +8,7 @@ where the data is stored.
 from evennia_extensions.object_extensions.storage_wrappers import (
     DimensionsWrapper,
     PermanenceWrapper,
+    DisplayNamesWrapper,
 )
 from server.utils.arx_utils import CachedProperty
 
@@ -16,6 +17,7 @@ class ItemDataHandler:
     def __init__(self, obj):
         self.obj = obj
 
+    # properties for dimensions
     size = DimensionsWrapper()
     weight = DimensionsWrapper()
     capacity = DimensionsWrapper()
@@ -25,8 +27,13 @@ class ItemDataHandler:
     def total_size(self):
         return self.size * self.quantity
 
+    # properties for object existence
     put_time = PermanenceWrapper()
     deleted_time = PermanenceWrapper()
+
+    # properties for object name
+    false_name = DisplayNamesWrapper()
+    colored_name = DisplayNamesWrapper()
 
     # properties that will be overridden, but we want sensible defaults
     currently_worn = False
@@ -49,3 +56,7 @@ class ItemDataHandler:
         self.obj.translations.get_or_create(language=language, description=description)
         # clear the cache
         del self.translation
+
+
+class CharacterDataHandler(ItemDataHandler):
+    longname = DisplayNamesWrapper()

@@ -30,7 +30,7 @@ class Place(Object):
             return 6
         base = self.item_data.recipe.base_value
         scaling = self.item_data.recipe.scaling
-        quality = self.item_data.quality
+        quality = self.item_data.quality_level
         return int(base + int(scaling * quality))
 
     def at_object_creation(self):

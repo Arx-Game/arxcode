@@ -27,7 +27,7 @@ from world.stats_and_skills import (
     get_stat_cost,
     get_skill_cost,
 )
-import time
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class Npc(Character):
@@ -398,6 +398,13 @@ class MultiNpc(Npc):
 
 # noinspection PyAttributeOutsideInit
 class AgentMixin(object):
+    @property
+    def default_colored_name(self):
+        try:
+            return self.agent.colored_name
+        except ObjectDoesNotExist:
+            return None
+
     @property
     def desc(self):
         return self.agent.desc

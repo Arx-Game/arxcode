@@ -52,6 +52,7 @@ def wipe_attributes():
         "sheathed_by",
         "can_be_blocked",
         "ready_phrase",
+        "destroyable",
     ]
     for attr in attr_names:
         print(

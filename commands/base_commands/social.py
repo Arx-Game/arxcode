@@ -417,7 +417,7 @@ class CmdFinger(ArxPlayerCommand):
             caller.msg("No character found.")
             return
         viewing_own_character = player == caller
-        name = char.db.longname or char.key
+        name = char.item_data.longname or char.key
         msg = "\n{wName:{n %s\n" % name
         titles = char.titles
         if titles:

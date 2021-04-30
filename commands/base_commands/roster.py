@@ -135,7 +135,7 @@ def list_characters(
                 ):
                     name += "{w(%s){n" % charob.name
                 if titles:
-                    title = charob.db.longname
+                    title = charob.item_data.longname
                     if title and not hide:
                         name = "{n" + title.replace(char, "{c" + char + "{n")
                 # yes, yes, I know they're not the same thing.
@@ -689,7 +689,7 @@ def display_header(caller, character, show_hidden=False):
     """
     if not caller or not character:
         return
-    longname = character.db.longname
+    longname = character.item_data.longname
     if not longname:
         longname = character.key
         if not longname:
@@ -1153,7 +1153,7 @@ class CmdPropriety(ArxPlayerCommand):
         if ppl:
 
             def find_longname(owner):
-                longname = owner.player.player.char_ob.db.longname
+                longname = owner.player.player.char_ob.item_data.longname
                 if not longname:
                     longname = owner.player.player.char_ob.key
                 if not longname:
