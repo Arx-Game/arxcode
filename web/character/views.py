@@ -310,7 +310,7 @@ class InactiveRosterListView(IncompleteRosterListView):
 
 
 def gallery(request, object_id):
-    """"List photos that belong to object_id"""
+    """ "List photos that belong to object_id"""
     character = get_character_from_ob(object_id)
     user = request.user
     can_upload = False

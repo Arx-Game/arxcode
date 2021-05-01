@@ -22,7 +22,7 @@ class CmdDiceString(ArxCommand):
     locks = "cmd:all()"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         args = self.args
         dicest = caller.db.dice_string

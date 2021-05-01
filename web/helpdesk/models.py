@@ -453,13 +453,13 @@ class Ticket(SharedMemoryModel):
     ticket = property(_get_ticket)
 
     def _get_ticket_for_url(self):
-        """ A URL-friendly ticket ID, used in links. """
+        """A URL-friendly ticket ID, used in links."""
         return u"%s-%s" % (self.queue.slug, self.id)
 
     ticket_for_url = property(_get_ticket_for_url)
 
     def _get_priority_img(self):
-        """ Image-based representation of the priority """
+        """Image-based representation of the priority"""
         from django.conf import settings
 
         return u"%shelpdesk/priorities/priority%s.png" % (
@@ -811,7 +811,7 @@ class Attachment(models.Model):
     )
 
     def get_upload_to(self, field_attname):
-        """ Get upload_to path specific to this item """
+        """Get upload_to path specific to this item"""
         if not self.id:
             return ""
         return "helpdesk/attachments/%s/%s" % (

@@ -61,7 +61,7 @@ class SimpleRoll:
             return NotImplemented
 
     def __eq__(self, other: "SimpleRoll"):
-        """Equal if they have the same apparent result object and the """
+        """Equal if they have the same apparent result object and the"""
         return (self.roll_result_object == other.roll_result_object) and abs(
             self.result_value - other.result_value
         ) <= self.tie_threshold

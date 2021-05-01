@@ -33,7 +33,7 @@ class CmdBriefMode(ArxCommand):
     help_category = "Settings"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         caller.db.briefmode = not caller.db.briefmode
         if not caller.db.briefmode:
@@ -319,7 +319,7 @@ class CmdShout(RewardRPToolUseMixin, ArxCommand):
     help_category = "Social"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         args = self.args
         switches = self.switches
@@ -358,7 +358,7 @@ class CmdFollow(ArxCommand):
     help_category = "Travel"
 
     def func(self):
-        """ Handles followin' """
+        """Handles followin'"""
         caller = self.caller
         args = self.args
         f_targ = caller.ndb.following
@@ -393,7 +393,7 @@ class CmdDitch(ArxCommand):
     help_category = "Travel"
 
     def func(self):
-        """ Handles followin' """
+        """Handles followin'"""
         caller = self.caller
         args = self.args
         followers = caller.ndb.followers
@@ -1306,7 +1306,7 @@ class CmdDirections(ArxCommand):
     locks = "cmd:all()"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         if "off" in self.switches or not self.args:
             if caller.ndb.waypoint:

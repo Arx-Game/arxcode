@@ -71,7 +71,7 @@ class Command(BaseCommand):
 
 
 def escalate_tickets(queues, verbose):
-    """ Only include queues with escalation configured """
+    """Only include queues with escalation configured"""
     queryset = Queue.objects.filter(escalate_days__isnull=False).exclude(
         escalate_days=0
     )

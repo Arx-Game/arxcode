@@ -203,7 +203,7 @@ class CmdWhere(ArxPlayerCommand):
         self.msg(msg)
 
     def func(self):
-        """"Execute command."""
+        """ "Execute command."""
         caller = self.caller
         if "shops" in self.switches:
             self.list_shops()

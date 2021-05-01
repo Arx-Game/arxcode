@@ -61,7 +61,7 @@ class CmdAgents(ArxPlayerCommand):
 
     @staticmethod
     def find_barracks(owner):
-        """"find rooms that are tagged as being barracks for that owner"""
+        """ "find rooms that are tagged as being barracks for that owner"""
         tagname = str(owner.owner) + "_barracks"
         rooms = ObjectDB.objects.filter(db_tags__db_key__iexact=tagname)
         return list(rooms)
