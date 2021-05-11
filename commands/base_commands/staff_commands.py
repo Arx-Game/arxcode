@@ -2363,7 +2363,7 @@ class CmdAdjust(ArxPlayerCommand):
 
     Usage:
         @adjust/material <char1>,<char2>,etc.=<material>,<amount>[/<inform msg>]
-        @adjust/resource <char1>,<char2>,etc.=<res type>,<amount>[/<inform msg>]
+        @adjust/resource <char1>,<char2>,etc.=<resource>,<amount>[/<inform msg>]
         @adjust/silver <char1>,<char2>,etc.=<amount>[/<inform msg>]
 
     Players will receive an inform stating what was adjusted and
@@ -2415,12 +2415,15 @@ class CmdAdjust(ArxPlayerCommand):
             with transaction.atomic():
                 for name in name_list:
                     account, char = self._get_char_account(name)
+                    if not account or not char:
+                        fail_list.append(name)
+                        continue
                     success = self._adjust_char_material(char, account, material, qty)
                     if success:
-                        success_list.append(name.title())
+                        success_list.append(char.key)
                         inform_list.append(account)
                     else:
-                        fail_list.append(name.title())
+                        fail_list.append(char.key)
         except DatabaseError:
             # If something went wrong, the database should roll back to no changes.
             # Thus, don't notify anyone.
@@ -2442,11 +2445,13 @@ class CmdAdjust(ArxPlayerCommand):
             )
             inform_staff(staff_msg)
 
-            caller_msg = self._build_caller_message(material, qty, success_list)
+            caller_msg = self._build_caller_message(
+                material, qty, inform_msg, success_list
+            )
             self.caller.msg(caller_msg)
 
         if fail_list:
-            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}")
+            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}.")
 
     def do_adjust_resource(self):
         name_list = self.lhs.split(",")
@@ -2469,12 +2474,15 @@ class CmdAdjust(ArxPlayerCommand):
             with transaction.atomic():
                 for name in name_list:
                     account, char = self._get_char_account(name)
+                    if not account or not char:
+                        fail_list.append(name)
+                        continue
                     success = self._adjust_char_resource(char, account, resource, qty)
                     if success:
-                        success_list.append(name.title())
+                        success_list.append(char.key)
                         inform_list.append(account)
                     else:
-                        fail_list.append(name.title())
+                        fail_list.append(char.key)
         except DatabaseError:
             # If something went wrong, the database should roll back to no changes.
             # Thus, don't notify anyone.
@@ -2499,12 +2507,12 @@ class CmdAdjust(ArxPlayerCommand):
             inform_staff(staff_msg)
 
             caller_msg = self._build_caller_message(
-                f"{resource} resources", qty, success_list
+                f"{resource} resources", qty, inform_msg, success_list
             )
             self.caller.msg(caller_msg)
 
         if fail_list:
-            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}")
+            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}.")
 
     def do_adjust_silver(self):
         name_list = self.lhs.split(",")
@@ -2523,12 +2531,15 @@ class CmdAdjust(ArxPlayerCommand):
             with transaction.atomic():
                 for name in name_list:
                     account, char = self._get_char_account(name)
+                    if not account or not char:
+                        fail_list.append(name)
+                        continue
                     success = self._adjust_char_silver(char, account, qty)
                     if success:
-                        success_list.append(name.title())
+                        success_list.append(char.key)
                         inform_list.append(account)
                     else:
-                        fail_list.append(name.title())
+                        fail_list.append(char.key)
         except DatabaseError:
             # If something went wrong, the database should roll back to no changes.
             # Thus, don't notify anyone.
@@ -2550,11 +2561,13 @@ class CmdAdjust(ArxPlayerCommand):
             )
             inform_staff(staff_msg)
 
-            caller_msg = self._build_caller_message("silver", qty, success_list)
+            caller_msg = self._build_caller_message(
+                "silver", qty, inform_msg, success_list
+            )
             self.caller.msg(caller_msg)
 
         if fail_list:
-            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}")
+            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}.")
 
     def _get_material_rhs(self) -> Tuple[str, int, Optional[str]]:
         syntax_error = "Usage: @adjust/material <char1>,<char2>,etc.=<material>,<amount>[/<inform msg>]"
@@ -2578,7 +2591,7 @@ class CmdAdjust(ArxPlayerCommand):
         return material, qty, inform_msg
 
     def _get_resource_rhs(self) -> Tuple[str, int, Optional[str]]:
-        syntax_error = "Usage: @adjust/material <char1>,<char2>,etc.=<material>,<amount>[/<inform msg>]"
+        syntax_error = "Usage: @adjust/resource <char1>,<char2>,etc.=<resource>,<amount>[/<inform msg>]"
 
         # Extract inform msg if it exists.
         try:
@@ -2637,11 +2650,16 @@ class CmdAdjust(ArxPlayerCommand):
 
         return full_msg
 
-    def _build_caller_message(self, item, qty: int, success_list: List[str]) -> str:
+    def _build_caller_message(
+        self, item, qty: int, inform_msg: str, success_list: List[str]
+    ) -> str:
         if qty > 0:
-            caller_msg = f"Awarded {qty} {item} to: {', '.join(success_list)}"
+            caller_msg = f"Awarded {qty} {item} to: {', '.join(success_list)}."
         else:
-            caller_msg = f"Deducted {abs(qty)} {item} from: {', '.join(success_list)}"
+            caller_msg = f"Deducted {abs(qty)} {item} from: {', '.join(success_list)}."
+
+        if inform_msg:
+            caller_msg = f"{caller_msg}  Message sent to player(s): {inform_msg}"
 
         return caller_msg
 
@@ -2649,15 +2667,12 @@ class CmdAdjust(ArxPlayerCommand):
         self, adjust_type, qty: int, inform_msg: str, success_list: List[str]
     ) -> str:
         if qty > 0:
-            prefix = f"{self.caller} awarded {qty} {adjust_type} to: "
+            success_msg = f"{self.caller} awarded {qty} {adjust_type} to: {', '.join(success_list)}."
         else:
-            prefix = f"{self.caller} deducted {abs(qty)} {adjust_type} from: "
+            success_msg = f"{self.caller} deducted {abs(qty)} {adjust_type} from: {', '.join(success_list)}."
 
-        success_msg = (
-            f"{prefix}"
-            + ", ".join(success_list)
-            + f".  Message sent to player(s): {inform_msg}"
-        )
+        if inform_msg:
+            success_msg = f"{success_msg}  Message sent to player(s): {inform_msg}"
 
         return success_msg
 
@@ -2671,9 +2686,7 @@ class CmdAdjust(ArxPlayerCommand):
         if qty < 0:
             on_hand = account.get_material_amt(material)
             if abs(qty) > on_hand:
-                self.caller.msg(
-                    f"ERROR: {char} only has {on_hand} of {material} on hand."
-                )
+                self.caller.msg(f"{char} only has {on_hand} of {material} on hand.")
                 return False
 
         # Give qty material to character.
@@ -2703,7 +2716,6 @@ class CmdAdjust(ArxPlayerCommand):
             self.caller.msg(f"Failed to adjust {char}'s {resource} resources.")
             return False
 
-        self.caller.msg(f"Adjusted {char}'s {resource} resources by {qty}.")
         return True
 
     def _adjust_char_silver(self, char: Character, account: Account, qty: int) -> bool:
@@ -2714,11 +2726,10 @@ class CmdAdjust(ArxPlayerCommand):
         if qty < 0:
             on_hand = char.db.currency
             if abs(qty) > on_hand:
-                self.caller.msg(f"ERROR: {char} only has {on_hand} silver on hand.")
+                self.caller.msg(f"{char} only has {on_hand} silver on hand.")
                 return False
 
         # Increment/decrement silver amount.
         char.db.currency += qty
 
-        self.caller.msg(f"Adjusted {char}'s silver by {qty}.")
         return True

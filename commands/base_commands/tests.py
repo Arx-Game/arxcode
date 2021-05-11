@@ -2260,22 +2260,23 @@ class AdjustCommandTests(ArxCommandTest):
 
         CraftingMaterialType.objects.create(name="test material")
 
+        self.add_character(3)
+        self.add_character(4)
+        self.setup_character_and_account(self.char3, self.account3, 3)
+        self.setup_character_and_account(self.char4, self.account4, 4)
+
         self.char2.player.inform = Mock()
 
     @patch("typeclasses.accounts.Account.gain_materials")
     @patch("typeclasses.accounts.Account.gain_resources")
     def test_adjust_failures(self, mock_res_gain, mock_mat_gain):
 
-        not_found = "Could not find 'foo'.|Check spelling and try again."
+        not_found = "Could not find 'foo'.|Failed to adjust: foo."
         self.call_cmd("/material foo=test material,1", not_found)
 
         # Syntax error
-        mat_syntax_error = (
-            "Usage: @adjust/material <character>=<material>,<amount>[/<inform msg>]"
-        )
-        res_syntax_error = (
-            "Usage: @adjust/resource <character>=<res type>,<amount>[/<inform msg>]"
-        )
+        mat_syntax_error = "Usage: @adjust/material <char1>,<char2>,etc.=<material>,<amount>[/<inform msg>]"
+        res_syntax_error = "Usage: @adjust/resource <char1>,<char2>,etc.=<resource>,<amount>[/<inform msg>]"
         self.call_cmd("/material Testaccount2=test material,,5", mat_syntax_error)
         self.call_cmd("/resource Testaccount2=economic..5", res_syntax_error)
 
@@ -2291,7 +2292,7 @@ class AdjustCommandTests(ArxCommandTest):
 
         # gain_materials() "failed"
         mock_mat_gain.return_value = False
-        mat_adjust_fail = "Failed to adjust Char2's test material."
+        mat_adjust_fail = "Failed to adjust: Char2."
         self.call_cmd("/material Testaccount2=test material,1", mat_adjust_fail)
 
         # Incorrect resource type
@@ -2300,14 +2301,16 @@ class AdjustCommandTests(ArxCommandTest):
 
         # gain_resource() "failed"
         mock_res_gain.return_value = 0
-        res_adjust_fail = "Failed to adjust Char2's economic resources."
+        res_adjust_fail = (
+            "Failed to adjust Char2's economic resources.|Failed to adjust: Char2."
+        )
         self.call_cmd("/resource Testaccount2=economic,50", res_adjust_fail)
 
     def test_adjust_resource(self):
         self.assetowner2.economic = 0
 
         # Test increase.
-        adjust_msg = "Awarded 50 economic resources to Char2."
+        adjust_msg = "Awarded 50 economic resources to: Char2."
         inform_msg = "You have been awarded 50 economic resources."
         self.call_cmd("/resource Testaccount2=economic,50", adjust_msg)
         self.char2.player.inform.assert_called_with(
@@ -2318,7 +2321,7 @@ class AdjustCommandTests(ArxCommandTest):
         # Test award with message.
         self.call_cmd(
             "/resource Testaccount2=economic,50/Here is 50 resources.",
-            f"{adjust_msg} Message sent to player: Here is 50 resources.",
+            f"{adjust_msg}  Message sent to player(s): Here is 50 resources.",
         )
         self.char2.player.inform.assert_called_with(
             f"{inform_msg}%r%rMessage: Here is 50 resources.",
@@ -2327,11 +2330,13 @@ class AdjustCommandTests(ArxCommandTest):
         self.assertEqual(self.assetowner2.economic, 100)
 
         # Test reduction failure.
-        res_adjust_fail = "Char2 only has 100 economic resources on hand."
+        res_adjust_fail = (
+            "Char2 only has 100 economic resources on hand.|Failed to adjust: Char2."
+        )
         self.call_cmd("/resource Testaccount2=economic,-150", res_adjust_fail)
 
         # Test reduction.
-        adjust_msg = "Deducted 50 economic resources from Char2."
+        adjust_msg = "Deducted 50 economic resources from: Char2."
         inform_msg = "You have been deducted 50 economic resources."
         self.call_cmd("/resource Testaccount2=economic,-50", adjust_msg)
         self.char2.player.inform.assert_called_with(
@@ -2341,7 +2346,7 @@ class AdjustCommandTests(ArxCommandTest):
 
     def test_adjust_material(self):
         # Test increase.
-        adjust_msg = "Awarded 50 test material to Char2."
+        adjust_msg = "Awarded 50 test material to: Char2."
         inform_msg = "You have been awarded 50 test material."
         self.call_cmd("/material Testaccount2=test material,50", adjust_msg)
         self.char2.player.inform.assert_called_with(
@@ -2356,7 +2361,7 @@ class AdjustCommandTests(ArxCommandTest):
         # Test award with message.
         self.call_cmd(
             "/material Testaccount2=test material,50/Here is 50 material.",
-            f"{adjust_msg} Message sent to player: Here is 50 material.",
+            f"{adjust_msg}  Message sent to player(s): Here is 50 material.",
         )
         self.char2.player.inform.assert_called_with(
             f"{inform_msg}%r%rMessage: Here is 50 material.",
@@ -2365,11 +2370,13 @@ class AdjustCommandTests(ArxCommandTest):
         self.assertEqual(material.amount, 100)
 
         # Test reduction failure.
-        mat_adjust_fail = "Char2 only has 100 of test material on hand."
+        mat_adjust_fail = (
+            "Char2 only has 100 of test material on hand.|Failed to adjust: Char2."
+        )
         self.call_cmd("/material Testaccount2=test material,-150", mat_adjust_fail)
 
         # Test reduction.
-        adjust_msg = "Deducted 50 test material from Char2."
+        adjust_msg = "Deducted 50 test material from: Char2."
         inform_msg = "You have been deducted 50 test material."
         self.call_cmd("/material Testaccount2=test material,-50", adjust_msg)
         self.assertEqual(material.amount, 50)
@@ -2381,7 +2388,7 @@ class AdjustCommandTests(ArxCommandTest):
         self.char2.db.currency = 0
 
         # Test increase.
-        adjust_msg = "Awarded 50 silver to Char2."
+        adjust_msg = "Awarded 50 silver to: Char2."
         inform_msg = "You have been awarded 50 silver."
         self.call_cmd("/silver Testaccount2=50", adjust_msg)
         self.char2.player.inform.assert_called_with(
@@ -2393,7 +2400,7 @@ class AdjustCommandTests(ArxCommandTest):
         # Test with message this time.
         self.call_cmd(
             "/silver Testaccount2=50/Here is 50 silver.",
-            f"{adjust_msg} Message sent to player: Here is 50 silver.",
+            f"{adjust_msg}  Message sent to player(s): Here is 50 silver.",
         )
         self.char2.player.inform.assert_called_with(
             f"{inform_msg}%r%rMessage: Here is 50 silver.",
@@ -2402,14 +2409,60 @@ class AdjustCommandTests(ArxCommandTest):
         self.assertEqual(self.char2.db.currency, 100)
 
         # Test reduction failure.
-        mny_adjust_fail = "Char2 only has 100 silver on hand."
+        mny_adjust_fail = "Char2 only has 100 silver on hand.|Failed to adjust: Char2."
         self.call_cmd("/silver Testaccount2=-150", mny_adjust_fail)
 
         # Test reduction.
-        adjust_msg = "Deducted 100 silver from Char2."
+        adjust_msg = "Deducted 100 silver from: Char2."
         inform_msg = "You have been deducted 100 silver."
         self.call_cmd("/silver Testaccount2=-100", adjust_msg)
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Silver Adjustment"
         )
         self.assertEqual(self.char2.db.currency, 0)
+
+    def test_adjust_multi(self):
+        self.assetowner2.economic = 0
+        self.assetowner3.economic = 0
+        self.assetowner4.economic = 0
+
+        # Test /resource with multiple characters.
+        adjust_msg = "Awarded 50 economic resources to: Char2, Char3, Char4."
+        self.call_cmd(
+            "/resource Testaccount2,Testaccount3,Testaccount4=economic,50", adjust_msg
+        )
+
+        self.assertEqual(self.assetowner2.economic, 50)
+        self.assertEqual(self.assetowner3.economic, 50)
+        self.assertEqual(self.assetowner4.economic, 50)
+
+        # Test /material with multiple characters.
+        adjust_msg = "Awarded 50 test material to: Char2, Char3, Char4."
+        self.call_cmd(
+            "/material Testaccount2,Testaccount3,Testaccount4=test material,50",
+            adjust_msg,
+        )
+
+        mat_type = CraftingMaterialType.objects.get(name__iexact="test material")
+        mat2 = self.assetowner2.owned_materials.get(type=mat_type)
+        mat3 = self.assetowner3.owned_materials.get(type=mat_type)
+        mat4 = self.assetowner4.owned_materials.get(type=mat_type)
+        self.assertEqual(mat2.amount, 50)
+        self.assertEqual(mat3.amount, 50)
+        self.assertEqual(mat4.amount, 50)
+
+        # Test /silver with multiple characters.
+        self.char2.db.currency = 0
+        self.char3.db.currency = 0
+        self.char4.db.currency = 0
+
+        adjust_msg = "Awarded 50 silver to: Char2, Char3, Char4."
+        self.call_cmd("/silver Testaccount2,Testaccount3,Testaccount4=50", adjust_msg)
+
+        self.assertEqual(self.char2.db.currency, 50)
+        self.assertEqual(self.char3.db.currency, 50)
+        self.assertEqual(self.char4.db.currency, 50)
+
+        # Test failure with one not-right character.
+        result_msg = "Could not find 'foo'.|Awarded 50 silver to: Char2, Char4.|Failed to adjust: foo."
+        self.call_cmd("/silver Testaccount2,foo,Testaccount4=50", result_msg)
