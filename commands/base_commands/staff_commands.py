@@ -2391,7 +2391,9 @@ class CmdAdjust(ArxPlayerCommand):
             self.caller.msg(error)
 
     def do_adjust_material(self):
+        # Get names and remove empty strings (from comma typos)
         name_list = self.lhs.split(",")
+        name_list = [name for name in name_list if name]
 
         material_name, qty, inform_msg = self._get_material_rhs()
 
@@ -2410,7 +2412,6 @@ class CmdAdjust(ArxPlayerCommand):
         # For each player we're adjusting:
         # - get the account and character (if applicable)
         # - do the adjustment
-        # - build the inform msg sent to the player
         try:
             with transaction.atomic():
                 for name in name_list:
@@ -2426,10 +2427,6 @@ class CmdAdjust(ArxPlayerCommand):
                         fail_list.append(char.key)
         except DatabaseError:
             # If something went wrong, the database should roll back to no changes.
-            # Thus, don't notify anyone.
-            success_list.clear()
-            fail_list.clear()
-            inform_list.clear()
             raise self.error_class(
                 "A database error occurred. No players were adjusted."
             )
@@ -2454,7 +2451,9 @@ class CmdAdjust(ArxPlayerCommand):
             self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}.")
 
     def do_adjust_resource(self):
+        # Get names and remove empty strings (from comma typos)
         name_list = self.lhs.split(",")
+        name_list = [name for name in name_list if name]
 
         resource, qty, inform_msg = self._get_resource_rhs()
 
@@ -2469,7 +2468,6 @@ class CmdAdjust(ArxPlayerCommand):
         # For each player we're adjusting:
         # - get the account and character (if applicable)
         # - do the adjustment
-        # - build the inform msg sent to the player
         try:
             with transaction.atomic():
                 for name in name_list:
@@ -2485,10 +2483,6 @@ class CmdAdjust(ArxPlayerCommand):
                         fail_list.append(char.key)
         except DatabaseError:
             # If something went wrong, the database should roll back to no changes.
-            # Thus, don't notify anyone.
-            success_list.clear()
-            fail_list.clear()
-            inform_list.clear()
             raise self.error_class(
                 "A database error occurred. No players were adjusted."
             )
@@ -2515,7 +2509,9 @@ class CmdAdjust(ArxPlayerCommand):
             self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}.")
 
     def do_adjust_silver(self):
+        # Get names and remove empty strings (from comma typos)
         name_list = self.lhs.split(",")
+        name_list = [name for name in name_list if name]
 
         qty, inform_msg = self._get_silver_rhs()
 
@@ -2526,7 +2522,6 @@ class CmdAdjust(ArxPlayerCommand):
         # For each player we're adjusting:
         # - get the account and character (if applicable)
         # - do the adjustment
-        # - build the inform msg sent to the player
         try:
             with transaction.atomic():
                 for name in name_list:
@@ -2542,10 +2537,6 @@ class CmdAdjust(ArxPlayerCommand):
                         fail_list.append(char.key)
         except DatabaseError:
             # If something went wrong, the database should roll back to no changes.
-            # Thus, don't notify anyone.
-            success_list.clear()
-            fail_list.clear()
-            inform_list.clear()
             raise self.error_class(
                 "A database error occurred. No players were adjusted."
             )

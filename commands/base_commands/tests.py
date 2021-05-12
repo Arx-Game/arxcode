@@ -2466,3 +2466,20 @@ class AdjustCommandTests(ArxCommandTest):
         # Test failure with one not-right character.
         result_msg = "Could not find 'foo'.|Awarded 50 silver to: Char2, Char4.|Failed to adjust: foo."
         self.call_cmd("/silver Testaccount2,foo,Testaccount4=50", result_msg)
+
+        self.assertEqual(self.char2.db.currency, 100)
+        self.assertEqual(self.char4.db.currency, 100)
+
+        # Test typo with commas in character names.
+        result_msg = "Deducted 50 silver from: Char2, Char3, Char4."
+        self.call_cmd(
+            "/silver Testaccount2,,Testaccount3,,,Testaccount4=-50", result_msg
+        )
+
+        self.assertEqual(self.char2.db.currency, 50)
+        self.assertEqual(self.char3.db.currency, 0)
+        self.assertEqual(self.char4.db.currency, 50)
+
+        # Test more typos with commas in character names.
+        result_msg = "Could not find 'Testaccount2.Testaccount3'.|Failed to adjust: Testaccount2.Testaccount3."
+        self.call_cmd("/silver Testaccount2.Testaccount3=50", result_msg)
