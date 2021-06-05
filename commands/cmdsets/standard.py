@@ -9,6 +9,11 @@ from them without explicitly calling individual commands.
 import traceback
 
 from commands.base_commands import exchanges
+from typeclasses.readable.readable_commands import WriteCmdSet
+from world.stat_checks import check_commands
+from world.prayer import prayer_commands
+
+from evennia.commands.cmdset import CmdSet
 
 try:
     from evennia.commands.default import help, admin, system, building, batchprocess
@@ -158,10 +163,6 @@ try:
     from world.magic import magic_commands
 except Exception as err:
     print("<<ERROR>>: Error encountered in magic commands: %s" % err)
-from world.stat_checks import check_commands
-from world.prayer import prayer_commands
-
-from evennia.commands.cmdset import CmdSet
 
 
 class OOCCmdSet(CmdSet):
@@ -244,6 +245,7 @@ class StateIndependentCmdSet(CmdSet):
         self.add(plot_commands.CmdPlots())
         self.add(goal_commands.CmdGoals())
         self.add(combat.CmdHeal())
+        self.add(WriteCmdSet())
 
         # Magic!
         self.add(magic_commands.MagicCmdSet())

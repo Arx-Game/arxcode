@@ -53,6 +53,11 @@ def wipe_attributes():
         "can_be_blocked",
         "ready_phrase",
         "destroyable",
+        # for Readable
+        "written",
+        "can_stack",
+        "do_not_format_desc",
+        "author",
     ]
     for attr in attr_names:
         print(

@@ -7,6 +7,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, F
 
 
@@ -306,7 +307,7 @@ class WeeklyEvents(RunDateMixin, Script):
             for agent in player.retainers:
                 try:
                     del agent.dbobj.attributes._cache["trainer-None"]
-                except (KeyError, AttributeError):
+                except (KeyError, AttributeError, ObjectDoesNotExist):
                     continue
 
     def initialize_temp_dicts(self):

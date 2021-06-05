@@ -56,7 +56,7 @@ class OtherMaterial(object):
         stacking = [
             ob
             for ob in caller.contents
-            if ob.typeclass_path == self.path and ob.db.can_stack
+            if ob.typeclass_path == self.path and ob.can_stack
         ]
         if stacking:
             obj = stacking[0]

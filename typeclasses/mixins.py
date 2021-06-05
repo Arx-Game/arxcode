@@ -43,6 +43,7 @@ class DescMixins(object):
     default_size = 1
     default_capacity = 100
     default_quantity = 1
+    can_stack = False
 
     @property
     def base_desc(self):

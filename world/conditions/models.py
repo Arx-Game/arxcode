@@ -633,6 +633,7 @@ class CharacterHealthStatus(SharedMemoryModel):
         """The character heals"""
         treatment = self.get_highest_revive_treatment()
         if not treatment:
+            self.check_regain_consciousness()
             return
         if treatment.outcome.effect not in REVIVE_EFFECTS:
             return

@@ -557,14 +557,7 @@ class CmdExtendedLook(default_cmds.CmdLook):
             return
         # get object's appearance
         desc = looking_at_obj.return_appearance(caller, detailed=False)
-        # if it's a written object, we'll paginate the description
-        if looking_at_obj.db.written:
-            from server.utils import arx_more
-
-            desc = desc.replace("%r", "\n")
-            arx_more.msg(caller, desc, pages_by_char=True)
-        else:
-            caller.msg(desc)
+        caller.msg(desc)
         # the object's at_desc() method.
         looking_at_obj.at_desc(looker=caller)
         self.check_detail()

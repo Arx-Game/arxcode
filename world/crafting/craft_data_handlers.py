@@ -88,7 +88,7 @@ class CraftDataHandler(ItemDataHandler):
             ob, _ = self.obj.adorned_materials.get_or_create(type_id=material)
         else:
             ob, _ = self.obj.adorned_materials.get_or_create(type=material)
-        ob.amount = quantity
+        ob.amount += quantity
         ob.save()
         # clear cache
         del self.adorn_objects

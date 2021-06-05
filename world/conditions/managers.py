@@ -10,6 +10,7 @@ from django.db.models import (
     BooleanField,
     Prefetch,
     IntegerField,
+    Q,
 )
 
 from world.conditions.constants import UNCONSCIOUS, REVIVE, RECOVERY
@@ -25,8 +26,8 @@ class HealthStatusQuerySet(QuerySet):
     def unconscious(self):
         return self.filter(consciousness=UNCONSCIOUS)
 
-    def damaged(self):
-        return self.filter(damage__gt=0)
+    def damaged_or_wounded(self):
+        return self.filter(Q(damage__gt=0) | Q(wounds__isnull=False)).distinct()
 
     def annotate_highest_treatment(self, treatment_type, attr_name):
         """This annotates the queryset with the highest value for a given type of treatments"""
@@ -69,7 +70,7 @@ class HealthStatusQuerySet(QuerySet):
     def get_recovery_queryset(self):
         return (
             self.living()
-            .damaged()
+            .damaged_or_wounded()
             .annotate_recovery_treatment()
             .annotate_should_heal_wound()
             .prefetch_wounds()
