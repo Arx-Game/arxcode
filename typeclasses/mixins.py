@@ -43,6 +43,7 @@ class DescMixins(object):
     default_size = 1
     default_capacity = 100
     default_quantity = 1
+    default_is_locked = False
     can_stack = False
 
     @property
@@ -252,6 +253,7 @@ class NameMixins(object):
 class BaseObjectMixins(object):
     default_put_time = 0
     default_deleted_time = None
+    default_pre_offgrid_location = None
 
     @property
     def is_room(self):
@@ -263,6 +265,10 @@ class BaseObjectMixins(object):
 
     @property
     def is_character(self):
+        return False
+
+    @property
+    def is_container(self):
         return False
 
     @property
@@ -356,6 +362,21 @@ class BaseObjectMixins(object):
             return self.character_health_status
         except AttributeError:
             raise InvalidTargetError(f"{self} is not a valid target.")
+
+    def leave_grid(self):
+        """Moves an object off the grid, storing the location from which it left"""
+        if self.location:
+            self.item_data.pre_offgrid_location = self.location
+            self.location = None
+
+    def enter_grid(self):
+        """
+        Moves an object back on grid if not already there. Goes to its last
+        known location or its home space.
+        """
+        if not self.location:
+            self.location = self.item_data.pre_offgrid_location or self.home
+            self.location.at_object_receive(self, None)
 
 
 class AppearanceMixins(BaseObjectMixins, TemplateMixins):
@@ -718,7 +739,9 @@ class TriggersMixin(object):
         return TriggerHandler(self)
 
 
-class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
+class ObjectMixins(
+    NameMixins, DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin
+):
     item_data_class = ItemDataHandler
 
     @lazy_property
@@ -950,11 +973,11 @@ class LockMixins(object):
         if not self.has_lock_permission(caller):
             return
         self.locks.add("traverse: perm(builders)")
-        if self.db.locked:
+        if self.item_data.is_locked:
             if caller:
                 caller.msg("%s is already locked." % self)
             return
-        self.db.locked = True
+        self.item_data.is_locked = True
         msg = "%s is now locked." % self.key
         if caller:
             caller.msg(msg)
@@ -963,13 +986,15 @@ class LockMixins(object):
         if (
             self.destination
             and hasattr(self.destination, "entrances")
-            and self.destination.db.locked is False
+            and self.destination.item_data.is_locked is False
         ):
             entrances = [
-                ob for ob in self.destination.entrances if ob.db.locked is False
+                ob
+                for ob in self.destination.entrances
+                if ob.item_data.is_locked is False
             ]
             if not entrances:
-                self.destination.db.locked = True
+                self.destination.item_data.is_locked = True
 
     def unlock(self, caller=None):
         """
@@ -980,21 +1005,21 @@ class LockMixins(object):
         if not self.has_lock_permission(caller):
             return
         self.locks.add("traverse: all()")
-        if not self.db.locked:
+        if not self.item_data.is_locked:
             if caller:
                 caller.msg("%s is already unlocked." % self)
             return
-        self.db.locked = False
+        self.item_data.is_locked = False
         msg = "%s is now unlocked." % self.key
         if caller:
             caller.msg(msg)
         self.location.msg_contents(msg, exclude=caller)
         if self.destination:
-            self.destination.db.locked = False
+            self.destination.item_data.is_locked = False
 
     @property
     def currently_open(self):
-        return not self.db.locked
+        return not self.item_data.is_locked
 
     @property
     def displayable(self):
@@ -1023,7 +1048,7 @@ class LockMixins(object):
             show_contents=show_contents,
         )
         return base + "\nIt is currently %s." % (
-            "locked" if self.db.locked else "unlocked"
+            "locked" if self.item_data.is_locked else "unlocked"
         )
 
 

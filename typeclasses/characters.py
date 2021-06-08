@@ -34,7 +34,6 @@ from evennia_extensions.object_extensions.item_data_handler import CharacterData
 
 class Character(
     UseEquipmentMixins,
-    NameMixins,
     MsgMixins,
     ObjectMixins,
     MagicMixins,
@@ -117,6 +116,10 @@ class Character(
     @property
     def dead(self):
         return self.health_status.is_dead
+
+    @property
+    def is_container(self):
+        return self.dead
 
     def at_after_move(self, source_location, **kwargs):
         """
@@ -283,7 +286,6 @@ class Character(
         if self.dead:
             return True
         self.health_status.set_dead()
-        self.db.container = True
         if self.location:
             self.location.msg_contents("{r%s has died.{n" % self.name)
         try:
@@ -310,7 +312,6 @@ class Character(
         Cue 'Bring Me Back to Life' by Evanessence.
         """
         self.health_status.set_alive()
-        self.db.container = False
         if self.location:
             self.location.msg_contents("{w%s has returned to life.{n" % self.name)
         try:
@@ -807,6 +808,19 @@ class Character(
             return "{c" + dest + "{n"
         return "{c" + str(exit_name[0]) + "{n"
 
+    def at_pre_puppet(self, account, session=None, **kwargs):
+        """
+        Return the character from storage in None location in `at_post_unpuppet`.
+        Args:
+            account (Account): This is the connecting account.
+            session (Session): Session controlling the connection.
+        """
+        self.enter_grid()
+        if not self.location:
+            account.msg(
+                "|r%s has no location and no home is set.|n" % self, session=session
+            )  # Note to set home.
+
     def at_post_puppet(self):
         """
         Called just after puppeting has completed.
@@ -826,7 +840,7 @@ class Character(
         for guard in guards:
             if guard.discreet:
                 continue
-            docked_location = guard.db.docked
+            docked_location = guard.item_data.pre_offgrid_location
             if docked_location and docked_location == self.location:
                 guard.summon()
 
@@ -840,8 +854,18 @@ class Character(
         :type player: Player
         :type session: Session
         """
-        super(Character, self).at_post_unpuppet(player, session)
         if not self.sessions.count():
+            # only remove this char from grid if no sessions control it anymore.
+            if self.location:
+
+                def message(obj, from_obj):
+                    obj.msg(
+                        "%s has left the game." % self.get_display_name(obj),
+                        from_obj=from_obj,
+                    )
+
+                self.location.for_contents(message, exclude=[self], from_obj=self)
+                self.leave_grid()
             place = self.sitting_at_place
             if place:
                 place.leave(self)

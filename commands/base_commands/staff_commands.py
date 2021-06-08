@@ -97,7 +97,7 @@ class CmdHome(ArxCommand):
                     if "stationary_guard" not in guard.tags.all():
                         guard.summon()
                 else:
-                    guard.db.docked = home
+                    guard.item_data.pre_offgrid_location = home
             caller.messages.messenger_notification(force=True)
 
 

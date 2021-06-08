@@ -59,7 +59,11 @@ class CharacterTraitValueInline(admin.TabularInline):
 class PermanenceInline(admin.TabularInline):
     model = Permanence
     extra = 0
-    raw_id_fields = ("objectdb",)
+    fk_name = "objectdb"
+    raw_id_fields = (
+        "objectdb",
+        "pre_offgrid_location",
+    )
 
 
 class DimensionsInline(admin.TabularInline):

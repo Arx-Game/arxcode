@@ -428,7 +428,7 @@ class AgentMixin(object):
         msg = self.assignment_string(guarding_name)
         if not guarding or (caller and guarding == caller.char_ob):
             msg += " {wLocation:{n %s" % (
-                self.location or self.db.docked or "Home Barracks"
+                self.location or self.item_data.pre_offgrid_location or "Home Barracks"
             )
         return msg
 
@@ -521,7 +521,7 @@ class AgentMixin(object):
         targ = self.guarding
         if targ:
             targ.remove_guard(self)
-        self.stop_follow(unassigning=True)
+        self.stop_follow()
         self.guarding = None
         self.assisted_investigations.update(currently_helping=False)
 
@@ -560,61 +560,40 @@ class AgentMixin(object):
     def stop_follow(
         self,  # type: Retainer or Agent
         dismiss=True,
-        unassigning=False,
     ):
         super(AgentMixin, self).stop_follow()
         # if we're not being unassigned, we dock them. otherwise, they're gone
         if dismiss:
-            self.dismiss(dock=not unassigning)
+            self.dismiss()
 
     def summon(
         self,  # type: Retainer or Agent
-        summoner=None,
     ):
         """
         Have these guards appear to defend the character. This should generally only be
         called in a location that permits it, such as their house barracks, or in a
         square close to where the guards were docked.
         """
-        if not summoner:
-            summoner = self.db.guarding
-        loc = summoner.location
-        mapping = {"secret": True}
-        self.move_to(loc, mapping=mapping)
-        self.follow(self.db.guarding)
-        docked_loc = self.db.docked
-        if (
-            docked_loc
-            and docked_loc.db.docked_guards
-            and self in docked_loc.db.docked_guards
-        ):
-            docked_loc.db.docked_guards.remove(self)
-        self.db.docked = None
+        if not self.guarding:
+            return
+        loc = self.guarding.location
+        if loc:
+            mapping = {"secret": True}
+            self.move_to(loc, mapping=mapping)
+            self.follow(self.guarding)
+            self.item_data.pre_offgrid_location = None
 
     def dismiss(
         self,  # type: Retainer or Agent
-        dock=True,
     ):
         """
         Dismisses our guards. If they're not being dismissed permanently, then
         we dock them at the location they last occupied, saving it as an attribute.
         """
-        loc = self.location
-        # being dismissed permanently while gone
-        if not loc:
-            docked = self.db.docked
-            if docked and docked.db.docked_guards and self in docked.db.docked_guards:
-                docked.db.docked_guards.remove(self)
-            return
-        self.db.prelogout_location = loc
-        if dock:
-            self.db.docked = loc
-            docked = loc.db.docked_guards or []
-            if self not in docked:
-                docked.append(self)
-            loc.db.docked_guards = docked
-        loc.msg_contents("%s have been dismissed." % self.name)
-        self.location = None
+        prior_location = self.location
+        self.leave_grid()
+        if prior_location:
+            prior_location.msg_contents("%s have been dismissed." % self.name)
         if self.ndb.combat_manager:
             self.ndb.combat_manager.remove_combatant(self)
 

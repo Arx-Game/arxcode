@@ -99,7 +99,7 @@ SHOPCMD = "commands.cmdsets.home.ShopCmdSet"
 # implements the Extended Room
 
 # noinspection PyUnresolvedReferences
-class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
+class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
     """
     This room implements a more advanced look functionality depending on
     time. It also allows for "details", together with a slightly modified
@@ -319,7 +319,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         self.tags.remove("home")
         for ent in self.entrances:
             ent.locks.add("usekey: perm(builders)")
-            ent.db.locked = False
+            ent.item_data.is_locked = False
         if "HomeCmdSet" in [ob.key for ob in self.cmdset.all()]:
             self.cmdset.delete(HOMECMD)
 

@@ -754,9 +754,9 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
             "purse1 in purse1", "You can't put an object inside itself.|Nothing moved."
         )
         self.purse1.move_to(self.room1)
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.call_cmd("a fox mask in purse1", "You'll have to unlock Purse1 first.")
-        self.purse1.db.locked = False
+        self.purse1.item_data.is_locked = False
         self.call_cmd("hairpins1 in purse1", "You put Hairpins1 in Purse1.")
         self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
@@ -781,7 +781,7 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
             "Slinkity1 is currently worn and cannot be moved.|"
             "You put A Fox Mask in Purse1.",
         )
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.caller = self.char1  # staff
         self.call_cmd("5 silver in purse1", "You do not have enough money.")
         self.char1.db.currency = 30.0
@@ -804,9 +804,9 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("obj from Obj2", "That is not a container.")
         self.purse1.move_to(self.room1)
         self.obj1.move_to(self.purse1)
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.call_cmd("obj from purse1", "You'll have to unlock Purse1 first.")
-        self.purse1.db.locked = False
+        self.purse1.item_data.is_locked = False
         self.call_cmd("all from Purse1", "You get Obj from Purse1.")
         self.call_cmd(
             "5 silver from purse1",
@@ -826,7 +826,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd(
             "/outfit Bishikiller from purse1", "You get A Fox Mask from Purse1."
         )
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.caller = self.char1  # staff
         self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
 

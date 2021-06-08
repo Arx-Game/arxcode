@@ -284,9 +284,9 @@ class CmdGet(ArxCommand):
             # noinspection PyAttributeOutsideInit
             if not container_obj:
                 raise CommandError("Could not get anything.")
-            elif not (container_obj.db.container or container_obj.dead):
+            elif not container_obj.is_container:
                 raise CommandError("That is not a container.")
-            elif container_obj.db.locked and not self.caller.check_permstring(
+            elif container_obj.item_data.is_locked and not self.caller.check_permstring(
                 "builders"
             ):
                 raise CommandError(

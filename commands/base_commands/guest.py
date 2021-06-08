@@ -786,7 +786,6 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                 new_character.desc = "Description to be set later."
                 new_character.db.unfinished_values = set(_stage3_fields_)
                 # so they don't show up in Arx City Center during character creation
-                new_character.db.prelogout_location = new_character.location
                 new_character.location = None
                 new_character.save()
                 try:
