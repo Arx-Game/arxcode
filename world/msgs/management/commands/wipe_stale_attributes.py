@@ -62,6 +62,11 @@ def wipe_attributes():
         "locked",
         "docked",
         "docked_guards",
+        "worn_by",
+        "requested_support",
+        "last_recovery_test",
+        "asked_supporters",
+        "administered_aid",
     ]
     for attr in attr_names:
         print(
