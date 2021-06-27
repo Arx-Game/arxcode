@@ -101,7 +101,7 @@ class Place(Object):
             )
         elif msg_type == self.TT_EMIT:
             if to_obj.tags.get("emit_label"):
-                emit_label = "{w[{c%s{w]{n " % from_obj.name
+                emit_label = "{w({c%s{w){n " % from_obj.name
             else:
                 emit_label = ""
             place_msg = emit_msg.format(
