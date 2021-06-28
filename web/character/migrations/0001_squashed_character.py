@@ -493,8 +493,7 @@ class Migration(migrations.Migration):
                 (
                     "required_clue_value",
                     models.PositiveSmallIntegerField(
-                        blank=0,
-                        default=0,
+                        default=100,
                         help_text="The total value of clues to trigger this",
                     ),
                 ),

@@ -30,7 +30,7 @@ class DimensionsAdmin(admin.ModelAdmin):
 class PermanenceAdmin(admin.ModelAdmin):
     list_display = ("pk", "put_time", "deleted_time")
     search_fields = ("pk", "objectdb__db_key")
-    raw_id_fields = ("objectdb",)
+    raw_id_fields = ("objectdb", "pre_offgrid_location")
 
 
 class SecretsInline(admin.StackedInline):
