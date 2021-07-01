@@ -621,7 +621,12 @@ class Ticket(SharedMemoryModel):
             msg += "\n|wFollowup by |c%s|w:|n %s" % (followup.user, followup.comment)
         if self.assigned_to:
             msg += "\n|wAssigned GM:|n %s" % self.assigned_to.key
-        msg += "\n|wGM Resolution:|n %s" % self.resolution
+
+        if self.submitting_player.id != self.assigned_to_id:
+            msg += f"\n|wGM Resolution:|n {self.resolution}"
+        else:
+            msg += f"\n|wPlayer Resolution:|n {self.resolution}"
+
         return msg
 
 

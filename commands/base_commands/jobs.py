@@ -353,42 +353,19 @@ class CmdRequest(ArxPlayerCommand):
             self.msg("No ticket found by that number.")
             self.list_tickets()
 
-    def func(self):
-        """Implement the command"""
+    def create_ticket(self, title, message):
         caller = self.caller
         priority = 3
-        if "followup" in self.switches or "comment" in self.switches:
-            if not self.lhs or not self.rhs:
-                msg = "Usage: <#>=<message>"
-                ticketnumbers = ", ".join(str(ticket.id) for ticket in self.tickets)
-                if ticketnumbers:
-                    msg += "\nYour tickets: %s" % ticketnumbers
-                return caller.msg(msg)
-            ticket = self.get_ticket_from_args(self.lhs)
-            if not ticket:
-                return
-            if ticket.status == ticket.CLOSED_STATUS:
-                self.msg("That ticket is already closed. Please make a new one.")
-                return
-            helpdesk_api.add_followup(caller, ticket, self.rhs, mail_player=False)
-            caller.msg("Followup added.")
-            return
+        slug = settings.REQUEST_QUEUE_SLUG
+
+        optional_title = title if message else (title[:27] + "...")
+        args = message if message else self.args
+        email = caller.email if caller.email != "dummy@dummy.com" else None
+
         cmdstr = self.cmdstring.lower()
         if cmdstr == "+911":
             priority = 1
-        if not self.lhs:
-            self.list_tickets()
-            return
-        if self.lhs.isdigit():
-            ticket = self.get_ticket_from_args(self.lhs)
-            if not ticket:
-                return
-            self.display_ticket(ticket)
-            return
-        optional_title = self.lhs if self.rhs else (self.lhs[:27] + "...")
-        args = self.rhs if self.rhs else self.args
-        email = caller.email if caller.email != "dummy@dummy.com" else None
-        if cmdstr == "bug":
+        elif cmdstr == "bug":
             slug = settings.BUG_QUEUE_SLUG
         elif cmdstr == "typo":
             priority = 5
@@ -396,15 +373,14 @@ class CmdRequest(ArxPlayerCommand):
         elif "featurerequest" in cmdstr:
             if settings.ISSUES_URL:
                 url = "https://" + settings.ISSUES_URL
-                self.msg("Please open an issue at: %s" % url)
+                self.msg(f"Please open an issue at: {url}")
                 return
             priority = 4
             slug = "Code"
         elif "prprequest" in cmdstr:
             slug = "PRP"
-        else:
-            slug = settings.REQUEST_QUEUE_SLUG
-        new_ticket = helpdesk_api.create_ticket(
+
+        return helpdesk_api.create_ticket(
             caller,
             args,
             priority,
@@ -412,18 +388,82 @@ class CmdRequest(ArxPlayerCommand):
             send_email=email,
             optional_title=optional_title,
         )
+
+    def close_ticket(self, id, reason):
+        caller = self.caller
+
+        if not reason:
+            caller.msg("Usage: <#>=<Reason>")
+            return
+
+        ticket = self.get_ticket_from_args(id)
+        if not ticket:
+            return
+
+        if helpdesk_api.resolve_ticket(caller, ticket, reason, by_submitter = True):
+            caller.msg(f"You have successfully closed ticket #{ticket.id}.")
+        else:
+            caller.msg(f"Failed to close ticket #{ticket.id}.")
+
+        return
+
+    def comment_on_ticket(self):
+        caller = self.caller
+
+        if not self.lhs or not self.rhs:
+            msg = "Usage: <#>=<message>"
+            ticketnumbers = ", ".join(str(ticket.id) for ticket in self.tickets)
+            if ticketnumbers:
+                msg += f"\nYour tickets: {ticketnumbers}"
+            return caller.msg(msg)
+
+        ticket = self.get_ticket_from_args(self.lhs)
+        if not ticket:
+            return
+
+        if ticket.status == ticket.CLOSED_STATUS:
+            self.msg("That ticket is already closed. Please make a new one.")
+            return
+
+        helpdesk_api.add_followup(caller, ticket, self.rhs, mail_player=False)
+        caller.msg("Followup added.")
+
+        return
+
+    def func(self):
+        """Implement the command"""
+        caller = self.caller
+        
+        if "followup" in self.switches or "comment" in self.switches:
+            self.comment_on_ticket()
+            return
+        
+        if "close" in self.switches:
+            self.close_ticket(self.lhs, self.rhs)
+            return
+
+        if not self.lhs:
+            self.list_tickets()
+            return
+
+        if self.lhs.isdigit():
+            ticket = self.get_ticket_from_args(self.lhs)
+            if not ticket:
+                return
+                
+            self.display_ticket(ticket)
+            return
+
+        new_ticket = self.create_ticket(self.lhs, self.rhs)
         if new_ticket:
             caller.msg(
-                "Thank you for submitting a request to the GM staff. Your ticket (#%s) "
-                "has been added to the queue." % new_ticket.id
+                f"Thank you for submitting a request to the GM staff. Your ticket (#{new_ticket.id}) "
+                "has been added to the queue."
             )
-            return
         else:
             caller.msg(
                 "Ticket submission has failed for unknown reason. Please inform the administrators."
             )
-            return
-
 
 class CmdApp(ArxPlayerCommand):
     """
