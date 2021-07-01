@@ -2133,7 +2133,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
             )
             self.call_cmd(
                 "/close 11=No longer relevant",
-                "You have successfully closed ticket #11."
+                "You have successfully closed ticket #11.",
             )
             self.call_cmd(
                 "11",
@@ -2149,7 +2149,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
                 "No ticket found by that number.|Closed tickets: 11\n"
                 "Open tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
                 "Use +request <#> to view an individual ticket. "
-                "Use +request/followup <#>=<comment> to add a comment."
+                "Use +request/followup <#>=<comment> to add a comment.",
             )
         self.call_cmd(
             "/followup 11=GRR.", "That ticket is already closed. Please make a new one."

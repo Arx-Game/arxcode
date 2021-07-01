@@ -110,7 +110,9 @@ def resolve_ticket(caller, ticket, message, by_submitter = False):
     """
     try:
         if by_submitter and ticket.submitting_player.id != caller.id:
-            raise ValueError("Attepmted to close a ticket that wasn't submitted by the caller")
+            raise ValueError(
+                "Attepmted to close a ticket that wasn't submitted by the caller"
+            )
 
         if ticket.resolution:
             ticket.resolution += "\n\n" + message

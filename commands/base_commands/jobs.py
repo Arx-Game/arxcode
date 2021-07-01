@@ -390,18 +390,18 @@ class CmdRequest(ArxPlayerCommand):
             optional_title=optional_title,
         )
 
-    def close_ticket(self, id, reason):
+    def close_ticket(self, number, reason):
         caller = self.caller
 
         if not reason:
             caller.msg("Usage: <#>=<Reason>")
             return
 
-        ticket = self.get_ticket_from_args(id)
+        ticket = self.get_ticket_from_args(number)
         if not ticket:
             return
 
-        if helpdesk_api.resolve_ticket(caller, ticket, reason, by_submitter = True):
+        if helpdesk_api.resolve_ticket(caller, ticket, reason, by_submitter=True):
             caller.msg(f"You have successfully closed ticket #{ticket.id}.")
         else:
             caller.msg(f"Failed to close ticket #{ticket.id}.")
@@ -434,7 +434,6 @@ class CmdRequest(ArxPlayerCommand):
     def func(self):
         """Implement the command"""
         caller = self.caller
-        
         if "followup" in self.switches or "comment" in self.switches:
             self.comment_on_ticket()
             return
@@ -465,6 +464,7 @@ class CmdRequest(ArxPlayerCommand):
             caller.msg(
                 "Ticket submission has failed for unknown reason. Please inform the administrators."
             )
+
 
 class CmdApp(ArxPlayerCommand):
     """
