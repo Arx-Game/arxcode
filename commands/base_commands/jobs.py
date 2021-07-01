@@ -281,11 +281,12 @@ class CmdRequest(ArxPlayerCommand):
     Usage:
        +request [<#>]
        +request <title>=<message>
+       +request/followup <#>=<message>
+       +request/close <#>=<reason>
        +911 <title>=<message>
        bug [<title>=]<report>
        typo [<title>=]<report>
        +featurerequest <title>=<message>
-       +request/followup <#>=<message>
        +prprequest <title>=<question about a player run plot>
 
     Send a message to the GMs for help. This is usually because
