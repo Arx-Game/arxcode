@@ -71,7 +71,7 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("quantity", models.PositiveIntegerField(blank=0, default=0)),
+                ("quantity", models.PositiveIntegerField(blank=True, default=0)),
                 ("status_notes", models.TextField(blank=True, null=True)),
                 (
                     "agent_class",
@@ -106,11 +106,11 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("vault", models.PositiveIntegerField(blank=0, default=0)),
-                ("fame", models.IntegerField(blank=0, default=0)),
-                ("economic", models.PositiveIntegerField(blank=0, default=0)),
-                ("military", models.PositiveIntegerField(blank=0, default=0)),
-                ("social", models.PositiveIntegerField(blank=0, default=0)),
+                ("vault", models.PositiveIntegerField(blank=True, default=0)),
+                ("fame", models.IntegerField(blank=True, default=0)),
+                ("economic", models.PositiveIntegerField(blank=True, default=0)),
+                ("military", models.PositiveIntegerField(blank=True, default=0)),
+                ("social", models.PositiveIntegerField(blank=True, default=0)),
             ],
         ),
         migrations.CreateModel(
@@ -128,7 +128,9 @@ class Migration(migrations.Migration):
                 ("finished", models.BooleanField(default=False)),
                 (
                     "week",
-                    models.PositiveSmallIntegerField(blank=0, db_index=True, default=0),
+                    models.PositiveSmallIntegerField(
+                        blank=True, db_index=True, default=0
+                    ),
                 ),
                 ("notes", models.TextField(blank=True, null=True)),
                 ("observer_text", models.TextField(blank=True, null=True)),
@@ -149,7 +151,7 @@ class Migration(migrations.Migration):
                 ),
                 ("name", models.CharField(db_index=True, max_length=80)),
                 ("desc", models.TextField(blank=True, null=True)),
-                ("value", models.PositiveIntegerField(blank=0, default=0)),
+                ("value", models.PositiveIntegerField(blank=True, default=0)),
                 (
                     "category",
                     models.CharField(
@@ -175,12 +177,12 @@ class Migration(migrations.Migration):
                 (
                     "area",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         validators=[django.core.validators.MaxValueValidator(10000)],
                     ),
                 ),
-                ("type", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("type", models.PositiveSmallIntegerField(blank=True, default=0)),
             ],
         ),
         migrations.CreateModel(
@@ -370,12 +372,15 @@ class Migration(migrations.Migration):
                         blank=True, default=b"Serf", max_length=255, null=True
                     ),
                 ),
-                ("npc_members", models.PositiveIntegerField(blank=0, default=0)),
+                ("npc_members", models.PositiveIntegerField(blank=True, default=0)),
                 (
                     "income_per_npc",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
-                ("cost_per_npc", models.PositiveSmallIntegerField(blank=0, default=0)),
+                (
+                    "cost_per_npc",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
                 ("morale", models.PositiveSmallIntegerField(blank=100, default=100)),
                 (
                     "income_modifier",
@@ -424,13 +429,16 @@ class Migration(migrations.Migration):
                     "lifestyle_rating",
                     models.PositiveSmallIntegerField(blank=1, default=1),
                 ),
-                ("population", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("income", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("farming", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("productivity", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("upkeep", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("loyalty", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("warfare", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("population", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("income", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("farming", models.PositiveSmallIntegerField(blank=True, default=0)),
+                (
+                    "productivity",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
+                ("upkeep", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("loyalty", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("warfare", models.PositiveSmallIntegerField(blank=True, default=0)),
                 (
                     "parents",
                     models.ManyToManyField(
@@ -480,8 +488,8 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("name", models.CharField(blank=True, max_length=80, null=True)),
-                ("origin_x_coord", models.SmallIntegerField(blank=0, default=0)),
-                ("origin_y_coord", models.SmallIntegerField(blank=0, default=0)),
+                ("origin_x_coord", models.SmallIntegerField(blank=True, default=0)),
+                ("origin_y_coord", models.SmallIntegerField(blank=True, default=0)),
                 ("color_code", models.CharField(blank=True, max_length=8)),
             ],
         ),
@@ -497,7 +505,7 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("rating", models.IntegerField(blank=0, default=0)),
+                ("rating", models.IntegerField(blank=True, default=0)),
                 (
                     "category",
                     models.ForeignKey(
@@ -574,7 +582,7 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("rating", models.IntegerField(blank=0, default=0)),
+                ("rating", models.IntegerField(blank=True, default=0)),
                 (
                     "category",
                     models.ForeignKey(
@@ -608,8 +616,8 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("week", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("rating", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("week", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("rating", models.PositiveSmallIntegerField(blank=True, default=0)),
                 (
                     "sphere",
                     models.ForeignKey(
@@ -643,10 +651,12 @@ class Migration(migrations.Migration):
                 ("active", models.BooleanField(default=False)),
                 (
                     "week",
-                    models.PositiveSmallIntegerField(blank=0, db_index=True, default=0),
+                    models.PositiveSmallIntegerField(
+                        blank=True, db_index=True, default=0
+                    ),
                 ),
                 ("desc", models.TextField(blank=True, null=True)),
-                ("difficulty", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("difficulty", models.PositiveSmallIntegerField(blank=True, default=0)),
                 ("results", models.TextField(blank=True, null=True)),
                 (
                     "org",
@@ -673,7 +683,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "minimum_amount",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
                 (
                     "category",
@@ -738,7 +748,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "additional_points",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
             ],
         ),
@@ -756,9 +766,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "work_this_week",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
-                ("work_total", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("work_total", models.PositiveSmallIntegerField(blank=True, default=0)),
                 ("secret", models.BooleanField(default=False)),
                 ("deguilded", models.BooleanField(default=False)),
                 ("rank", models.PositiveSmallIntegerField(blank=10, default=10)),
@@ -842,8 +852,8 @@ class Migration(migrations.Migration):
                 ),
                 ("name", models.CharField(blank=True, max_length=80, null=True)),
                 ("desc", models.TextField(blank=True, null=True)),
-                ("x_coord", models.SmallIntegerField(blank=0, default=0)),
-                ("y_coord", models.SmallIntegerField(blank=0, default=0)),
+                ("x_coord", models.SmallIntegerField(blank=True, default=0)),
+                ("y_coord", models.SmallIntegerField(blank=True, default=0)),
                 (
                     "terrain",
                     models.PositiveSmallIntegerField(
@@ -900,35 +910,50 @@ class Migration(migrations.Migration):
                 (
                     "area",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         validators=[django.core.validators.MaxValueValidator(10000)],
                     ),
                 ),
-                ("stored_food", models.PositiveIntegerField(blank=0, default=0)),
-                ("shipped_food", models.PositiveIntegerField(blank=0, default=0)),
+                ("stored_food", models.PositiveIntegerField(blank=True, default=0)),
+                ("shipped_food", models.PositiveIntegerField(blank=True, default=0)),
                 ("tax_rate", models.PositiveSmallIntegerField(blank=10, default=10)),
-                ("num_mines", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("num_mines", models.PositiveSmallIntegerField(blank=True, default=0)),
                 (
                     "num_lumber_yards",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
-                ("num_mills", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("num_housing", models.PositiveIntegerField(blank=0, default=0)),
-                ("num_farms", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("unassigned_serfs", models.PositiveIntegerField(blank=0, default=0)),
+                ("num_mills", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("num_housing", models.PositiveIntegerField(blank=True, default=0)),
+                ("num_farms", models.PositiveSmallIntegerField(blank=True, default=0)),
+                (
+                    "unassigned_serfs",
+                    models.PositiveIntegerField(blank=True, default=0),
+                ),
                 (
                     "slave_labor_percentage",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
-                ("mining_serfs", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("lumber_serfs", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("farming_serfs", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("mill_serfs", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("lawlessness", models.PositiveSmallIntegerField(blank=0, default=0)),
+                (
+                    "mining_serfs",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
+                (
+                    "lumber_serfs",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
+                (
+                    "farming_serfs",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
+                ("mill_serfs", models.PositiveSmallIntegerField(blank=True, default=0)),
+                (
+                    "lawlessness",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
                 (
                     "amount_plundered",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
                 (
                     "income_modifier",
@@ -959,7 +984,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("level", models.PositiveSmallIntegerField(default=1)),
-                ("damage", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("damage", models.PositiveSmallIntegerField(blank=True, default=0)),
                 ("name", models.CharField(blank=True, max_length=80, null=True)),
                 ("desc", models.TextField(blank=True, null=True)),
                 (
@@ -1015,7 +1040,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("desc", models.TextField(blank=True, null=True)),
-                ("escalation_points", models.SmallIntegerField(blank=0, default=0)),
+                ("escalation_points", models.SmallIntegerField(blank=True, default=0)),
                 ("results", models.TextField(blank=True, null=True)),
                 ("modifiers", models.TextField(blank=True, null=True)),
                 ("end_date", models.DateTimeField(blank=True, null=True)),
@@ -1067,13 +1092,16 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("desc", models.TextField(blank=True, null=True)),
-                ("stored_food", models.PositiveSmallIntegerField(blank=0, default=0)),
+                (
+                    "stored_food",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
                 (
                     "starvation_level",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
                 ("morale", models.PositiveSmallIntegerField(blank=100, default=100)),
-                ("plunder", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("plunder", models.PositiveSmallIntegerField(blank=True, default=0)),
                 (
                     "castle",
                     models.ForeignKey(
@@ -1261,7 +1289,7 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("amount", models.PositiveIntegerField(blank=0, default=0)),
+                ("amount", models.PositiveIntegerField(blank=True, default=0)),
                 (
                     "owner",
                     models.ForeignKey(
@@ -1375,7 +1403,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="assetowner",
             name="legend",
-            field=models.IntegerField(blank=0, default=0),
+            field=models.IntegerField(blank=True, default=0),
         ),
         migrations.CreateModel(
             name="CharitableDonation",
@@ -2025,7 +2053,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("category", models.CharField(blank=True, max_length=255, null=True)),
-                ("weekly_amount", models.PositiveIntegerField(blank=0, default=0)),
+                ("weekly_amount", models.PositiveIntegerField(blank=True, default=0)),
                 ("do_weekly", models.BooleanField(blank=True, default=True)),
                 ("repetitions_left", models.SmallIntegerField(blank=-1, default=-1)),
                 (
@@ -2063,7 +2091,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("active", models.BooleanField(blank=True, default=True)),
-                ("success_level", models.SmallIntegerField(blank=0, default=0)),
+                ("success_level", models.SmallIntegerField(blank=True, default=0)),
                 ("description", models.TextField(blank=True, null=True)),
                 ("category", models.CharField(blank=True, max_length=80, null=True)),
                 ("mission_details", models.TextField(blank=True, null=True)),
@@ -2101,18 +2129,18 @@ class Migration(migrations.Migration):
                 ("desc", models.TextField(blank=True, null=True)),
                 (
                     "primary_amount",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
                 (
                     "secondary_amount",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
                 (
                     "tertiary_amount",
-                    models.PositiveSmallIntegerField(blank=0, default=0),
+                    models.PositiveSmallIntegerField(blank=True, default=0),
                 ),
-                ("difficulty", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("additional_cost", models.PositiveIntegerField(blank=0, default=0)),
+                ("difficulty", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("additional_cost", models.PositiveIntegerField(blank=True, default=0)),
                 (
                     "ability",
                     models.CharField(
@@ -2429,7 +2457,7 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("status", models.SmallIntegerField(blank=0, default=0)),
+                ("status", models.SmallIntegerField(blank=True, default=0)),
                 (
                     "orgs",
                     models.ManyToManyField(
@@ -2471,7 +2499,7 @@ class Migration(migrations.Migration):
                 (
                     "unit_type",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         choices=[
                             (0, "Infantry"),
                             (1, "Pike"),
@@ -2487,7 +2515,7 @@ class Migration(migrations.Migration):
                         default=0,
                     ),
                 ),
-                ("mod", models.SmallIntegerField(blank=0, default=0)),
+                ("mod", models.SmallIntegerField(blank=True, default=0)),
                 ("name", models.CharField(blank=True, max_length=80, null=True)),
                 (
                     "org",
@@ -2531,7 +2559,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "week",
-                    models.PositiveSmallIntegerField(blank=0, db_index=True, default=0),
+                    models.PositiveSmallIntegerField(
+                        blank=True, db_index=True, default=0
+                    ),
                 ),
                 (
                     "actions",
@@ -2554,7 +2584,7 @@ class Migration(migrations.Migration):
                         verbose_name="Story written by the GM for the player",
                     ),
                 ),
-                ("outcome_value", models.SmallIntegerField(blank=0, default=0)),
+                ("outcome_value", models.SmallIntegerField(blank=True, default=0)),
                 (
                     "plot",
                     models.ForeignKey(
@@ -2588,7 +2618,7 @@ class Migration(migrations.Migration):
                 (
                     "economic",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional economic resources added by the player",
                     ),
@@ -2596,7 +2626,7 @@ class Migration(migrations.Migration):
                 (
                     "military",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional military resources added by the player",
                     ),
@@ -2610,7 +2640,7 @@ class Migration(migrations.Migration):
                 (
                     "silver",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional silver added by the player",
                     ),
@@ -2618,7 +2648,7 @@ class Migration(migrations.Migration):
                 (
                     "social",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional social resources added by the player",
                     ),
@@ -2626,7 +2656,7 @@ class Migration(migrations.Migration):
                 (
                     "action_points",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="How many action points spent by player/assistants.",
                     ),
@@ -2648,7 +2678,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("date_submitted", models.DateTimeField(blank=True, null=True)),
-                ("difficulty", models.SmallIntegerField(blank=0, default=0)),
+                ("difficulty", models.SmallIntegerField(blank=True, default=0)),
                 ("editable", models.BooleanField(default=True)),
                 (
                     "gm",
@@ -2762,7 +2792,7 @@ class Migration(migrations.Migration):
                 (
                     "action_points",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="How many action points spent by player/assistants.",
                     ),
@@ -2772,7 +2802,7 @@ class Migration(migrations.Migration):
                 (
                     "economic",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional economic resources added by the player",
                     ),
@@ -2781,7 +2811,7 @@ class Migration(migrations.Migration):
                 (
                     "military",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional military resources added by the player",
                     ),
@@ -2795,7 +2825,7 @@ class Migration(migrations.Migration):
                 (
                     "silver",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional silver added by the player",
                     ),
@@ -2812,7 +2842,7 @@ class Migration(migrations.Migration):
                 (
                     "social",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional social resources added by the player",
                     ),
@@ -2854,7 +2884,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("message", models.TextField(blank=True)),
-                ("week", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("week", models.PositiveSmallIntegerField(blank=True, default=0)),
                 ("db_date_created", models.DateTimeField(auto_now_add=True)),
                 ("value", models.IntegerField(default=0)),
                 (
@@ -3016,8 +3046,8 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("affection", models.IntegerField(blank=0, default=0)),
-                ("respect", models.IntegerField(blank=0, default=0)),
+                ("affection", models.IntegerField(default=0)),
+                ("respect", models.IntegerField(default=0)),
                 (
                     "organization",
                     models.ForeignKey(
@@ -3038,7 +3068,7 @@ class Migration(migrations.Migration):
                         to="dominion.PlayerOrNpc",
                     ),
                 ),
-                ("date_gossip_set", models.DateTimeField(null=True)),
+                ("date_gossip_set", models.DateTimeField(null=True, blank=True)),
                 (
                     "favor",
                     models.IntegerField(
@@ -3203,9 +3233,9 @@ class Migration(migrations.Migration):
                         default=1,
                     ),
                 ),
-                ("coin_cost", models.PositiveIntegerField(blank=0, default=0)),
-                ("food_cost", models.PositiveIntegerField(blank=0, default=0)),
-                ("week", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("coin_cost", models.PositiveIntegerField(blank=True, default=0)),
+                ("food_cost", models.PositiveIntegerField(blank=True, default=0)),
+                ("week", models.PositiveSmallIntegerField(blank=True, default=0)),
                 ("complete", models.BooleanField(default=False)),
                 (
                     "army",
@@ -3297,7 +3327,7 @@ class Migration(migrations.Migration):
                 (
                     "unit_type",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         choices=[
                             (0, "Infantry"),
                             (1, "Pike"),
@@ -3314,9 +3344,9 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("quantity", models.PositiveSmallIntegerField(blank=1, default=1)),
-                ("level", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("equipment", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("xp", models.SmallIntegerField(blank=0, default=0)),
+                ("level", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("equipment", models.PositiveSmallIntegerField(blank=True, default=0)),
+                ("xp", models.SmallIntegerField(blank=True, default=0)),
                 (
                     "army",
                     models.ForeignKey(

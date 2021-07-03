@@ -53,7 +53,7 @@ class Plot(SharedMemoryModel):
         null=True,
         on_delete=models.SET_NULL,
     )
-    escalation_points = models.SmallIntegerField(default=0, blank=0)
+    escalation_points = models.SmallIntegerField(default=0, blank=True)
     results = models.TextField(blank=True, null=True)
     modifiers = models.TextField(blank=True, null=True)
     public = models.BooleanField(default=True, blank=True)
@@ -1052,7 +1052,7 @@ class PlotAction(AbstractAction):
     EASY_DIFFICULTY = 15
     NORMAL_DIFFICULTY = 30
     HARD_DIFFICULTY = 60
-    week = models.PositiveSmallIntegerField(default=0, blank=0, db_index=True)
+    week = models.PositiveSmallIntegerField(default=0, blank=True, db_index=True)
     dompc = models.ForeignKey(
         "PlayerOrNpc",
         db_index=True,
@@ -1083,8 +1083,8 @@ class PlotAction(AbstractAction):
     secret_story = models.TextField(
         "Any secret story written for the player", blank=True
     )
-    difficulty = models.SmallIntegerField(default=0, blank=0)
-    outcome_value = models.SmallIntegerField(default=0, blank=0)
+    difficulty = models.SmallIntegerField(default=0, blank=True)
+    outcome_value = models.SmallIntegerField(default=0, blank=True)
     assistants = models.ManyToManyField(
         "PlayerOrNpc",
         blank=True,

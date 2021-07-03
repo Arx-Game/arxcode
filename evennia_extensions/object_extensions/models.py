@@ -58,6 +58,7 @@ class Permanence(SharedMemoryModel):
     deleted_time = models.DateTimeField(
         null=True,
         help_text="If set, this timestamp means an object is marked for deletion.",
+        blank=True,
     )
     pre_offgrid_location = models.ForeignKey(
         "objects.ObjectDB",

@@ -139,12 +139,12 @@ class Army(SharedMemoryModel):
         db_index=True,
     )
     # food we're carrying with us on transports or whatever
-    stored_food = models.PositiveSmallIntegerField(default=0, blank=0)
+    stored_food = models.PositiveSmallIntegerField(default=0, blank=True)
     # whether the army is starving. 0 = not starving, 1 = starting to starve, 2 = troops dying/deserting
-    starvation_level = models.PositiveSmallIntegerField(default=0, blank=0)
+    starvation_level = models.PositiveSmallIntegerField(default=0, blank=True)
     morale = models.PositiveSmallIntegerField(default=100, blank=100)
     # how much booty an army is carrying.
-    plunder = models.PositiveSmallIntegerField(default=0, blank=0)
+    plunder = models.PositiveSmallIntegerField(default=0, blank=True)
 
     class Meta:
         """Define Django meta options"""
@@ -728,10 +728,10 @@ class Orders(SharedMemoryModel):
         on_delete=models.CASCADE,
     )
     type = models.PositiveSmallIntegerField(choices=ORDER_CHOICES, default=TRAIN)
-    coin_cost = models.PositiveIntegerField(default=0, blank=0)
-    food_cost = models.PositiveIntegerField(default=0, blank=0)
+    coin_cost = models.PositiveIntegerField(default=0, blank=True)
+    food_cost = models.PositiveIntegerField(default=0, blank=True)
     # If orders were given this week, they're still pending
-    week = models.PositiveSmallIntegerField(default=0, blank=0)
+    week = models.PositiveSmallIntegerField(default=0, blank=True)
     complete = models.BooleanField(default=False, blank=False)
 
     class Meta:
@@ -784,7 +784,7 @@ class UnitTypeInfo(models.Model):
     )
     # type will be used to derive units and their stats elsewhere
     unit_type = models.PositiveSmallIntegerField(
-        choices=UNIT_CHOICES, default=0, blank=0
+        choices=UNIT_CHOICES, default=0, blank=True
     )
 
     class Meta:
@@ -800,7 +800,7 @@ class OrgUnitModifiers(UnitTypeInfo):
         db_index=True,
         on_delete=models.CASCADE,
     )
-    mod = models.SmallIntegerField(default=0, blank=0)
+    mod = models.SmallIntegerField(default=0, blank=True)
     name = models.CharField(blank=True, null=True, max_length=80)
 
     class Meta:
@@ -852,10 +852,10 @@ class MilitaryUnit(UnitTypeInfo):
         db_index=True,
     )
     quantity = models.PositiveSmallIntegerField(default=1, blank=1)
-    level = models.PositiveSmallIntegerField(default=0, blank=0)
-    equipment = models.PositiveSmallIntegerField(default=0, blank=0)
+    level = models.PositiveSmallIntegerField(default=0, blank=True)
+    equipment = models.PositiveSmallIntegerField(default=0, blank=True)
     # can go negative, such as when adding new recruits to a unit
-    xp = models.SmallIntegerField(default=0, blank=0)
+    xp = models.SmallIntegerField(default=0, blank=True)
     # if a hostile area has bandits or whatever, we're not part of an army, just that
     hostile_area = models.ForeignKey(
         "HostileArea",
@@ -1102,38 +1102,38 @@ class Domain(CachedPropertiesMixin, SharedMemoryModel):
     from django.core.validators import MaxValueValidator
 
     area = models.PositiveSmallIntegerField(
-        validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0
+        validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=True
     )
 
     # granaries, food for emergencies, etc
-    stored_food = models.PositiveIntegerField(default=0, blank=0)
+    stored_food = models.PositiveIntegerField(default=0, blank=True)
 
     # food from other sources - trade, other holdings of player, etc
     # this is currently 'in transit', and will be added to food_stored if it arrives
-    shipped_food = models.PositiveIntegerField(default=0, blank=0)
+    shipped_food = models.PositiveIntegerField(default=0, blank=True)
 
     # percentage out of 100
     tax_rate = models.PositiveSmallIntegerField(default=10, blank=10)
 
     # our economic resources
-    num_mines = models.PositiveSmallIntegerField(default=0, blank=0)
-    num_lumber_yards = models.PositiveSmallIntegerField(default=0, blank=0)
-    num_mills = models.PositiveSmallIntegerField(default=0, blank=0)
-    num_housing = models.PositiveIntegerField(default=0, blank=0)
-    num_farms = models.PositiveSmallIntegerField(default=0, blank=0)
+    num_mines = models.PositiveSmallIntegerField(default=0, blank=True)
+    num_lumber_yards = models.PositiveSmallIntegerField(default=0, blank=True)
+    num_mills = models.PositiveSmallIntegerField(default=0, blank=True)
+    num_housing = models.PositiveIntegerField(default=0, blank=True)
+    num_farms = models.PositiveSmallIntegerField(default=0, blank=True)
     # workers who are not currently employed in a resource
-    unassigned_serfs = models.PositiveIntegerField(default=0, blank=0)
+    unassigned_serfs = models.PositiveIntegerField(default=0, blank=True)
     # what proportion of our serfs are slaves and will have no money upkeep
-    slave_labor_percentage = models.PositiveSmallIntegerField(default=0, blank=0)
+    slave_labor_percentage = models.PositiveSmallIntegerField(default=0, blank=True)
     # workers employed in different buildings
-    mining_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
-    lumber_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
-    farming_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
-    mill_serfs = models.PositiveSmallIntegerField(default=0, blank=0)
+    mining_serfs = models.PositiveSmallIntegerField(default=0, blank=True)
+    lumber_serfs = models.PositiveSmallIntegerField(default=0, blank=True)
+    farming_serfs = models.PositiveSmallIntegerField(default=0, blank=True)
+    mill_serfs = models.PositiveSmallIntegerField(default=0, blank=True)
 
     # causes mo' problems.
-    lawlessness = models.PositiveSmallIntegerField(default=0, blank=0)
-    amount_plundered = models.PositiveSmallIntegerField(default=0, blank=0)
+    lawlessness = models.PositiveSmallIntegerField(default=0, blank=True)
+    amount_plundered = models.PositiveSmallIntegerField(default=0, blank=True)
     income_modifier = models.PositiveSmallIntegerField(default=100, blank=100)
 
     @property
@@ -1760,7 +1760,7 @@ class Castle(SharedMemoryModel):
         null=True,
         on_delete=models.CASCADE,
     )
-    damage = models.PositiveSmallIntegerField(default=0, blank=0)
+    damage = models.PositiveSmallIntegerField(default=0, blank=True)
     # cosmetic info:
     name = models.CharField(null=True, blank=True, max_length=80)
     desc = models.TextField(null=True, blank=True)
