@@ -240,7 +240,6 @@ class ClueCreateForm(PRPFormBase):
             author=self.author
         )
         self.fields["rating"].validators = [MaxValueValidator(50), MinValueValidator(1)]
-        self.fields["rating"].required = True
 
     def display(self):
         """Text display of form for in-game command"""
