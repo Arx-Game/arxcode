@@ -437,7 +437,7 @@ class CmdRequest(ArxPlayerCommand):
         if "followup" in self.switches or "comment" in self.switches:
             self.comment_on_ticket()
             return
-        
+
         if "close" in self.switches:
             self.close_ticket(self.lhs, self.rhs)
             return
@@ -450,7 +450,7 @@ class CmdRequest(ArxPlayerCommand):
             ticket = self.get_ticket_from_args(self.lhs)
             if not ticket:
                 return
-                
+
             self.display_ticket(ticket)
             return
 

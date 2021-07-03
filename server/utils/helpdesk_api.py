@@ -104,7 +104,7 @@ def add_followup(caller, ticket, message, mail_player=True):
     return True
 
 
-def resolve_ticket(caller, ticket, message, by_submitter = False):
+def resolve_ticket(caller, ticket, message, by_submitter=False):
     """
     Closes ticket.
     """
@@ -134,9 +134,13 @@ def resolve_ticket(caller, ticket, message, by_submitter = False):
         post = f"{{wPlayer:{{n {ticket.submitting_player}\n{ticket.request_and_response_body()}"
 
     if by_submitter:
-        inform = f"{{w[Requests]{{n: {caller.key} has closed ticket {ticket.id}: {message}"
+        inform = (
+            f"{{w[Requests]{{n: {caller.key} has closed ticket {ticket.id}: {message}"
+        )
     else:
-        inform = f"{{w[Requests]{{n: ticket {ticket.id} was closed by submitter: {message}"
+        inform = (
+            f"{{w[Requests]{{n: ticket {ticket.id} was closed by submitter: {message}"
+        )
 
     inform_staff(
         message=inform,
