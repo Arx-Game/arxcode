@@ -33,6 +33,9 @@ class Dimensions(SharedMemoryModel):
         default=1,
         help_text="How many copies of this item there are, for stackable objects.",
     )
+    is_locked = models.BooleanField(
+        default=False, help_text="If this is a container or exit, whether it's locked."
+    )
 
     class Meta:
         verbose_name_plural = "Dimensions"
@@ -55,6 +58,15 @@ class Permanence(SharedMemoryModel):
     deleted_time = models.DateTimeField(
         null=True,
         help_text="If set, this timestamp means an object is marked for deletion.",
+        blank=True,
+    )
+    pre_offgrid_location = models.ForeignKey(
+        "objects.ObjectDB",
+        on_delete=models.SET_NULL,
+        related_name="offgrid_objects",
+        help_text="Last location before an object was moved off-grid",
+        null=True,
+        blank=True,
     )
 
     class Meta:

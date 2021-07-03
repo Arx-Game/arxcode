@@ -95,7 +95,7 @@ class CmdRoot(ArxCommand):
             caller.msg("That object does not exist.")
             return
 
-        if not obj.db.container:
+        if not obj.is_container:
             caller.msg("Can only target containers!")
             return
 
@@ -132,6 +132,10 @@ class Container(LockMixins, DefaultObject):
     """
 
     default_capacity = 1
+
+    @property
+    def is_container(self):
+        return True
 
     # noinspection PyMethodMayBeStatic
     def create_container_cmdset(self, contdbobj):
@@ -178,7 +182,6 @@ class Container(LockMixins, DefaultObject):
     def at_object_creation(self):
         """Called once, when object is first created (after basetype_setup)."""
         self.locks.add("usekey: chestkey(%s)" % self.id)
-        self.db.container = True
         self.item_data.capacity = 1
         self.at_init()
 

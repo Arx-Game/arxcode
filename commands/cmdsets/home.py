@@ -94,7 +94,7 @@ class CmdManageHome(ArxCommand):
             caller.msg("You are not the owner of this room.")
             return
         if not self.args and not self.switches:
-            locked = "{rlocked{n" if loc.db.locked else "{wunlocked{n"
+            locked = "{rlocked{n" if loc.item_data.is_locked else "{wunlocked{n"
             caller.msg("Your home is currently %s." % locked)
             caller.msg("{wOwners:{n %s" % ", ".join(str(ob) for ob in owners))
             caller.msg(
@@ -111,11 +111,11 @@ class CmdManageHome(ArxCommand):
             # we only show as locked if -all- entrances are locked
             for ent in entrances:
                 ent.unlock_exit()
-            loc.db.locked = False
+            loc.item_data.is_locked = False
             caller.msg("Your house is now unlocked.")
             return
         if "lock" in self.switches:
-            loc.db.locked = True
+            loc.item_data.is_locked = True
             caller.msg("Your house is now locked.")
             for ent in entrances:
                 ent.lock_exit()

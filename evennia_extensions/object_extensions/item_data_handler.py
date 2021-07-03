@@ -22,6 +22,7 @@ class ItemDataHandler:
     weight = DimensionsWrapper()
     capacity = DimensionsWrapper()
     quantity = DimensionsWrapper()
+    is_locked = DimensionsWrapper()
 
     @property
     def total_size(self):
@@ -30,6 +31,7 @@ class ItemDataHandler:
     # properties for object existence
     put_time = PermanenceWrapper()
     deleted_time = PermanenceWrapper()
+    pre_offgrid_location = PermanenceWrapper()
 
     # properties for object name
     false_name = DisplayNamesWrapper()

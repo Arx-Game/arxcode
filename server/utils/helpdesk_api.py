@@ -104,11 +104,16 @@ def add_followup(caller, ticket, message, mail_player=True):
     return True
 
 
-def resolve_ticket(caller, ticket, message):
+def resolve_ticket(caller, ticket, message, by_submitter=False):
     """
     Closes ticket.
     """
     try:
+        if by_submitter and ticket.submitting_player.id != caller.id:
+            raise ValueError(
+                "Attepmted to close a ticket that wasn't submitted by the caller"
+            )
+
         if ticket.resolution:
             ticket.resolution += "\n\n" + message
         else:
@@ -118,25 +123,37 @@ def resolve_ticket(caller, ticket, message):
         ticket.status = ticket.CLOSED_STATUS
         ticket.save()
     except Exception as err:
-        inform_staff("ERROR: Error when attempting to close ticket: %s" % err)
+        inform_staff(f"ERROR: Error when attempting to close ticket: {err}")
         return False
+
     if ticket.queue.slug in ("Code", "Bugs", "Typo"):
         post = False
         subject = None
     else:
-        subject = "%s %s closed" % (ticket.queue.slug, ticket.id)
-        post = "{wPlayer:{n %s\n%s" % (
-            ticket.submitting_player,
-            ticket.request_and_response_body(),
+        subject = f"{ticket.queue.slug} {ticket.id} closed"
+        post = f"{{wPlayer:{{n {ticket.submitting_player}\n{ticket.request_and_response_body()}"
+
+    if by_submitter:
+        inform = (
+            f"{{w[Requests]{{n: {caller.key} has closed ticket {ticket.id}: {message}"
         )
+    else:
+        inform = (
+            f"{{w[Requests]{{n: ticket {ticket.id} was closed by submitter: {message}"
+        )
+
     inform_staff(
-        "{w[Requests]{n: %s has closed ticket %s: %s"
-        % (caller.key, ticket.id, message),
+        message=inform,
         post=post,
         subject=subject,
     )
-    header = "Your ticket has been closed by %s.\n\n" % caller.key
+
+    if by_submitter:
+        return True
+
+    header = f"Your ticket has been closed by {caller.key}.\n\n"
     mail_update(ticket, message, header)
+
     if ticket.kb_category:
         # get_or_create to allow closing ticket multiple times to 'edit' an entry
         item, created = KBItem.objects.get_or_create(title=ticket.title)
@@ -147,6 +164,7 @@ def resolve_ticket(caller, ticket, message):
         verb = "created" if created else "changed"
         inform_staff("Knowledge Base Item '%s' has been %s." % (item, verb))
         return item
+
     return True
 
 

@@ -568,7 +568,7 @@ class PRPClueTests(ArxCommandTest):
         self.call_cmd(
             "/finish",
             "Please correct the following errors:\nName: This field is required.\n"
-            "Desc: This field is required.\nRating: This field is required.\n"
+            "Desc: This field is required.\n"
             "Revelation: This field is required.",
         )
         self.call_cmd(

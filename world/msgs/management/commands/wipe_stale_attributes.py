@@ -58,6 +58,15 @@ def wipe_attributes():
         "can_stack",
         "do_not_format_desc",
         "author",
+        "container",
+        "locked",
+        "docked",
+        "docked_guards",
+        "worn_by",
+        "requested_support",
+        "last_recovery_test",
+        "asked_supporters",
+        "administered_aid",
     ]
     for attr in attr_names:
         print(

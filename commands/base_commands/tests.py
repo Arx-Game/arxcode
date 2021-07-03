@@ -754,9 +754,9 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
             "purse1 in purse1", "You can't put an object inside itself.|Nothing moved."
         )
         self.purse1.move_to(self.room1)
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.call_cmd("a fox mask in purse1", "You'll have to unlock Purse1 first.")
-        self.purse1.db.locked = False
+        self.purse1.item_data.is_locked = False
         self.call_cmd("hairpins1 in purse1", "You put Hairpins1 in Purse1.")
         self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
@@ -781,7 +781,7 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
             "Slinkity1 is currently worn and cannot be moved.|"
             "You put A Fox Mask in Purse1.",
         )
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.caller = self.char1  # staff
         self.call_cmd("5 silver in purse1", "You do not have enough money.")
         self.char1.db.currency = 30.0
@@ -804,9 +804,9 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("obj from Obj2", "That is not a container.")
         self.purse1.move_to(self.room1)
         self.obj1.move_to(self.purse1)
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.call_cmd("obj from purse1", "You'll have to unlock Purse1 first.")
-        self.purse1.db.locked = False
+        self.purse1.item_data.is_locked = False
         self.call_cmd("all from Purse1", "You get Obj from Purse1.")
         self.call_cmd(
             "5 silver from purse1",
@@ -826,7 +826,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd(
             "/outfit Bishikiller from purse1", "You get A Fox Mask from Purse1."
         )
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.caller = self.char1  # staff
         self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
 
@@ -2131,21 +2131,39 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
                 "\nRequest: Seriously it is Deraven not Spareaven who keeps saying this???"
                 "\nGM Resolution: None",
             )
-            self.tix3.status = self.tix3.CLOSED_STATUS
-            self.tix3.save()
+            self.call_cmd(
+                "/close 11=No longer relevant",
+                "You have successfully closed ticket #11.",
+            )
+            self.call_cmd(
+                "11",
+                "\n[Ticket #11] Seriously it is Deraven not..."
+                "\nQueue: Typos - Priority 5"
+                "\nPlayer: TestAccount2\nLocation: Room (#1)"
+                "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
+                "\nRequest: Seriously it is Deraven not Spareaven who keeps saying this???"
+                "\nPlayer Resolution: No longer relevant",
+            )
+            self.call_cmd(
+                "/close 12=I bet this ticket exists",
+                "No ticket found by that number.|Closed tickets: 11\n"
+                "Open tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
+                "Use +request <#> to view an individual ticket. "
+                "Use +request/followup <#>=<comment> to add a comment.",
+            )
         self.call_cmd(
-            "/followup 3=GRR.", "That ticket is already closed. Please make a new one."
+            "/followup 11=GRR.", "That ticket is already closed. Please make a new one."
         )
         self.call_cmd(
             "/followup 7=Poison?",
-            "No ticket found by that number.|Closed tickets: 3\n"
-            "Open tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
+            "No ticket found by that number.|Closed tickets: 11\n"
+            "Open tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
             "Use +request <#> to view an individual ticket. "
             "Use +request/followup <#>=<comment> to add a comment.",
         )
         self.call_cmd(
             "",
-            "Closed tickets: 3\nOpen tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
+            "Closed tickets: 11\nOpen tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
             "Use +request <#> to view an individual ticket. "
             "Use +request/followup <#>=<comment> to add a comment.",
         )

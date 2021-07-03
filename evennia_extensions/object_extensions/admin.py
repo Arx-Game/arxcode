@@ -30,7 +30,7 @@ class DimensionsAdmin(admin.ModelAdmin):
 class PermanenceAdmin(admin.ModelAdmin):
     list_display = ("pk", "put_time", "deleted_time")
     search_fields = ("pk", "objectdb__db_key")
-    raw_id_fields = ("objectdb",)
+    raw_id_fields = ("objectdb", "pre_offgrid_location")
 
 
 class SecretsInline(admin.StackedInline):
@@ -59,7 +59,11 @@ class CharacterTraitValueInline(admin.TabularInline):
 class PermanenceInline(admin.TabularInline):
     model = Permanence
     extra = 0
-    raw_id_fields = ("objectdb",)
+    fk_name = "objectdb"
+    raw_id_fields = (
+        "objectdb",
+        "pre_offgrid_location",
+    )
 
 
 class DimensionsInline(admin.TabularInline):

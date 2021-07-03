@@ -1401,10 +1401,12 @@ class CmdPut(ArxCommand):
             if obj == dest:
                 caller.msg("You can't put an object inside itself.")
                 continue
-            if not dest.db.container:
+            if not dest.is_container:
                 caller.msg("That is not a container.")
                 return
-            if dest.db.locked and not self.caller.check_permstring("builders"):
+            if dest.item_data.is_locked and not self.caller.check_permstring(
+                "builders"
+            ):
                 caller.msg("You'll have to unlock {} first.".format(dest.name))
                 return
             if dest in obj.contents:
@@ -1864,12 +1866,12 @@ class CmdDump(ArxCommand):
         loc = obj.location
 
         # If the object being dumped is not a container or is not dead and therefore lootable then bail out
-        if not (obj.db.container or obj.dead):
+        if not obj.is_container:
             caller.msg("You cannot dump %s as it is not a valid container." % obj)
             return
 
         # Unless the caller is a builder the locked container cannot be dumped
-        if obj.db.locked and not caller.check_permstring("builders"):
+        if obj.item_data.is_locked and not caller.check_permstring("builders"):
             caller.msg("%s is locked. Unlock it first." % obj)
             return
 
