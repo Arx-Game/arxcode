@@ -769,7 +769,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("xp_earned", models.PositiveSmallIntegerField(blank=True, default=0)),
-                ("karma_earned", models.PositiveSmallIntegerField(blank=True, default=0)),
+                (
+                    "karma_earned",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
                 ("gm_notes", models.TextField(blank=True, null=True)),
                 (
                     "character",
