@@ -2131,21 +2131,39 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
                 "\nRequest: Seriously it is Deraven not Spareaven who keeps saying this???"
                 "\nGM Resolution: None",
             )
-            self.tix3.status = self.tix3.CLOSED_STATUS
-            self.tix3.save()
+            self.call_cmd(
+                "/close 11=No longer relevant",
+                "You have successfully closed ticket #11.",
+            )
+            self.call_cmd(
+                "11",
+                "\n[Ticket #11] Seriously it is Deraven not..."
+                "\nQueue: Typos - Priority 5"
+                "\nPlayer: TestAccount2\nLocation: Room (#1)"
+                "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
+                "\nRequest: Seriously it is Deraven not Spareaven who keeps saying this???"
+                "\nPlayer Resolution: No longer relevant",
+            )
+            self.call_cmd(
+                "/close 12=I bet this ticket exists",
+                "No ticket found by that number.|Closed tickets: 11\n"
+                "Open tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
+                "Use +request <#> to view an individual ticket. "
+                "Use +request/followup <#>=<comment> to add a comment.",
+            )
         self.call_cmd(
-            "/followup 3=GRR.", "That ticket is already closed. Please make a new one."
+            "/followup 11=GRR.", "That ticket is already closed. Please make a new one."
         )
         self.call_cmd(
             "/followup 7=Poison?",
-            "No ticket found by that number.|Closed tickets: 3\n"
-            "Open tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
+            "No ticket found by that number.|Closed tickets: 11\n"
+            "Open tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
             "Use +request <#> to view an individual ticket. "
             "Use +request/followup <#>=<comment> to add a comment.",
         )
         self.call_cmd(
             "",
-            "Closed tickets: 3\nOpen tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
+            "Closed tickets: 11\nOpen tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
             "Use +request <#> to view an individual ticket. "
             "Use +request/followup <#>=<comment> to add a comment.",
         )
