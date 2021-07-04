@@ -131,15 +131,15 @@ def resolve_ticket(caller, ticket, message, by_submitter=False):
         subject = None
     else:
         subject = f"{ticket.queue.slug} {ticket.id} closed"
-        post = f"{{wPlayer:{{n {ticket.submitting_player}\n{ticket.request_and_response_body()}"
+        post = f"|wPlayer:|n {ticket.submitting_player}\n{ticket.request_and_response_body()}"
 
-    if by_submitter:
+    if not by_submitter:
         inform = (
-            f"{{w[Requests]{{n: {caller.key} has closed ticket {ticket.id}: {message}"
+            f"|w[Requests]|n: {caller.key} has closed ticket {ticket.id}: {message}"
         )
     else:
         inform = (
-            f"{{w[Requests]{{n: ticket {ticket.id} was closed by submitter: {message}"
+            f"|w[Requests]|n: ticket {ticket.id} was closed by submitter: {message}"
         )
 
     inform_staff(
@@ -155,6 +155,8 @@ def resolve_ticket(caller, ticket, message, by_submitter=False):
     mail_update(ticket, message, header)
 
     if ticket.kb_category:
+        from typeclasses.bulletin_board.bboard import BBoard
+
         # get_or_create to allow closing ticket multiple times to 'edit' an entry
         item, created = KBItem.objects.get_or_create(title=ticket.title)
         item.category = ticket.kb_category
@@ -163,6 +165,16 @@ def resolve_ticket(caller, ticket, message, by_submitter=False):
         item.save()
         verb = "created" if created else "changed"
         inform_staff("Knowledge Base Item '%s' has been %s." % (item, verb))
+        try:
+            board = BBoard.objects.get(db_key__iexact="Theme Questions")
+            board.bb_post(
+                caller,
+                item.display(),
+                subject=item.title,
+            )
+        except BBoard.DoesNotExist:
+            pass
+
         return item
 
     return True
