@@ -8,7 +8,8 @@ from django.conf import settings
 from world.dominion.models import LIFESTYLES
 from django.db.models import Q
 from evennia.objects.models import ObjectDB
-from world.dominion.models import AssetOwner, Organization, CraftingRecipe
+from world.crafting.models import CraftingRecipe
+from world.dominion.models import AssetOwner, Organization
 from commands.base_commands.crafting import CmdCraft
 from commands.base_commands.overrides import CmdDig
 from server.utils.prettytable import PrettyTable
@@ -93,7 +94,7 @@ class CmdManageHome(ArxCommand):
             caller.msg("You are not the owner of this room.")
             return
         if not self.args and not self.switches:
-            locked = "{rlocked{n" if loc.db.locked else "{wunlocked{n"
+            locked = "{rlocked{n" if loc.item_data.is_locked else "{wunlocked{n"
             caller.msg("Your home is currently %s." % locked)
             caller.msg("{wOwners:{n %s" % ", ".join(str(ob) for ob in owners))
             caller.msg(
@@ -110,11 +111,11 @@ class CmdManageHome(ArxCommand):
             # we only show as locked if -all- entrances are locked
             for ent in entrances:
                 ent.unlock_exit()
-            loc.db.locked = False
+            loc.item_data.is_locked = False
             caller.msg("Your house is now unlocked.")
             return
         if "lock" in self.switches:
-            loc.db.locked = True
+            loc.item_data.is_locked = True
             caller.msg("Your house is now locked.")
             for ent in entrances:
                 ent.lock_exit()
@@ -402,7 +403,7 @@ class CmdBuildRoom(CmdDig):
         loc.db.expansions = expansions
         new_room.name = (
             new_room.name
-        )  # this will setup .db.colored_name and strip ansi from key
+        )  # this will setup item_data.colored_name and strip ansi from key
         if cost_increase and assets.id in permits:
             permits[assets.id] += cost_increase
             loc.db.permitted_builders = permits
@@ -834,9 +835,11 @@ class CmdManageShop(ArxCommand):
             )
             if not obj:
                 return
+            item_prices = loc.db.item_prices or {}
             obj.at_drop(caller)
             obj.location = None
-            loc.db.item_prices[obj.id] = price
+            item_prices[obj.id] = price
+            loc.db.item_prices = item_prices
             obj.tags.add("for_sale")
             obj.db.sale_location = loc
             caller.msg("You put %s for sale for %s silver." % (obj, price))
@@ -863,6 +866,7 @@ class CmdManageShop(ArxCommand):
             caller.msg("You have removed %s from your sale list." % obj)
             return
         if "all" in self.switches or "refinecost" in self.switches:
+            prices = loc.db.crafting_prices or {}
             try:
                 cost = int(self.args)
                 if cost < 0:
@@ -871,18 +875,19 @@ class CmdManageShop(ArxCommand):
                 caller.msg("Cost must be a non-negative number.")
                 return
             if "all" in self.switches:
-                loc.db.crafting_prices["all"] = cost
+                prices["all"] = cost
                 caller.msg(
                     "Cost for non-specified recipes set to %s percent markup." % cost
                 )
             else:
-                loc.db.crafting_prices["refine"] = cost
+                prices["refine"] = cost
                 caller.msg("Cost for refining set to %s percent markup." % cost)
+            loc.db.crafting_prices = prices
             return
         if "addrecipe" in self.switches:
             prices = loc.db.crafting_prices or {}
             try:
-                recipe = caller.player_ob.Dominion.assets.recipes.get(
+                recipe = caller.player_ob.Dominion.assets.crafting_recipes.get(
                     name__iexact=self.lhs
                 )
                 cost = int(self.rhs)
@@ -915,7 +920,7 @@ class CmdManageShop(ArxCommand):
                 elif self.lhs.lower() == "refining":
                     arg = "refining"
                 else:
-                    recipe = caller.player_ob.Dominion.assets.recipes.get(
+                    recipe = caller.player_ob.Dominion.assets.crafting_recipes.get(
                         name__iexact=self.lhs
                     )
                     arg = recipe.id
@@ -1143,8 +1148,10 @@ class CmdBuyFromShop(CmdCraft):
         prices = loc.db.crafting_prices or {}
         msg = "{wCrafting Prices{n\n"
         table = PrettyTable(["{wName{n", "{wCraft Price{n", "{wRefine Price{n"])
-        recipes = loc.db.shopowner.player_ob.Dominion.assets.recipes.all().order_by(
-            "name"
+        recipes = (
+            loc.db.shopowner.player_ob.Dominion.assets.crafting_recipes.all().order_by(
+                "name"
+            )
         )
         # This try/except block corrects 'removed' lists that are corrupted by
         # non-integers, because that was a thing once upon a time.
@@ -1312,7 +1319,7 @@ class CmdBuyFromShop(CmdCraft):
                     caller.msg("Please provide a valid recipe name.")
                     return
                 try:
-                    recipe = self.crafter.player_ob.Dominion.assets.recipes.all().get(
+                    recipe = self.crafter.player_ob.Dominion.assets.crafting_recipes.all().get(
                         name__iexact=self.args
                     )
                 except CraftingRecipe.DoesNotExist:

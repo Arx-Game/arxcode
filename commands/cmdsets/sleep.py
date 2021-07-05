@@ -107,30 +107,7 @@ class CmdWake(ArxCommand):
             caller.cmdset.delete(SleepCmdSet)
             caller.msg("Deleting SleepCmdSet from non-character object.")
             return
-        if (
-            not hasattr(caller, "dmg")
-            or not hasattr(caller, "max_hp")
-            or caller.dmg <= caller.max_hp
-        ):
-            caller.wake_up()
-            return
-        # determine if we're healthy enough to wake up automatically
-        if caller.dmg <= caller.max_hp:
-            caller.wake_up()
-            return
-        # we're not, so we need to make a recovery test
-        recov = caller.db.last_recovery_test or 0
-        time_passed = int(time.time()) - int(recov)
-        if time_passed < MIN_TIME:
-            caller.msg("It has been too recent since your last recovery test.")
-            caller.msg("You must wait %s seconds." % (MIN_TIME - time_passed))
-        else:
-            caller.recovery_test()
-        if caller.dmg <= caller.max_hp:
-            caller.wake_up()
-            return
-        caller.msg("You are still too injured to wake up.")
-        return
+        caller.wake_up(light_waking=True)
 
 
 class CmdGet(SleepCommand):
@@ -201,4 +178,4 @@ class CmdNoFighting(SleepCommand):
     """Prevents fighting, etc"""
 
     key = "fight"
-    aliases = ["heal", "train"]
+    aliases = ["train"]

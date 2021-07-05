@@ -7,6 +7,7 @@ from commands.base import ArxCommand
 from commands.mixins import RewardRPToolUseMixin
 from server.utils.exceptions import PayError, CommandError
 from server.utils.prettytable import PrettyTable
+from world.crafting.models import CraftingMaterialType
 from world.petitions.forms import PetitionForm
 from world.petitions.exceptions import PetitionError
 from world.petitions.models import (
@@ -602,15 +603,13 @@ class CmdBroker(ArxCommand):
             if disabled:
                 raise self.BrokerError("Action Point sales are temporarily disabled.")
         elif sale_type == BrokeredSale.CRAFTING_MATERIALS:
-            from world.dominion.models import CraftingMaterialType
-
             try:
                 material_type = CraftingMaterialType.objects.get(name__iexact=self.lhs)
             except CraftingMaterialType.DoesNotExist:
                 raise self.BrokerError(
                     "Could not find a material by the name '%s'." % self.lhs
                 )
-            if "nosell" in (material_type.acquisition_modifiers or ""):
+            if material_type.contraband:
                 raise self.BrokerError(
                     "You can't put contraband on the broker! Seriously, how are you still alive?"
                 )
@@ -720,7 +719,6 @@ class CmdBroker(ArxCommand):
                     "You do not have enough %s resources to put on sale." % resource
                 )
         else:
-            from world.dominion.models import CraftingMaterialType
 
             try:
                 material_type = CraftingMaterialType.objects.get(name__iexact=self.lhs)
@@ -728,7 +726,7 @@ class CmdBroker(ArxCommand):
                 raise self.BrokerError(
                     "Could not find a material by the name '%s'." % self.lhs
                 )
-            if "nosell" in (material_type.acquisition_modifiers or ""):
+            if material_type.contraband:
                 raise self.BrokerError(
                     "You can't put contraband on the broker! Seriously, how are you still alive?"
                 )

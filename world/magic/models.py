@@ -150,7 +150,7 @@ class AlchemicalMaterial(SharedMemoryModel):
         quality_picker.add_option(9, 5)
         quality_picker.add_option(10, 1)
 
-        result.db.quality_level = quality_picker.pick()
+        result.item_data.quality_level = quality_picker.pick()
         result.db.quantity = quantity
         return result
 

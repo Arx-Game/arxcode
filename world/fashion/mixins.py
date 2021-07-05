@@ -72,13 +72,12 @@ class FashionableMixins(object):
         """
         Recipe value is affected by the multiplier before adornment costs are added.
         """
+        from world.crafting.models import AdornedMaterial
+
         if not self.crafted_by_mortals:
             return 0
-        value = self.recipe.value * self.fashion_mult
-        if self.adorns:
-            adorns = dict(self.adorns)
-            for material, quantity in adorns.items():
-                value += material.value * quantity
+        value = self.item_data.recipe.value * self.fashion_mult
+        value += AdornedMaterial.objects.filter(objectdb=self).total_value()
         return int(value)
 
     @property
@@ -91,7 +90,7 @@ class FashionableMixins(object):
         """
         if self.fashion_mult_override is not None:
             return float(self.fashion_mult_override)
-        recipe_base = self.recipe.baseval
+        recipe_base = self.item_data.recipe.base_value
         if not recipe_base:
             return 3.0
         elif recipe_base <= 2:
@@ -106,7 +105,7 @@ class FashionableMixins(object):
     @property
     def fashion_mult_override(self):
         """Returns a recipe's overriding fashion multiplier, or None."""
-        return self.recipe.resultsdict.get("fashion_mult", None)
+        return self.item_data.recipe.fashion_mult
 
     @property
     def modeled_by(self):
@@ -125,14 +124,14 @@ class FashionableMixins(object):
     @property
     def designer(self):
         """Returns the item's creator player"""
-        creator = self.db.crafted_by
+        creator = self.item_data.crafted_by
         if creator and hasattr(creator, "player_ob"):
-            return self.db.crafted_by.player_ob
+            return self.item_data.crafted_by.player_ob
 
     @property
     def crafted_by_mortals(self):
         return bool(
-            self.recipe
+            self.item_data.recipe
             and self.designer
             and not self.designer.check_permstring("builders")
         )

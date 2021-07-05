@@ -7,6 +7,7 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
+from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
 from evennia.objects.objects import DefaultCharacter
 
@@ -16,17 +17,23 @@ from typeclasses.wearable.mixins import UseEquipmentMixins
 from world.msgs.messagehandler import MessageHandler
 from world.msgs.languagehandler import LanguageHandler
 from evennia.utils.utils import lazy_property, variable_from_module
-import time
 from world.stats_and_skills import do_dice_check
 from world.magic.mixins import MagicMixins
 from world.stat_checks.utils import get_check_by_name, get_check_maker_by_name
-from world.stat_checks.constants import DEATH_SAVE, UNCON_SAVE, PERMANENT_WOUND_SAVE
+from world.stat_checks.constants import (
+    DEATH_SAVE,
+    UNCON_SAVE,
+    PERMANENT_WOUND_SAVE,
+    CAUSE_SERIOUS_WOUND,
+    CAUSE_PERMANENT_WOUND,
+)
+from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
 from world.traits.traitshandler import Traitshandler
+from evennia_extensions.object_extensions.item_data_handler import CharacterDataHandler
 
 
 class Character(
     UseEquipmentMixins,
-    NameMixins,
     MsgMixins,
     ObjectMixins,
     MagicMixins,
@@ -52,6 +59,9 @@ class Character(
 
     """
 
+    item_data_class = CharacterDataHandler
+    default_longname = None
+
     def at_object_creation(self):
         """
         Called once, when this object is first created.
@@ -66,8 +76,6 @@ class Character(
         self.db.marital_status = "single"
         self.db.family = "None"
         self.db.dice_string = "Default Dicestring"
-        self.health_status = "alive"
-        self.db.sleep_status = "awake"
         self.at_init()
         self.locks.add("delete:perm(Immortals);tell:all()")
 
@@ -87,15 +95,41 @@ class Character(
     def traits(self):
         return Traitshandler(self)
 
+    @lazy_property
+    def health_status(self):
+        """
+        Gets health_status object for a character that contains their state
+        Returns:
+            status (world.conditions.models.CharacterHealthStatus)
+        """
+        from world.conditions.models import CharacterHealthStatus
+
+        try:
+            return self.character_health_status
+        except CharacterHealthStatus.DoesNotExist:
+            return CharacterHealthStatus.objects.create(character=self)
+
+    @property
+    def sleep_description(self):
+        return self.health_status.get_consciousness_display()
+
+    @property
+    def dead(self):
+        return self.health_status.is_dead
+
+    @property
+    def is_container(self):
+        return self.dead
+
     def at_after_move(self, source_location, **kwargs):
         """
         Hook for after movement. Look around, with brief determining how much detail we get.
         :param source_location: Room
         :return:
         """
-        table = self.db.sitting_at_table
-        if table and source_location != self.location:
-            table.leave(self)
+        place = self.sitting_at_place
+        if place and source_location != self.location:
+            place.leave(self)
         if self.db.briefmode:
             string = ""
             # handle cases of self.location being None or not a Room object
@@ -251,8 +285,7 @@ class Character(
         """
         if self.dead:
             return True
-        self.health_status = "dead"
-        self.db.container = True
+        self.health_status.set_dead()
         if self.location:
             self.location.msg_contents("{r%s has died.{n" % self.name)
         try:
@@ -274,12 +307,11 @@ class Character(
         if self.combat.combat:
             self.combat.combat.remove_combatant(self)
 
-    def resurrect(self, *args, **kwargs):
+    def resurrect(self):
         """
         Cue 'Bring Me Back to Life' by Evanessence.
         """
-        self.health_status = "alive"
-        self.db.container = False
+        self.health_status.set_alive()
         if self.location:
             self.location.msg_contents("{w%s has returned to life.{n" % self.name)
         try:
@@ -300,12 +332,12 @@ class Character(
             return
         reason = " is %s and" % verb if verb else ""
         if uncon:
-            self.db.sleep_status = "unconscious"
+            self.health_status.set_unconscious()
         else:
-            self.db.sleep_status = "asleep"
+            self.health_status.set_asleep()
         if self.location and not quiet:
             self.location.msg_contents(
-                "%s%s falls %s." % (self.name, reason, self.db.sleep_status)
+                "%s%s falls %s." % (self.name, reason, self.sleep_description)
             )
         try:
             from commands.cmdsets import sleep
@@ -318,15 +350,22 @@ class Character(
 
     @property
     def conscious(self):
-        return (
-            self.db.sleep_status != "unconscious" and self.db.sleep_status != "asleep"
-        ) and not self.dead
+        return not self.dead and self.health_status.is_conscious
 
-    def wake_up(self, quiet=False):
+    def wake_up(self, quiet=False, light_waking=False, inform_character=False):
         """
-        Wakes up.
+        Wakes up. if light_waking is set, only wake up if we're asleep,
+        not unconscious.
         """
         if self.dead:
+            if inform_character:
+                self.msg("You are dead and cannot wake.")
+            return
+        if light_waking and not self.health_status.is_asleep:
+            if inform_character:
+                self.msg(
+                    f"You are currently {self.health_status.get_consciousness_display()} and cannot wake."
+                )
             return
         if self.location:
             if not quiet and not self.conscious:
@@ -337,35 +376,13 @@ class Character(
             self.cmdset.delete(sleep.SleepCmdSet)
         except Exception as err:
             print("<<ERROR>>: Error when importing mobile cmdset: %s" % err)
-        self.db.sleep_status = "awake"
-        return
-
-    def recovery_test(self, diff_mod=0, free=False):
-        """
-        A mechanism for healing characters. Whenever they get a recovery
-        test, they heal the result of a willpower+stamina roll, against
-        a base difficulty of 0. diff_mod can change that difficulty value,
-        and with a higher difficulty can mean it can heal a negative value,
-        resulting in the character getting worse off. We go ahead and change
-        the player's health now, but leave the result of the roll in the
-        caller's hands to trigger other checks - death checks if we got
-        worse, unconsciousness checks, whatever.
-        """
-        # no helping us if we're dead
-        if self.dead:
-            return
-        diff = 0 + diff_mod
-        roll = do_dice_check(self, stat_list=["willpower", "stamina"], difficulty=diff)
-        self.change_health(roll)
-        if not free:
-            self.db.last_recovery_test = time.time()
-        return roll
+        self.health_status.set_awake()
 
     def change_health(self, amount, quiet=False, affect_real_dmg=True, wake=True):
         """
         Change character's health and maybe tell them about it.
         Positive amount will 'heal'. Negative will 'harm'.
-        A character with hp to attempt waking up.
+        Sleeping characters can wake upon taking damage.
         """
         difference = self.get_damage_percentage(abs(amount))
         if not quiet:
@@ -391,8 +408,9 @@ class Character(
             self.temp_dmg -= amount
         if difference:
             self.triggerhandler.check_health_change_triggers(amount)
-        if wake and self.dmg <= self.max_hp and self.db.sleep_status != "awake":
-            self.wake_up()
+        # if we're alseep, wake up on taking damage
+        if wake and self.dmg <= self.max_hp and not self.conscious:
+            self.wake_up(light_waking=True)
 
     def get_damage_percentage(self, damage=None):
         """Returns the float percentage of the health. If damage is not specified, we use self.dmg"""
@@ -417,10 +435,11 @@ class Character(
             msg += "seems to have %s injuries" % self.get_wound_descriptor(self.dmg)
         else:
             msg += "is in critical condition - possibly dying"
-        sleep_status = self.db.sleep_status
-        if sleep_status and sleep_status != "awake":
-            msg += ", and is %s" % sleep_status
-        return msg + "."
+        if not self.conscious:
+            msg += ", and is %s" % self.sleep_description
+        msg += "."
+        msg += self.health_status.get_wound_string()
+        return msg
 
     def get_wound_descriptor(self, dmg):
         wound = self.get_damage_percentage(dmg)
@@ -457,11 +476,11 @@ class Character(
         """
         Returns either an illusioned name, a long_name with titles, or our key.
         """
-        if self.db.false_name and display_mask:
-            return self.db.false_name
-        if not short and self.db.longname:
-            return self.db.longname
-        return self.db.colored_name or self.key
+        if self.item_data.false_name and display_mask:
+            return self.item_data.false_name
+        if not short and self.item_data.longname:
+            return self.item_data.longname
+        return self.item_data.colored_name or self.key
 
     @property
     def max_hp(self):
@@ -513,26 +532,14 @@ class Character(
 
     @property
     def real_dmg(self):
-        return self.db.damage or 0
+        return self.health_status.damage
 
     @real_dmg.setter
     def real_dmg(self, dmg):
         if dmg < 1:
             dmg = 0
-        self.db.damage = dmg
-        self.start_recovery_script()
-
-    def start_recovery_script(self):
-        # start the script if we have damage
-        start_script = self.dmg > 0
-        scripts = [ob for ob in self.scripts.all() if ob.key == "Recovery"]
-        if scripts:
-            if start_script:
-                scripts[0].start()
-            else:
-                scripts[0].stop()
-        elif start_script:
-            self.scripts.add("typeclasses.scripts.recovery.Recovery")
+        self.health_status.damage = dmg
+        self.health_status.save()
 
     @property
     def xp(self):
@@ -801,6 +808,19 @@ class Character(
             return "{c" + dest + "{n"
         return "{c" + str(exit_name[0]) + "{n"
 
+    def at_pre_puppet(self, account, session=None, **kwargs):
+        """
+        Return the character from storage in None location in `at_post_unpuppet`.
+        Args:
+            account (Account): This is the connecting account.
+            session (Session): Session controlling the connection.
+        """
+        self.enter_grid()
+        if not self.location:
+            account.msg(
+                "|r%s has no location and no home is set.|n" % self, session=session
+            )  # Note to set home.
+
     def at_post_puppet(self):
         """
         Called just after puppeting has completed.
@@ -820,7 +840,7 @@ class Character(
         for guard in guards:
             if guard.discreet:
                 continue
-            docked_location = guard.db.docked
+            docked_location = guard.item_data.pre_offgrid_location
             if docked_location and docked_location == self.location:
                 guard.summon()
 
@@ -834,11 +854,21 @@ class Character(
         :type player: Player
         :type session: Session
         """
-        super(Character, self).at_post_unpuppet(player, session)
         if not self.sessions.count():
-            table = self.db.sitting_at_table
-            if table:
-                table.leave(self)
+            # only remove this char from grid if no sessions control it anymore.
+            if self.location:
+
+                def message(obj, from_obj):
+                    obj.msg(
+                        "%s has left the game." % self.get_display_name(obj),
+                        from_obj=from_obj,
+                    )
+
+                self.location.for_contents(message, exclude=[self], from_obj=self)
+                self.leave_grid()
+            place = self.sitting_at_place
+            if place:
+                place.leave(self)
             guards = self.guards
             for guard in guards:
                 try:
@@ -846,6 +876,14 @@ class Character(
                         guard.dismiss()
                 except AttributeError:
                     continue
+
+    @property
+    def sitting_at_place(self):
+        """Places the character is currently sitting at"""
+        try:
+            return self.place_occupation.place
+        except ObjectDoesNotExist:
+            return None
 
     @property
     def portrait(self):
@@ -1094,7 +1132,7 @@ class Character(
         results = [
             ob
             for ob in results
-            if not ob.db.false_name or searchdata.lower() != ob.key.lower()
+            if not ob.item_data.false_name or searchdata.lower() != ob.key.lower()
         ]
         # quiet means that messaging is handled elsewhere
         if quiet:
@@ -1291,13 +1329,14 @@ class Character(
         cleaving: bool = False,
         private: bool = False,
         risk: int = 4,
+        quiet: bool = True,
     ):
         # apply AE damage to multinpcs if we're cleaving
         # TODO: move ae_dmg application to subclass
         if cleaving and hasattr(self, "ae_dmg"):
             self.ae_dmg += amount
         self.change_health(
-            -amount, quiet=True, affect_real_dmg=affect_real_damage, wake=False
+            -amount, quiet=quiet, affect_real_dmg=affect_real_damage, wake=False
         )
         # check for death
         if can_kill and affect_real_damage:
@@ -1373,7 +1412,18 @@ class Character(
             )
             return
 
-        if roller.outcome.effect == roller.outcome.SERIOUS_WOUND:
-            pass
-        if roller.outcome.effect == roller.outcome.PERMANENT_WOUND:
-            pass
+        if roller.outcome.effect == CAUSE_SERIOUS_WOUND:
+            self.traits.create_wound(SERIOUS_WOUND)
+            self.msg_location_or_contents(f"{self} has suffered a serious wound!")
+        if roller.outcome.effect == CAUSE_PERMANENT_WOUND:
+            self.traits.create_wound(PERMANENT_WOUND)
+            self.msg_location_or_contents(f"{self} has suffered a permanent wound!")
+
+    @property
+    def alts(self):
+        if not self.roster or not self.roster.current_account:
+            return Character.objects.none()
+        account = self.roster.current_account
+        return Character.objects.filter(roster__current_account=account).exclude(
+            id=self.id
+        )

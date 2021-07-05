@@ -11,14 +11,15 @@ from server.utils.test_utils import (
     TestEquipmentMixins,
     TestTicketMixins,
 )
+from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent, CraftingRecipe
+from world.dominion.models import RPEvent
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
 from web.character.models import PlayerAccount, Clue, Revelation
 
-from typeclasses.readable.readable import CmdWrite
+from typeclasses.readable.readable_commands import CmdWrite
 
 from . import (
     story_actions,
@@ -41,7 +42,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
     template1 = None
     template2 = None
 
-    def setup(self):
+    def setUp(self):
+        super().setUp()
         self.paccount1 = PlayerAccount.objects.create(email="myawesome_email@test.org")
         self.paccount2 = PlayerAccount.objects.create(
             email="myawesome_email_2@test.org"
@@ -77,12 +79,11 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.template2.save()
 
     def test_craft_with_templates(self):
-        self.setup()
 
-        recipe = CraftingRecipe.objects.create(name="Thing", ability="all", result="")
+        recipe = CraftingRecipe.objects.create(name="Thing", ability="all")
 
-        self.char1.dompc.assets.recipes.add(recipe)
-        self.char2.dompc.assets.recipes.add(recipe)
+        self.char1.dompc.assets.crafting_recipes.add(recipe)
+        self.char2.dompc.assets.crafting_recipes.add(recipe)
 
         self.assertEquals(self.template1.applied_to.count(), 0)
 
@@ -117,8 +118,7 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
 
         self.template1.save()
 
-    def test_write_with_templates(self):
-        self.setup()
+    def test_write(self):
 
         from evennia.utils import create
 
@@ -127,38 +127,20 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         book1 = create.create_object(
             typeclass=typeclass, key="book1", location=self.char1, home=self.char1
         )
-        book2 = create.create_object(
-            typeclass=typeclass, key="book2", location=self.char1, home=self.char1
-        )
 
-        self.assertEquals(self.template1.applied_to.count(), 0)
+        self.assertEquals(book1.contained_written_works.count(), 0)
+        self.assertEquals(self.char1.authored_works.count(), 0)
 
         self.setup_cmd(CmdWrite, self.char1)
-        self.call_cmd("[[TEMPLATE_1]]", "Desc set to:\n[[TEMPLATE_1]]", obj=book1)
-        self.call_cmd("/title SuperAwesomeBook", None, obj=book1)
+        self.call_cmd("Everybody dies", "Title: \nBody:\nEverybody dies", obj=book1)
+        self.call_cmd("/title Rocks Fall", None, obj=book1)
         self.call_cmd("/finish", None, obj=book1)
-
-        self.assertEquals(self.template1.applied_to.count(), 1)
-
-        created_obj = self.char1.contents[0]
-
-        self.assertEqual(created_obj.desc, "[[TEMPLATE_1]]")
-        self.assertEqual(self.template1.applied_to.get(), created_obj)
-
-        created_obj.return_appearance(self.char1)
-
-        self.assertIsNotNone(created_obj.ndb.cached_template_desc)
-
-        self.template1.save()
-
-        self.assertIsNone(created_obj.ndb.cached_template_desc)
-
-        self.setup_cmd(CmdWrite, self.char2)
         self.call_cmd(
-            "[[TEMPLATE_1]] and [[TEMPLATE_2]]",
-            "You attempted to add the following templates that you do not have access to: [[TEMPLATE_1]], [[TEMPLATE_2]] to your desc.",
-            obj=book2,
+            "/add book1=1,1", "You have added Rocks Fall as Chapter 1.", obj=book1
         )
+
+        self.assertEquals(book1.contained_written_works.count(), 1)
+        self.assertEquals(self.char1.authored_works.count(), 1)
 
     def test_cmd_recipes(self):
         self.setup_cmd(crafting.CmdRecipes, self.char2)
@@ -174,12 +156,13 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         )
         self.char2.currency = 100
         self.call_cmd("/learn Mask", "You have learned Mask for 10 silver.")
-        self.assertEqual(list(self.char2.dompc.assets.recipes.all()), [self.recipe6])
+        self.assertEqual(
+            list(self.char2.dompc.assets.crafting_recipes.all()), [self.recipe6]
+        )
         self.assertEqual(self.char2.currency, 90.0)
         self.call_cmd(
             "/info Mask",
-            "Name: Mask\nDescription: None\nSilver: 10\nPrimary Materials:\n"
-            "Mat1: 4 (0/4)",
+            "Name: Mask\nDescription: \nSilver: 10\nMaterials: Mat1: 4(0/4)",
         )
         self.call_cmd("/learn", "Recipes you can learn:")
         rtable.assert_called_with(
@@ -211,7 +194,9 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.recipe6.locks.replace("teach:all();learn:all()")
         self.recipe6.save()
         self.call_cmd("/teach Char=Mask", "Taught Char Mask.")
-        self.assertEqual(list(self.char.dompc.assets.recipes.all()), [self.recipe6])
+        self.assertEqual(
+            list(self.char.dompc.assets.crafting_recipes.all()), [self.recipe6]
+        )
         self.call_cmd("/teach Char=Mask", "They already know Mask.")
         self.recipe5.locks.replace("teach:all();learn:all()")
         self.recipe5.save()
@@ -769,21 +754,34 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
             "purse1 in purse1", "You can't put an object inside itself.|Nothing moved."
         )
         self.purse1.move_to(self.room1)
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.call_cmd("a fox mask in purse1", "You'll have to unlock Purse1 first.")
-        self.purse1.db.locked = False
+        self.purse1.item_data.is_locked = False
         self.call_cmd("hairpins1 in purse1", "You put Hairpins1 in Purse1.")
-        self.mask1.db.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
+        self.mask1.remove(self.char2)
+        self.mask1.item_data.size = 20
+        self.purse1.item_data.capacity = 10
+        self.call_cmd(
+            "/outfit Bishikiller in purse1",
+            "Slinkity1 is currently worn and cannot be moved.|"
+            "No more room; A Fox Mask won't fit.|"
+            "Nothing moved.",
+        )
+        # currently trying to put away an outfit will remove it
+        # but not move if no room. May want to change in future
+        self.mask1.wear(self.char2)
+        self.purse1.item_data.capacity = 500
         self.mask1.remove(self.char2)
         self.call_cmd(
             "/outfit Bishikiller in purse1",
             "Slinkity1 is currently worn and cannot be moved.|"
             "You put A Fox Mask in Purse1.",
         )
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.caller = self.char1  # staff
         self.call_cmd("5 silver in purse1", "You do not have enough money.")
         self.char1.db.currency = 30.0
@@ -806,9 +804,9 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("obj from Obj2", "That is not a container.")
         self.purse1.move_to(self.room1)
         self.obj1.move_to(self.purse1)
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.call_cmd("obj from purse1", "You'll have to unlock Purse1 first.")
-        self.purse1.db.locked = False
+        self.purse1.item_data.is_locked = False
         self.call_cmd("all from Purse1", "You get Obj from Purse1.")
         self.call_cmd(
             "5 silver from purse1",
@@ -819,7 +817,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.obj1.location, self.char2)
         self.assertEqual(self.char2.db.currency, 5.0)
         self.assertEqual(self.purse1.db.currency, 25.0)
-        self.mask1.db.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
         self.create_ze_outfit("Bishikiller")
@@ -828,7 +826,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd(
             "/outfit Bishikiller from purse1", "You get A Fox Mask from Purse1."
         )
-        self.purse1.db.locked = True
+        self.purse1.item_data.is_locked = True
         self.caller = self.char1  # staff
         self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
 
@@ -893,6 +891,14 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
             "Players:\n\nPlayer name Fealty Idle \n\nShowing 0 out of 1 unique account logged in.",
         )
 
+    def test_cmd_set(self):
+        self.setup_cmd(overrides.CmdArxSetAttribute, self.char)
+        self.call_cmd(f" here/capacity=200", "Set item data Room/capacity = 200")
+        self.assertEqual(self.room.item_data.capacity, 200)
+        self.call_cmd(
+            f"/char {self.char2}/strength=10", "Set trait Char2/strength = 10"
+        )
+
 
 # noinspection PyUnresolvedReferences
 class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
@@ -917,7 +923,7 @@ class ExchangesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/cancel", f"{head}Your trade has been cancelled.")
         self.assertEqual(self.char2.ndb.personal_trade_in_progress, None)
         self.top2.wear(self.char2)
-        self.mask1.db.quality_level = 11
+        self.mask1.item_data.quality_level = 11
         self.mask1.wear(self.char2)
         self.call_cmd(
             "Char",
@@ -1541,7 +1547,7 @@ class SocialTestsPlus(ArxCommandTest):
             "/claim Char2=test test test",
             "You have already claimed a scene with Char2 this week.",
         )
-        self.char2.db.false_name = "asdf"
+        self.char2.item_data.false_name = "asdf"
         self.char2.aliases.add("asdf")
         self.caller = self.char3  # mask test, not staff
         self.call_cmd("/claim Char2=meow", "Could not find 'Char2'.")
@@ -2125,21 +2131,39 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
                 "\nRequest: Seriously it is Deraven not Spareaven who keeps saying this???"
                 "\nGM Resolution: None",
             )
-            self.tix3.status = self.tix3.CLOSED_STATUS
-            self.tix3.save()
+            self.call_cmd(
+                "/close 11=No longer relevant",
+                "You have successfully closed ticket #11.",
+            )
+            self.call_cmd(
+                "11",
+                "\n[Ticket #11] Seriously it is Deraven not..."
+                "\nQueue: Typos - Priority 5"
+                "\nPlayer: TestAccount2\nLocation: Room (#1)"
+                "\nSubmitted: 08/27/78 12:08:00 - Last Update: 08/27/78 12:08:00"
+                "\nRequest: Seriously it is Deraven not Spareaven who keeps saying this???"
+                "\nPlayer Resolution: No longer relevant",
+            )
+            self.call_cmd(
+                "/close 12=I bet this ticket exists",
+                "No ticket found by that number.|Closed tickets: 11\n"
+                "Open tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
+                "Use +request <#> to view an individual ticket. "
+                "Use +request/followup <#>=<comment> to add a comment.",
+            )
         self.call_cmd(
-            "/followup 3=GRR.", "That ticket is already closed. Please make a new one."
+            "/followup 11=GRR.", "That ticket is already closed. Please make a new one."
         )
         self.call_cmd(
             "/followup 7=Poison?",
-            "No ticket found by that number.|Closed tickets: 3\n"
-            "Open tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
+            "No ticket found by that number.|Closed tickets: 11\n"
+            "Open tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
             "Use +request <#> to view an individual ticket. "
             "Use +request/followup <#>=<comment> to add a comment.",
         )
         self.call_cmd(
             "",
-            "Closed tickets: 3\nOpen tickets: 1, 2, 4, 5, 6, 8, 9, 10, 11\n"
+            "Closed tickets: 11\nOpen tickets: 1, 2, 3, 4, 5, 6, 8, 9, 10\n"
             "Use +request <#> to view an individual ticket. "
             "Use +request/followup <#>=<comment> to add a comment.",
         )
@@ -2225,3 +2249,236 @@ class HelpCommandTests(ArxCommandTest):
         expected_return += "\n\nRelated help entries: test entry\n\n"
         expected_return += "Suggested: +plots, +plot, @gmplots, support, globalscript"
         self.call_cmd("plots", expected_return, cmdset=CharacterCmdSet())
+
+
+class AdjustCommandTests(ArxCommandTest):
+    def setUp(self):
+        super().setUp()
+
+        self.setup_cmd(staff_commands.CmdAdjust, self.account1)
+
+        CraftingMaterialType.objects.create(name="test material")
+
+        self.add_character(3)
+        self.add_character(4)
+        self.setup_character_and_account(self.char3, self.account3, 3)
+        self.setup_character_and_account(self.char4, self.account4, 4)
+
+        self.char2.player.inform = Mock()
+
+    @patch("typeclasses.accounts.Account.gain_materials")
+    @patch("typeclasses.accounts.Account.gain_resources")
+    def test_adjust_failures(self, mock_res_gain, mock_mat_gain):
+
+        not_found = "Could not find 'foo'.|Failed to adjust: foo."
+        self.call_cmd("/material foo=test material,1", not_found)
+
+        # Syntax error
+        mat_syntax_error = "Usage: @adjust/material <char1>,<char2>,etc.=<material>,<amount>[/<inform msg>]"
+        res_syntax_error = "Usage: @adjust/resource <char1>,<char2>,etc.=<resource>,<amount>[/<inform msg>]"
+        self.call_cmd("/material Testaccount2=test material,,5", mat_syntax_error)
+        self.call_cmd("/resource Testaccount2=economic..5", res_syntax_error)
+
+        # Value must be a number.
+        amt_number = "Amount must be an integer."
+        self.call_cmd("/material Testaccount2=test material,q", amt_number)
+        self.call_cmd("/resource Testaccount2=economic,q", amt_number)
+        self.call_cmd("/silver Testaccount2=q", amt_number)
+
+        # Failed to find material in db.
+        material_fail = "Could not find a material with the name 'foo'."
+        self.call_cmd("/material Testaccount2=foo,1", material_fail)
+
+        # gain_materials() "failed"
+        mock_mat_gain.return_value = False
+        mat_adjust_fail = "Failed to adjust: Char2."
+        self.call_cmd("/material Testaccount2=test material,1", mat_adjust_fail)
+
+        # Incorrect resource type
+        bad_resource = "Explosive is not a valid resource type."
+        self.call_cmd("/resource Testaccount2=explosive,1", bad_resource)
+
+        # gain_resource() "failed"
+        mock_res_gain.return_value = 0
+        res_adjust_fail = (
+            "Failed to adjust Char2's economic resources.|Failed to adjust: Char2."
+        )
+        self.call_cmd("/resource Testaccount2=economic,50", res_adjust_fail)
+
+    def test_adjust_resource(self):
+        self.assetowner2.economic = 0
+
+        # Test increase.
+        adjust_msg = "Awarded 50 economic resources to: Char2."
+        inform_msg = "You have been awarded 50 economic resources."
+        self.call_cmd("/resource Testaccount2=economic,50", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Resource Adjustment"
+        )
+        self.assertEqual(self.assetowner2.economic, 50)
+
+        # Test award with message.
+        self.call_cmd(
+            "/resource Testaccount2=economic,50/Here is 50 resources.",
+            f"{adjust_msg}  Message sent to player(s): Here is 50 resources.",
+        )
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}%r%rMessage: Here is 50 resources.",
+            category="Resource Adjustment",
+        )
+        self.assertEqual(self.assetowner2.economic, 100)
+
+        # Test reduction failure.
+        res_adjust_fail = (
+            "Char2 only has 100 economic resources on hand.|Failed to adjust: Char2."
+        )
+        self.call_cmd("/resource Testaccount2=economic,-150", res_adjust_fail)
+
+        # Test reduction.
+        adjust_msg = "Deducted 50 economic resources from: Char2."
+        inform_msg = "You have been deducted 50 economic resources."
+        self.call_cmd("/resource Testaccount2=economic,-50", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Resource Adjustment"
+        )
+        self.assertEqual(self.assetowner2.economic, 50)
+
+    def test_adjust_material(self):
+        # Test increase.
+        adjust_msg = "Awarded 50 test material to: Char2."
+        inform_msg = "You have been awarded 50 test material."
+        self.call_cmd("/material Testaccount2=test material,50", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Material Adjustment"
+        )
+
+        # Get material and confirm increase.
+        mat_type = CraftingMaterialType.objects.get(name__iexact="test material")
+        material = self.assetowner2.owned_materials.get(type=mat_type)
+        self.assertEqual(material.amount, 50)
+
+        # Test award with message.
+        self.call_cmd(
+            "/material Testaccount2=test material,50/Here is 50 material.",
+            f"{adjust_msg}  Message sent to player(s): Here is 50 material.",
+        )
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}%r%rMessage: Here is 50 material.",
+            category="Material Adjustment",
+        )
+        self.assertEqual(material.amount, 100)
+
+        # Test reduction failure.
+        mat_adjust_fail = (
+            "Char2 only has 100 of test material on hand.|Failed to adjust: Char2."
+        )
+        self.call_cmd("/material Testaccount2=test material,-150", mat_adjust_fail)
+
+        # Test reduction.
+        adjust_msg = "Deducted 50 test material from: Char2."
+        inform_msg = "You have been deducted 50 test material."
+        self.call_cmd("/material Testaccount2=test material,-50", adjust_msg)
+        self.assertEqual(material.amount, 50)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Material Adjustment"
+        )
+
+    def test_adjust_silver(self):
+        self.char2.db.currency = 0
+
+        # Test increase.
+        adjust_msg = "Awarded 50 silver to: Char2."
+        inform_msg = "You have been awarded 50 silver."
+        self.call_cmd("/silver Testaccount2=50", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Silver Adjustment"
+        )
+
+        self.assertEqual(self.char2.db.currency, 50)
+
+        # Test with message this time.
+        self.call_cmd(
+            "/silver Testaccount2=50/Here is 50 silver.",
+            f"{adjust_msg}  Message sent to player(s): Here is 50 silver.",
+        )
+        self.char2.player.inform.assert_called_with(
+            f"{inform_msg}%r%rMessage: Here is 50 silver.",
+            category="Silver Adjustment",
+        )
+        self.assertEqual(self.char2.db.currency, 100)
+
+        # Test reduction failure.
+        mny_adjust_fail = "Char2 only has 100 silver on hand.|Failed to adjust: Char2."
+        self.call_cmd("/silver Testaccount2=-150", mny_adjust_fail)
+
+        # Test reduction.
+        adjust_msg = "Deducted 100 silver from: Char2."
+        inform_msg = "You have been deducted 100 silver."
+        self.call_cmd("/silver Testaccount2=-100", adjust_msg)
+        self.char2.player.inform.assert_called_with(
+            inform_msg, category="Silver Adjustment"
+        )
+        self.assertEqual(self.char2.db.currency, 0)
+
+    def test_adjust_multi(self):
+        self.assetowner2.economic = 0
+        self.assetowner3.economic = 0
+        self.assetowner4.economic = 0
+
+        # Test /resource with multiple characters.
+        adjust_msg = "Awarded 50 economic resources to: Char2, Char3, Char4."
+        self.call_cmd(
+            "/resource Testaccount2,Testaccount3,Testaccount4=economic,50", adjust_msg
+        )
+
+        self.assertEqual(self.assetowner2.economic, 50)
+        self.assertEqual(self.assetowner3.economic, 50)
+        self.assertEqual(self.assetowner4.economic, 50)
+
+        # Test /material with multiple characters.
+        adjust_msg = "Awarded 50 test material to: Char2, Char3, Char4."
+        self.call_cmd(
+            "/material Testaccount2,Testaccount3,Testaccount4=test material,50",
+            adjust_msg,
+        )
+
+        mat_type = CraftingMaterialType.objects.get(name__iexact="test material")
+        mat2 = self.assetowner2.owned_materials.get(type=mat_type)
+        mat3 = self.assetowner3.owned_materials.get(type=mat_type)
+        mat4 = self.assetowner4.owned_materials.get(type=mat_type)
+        self.assertEqual(mat2.amount, 50)
+        self.assertEqual(mat3.amount, 50)
+        self.assertEqual(mat4.amount, 50)
+
+        # Test /silver with multiple characters.
+        self.char2.db.currency = 0
+        self.char3.db.currency = 0
+        self.char4.db.currency = 0
+
+        adjust_msg = "Awarded 50 silver to: Char2, Char3, Char4."
+        self.call_cmd("/silver Testaccount2,Testaccount3,Testaccount4=50", adjust_msg)
+
+        self.assertEqual(self.char2.db.currency, 50)
+        self.assertEqual(self.char3.db.currency, 50)
+        self.assertEqual(self.char4.db.currency, 50)
+
+        # Test failure with one not-right character.
+        result_msg = "Could not find 'foo'.|Awarded 50 silver to: Char2, Char4.|Failed to adjust: foo."
+        self.call_cmd("/silver Testaccount2,foo,Testaccount4=50", result_msg)
+
+        self.assertEqual(self.char2.db.currency, 100)
+        self.assertEqual(self.char4.db.currency, 100)
+
+        # Test typo with commas in character names.
+        result_msg = "Deducted 50 silver from: Char2, Char3, Char4."
+        self.call_cmd(
+            "/silver Testaccount2,,Testaccount3,,,Testaccount4=-50", result_msg
+        )
+
+        self.assertEqual(self.char2.db.currency, 50)
+        self.assertEqual(self.char3.db.currency, 0)
+        self.assertEqual(self.char4.db.currency, 50)
+
+        # Test more typos with commas in character names.
+        result_msg = "Could not find 'Testaccount2.Testaccount3'.|Failed to adjust: Testaccount2.Testaccount3."
+        self.call_cmd("/silver Testaccount2.Testaccount3=50", result_msg)

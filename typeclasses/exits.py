@@ -14,7 +14,7 @@ from server.utils.arx_utils import commafy, a_or_an
 from commands.mixins import RewardRPToolUseMixin
 
 
-class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
+class Exit(LockMixins, ObjectMixins, DefaultExit):
     """
     Exits are connectors between rooms. Exits are normal Objects except
     they defines the `destination` property. It also does work in the
@@ -132,7 +132,7 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
                         self.obj.at_password_fail(self.caller)
                         return
                 # iff locked, then we can pass through it if we have a key
-                if self.obj.db.locked:
+                if self.obj.item_data.is_locked:
                     if not self.obj.access(self.caller, "usekey"):
                         self.caller.msg("You don't have a key to this exit.")
                         return
@@ -214,7 +214,7 @@ class Exit(LockMixins, NameMixins, ObjectMixins, DefaultExit):
         mapping = {"secret": secret}
         if traversing_object.move_to(target_location, quiet=quiet, mapping=mapping):
             # if the door was locked, send a message about it unless we were following
-            if key_message and self.db.locked:
+            if key_message and self.item_data.is_locked:
                 msg = (
                     special_entrance
                     or self.db.success_traverse

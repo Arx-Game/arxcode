@@ -6,16 +6,17 @@ from django.db.models import Q, Prefetch
 
 from commands.base import ArxCommand
 from evennia.utils import utils
-from evennia.utils.create import create_object
 from evennia.utils.utils import make_iter
 from server.utils.arx_utils import validate_name, inform_staff
 from server.utils.prettytable import PrettyTable
+from world.crafting.models import (
+    CraftingRecipe,
+    OwnedMaterial,
+    CraftingMaterialType,
+)
 from world.dominion.models import (
     AssetOwner,
     PlayerOrNpc,
-    CraftingRecipe,
-    CraftingMaterials,
-    CraftingMaterialType,
 )
 from world.dominion.setup_utils import setup_dom_for_char
 from world.stats_and_skills import do_dice_check
@@ -50,55 +51,39 @@ QUALITY_LEVELS = {
 }
 
 
-def create_weapon(recipe, roll, proj, caller):
-    skill = recipe.resultsdict.get("weapon_skill", "medium wpn")
+def create_weapon(recipe, roll, proj, caller, crafter):
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(WIELD, proj[1], caller, caller, quality)
-    obj.db.attack_skill = skill
-    if skill == "archery":
-        obj.ranged_mode()
+    obj = recipe.create_obj(WIELD, proj[1], caller, caller, quality, crafter)
     return obj, quality
 
 
-def create_wearable(recipe, roll, proj, caller):
+def create_wearable(recipe, roll, proj, caller, crafter):
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(WEAR, proj[1], caller, caller, quality)
+    obj = recipe.create_obj(WEAR, proj[1], caller, caller, quality, crafter)
     return obj, quality
 
 
-def create_decorative_weapon(recipe, roll, proj, caller):
-    skill = recipe.resultsdict.get("weapon_skill", "small wpn")
+def create_decorative_weapon(recipe, roll, proj, caller, crafter):
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(DECORATIVE_WIELD, proj[1], caller, caller, quality)
-    obj.db.attack_skill = skill
+    obj = recipe.create_obj(DECORATIVE_WIELD, proj[1], caller, caller, quality, crafter)
     return obj, quality
 
 
-def create_place(recipe, roll, proj, caller):
-    scaling = float(recipe.resultsdict.get("scaling", 0))
-    base = int(recipe.resultsdict.get("baseval", 2))
+def create_place(recipe, roll, proj, caller, crafter):
+    scaling = float(recipe.scaling)
+    base = int(recipe.base_value or 2)
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(PLACE, proj[1], caller, caller, quality)
-    obj.db.max_spots = base + int(scaling * quality)
+    obj = recipe.create_obj(PLACE, proj[1], caller, caller, quality, crafter)
+    obj.item_data.max_spots = base + int(scaling * quality)
     return obj, quality
 
 
-def create_book(recipe, roll, proj, caller):
+def create_container(recipe, roll, proj, caller, crafter):
+    scaling = float(recipe.scaling)
+    base = int(recipe.base_value or 2)
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(BOOK, proj[1], caller, caller, quality)
-    return obj, quality
-
-
-def create_container(recipe, roll, proj, caller):
-    scaling = float(recipe.resultsdict.get("scaling", 0))
-    base = int(recipe.resultsdict.get("baseval", 2))
-    quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(CONTAINER, proj[1], caller, caller, quality)
-    obj.db.max_volume = base + int(scaling * quality)
-    if recipe.resultsdict.get("displayable") == "true":
-        obj.tags.add("displayable")
-    if recipe.resultsdict.get("display_by_line") == "true":
-        obj.tags.add("display_by_line")
+    obj = recipe.create_obj(CONTAINER, proj[1], caller, caller, quality, crafter)
+    obj.item_data.capacity = base + int(scaling * quality)
     try:
         obj.grantkey(caller)
     except (TypeError, AttributeError, ValueError):
@@ -108,12 +93,14 @@ def create_container(recipe, roll, proj, caller):
     return obj, quality
 
 
-def create_wearable_container(recipe, roll, proj, caller):
-    scaling = float(recipe.resultsdict.get("scaling", 0))
-    base = int(recipe.resultsdict.get("baseval", 2))
+def create_wearable_container(recipe, roll, proj, caller, crafter):
+    scaling = float(recipe.scaling)
+    base = int(recipe.base_value or 2)
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(WEARABLE_CONTAINER, proj[1], caller, caller, quality)
-    obj.db.max_volume = base + int(scaling * quality)
+    obj = recipe.create_obj(
+        WEARABLE_CONTAINER, proj[1], caller, caller, quality, crafter
+    )
+    obj.item_data.capacity = base + int(scaling * quality)
     try:
         obj.grantkey(caller)
     except (TypeError, AttributeError, ValueError):
@@ -123,33 +110,23 @@ def create_wearable_container(recipe, roll, proj, caller):
     return obj, quality
 
 
-def create_generic(recipe, roll, proj, caller):
+def create_generic(recipe, roll, proj, caller, crafter):
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(BAUBLE, proj[1], caller, caller, quality)
+    obj = recipe.create_obj(BAUBLE, proj[1], caller, caller, quality, crafter)
     return obj, quality
 
 
-def create_consumable(recipe, roll, proj, caller, typeclass):
+def create_consumable(recipe, roll, proj, caller, typeclass, crafter):
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(typeclass, proj[1], caller, caller, quality)
+    obj = recipe.create_obj(typeclass, proj[1], caller, caller, quality, crafter)
     return obj, quality
 
 
-def create_mask(recipe, roll, proj, caller, maskdesc):
+def create_mask(recipe, roll, proj, caller, maskdesc, crafter):
     quality = get_quality_lvl(roll, recipe.difficulty)
-    obj = create_obj(MASK, proj[1], caller, caller, quality)
-    obj.db.maskdesc = maskdesc
+    obj = recipe.create_obj(MASK, proj[1], caller, caller, quality, crafter)
+    obj.item_data.mask_desc = maskdesc
     return obj, quality
-
-
-def create_obj(typec, key, loc, home, quality):
-    if "{" in key and not key.endswith("{n"):
-        key += "{n"
-    obj = create_object(typeclass=typec, key=key, location=loc, home=home)
-    obj.db.quality_level = quality
-    # will set color name and strip ansi from colorized name for key
-    obj.name = key
-    return obj
 
 
 def get_ability_val(char, recipe):
@@ -252,25 +229,6 @@ def get_quality_lvl(roll, diff):
     if roll < diff * 10:
         return 9
     return 10
-
-
-def change_quality(crafting_object, new_quality):
-    """
-    Given a crafted crafting_object, change various attributes in it
-    based on its new quality level and recipe.
-    """
-    recipe = crafting_object.db.recipe
-    recipe = CraftingRecipe.objects.get(id=recipe)
-    otype = recipe.type
-    scaling = float(recipe.resultsdict.get("scaling", 0))
-    base = float(recipe.resultsdict.get("baseval", 0))
-    if otype == "place":
-        crafting_object.db.max_spots = int(base) + int(scaling * new_quality)
-    crafting_object.db.quality_level = new_quality
-    if hasattr(crafting_object, "calc_weapon"):
-        crafting_object.calc_weapon()
-    if hasattr(crafting_object, "calc_armor"):
-        crafting_object.calc_armor()
 
 
 class CmdCraft(ArxCommand, TemplateMixins):
@@ -408,10 +366,10 @@ class CmdCraft(ArxCommand, TemplateMixins):
             # assets not initialized on player
             dompc = setup_dom_for_char(caller, create_dompc=False)
             assets = dompc.assets
-        recipes = crafter.player_ob.Dominion.assets.recipes.all()
+        recipes = crafter.player_ob.Dominion.assets.crafting_recipes.all()
         if not self.args and not self.switches:
             # display recipes and any crafting project we have unfinished
-            materials = assets.materials.all()
+            materials = assets.owned_materials.all()
             caller.msg(
                 "{wAvailable recipes:{n %s"
                 % ", ".join(recipe.name for recipe in recipes)
@@ -451,7 +409,11 @@ class CmdCraft(ArxCommand, TemplateMixins):
             targ = caller.search(self.lhs, location=caller)
             if not targ:
                 return
-            recipe = getattr(targ, "recipe", None)
+            recipe = None
+            try:
+                recipe = targ.item_data.recipe
+            except AttributeError:
+                pass
             if not recipe:
                 caller.msg("No recipe found for that item.")
                 return
@@ -494,7 +456,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                     return
                 # if caller isn't a builder, check and consume their materials
                 if not caller.check_permstring("builders"):
-                    pmats = caller.player.Dominion.assets.materials
+                    pmats = caller.player.Dominion.assets.owned_materials
                     try:
                         pmat = pmats.get(type=mat)
                         if pmat.amount < amt:
@@ -503,12 +465,12 @@ class CmdCraft(ArxCommand, TemplateMixins):
                                 % (amt, mat.name, pmat.amount)
                             )
                             return
-                    except CraftingMaterials.DoesNotExist:
+                    except OwnedMaterial.DoesNotExist:
                         caller.msg("You do not have any of the material %s." % mat.name)
                         return
                     pmat.amount -= amt
                     pmat.save()
-                targ.add_adorn(mat, amt)
+                targ.item_data.add_adorn(mat, amt)
                 caller.msg(
                     "%s is now adorned with %s of the material %s." % (targ, amt, mat)
                 )
@@ -541,7 +503,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                 if not recipe:
                     caller.msg("This is not a crafted object that can be refined.")
                     return
-                if targ.db.quality_level and targ.db.quality_level >= 10:
+                if targ.item_data.quality_level and targ.item_data.quality_level >= 10:
                     caller.msg("This object can no longer be improved.")
                     return
                 ability = get_ability_val(crafter, recipe)
@@ -560,8 +522,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                 else:
                     diffmod = get_difficulty_mod(recipe, invest, action_points, ability)
                 # difficulty gets easier by 1 each time we attempt it
-                refine_attempts = crafter.db.refine_attempts or {}
-                attempts = refine_attempts.get(targ.id, 0)
+                attempts = targ.item_data.get_refine_attempts_for_character(crafter)
                 if attempts > 60:
                     attempts = 60
                 diffmod += attempts
@@ -600,10 +561,9 @@ class CmdCraft(ArxCommand, TemplateMixins):
                     crafter, recipe, diffmod, diffmult=0.75, room=caller.location
                 )
                 quality = get_quality_lvl(roll, recipe.difficulty)
-                old = targ.db.quality_level or 0
+                old = targ.item_data.quality_level or 0
                 attempts += 1
-                refine_attempts[targ.id] = attempts
-                crafter.db.refine_attempts = refine_attempts
+                targ.item_data.set_refine_attempts_for_character(crafter, attempts)
                 self.msg(
                     "The roll is %s, a quality level of %s."
                     % (roll, QUALITY_LEVELS[quality])
@@ -615,7 +575,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                     )
                     return
                 caller.msg("New quality level is %s." % QUALITY_LEVELS[quality])
-                change_quality(targ, quality)
+                targ.item_data.quality_level = quality
                 return
         proj = caller.db.crafting_project
         if not proj:
@@ -765,8 +725,8 @@ class CmdCraft(ArxCommand, TemplateMixins):
                         "This kind of item requires craft/altdesc before it can be finished."
                     )
                     return
-            for mat in recipe.materials.all():
-                mats[mat.id] = mats.get(mat.id, 0) + mat.amount
+            for mat in recipe.required_materials.all():
+                mats[mat.type_id] = mats.get(mat.type_id, 0) + mat.amount
             for adorn in proj[3]:
                 mats[adorn] = mats.get(adorn, 0) + proj[3][adorn]
             # replace with forgeries
@@ -809,7 +769,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                         % (cost, caller.db.currency)
                     )
                     return
-                pmats = caller.player.Dominion.assets.materials
+                pmats = caller.player.Dominion.assets.owned_materials
                 # add up the total cost of the materials we're using for later
                 realvalue = 0
                 for mat in mats:
@@ -833,7 +793,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                             )
                             return
                         realvalue += c_mat.value * mats[mat]
-                    except CraftingMaterials.DoesNotExist:
+                    except OwnedMaterial.DoesNotExist:
                         caller.msg(
                             "You do not have any of the material %s." % c_mat.name
                         )
@@ -850,8 +810,6 @@ class CmdCraft(ArxCommand, TemplateMixins):
                     pmat = pmats.get(type=cmat)
                     pmat.amount -= mats[mat]
                     pmat.save()
-            else:
-                realvalue = recipe.value
             # determine difficulty modifier if we tossed in more money
             ability = get_ability_val(crafter, recipe)
             diffmod = get_difficulty_mod(recipe, invest, action_points, ability)
@@ -861,51 +819,45 @@ class CmdCraft(ArxCommand, TemplateMixins):
             otype = recipe.type
             # create object
             if otype == "wieldable":
-                obj, quality = create_weapon(recipe, roll, proj, caller)
+                obj, quality = create_weapon(recipe, roll, proj, caller, crafter)
             elif otype == "wearable":
-                obj, quality = create_wearable(recipe, roll, proj, caller)
+                obj, quality = create_wearable(recipe, roll, proj, caller, crafter)
             elif otype == "place":
-                obj, quality = create_place(recipe, roll, proj, caller)
-            elif otype == "book":
-                obj, quality = create_book(recipe, roll, proj, caller)
+                obj, quality = create_place(recipe, roll, proj, caller, crafter)
             elif otype == "container":
-                obj, quality = create_container(recipe, roll, proj, caller)
+                obj, quality = create_container(recipe, roll, proj, caller, crafter)
             elif otype == "decorative_weapon":
-                obj, quality = create_decorative_weapon(recipe, roll, proj, caller)
+                obj, quality = create_decorative_weapon(
+                    recipe, roll, proj, caller, crafter
+                )
             elif otype == "wearable_container":
-                obj, quality = create_wearable_container(recipe, roll, proj, caller)
+                obj, quality = create_wearable_container(
+                    recipe, roll, proj, caller, crafter
+                )
             elif otype == "perfume":
-                obj, quality = create_consumable(recipe, roll, proj, caller, PERFUME)
+                obj, quality = create_consumable(
+                    recipe, roll, proj, caller, PERFUME, crafter
+                )
             elif otype == "disguise":
-                obj, quality = create_mask(recipe, roll, proj, caller, proj[6])
+                obj, quality = create_mask(recipe, roll, proj, caller, proj[6], crafter)
             else:
-                obj, quality = create_generic(recipe, roll, proj, caller)
+                obj, quality = create_generic(recipe, roll, proj, caller, crafter)
             # finish stuff universal to all crafted objects
             obj.desc = proj[2]
             obj.save()
 
             self.apply_templates_to(obj)
 
-            obj.db.materials = mats
-            obj.db.recipe = recipe.id
-            obj.db.adorns = proj[3]
-            obj.db.crafted_by = crafter
-            obj.db.volume = int(recipe.resultsdict.get("volume", 0))
+            for mat_id, amount in proj[3].items():
+                obj.item_data.add_adorn(mat_id, amount)
             self.pay_owner(
                 price,
                 "%s has crafted '%s', a %s, at your shop and you earn %s silver."
                 % (caller, obj, recipe.name, price),
             )
-            if proj[4]:
-                obj.db.forgeries = proj[4]
-                obj.db.forgery_roll = do_crafting_roll(
-                    caller, recipe, room=caller.location
-                )
-                # forgery penalty will be used to degrade weapons/armor
-                obj.db.forgery_penalty = (recipe.value / realvalue) + 1
             try:
-                if proj[5]:
-                    obj.db.translation = proj[5]
+                for lang, text in proj[5].items():
+                    obj.item_data.add_translation(lang, text)
             except IndexError:
                 pass
             cnoun = "You" if caller == crafter else crafter
@@ -1023,7 +975,7 @@ class CmdRecipes(ArxCommand):
                     "You have %s silver. %s" % (caller.currency, cost_msg)
                 )
             caller.pay_money(cost)
-            dompc.assets.recipes.add(match)
+            dompc.assets.crafting_recipes.add(match)
             coststr = (" for %s silver" % cost) if cost else ""
             caller.msg("You have learned %s%s." % (match.name, coststr))
             return
@@ -1061,10 +1013,10 @@ class CmdRecipes(ArxCommand):
                 dompc = PlayerOrNpc.objects.get(player=character.player)
             except PlayerOrNpc.DoesNotExist:
                 dompc = setup_dom_for_char(character)
-            if recipe in dompc.assets.recipes.all():
+            if recipe in dompc.assets.crafting_recipes.all():
                 caller.msg("They already know %s." % recipe.name)
                 return
-            dompc.assets.recipes.add(recipe)
+            dompc.assets.crafting_recipes.add(recipe)
             caller.msg("Taught %s %s." % (character, recipe.name))
 
 
@@ -1098,7 +1050,7 @@ class CmdJunk(ArxCommand):
         try:
             if obj.player_ob or obj.player:
                 raise CommandError("You cannot +junk a character.")
-            obj.junk(self.caller)
+            obj.junk_handler.junk(self.caller)
         except AttributeError:
             self.msg("You may only +junk crafted objects.")
         except CommandError as err:

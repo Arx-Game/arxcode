@@ -1,4 +1,5 @@
 from django.db import models
+from django.forms import ValidationError
 from server.utils.arx_utils import CachedProperty
 from evennia.utils.idmapper.models import SharedMemoryModel
 from jinja2 import Environment, BaseLoader
@@ -6,6 +7,18 @@ from typing import Union, List
 from random import randint
 
 from server.utils.abstract_models import NameLookupModel, NameIntegerLookupModel
+
+from world.stat_checks.constants import (
+    NONE,
+    DEATH,
+    UNCONSCIOUSNESS,
+    CAUSE_SERIOUS_WOUND,
+    CAUSE_PERMANENT_WOUND,
+    HEAL,
+    HEAL_AND_CURE_WOUND,
+    HEAL_UNCON_HEALTH,
+    AUTO_WAKE,
+)
 
 
 class DifficultyRating(NameIntegerLookupModel):
@@ -251,7 +264,7 @@ class DamageRating(NameIntegerLookupModel):
         damage = randint(self.value, self.max_value)
         # apply mitigation
         damage = self.mitigate_damage(character, damage)
-        character.take_damage(damage)
+        character.take_damage(damage, quiet=False)
 
     def mitigate_damage(self, character, damage) -> int:
         # resists aren't affected by armor reduction
@@ -300,6 +313,9 @@ class StatCheck(NameLookupModel):
         for rule in self.triggers:
             if rule.situation.character_should_trigger(character, **kwargs):
                 return rule.difficulty
+        # if we only have a single difficulty, return that
+        if len(self.cached_difficulty_rules) == 1:
+            return self.cached_difficulty_rules[0].difficulty
         # return normal difficulty as default
         return DifficultyRating.get_average_difficulty()
 
@@ -322,22 +338,33 @@ class StatCheck(NameLookupModel):
         return False
 
     def get_outcome_for_result(self, result):
+        """This examines out different outcomes and compares it to the provided result.
+        It tries to return the closest match of an outcome to the result we're looking for.
+        If there's a direct match, it'll provide that outcome. Otherwise, it'll try to find
+        the outcome with a result that's just below our given result. If there's no such
+        outcome, that means all outcomes are greater than the result we have, so we grab
+        the lowest of the ones remaining.
+        """
         if not self.cached_outcomes:
             return
         # get direct match
         try:
-            return [ob for ob in self.cached_outcomes if ob.result == result][0]
+            return [
+                outcome for outcome in self.cached_outcomes if outcome.result == result
+            ][0]
         except IndexError:
             pass
-        # return highest result we're lower than
-        for ob in self.cached_outcomes:
-            if result.value < ob.result.value:
-                return ob.result
-        # return lowest result we're greater than
+        # get first outcome that is greater than the result we're looking for
+        for outcome in self.cached_outcomes:
+            if result.value < outcome.result.value:
+                return outcome
+        # all remaining outcomes are worse than the result we're looking for, get the highest
         try:
             return [
-                ob for ob in self.cached_outcomes if ob.result.value < result.value
-            ][0]
+                outcome
+                for outcome in self.cached_outcomes
+                if outcome.result.value < result.value
+            ][-1]
         except IndexError:
             pass
 
@@ -355,7 +382,11 @@ class StatCombination(SharedMemoryModel):
         (USE_LOWEST, "Use the Lowest Value"),
     )
     combined_into = models.ForeignKey(
-        "self", on_delete=models.PROTECT, related_name="child_combinations", null=True
+        "self",
+        on_delete=models.PROTECT,
+        related_name="child_combinations",
+        null=True,
+        blank=True,
     )
     combination_type = models.PositiveSmallIntegerField(
         choices=COMBINATION_CHOICES, default=SUM
@@ -363,6 +394,24 @@ class StatCombination(SharedMemoryModel):
     traits = models.ManyToManyField(
         "traits.Trait", through="TraitsInCombination", related_name="stat_combinations"
     )
+    flat_value = models.SmallIntegerField(
+        null=True, help_text="If defined, this value is also used.", blank=True
+    )
+    random_ceiling = models.SmallIntegerField(
+        null=True,
+        help_text="If defined, value is random between flat value and this ceiling.",
+        blank=True,
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        flat_value = cleaned_data.get("flat_value")
+        random_ceiling = cleaned_data.get("random_ceiling")
+        if random_ceiling and flat_value:
+            if random_ceiling <= flat_value:
+                raise ValidationError(
+                    "random_ceiling must be greater than flat_value if they are defined."
+                )
 
     @CachedProperty
     def should_be_stat_only(self):
@@ -395,6 +444,11 @@ class StatCombination(SharedMemoryModel):
             values.append(trait.get_roll_value_for_character(character))
         for combination in self.cached_child_combinations:
             values.append(combination.get_value_for_stat_combinations(character))
+        # see if we have a flat value to add, which may be random
+        if self.random_ceiling is not None:
+            values.append(randint(self.flat_value or 0, self.random_ceiling))
+        elif self.flat_value is not None:
+            values.append(self.flat_value)
         if self.combination_type == self.SUM:
             return sum(values)
         if self.combination_type == self.USE_HIGHEST:
@@ -428,7 +482,12 @@ class StatCombination(SharedMemoryModel):
     def __str__(self):
         children = self.cached_child_combinations + self.cached_traits_in_combination
         child_strings = sorted([str(ob) for ob in children])
-        return f"{self.get_combination_type_display()}: [{', '.join(child_strings)}]"
+        base = f"{self.get_combination_type_display()}: [{', '.join(child_strings)}]"
+        if self.random_ceiling:
+            base += f" + ({self.flat_value or 0} to {self.random_ceiling})"
+        elif self.flat_value:
+            base += f" + {self.flat_value}"
+        return base
 
 
 class TraitsInCombination(SharedMemoryModel):
@@ -499,14 +558,16 @@ class TraitsInCombination(SharedMemoryModel):
 class StatCheckOutcome(SharedMemoryModel):
     """Provides a way to have a description of what happens for a given result"""
 
-    # these will be converted to a model at some point, choices field will do for now
-    NONE, DEATH, UNCONSCIOUSNESS, SERIOUS_WOUND, PERMANENT_WOUND = range(5)
     EFFECT_CHOICES = (
         (NONE, "none"),
         (DEATH, "death"),
         (UNCONSCIOUSNESS, "unconsciousness"),
-        (SERIOUS_WOUND, "serious wound"),
-        (PERMANENT_WOUND, "permanent wound"),
+        (CAUSE_SERIOUS_WOUND, "serious wound"),
+        (CAUSE_PERMANENT_WOUND, "permanent wound"),
+        (HEAL, "healing"),
+        (HEAL_AND_CURE_WOUND, "healing and cure a wound"),
+        (HEAL_UNCON_HEALTH, "regain below-0% health"),
+        (AUTO_WAKE, "recover from unconsciousness"),
     )
 
     stat_check = models.ForeignKey(
@@ -525,6 +586,26 @@ class StatCheckOutcome(SharedMemoryModel):
         help_text="A coded effect that you want to have trigger.",
         choices=EFFECT_CHOICES,
     )
+
+    stat_combination = models.ForeignKey(
+        "StatCombination",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="stat_check_outcomes",
+        help_text="If defined, this stat combination is used to calculate a value for the effect.",
+    )
+
+    def __str__(self):
+        val = f"Outcome of {self.result} for {self.stat_check}"
+        if self.effect != NONE:
+            val += f", Effect: {self.get_effect_display()}"
+        return val
+
+    def get_value(self, character):
+        if not self.stat_combination:
+            return 0
+        return self.stat_combination.get_value_for_stat_combinations(character)
 
     class Meta:
         unique_together = ("stat_check", "result")
@@ -553,6 +634,9 @@ class CheckDifficultyRule(SharedMemoryModel):
         help_text="Allows you to define a specific circumstance of when this difficulty "
         "rating should apply, usually in automated checks.",
     )
+
+    def __str__(self):
+        return f"Rule for {self.stat_check}: {self.difficulty}"
 
 
 class CheckCondition(SharedMemoryModel):

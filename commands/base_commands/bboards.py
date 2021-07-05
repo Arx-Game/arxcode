@@ -542,7 +542,7 @@ class CmdBBUnsub(ArxPlayerCommand):
     locks = "cmd:not perm(bboard_banned)"
 
     def func(self):
-        """Implementing the command. """
+        """Implementing the command."""
 
         caller = self.caller
 

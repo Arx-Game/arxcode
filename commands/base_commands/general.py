@@ -33,7 +33,7 @@ class CmdBriefMode(ArxCommand):
     help_category = "Settings"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         caller.db.briefmode = not caller.db.briefmode
         if not caller.db.briefmode:
@@ -319,7 +319,7 @@ class CmdShout(RewardRPToolUseMixin, ArxCommand):
     help_category = "Social"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         args = self.args
         switches = self.switches
@@ -358,7 +358,7 @@ class CmdFollow(ArxCommand):
     help_category = "Travel"
 
     def func(self):
-        """ Handles followin' """
+        """Handles followin'"""
         caller = self.caller
         args = self.args
         f_targ = caller.ndb.following
@@ -393,7 +393,7 @@ class CmdDitch(ArxCommand):
     help_category = "Travel"
 
     def func(self):
-        """ Handles followin' """
+        """Handles followin'"""
         caller = self.caller
         args = self.args
         followers = caller.ndb.followers
@@ -1306,7 +1306,7 @@ class CmdDirections(ArxCommand):
     locks = "cmd:all()"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         if "off" in self.switches or not self.args:
             if caller.ndb.waypoint:
@@ -1401,18 +1401,20 @@ class CmdPut(ArxCommand):
             if obj == dest:
                 caller.msg("You can't put an object inside itself.")
                 continue
-            if not dest.db.container:
+            if not dest.is_container:
                 caller.msg("That is not a container.")
                 return
-            if dest.db.locked and not self.caller.check_permstring("builders"):
+            if dest.item_data.is_locked and not self.caller.check_permstring(
+                "builders"
+            ):
                 caller.msg("You'll have to unlock {} first.".format(dest.name))
                 return
             if dest in obj.contents:
                 caller.msg("You can't place an object in something it contains.")
                 continue
-            max_volume = dest.db.max_volume or 0
-            volume = obj.db.volume or 0
-            if dest.volume + volume > max_volume:
+            capacity = dest.item_data.capacity
+            size = obj.item_data.size
+            if dest.used_capacity + size > capacity:
                 caller.msg("No more room; {} won't fit.".format(obj))
                 continue
             if not obj.access(caller, "get"):
@@ -1422,7 +1424,7 @@ class CmdPut(ArxCommand):
             success.append(obj)
             from time import time
 
-            obj.db.put_time = time()
+            obj.item_data.put_time = int(time())
         if success:
             success_str = "%s in %s" % (list_to_string(success), dest.name)
             caller.msg("You put %s." % success_str)
@@ -1815,7 +1817,7 @@ class CmdKeyring(ArxCommand):
         chest_keys = [
             ob
             for ob in chest_keys
-            if hasattr(ob, "tags") and "deleted" not in ob.tags.all()
+            if hasattr(ob, "item_data") and not ob.item_data.deleted_time
         ]
         chest_keys = list(set(chest_keys))
         caller.db.chestkeylist = chest_keys
@@ -1864,12 +1866,12 @@ class CmdDump(ArxCommand):
         loc = obj.location
 
         # If the object being dumped is not a container or is not dead and therefore lootable then bail out
-        if not (obj.db.container or obj.dead):
+        if not obj.is_container:
             caller.msg("You cannot dump %s as it is not a valid container." % obj)
             return
 
         # Unless the caller is a builder the locked container cannot be dumped
-        if obj.db.locked and not caller.check_permstring("builders"):
+        if obj.item_data.is_locked and not caller.check_permstring("builders"):
             caller.msg("%s is locked. Unlock it first." % obj)
             return
 

@@ -61,7 +61,7 @@ class CmdAgents(ArxPlayerCommand):
 
     @staticmethod
     def find_barracks(owner):
-        """"find rooms that are tagged as being barracks for that owner"""
+        """ "find rooms that are tagged as being barracks for that owner"""
         tagname = str(owner.owner) + "_barracks"
         rooms = ObjectDB.objects.filter(db_tags__db_key__iexact=tagname)
         return list(rooms)
@@ -1129,10 +1129,11 @@ class CmdGuards(ArxCommand):
                     % (g_max, current)
                 )
                 return
-            if (
-                caller.location.db.docked_guards
-                and guard in caller.location.db.docked_guards
-            ):
+            if not guard.guarding:
+                self.msg("They are unassigned.")
+                return
+            loc = guard.location or guard.item_data.pre_offgrid_location
+            if loc and caller.location == loc:
                 guard.summon()
                 return
             tagname = str(guard.agentob.agent_class.owner.owner) + "_barracks"
@@ -1141,13 +1142,6 @@ class CmdGuards(ArxCommand):
                 guard.summon()
                 return
             # if they're only one square away
-            loc = guard.location or guard.db.docked
-            if not guard.db.guarding:
-                self.msg("They are unassigned.")
-                return
-            if loc and caller.location == loc:
-                guard.summon()
-                return
             if loc and caller.location.locations_set.filter(db_destination_id=loc.id):
                 guard.summon()
                 return

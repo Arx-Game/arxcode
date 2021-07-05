@@ -13,8 +13,8 @@
     <div class="container-fluid">
     <div class="row">
 
-    {% if character.db.longname %}
-      <h1 class="text-center">{{ character.db.longname }}</h1>
+    {% if character.item_data.longname %}
+      <h1 class="text-center">{{ character.item_data.longname }}</h1>
     {% else %}
       <h1 class="text-center">{{ character.key }}</h1>
     {% endif %}

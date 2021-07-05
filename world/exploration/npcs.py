@@ -71,7 +71,7 @@ class BossMonsterNpc(Npc, MonsterMixin):
 class MookMonsterNpc(MultiNpc, MonsterMixin):
     def multideath(self, num, death=False):
         super(MookMonsterNpc, self).multideath(num, death=death)
-        if self.db.num_living == 0:
+        if self.item_data.quantity == 0:
             self.check_if_defeat()
             if len(self.room_monsters) == 0:
                 self.end_combat()

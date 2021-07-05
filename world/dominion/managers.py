@@ -1,4 +1,5 @@
-from django.db.models import Q, Manager
+from django.db.models import Q, Manager, QuerySet
+from datetime import datetime
 
 
 class OrganizationManager(Manager):
@@ -103,3 +104,31 @@ class LandManager(Manager):
     def land_by_coord(self, x, y):
         qs = self.filter(Q(x_coord=x) & Q(y_coord=y))
         return qs
+
+
+class RPEventQuerySet(QuerySet):
+    def gm_or_prp(self):
+        return self.filter(Q(gm_event=True) | Q(pc_event_participation__gm=True))
+
+    def prp(self):
+        return self.filter(gm_event=False, pc_event_participation__gm=True)
+
+    def active_events(self):
+        return self.filter(finished=False, date__lte=datetime.now())
+
+    def match_search_text(self, text):
+        return self.filter(
+            Q(name__icontains=text)
+            | Q(dompcs__player__username__iexact=text)
+            | Q(desc__icontains=text)
+        )
+
+    def by_user(self, user):
+        return self.filter(
+            Q(public_event=True)
+            | (Q(dompcs__player_id=user.id))
+            | Q(orgs__in=user.Dominion.current_orgs)
+        )
+
+    def has_participants(self):
+        return self.filter(dompcs__isnull=False)

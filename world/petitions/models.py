@@ -50,7 +50,7 @@ class BrokeredSale(SharedMemoryModel):
         through="PurchasedAmount",
     )
     crafting_material_type = models.ForeignKey(
-        "dominion.CraftingMaterialType", null=True, blank=True, on_delete=models.CASCADE
+        "crafting.CraftingMaterialType", null=True, blank=True, on_delete=models.CASCADE
     )
     broker_type = models.PositiveSmallIntegerField(default=SALE, choices=BROKER_TYPES)
 

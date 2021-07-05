@@ -5,6 +5,7 @@ Places for tabletalk
 from typeclasses.objects import Object
 from typeclasses.places.cmdset_places import DefaultCmdSet, SittingCmdSet
 from evennia.utils.utils import make_iter
+from world.crafting.craft_data_handlers import PlaceDataHandler
 
 
 class Place(Object):
@@ -12,6 +13,7 @@ class Place(Object):
     Class for placed objects that allow the 'tabletalk' command.
     """
 
+    item_data_class = PlaceDataHandler
     default_desc = "A place for people to privately chat. Dropping it in a room will make it part of the room."
     PLACE_LOCKS = (
         "call:true();control:perm(Wizards);delete:perm(Wizards);examine:perm(Builders);"
@@ -22,12 +24,19 @@ class Place(Object):
     TT_POSE = 2
     TT_EMIT = 3
 
+    @property
+    def default_max_spots(self):
+        if not self.item_data.recipe:
+            return 6
+        base = self.item_data.recipe.base_value
+        scaling = self.item_data.recipe.scaling
+        quality = self.item_data.quality_level
+        return int(base + int(scaling * quality))
+
     def at_object_creation(self):
         """
         Run at Place creation.
         """
-        self.db.occupants = []
-        self.db.max_spots = 6
         # locks so characters cannot 'get' it
         self.locks.add(self.PLACE_LOCKS)
         self.at_init()
@@ -36,12 +45,10 @@ class Place(Object):
         """
         Character leaving the table.
         """
-        occupants = self.db.occupants or []
+        occupants = self.item_data.occupants
         if character in occupants:
-            occupants.remove(character)
-            self.db.occupants = occupants
+            self.item_data.remove_occupant(character)
             character.cmdset.delete(SittingCmdSet)
-            character.db.sitting_at_table = None
             self.location.msg_contents(
                 "%s has left the %s." % (character.name, self.key), exclude=character
             )
@@ -51,14 +58,13 @@ class Place(Object):
         """
         Character joins the table
         """
-        occupants = self.db.occupants or []
-        character.cmdset.add(SittingCmdSet, permanent=True)
-        character.db.sitting_at_table = self
-        occupants.append(character)
-        self.db.occupants = occupants
-        self.location.msg_contents(
-            "%s has joined the %s." % (character.name, self.key), exclude=character
-        )
+        occupants = self.item_data.occupants
+        if character not in occupants:
+            character.cmdset.add(SittingCmdSet, permanent=True)
+            self.item_data.add_occupant(character)
+            self.location.msg_contents(
+                "%s has joined the %s." % (character.name, self.key), exclude=character
+            )
 
     def build_tt_msg(
         self, from_obj, to_obj, msg: str, is_ooc=False, msg_type=TT_SAY
@@ -95,7 +101,7 @@ class Place(Object):
             )
         elif msg_type == self.TT_EMIT:
             if to_obj.tags.get("emit_label"):
-                emit_label = "{w[{c%s{w]{n " % from_obj.name
+                emit_label = "{w({c%s{w){n " % from_obj.name
             else:
                 emit_label = ""
             place_msg = emit_msg.format(
@@ -128,7 +134,7 @@ class Place(Object):
         # utils.make_iter checks to see if an object is a list, set, etc, and encloses it in a list if not
         # needed so that 'ob not in exclude' can function if we're just passed a character
         exclude = make_iter(exclude)
-        for ob in self.db.occupants:
+        for ob in self.item_data.occupants:
             if ob not in exclude:
                 place_msg = self.build_tt_msg(from_obj, ob, message, is_ooc, msg_type)
                 ob.msg(place_msg, from_obj=from_obj, options=options)
@@ -137,20 +143,9 @@ class Place(Object):
     def at_after_move(self, source_location, **kwargs):
         """If new location is not our wearer, remove."""
         location = self.location
-        # first, remove ourself from the source location's places, if it exists
-        if (
-            source_location
-            and hasattr(source_location, "is_room")
-            and source_location.is_room
-        ):
-            if source_location.db.places and self in source_location.db.places:
-                source_location.db.places.remove(self)
         # if location is a room, add cmdset
         if location and location.is_room:
-            places = location.db.places or []
             self.cmdset.add_default(DefaultCmdSet, permanent=True)
-            places.append(self)
-            location.db.places = places
         # if location not a room, remove cmdset
         else:
             self.cmdset.delete_default()

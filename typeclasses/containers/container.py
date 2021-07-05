@@ -33,7 +33,7 @@ class CmdChestKey(ArxCommand):
         caller = self.caller
         chestkeys = caller.db.chestkeylist or []
         if (
-            caller != self.obj.db.crafted_by
+            caller != self.obj.item_data.crafted_by
             and not caller.check_permstring("builders")
             and self.obj not in chestkeys
         ):
@@ -95,7 +95,7 @@ class CmdRoot(ArxCommand):
             caller.msg("That object does not exist.")
             return
 
-        if not obj.db.container:
+        if not obj.is_container:
             caller.msg("Can only target containers!")
             return
 
@@ -130,6 +130,12 @@ class Container(LockMixins, DefaultObject):
     Containers - bags, chests, etc. Players can have keys and can
     lock/unlock containers.
     """
+
+    default_capacity = 1
+
+    @property
+    def is_container(self):
+        return True
 
     # noinspection PyMethodMayBeStatic
     def create_container_cmdset(self, contdbobj):
@@ -176,8 +182,7 @@ class Container(LockMixins, DefaultObject):
     def at_object_creation(self):
         """Called once, when object is first created (after basetype_setup)."""
         self.locks.add("usekey: chestkey(%s)" % self.id)
-        self.db.container = True
-        self.db.max_volume = 1
+        self.item_data.capacity = 1
         self.at_init()
 
     def grantkey(self, char):
@@ -207,10 +212,24 @@ class Container(LockMixins, DefaultObject):
         show_places=True,
         sep=", ",
     ):
-        if self.tags.get("display_by_line"):
+        if self.display_by_line:
             return super(Container, self).return_contents(
                 pobject, detailed, show_ids, strip_ansi, show_places, sep="\n         "
             )
         return super(Container, self).return_contents(
             pobject, detailed, show_ids, strip_ansi, show_places, sep
         )
+
+    @property
+    def displayable(self):
+        if self.item_data.recipe:
+            return self.item_data.recipe.displayable or super().displayable
+        return super().displayable
+
+    @property
+    def display_by_line(self):
+        if self.tags.get("display_by_line"):
+            return True
+        if self.item_data.recipe:
+            return self.item_data.recipe.display_by_line
+        return False

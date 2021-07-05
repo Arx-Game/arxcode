@@ -7,6 +7,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, F
 
 
@@ -306,7 +307,7 @@ class WeeklyEvents(RunDateMixin, Script):
             for agent in player.retainers:
                 try:
                     del agent.dbobj.attributes._cache["trainer-None"]
-                except (KeyError, AttributeError):
+                except (KeyError, AttributeError, ObjectDoesNotExist):
                     continue
 
     def initialize_temp_dicts(self):
@@ -591,7 +592,7 @@ class WeeklyEvents(RunDateMixin, Script):
             try:
                 char = tup[0]
                 votes = tup[1]
-                name = char.db.longname or char.key
+                name = char.item_data.longname or char.key
                 string += "{w%s){n %-35s {wXP{n: %s\n" % (num, name, votes)
             except AttributeError:
                 print("Could not find character of id %s during posting." % str(tup[0]))

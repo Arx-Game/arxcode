@@ -489,7 +489,7 @@ class CmdGuestPrompt(ArxPlayerCommand):
     auto_help = False
 
     def func(self):
-        """"Execute the command"""
+        """ "Execute the command"""
         caller = self.caller
         caller.msg(
             utils.fill(
@@ -524,7 +524,7 @@ class CmdGuestLook(ArxPlayerCommand):
     help_category = "General"
 
     def func(self):
-        """"implement the ooc look command"""
+        """ "implement the ooc look command"""
         caller = self.caller
         stage = caller.db.tutorial_stage
         if not stage:
@@ -675,7 +675,7 @@ class CmdGuestCharCreate(ArxPlayerCommand):
     help_category = "General"
 
     def func(self):
-        """"create the new character"""
+        """ "create the new character"""
         player = self.caller
         new_character = None
         # see if we've already defined email with @add/email
@@ -786,7 +786,6 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                 new_character.desc = "Description to be set later."
                 new_character.db.unfinished_values = set(_stage3_fields_)
                 # so they don't show up in Arx City Center during character creation
-                new_character.db.prelogout_location = new_character.location
                 new_character.location = None
                 new_character.save()
                 try:
@@ -1319,7 +1318,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             char.db.currency = 0
 
     def func(self):
-        """"implement the ooc look command"""
+        """ "implement the ooc look command"""
         caller = self.caller
         char = caller.db.char
         stage = caller.db.tutorial_stage

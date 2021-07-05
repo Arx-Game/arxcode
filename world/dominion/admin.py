@@ -20,9 +20,6 @@ from .models import (
     PraiseOrCondemn,
     Member,
     Task,
-    CraftingRecipe,
-    CraftingMaterialType,
-    CraftingMaterials,
     RPEvent,
     AccountTransaction,
     AssignedTask,
@@ -45,6 +42,7 @@ from .models import (
     OrgEventParticipation,
     Fealty,
 )
+from world.crafting.models import OwnedMaterial, CraftingMaterialType
 
 from world.dominion.plots.models import (
     Plot,
@@ -302,30 +300,6 @@ class DomainAdmin(DomAdmin):
     inlines = (CastleInline,)
 
 
-class MaterialTypeAdmin(DomAdmin):
-    """Admin for Crafting Material Types, creating/changing the types that exist"""
-
-    list_display = ("id", "name", "desc", "value", "category")
-    ordering = ["value"]
-    search_fields = ["name", "desc", "category"]
-    list_filter = ("category",)
-
-
-class RecipeAdmin(DomAdmin):
-    """Admin for crafting recipes"""
-
-    list_display = ("id", "name", "result", "skill", "ability", "level", "difficulty")
-    ordering = ["ability", "level", "name"]
-    search_fields = ["name", "ability", "skill", "result"]
-    list_filter = ("ability",)
-    filter_horizontal = [
-        "known_by",
-        "primary_materials",
-        "secondary_materials",
-        "tertiary_materials",
-    ]
-
-
 class PCEventParticipantInline(admin.TabularInline):
     """PlayerOrNpcs in an RPEvent"""
 
@@ -374,7 +348,7 @@ class ReceiveTransactionInline(admin.TabularInline):
 class MaterialsInline(admin.TabularInline):
     """Inline for amounts of materials an assetowner has"""
 
-    model = CraftingMaterials
+    model = OwnedMaterial
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -1162,8 +1136,6 @@ admin.site.register(Region, DomAdmin)
 admin.site.register(Land, LandAdmin)
 admin.site.register(Task, TaskAdmin)
 admin.site.register(Ruler, RulerAdmin)
-admin.site.register(CraftingRecipe, RecipeAdmin)
-admin.site.register(CraftingMaterialType, MaterialTypeAdmin)
 admin.site.register(RPEvent, EventAdmin)
 admin.site.register(Plot, PlotAdmin)
 admin.site.register(PlotUpdate, PlotUpdateAdmin)

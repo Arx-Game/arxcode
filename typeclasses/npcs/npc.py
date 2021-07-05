@@ -27,7 +27,7 @@ from world.stats_and_skills import (
     get_stat_cost,
     get_skill_cost,
 )
-import time
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class Npc(Character):
@@ -98,94 +98,8 @@ class Npc(Character):
         """
         Called once, when this object is first created.
         """
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
         self.db.automate_combat = True
-        self.db.damage = 0
         self.at_init()
-
-    def resurrect(self, *args, **kwargs):
-        """
-        Cue 'Bring Me Back to Life' by Evanessence.
-        """
-        self.db.health_status = "alive"
-        if self.location:
-            self.location.msg_contents("{w%s has returned to life.{n" % self.name)
-
-    def fall_asleep(self, uncon=False, quiet=False, verb=None, **kwargs):
-        """
-        Falls asleep. Uncon flag determines if this is regular sleep,
-        or unconsciousness.
-        """
-        reason = " is %s and" % verb if verb else ""
-        if uncon:
-            self.db.sleep_status = "unconscious"
-        else:
-            self.db.sleep_status = "asleep"
-        if self.location and not quiet:
-            self.location.msg_contents(
-                "%s%s falls %s." % (self.name, reason, self.db.sleep_status)
-            )
-
-    def wake_up(self, quiet=False):
-        """
-        Wakes up.
-        """
-        self.db.sleep_status = "awake"
-        if self.location:
-            self.location.msg_contents("%s wakes up." % self.name)
-
-    def get_health_appearance(self):
-        """
-        Return a string based on our current health.
-        """
-        name = self.name
-        if self.db.health_status == "dead":
-            return "%s is currently dead." % name
-        wound = float(self.dmg) / float(self.max_hp)
-        if wound <= 0:
-            msg = "%s is in perfect health." % name
-        elif 0 < wound <= 0.1:
-            msg = "%s is very slightly hurt." % name
-        elif 0.1 < wound <= 0.25:
-            msg = "%s is moderately wounded." % name
-        elif 0.25 < wound <= 0.5:
-            msg = "%s is seriously wounded." % name
-        elif 0.5 < wound <= 0.75:
-            msg = "%s is very seriously wounded." % name
-        elif 0.75 < wound <= 2.0:
-            msg = "%s is critically wounded." % name
-        else:
-            msg = "%s is very critically wounded, possibly dying." % name
-        awake = self.db.sleep_status
-        if awake and awake != "awake":
-            msg += " They are %s." % awake
-        return msg
-
-    def recovery_test(self, diff_mod=0, free=False):
-        """
-        A mechanism for healing characters. Whenever they get a recovery
-        test, they heal the result of a willpower+stamina roll, against
-        a base difficulty of 0. diff_mod can change that difficulty value,
-        and with a higher difficulty can mean it can heal a negative value,
-        resulting in the character getting worse off. We go ahead and change
-        the player's health now, but leave the result of the roll in the
-        caller's hands to trigger other checks - death checks if we got
-        worse, unconsciousness checks, whatever.
-        """
-        diff = 0 + diff_mod
-        roll = do_dice_check(self, stat_list=["willpower", "stamina"], difficulty=diff)
-        if roll > 0:
-            self.msg("You feel better.")
-        else:
-            self.msg("You feel worse.")
-        applied_damage = self.dmg - roll  # how much dmg character has after the roll
-        if applied_damage < 0:
-            applied_damage = 0  # no remaining damage
-        self.db.damage = applied_damage
-        if not free:
-            self.db.last_recovery_test = time.time()
-        return roll
 
     def sensing_check(self, difficulty=15, invis=False, allow_wake=False):
         """
@@ -300,12 +214,11 @@ class Npc(Character):
         desc=None,
         keepold=False,
     ):
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
+        self.health_status.full_restore()
 
-        from commands.cmdsets import death
+        from commands.cmdsets import death, sleep
 
+        self.cmdset.delete(sleep.SleepCmdSet)
         self.cmdset.delete(death.DeathCmdSet)
 
         # if we don't
@@ -331,10 +244,10 @@ class Npc(Character):
 
 class MultiNpc(Npc):
     def multideath(self, num, death=False):
-        living = self.db.num_living or 0
+        living = self.item_data.quantity or 0
         if num > living:
             num = living
-        self.db.num_living = living - num
+        self.item_data.quantity = living - num
         if death:
             dead = self.db.num_dead or 0
             self.db.num_dead = dead + num
@@ -421,18 +334,18 @@ class MultiNpc(Npc):
         from .npc_types import get_npc_singular_name, get_npc_plural_name
 
         npc_type = self.db.npc_type
-        if self.db.num_living == 1 and not self.db.num_dead:
+        if self.item_data.quantity == 1 and not self.db.num_dead:
             self.key = self.db.singular_name or get_npc_singular_name(npc_type)
         else:
-            if self.db.num_living == 1:
+            if self.item_data.quantity == 1:
                 noun = self.db.singular_name or get_npc_singular_name(npc_type)
             else:
                 noun = self.db.plural_name or get_npc_plural_name(npc_type)
-            if not self.db.num_living and self.db.num_dead:
+            if not self.item_data.quantity and self.db.num_dead:
                 noun = "dead %s" % noun
                 self.key = "%s %s" % (self.db.num_dead, noun)
             else:
-                self.key = "%s %s" % (self.db.num_living, noun)
+                self.key = "%s %s" % (self.item_data.quantity, noun)
         self.save()
 
     def setup_npc(
@@ -445,12 +358,10 @@ class MultiNpc(Npc):
         desc=None,
         keepold=False,
     ):
-        self.db.num_living = num
+        self.item_data.quantity = num
         self.db.num_dead = 0
         self.db.num_incap = 0
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
+        self.health_status.full_restore()
         # if we don't
         if not keepold:
             self.db.npc_type = ntype
@@ -467,7 +378,7 @@ class MultiNpc(Npc):
 
     @property
     def quantity(self):
-        num = self.db.num_living or 0
+        num = self.item_data.quantity or 0
         return num - self.temp_losses
 
     @property
@@ -487,6 +398,13 @@ class MultiNpc(Npc):
 
 # noinspection PyAttributeOutsideInit
 class AgentMixin(object):
+    @property
+    def default_colored_name(self):
+        try:
+            return self.agent.colored_name
+        except ObjectDoesNotExist:
+            return None
+
     @property
     def desc(self):
         return self.agent.desc
@@ -510,7 +428,7 @@ class AgentMixin(object):
         msg = self.assignment_string(guarding_name)
         if not guarding or (caller and guarding == caller.char_ob):
             msg += " {wLocation:{n %s" % (
-                self.location or self.db.docked or "Home Barracks"
+                self.location or self.item_data.pre_offgrid_location or "Home Barracks"
             )
         return msg
 
@@ -603,7 +521,7 @@ class AgentMixin(object):
         targ = self.guarding
         if targ:
             targ.remove_guard(self)
-        self.stop_follow(unassigning=True)
+        self.stop_follow()
         self.guarding = None
         self.assisted_investigations.update(currently_helping=False)
 
@@ -642,61 +560,40 @@ class AgentMixin(object):
     def stop_follow(
         self,  # type: Retainer or Agent
         dismiss=True,
-        unassigning=False,
     ):
         super(AgentMixin, self).stop_follow()
         # if we're not being unassigned, we dock them. otherwise, they're gone
         if dismiss:
-            self.dismiss(dock=not unassigning)
+            self.dismiss()
 
     def summon(
         self,  # type: Retainer or Agent
-        summoner=None,
     ):
         """
         Have these guards appear to defend the character. This should generally only be
         called in a location that permits it, such as their house barracks, or in a
         square close to where the guards were docked.
         """
-        if not summoner:
-            summoner = self.db.guarding
-        loc = summoner.location
-        mapping = {"secret": True}
-        self.move_to(loc, mapping=mapping)
-        self.follow(self.db.guarding)
-        docked_loc = self.db.docked
-        if (
-            docked_loc
-            and docked_loc.db.docked_guards
-            and self in docked_loc.db.docked_guards
-        ):
-            docked_loc.db.docked_guards.remove(self)
-        self.db.docked = None
+        if not self.guarding:
+            return
+        loc = self.guarding.location
+        if loc:
+            mapping = {"secret": True}
+            self.move_to(loc, mapping=mapping)
+            self.follow(self.guarding)
+            self.item_data.pre_offgrid_location = None
 
     def dismiss(
         self,  # type: Retainer or Agent
-        dock=True,
     ):
         """
         Dismisses our guards. If they're not being dismissed permanently, then
         we dock them at the location they last occupied, saving it as an attribute.
         """
-        loc = self.location
-        # being dismissed permanently while gone
-        if not loc:
-            docked = self.db.docked
-            if docked and docked.db.docked_guards and self in docked.db.docked_guards:
-                docked.db.docked_guards.remove(self)
-            return
-        self.db.prelogout_location = loc
-        if dock:
-            self.db.docked = loc
-            docked = loc.db.docked_guards or []
-            if self not in docked:
-                docked.append(self)
-            loc.db.docked_guards = docked
-        loc.msg_contents("%s have been dismissed." % self.name)
-        self.location = None
+        prior_location = self.location
+        self.leave_grid()
+        if prior_location:
+            prior_location.msg_contents("%s have been dismissed." % self.name)
         if self.ndb.combat_manager:
             self.ndb.combat_manager.remove_combatant(self)
 
@@ -918,10 +815,15 @@ class Retainer(AgentMixin, Npc):
         desc=None,
         keepold=False,
     ):
-        self.db.damage = 0
-        self.db.health_status = "alive"
-        self.db.sleep_status = "awake"
-        self.setup_stats(ntype, threat)
+        super().setup_npc(
+            ntype=ntype,
+            threat=threat,
+            num=num,
+            sing_name=sing_name,
+            plural_name=plural_name,
+            desc=desc,
+            keepold=True,
+        )
         self.name = self.agentob.agent_class.name
 
     @property
@@ -1056,12 +958,12 @@ class Agent(AgentMixin, MultiNpc):
         a_type = self.agentob.agent_class.type
         noun = self.agentob.agent_class.name
         if not noun:
-            if self.db.num_living == 1:
+            if self.item_data.quantity == 1:
                 noun = get_npc_singular_name(a_type)
             else:
                 noun = get_npc_plural_name(a_type)
-        if self.db.num_living:
-            self.key = "%s %s" % (self.db.num_living, noun)
+        if self.item_data.quantity:
+            self.key = "%s %s" % (self.item_data.quantity, noun)
         else:
             self.key = noun
         self.save()
@@ -1081,17 +983,17 @@ class Agent(AgentMixin, MultiNpc):
         """
         if num < 0:
             raise ValueError("Must pass a positive integer to lose_agents.")
-        if num > self.db.num_living:
-            num = self.db.num_living
+        if num > self.item_data.quantity:
+            num = self.item_data.quantity
         self.multideath(num, death)
         self.agentob.lose_agents(num)
         self.setup_name()
-        if self.db.num_living <= 0:
+        if self.item_data.quantity <= 0:
             self.unassign()
         return num
 
     def gain_agents(self, num):
-        self.db.num_living += num
+        self.item_data.quantity += num
         self.setup_name()
 
     def death_process(self, *args, **kwargs):

@@ -1,9 +1,14 @@
+from evennia_extensions.object_extensions.item_data_handler import ItemDataHandler
 from server.utils.arx_utils import sub_old_ansi, text_box, lowercase_kwargs
 import re
+from datetime import datetime
 from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import parse_ansi
 
+from typeclasses.exceptions import InvalidTargetError
 from world.conditions.triggerhandler import TriggerHandler
+from world.crafting.craft_data_handlers import CraftDataHandler
+from world.crafting.junk_handlers import RefundMaterialsJunkHandler
 from world.templates.models import Template
 from world.templates.mixins import TemplateMixins
 
@@ -35,6 +40,11 @@ class DescMixins(object):
     """
 
     default_desc = ""
+    default_size = 1
+    default_capacity = 100
+    default_quantity = 1
+    default_is_locked = False
+    can_stack = False
 
     @property
     def base_desc(self):
@@ -118,40 +128,21 @@ class DescMixins(object):
 
     perm_desc = property(__perm_desc_get, __perm_desc_set)
 
-    def __get_volume(self):
+    @property
+    def used_capacity(self):
         """
         :type self: ObjectDB
         """
         total = 0
         for obj in self.contents:
-            if not obj.db.currently_worn and obj.db.sheathed_by != self:
-                vol = obj.db.volume or 1
+            if not obj.item_data.currently_worn:
+                vol = obj.item_data.total_size
                 total += vol
         return total
 
-    volume = property(__get_volume)
-
-    @property
-    def health_status(self):
-        """
-        :type self: ObjectDB
-        """
-        return self.db.health_status or "nonliving"
-
-    @health_status.setter
-    def health_status(self, value):
-        """
-        :type self: ObjectDB
-        """
-        self.db.health_status = value
-
     @property
     def dead(self):
-        return self.health_status == "dead"
-
-    @property
-    def alive(self):
-        return self.health_status == "alive"
+        return False
 
     @property
     def additional_desc(self):
@@ -184,6 +175,9 @@ class DescMixins(object):
 
 
 class NameMixins(object):
+    default_false_name = None
+    default_colored_name = None
+
     @property
     def is_disguised(self):
         return bool(self.fakename)
@@ -193,7 +187,7 @@ class NameMixins(object):
         """
         :type self: ObjectDB
         """
-        return self.db.false_name
+        return self.item_data.false_name
 
     @fakename.setter
     def fakename(self, val):
@@ -201,8 +195,8 @@ class NameMixins(object):
         :type self: ObjectDB
         :param val: str
         """
-        old = self.db.false_name
-        self.db.false_name = val
+        old = self.item_data.false_name
+        self.item_data.false_name = val
         if old:
             old = parse_ansi(old, strip_ansi=True)
             self.aliases.remove(old)
@@ -215,35 +209,41 @@ class NameMixins(object):
         """
         :type self: ObjectDB
         """
-        old = self.db.false_name
+        old = self.item_data.false_name
         if old:
             old = parse_ansi(old, strip_ansi=True)
             self.aliases.remove(old)
-        self.attributes.remove("false_name")
+        self.item_data.false_name = None
         self.tags.remove("disguised")
 
-    def __name_get(self):
+    @property
+    def name(self):
         """
         :type self: ObjectDB
         """
-        name = self.fakename or self.db.colored_name or self.key or ""
+        name = self.fakename or self.item_data.colored_name or self.key or ""
         name = name.rstrip("{/").rstrip("|/") + (
             "{n" if ("{" in name or "|" in name or "%" in name) else ""
         )
         return name
 
-    def __name_set(self, val):
+    @name.setter
+    def name(self, val):
         """
         :type self: ObjectDB
         """
         # convert color codes
         val = sub_old_ansi(val)
-        self.db.colored_name = val
-        self.key = parse_ansi(val, strip_ansi=True)
+        uncolored_val = parse_ansi(val, strip_ansi=True)
+        if val == uncolored_val:
+            # if our name isn't colored, wipe the colored_name value
+            del self.item_data.colored_name
+        else:
+            # update the colored_name value
+            self.item_data.colored_name = val
+        self.key = uncolored_val
         self.ndb.cached_template_desc = None
         self.save()
-
-    name = property(__name_get, __name_set)
 
     def __str__(self):
         return self.name
@@ -251,6 +251,10 @@ class NameMixins(object):
 
 # noinspection PyAttributeOutsideInit
 class BaseObjectMixins(object):
+    default_put_time = 0
+    default_deleted_time = None
+    default_pre_offgrid_location = None
+
     @property
     def is_room(self):
         return False
@@ -261,6 +265,10 @@ class BaseObjectMixins(object):
 
     @property
     def is_character(self):
+        return False
+
+    @property
+    def is_container(self):
         return False
 
     @property
@@ -277,11 +285,8 @@ class BaseObjectMixins(object):
 
         :type self: ObjectDB
         """
-        import time
-
         self.location = None
-        self.tags.add("deleted")
-        self.db.deleted_time = time.time()
+        self.item_data.deleted_time = datetime.now()
 
     def undelete(self, move=True):
         """
@@ -289,8 +294,7 @@ class BaseObjectMixins(object):
         :type move: Boolean
         :return:
         """
-        self.tags.remove("deleted")
-        self.attributes.remove("deleted_time")
+        self.item_data.deleted_time = None
         if move:
             from typeclasses.rooms import ArxRoom
 
@@ -352,6 +356,28 @@ class BaseObjectMixins(object):
         # recursive call to get the room
         return self.location.get_room()
 
+    @lazy_property
+    def health_status(self):
+        try:
+            return self.character_health_status
+        except AttributeError:
+            raise InvalidTargetError(f"{self} is not a valid target.")
+
+    def leave_grid(self):
+        """Moves an object off the grid, storing the location from which it left"""
+        if self.location:
+            self.item_data.pre_offgrid_location = self.location
+            self.location = None
+
+    def enter_grid(self):
+        """
+        Moves an object back on grid if not already there. Goes to its last
+        known location or its home space.
+        """
+        if not self.location:
+            self.location = self.item_data.pre_offgrid_location or self.home
+            self.location.at_object_receive(self, None)
+
 
 class AppearanceMixins(BaseObjectMixins, TemplateMixins):
     def get_numbered_name(self, count, looker, **kwargs):
@@ -412,13 +438,12 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
             [],
         )
         currency = self.return_currency()
-        from typeclasses.places.places import Place
 
-        qs = list(Place.objects.filter(db_location=self))
         for con in visible:
             key = get_key(con)
-            if con in qs and show_places:
-                places.append(key)
+            if con in getattr(self, "places", []):
+                if show_places:
+                    places.append(key)
                 continue
             if con.destination:
                 exits.append(key)
@@ -429,14 +454,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 else:
                     sheathed.append(key)
             elif hasattr(con, "wield") and con.is_wielded:
-                if not con.db.stealth:
-                    wielded.append(key)
-                elif (
-                    hasattr(pobject, "sensing_check")
-                    and pobject.sensing_check(con, diff=con.db.sense_difficulty) > 0
-                ):
-                    key += "|w (hidden)|n"
-                    wielded.append(key)
+                wielded.append(key)
             elif con.has_account:
                 # we might have either a permapose or a fake name
                 lname = con.name
@@ -444,7 +462,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                     lname += "|w (%s)|n" % con.db.room_title
                 elif con == pobject:
                     continue
-                if con.key in lname and not con.db.false_name:
+                if con.key in lname and not con.item_data.false_name:
                     lname = lname.replace(key, "|c%s|n" % key)
                     users.append(lname)
                 else:
@@ -452,12 +470,9 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
             elif hasattr(con, "is_character") and con.is_character:
                 npcs.append(con)
             else:
-                if not self.db.places:
-                    things.append(con)
-                elif self.db.places and con not in self.db.places:
-                    things.append(con)
+                things.append(con)
         if worn:
-            worn = sorted(worn, key=lambda x: (x.db.worn_time or 0))
+            worn = sorted(worn, key=lambda x: x.item_data.worn_time)
             string += (
                 "\n"
                 + "{wWorn items of note:{n "
@@ -477,7 +492,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                     users + [get_key(ob) for ob in npcs]
                 )
             if things:
-                things = sorted(things, key=lambda x: x.db.put_time or 0.0)
+                things = sorted(things, key=lambda x: x.item_data.put_time)
                 string += "\n{wObjects:{n " + sep.join([get_key(ob) for ob in things])
             if currency:
                 string += "\n{wMoney:{n %s" % currency
@@ -531,6 +546,17 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         string = "coins worth a total of {:,.2f} silver pieces".format(currency)
         return string
 
+    @property
+    def should_format_desc(self):
+        """
+        :type self: ObjectDB
+        Returns:
+            True if desc should get newlines, False if not
+        """
+        return (
+            not self.db.do_not_format_desc and "player_made_room" not in self.tags.all()
+        )
+
     def return_appearance(
         self, pobject, detailed=False, format_desc=False, show_contents=True
     ):
@@ -563,12 +589,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                 desc = parse_ansi(desc, strip_ansi=True)
             except (AttributeError, ValueError, TypeError):
                 pass
-        if (
-            desc
-            and not self.db.recipe
-            and not self.db.do_not_format_desc
-            and "player_made_room" not in self.tags.all()
-        ):
+        if desc and self.should_format_desc:
             if format_desc:
                 string += "\n\n%s{n\n" % desc
             else:
@@ -718,240 +739,52 @@ class TriggersMixin(object):
         return TriggerHandler(self)
 
 
-class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
-    pass
+class ObjectMixins(
+    NameMixins, DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin
+):
+    item_data_class = ItemDataHandler
+
+    @lazy_property
+    def item_data(self):
+        return self.item_data_class(self)
 
 
 class CraftingMixins(object):
+    item_data_class = CraftDataHandler
+    junk_handler_class = RefundMaterialsJunkHandler
+    default_type_description_name = None
+    should_format_desc = False
+    default_recipe = None
+    default_quality_level = None
+    default_crafted_by = None
+
+    @lazy_property
+    def junk_handler(self):
+        return self.junk_handler_class(self)
+
     def return_appearance(
         self, pobject, detailed=False, format_desc=False, show_contents=True
     ):
-        """
-        This is a convenient hook for a 'look'
-        command to call.
-        :type self: ObjectDB
-        :param pobject: ObjectDB
-        :param detailed: bool
-        :param format_desc: bool
-        :param show_contents: bool
-        """
         string = super(CraftingMixins, self).return_appearance(
             pobject,
             detailed=detailed,
             format_desc=format_desc,
             show_contents=show_contents,
         )
-        string += self.return_crafting_desc()
-        return string
-
-    def junk(self, caller):
-        """Checks our ability to be junked out."""
-        from server.utils.exceptions import CommandError
-
-        if self.location != caller:
-            raise CommandError("You can only +junk objects you are holding.")
-        if self.contents:
-            raise CommandError("It contains objects that must first be removed.")
-        if not self.junkable:
-            raise CommandError("This object cannot be destroyed.")
-        self.do_junkout(caller)
-
-    def do_junkout(self, caller):
-        """Attempts to salvage materials from crafted item, then junks it."""
-        from world.dominion.models import CraftingMaterials, CraftingMaterialType
-
-        def get_refund_chance():
-            """Gets our chance of material refund based on a skill check"""
-            from world.stats_and_skills import do_dice_check
-
-            roll = do_dice_check(
-                caller, stat="dexterity", skill="legerdemain", quiet=False
-            )
-            return max(roll, 1)
-
-        def randomize_amount(amt):
-            """Helper function to determine amount kept when junking"""
-            from random import randint
-
-            num_kept = 0
-            for _ in range(amt):
-                if randint(0, 100) <= roll:
-                    num_kept += 1
-            return num_kept
-
-        pmats = caller.player.Dominion.assets.materials
-        mats = self.db.materials or {}
-        adorns = self.db.adorns or {}
-        refunded = []
-        roll = get_refund_chance()
-        for mat in adorns:
-            cmat = CraftingMaterialType.objects.get(id=mat)
-            amount = adorns[mat]
-            amount = randomize_amount(amount)
-            if amount:
-                try:
-                    pmat = pmats.get(type=cmat)
-                except CraftingMaterials.DoesNotExist:
-                    pmat = pmats.create(type=cmat)
-                pmat.amount += amount
-                pmat.save()
-                refunded.append("%s %s" % (amount, cmat.name))
-        for mat in mats:
-            amount = mats[mat]
-            if mat in adorns:
-                amount -= adorns[mat]
-            amount = randomize_amount(amount)
-            if amount <= 0:
-                continue
-            cmat = CraftingMaterialType.objects.get(id=mat)
-            try:
-                pmat = pmats.get(type=cmat)
-            except CraftingMaterials.DoesNotExist:
-                pmat = pmats.create(type=cmat)
-            pmat.amount += amount
-            pmat.save()
-            refunded.append("%s %s" % (amount, cmat.name))
-        destroy_msg = "You destroy %s." % self
-        if refunded:
-            destroy_msg += " Salvaged materials: %s" % ", ".join(refunded)
-        caller.msg(destroy_msg)
-        self.softdelete()
-
-    @property
-    def recipe(self):
-        """
-        Gets the crafting recipe used to create us if one exists.
-
-        :type self: ObjectDB
-        Returns:
-            The crafting recipe used to create this object.
-        """
-        if self.db.recipe:
-            from world.dominion.models import CraftingRecipe
-
-            try:
-                recipe = CraftingRecipe.objects.get(id=self.db.recipe)
-                return recipe
-            except CraftingRecipe.DoesNotExist:
-                pass
-
-    @property
-    def adorns(self):
-        """
-        Returns a dict of crafting materials we have.
-
-        :type self: ObjectDB
-            Returns:
-                ret (dict): dict of crafting materials as keys to amt
-
-        SharedMemoryModel causes all .get by ID to be cached inside the class,
-        so these queries will only hit the database once. After that, we're just
-        building a dict so it'll be insignificant.
-        """
-        from world.dominion.models import CraftingMaterialType
-
-        ret = {}
-        adorns = self.db.adorns or {}
-        for adorn_id in adorns:
-            try:
-                mat = CraftingMaterialType.objects.get(id=adorn_id)
-            except CraftingMaterialType.DoesNotExist:
-                continue
-            ret[mat] = adorns[adorn_id]
-        return ret
-
-    def return_crafting_desc(self):
-        """
-        :type self: ObjectDB
-        """
-        string = ""
-        adorns = self.adorns
-        # adorns are a dict of the ID of the crafting material type to amount
-        if adorns:
-            adorn_strs = ["%s %s" % (amt, mat.name) for mat, amt in adorns.items()]
-            string += "\nAdornments: %s" % ", ".join(adorn_strs)
-        # recipe is an integer matching the CraftingRecipe ID
-        if hasattr(self, "type_description") and self.type_description:
-            from server.utils.arx_utils import a_or_an
-
-            td = self.type_description
-            part = a_or_an(td)
-            string += "\nIt is %s %s." % (part, td)
-        if self.db.quality_level:
-            string += self.get_quality_appearance()
-        if self.db.quantity:
-            string += "\nThere are %d units." % self.db.quantity
-        if hasattr(self, "origin_description") and self.origin_description:
-            string += self.origin_description
-        if self.db.translation:
-            string += "\nIt contains script in a foreign tongue."
-        # signed_by is a crafter's character object
-        signed = self.db.signed_by
-        if signed:
-            string += "\n%s" % (signed.db.crafter_signature or "")
+        string += self.item_data.get_crafting_desc()
         return string
 
     @property
     def type_description(self):
-        if self.recipe:
-            return self.recipe.name
-
-        return None
-
-    @property
-    def origin_description(self):
-        if self.db.found_shardhaven:
-            return "\nIt was found in %s." % self.db.found_shardhaven
-        return None
+        if self.item_data.recipe:
+            return self.item_data.recipe.name
+        return self.default_type_description_name
 
     @property
-    def quality_level(self):
-        return self.db.quality_level or 0
-
-    def get_quality_appearance(self):
-        """
-        :type self: ObjectDB
-        :return str:
-        """
-        if self.quality_level < 0:
-            return ""
-        from commands.base_commands.crafting import QUALITY_LEVELS
-
-        qual = min(self.quality_level, 11)
-        qual = QUALITY_LEVELS.get(qual, "average")
-        return "\nIts level of craftsmanship is %s." % qual
-
-    def add_adorn(self, material, quantity):
-        """
-        Adds an adornment to this crafted object.
-        :type self: ObjectDB
-        :type material: CraftingMaterialType
-        :type quantity: int
-
-        Args:
-            material: The crafting material type that we're adding
-            quantity: How much we're adding
-        """
-        adorns = self.db.adorns or {}
-        amt = adorns.get(material.id, 0)
-        adorns[material.id] = amt + quantity
-        self.db.adorns = adorns
-
-    @property
-    def is_plot_related(self):
-        if (
-            "plot" in self.tags.all()
-            or self.search_tags.all().exists()
-            or self.clues.all().exists()
-        ):
-            return True
-
-    @property
-    def junkable(self):
-        """A check for this object's plot connections."""
-        if not self.recipe:
-            raise AttributeError
-        return not self.is_plot_related
+    def default_size(self):
+        if self.item_data.recipe:
+            return self.item_data.recipe.volume
+        return 1
 
 
 # regex removes the ascii inside an ascii tag
@@ -1140,11 +973,11 @@ class LockMixins(object):
         if not self.has_lock_permission(caller):
             return
         self.locks.add("traverse: perm(builders)")
-        if self.db.locked:
+        if self.item_data.is_locked:
             if caller:
                 caller.msg("%s is already locked." % self)
             return
-        self.db.locked = True
+        self.item_data.is_locked = True
         msg = "%s is now locked." % self.key
         if caller:
             caller.msg(msg)
@@ -1153,13 +986,15 @@ class LockMixins(object):
         if (
             self.destination
             and hasattr(self.destination, "entrances")
-            and self.destination.db.locked is False
+            and self.destination.item_data.is_locked is False
         ):
             entrances = [
-                ob for ob in self.destination.entrances if ob.db.locked is False
+                ob
+                for ob in self.destination.entrances
+                if ob.item_data.is_locked is False
             ]
             if not entrances:
-                self.destination.db.locked = True
+                self.destination.item_data.is_locked = True
 
     def unlock(self, caller=None):
         """
@@ -1170,17 +1005,29 @@ class LockMixins(object):
         if not self.has_lock_permission(caller):
             return
         self.locks.add("traverse: all()")
-        if not self.db.locked:
+        if not self.item_data.is_locked:
             if caller:
                 caller.msg("%s is already unlocked." % self)
             return
-        self.db.locked = False
+        self.item_data.is_locked = False
         msg = "%s is now unlocked." % self.key
         if caller:
             caller.msg(msg)
         self.location.msg_contents(msg, exclude=caller)
         if self.destination:
-            self.destination.db.locked = False
+            self.destination.item_data.is_locked = False
+
+    @property
+    def currently_open(self):
+        return not self.item_data.is_locked
+
+    @property
+    def displayable(self):
+        return self.tags.get("displayable")
+
+    @property
+    def should_show_contents(self):
+        return self.currently_open or self.displayable
 
     def return_appearance(
         self, pobject, detailed=False, format_desc=False, show_contents=True
@@ -1193,10 +1040,7 @@ class LockMixins(object):
         :param show_contents: bool
         :return: str
         """
-        currently_open = not self.db.locked
-        show_contents = (
-            currently_open or self.tags.get("displayable")
-        ) and show_contents
+        show_contents = self.should_show_contents and show_contents
         base = super(LockMixins, self).return_appearance(
             pobject,
             detailed=detailed,
@@ -1204,7 +1048,7 @@ class LockMixins(object):
             show_contents=show_contents,
         )
         return base + "\nIt is currently %s." % (
-            "locked" if self.db.locked else "unlocked"
+            "locked" if self.item_data.is_locked else "unlocked"
         )
 
 

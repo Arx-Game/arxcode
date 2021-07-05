@@ -1,7 +1,7 @@
 from world.magic.models import *
 from server.utils.test_utils import ArxTest
 from evennia.utils import create
-from world.dominion.models import CraftingRecipe
+from world.crafting.models import CraftingRecipe
 from world.traits.models import Trait
 
 _PENDING_MAGIC_NOTIFY = []
@@ -50,10 +50,10 @@ class ArxMagicTest(ArxTest):
         self.test_object = create.create_object(
             typeclass="typeclasses.objects.Object", key="Test Object", nohome=True
         )
-        self.test_object.db.recipe = self.recipe.id
+        self.test_object.item_data.recipe = self.recipe.id
         self.test_object.db.alignment = self.alignment.id
         self.test_object.db.affinity = self.affinity.id
-        self.test_object.db.quality_level = 10
+        self.test_object.item_data.quality_level = 10
         self.test_object.db.quantity = 1
 
         self.practitioner = Practitioner.objects.create(

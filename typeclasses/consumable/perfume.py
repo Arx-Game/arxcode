@@ -29,14 +29,11 @@ class Perfume(Consumable):
 
     @property
     def quality_prefix(self):
-        recipe_id = self.db.recipe
-        from world.dominion.models import CraftingRecipe
-
+        recipe = self.item_data.recipe
         try:
-            recipe = CraftingRecipe.objects.get(id=recipe_id)
-        except CraftingRecipe.DoesNotExist:
+            return "{w%s{n:" % recipe.name
+        except AttributeError:
             return "{wUnknown Perfume{n:"
-        return "{w%s{n:" % recipe.name
 
     @property
     def valid_typeclass_path(self):

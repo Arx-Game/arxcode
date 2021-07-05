@@ -46,7 +46,7 @@ class DatabaseCleanup(RunDateMixin, Script):
             self.cleanup_old_informs(date)
             self.cleanup_old_tickets(date)
             self.cleanup_django_admin_logs(date)
-            self.cleanup_soft_deleted_objects()
+            self.cleanup_soft_deleted_objects(date)
             self.cleanup_empty_tags()
             self.cleanup_old_praises()
             self.cleanup_old_sessions(date)
@@ -63,31 +63,30 @@ class DatabaseCleanup(RunDateMixin, Script):
         delete_empty_tags()
 
     @staticmethod
-    def cleanup_soft_deleted_objects():
-        """Permanently deletes previously 'soft'-deleted objects"""
+    def cleanup_soft_deleted_objects(date):
+        """Permanently deletes previously 'soft'-deleted objects.
+        We only delete items older than our date which have no roster object
+        and are not in game.
+        """
         try:
             from evennia.objects.models import ObjectDB
-            import time
 
-            qs = ObjectDB.objects.filter(db_tags__db_key__iexact="deleted")
-            current_time = time.time()
+            qs = ObjectDB.objects.exclude(permanence__deleted_time__isnull=True).filter(
+                permanence__deleted_time__lt=date,
+                db_location__isnull=True,
+                roster__isnull=True,
+            )
             for ob in qs:
-                # never delete a player character
-                if ob.player_ob:
-                    ob.undelete()
-                    continue
-                # never delete something in-game
-                if ob.location:
-                    ob.undelete()
-                    continue
-                deleted_time = ob.db.deleted_time
-                # all checks passed, delete it for reals
-                if (not deleted_time) or (current_time - deleted_time > 604800):
+                try:
                     # if we're a unique retainer, wipe the agent object as well
                     if hasattr(ob, "agentob"):
                         if ob.agentob.agent_class.unique:
                             ob.agentob.agent_class.delete()
                     ob.delete()
+                except Exception as err:
+                    traceback.print_exc()
+                    print(f"Error in deleting obj (#{ob.pk}, {ob.db_key}: {err}")
+                    continue
         except Exception as err:
             traceback.print_exc()
             print("Error in cleaning up deleted objects: %s" % err)

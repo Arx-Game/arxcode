@@ -307,6 +307,15 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         """Returns the holder for all our assets/prestige/etc"""
         return self.Dominion.assets
 
+    def get_resource_amt(self, rtype) -> int:
+        """Retrieves how much of a given resource this player has."""
+        try:
+            amt = getattr(self.assets, rtype)
+        except AttributeError:
+            return 0
+        else:
+            return amt
+
     def pay_resources(self, rtype, amt):
         """
         Attempt to pay resources. If we don't have enough,
@@ -332,6 +341,17 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
             return amt
         return 0
 
+    def get_material_amt(self, material_type) -> int:
+        """Retrieves how much of a given material this player has."""
+        from django.core.exceptions import ObjectDoesNotExist
+
+        try:
+            material = self.assets.owned_materials.get(type=material_type)
+        except ObjectDoesNotExist:
+            return 0
+        else:
+            return material.amount
+
     def pay_materials(self, material_type, amount):
         """
         Attempts to pay materials of the given type and amount
@@ -347,9 +367,9 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
         assets = self.assets
         try:
             if amount < 0:
-                material, _ = assets.materials.get_or_create(type=material_type)
+                material, _ = assets.owned_materials.get_or_create(type=material_type)
             else:
-                material = assets.materials.get(type=material_type)
+                material = assets.owned_materials.get(type=material_type)
             if material.amount < amount:
                 return False
             material.amount -= amount

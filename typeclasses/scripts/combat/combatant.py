@@ -41,7 +41,7 @@ class CombatHandler(object):
         self.state = None
         self.char = character
         self.spectated_combat = None
-        if character.db.num_living:
+        if character.item_data.quantity > 1:
             self.multiple = True
             self.switch_chance = 50
             try:
@@ -313,7 +313,7 @@ class CombatHandler(object):
             return 0
         # noinspection PyBroadException
         try:
-            dmg = self.char.db.damage or 0
+            dmg = self.char.damage
             base = int((dmg * 100.0) / (self.char.max_hp * 10.0))
             base -= self.char.boss_rating * 10
             if base < 0:

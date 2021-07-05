@@ -1,12 +1,12 @@
 """
 Readable/Writable objects
 """
-
+from server.utils.arx_utils import CachedProperty
 from typeclasses.objects import Object
-from evennia import CmdSet
+from typeclasses.readable.exceptions import ChapterNotFoundError, AddChapterError
 
-from commands.base import ArxCommand
-from world.templates.mixins import TemplateMixins
+from typeclasses.readable.readable_commands import SignCmdSet
+from world.crafting.junk_handlers import BaseJunkHandler
 
 
 class Readable(Object):
@@ -14,216 +14,116 @@ class Readable(Object):
     Class for objects that can be written/named
     """
 
-    default_desc = "Nothing has been written on this yet. '{whelp write{n'"
+    junk_handler_class = BaseJunkHandler
+    maximum_chapters = 20
 
     def at_object_creation(self):
         """
         Run at Place creation.
         """
-        self.db.written = False
-        self.db.num_instances = 1
-        self.db.can_stack = True
-        self.db.do_not_format_desc = True
         self.at_init()
 
     def at_after_move(self, source_location, **kwargs):
-        if self.db.num_instances > 1 and not self.db.written:
+        if self.item_data.quantity > 1 and not self.written:
             self.setup_multiname()
         location = self.location
-        # first, remove ourself from the source location's places, if it exists
-        if source_location and source_location.is_room:
-            if source_location.db.places and self in source_location.db.places:
-                source_location.db.places.remove(self)
-        # if location is a room, add cmdset
+        # if location is a character, add cmdset
         if location and location.is_character:
-            if self.db.written:
+            if self.written:
                 self.cmdset.add_default(SignCmdSet, permanent=True)
-            else:
-                self.cmdset.add_default(WriteCmdSet, permanent=True)
         else:
             self.cmdset.delete_default()
 
     def return_appearance(self, *args, **kwargs):
-        msg = Object.return_appearance(self, *args, **kwargs)
-        if self.db.signed and not self.db.can_stack:
-            sigs = ", ".join(str(ob) for ob in self.db.signed)
-            msg += "\nSigned by: %s" % sigs
+        """Books do not use a description at all. They return their index/command help."""
+        msg = self.chapter_index_display_string
+        msg += f"\n{self.command_help_string}"
+        return msg
+
+    @property
+    def chapter_index_display_string(self):
+        if not self.written:
+            return "There are no chapters added to this book yet.\n"
+        msg = "Chapter Index:\n"
+        for number, chapter in self.chapter_index.items():
+            msg += f"({number}) {chapter.written_work.pretty_title}\n"
+        return msg
+
+    @property
+    def command_help_string(self):
+        msg = ""
+        if self.written:
+            msg += "To read a chapter from the book, use |cread <book>=<chapter>|n.\n"
+        else:
+            msg += "To add a chapter to the book, use |cwrite/add <book>=<story ID>,<chapter number>|n\n"
         return msg
 
     # noinspection PyAttributeOutsideInit
     def setup_multiname(self):
-        if self.db.num_instances > 1:
-            self.key = "%s books" % self.db.num_instances
-            self.save()
+        self.key = self.generic_book_name
+
+    @property
+    def generic_book_name(self):
+        if self.item_data.quantity > 1:
+            return "%s books" % self.item_data.quantity
         else:
-            self.key = "a book"
+            return "book"
+
+    @property
+    def has_been_named(self):
+        return self.key != self.generic_book_name
 
     def set_num(self, value):
-        self.db.num_instances = value
+        self.item_data.quantity = value
         self.setup_multiname()
 
     @property
-    def junkable(self):
-        """A check for this object's plot connections."""
-        return not self.is_plot_related
+    def written(self):
+        return bool(self.chapter_index)
 
-    def do_junkout(self, caller):
-        """Junks us as if we were a crafted item."""
-        caller.msg("You destroy %s." % self)
-        self.softdelete()
-        return
+    @property
+    def can_stack(self):
+        return not self.written
 
+    @CachedProperty
+    def chapter_index(self):
+        return {ob.number: ob for ob in self.book_chapters.all()}
 
-class WriteCmdSet(CmdSet):
-    key = "WriteCmd"
-    priority = 0
-    duplicates = True
+    def get_chapter(self, number):
+        if not number and number != 0:
+            number = 1
+        try:
+            number = int(number)
+        except (ValueError, TypeError):
+            raise ChapterNotFoundError(f"Chapter index must be a number, not {number}")
+        try:
+            return self.chapter_index[number]
+        except KeyError:
+            raise ChapterNotFoundError("No chapter by that number.")
 
-    def at_cmdset_creation(self):
-        """Init the cmdset"""
-        self.add(CmdWrite())
+    def set_book_name(self, caller, name):
+        if self.item_data.quantity > 1:
+            from evennia.utils.create import create_object
 
+            remain = self.item_data.quantity - 1
+            newobj = create_object(
+                typeclass="typeclasses.readable.readable.Readable",
+                key="book",
+                location=caller,
+                home=caller,
+            )
+            newobj.set_num(remain)
+        self.item_data.quantity = 1
+        self.name = name
+        self.aliases.add("book")
 
-class SignCmdSet(CmdSet):
-    key = "SignCmd"
-    priority = 0
-    duplicates = True
-
-    def at_cmdset_creation(self):
-        self.add(CmdSign())
-
-
-class CmdSign(ArxCommand):
-    """
-    Signs a document
-
-    Usage:
-        sign
-
-    Places your signature on a document.
-    """
-
-    key = "sign"
-    locks = "cmd:all()"
-
-    def func(self):
-        caller = self.caller
-        obj = self.obj
-        sigs = obj.db.signed or []
-        if caller in sigs:
-            caller.msg("You already signed this document.")
-            return
-        sigs.append(caller)
-        caller.msg("You sign your name on %s." % obj.name)
-        obj.db.signed = sigs
-        return
-
-
-class CmdWrite(ArxCommand, TemplateMixins):
-    """
-    Write upon a scroll/book/letter.
-
-    Usage:
-        write <description>
-        write/title <title>
-        write/proof
-        write/translated_text <language>=<text>
-        write/finish
-
-    Writes upon a given scroll/letter/book or other object
-    to give it a description set to the body of the text you
-    write and set its name to the title you specify. For example,
-    to rename 'a scroll' into 'Furen's Book of Wisdom', use
-    'write/title Furen's Book of Wisdom'. To write in other languages,
-    use /translated_text to show what the material actually says.
-    Check your changes with /proof, and then finalize changes with /finish.
-    Once set, no further changes can be made.
-    """
-
-    key = "write"
-    locks = "cmd:all()"
-
-    def display(self):
-        obj = self.obj
-        title = obj.ndb.title or obj.name
-        desc = obj.ndb.desc or obj.desc
-        msg = "{wName:{n %s\n" % title
-        msg += "{wDesc:{n\n%s" % desc
-        transtext = obj.ndb.transtext or {}
-        for lang in transtext:
-            msg += "\n{wWritten in {c%s:{n\n%s\n" % (lang.capitalize(), transtext[lang])
-        return msg
-
-    def func(self):
-        """Look for object in inventory that matches args to wear"""
-        caller = self.caller
-        obj = self.obj
-
-        if not self.args and not self.switches:
-            self.switches.append("proof")
-        if not self.switches or "desc" in self.switches:
-            if not self.can_apply_templates(caller, self.args):
-                return
-            obj.ndb.desc = self.args
-            caller.msg("Desc set to:\n%s" % self.args)
-            return
-        if "title" in self.switches:
-            obj.ndb.title = self.args
-            caller.msg("Name set to: %s" % self.args)
-            return
-        if "translated_text" in self.switches:
-            transtext = obj.ndb.transtext or {}
-            if not self.rhs:
-                self.msg("Must have text.")
-            lhs = self.lhs.lower()
-            if lhs not in self.caller.languages.known_languages:
-                self.msg("You cannot speak that language.")
-                return
-            transtext[lhs] = self.rhs
-            obj.ndb.transtext = transtext
-            self.msg(self.display())
-            return
-        if "proof" in self.switches:
-            msg = self.display()
-            caller.msg(msg, options={"box": True})
-            return
-        if "finish" in self.switches:
-            name = obj.ndb.title
-            desc = obj.ndb.desc
-            if not name:
-                caller.msg("Still needs a title set.")
-                return
-            if not desc:
-                caller.msg("Still needs a description set.")
-                return
-            if obj.db.num_instances > 1:
-                from evennia.utils.create import create_object
-
-                remain = obj.db.num_instances - 1
-                newobj = create_object(
-                    typeclass="typeclasses.readable.readable.Readable",
-                    key="book",
-                    location=caller,
-                    home=caller,
-                )
-                newobj.set_num(remain)
-            obj.db.num_instances = 1
-            obj.name = name
-            obj.desc = desc
-            if obj.ndb.transtext:
-                obj.db.translation = obj.ndb.transtext
-            obj.save()
-
-            self.apply_templates_to(obj)
-
-            caller.msg("You have written on %s." % obj.name)
-            obj.attributes.remove("quality_level")
-            obj.attributes.remove("can_stack")
-            obj.db.author = caller
-            obj.db.written = True
-            obj.cmdset.delete_default()
-            obj.cmdset.add_default(SignCmdSet, permanent=True)
-            obj.aliases.add("book")
-
-            return
-        caller.msg("Unrecognized syntax for write.")
+    def add_chapter(self, work, chapter_number):
+        if work in self.chapter_index.values():
+            raise AddChapterError("This work has already been added as a chapter.")
+        if chapter_number in self.chapter_index.keys():
+            raise AddChapterError("There is already a chapter by that number.")
+        if len(self.chapter_index.values()) >= self.maximum_chapters:
+            raise AddChapterError("The book has the maximum number of chapters.")
+        self.book_chapters.create(number=chapter_number, written_work=work)
+        # clear cache
+        del self.chapter_index

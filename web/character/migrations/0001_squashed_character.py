@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("email", models.EmailField(max_length=254, unique=True)),
-                ("karma", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("karma", models.PositiveSmallIntegerField(blank=True, default=0)),
                 ("gm_notes", models.TextField(blank=True, null=True)),
             ],
         ),
@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("xp_earned", models.SmallIntegerField(blank=0, default=0)),
+                ("xp_earned", models.SmallIntegerField(blank=True, default=0)),
                 ("gm_notes", models.TextField(blank=True, null=True)),
                 (
                     "start_date",
@@ -101,7 +101,7 @@ class Migration(migrations.Migration):
                 (
                     "rating",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         db_index=True,
                         default=0,
                         help_text="Value required to get this clue",
@@ -290,7 +290,7 @@ class Migration(migrations.Migration):
                 (
                     "silver",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional silver added by the player",
                     ),
@@ -298,7 +298,7 @@ class Migration(migrations.Migration):
                 (
                     "economic",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional economic resources added by the player",
                     ),
@@ -306,7 +306,7 @@ class Migration(migrations.Migration):
                 (
                     "military",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional military resources added by the player",
                     ),
@@ -314,7 +314,7 @@ class Migration(migrations.Migration):
                 (
                     "social",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="Additional social resources added by the player",
                     ),
@@ -341,7 +341,7 @@ class Migration(migrations.Migration):
                 (
                     "action_points",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="How many action points spent by player/assistants.",
                     ),
@@ -364,7 +364,7 @@ class Migration(migrations.Migration):
                 ("synopsis", models.TextField(blank=True, null=True)),
                 ("secret", models.BooleanField(default=False)),
                 ("gm_notes", models.TextField(blank=True, null=True)),
-                ("importance", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("importance", models.PositiveSmallIntegerField(blank=True, default=0)),
                 (
                     "chapter",
                     models.ForeignKey(
@@ -493,8 +493,7 @@ class Migration(migrations.Migration):
                 (
                     "required_clue_value",
                     models.PositiveSmallIntegerField(
-                        blank=0,
-                        default=0,
+                        default=100,
                         help_text="The total value of clues to trigger this",
                     ),
                 ),
@@ -649,7 +648,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("synopsis", models.TextField(blank=True, null=True)),
-                ("season", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("season", models.PositiveSmallIntegerField(blank=True, default=0)),
                 ("start_date", models.DateTimeField(blank=True, null=True)),
                 ("end_date", models.DateTimeField(blank=True, null=True)),
                 (
@@ -769,8 +768,11 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("xp_earned", models.PositiveSmallIntegerField(blank=0, default=0)),
-                ("karma_earned", models.PositiveSmallIntegerField(blank=0, default=0)),
+                ("xp_earned", models.PositiveSmallIntegerField(blank=True, default=0)),
+                (
+                    "karma_earned",
+                    models.PositiveSmallIntegerField(blank=True, default=0),
+                ),
                 ("gm_notes", models.TextField(blank=True, null=True)),
                 (
                     "character",
@@ -856,7 +858,7 @@ class Migration(migrations.Migration):
                 (
                     "tier",
                     models.PositiveSmallIntegerField(
-                        blank=0,
+                        blank=True,
                         default=0,
                         help_text="How high in the hierarchy of discoveries this clue is, lower number discovered first",
                     ),

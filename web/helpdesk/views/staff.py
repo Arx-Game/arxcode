@@ -261,7 +261,7 @@ followup_edit = staff_member_required(followup_edit)
 
 
 def followup_delete(request, ticket_id, followup_id):
-    """ followup delete for superuser"""
+    """followup delete for superuser"""
 
     ticket = get_object_or_404(Ticket, id=ticket_id)
     if not request.user.is_superuser:
@@ -353,7 +353,7 @@ view_ticket = staff_member_required(view_ticket)
 
 
 def return_ticketccstring_and_show_subscribe(user, ticket):
-    """ used in view_ticket() and followup_edit()"""
+    """used in view_ticket() and followup_edit()"""
     # create the ticketcc_string and check whether current user is already
     # subscribed
     username = user.get_username().upper()
@@ -389,7 +389,7 @@ def return_ticketccstring_and_show_subscribe(user, ticket):
 
 
 def subscribe_staff_member_to_ticket(ticket, user):
-    """ used in view_ticket() and update_ticket() """
+    """used in view_ticket() and update_ticket()"""
     ticketcc = TicketCC()
     ticketcc.ticket = ticket
     ticketcc.user = user
@@ -684,7 +684,7 @@ def update_ticket(request, ticket_id, public=False):
 
 
 def return_to_ticket(user, allow_non_staff_update, ticket):
-    """ Helpder function for update_ticket """
+    """Helpder function for update_ticket"""
 
     if user.is_staff or allow_non_staff_update:
         return HttpResponseRedirect(ticket.get_absolute_url())

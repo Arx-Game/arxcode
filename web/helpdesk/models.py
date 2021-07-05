@@ -448,21 +448,21 @@ class Ticket(SharedMemoryModel):
         """A user-friendly ticket ID, which is a combination of ticket ID
         and queue slug. This is generally used in e-mail subjects."""
 
-        return u"[%s]" % (self.ticket_for_url)
+        return "[%s]" % (self.ticket_for_url)
 
     ticket = property(_get_ticket)
 
     def _get_ticket_for_url(self):
-        """ A URL-friendly ticket ID, used in links. """
-        return u"%s-%s" % (self.queue.slug, self.id)
+        """A URL-friendly ticket ID, used in links."""
+        return "%s-%s" % (self.queue.slug, self.id)
 
     ticket_for_url = property(_get_ticket_for_url)
 
     def _get_priority_img(self):
-        """ Image-based representation of the priority """
+        """Image-based representation of the priority"""
         from django.conf import settings
 
-        return u"%shelpdesk/priorities/priority%s.png" % (
+        return "%shelpdesk/priorities/priority%s.png" % (
             settings.MEDIA_URL,
             self.priority,
         )
@@ -507,7 +507,7 @@ class Ticket(SharedMemoryModel):
             site = Site.objects.get_current()
         except:
             site = Site(domain="configure-django-sites.com")
-        return u"http://%s%s?ticket=%s&email=%s" % (
+        return "http://%s%s?ticket=%s&email=%s" % (
             site.domain,
             reverse("helpdesk_public_view"),
             self.ticket_for_url,
@@ -527,7 +527,7 @@ class Ticket(SharedMemoryModel):
             site = Site.objects.get_current()
         except:
             site = Site(domain="configure-django-sites.com")
-        return u"http://%s%s" % (site.domain, reverse("helpdesk_view", args=[self.id]))
+        return "http://%s%s" % (site.domain, reverse("helpdesk_view", args=[self.id]))
 
     staff_url = property(_get_staff_url)
 
@@ -621,7 +621,12 @@ class Ticket(SharedMemoryModel):
             msg += "\n|wFollowup by |c%s|w:|n %s" % (followup.user, followup.comment)
         if self.assigned_to:
             msg += "\n|wAssigned GM:|n %s" % self.assigned_to.key
-        msg += "\n|wGM Resolution:|n %s" % self.resolution
+
+        if self.submitting_player.id != self.assigned_to_id:
+            msg += f"\n|wGM Resolution:|n {self.resolution}"
+        else:
+            msg += f"\n|wPlayer Resolution:|n {self.resolution}"
+
         return msg
 
 
@@ -705,7 +710,7 @@ class FollowUp(models.Model):
         return str(self.title)
 
     def get_absolute_url(self):
-        return reverse(u"%s#followup%s" % (self.ticket.get_absolute_url(), self.id))
+        return reverse("%s#followup%s" % (self.ticket.get_absolute_url(), self.id))
 
     def save(self, *args, **kwargs):
         t = self.ticket
@@ -811,7 +816,7 @@ class Attachment(models.Model):
     )
 
     def get_upload_to(self, field_attname):
-        """ Get upload_to path specific to this item """
+        """Get upload_to path specific to this item"""
         if not self.id:
             return ""
         return "helpdesk/attachments/%s/%s" % (

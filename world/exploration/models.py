@@ -211,7 +211,7 @@ class MonsterCraftingDrop(SharedMemoryModel):
         Monster, related_name="crafting_drops", on_delete=models.CASCADE
     )
     material = models.ForeignKey(
-        "dominion.CraftingMaterialType",
+        "crafting.CraftingMaterialType",
         related_name="monsters",
         on_delete=models.CASCADE,
     )
@@ -1001,7 +1001,7 @@ class ShardhavenPuzzleCraftingMaterial(SharedMemoryModel):
         help_text="A weight chance that this puzzle will drop this material.",
     )
     material = models.ForeignKey(
-        "dominion.CraftingMaterialType",
+        "crafting.CraftingMaterialType",
         blank=False,
         null=False,
         on_delete=models.CASCADE,
