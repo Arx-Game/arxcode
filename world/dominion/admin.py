@@ -856,6 +856,9 @@ class ArmyAdmin(DomAdmin):
         "domain__name",
         "=owner__player__player__username",
         "owner__organization_owner__name",
+        "=temp_owner__player__player__username",
+        "temp_owner__organization_owner__name",
+        "id",
     )
     inlines = (MilitaryUnitInline,)
     list_filter = (ArmyListFilter,)
