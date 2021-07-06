@@ -8,6 +8,7 @@ game objects, it allows for easy @ex, and doesn't require
 database migration to add in their functionality.
 
 """
+from enum import Enum
 from django.conf import settings
 
 from evennia.utils.create import create_object
@@ -289,6 +290,9 @@ class CmdRequest(ArxPlayerCommand):
        +featurerequest <title>=<message>
        +prprequest <title>=<question about a player run plot>
 
+    Switches:
+        %s
+
     Send a message to the GMs for help. This is usually because
     of wanting to take some action that requires GM intervention,
     such as a plot idea or some other in-game activity, but can
@@ -321,6 +325,16 @@ class CmdRequest(ArxPlayerCommand):
     ]
     help_category = "Admin"
     locks = "cmd:all()"
+
+    class Switches(Enum):
+        followup = "<#>=<message> | Add a followup message to a request."
+        close = "<#>=<reason> | Close a request prematurely and provide a reason."
+
+    switch_options = Switches
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.format_docstring()
 
     def display_ticket(self, ticket):
         """Display the ticket to the caller"""
@@ -433,12 +447,13 @@ class CmdRequest(ArxPlayerCommand):
 
     def func(self):
         """Implement the command"""
+        switches = [self.switch_options[string] for string in self.switches]
         caller = self.caller
-        if "followup" in self.switches or "comment" in self.switches:
+        if self.switch_options.followup in switches:
             self.comment_on_ticket()
             return
 
-        if "close" in self.switches:
+        if self.switch_options.close in switches:
             self.close_ticket(self.lhs, self.rhs)
             return
 

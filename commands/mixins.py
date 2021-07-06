@@ -12,6 +12,11 @@ class ArxCommmandMixin(object):
     error_class = CommandError
     help_entry_tags = []
 
+    def format_docstring(self):
+        self.__doc__ = self.__doc__ % "%r    ".join(
+            f"{switch.name} {switch.value}" for switch in self.switch_options
+        )
+
     def fail(self, msg):
         """Raises an error for the class with a given message"""
         raise self.error_class(msg)
