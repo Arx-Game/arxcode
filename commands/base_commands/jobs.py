@@ -330,7 +330,7 @@ class CmdRequest(ArxPlayerCommand):
         followup = "<#>=<message> | Add a followup message to a request."
         close = "<#>=<reason> | Close a request prematurely and provide a reason."
 
-    switch_options = Switches
+    switch_options = Switches.__members__
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -447,13 +447,13 @@ class CmdRequest(ArxPlayerCommand):
 
     def func(self):
         """Implement the command"""
-        switches = [self.switch_options[string] for string in self.switches]
+        switches = [self.Switches[string] for string in self.switches]
         caller = self.caller
-        if self.switch_options.followup in switches:
+        if self.Switches.followup in switches:
             self.comment_on_ticket()
             return
 
-        if self.switch_options.close in switches:
+        if self.Switches.close in switches:
             self.close_ticket(self.lhs, self.rhs)
             return
 
