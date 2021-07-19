@@ -20,8 +20,8 @@
     {% endif %}
 
     </div>
-    {% if character.db.quote %}
-        <div class="row"><div class="text-center"><q><em>{{ character.db.quote }}</em></q></div></div>
+    {% if character.item_data.quote %}
+        <div class="row"><div class="text-center"><q><em>{{ character.item_data.quote }}</em></q></div></div>
     {% endif %}
 	<div class="row">
 
@@ -35,39 +35,39 @@
 	</div>
     {% endif %}
     <div class="col-md-5 text-left">
-    <p><b>Social Rank:</b> {{ character.db.social_rank }}<br><b>Concept:</b> {{ character.db.concept }}<br>
-	{% if character.db.real_concept and show_hidden %}<b>Real Concept:</b> {{ character.db.real_concept}}<br>{% endif %}
+    <p><b>Social Rank:</b> {{ character.item_data.social_rank }}<br><b>Concept:</b> {{ character.item_data.concept }}<br>
+	{% if character.item_data.real_concept and show_hidden %}<b>Real Concept:</b> {{ character.item_data.real_concept}}<br>{% endif %}
     <b>Fealty:</b>
 	{% if fealty_org_id %}
-	<a href="{% url 'help_topics:display_org' fealty_org_id.id %}">{{ character.db.fealty }}</a>
-	{% else %}{{ character.db.fealty}}
+	<a href="{% url 'help_topics:display_org' fealty_org_id.id %}">{{ character.item_data.fealty }}</a>
+	{% else %}{{ character.item_data.fealty}}
 	{% endif %}
 	<br><b>Family:</b>
 	{% if family_org_id %}
-	<a href="{% url 'help_topics:display_org' family_org_id.id %}">{{ character.db.family }}</a>
-	{% else %}{{ character.db.family}}
+	<a href="{% url 'help_topics:display_org' family_org_id.id %}">{{ character.item_data.family }}</a>
+	{% else %}{{ character.item_data.family}}
 	{% endif %}
 	<br>
-    <b>Gender:</b> {{ character.db.gender }}<br><b>Marital Status:</b> {{ character.db.marital_status }}<br>
-    <b>Age:</b> {{ character.db.age }}<br>
-    {% if character.db.birthday %}
-      <b>Birthday:</b> {{ character.db.birthday }}<br>
+    <b>Gender:</b> {{ character.item_data.gender }}<br><b>Marital Status:</b> {{ character.db.marital_status }}<br>
+    <b>Age:</b> {{ character.item_data.age }}<br>
+    {% if character.item_data.birthday %}
+      <b>Birthday:</b> {{ character.item_data.birthday }}<br>
     {% endif %}
-    <b>Religion:</b> {{ character.db.religion }}<br><b>Vocation:</b> {{character.db.vocation|capfirst }}<br>
-	<b>Height:</b> {{ character.db.height}}<br><b>Hair Color:</b> {{character.db.haircolor}}<br>
-	<b>Eye Color:</b> {{ character.db.eyecolor}}<br><b>Skintone:</b> {{character.db.skintone}}</p>
+    <b>Religion:</b> {{ character.db.religion }}<br><b>Vocation:</b> {{character.item_data.vocation|capfirst }}<br>
+	<b>Height:</b> {{ character.item_data.height}}<br><b>Hair Color:</b> {{character.item_data.hair_color}}<br>
+	<b>Eye Color:</b> {{ character.item_data.eye_color}}<br><b>Skintone:</b> {{character.item_data.skin_tone}}</p>
     {% if character.titles %}
     <b>Titles:</b> {{ character.titles }} {% endif %}
 	</div>
 	</div>
-    {% if character.db.obituary %}
-    <p><b>Obituary:</b> {{ character.db.obituary|mush_to_html }}</p>
+    {% if character.item_data.obituary %}
+    <p><b>Obituary:</b> {{ character.item_data.obituary|mush_to_html }}</p>
     {% endif %}
     <p><b>Description:</b> {{ character.perm_desc|mush_to_html }}</p>
 
-    <p><b>Personality:</b> {{ character.db.personality|mush_to_html }}</p>
+    <p><b>Personality:</b> {{ character.item_data.personality|mush_to_html }}</p>
 
-    <p><b>Background:</b> {{ character.db.background|mush_to_html }}</p>
+    <p><b>Background:</b> {{ character.item_data.background|mush_to_html }}</p>
     {% if character.db.relationship_short %}
       <h2>Relationship Summary</h2>
       {% for type,value in character.db.relationship_short.items %}

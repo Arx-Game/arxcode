@@ -61,7 +61,7 @@ class DescMixins(object):
         :type self: evennia.objects.models.ObjectDB
         :return:
         """
-        return self.base_desc + self.additional_desc
+        return self.base_desc
 
     @desc.setter
     def desc(self, val):
@@ -114,9 +114,7 @@ class DescMixins(object):
         :type self: ObjectDB
         :return:
         """
-        return (
-            self.db.raw_desc or self.db.general_desc or self.db.desc or ""
-        ) + self.additional_desc
+        return self.db.raw_desc or self.db.general_desc or self.db.desc or ""
 
     def __perm_desc_set(self, val):
         """
@@ -143,35 +141,6 @@ class DescMixins(object):
     @property
     def dead(self):
         return False
-
-    @property
-    def additional_desc(self):
-        """
-        :type self: ObjectDB
-        """
-        try:
-            if self.db.additional_desc:
-                return "\n\n" + "{w({n%s{w){n" % self.db.additional_desc
-        except TypeError:
-            return ""
-        return ""
-
-    @additional_desc.setter
-    def additional_desc(self, value):
-        """
-        :type self: ObjectDB
-        """
-        if not value:
-            self.db.additional_desc = ""
-        else:
-            self.db.additional_desc = str(value)
-
-    @additional_desc.deleter
-    def additional_desc(self):
-        """
-        :type self: ObjectDB
-        """
-        self.attributes.remove("additional_desc")
 
 
 class NameMixins(object):
@@ -884,8 +853,8 @@ class MsgMixins(object):
         if options.get("box", False):
             text = text_box(text)
         if options.get("roll", False):
-            if self.attributes.has("dice_string"):
-                text = "{w<" + self.db.dice_string + "> {n" + text
+            if hasattr(self.item_data, "dice_string"):
+                text = "|w<" + self.item_data.dice_string + "> |n" + text
         if options.get("is_magic", False):
             if text[0] == "\n":
                 text = text[1:]

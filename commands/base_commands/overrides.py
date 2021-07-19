@@ -174,7 +174,7 @@ class CmdInventory(ArxCommand):
         else:
             volume = "Volume:{n %s/%s" % (char.used_capacity, char.item_data.capacity)
             string = "{w%s carrying (%s{w):%s" % (basemsg, volume, items)
-        xp = char.db.xp or 0
+        xp = char.item_data.xp or 0
         ap = 0
         max_ap = 0
         ap_regen = 0
@@ -770,7 +770,7 @@ class CmdWho(ArxPlayerCommand):
             return "(LRP)" in pname
         if self.args.lower() == "staff":
             return "(Staff)" in pname
-        if self.args.lower() == fealty.lower():
+        if self.args.lower() == str(fealty).lower():
             return True
         return base.lower().startswith(self.args.lower())
 
@@ -850,10 +850,10 @@ class CmdWho(ArxPlayerCommand):
                 if "watch" in self.switches and char not in watch_list:
                     already_counted.append(pc)
                     continue
-                if not char or not char.db.fealty:
+                if not char or not char.item_data.fealty:
                     fealty = "---"
                 else:
-                    fealty = char.db.fealty
+                    fealty = char.item_data.fealty
                 if not self.check_filters(pname, base, fealty):
                     already_counted.append(pc)
                     continue
@@ -919,10 +919,10 @@ class CmdWho(ArxPlayerCommand):
                     if "watch" in self.switches and char not in watch_list:
                         already_counted.append(pc)
                         continue
-                    if not char or not char.db.fealty:
+                    if not char or not char.item_data.fealty:
                         fealty = "---"
                     else:
-                        fealty = char.db.fealty
+                        fealty = str(char.item_data.fealty)
                     if not self.check_filters(pname, base, fealty):
                         already_counted.append(pc)
                         continue

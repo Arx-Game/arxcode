@@ -367,12 +367,12 @@ class WeeklyEvents(RunDateMixin, Script):
                 and not ob.player_ob.tags.get("staff_alt")
             ):
                 low_activity.append(ob)
-            ob.db.previous_posecount = ob.posecount
+            ob.previous_posecount = ob.posecount
             ob.posecount = 0
         board = BBoard.objects.get(db_key__iexact="staff")
         table = EvTable("{wName{n", "{wNum Poses{n", border="cells", width=78)
         for ob in low_activity:
-            table.add_row(ob.key, ob.db.previous_posecount)
+            table.add_row(ob.key, str(ob.previous_posecount))
         board.bb_post(poster_obj=self, msg=str(table), subject="Inactive by Poses List")
 
     # Various 'Beats' -------------------------------------------------
@@ -704,7 +704,7 @@ class WeeklyEvents(RunDateMixin, Script):
         self.db.recorded_votes = dict(self.ndb.recorded_votes)
         self.db.vote_history = self.ndb.vote_history
         # storing how much xp each player gets to post after
-        self.db.xp = dict(self.ndb.xp)
+        self.item_data.xp = dict(self.ndb.xp)
         self.db.xptypes = self.ndb.xptypes
         self.db.requested_support = self.ndb.requested_support
         self.db.scenes = dict(self.ndb.scenes)

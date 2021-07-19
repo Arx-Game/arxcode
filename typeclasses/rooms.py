@@ -77,7 +77,7 @@ from evennia.objects.models import ObjectDB
 
 from commands.base import ArxCommand
 from typeclasses.scripts import gametime
-from typeclasses.mixins import NameMixins, ObjectMixins
+from typeclasses.mixins import ObjectMixins
 from world.magic.mixins import MagicMixins
 from world.msgs.messagehandler import MessageHandler
 
@@ -259,23 +259,23 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
 
     homeowners = property(_homeowners)
 
-    def give_key(self, char):
-        keylist = char.db.keylist or []
-        if self not in keylist:
-            keylist.append(self)
-        char.db.keylist = keylist
+    def grant_key(self, char):
+        try:
+            char.item_data.add_room_key(self)
+        except AttributeError:
+            pass
 
-    def remove_key(self, char):
-        keylist = char.db.keylist or []
-        if self in keylist:
-            keylist.remove(self)
-        char.db.keylist = keylist
+    def revoke_key(self, char):
+        try:
+            char.item_data.remove_key(self)
+        except AttributeError:
+            pass
 
     def add_homeowner(self, char, sethomespace=True):
         owners = self.db.owners or []
         if char not in owners:
             owners.append(char)
-            self.give_key(char)
+            self.grant_key(char)
         self.db.owners = owners
         if sethomespace:
             char.home = self
@@ -285,7 +285,7 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         owners = self.db.owners or []
         if char in owners:
             owners.remove(char)
-            self.remove_key(char)
+            self.revoke_key(char)
             if char.home == self:
                 char.home = ObjectDB.objects.get(id=13)
                 char.save()

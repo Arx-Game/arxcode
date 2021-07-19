@@ -67,6 +67,10 @@ def wipe_attributes():
         "last_recovery_test",
         "asked_supporters",
         "administered_aid",
+        "player_ob",
+        "automate_combat",
+        "portrait",
+        "weapon",
     ]
     for attr in attr_names:
         print(

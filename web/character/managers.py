@@ -118,46 +118,60 @@ class ArxRosterManager(models.Manager):
         for char_filter in list_of_filters:
             if char_filter == "male":
                 for char in char_list:
-                    if not char.db.gender or char.db.gender.lower() != "male":
+                    if (
+                        not char.item_data.gender
+                        or char.item_data.gender.lower() != "male"
+                    ):
                         match_set.discard(char)
             if char_filter == "female":
                 for char in char_list:
-                    if not char.db.gender or char.db.gender.lower() != "female":
+                    if (
+                        not char.item_data.gender
+                        or char.item_data.gender.lower() != "female"
+                    ):
                         match_set.discard(char)
             if char_filter == "young":
                 for char in char_list:
-                    if not char.db.age or char.db.age > 20:
+                    if not char.item_data.age or char.item_data.age > 20:
                         match_set.discard(char)
             if char_filter == "adult":
                 for char in char_list:
-                    if not char.db.age or char.db.age >= 40 or char.db.age < 21:
+                    if (
+                        not char.item_data.age
+                        or char.item_data.age >= 40
+                        or char.item_data.age < 21
+                    ):
                         match_set.discard(char)
             if char_filter == "mature":
                 for char in char_list:
-                    if not char.db.age or char.db.age < 40 or char.db.age >= 60:
+                    if (
+                        not char.item_data.age
+                        or char.item_data.age < 40
+                        or char.item_data.age >= 60
+                    ):
                         match_set.discard(char)
             if char_filter == "elder":
                 for char in char_list:
-                    if not char.db.age or char.db.age < 60:
+                    if not char.item_data.age or char.item_data.age < 60:
                         match_set.discard(char)
             if char_filter == "concept":
                 for char in char_list:
                     if (
-                        not char.db.concept
-                        or concept.lower() not in char.db.concept.lower()
+                        not char.item_data.concept
+                        or concept.lower() not in char.item_data.concept.lower()
                     ):
                         match_set.discard(char)
             if char_filter == "fealty":
                 for char in char_list:
                     if (
-                        not char.db.fealty
-                        or fealty.lower() not in char.db.fealty.lower()
+                        not char.item_data.fealty
+                        or fealty.lower() not in str(char.item_data.fealty).lower()
                     ):
                         match_set.discard(char)
             if char_filter == "social rank":
                 for char in char_list:
                     try:
-                        if int(social_rank) != int(char.db.social_rank):
+                        if int(social_rank) != int(char.item_data.social_rank):
                             match_set.discard(char)
                     except (TypeError, ValueError, AttributeError):
                         match_set.discard(char)
@@ -178,8 +192,8 @@ class ArxRosterManager(models.Manager):
             if char_filter == "family":
                 for char in char_list:
                     if (
-                        not char.db.family
-                        or family.lower() not in char.db.family.lower()
+                        not char.item_data.family
+                        or family.lower() not in char.item_data.family.lower()
                     ):
                         match_set.discard(char)
         return match_set

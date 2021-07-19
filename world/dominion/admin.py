@@ -399,7 +399,7 @@ class AgentObInline(admin.TabularInline):
         """Displays the player their dbobj Character instance is assigned to, if anyone"""
         if not obj.dbobj:
             return None
-        return obj.dbobj.db.guarding
+        return obj.dbobj.item_data.guarding
 
 
 class TaskRequirementsInline(admin.TabularInline):

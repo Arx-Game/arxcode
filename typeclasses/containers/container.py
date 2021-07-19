@@ -31,11 +31,10 @@ class CmdChestKey(ArxCommand):
         :return:
         """
         caller = self.caller
-        chestkeys = caller.db.chestkeylist or []
         if (
             caller != self.obj.item_data.crafted_by
             and not caller.check_permstring("builders")
-            and self.obj not in chestkeys
+            and not caller.item_data.has_key_by_id(self.obj.id)
         ):
             caller.msg("You cannot grant keys to %s." % self)
             return
@@ -49,13 +48,13 @@ class CmdChestKey(ArxCommand):
         if not char:
             return
         if not self.switches:
-            if not self.obj.grantkey(char):
+            if not self.obj.grant_key(char):
                 caller.msg("They already have a key.")
                 return
             caller.msg("%s has been granted a key to %s." % (char, self.obj))
             return
         if "rmkey" in self.switches:
-            if not self.obj.rmkey(char):
+            if not self.obj.revoke_key(char):
                 caller.msg("They don't have a key.")
                 return
             caller.msg("%s has had their key to %s removed." % (char, self.obj))
@@ -185,23 +184,19 @@ class Container(LockMixins, DefaultObject):
         self.item_data.capacity = 1
         self.at_init()
 
-    def grantkey(self, char):
+    def grant_key(self, char):
         """Grants a key to this chest for char."""
-        chestkeys = char.db.chestkeylist or []
-        if self in chestkeys:
+        try:
+            return char.item_data.add_chest_key(self)
+        except AttributeError:
             return False
-        chestkeys.append(self)
-        char.db.chestkeylist = chestkeys
-        return True
 
-    def rmkey(self, char):
+    def revoke_key(self, char):
         """Removes a key to this chest from char."""
-        chestkeys = char.db.chestkeylist or []
-        if self not in chestkeys:
-            return
-        chestkeys.remove(self)
-        char.db.chestkeylist = chestkeys
-        return True
+        try:
+            return char.item_data.remove_key(self)
+        except AttributeError:
+            return False
 
     def return_contents(
         self,

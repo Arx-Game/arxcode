@@ -38,14 +38,14 @@ class MessengerHandler(MsgHandlerBase):
 
     @property
     def messenger_draft(self):
-        return self.obj.db.messenger_draft
+        return self.obj.item_data.messenger_draft
 
     @messenger_draft.setter
     def messenger_draft(self, val):
         if not val:
-            self.obj.attributes.remove("messenger_draft")
+            del self.obj.item_data.messenger_draft
         else:
-            self.obj.db.messenger_draft = val
+            self.obj.item_data.messenger_draft = val
             self.msg("Saved message. To see it, type 'message/proof'.")
 
     def create_messenger_header(self, icdate):
@@ -122,15 +122,15 @@ class MessengerHandler(MsgHandlerBase):
 
     @property
     def discreet_messenger(self):
-        return self.obj.db.discreet_messenger
+        return self.obj.item_data.discreet_messenger
 
     @discreet_messenger.setter
     def discreet_messenger(self, val):
         if not val:
-            self.obj.attributes.remove("discreet_messenger")
+            del self.obj.item_data.discreet_messenger
             self.obj.msg("You will not receive messages discreetly.")
             return
-        self.obj.db.discreet_messenger = val
+        self.obj.item_data.discreet_messenger = val
         self.obj.msg(
             "%s will now deliver messages to you discreetly if they are in the same room."
             % val
@@ -516,17 +516,17 @@ class MessengerHandler(MsgHandlerBase):
 
     @property
     def custom_messenger(self):
-        return self.obj.db.custom_messenger
+        return self.obj.item_data.custom_messenger
 
     @custom_messenger.setter
     def custom_messenger(self, val):
         if not val:
-            self.obj.attributes.remove("custom_messenger")
+            del self.obj.item_data.custom_messenger
             self.msg(
                 "You will no longer have a custom messenger deliver messages for you."
             )
             return
-        self.obj.db.custom_messenger = val
+        self.obj.item_data.custom_messenger = val
         self.msg("You will now have %s act as your messenger." % val)
 
     def add_packed_pending_messenger(self, packed_messenger):

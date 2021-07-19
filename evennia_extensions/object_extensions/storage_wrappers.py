@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 
 class StorageWrapper(ABC):
@@ -18,12 +18,22 @@ class StorageWrapper(ABC):
     """
 
     def __init__(
-        self, attr_name=None, call_save=True, validator_func=None, deleted_value=None
+        self,
+        attr_name=None,
+        call_save=True,
+        validator_func=None,
+        deleted_value=None,
+        allow_null=True,
+        default_is_none=False,
+        allow_self_argument=False,
     ):
         self.attr_name = attr_name
         self.call_save = call_save
         self.validator_func = validator_func
         self.deleted_value = deleted_value
+        self.allow_null = allow_null
+        self.default_is_none = default_is_none
+        self.allow_self_argument = allow_self_argument
 
     def __set_name__(self, owner, name):
         if not self.attr_name:
@@ -68,6 +78,8 @@ class StorageWrapper(ABC):
         """Gets the hardcoded default that's a property/attribute of the typeclass.
         This will raise AttributeError if the default doesn't exist.
         """
+        if self.default_is_none:
+            return None
         default_attr = f"default_{self.attr_name}"
         return getattr(instance.obj, default_attr)
 
@@ -77,8 +89,10 @@ class StorageWrapper(ABC):
         return self.get_storage_value_or_default(instance)
 
     def __set__(self, instance, value):
-        if self.validator_func:
+        if self.validator_func and not (value is None and self.allow_null):
             value = self.validator_func(value)
+        if not self.allow_self_argument and value == instance.obj:
+            raise ValidationError(f"You cannot set {self.attr_name} to self.")
         try:
             storage = self.get_storage(instance)
         except ObjectDoesNotExist:
@@ -123,3 +137,13 @@ class DisplayNamesWrapper(StorageWrapper):
         from evennia_extensions.object_extensions.models import DisplayNames
 
         return DisplayNames.objects.create(objectdb=instance.obj)
+
+
+class ObjectDBFieldWrapper(StorageWrapper):
+    """Wraps fields already present on the object for use in the set command"""
+
+    def get_storage(self, instance):
+        return instance.obj
+
+    def create_new_storage(self, instance):
+        return instance.obj

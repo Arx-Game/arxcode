@@ -85,7 +85,7 @@ def create_container(recipe, roll, proj, caller, crafter):
     obj = recipe.create_obj(CONTAINER, proj[1], caller, caller, quality, crafter)
     obj.item_data.capacity = base + int(scaling * quality)
     try:
-        obj.grantkey(caller)
+        obj.grant_key(caller)
     except (TypeError, AttributeError, ValueError):
         import traceback
 
@@ -102,7 +102,7 @@ def create_wearable_container(recipe, roll, proj, caller, crafter):
     )
     obj.item_data.capacity = base + int(scaling * quality)
     try:
-        obj.grantkey(caller)
+        obj.grant_key(caller)
     except (TypeError, AttributeError, ValueError):
         import traceback
 

@@ -1103,7 +1103,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
                     else best_adjust.reason
                 )
             char = self.player.player.char_ob
-            gender = char.db.gender or "Male"
+            gender = char.item_data.gender or "Male"
             if gender.lower() == "male":
                 result = best_adjust.category.male_noun
             else:
@@ -2329,7 +2329,7 @@ class Organization(InformMixin, SharedMemoryModel):
                 char = chars[0]
                 name = char_name(char)
                 char = char.player.player.char_ob
-                gender = char.db.gender or "Male"
+                gender = char.item_data.gender or "Male"
                 if gender.lower() == "male":
                     title = male_title
                 else:
@@ -2985,7 +2985,7 @@ class AgentOb(SharedMemoryModel):
         """Returns who the agent is guarding"""
         if not self.dbobj:
             return None
-        return self.dbobj.db.guarding
+        return self.dbobj.item_data.guarding
 
     def __str__(self):
         return "%s%s" % (
@@ -3586,7 +3586,7 @@ class Member(SharedMemoryModel):
     def rank_title(self):
         """Returns title for this member"""
         try:
-            male = self.player.player.char_ob.db.gender.lower().startswith("m")
+            male = self.player.player.char_ob.item_data.gender.lower().startswith("m")
         except (AttributeError, ValueError, TypeError):
             male = False
         if male:

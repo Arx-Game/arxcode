@@ -146,6 +146,8 @@ class RosterEntry(SharedMemoryModel):
     profile_picture = models.ForeignKey(
         "Photo", blank=True, null=True, on_delete=models.SET_NULL
     )
+    portrait_height = models.PositiveSmallIntegerField(default=480)
+    portrait_width = models.PositiveSmallIntegerField(default=320)
     # going to use for determining how our character page appears
     sheet_style = models.TextField(blank=True)
     lock_storage = models.TextField(
@@ -153,6 +155,10 @@ class RosterEntry(SharedMemoryModel):
     )
     action_points = models.SmallIntegerField(default=100, blank=100)
     show_positions = models.BooleanField(default=False)
+    pose_count = models.PositiveSmallIntegerField(default=0)
+    previous_pose_count = models.PositiveSmallIntegerField(default=0)
+    brief_mode = models.BooleanField(default=False)
+    dice_string = models.TextField(blank=True)
 
     def __init__(self, *args, **kwargs):
         super(RosterEntry, self).__init__(*args, **kwargs)

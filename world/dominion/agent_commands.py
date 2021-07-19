@@ -432,12 +432,12 @@ class CmdRetainers(ArxPlayerCommand):
     new_retainer_cost = 100
     retainer_types = ("champion", "assistant", "spy", "animal", "small animal")
     valid_traits = (
-        "species",
+        "breed",
         "gender",
         "age",
-        "haircolor",
-        "eyecolor",
-        "skintone",
+        "hair_color",
+        "eye_color",
+        "skin_tone",
         "height",
     )
     valid_categories = ("skill", "stat", "ability", "level", "armor", "weapon")
@@ -929,8 +929,8 @@ class CmdRetainers(ArxPlayerCommand):
         try:
             attr, val = self.rhslist[0], self.rhslist[1]
         except (TypeError, ValueError, IndexError):
-            self.msg("Please provide an attribute and a value.")
-            self.msg("Valid attributes: %s" % ", ".join(self.valid_traits))
+            self.msg("Please provide an trait and a value.")
+            self.msg("Valid trait: %s" % ", ".join(self.valid_traits))
             return
         if attr not in self.valid_traits:
             self.msg(
@@ -938,7 +938,9 @@ class CmdRetainers(ArxPlayerCommand):
                 % ", ".join(self.valid_traits)
             )
             return
-        agent.dbobj.attributes.add(attr, val)
+        if attr != "age":
+            agent.dbobj.item_data.check_value_allowed_for_race(attr, val)
+        agent.dbobj.item_data.set_sheet_value(attr, val)
         self.msg("%s's %s set to %s." % (agent, attr, val))
 
     def delete(self, agent):
@@ -959,86 +961,89 @@ class CmdRetainers(ArxPlayerCommand):
 
     def func(self):
         """Executes retainer command"""
-        caller = self.caller
-        if not self.args:
-            self.display_retainers()
-            return
-        if "create" in self.switches:
-            self.create_new_retainer()
-            return
-        if "train" in self.switches:
-            self.train_retainer()
-            return
-        # methods that require an agent below
         try:
-            agent = self.get_agent_from_args(self.lhs)
-        except (Agent.DoesNotExist, ValueError, TypeError):
-            caller.msg("No agent found that matches %s." % self.lhs)
-            self.msg("Your current retainers:")
-            self.display_retainers()
-            return
-        if "transferxp" in self.switches:
-            self.transfer_xp(agent)
-            return
-        if "buyability" in self.switches:
-            self.buy_ability(agent)
-            return
-        if "buyskill" in self.switches:
-            self.buy_skill(agent)
-            return
-        if "buylevel" in self.switches:
-            self.buy_level(agent)
-            return
-        if "buystat" in self.switches:
-            self.buy_stat(agent)
-            return
-        if "upgradeweapon" in self.switches:
-            self.upgrade_weapon(agent)
-            return
-        if "changeweaponskill" in self.switches:
-            self.change_weapon_skill(agent)
-            return
-        if "upgradearmor" in self.switches:
-            self.upgrade_armor(agent)
-            return
-        if "desc" in self.switches:
-            self.change_desc(agent)
-            return
-        if "name" in self.switches:
-            self.change_name(agent)
-            return
-        if "customize" in self.switches:
-            self.customize(agent)
-            return
-        if "viewstats" in self.switches or "sheet" in self.switches:
-            self.view_stats(agent)
-            return
-        if "cost" in self.switches:
-            if len(self.rhslist) != 2:
-                self.msg("@retainers/cost <agent ID>=<attribute>,<category>")
-                self.check_categories("")
+            caller = self.caller
+            if not self.args:
+                self.display_retainers()
                 return
-            category = self.rhslist[1]
-            if not self.check_categories(category):
+            if "create" in self.switches:
+                self.create_new_retainer()
                 return
-            # noinspection PyAttributeOutsideInit
-            self.rhs = self.rhslist[0]
-            attr = self.get_attr_from_args(agent, category)
-            if not attr:
+            if "train" in self.switches:
+                self.train_retainer()
                 return
-            current = self.get_attr_current_value(agent, attr, category)
-            xpcost, rescost, restype = self.get_attr_cost(
-                agent, attr, category, current
-            )
-            self.msg(
-                "Raising %s would cost %s xp, %s %s resources."
-                % (attr, xpcost, rescost, restype)
-            )
-            return
-        if "delete" in self.switches:
-            self.delete(agent)
-            return
-        caller.msg("Invalid switch.")
+            # methods that require an agent below
+            try:
+                agent = self.get_agent_from_args(self.lhs)
+            except (Agent.DoesNotExist, ValueError, TypeError):
+                caller.msg("No agent found that matches %s." % self.lhs)
+                self.msg("Your current retainers:")
+                self.display_retainers()
+                return
+            if "transferxp" in self.switches:
+                self.transfer_xp(agent)
+                return
+            if "buyability" in self.switches:
+                self.buy_ability(agent)
+                return
+            if "buyskill" in self.switches:
+                self.buy_skill(agent)
+                return
+            if "buylevel" in self.switches:
+                self.buy_level(agent)
+                return
+            if "buystat" in self.switches:
+                self.buy_stat(agent)
+                return
+            if "upgradeweapon" in self.switches:
+                self.upgrade_weapon(agent)
+                return
+            if "changeweaponskill" in self.switches:
+                self.change_weapon_skill(agent)
+                return
+            if "upgradearmor" in self.switches:
+                self.upgrade_armor(agent)
+                return
+            if "desc" in self.switches:
+                self.change_desc(agent)
+                return
+            if "name" in self.switches:
+                self.change_name(agent)
+                return
+            if "customize" in self.switches:
+                self.customize(agent)
+                return
+            if "viewstats" in self.switches or "sheet" in self.switches:
+                self.view_stats(agent)
+                return
+            if "cost" in self.switches:
+                if len(self.rhslist) != 2:
+                    self.msg("@retainers/cost <agent ID>=<attribute>,<category>")
+                    self.check_categories("")
+                    return
+                category = self.rhslist[1]
+                if not self.check_categories(category):
+                    return
+                # noinspection PyAttributeOutsideInit
+                self.rhs = self.rhslist[0]
+                attr = self.get_attr_from_args(agent, category)
+                if not attr:
+                    return
+                current = self.get_attr_current_value(agent, attr, category)
+                xpcost, rescost, restype = self.get_attr_cost(
+                    agent, attr, category, current
+                )
+                self.msg(
+                    "Raising %s would cost %s xp, %s %s resources."
+                    % (attr, xpcost, rescost, restype)
+                )
+                return
+            if "delete" in self.switches:
+                self.delete(agent)
+                return
+            caller.msg("Invalid switch.")
+        except self.error_class as err:
+            self.msg(err)
 
 
 class CmdGuards(ArxCommand):
@@ -1080,7 +1085,7 @@ class CmdGuards(ArxCommand):
     def func(self):
         """Executes guard command"""
         caller = self.caller
-        guards = caller.db.assigned_guards or []
+        guards = caller.guards
         if not guards:
             caller.msg("You have no guards assigned to you.")
             return
@@ -1129,7 +1134,7 @@ class CmdGuards(ArxCommand):
                     % (g_max, current)
                 )
                 return
-            if not guard.guarding:
+            if not guard.item_data.guarding:
                 self.msg("They are unassigned.")
                 return
             loc = guard.location or guard.item_data.pre_offgrid_location

@@ -186,11 +186,10 @@ class UseEquipmentMixins(object):
 
     @property
     def weapon(self):
-        return self.db.weapon
-
-    @weapon.setter
-    def weapon(self, value):
-        self.db.weapon = value
+        try:
+            return self.wielded[0]
+        except IndexError:
+            return None
 
     @property
     def weapons_hidden(self):

@@ -65,12 +65,12 @@ class CombatHandler(object):
     @property
     def autoattack(self):
         """Whether our character will automatically try to attack every round"""
-        return self.char.db.autoattack or self.automated
+        return self.char.item_data.autoattack or self.automated
 
     @autoattack.setter
     def autoattack(self, val):
         """Sets whether our character will try to attack every round"""
-        self.char.db.autoattack = val
+        self.char.item_data.autoattack = val
 
     @property
     def automated(self):
@@ -99,14 +99,14 @@ class CombatHandler(object):
     @property
     def stance(self):
         """Our current combat stance"""
-        _stance = self.char.db.combat_stance
+        _stance = self.char.item_data.combat_stance
         if _stance not in combat_settings.COMBAT_STANCES:
             return "balanced"
         return _stance
 
     @stance.setter
     def stance(self, val):
-        self.char.db.combat_stance = val
+        self.char.item_data.combat_stance = val
 
     def setup_weapon(self, weapon=None):
         """Sets up our weapon in the combat handler"""
@@ -156,7 +156,7 @@ class CombatHandler(object):
 
     def display_stats(self):
         """Returns a string display of all our combat stats."""
-        weapon = self.char.db.weapon
+        weapon = self.char.weapon
         try:
             max_hp = self.char.max_hp
             hp = "%s/%s" % (self.char.current_hp, max_hp)

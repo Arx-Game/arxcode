@@ -6,6 +6,7 @@ Admin commands
 from typing import Tuple, Optional, List
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction, DatabaseError
 from django.db.models import Q, Count, Subquery, OuterRef, IntegerField
 
@@ -16,6 +17,7 @@ from evennia.objects.models import ObjectDB
 from evennia.server.models import ServerConfig
 from evennia.typeclasses.tags import Tag
 from evennia.scripts.models import ScriptDB
+from evennia_extensions.character_extensions.constants import CHEST_KEY, ROOM_KEY
 
 from server.utils.arx_utils import (
     inform_staff,
@@ -43,8 +45,11 @@ from world.dominion.models import (
     PrestigeCategory,
 )
 from world.dominion.plots.models import Plot, PlotAction
-from typeclasses.characters import Character
 from typeclasses.accounts import Account
+from typeclasses.rooms import ArxRoom
+from typeclasses.characters import Character
+from typeclasses.wearable.wearable import WearableContainer
+from typeclasses.containers.container import Container
 
 PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
@@ -69,7 +74,7 @@ class CmdHome(ArxCommand):
         home = caller.home
         room = caller.location
         cscript = room.ndb.combat_manager
-        guards = caller.db.assigned_guards or []
+        guards = caller.guards
         if not caller.check_permstring("builders"):
             if cscript:
                 caller.msg(
@@ -1787,18 +1792,7 @@ class CmdTransferKeys(ArxPlayerCommand):
             return
         source = source.char_ob
         targ = targ.char_ob
-        s_chest_keys = source.db.chestkeylist or []
-        s_chest_keys = list(s_chest_keys)
-        t_chest_keys = targ.db.chestkeylist or []
-        t_chest_keys = list(t_chest_keys)
-        t_chest_keys.extend(s_chest_keys)
-        targ.db.chestkeylist = list(set(t_chest_keys))
-        s_room_keys = source.db.keylist or []
-        s_room_keys = list(s_room_keys)
-        t_room_keys = targ.db.keylist or []
-        t_room_keys = list(t_room_keys)
-        t_room_keys.extend(s_room_keys)
-        targ.db.keylist = list(set(t_room_keys))
+        source.item_data.transfer_keys(targ)
         self.msg("Keys transferred.")
 
 
@@ -1821,63 +1815,41 @@ class CmdAdminKey(ArxCommand):
 
     def display_keys(self, pc):
         """Displays keys for pc"""
-        chest_keys = pc.db.chestkeylist or []
-        room_keys = pc.db.keylist or []
+        chest_keys = pc.held_keys.filter(key_type=CHEST_KEY)
+        room_keys = pc.held_keys.filter(key_type=ROOM_KEY)
         self.msg(
-            "\n{c%s's {wchest keys:{n %s"
+            "\n|c%s's |wchest keys:|n %s"
             % (pc, ", ".join(str(ob) for ob in chest_keys))
         )
         self.msg(
-            "\n{c%s's {wroom keys:{n %s" % (pc, ", ".join(str(ob) for ob in room_keys))
+            "\n|c%s's |wroom keys:|n %s" % (pc, ", ".join(str(ob) for ob in room_keys))
         )
 
     def func(self):
         """Executes admin_key command"""
-        from typeclasses.rooms import ArxRoom
-        from typeclasses.characters import Character
-        from typeclasses.wearable.wearable import WearableContainer
-        from typeclasses.containers.container import Container
 
         pc = self.caller.search(self.lhs, global_search=True, typeclass=Character)
         if not pc:
             return
-        chest_keys = pc.db.chestkeylist or []
-        room_keys = pc.db.keylist or []
         if not self.rhs:
-            self.display_keys(pc)
-            return
+            return self.display_keys(pc)
         if "room" in self.switches:
-            room = self.caller.search(self.rhs, global_search=True, typeclass=ArxRoom)
-            if not room:
-                return
-            if "add" in self.switches:
-                if room not in room_keys:
-                    room_keys.append(room)
-                    pc.db.keylist = room_keys
-                self.msg("{yAdded.")
-                return
-            if room in room_keys:
-                room_keys.remove(room)
-                pc.db.keylist = room_keys
-            self.msg("{rRemoved.")
-            return
+            return self.add_or_remove_key(pc, ArxRoom)
         if "chest" in self.switches:
-            chest = self.caller.search(
-                self.rhs, global_search=True, typeclass=[Container, WearableContainer]
-            )
-            if not chest:
-                return
-            if "add" in self.switches:
-                if chest not in chest_keys:
-                    chest_keys.append(chest)
-                    pc.db.chestkeylist = chest_keys
-                self.msg("{yAdded.")
-                return
-            if chest in chest_keys:
-                chest_keys.remove(chest)
-                pc.db.chestkeylist = chest_keys
-            self.msg("{rRemoved.")
+            return self.add_or_remove_key(pc, [Container, WearableContainer])
+
+    def add_or_remove_key(self, pc, typeclass):
+        keyed_object = self.caller.search(
+            self.rhs, global_search=True, typeclass=typeclass
+        )
+        if not keyed_object:
             return
+        if "add" in self.switches:
+            pc.item_data.add_room_key(keyed_object)
+            self.msg(f"|yAdded {keyed_object}.")
+        else:
+            pc.item_data.remove_key(keyed_object)
+            self.msg(f"|rRemoved {keyed_object}.")
 
 
 class CmdRelocateExit(ArxCommand):
@@ -1898,7 +1870,6 @@ class CmdRelocateExit(ArxCommand):
 
     def func(self):
         """Executes relocate exit command"""
-        from typeclasses.rooms import ArxRoom
 
         exit_obj = self.caller.search(self.lhs)
         if not exit_obj:
@@ -1927,10 +1898,8 @@ class CmdAdminTitles(ArxPlayerCommand):
 
     def display_titles(self, targ):
         """Displays list of titles for targ"""
-        titles = targ.db.titles or []
-        title_list = [
-            "{w%s){n %s" % (ob[0], ob[1]) for ob in enumerate(titles, start=1)
-        ]
+        titles = targ.character_titles.all()
+        title_list = ["{w%s){n %s" % (ob.id, str(ob)) for ob in titles]
         self.msg("%s's titles: %s" % (targ, "; ".join(title_list)))
 
     def func(self):
@@ -1939,26 +1908,20 @@ class CmdAdminTitles(ArxPlayerCommand):
         if not targ:
             return
         targ = targ.char_ob
-        titles = targ.db.titles or []
+        titles = targ.character_titles.all()
         if not self.rhs:
             self.display_titles(targ)
             return
         if "add" in self.switches:
-            if self.rhs not in titles:
-                titles.append(self.rhs)
-                targ.db.titles = titles
+            if not titles.filter(title__iexact=self.rhs).exists():
+                targ.character_titles.create(title=self.rhs)
             self.display_titles(targ)
             return
         if "remove" in self.switches:
             try:
-                titles.pop(int(self.rhs) - 1)
-            except (ValueError, TypeError, IndexError):
+                titles.get(id=self.rhs).delete()
+            except (ValueError, TypeError, ObjectDoesNotExist):
                 self.msg("Must give a number of a current title.")
-            else:
-                if not titles:
-                    targ.attributes.remove("titles")
-                else:
-                    targ.db.titles = titles
             self.display_titles(targ)
 
 

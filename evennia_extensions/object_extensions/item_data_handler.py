@@ -9,7 +9,9 @@ from evennia_extensions.object_extensions.storage_wrappers import (
     DimensionsWrapper,
     PermanenceWrapper,
     DisplayNamesWrapper,
+    ObjectDBFieldWrapper,
 )
+from evennia_extensions.object_extensions.validators import get_objectdb, get_room
 from server.utils.arx_utils import CachedProperty
 
 
@@ -23,6 +25,9 @@ class ItemDataHandler:
     capacity = DimensionsWrapper()
     quantity = DimensionsWrapper()
     is_locked = DimensionsWrapper()
+    home = ObjectDBFieldWrapper(validator_func=get_objectdb)
+    location = ObjectDBFieldWrapper(validator_func=get_objectdb)
+    destination = ObjectDBFieldWrapper(validator_func=get_room)
 
     @property
     def total_size(self):
@@ -58,7 +63,3 @@ class ItemDataHandler:
         self.obj.translations.get_or_create(language=language, description=description)
         # clear the cache
         del self.translation
-
-
-class CharacterDataHandler(ItemDataHandler):
-    longname = DisplayNamesWrapper()

@@ -25,14 +25,14 @@ class CmdDiceString(ArxCommand):
         """Handles the toggle"""
         caller = self.caller
         args = self.args
-        dicest = caller.db.dice_string
+        dicest = caller.item_data.dice_string
         if not dicest:
             dicest = "None."
         if not args:
             caller.msg("Your current dicestring is: {w%s" % dicest)
             caller.msg("To change your dicestring: {w@dicestring <word or phrase>")
             return
-        caller.attributes.add("dice_string", args)
+        caller.item_data.dice_string = args
         caller.msg("Your dice string is now: %s" % args)
         return
 

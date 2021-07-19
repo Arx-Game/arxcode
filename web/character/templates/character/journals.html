@@ -16,11 +16,11 @@
     {% for char in active %}
 	  <tr class="{% cycle 'success' 'info' %}">
         <td><a href="{% url 'character:sheet' char.id %}">{{ char.key }}</a></td>
-		<td>{{ char.db.gender }}</td>
-		<td>{{ char.db.age }}</td>
-		<td>{{char.db.concept}}</td>
-		<td>{{char.db.fealty}}</td>
-		<td>{{char.db.social_rank}}</td>
+		<td>{{ char.item_data.gender }}</td>
+		<td>{{ char.item_data.age }}</td>
+		<td>{{char.item_data.concept}}</td>
+		<td>{{char.item_data.fealty}}</td>
+		<td>{{char.item_data.social_rank}}</td>
 		{% if show_hidden %}
 		<td>{{char.player_ob.email}}</td>
 		{% endif %}
@@ -47,11 +47,11 @@
       {% for char in unavailable%}
         <tr class="{% cycle 'success' 'info' %}">
         <td><a href="{% url 'character:sheet' char.id %}">{{ char.key }}</a></td>
-		<td>{{ char.db.gender }}</td>
-		<td>{{ char.db.age }}</td>
-		<td>{{char.db.concept}}</td>
-		<td>{{char.db.fealty}}</td>
-		<td>{{char.db.social_rank}}</td>
+		<td>{{ char.item_data.gender }}</td>
+		<td>{{ char.item_data.age }}</td>
+		<td>{{char.item_data.concept}}</td>
+		<td>{{char.item_data.fealty}}</td>
+		<td>{{char.item_data.social_rank}}</td>
 		<td>{{char.player_ob.email}}</td>
 	  </tr>
       {% empty %}
@@ -75,11 +75,11 @@
       {% for char in incomplete %}
         <tr class="{% cycle 'success' 'info' %}">
         <td><a href="{% url 'character:sheet' char.id %}">{{ char.key }}</a></td>
-		<td>{{ char.db.gender }}</td>
-		<td>{{ char.db.age }}</td>
-		<td>{{char.db.concept}}</td>
-		<td>{{char.db.fealty}}</td>
-		<td>{{char.db.social_rank}}</td>
+		<td>{{ char.item_data.gender }}</td>
+		<td>{{ char.item_data.age }}</td>
+		<td>{{char.item_data.concept}}</td>
+		<td>{{char.item_data.fealty}}</td>
+		<td>{{char.item_data.social_rank}}</td>
 		<td>{{char.player_ob.email}}</td>
 	  </tr>
       {% empty %}

@@ -89,7 +89,7 @@ class CmdManageHome(ArxCommand):
         loc = caller.location
         entrances = loc.entrances
         owners = loc.db.owners or []
-        keylist = loc.db.keylist or []
+        keylist = [obj.character for obj in loc.distributed_keys.all()]
         if caller not in owners and not caller.check_permstring("builders"):
             caller.msg("You are not the owner of this room.")
             return
@@ -98,8 +98,7 @@ class CmdManageHome(ArxCommand):
             caller.msg("Your home is currently %s." % locked)
             caller.msg("{wOwners:{n %s" % ", ".join(str(ob) for ob in owners))
             caller.msg(
-                "{wCharacters who have keys:{n %s"
-                % ", ".join(str(ob) for ob in keylist)
+                "{wCharacters who have keys:{n %s" % ", ".join(ob.key for ob in keylist)
             )
             entrance = entrances[0]
             entmsg = entrance.db.success_traverse or ""
@@ -162,30 +161,19 @@ class CmdManageHome(ArxCommand):
         if not char:
             caller.msg("No character found.")
             return
-        keys = char.db.keylist or []
         if "key" in self.switches:
-            if loc in keys and char in keylist:
+            if char in keylist:
                 caller.msg("They already have a key to here.")
                 return
-            if loc not in keys:
-                keys.append(loc)
-                char.db.keylist = keys
-            if char not in keylist:
-                keylist.append(char)
-                loc.db.keylist = keylist
+            char.item_data.add_room_key(loc)
             char.msg("{c%s{w has granted you a key to %s." % (caller, loc))
             caller.msg("{wYou have granted {c%s{w a key.{n" % char)
             return
         if "rmkey" in self.switches:
-            if loc not in keys and char not in keylist:
+            if char not in keylist:
                 caller.msg("They don't have a key to here.")
                 return
-            if loc in keys:
-                keys.remove(loc)
-                char.db.keylist = keys
-            if char in keylist:
-                keylist.remove(char)
-                loc.db.keylist = keylist
+            char.item_data.remove_key(loc)
             char.msg("{c%s{w has removed your access to %s." % (caller, loc))
             caller.msg("{wYou have removed {c%s{w's key.{n" % char)
             return
@@ -1235,8 +1223,8 @@ class CmdBuyFromShop(CmdCraft):
         item.attributes.remove("sale_location")
         del loc.db.item_prices[item.id]
         if hasattr(item, "rmkey"):
-            if item.rmkey(loc.db.shopowner):
-                item.grantkey(self.caller)
+            if item.revoke_key(loc.db.shopowner):
+                item.grant_key(self.caller)
                 self.msg("Good deal! The owner gave you a key for %s." % item)
                 return
             self.msg(

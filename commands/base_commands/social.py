@@ -454,8 +454,8 @@ class CmdFinger(ArxPlayerCommand):
         if show_hidden:
             msg += "{wCharID:{n %s, {wPlayerID:{n %s\n" % (char.id, player.id)
             msg += "{wTotal Posecount:{n %s\n" % char.total_posecount
-        if char.db.obituary:
-            msg += "{wObituary:{n %s\n" % char.db.obituary
+        if char.item_data.obituary:
+            msg += "{wObituary:{n %s\n" % char.item_data.obituary
         else:
             session = player.get_all_sessions() and player.get_all_sessions()[0]
             if session and player.show_online(caller):
@@ -469,10 +469,10 @@ class CmdFinger(ArxPlayerCommand):
                     or "Never"
                 )
                 msg += "{wStatus:{n Last logged in: %s\n" % last_online
-        fealty = char.db.fealty or "None"
+        fealty = char.item_data.fealty or "None"
         msg += "{wFealty:{n %s\n" % fealty
 
-        quote = char.db.quote
+        quote = char.item_data.quote
         if quote:
             msg += "{wQuote:{n %s\n" % quote
         msg += "{wCharacter page:{n %s\n" % get_full_url(char.get_absolute_url())
@@ -1247,7 +1247,7 @@ class CmdMessenger(ArxCommand):
                 )
                 return
         if "proof" in self.switches:
-            msg = caller.db.messenger_draft
+            msg = caller.item_data.messenger_draft
             if not msg:
                 caller.msg("You have no draft message stored.")
                 return
@@ -2368,7 +2368,7 @@ class CmdPraise(ArxPlayerCommand):
         """Calculates how many praises character has"""
         char = self.caller.char_ob
         clout = char.social_clout
-        s_rank = char.db.social_rank or 10
+        s_rank = char.item_data.social_rank
         return clout + ((8 - s_rank) // 2)
 
     @property
@@ -3625,9 +3625,9 @@ class CmdTempDesc(RewardRPToolUseMixin, ArxCommand):
         """Sets or removes a temporary desc from the character"""
         if not self.args:
             self.msg("Temporary description cleared.")
-            del self.caller.additional_desc
+            del self.caller.item_data.additional_desc
             return
-        self.caller.additional_desc = self.args
+        self.caller.item_data.additional_desc = self.args
         self.msg("Temporary desc set to: %s" % self.args)
         self.mark_command_used()
 

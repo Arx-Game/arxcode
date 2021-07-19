@@ -35,7 +35,7 @@ class Mask(Wearable):
         """Hook called after wearing succeeds."""
         self.wear_mask(wearer)
         self.degrade_mask()
-        if wearer.additional_desc:
+        if wearer.item_data.additional_desc:
             wearer.msg(
                 "{yYou currently have a +tempdesc set, which you may want to remove with +tempdesc.{n"
             )

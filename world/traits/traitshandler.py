@@ -321,3 +321,18 @@ class Traitshandler:
         """Returns True if we deleted a permanent wound, False otherwise"""
         trait = Trait.get_instance_by_name(trait_name)
         return self.character.health_status.heal_permanent_wound_for_trait(trait)
+
+    def remove_last_skill_purchase_record(self, trait_name: str) -> int:
+        trait = Trait.get_instance_by_name(trait_name)
+        purchase = (
+            self.character.trait_purchases.filter(trait=trait).order_by("cost").last()
+        )
+        if not purchase:
+            raise ValueError("No purchase found")
+        cost = purchase.cost
+        purchase.delete()
+        return cost
+
+    def record_skill_purchase(self, trait_name: str, cost):
+        trait = Trait.get_instance_by_name(trait_name)
+        self.character.trait_purchases.create(trait=trait, cost=cost)

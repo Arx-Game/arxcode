@@ -86,14 +86,23 @@ def sheet(request, object_id):
         from django.core.exceptions import PermissionDenied
 
         raise PermissionDenied
-    pheight = character.db.portrait_height or 480
-    pwidth = character.db.portrait_width or 320
+    pheight = 480
+    pwidth = 320
     try:
-        fealty_org_id = Organization.objects.get(name__iexact=character.db.fealty)
+        pheight = character.roster.portrait_height
+        pwidth = character.roster.portrait_width
+    except AttributeError:
+        pass
+    try:
+        fealty_org_id = Organization.objects.get(
+            name__iexact=str(character.item_data.fealty)
+        )
     except Organization.DoesNotExist:
         fealty_org_id = None
     try:
-        family_org_id = Organization.objects.get(name__iexact=character.db.family)
+        family_org_id = Organization.objects.get(
+            name__iexact=character.item_data.family
+        )
     except Organization.DoesNotExist:
         family_org_id = None
     clues = list(character.clues.all())
@@ -162,7 +171,7 @@ def character_list(request):
             """Helper function for outputting string display of character name"""
             if relation.player:
                 char_ob = relation.player.char_ob
-                return "%s %s" % (char_ob.key, char_ob.db.family)
+                return "%s %s" % (char_ob.key, char_ob.item_data.family)
             else:
                 return str(relation)
 
@@ -195,21 +204,21 @@ def character_list(request):
             return character
         character = {
             "name": char.key,
-            "social_rank": char.db.social_rank,
-            "fealty": char.db.fealty,
-            "house": char.db.family,
+            "social_rank": char.item_data.social_rank,
+            "fealty": char.item_data.fealty,
+            "house": char.item_data.family,
             "relations": get_relations(char),
-            "gender": char.db.gender,
-            "age": char.db.age,
+            "gender": char.item_data.gender,
+            "age": char.item_data.age,
             "religion": char.db.religion,
-            "vocation": char.db.vocation,
-            "height": char.db.height,
-            "hair_color": char.db.haircolor,
-            "eye_color": char.db.eyecolor,
-            "skintone": char.db.skintone,
+            "vocation": char.item_data.vocation,
+            "height": char.item_data.height,
+            "hair_color": char.item_data.hair_color,
+            "eye_color": char.item_data.eye_color,
+            "skintone": char.item_data.skin_tone,
             "description": char.perm_desc,
-            "personality": char.db.personality,
-            "background": char.db.background,
+            "personality": char.item_data.personality,
+            "background": char.item_data.background,
             "status": char.roster.roster.name,
             "longname": char.item_data.longname,
         }
@@ -320,8 +329,13 @@ def gallery(request, object_id):
     portrait_form = PortraitSelectForm(object_id)
     edit_form = PhotoEditForm(object_id)
     delete_form = PhotoDeleteForm(object_id)
-    pheight = character.db.portrait_height or 480
-    pwidth = character.db.portrait_width or 320
+    pheight = 480
+    pwidth = 320
+    try:
+        pheight = character.roster.portrait_height
+        pwidth = character.roster.portrait_width
+    except AttributeError:
+        pass
     return render(
         request,
         "character/gallery.html",
@@ -354,8 +368,6 @@ def edit_photo(request, object_id):
     photo.title = title
     photo.alt_text = alt_text
     photo.save()
-    if character.db.portrait and character.db.portrait.id == photo.id:
-        character.db.portrait = photo
     return HttpResponseRedirect(reverse("character:gallery", args=(object_id,)))
 
 
@@ -370,8 +382,6 @@ def delete_photo(request, object_id):
     except Exception as err:
         raise Http404(err)
     cloudinary.api.delete_resources([photo.image.public_id])
-    if character.db.portrait and character.db.portrait.id == photo.id:
-        character.db.portrait = None
     photo.delete()
     return HttpResponseRedirect(reverse("character:gallery", args=(object_id,)))
 
@@ -389,10 +399,10 @@ def select_portrait(request, object_id):
         portrait = None
         height = None
         width = None
-    character.db.portrait_height = height or 480
-    character.db.portrait_width = width or 320
     try:
         character.roster.profile_picture = portrait
+        character.roster.portrait_height = height or 480
+        character.roster.portrait_width = width or 320
         character.roster.save()
     except AttributeError:
         pass

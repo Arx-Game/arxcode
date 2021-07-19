@@ -7,6 +7,13 @@ from evennia_extensions.object_extensions.models import (
     Permanence,
     DisplayNames,
 )
+from evennia_extensions.character_extensions.models import (
+    CharacterSheet,
+    CharacterMessengerSettings,
+    CharacterCombatSettings,
+    CharacterTitle,
+    HeldKey,
+)
 
 from web.character.models import Clue
 from world.traits.models import CharacterTraitValue, Trait
@@ -54,6 +61,42 @@ class CharacterTraitValueInline(admin.TabularInline):
         if db_field.name == "trait":
             kwargs["queryset"] = Trait.objects.order_by("name")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+class CharacterSheetInline(admin.StackedInline):
+    model = CharacterSheet
+    extra = 0
+
+
+class CharacterCombatSettingsInline(admin.StackedInline):
+    model = CharacterCombatSettings
+    extra = 0
+    fk_name = "objectdb"
+    raw_id_fields = ("guarding", "objectdb")
+
+
+class CharacterMessengerSettingsInline(admin.StackedInline):
+    model = CharacterMessengerSettings
+    extra = 0
+    fk_name = "objectdb"
+    raw_id_fields = ("custom_messenger", "discreet_messenger", "objectdb")
+
+
+class CharacterTitlesInline(admin.TabularInline):
+    model = CharacterTitle
+    extra = 0
+    raw_id_fields = ("character",)
+
+
+class CharacterHeldKeysInline(admin.TabularInline):
+    model = HeldKey
+    extra = 0
+    raw_id_fields = ("character", "keyed_object")
+    fk_name = "character"
+
+
+class KeyedCharactersInline(CharacterHeldKeysInline):
+    fk_name = "keyed_object"
 
 
 class PermanenceInline(admin.TabularInline):
@@ -128,7 +171,13 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
         PermanenceInline,
         SecretsInline,
     ]
-    character_inlines = [CharacterTraitValueInline]
+    character_inlines = [
+        CharacterTraitValueInline,
+        CharacterSheetInline,
+        CharacterMessengerSettingsInline,
+        CharacterCombatSettingsInline,
+        CharacterHeldKeysInline,
+    ]
     crafted_inlines = [
         CraftingRecordInline,
         AdornedMaterialInline,
@@ -138,6 +187,8 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
     place_inlines = [PlaceSpotsOverrideInline]
     wearable_inlines = [ArmorOverrideInline]
     wieldable_inlines = [WeaponOverrideInline]
+    container_inlines = [KeyedCharactersInline]
+    room_inlines = [KeyedCharactersInline]
 
     def get_inline_instances(self, request, obj=None):
         from typeclasses.characters import Character
@@ -146,6 +197,8 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
         from typeclasses.places.places import Place
         from typeclasses.wearable.wearable import Wearable
         from typeclasses.wearable.wieldable import Wieldable
+        from typeclasses.containers.container import Container
+        from typeclasses.rooms import ArxRoom
 
         if obj:
             final_inlines = list(self.inlines)
@@ -161,6 +214,10 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
                 final_inlines += self.wearable_inlines
             if isinstance(obj, Wieldable):
                 final_inlines += self.wieldable_inlines
+            if isinstance(obj, Container):
+                final_inlines += self.container_inlines
+            if isinstance(obj, ArxRoom):
+                final_inlines += self.room_inlines
             return [inline(self.model, self.admin_site) for inline in final_inlines]
         return []
 

@@ -163,6 +163,7 @@ INSTALLED_APPS += (
     "evennia_extensions.object_extensions.apps.ObjectExtensionsConfig",
     "world.game_constants.apps.GameConstantsConfig",
     "world.crafting.apps.CraftingConfig",
+    "evennia_extensions.character_extensions.apps.CharacterExtensionsConfig",
 )
 
 CRISPY_TEMPLATE_PACK = "bootstrap3"

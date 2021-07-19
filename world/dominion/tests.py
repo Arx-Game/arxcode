@@ -275,8 +275,8 @@ class TestGeneralDominionCommands(ArxCommandTest):
     def test_cmd_patronage(self):
         self.cmd_class = general_dominion_commands.CmdPatronage
         self.caller = self.account
-        self.char.db.family = "Pravus"
-        self.char2.db.family = "Pravus"
+        self.char.item_data.family = "Pravus"
+        self.char2.item_data.family = "Pravus"
         self.call_cmd(
             "/addprotege testaccount2", "They must be online to add them as a protege."
         )
@@ -285,17 +285,18 @@ class TestGeneralDominionCommands(ArxCommandTest):
             "/addprotege testaccount2",
             "You already have the maximum number of " "proteges for your social rank.",
         )
-        self.char.db.social_rank = 1
+        self.char.item_data.social_rank = 1
+        self.char2.item_data.social_rank = 1
         self.call_cmd(
             "/addprotege testaccount2",
             "You cannot be in the same family as your protege.",
         )
-        self.char2.db.family = "A Family Not As Cool As Pravus"
+        self.char2.item_data.family = "A Family Not As Cool As Pravus"
         self.call_cmd(
             "/addprotege testaccount2",
             "Your social rank must be at least 1 higher than your target.",
         )
-        self.char2.db.social_rank = 2
+        self.char2.item_data.social_rank = 2
         self.call_cmd(
             "/addprotege testaccount2",
             "You have extended the offer of patronage to Testaccount2.",
@@ -623,8 +624,8 @@ class TestPlotCommands(TestTicketMixins, ArxCommandTest):
             "/rewardrecruiter 2=testaccount2",
             "You have marked Char2 as your recruiter. " "You have both gained xp.",
         )
-        self.assertEqual(self.char2.db.xp, recruiter_xp)
-        self.assertEqual(self.char1.db.xp, plot_commands.CmdPlots.recruited_xp)
+        self.assertEqual(self.char2.item_data.xp, recruiter_xp)
+        self.assertEqual(self.char1.item_data.xp, plot_commands.CmdPlots.recruited_xp)
         self.call_cmd(
             "/addclue 2=asdf",
             "You must include a clue ID and notes of how the clue is related to the plot.",

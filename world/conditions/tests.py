@@ -131,7 +131,7 @@ class TestTriggers(ArxTest):
         self.trigger3.do_trigger_results = Mock(return_value=True)
 
     def test_social_rank(self):
-        self.char1.db.social_rank = 3
+        self.char1.item_data.social_rank = 3
         self.trigger1.conditional_check = EffectTrigger.SOCIAL_RANK
         self.trigger1.min_value = 2
         self.trigger1.max_value = 3
