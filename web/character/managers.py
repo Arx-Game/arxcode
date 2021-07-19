@@ -178,15 +178,16 @@ class ArxRosterManager(models.Manager):
             if char_filter == "married":
                 for char in char_list:
                     if (
-                        not char.db.marital_status
-                        or char.db.marital_status.lower() != "married"
+                        not char.item_data.marital_status
+                        or char.item_data.marital_status.lower() != "married"
                     ):
                         match_set.discard(char)
             if char_filter == "single":
                 for char in char_list:
                     if (
-                        not char.db.marital_status
-                        or char.db.marital_status.lower() not in ("unmarried", "single")
+                        not char.item_data.marital_status
+                        or char.item_data.marital_status.lower()
+                        not in ("unmarried", "single")
                     ):
                         match_set.discard(char)
             if char_filter == "family":

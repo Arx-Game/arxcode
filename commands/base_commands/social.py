@@ -1247,12 +1247,12 @@ class CmdMessenger(ArxCommand):
                 )
                 return
         if "proof" in self.switches:
-            msg = caller.item_data.messenger_draft
-            if not msg:
+            draft = caller.messages.messenger_draft
+            if not draft:
                 caller.msg("You have no draft message stored.")
                 return
-            caller.msg("Message for: %s" % ", ".join(ob.key for ob in msg[0]))
-            caller.msg(msg[1])
+            caller.msg("Message for: %s" % ", ".join(ob.key for ob in draft[0]))
+            caller.msg(draft[1])
             return
         if "send" in self.switches:
             if self.check_cannot_use_messengers(self.caller):

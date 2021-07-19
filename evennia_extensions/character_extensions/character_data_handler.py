@@ -1,5 +1,3 @@
-from django.core.exceptions import ValidationError
-
 from evennia_extensions.character_extensions.constants import CHEST_KEY, ROOM_KEY
 from evennia_extensions.character_extensions.storage_wrappers import (
     RosterEntryWrapper,
@@ -73,9 +71,7 @@ class CharacterDataHandler(ItemDataHandler):
     discreet_messenger = MessengerSettingsWrapper(
         validator_func=get_character, default_is_none=True
     )
-    messenger_draft = MessengerSettingsWrapper(
-        validator_func=get_character, default_is_none=True
-    )
+    messenger_draft = MessengerSettingsWrapper(default_is_none=True, deleted_value="")
 
     def set_sheet_value(self, attr, value):
         """

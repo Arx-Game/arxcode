@@ -205,7 +205,7 @@ def character_list(request):
         character = {
             "name": char.key,
             "social_rank": char.item_data.social_rank,
-            "fealty": char.item_data.fealty,
+            "fealty": str(char.item_data.fealty),
             "house": char.item_data.family,
             "relations": get_relations(char),
             "gender": char.item_data.gender,

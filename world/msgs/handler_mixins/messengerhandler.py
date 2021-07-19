@@ -38,14 +38,18 @@ class MessengerHandler(MsgHandlerBase):
 
     @property
     def messenger_draft(self):
-        return self.obj.item_data.messenger_draft
+        if not self.obj.item_data.messenger_draft:
+            return None
+        return self.obj.db.draft_receivers, self.obj.item_data.messenger_draft
 
     @messenger_draft.setter
     def messenger_draft(self, val):
         if not val:
             del self.obj.item_data.messenger_draft
+            self.obj.attributes.remove("draft_receivers")
         else:
-            self.obj.item_data.messenger_draft = val
+            self.obj.item_data.messenger_draft = val[1]
+            self.obj.db.draft_receivers = val[0]
             self.msg("Saved message. To see it, type 'message/proof'.")
 
     def create_messenger_header(self, icdate):

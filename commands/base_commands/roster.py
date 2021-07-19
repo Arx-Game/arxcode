@@ -745,7 +745,7 @@ def display_header(caller, character, show_hidden=False):
     haircolor = haircolor.title()
     skintone = character.item_data.skin_tone or ""
     skintone = skintone.title()
-    marital_status = character.db.marital_status or "Single"
+    marital_status = character.item_data.marital_status or "Single"
 
     header = """
 {w%(longname)s{n
