@@ -106,7 +106,7 @@ class RaceAdmin(admin.ModelAdmin):
 
 class CharacterExtensionAdmin(admin.ModelAdmin):
     list_display = ("pk", "character_name")
-    search_fields = ("=pk", "objectdb__db_key")
+    search_fields = ("=objectdb__id", "objectdb__db_key")
     raw_id_fields = ("objectdb",)
 
     def character_name(self, obj):
