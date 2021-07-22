@@ -256,7 +256,7 @@ class Character(
             height = mask.db.height or "--"
             species = mask.db.species or "--"
             gender = mask.db.gender or "--"
-            age = mask.item_data.age or "--"
+            age = mask.db.age or "--"
         hair = hair.capitalize()
         eyes = eyes.capitalize()
         skin = skin.capitalize()

@@ -4,6 +4,7 @@ General Character commands usually available to all characters
 import time
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 from evennia.server.sessionhandler import SESSIONS
 from evennia.commands.default.account import CmdOOC
@@ -967,63 +968,66 @@ class CmdArxSetAttribute(CmdSetAttribute):
 
     def func(self):
         """Implement the set attribute - a limited form of @py."""
-
-        caller = self.caller
-        if not self.args:
-            caller.msg("Usage: @set obj/attr = value. Use empty value to clear.")
-            return
-
-        # get values prepared by the parser
-        value = self.rhs
-        objname = self.lhs_objattr[0]["name"]
-        attrs = self.lhs_objattr[0]["attrs"]
-
-        obj = self.search_for_obj(objname)
-        if not obj:
-            return
-
-        if not self.check_obj(obj):
-            return
-
-        result = []
-        if "edit" in self.switches:
-            # edit in the line editor
-            if len(attrs) > 1:
-                caller.msg(
-                    "The Line editor can only be applied " "to one attribute at a time."
-                )
+        try:
+            caller = self.caller
+            if not self.args:
+                caller.msg("Usage: @set obj/attr = value. Use empty value to clear.")
                 return
-            self.edit_handler(obj, attrs[0])
-            return
-        if not value:
-            if self.rhs is None:
-                # no = means we inspect the attribute(s)
-                if not attrs:
-                    attrs = [attr.key for attr in obj.attributes.all()]
-                for attr in attrs:
-                    if not self.check_attr(obj, attr):
-                        continue
-                    result.append(self.view_attr(obj, attr))
-                # we view it without parsing markup.
-                self.msg("".join(result).strip(), options={"raw": True})
+
+            # get values prepared by the parser
+            value = self.rhs
+            objname = self.lhs_objattr[0]["name"]
+            attrs = self.lhs_objattr[0]["attrs"]
+
+            obj = self.search_for_obj(objname)
+            if not obj:
                 return
+
+            if not self.check_obj(obj):
+                return
+
+            result = []
+            if "edit" in self.switches:
+                # edit in the line editor
+                if len(attrs) > 1:
+                    caller.msg(
+                        "The Line editor can only be applied "
+                        "to one attribute at a time."
+                    )
+                    return
+                self.edit_handler(obj, attrs[0])
+                return
+            if not value:
+                if self.rhs is None:
+                    # no = means we inspect the attribute(s)
+                    if not attrs:
+                        attrs = [attr.key for attr in obj.attributes.all()]
+                    for attr in attrs:
+                        if not self.check_attr(obj, attr):
+                            continue
+                        result.append(self.view_attr(obj, attr))
+                    # we view it without parsing markup.
+                    self.msg("".join(result).strip(), options={"raw": True})
+                    return
+                else:
+                    # deleting the attribute(s)
+                    for attr in attrs:
+                        if not self.check_attr(obj, attr):
+                            continue
+                        result.append(self.rm_attr(obj, attr))
             else:
-                # deleting the attribute(s)
+                # setting attribute(s). Make sure to convert to real Python type before saving.
                 for attr in attrs:
                     if not self.check_attr(obj, attr):
                         continue
-                    result.append(self.rm_attr(obj, attr))
-        else:
-            # setting attribute(s). Make sure to convert to real Python type before saving.
-            for attr in attrs:
-                if not self.check_attr(obj, attr):
-                    continue
-                value = _convert_from_string(self, value)
-                result.append(self.set_attr(obj, attr, value))
-        # send feedback
-        msg = "".join(result).strip("\n")
-        caller.msg(msg)
-        arx_utils.inform_staff("Building command by %s: %s" % (caller, msg))
+                    value = _convert_from_string(self, value)
+                    result.append(self.set_attr(obj, attr, value))
+            # send feedback
+            msg = "".join(result).strip("\n")
+            caller.msg(msg)
+            arx_utils.inform_staff("Building command by %s: %s" % (caller, msg))
+        except ValidationError as err:
+            self.msg(err)
 
     def set_attr(self, obj, attr, value):
         from world.traits.models import Trait

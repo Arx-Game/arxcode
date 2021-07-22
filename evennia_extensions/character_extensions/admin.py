@@ -135,6 +135,10 @@ class MessengerSettingsAdmin(CharacterExtensionAdmin):
         "custom_messenger",
         "discreet_messenger",
     )
+    search_fields = CharacterExtensionAdmin.search_fields + (
+        "custom_messenger__db_key",
+        "=custom_messenger__id",
+    )
 
 
 class CharacterTitlesAdmin(admin.ModelAdmin):

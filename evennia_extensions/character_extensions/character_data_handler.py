@@ -100,7 +100,9 @@ class CharacterDataHandler(ItemDataHandler):
 
     def add_key(self, keyed_object, key_type):
         if not self.obj.held_keys.filter(keyed_object=keyed_object).exists():
-            return self.obj.held_keys.create(keyed_object, key_type=key_type)
+            return self.obj.held_keys.create(
+                keyed_object=keyed_object, key_type=key_type
+            )
 
     def remove_key(self, keyed_object):
         return any(self.obj.held_keys.filter(keyed_object=keyed_object).delete())

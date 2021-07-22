@@ -97,14 +97,15 @@ class SheetValueWrapper:
         if not value:
             self.delete_sheet_value(instance)
             return
+        characteristic = Characteristic.objects.get(name=self.characteristic_name)
         try:
             new_value = CharacteristicValue.objects.get(
-                name__iexact=value, characteristic_id=self.characteristic_name
+                value__iexact=value, characteristic=characteristic
             )
         except CharacteristicValue.DoesNotExist:
             valid_values = ", ".join(
                 CharacteristicValue.objects.filter(
-                    characteristic_id=self.characteristic_name
+                    characteristic=characteristic
                 ).values_list("value", flat=True)
             )
             raise ValidationError(
