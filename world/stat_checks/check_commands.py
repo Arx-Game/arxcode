@@ -251,6 +251,7 @@ class CmdHarm(ArxCommand):
         if target != self.caller and not self.caller.check_staff_or_gm():
             raise self.error_class("You may only harm others if GMing an event.")
         self.msg(f"Inflicting {damage} on {target}.")
+        target.msg(f"|rYou have been harmed for {damage} damage.|n")
         damage.do_damage(target)
 
 

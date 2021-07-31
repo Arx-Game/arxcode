@@ -100,8 +100,8 @@ class Character(
         return Traitshandler(self)
 
     @property
-    def desc(self):
-        final_desc = super().desc
+    def base_desc(self):
+        final_desc = super().base_desc
         add = self.item_data.additional_desc
         if add:
             final_desc += "\n\n" + "{w({n%s{w){n" % add

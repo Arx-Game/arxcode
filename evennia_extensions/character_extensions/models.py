@@ -60,7 +60,7 @@ class Race(SharedMemoryModel):
     name = models.CharField(max_length=80, unique=True)
     description = models.TextField(blank=True)
     allowed_characteristic_values = models.ManyToManyField(
-        CharacteristicValue, related_name="allowed_races"
+        CharacteristicValue, related_name="allowed_races", blank=True
     )
     race_type = models.PositiveSmallIntegerField(
         choices=RACE_TYPE_CHOICES, default=SMALL_ANIMAL

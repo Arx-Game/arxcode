@@ -784,11 +784,8 @@ class MsgMixins(object):
         if not self.sessions.all():
             return
         # compatibility change for Evennia changing text to be either str or tuple
-        if not isinstance(text, str):
-            try:
-                text = text[0]
-            except TypeError:
-                pass
+        if isinstance(text, tuple) and text:
+            text = text[0]
         options = options or {}
         options.update(kwargs.get("options", {}))
         try:

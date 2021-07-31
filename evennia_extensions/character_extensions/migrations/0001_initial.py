@@ -597,6 +597,7 @@ class Migration(migrations.Migration):
                     models.ManyToManyField(
                         related_name="allowed_races",
                         to="character_extensions.CharacteristicValue",
+                        blank=True,
                     ),
                 ),
             ],

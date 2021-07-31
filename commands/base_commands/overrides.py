@@ -51,6 +51,7 @@ from commands.base import ArxCommand, ArxPlayerCommand
 
 AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 1))
 _DEFAULT_WIDTH = settings.CLIENT_DEFAULT_WIDTH
+from world.traits.models import Trait
 
 
 def args_are_currency(args):
@@ -1030,8 +1031,6 @@ class CmdArxSetAttribute(CmdSetAttribute):
             self.msg(err)
 
     def set_attr(self, obj, attr, value):
-        from world.traits.models import Trait
-
         trait = Trait.get_instance_by_name(attr)
         if trait:
             obj.traits.set_trait_value(trait.get_trait_type_display(), attr, value)
@@ -1641,14 +1640,14 @@ class CmdArxExamine(CmdExamine):
                 obj = caller.location
                 if not obj.access(caller, "examine"):
                     # If we don't have special info access, just look at the object instead.
-                    self.msg(caller.at_look(obj))
+                    caller.msg(caller.at_look(obj))
                     return
                 # using callback for printing result whenever function returns.
                 get_and_merge_cmdsets(
-                    obj, self.session, self.player, obj, "object"
+                    obj, self.session, self.account, obj, "object", self.raw_string
                 ).addCallback(get_cmdset_callback)
             else:
-                self.msg("You need to supply a target to examine.")
+                caller.msg("You need to supply a target to examine.")
             return
 
         # we have given a specific target object
@@ -1679,13 +1678,19 @@ class CmdArxExamine(CmdExamine):
             if not obj.access(caller, "examine"):
                 # If we don't have special info access, just look
                 # at the object instead.
-                self.msg(caller.at_look(obj))
+                caller.msg(caller.at_look(obj))
                 continue
 
             if obj_attrs:
                 for attrname in obj_attrs:
                     # we are only interested in specific attributes
-                    caller.msg(self.format_attributes(obj, attrname, crop=False))
+                    ret = "\n".join(
+                        f"{self.header_color}{header}|n:{value}"
+                        for header, value in self.format_attributes(
+                            obj, attrname, crop=False
+                        ).items()
+                    )
+                    caller.msg(ret)
             else:
                 if obj.sessions.count():
                     mergemode = "session"
@@ -1697,6 +1702,19 @@ class CmdArxExamine(CmdExamine):
                 get_and_merge_cmdsets(
                     obj, self.session, self.account, obj, mergemode, self.raw_string
                 ).addCallback(get_cmdset_callback)
+
+    def format_attributes(self, obj, attrname=None, crop=True):
+        if not attrname:
+            return super().format_attributes(obj, attrname, crop)
+        trait = Trait.get_instance_by_name(attrname)
+        if trait:
+            value = obj.traits.get_value_by_trait(trait)
+            return {"Trait": f"\n {attrname} = {value}"}
+        # check for item_data value
+        if hasattr(obj.item_data, attrname):
+            value = getattr(obj.item_data, attrname)
+            return {"Item Data": f"\n {attrname} = {value}"}
+        return super().format_attributes(obj, attrname, crop)
 
 
 class CmdArxDestroy(CmdDestroy):
