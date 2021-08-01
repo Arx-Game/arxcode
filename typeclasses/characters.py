@@ -103,7 +103,7 @@ class Character(
     def base_desc(self):
         final_desc = super().base_desc
         add = self.item_data.additional_desc
-        if add:
+        if add and not self.is_disguised:
             final_desc += "\n\n" + "{w({n%s{w){n" % add
         return final_desc
 
