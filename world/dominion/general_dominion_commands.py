@@ -6,6 +6,7 @@ to make changes.
 from ast import literal_eval
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, F
 
 from evennia.objects.models import ObjectDB
@@ -2390,7 +2391,6 @@ class CmdOrganization(ArxPlayerCommand):
             self.msg("You have briefed %s on your organization's secrets." % tarmember)
             return
         if "addclue" in self.switches or "addtheory" in self.switches:
-            from web.character.models import ClueDiscovery
 
             org = self.get_org_from_myorgs(myorgs)
             if not org:
@@ -2398,7 +2398,7 @@ class CmdOrganization(ArxPlayerCommand):
             if "addclue" in self.switches:
                 try:
                     clue = caller.roster.clues.get(id=self.lhs)
-                except (ClueDiscovery.DoesNotExist, ValueError):
+                except (ObjectDoesNotExist, ValueError):
                     self.msg("No clue by that number found.")
                     return
                 if clue in org.clues.all():

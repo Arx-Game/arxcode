@@ -150,7 +150,7 @@ class PlayerOrNpc(SharedMemoryModel):
             if not self.alive:
                 name += "(RIP)"
             return name
-        name = self.npc_name
+        name = self.npc_name or ""
         if not self.alive:
             name += "(RIP)"
         return name

@@ -130,7 +130,7 @@ class CharacterDataHandler(ItemDataHandler):
 
         char_values = CharacteristicValue.objects.filter(
             allowed_races__name__iexact=str(self.race)
-        ).filter(name__iexact=characteristic_name)
+        ).filter(characteristic__name__iexact=characteristic_name)
         if char_values.filter(value__iexact=value).exists():
             return True
         valid_values = ", ".join(

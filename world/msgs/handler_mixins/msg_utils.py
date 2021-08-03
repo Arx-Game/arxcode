@@ -24,12 +24,13 @@ def lazy_import_from_str(clsname):
     return cls
 
 
-def get_initial_queryset(clsname):
+def get_initial_queryset(clsname, ordering="-db_date_created"):
     """
     Gets an initial queryset for initializing our attributes.
 
         Args:
             clsname (str): Name of class from .models to import
+            ordering (str): field to use for ordering
     """
     cls = lazy_import_from_str(clsname)
-    return cls.objects.all().order_by("-db_date_created")
+    return cls.objects.all().order_by(ordering)
