@@ -142,6 +142,9 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         """Returns a list of visible characters in a room."""
         return [char for char in self.player_characters if char.access(pobject, "view")]
 
+    def check_poses_squelched(self):
+        return self.tags.get("poses_squelched")
+
     def return_appearance(
         self, looker, detailed=False, format_desc=True, show_contents=True
     ):

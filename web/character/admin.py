@@ -702,7 +702,7 @@ class FlashbackAdmin(BaseCharAdmin):
     )
     search_fields = ("=id", "title", "participants__player__username")
     inlines = [FBParticipantsInline, PostInline]
-    fieldsets = [(None, {"fields": ["title", "summary"]})]
+    fieldsets = [(None, {"fields": ["title", "summary", "concluded"]})]
 
     @staticmethod
     def owner(obj):

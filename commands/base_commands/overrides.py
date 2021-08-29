@@ -48,6 +48,7 @@ from evennia.utils.utils import (
 from server.utils import arx_utils, prettytable
 from server.utils.exceptions import CommandError
 from commands.base import ArxCommand, ArxPlayerCommand
+from world.dominion.models import RPEvent
 
 AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 1))
 _DEFAULT_WIDTH = settings.CLIENT_DEFAULT_WIDTH
@@ -445,11 +446,13 @@ class CmdEmit(ArxCommand):
       @emit[/switches] [<obj>, <obj>, ... =] <message>
       @remit           [<obj>, <obj>, ... =] <message>
       @pemit           [<obj>, <obj>, ... =] <message>
+      @stemit           <message>
 
     Switches:
       room : limit emits to rooms only (default)
       players : limit emits to players only
       contents : send to the contents of matched objects too
+      stories : send to all current GM events
 
     Emits a message to the selected objects or to
     your immediate surroundings. If the object is a room,
@@ -459,7 +462,7 @@ class CmdEmit(ArxCommand):
     """
 
     key = "@emit"
-    aliases = ["@pemit", "@remit", "\\\\"]
+    aliases = ["@pemit", "@remit", "\\\\", "@stemit"]
     locks = "cmd:all()"
     help_category = "Social"
     perm_for_switches = "Builders"
@@ -501,27 +504,33 @@ class CmdEmit(ArxCommand):
         rooms_only = "rooms" in self.switches
         players_only = "players" in self.switches
         send_to_contents = "contents" in self.switches
+        events_only = "story" in self.switches
         perm = self.perm_for_switches
         normal_emit = False
+        has_perms = caller.check_permstring(perm)
 
         # we check which command was used to force the switches
-        if (
-            self.cmdstring == "@remit" or self.cmdstring == "@pemit"
-        ) and not caller.check_permstring(perm):
+        cmdstring = self.cmdstring.lstrip("@").lstrip("+")
+        if (cmdstring in ("remit", "pemit", "stemit")) and not caller.check_permstring(
+            perm
+        ):
             caller.msg("Those options are restricted to GMs only.")
             return
         self.caller.posecount += 1
-        if self.cmdstring == "@remit":
+        if cmdstring == "remit":
             rooms_only = True
             send_to_contents = True
-        elif self.cmdstring == "@pemit":
+        elif cmdstring == "pemit":
             players_only = True
+        elif cmdstring == "stemit":
+            events_only = True
 
         if not caller.check_permstring(perm):
             rooms_only = False
             players_only = False
+            events_only = False
 
-        if not self.rhs or not caller.check_permstring(perm):
+        if not self.rhs or not has_perms:
             message = args
             normal_emit = True
             objnames = []
@@ -534,9 +543,29 @@ class CmdEmit(ArxCommand):
             else:
                 objnames = [x.key for x in caller.location.contents if x.player]
         if do_global:
-            do_global = caller.check_permstring(perm)
+            do_global = has_perms
+        if events_only:
+            from datetime import datetime
+
+            events = RPEvent.objects.filter(
+                finished=False, gm_event=True, date__lte=datetime.now()
+            )
+            for event in events:
+                obj = event.location
+                if not obj:
+                    continue
+                obj.msg_contents(
+                    message, from_obj=caller, kwargs={"options": {"is_pose": True}}
+                )
+                caller.msg("Emitted to event %s and contents:\n%s" % (event, message))
+            return
         # normal emits by players are just sent to the room
         if normal_emit:
+            if not has_perms and caller.location.check_poses_squelched():
+                caller.msg(
+                    "Poses are currently temporarily squelched by staff. Please try again when permitted."
+                )
+                return
             gms = [
                 ob for ob in caller.location.contents if ob.check_permstring("builders")
             ]
@@ -666,6 +695,11 @@ class CmdPose(ArxCommand):
         elif not self.args:
             self.msg("What do you want to do?")
         else:
+            if self.caller.location.check_poses_squelched():
+                self.msg(
+                    "Poses are currently temporarily squelched by staff. Please try again when permitted."
+                )
+                return
             self.caller.location.msg_action(
                 self.caller, self.args, options={"is_pose": True}
             )

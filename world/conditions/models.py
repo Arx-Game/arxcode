@@ -791,9 +791,25 @@ class RecoveryRunner(SharedMemoryModel):
 
     def run_revive_checks(self):
         """Called by our script, this runs revive checks for every unconscious character"""
+        from world.dominion.models import RPEvent
+
         # get the health status of all unconscious characters who are alive
         qs = CharacterHealthStatus.objects.get_revive_queryset()
+        # Get IDs of all locations that have an active GM Event or PRP
+        room_ids = (
+            RPEvent.objects.active_events()
+            .gm_or_prp()
+            .values_list("location", flat=True)
+        )
         for status in qs:
+            if status.character.db_location_id in room_ids:
+                continue
+            # if the character is in combat, skip their recovery
+            try:
+                if status.character.combat.combat:
+                    continue
+            except AttributeError:
+                pass
             status.revive_check()
         # delete all old revive treatments after
         TreatmentAttempt.objects.decrement_treatments(treatment_type=REVIVE)
