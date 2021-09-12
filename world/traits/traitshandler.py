@@ -7,8 +7,9 @@ of refactoring.
 """
 import random
 from collections import defaultdict, namedtuple
-from typing import Dict, List
+from typing import Dict, List, TYPE_CHECKING
 
+from typeclasses.exceptions import UnknownCheckError
 from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
 from world.stats_and_skills import (
     _parent_abilities_,
@@ -18,6 +19,10 @@ from world.traits.exceptions import InvalidTrait
 from world.traits.models import CharacterTraitValue, Trait
 
 TraitValue = namedtuple("TraitValue", "name value")
+
+# imports for type checking, ignored when running
+if TYPE_CHECKING:
+    from world.stat_checks.models import StatCheck
 
 
 class Traitshandler:
@@ -336,3 +341,43 @@ class Traitshandler:
     def record_skill_purchase(self, trait_name: str, cost):
         trait = Trait.get_instance_by_name(trait_name)
         self.character.trait_purchases.create(trait=trait, cost=cost)
+
+    @property
+    def known_checks(self) -> List["StatCheck"]:
+        """All StatChecks that the character knows"""
+        from world.stat_checks.models import StatCheck
+
+        # currently just public. Later we'll add ones they know from spells, etc
+        return [check for check in StatCheck.get_all_instances() if check.public]
+
+    def get_check_by_name(self, name):
+        """Gets a check the character knows or raises UnknownCheckError."""
+        name = name.lower().strip()
+        checks = self.known_checks
+        try:
+            return [match for match in checks if match.name.lower() == name][0]
+        except IndexError:
+            names = ", ".join(check.name for check in checks)
+            raise UnknownCheckError(
+                f"No check known by that name. Valid names: {names}"
+            )
+
+    def get_totals_for_check(self, check: "StatCheck") -> Dict[str, int]:
+        """Gets dict of values for a check.
+        Args:
+            check (StatCheck): A StatCheck instance
+
+        Returns:
+            A dictionary of categories to the value they add to someone's check
+            total, which is used for calculating their rank.
+        """
+        # get system for the check based on us being roller
+        trait_values = check.dice_system.get_value_for_stat_combinations(
+            self.character, new_check=True
+        )
+        totals = {"trait_values": trait_values}
+        # add up all our values for the system
+        knacks = self.character.mods.get_modifiers_for_check(check)
+        if knacks:
+            totals["knacks"] = knacks
+        return totals

@@ -24,6 +24,8 @@ from server.utils.arx_utils import (
     broadcast,
     create_gemit_and_post,
     list_to_string,
+    GOT_GMING_TAG,
+    make_staff_post,
 )
 from server.utils.prettytable import PrettyTable
 from server.utils.exceptions import CommandError
@@ -1098,6 +1100,7 @@ class CmdGMNotes(ArxCommand):
         @gmnotes/create <tag name>
         @gmnotes/delete <tag name>
         @gmnotes/tag/<classtype>[/remove] <name or #ID>=<tag name>
+        @gmnotes/got_gming [<character>]
     View Usage:
         @gmnotes [<tag name>]
         @gmnotes/plot[/old] [<plot name or #ID>]
@@ -1175,6 +1178,8 @@ class CmdGMNotes(ArxCommand):
                 self.hook_secret_to_plot()
             elif "no_gming" in self.switches:
                 self.list_needy_characters()
+            elif "got_gming" in self.switches:
+                self.mark_got_gming()
             elif self.check_switches(("character", "characters", "char", "chars")):
                 self.list_tagged_characters()
             elif self.check_switches(("revelation", "revelations", "rev", "revs")):
@@ -1564,6 +1569,24 @@ class CmdGMNotes(ArxCommand):
         msg = "{wGM Notes for {c%s:{n\n\n" % pc.key
         msg += "\n".join(ob.gm_notes for ob in pc.clues.all())
         self.msg(msg)
+
+    def mark_got_gming(self):
+        if not self.args:
+            characters = ", ".join(
+                Character.objects.filter(db_tags__db_key=GOT_GMING_TAG).values_list(
+                    "db_key", flat=True
+                )
+            )
+            self.msg(f"Characters who have received gming this episode: {characters}")
+            return
+        character = self.caller.search(self.args, global_search=True)
+        if not character:
+            return
+        if character.is_npc:
+            self.msg("That character is an npc.")
+            return
+        character.tags.add(GOT_GMING_TAG)
+        self.msg(f"Marking {character} as having received GMing this episode.")
 
 
 class CmdJournalAdminForDummies(ArxPlayerCommand):
@@ -2687,3 +2710,24 @@ class CmdAdjust(ArxPlayerCommand):
         char.db.currency += qty
 
         return True
+
+
+class CmdStaffPost(ArxCommand):
+    """
+    staffpost <board>/<title>=<message>
+    """
+
+    key = "staffpost"
+    locks = "cmd: perm(builders)"
+
+    def func(self):
+        try:
+            try:
+                board, title = self.lhs.split("/")
+            except (TypeError, ValueError):
+                raise self.error_class("Please give a board and title.")
+            if not self.rhs:
+                raise self.error_class("Please give a post.")
+            make_staff_post(self.rhs, title, board)
+        except (self.error_class, ObjectDoesNotExist) as err:
+            self.msg(err)

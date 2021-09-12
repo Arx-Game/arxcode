@@ -292,10 +292,18 @@ class CharacterCombatSettings(CharacterExtensionModel):
 
 class CharacterMessengerSettings(CharacterExtensionModel):
     custom_messenger = models.ForeignKey(
-        "objects.ObjectDB", on_delete=models.SET_NULL, null=True, related_name="+"
+        "objects.ObjectDB",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="+",
+        blank=True,
     )
     discreet_messenger = models.ForeignKey(
-        "objects.ObjectDB", on_delete=models.SET_NULL, null=True, related_name="+"
+        "objects.ObjectDB",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="+",
+        blank=True,
     )
     messenger_draft = models.TextField(blank=True)
 

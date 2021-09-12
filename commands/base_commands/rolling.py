@@ -37,7 +37,7 @@ class CmdDiceString(ArxCommand):
         return
 
 
-class CmdDiceCheck(ArxCommand):
+class CmdDiceCheckVersionOne(ArxCommand):
     """
     Note: Deprecated, will be removed eventually. Use new @check
     @oldcheck

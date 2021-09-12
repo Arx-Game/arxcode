@@ -762,6 +762,7 @@ class Migration(migrations.Migration):
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="+",
                         to="objects.ObjectDB",
+                        blank=True,
                     ),
                 ),
                 (
@@ -771,6 +772,7 @@ class Migration(migrations.Migration):
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="+",
                         to="objects.ObjectDB",
+                        blank=True,
                     ),
                 ),
             ],

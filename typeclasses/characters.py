@@ -12,7 +12,7 @@ from django.urls import reverse
 from evennia.objects.objects import DefaultCharacter
 
 from server.utils.exceptions import PayError
-from typeclasses.mixins import MsgMixins, ObjectMixins, NameMixins
+from typeclasses.mixins import MsgMixins, ObjectMixins
 from typeclasses.wearable.mixins import UseEquipmentMixins
 from world.msgs.messagehandler import MessageHandler
 from world.msgs.languagehandler import LanguageHandler

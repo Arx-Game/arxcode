@@ -74,3 +74,16 @@ class ModifierHandler(object):
                 # 1 + half the value of an applicable knack is added to our crit chance
                 total += knack.crit_chance_bonus
         return total
+
+    def get_modifiers_for_check(self, check) -> int:
+        """
+        Eventually this will be all the modifiers a player has for a given
+        check, but for now is just knacks.
+        """
+        from world.stat_checks.models import StatWeight
+
+        # get stats and skills for our check
+        base = self.get_total_roll_modifiers(
+            check.get_stats_list(), check.get_skills_list()
+        )
+        return StatWeight.get_weighted_value_for_knack(base)

@@ -1,5 +1,13 @@
+from typing import Dict
+
 from commands.base import ArxCommand
-from world.stat_checks.models import DifficultyRating, DamageRating
+from typeclasses.exceptions import UnknownCheckError
+from world.stat_checks.models import (
+    DifficultyRating,
+    DamageRating,
+    CheckRank,
+    DifficultyTable,
+)
 from world.traits.models import Trait
 from world.stat_checks.check_maker import (
     BaseCheckMaker,
@@ -17,6 +25,12 @@ from world.dominion.models import Agent
 class CmdStatCheck(ArxCommand):
     """
     CmdStatCheck is a replacement for the previous CmdDiceCheck command.
+    Currently in the process of being extended as I change the underlying
+    check system - want it support a much wider range of difficulties and
+    antagonists and modifiers. The current check will remain in place
+    while that occurs, adding the new system via switches. Once complete,
+    the old way will be removed. New system will always be checks by name,
+    rather than by stat/skill combinations.
     """
 
     key = "check"
@@ -32,6 +46,7 @@ class CmdStatCheck(ArxCommand):
         @check/vs stat (+ skill) vs stat(+skill)=<target name>
         @check/retainer <id/name>/<stat> [+ <skill>] at <difficulty rating>
             [=<player1>,<player2>,etc.]
+        @check/consider [<check name>]=[<rank>]
 
     Normal check is at a difficulty rating. Rating must be one of 
     {difficulty_ratings}.
@@ -51,10 +66,12 @@ class CmdStatCheck(ArxCommand):
                 return self.do_opposing_checks()
             if "retainer" in self.switches:
                 return self.do_retainer_check()
+            if "consider" in self.switches:
+                return self.consider_checks()
             if self.rhs:
                 return self.do_private_check()
             return self.do_normal_check()
-        except self.error_class as err:
+        except (self.error_class, UnknownCheckError) as err:
             self.msg(err)
 
     def do_normal_check(self):
@@ -207,6 +224,58 @@ class CmdStatCheck(ArxCommand):
                 SimpleRoll(character=arg[0], stat=stat, skill=skill, rating=rating)
             )
         OpposingRolls(rolls[0], rolls[1], self.caller, target).announce()
+
+    def consider_checks(self):
+        if not self.lhs:
+            checks = ", ".join(check.name for check in self.caller.traits.known_checks)
+            return self.msg(f"Known checks: {checks}")
+        # get check character knows about by name or raise an error
+        check = self.caller.traits.get_check_by_name(self.lhs)
+        if not self.rhs:
+            self.display_check_stats_breakdown(check)
+        else:
+            self.display_check_chances_for_rank(check)
+
+    def display_check_stats_breakdown(self, check):
+        """
+        Displays the rank that a character is at for a check. We'll get a dict
+        with totals based on the type of mods they have and display it out.
+        """
+        totals: Dict[str, int] = self.caller.traits.get_totals_for_check(check)
+        value = sum(totals.values())
+        rank = CheckRank.get_base_rank_for_value(value)
+        chance = CheckRank.get_chance_of_higher_rank(value)
+        rank_str = f"{rank.id}"
+        if chance:
+            rank_str += f" ({chance}% for {rank.id + 1})"
+        msg = f"|wCheck:|n {check}\n"
+        msg += f"|wSystem:|n |c{check.dice_system}|n\n"
+        msg += f"|wTotal:|n {value} |wRank:|n {rank_str}\n"
+        breakdown = ", ".join(f"{key}: {val}" for key, val in totals.items())
+        msg += f"|wValues: {breakdown}"
+        self.msg(msg)
+
+    def display_check_chances_for_rank(self, check):
+        """
+        Displays probabilities for the given check at the target rank.
+        """
+        try:
+            rank = CheckRank.objects.get(id=self.rhs)
+        except (TypeError, ValueError, CheckRank.DoesNotExist):
+            values = ", ".join(str(rank.id) for rank in CheckRank.get_all_instances())
+            raise self.error_class(
+                f"Not a valid value for a rank. Valid values: {values}."
+            )
+        difficulty_table: DifficultyTable = check.get_difficulty_table_for_roller(
+            self.caller, rank
+        )
+        msg = f"|wDifficulty Table for |c{check}|n vs rank |c{rank}|n ({self.rhs}): |c{difficulty_table.name}\n"
+        values = "\n".join(
+            f"  [Min Roll: |c{key}|n Result: |c{value}|n]"
+            for key, value in difficulty_table.ranges_dict.items()
+        )
+        msg += f"|wValues:|n\n{values}"
+        self.msg(msg)
 
 
 class CmdHarm(ArxCommand):

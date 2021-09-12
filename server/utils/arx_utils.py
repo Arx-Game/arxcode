@@ -11,6 +11,9 @@ from datetime import datetime
 from django.conf import settings
 
 
+GOT_GMING_TAG = "received_gming"
+
+
 def validate_name(name, formatting=True, not_player=True):
     """
     Checks if a name has only letters or apostrophes, or
@@ -46,18 +49,20 @@ def inform_staff(message, post=False, subject=None, quiet=settings.DEBUG):
         now = time_now().strftime("%H:%M")
         wizchan.tempmsg("{r[%s]:{n %s" % (now, message))
         if post:
-            from typeclasses.bulletin_board.bboard import BBoard
-
-            board = BBoard.objects.get(db_key__iexact="Jobs")
-            subject = subject or "Staff Activity"
             if post is not True:
                 message = post
-            board.bb_post(
-                poster_obj=None, msg=message, subject=subject, poster_name="Staff"
-            )
+            make_staff_post(message, subject or "Staff Activity", "Jobs")
     except Exception as err:
         if not quiet:
             print("ERROR when attempting utils.inform_staff() : %s" % err)
+
+
+def make_staff_post(message, subject, board):
+    from typeclasses.bulletin_board.bboard import BBoard
+
+    board = BBoard.objects.get(db_key__iexact=board)
+    subject = subject or "Staff Activity"
+    board.bb_post(poster_obj=None, msg=message, subject=subject, poster_name="Staff")
 
 
 def inform_guides(message, post=False, subject=None, quiet=settings.DEBUG):
@@ -76,15 +81,10 @@ def inform_guides(message, post=False, subject=None, quiet=settings.DEBUG):
         now = time_now().strftime("%H:%M")
         guide_chan.tempmsg("{r[%s]:{n %s" % (now, message))
         if post:
-            from typeclasses.bulletin_board.bboard import BBoard
-
-            board = BBoard.objects.get(db_key__iexact="Jobs")
             subject = subject or "Staff Activity"
             if post is not True:
                 message = post
-            board.bb_post(
-                poster_obj=None, msg=message, subject=subject, poster_name="Staff"
-            )
+            make_staff_post(message, subject, "Jobs")
     except Exception as err:
         if not quiet:
             print("ERROR when attempting utils.inform_guides() : %s" % err)
@@ -547,6 +547,7 @@ def create_gemit_and_post(
     """Creates a new StoryEmit and an accompanying episode if specified, then broadcasts it."""
     # current story
     from web.character.models import Story, Episode, StoryEmit
+    from evennia.typeclasses.models import Tag
 
     story = Story.objects.latest("start_date")
     chapter = story.current_chapter
@@ -557,6 +558,7 @@ def create_gemit_and_post(
         )
     else:
         episode = Episode.objects.latest("date")
+    Tag.objects.filter(db_key=GOT_GMING_TAG).delete()
     gemit = StoryEmit.objects.create(
         episode=episode, chapter=chapter, text=msg, sender=caller
     )
