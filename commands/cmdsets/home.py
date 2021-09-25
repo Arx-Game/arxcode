@@ -229,12 +229,18 @@ class CmdAllowBuilding(ArxCommand):
                 permits["all"] = cost
                 continue
             try:
-                owner = AssetOwner.objects.get(
-                    Q(organization_owner__name__iexact=name)
-                    | Q(player__player__username__iexact=name)
-                )
+                if name.isdigit():
+                    owner = AssetOwner.objects.get(id=name)
+                else:
+                    owner = AssetOwner.objects.get(
+                        Q(organization_owner__name__iexact=name)
+                        | Q(player__player__username__iexact=name)
+                    )
             except AssetOwner.DoesNotExist:
-                caller.msg("No owner by name of %s." % name)
+                caller.msg("No owner by name/id of %s." % name)
+                continue
+            except AssetOwner.MultipleObjectsReturned:
+                caller.msg("More than one match for %s, use id instead." % name)
                 continue
             permits[owner.id] = cost
         loc.db.permitted_builders = permits

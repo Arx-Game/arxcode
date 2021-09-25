@@ -4010,6 +4010,12 @@ class CmdFirstImpression(ArxCommand):
         if "here" in self.switches:
             location = "at your location "
             qs = qs.filter(entry__character__db_location=self.caller.location)
+            # filter out masked people
+            qs = [
+                ob
+                for ob in qs
+                if ob.entry.player.username.capitalize() == str(ob.entry.character)
+            ]
         players = sorted(
             set(ob.entry.player for ob in qs), key=lambda x: x.username.capitalize()
         )
