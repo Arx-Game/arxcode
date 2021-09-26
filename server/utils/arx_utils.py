@@ -380,6 +380,7 @@ def post_roster_cleanup(entry):
     entry.character.nicks.clear()
     entry.player.attributes.remove("playtimes")
     entry.player.attributes.remove("rp_preferences")
+    entry.player.attributes.remove("block_list")
     for character in entry.player.db.watching or []:
         watched_by = character.db.watched_by or []
         if entry.player in watched_by:

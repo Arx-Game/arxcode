@@ -190,15 +190,20 @@ class CmdWhere(ArxPlayerCommand):
         )
         msg = "{wList of shops:{n"
         for room in rooms:
+            if room.tags.get("private"):
+                continue
             owner = room.db.shopowner
             if self.args and owner:
                 if self.args.lower() not in owner.traits.abilities:
                     continue
-            name = owner.key
-            if owner and not owner.roster.roster.name == "Active":
-                if "all" not in self.switches:
-                    continue
-                name += " {w(Inactive){n"
+            try:
+                name = owner.key if owner else "Unowned"
+                if owner and not owner.roster.roster.name == "Active":
+                    if "all" not in self.switches:
+                        continue
+                    name += " {w(Inactive){n"
+            except AttributeError:
+                name = "|rInvalid Owner|n"
             msg += "\n%s: %s" % (self.get_room_str(room), name)
         self.msg(msg)
 
