@@ -6,6 +6,7 @@ to make changes.
 from ast import literal_eval
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, F
 
 from evennia.objects.models import ObjectDB
@@ -184,7 +185,7 @@ class CmdAdmDomain(ArxPlayerCommand):
                     srank = self.rhslist[1]
                 else:
                     region = self.rhs
-                    srank = char.db.social_rank
+                    srank = char.item_data.social_rank
                 # Get our social rank and region from rhs arguments
                 try:
                     srank = int(srank)
@@ -323,7 +324,7 @@ class CmdAdmDomain(ArxPlayerCommand):
                 else:
                     dompc = player.Dominion
                 if "transferowner" in self.switches:
-                    family = player.char_ob.db.family
+                    family = player.char_ob.item_data.family
                     try:
                         house = Organization.objects.get(name__iexact=family)
                         owner = house.assets
@@ -387,13 +388,13 @@ class CmdAdmDomain(ArxPlayerCommand):
                 ruled = "None"
                 owned = "None"
                 family = None
-                if player.char_ob and player.char_ob.db.family:
-                    family = player.char_ob.db.family
+                if player.char_ob and player.char_ob.item_data.family:
+                    family = player.char_ob.item_data.family
                 if hasattr(dompc, "ruler"):
                     ruled = ", ".join(
                         str(ob) for ob in Domain.objects.filter(ruler_id=dompc.ruler.id)
                     )
-                if player.char_ob and player.char_ob.db.family:
+                if player.char_ob and player.char_ob.item_data.family:
                     owned = ", ".join(
                         str(ob)
                         for ob in Domain.objects.filter(
@@ -433,8 +434,11 @@ class CmdAdmDomain(ArxPlayerCommand):
                     )
                 pcdomlist = []
                 for pc in AccountDB.objects.filter(Dominion__ruler__isnull=False):
-                    if pc.char_ob and pc.char_ob.db.fealty == fealty:
-                        if pc.char_ob.db.family != fealty:
+                    if (
+                        pc.char_ob
+                        and str(pc.char_ob.item_data.fealty).lower() == fealty.lower()
+                    ):
+                        if pc.char_ob.item_data.family != fealty:
                             for dom in pc.Dominion.ruler.holdings.all():
                                 pcdomlist.append(dom)
                 if pcdomlist:
@@ -1390,11 +1394,7 @@ class CmdSetRoom(ArxCommand):
                 for ent in loc.db.entrances:
                     ent.attributes.remove("err_traverse")
                     ent.attributes.remove("success_traverse")
-            if loc.db.keylist:
-                for char in loc.db.keylist:
-                    if char.db.keylist and loc in char.db.keylist:
-                        char.db.keylist.remove(loc)
-            loc.attributes.remove("keylist")
+            loc.distributed_keys.all().delete()
             caller.msg("Room commands removed.")
             return
         if "bank" in self.switches:
@@ -1429,10 +1429,7 @@ class CmdSetRoom(ArxCommand):
                 rmkeys = targs
             if "home" in self.switches or "homeaddowner" in self.switches:
                 for char in targs:
-                    keys = char.db.keylist or []
-                    if loc not in keys:
-                        keys.append(loc)
-                    char.db.keylist = keys
+                    loc.grant_key(char)
                     if char not in owners:
                         owners.append(char)
                     if "home" in self.switches:
@@ -1440,10 +1437,7 @@ class CmdSetRoom(ArxCommand):
                             char.home = loc
                             char.save()
             for char in rmkeys:
-                keys = char.db.keylist or []
-                if loc in keys:
-                    keys.remove(loc)
-                char.db.keylist = keys
+                loc.revoke_key(char)
                 if char in owners:
                     owners.remove(char)
                 if char.home == loc:
@@ -2397,7 +2391,6 @@ class CmdOrganization(ArxPlayerCommand):
             self.msg("You have briefed %s on your organization's secrets." % tarmember)
             return
         if "addclue" in self.switches or "addtheory" in self.switches:
-            from web.character.models import ClueDiscovery
 
             org = self.get_org_from_myorgs(myorgs)
             if not org:
@@ -2405,7 +2398,7 @@ class CmdOrganization(ArxPlayerCommand):
             if "addclue" in self.switches:
                 try:
                     clue = caller.roster.clues.get(id=self.lhs)
-                except (ClueDiscovery.DoesNotExist, ValueError):
+                except (ObjectDoesNotExist, ValueError):
                     self.msg("No clue by that number found.")
                     return
                 if clue in org.clues.all():
@@ -2949,7 +2942,7 @@ class CmdFamily(ArxPlayerCommand):
             caller.msg(famtree)
             if player:
                 try:
-                    family = player.char_ob.db.family
+                    family = player.char_ob.item_data.family
                     fam_org = Organization.objects.get(name__iexact=family)
                     details = fam_org.display_public()
                     caller.msg("%s family information:\n%s" % (family, details))
@@ -2999,7 +2992,7 @@ class CmdPatronage(ArxPlayerCommand):
     def get_help(self, caller, cmdset):
         msg = super(CmdPatronage, self).get_help(caller, cmdset)
         try:
-            num_proteges = max_proteges.get(caller.char_ob.db.social_rank, 0)
+            num_proteges = max_proteges.get(caller.char_ob.item_data.social_rank, 0)
             msg += "\n\nMax proteges you can have: %s" % num_proteges
         except (AttributeError, ValueError, TypeError):
             pass
@@ -3016,10 +3009,10 @@ class CmdPatronage(ArxPlayerCommand):
 
     def check_social_rank_difference(self, target):
         """Determines if social rank is great enough"""
-        our_rank = self.caller.char_ob.db.social_rank or 10
-        targ_rank = target.db.social_rank or 0
-        target_family = (target.db.family or "").lower()
-        caller_family = (self.caller.char_ob.db.family or "").lower()
+        our_rank = self.caller.char_ob.item_data.social_rank
+        targ_rank = target.item_data.social_rank
+        target_family = (target.item_data.family or "").lower()
+        caller_family = (self.caller.char_ob.item_data.family or "").lower()
         if target_family == caller_family:
             self.msg("You cannot be in the same family as your protege.")
             return False
@@ -3063,7 +3056,7 @@ class CmdPatronage(ArxPlayerCommand):
                     caller.msg("They already have a patron.")
                     return
                 num = dompc.proteges.all().count()
-                psrank = caller.char_ob.db.social_rank
+                psrank = caller.char_ob.item_data.social_rank
                 max_p = max_proteges.get(psrank, 0)
                 if num >= max_p:
                     caller.msg(

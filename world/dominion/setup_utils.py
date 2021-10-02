@@ -192,9 +192,9 @@ def convert_domain(domain, srank=None, male=None):
     if not male or not srank:
         char = domain.ruler.castellan.player.char_ob
         if not male:
-            male = char.db.gender.lower() == "male"
+            male = str(char.item_data.gender).lower() == "male"
         if not srank:
-            srank = char.db.social_rank
+            srank = char.item_data.social_rank
         name = char.key
     else:
         name = str(domain.ruler.castellan)
@@ -438,9 +438,9 @@ def setup_vassals(family, ruler, region, character, srank, num=2):
 def setup_vassals_for_player(player, num=2):
     dompc = player.Dominion
     char = player.char_ob
-    family = char.db.family
+    family = char.item_data.family
     ruler = dompc.ruler
-    srank = char.db.social_rank
+    srank = char.item_data.social_rank
     region = ruler.holdings.all()[0].land.region
     setup_vassals(family, ruler, region, char, srank, num)
 
@@ -504,19 +504,19 @@ def setup_dom_for_char(
     else:
         dompc = pc.Dominion
     if not srank:
-        srank = character.db.social_rank
+        srank = character.item_data.social_rank
     if create_assets:
         amt = starting_money(srank)
         setup_assets(dompc, amt)
     dompc.petition_settings.get_or_create()
     # if region is provided, we will setup a domain unless explicitly told not to
     if create_domain and region:
-        if character.db.gender and character.db.gender.lower() == "male":
+        if character.item_data.gender and character.item_data.gender.lower() == "male":
             male = True
         else:
             male = False
         if not family:
-            family = character.db.family or "%s Family" % character
+            family = character.item_data.family or "%s Family" % character
         # We make vassals if our social rank permits it
         if create_vassals:
             create_vassals = srank < 6
@@ -572,10 +572,10 @@ def replace_vassal(domain, player, num_vassals=2):
     char = player.char_ob
     if not char:
         raise ValueError("Character not found.")
-    family = char.db.family
+    family = char.item_data.family
     if not family:
         raise ValueError("Family not defined on character.")
-    srank = char.db.social_rank
+    srank = char.item_data.social_rank
     if not srank:
         raise ValueError("Social rank undefined")
     ruler = domain.ruler
@@ -694,7 +694,7 @@ def update_navies_and_armies(adjust_armies=False, adjust_navies=True, replace=Fa
         owner = domain.ruler.house
         name = ""  # Do not override existing name
         try:
-            srank = domain.ruler.castellan.player.char_ob.db.social_rank
+            srank = domain.ruler.castellan.player.char_ob.item_data.social_rank
             if not srank or srank < 1 or srank > 6:
                 raise ValueError
         except AttributeError:

@@ -7,6 +7,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q, F
 
 
@@ -306,7 +307,7 @@ class WeeklyEvents(RunDateMixin, Script):
             for agent in player.retainers:
                 try:
                     del agent.dbobj.attributes._cache["trainer-None"]
-                except (KeyError, AttributeError):
+                except (KeyError, AttributeError, ObjectDoesNotExist):
                     continue
 
     def initialize_temp_dicts(self):
@@ -366,12 +367,12 @@ class WeeklyEvents(RunDateMixin, Script):
                 and not ob.player_ob.tags.get("staff_alt")
             ):
                 low_activity.append(ob)
-            ob.db.previous_posecount = ob.posecount
+            ob.previous_posecount = ob.posecount
             ob.posecount = 0
         board = BBoard.objects.get(db_key__iexact="staff")
         table = EvTable("{wName{n", "{wNum Poses{n", border="cells", width=78)
         for ob in low_activity:
-            table.add_row(ob.key, ob.db.previous_posecount)
+            table.add_row(ob.key, str(ob.previous_posecount))
         board.bb_post(poster_obj=self, msg=str(table), subject="Inactive by Poses List")
 
     # Various 'Beats' -------------------------------------------------
@@ -591,7 +592,7 @@ class WeeklyEvents(RunDateMixin, Script):
             try:
                 char = tup[0]
                 votes = tup[1]
-                name = char.db.longname or char.key
+                name = char.item_data.longname or char.key
                 string += "{w%s){n %-35s {wXP{n: %s\n" % (num, name, votes)
             except AttributeError:
                 print("Could not find character of id %s during posting." % str(tup[0]))
@@ -703,7 +704,7 @@ class WeeklyEvents(RunDateMixin, Script):
         self.db.recorded_votes = dict(self.ndb.recorded_votes)
         self.db.vote_history = self.ndb.vote_history
         # storing how much xp each player gets to post after
-        self.db.xp = dict(self.ndb.xp)
+        self.item_data.xp = dict(self.ndb.xp)
         self.db.xptypes = self.ndb.xptypes
         self.db.requested_support = self.ndb.requested_support
         self.db.scenes = dict(self.ndb.scenes)

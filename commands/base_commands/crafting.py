@@ -85,7 +85,7 @@ def create_container(recipe, roll, proj, caller, crafter):
     obj = recipe.create_obj(CONTAINER, proj[1], caller, caller, quality, crafter)
     obj.item_data.capacity = base + int(scaling * quality)
     try:
-        obj.grantkey(caller)
+        obj.grant_key(caller)
     except (TypeError, AttributeError, ValueError):
         import traceback
 
@@ -102,7 +102,7 @@ def create_wearable_container(recipe, roll, proj, caller, crafter):
     )
     obj.item_data.capacity = base + int(scaling * quality)
     try:
-        obj.grantkey(caller)
+        obj.grant_key(caller)
     except (TypeError, AttributeError, ValueError):
         import traceback
 
@@ -229,18 +229,6 @@ def get_quality_lvl(roll, diff):
     if roll < diff * 10:
         return 9
     return 10
-
-
-def change_quality(crafting_object, new_quality):
-    """
-    Given a crafted crafting_object, change various attributes in it
-    based on its new quality level and recipe.
-    """
-    recipe = crafting_object.item_data.recipe
-    otype = recipe.type
-    scaling = float(recipe.scaling)
-    base = float(recipe.base_value)
-    crafting_object.item_data.quality_level = new_quality
 
 
 class CmdCraft(ArxCommand, TemplateMixins):
@@ -587,7 +575,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                     )
                     return
                 caller.msg("New quality level is %s." % QUALITY_LEVELS[quality])
-                change_quality(targ, quality)
+                targ.item_data.quality_level = quality
                 return
         proj = caller.db.crafting_project
         if not proj:
@@ -738,7 +726,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                     )
                     return
             for mat in recipe.required_materials.all():
-                mats[mat.id] = mats.get(mat.type_id, 0) + mat.amount
+                mats[mat.type_id] = mats.get(mat.type_id, 0) + mat.amount
             for adorn in proj[3]:
                 mats[adorn] = mats.get(adorn, 0) + proj[3][adorn]
             # replace with forgeries

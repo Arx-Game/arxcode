@@ -271,15 +271,15 @@ class CmdProtect(ArxCommand):
     def func(self):
         """
         +protect adds people to character.db.defenders list if they're not
-        already there, and sets caller.db.guarding to be that character.db
+        already there, and sets caller.item_data.guarding to be that character.db
         Only one guarded target allowed at a time. Additionally, we'll
         add them to combat if their guarded character is involved in a
         fight.
         """
         caller = self.caller
-        current = caller.db.guarding
+        current = caller.item_data.guarding
         if "stop" in self.switches:
-            caller.db.guarding = None
+            caller.item_data.guarding = None
             if current:
                 caller.msg("You stop guarding %s." % current.name)
                 deflist = current.db.defenders
@@ -314,7 +314,7 @@ class CmdProtect(ArxCommand):
             )
             return
         # all checks succeeded. Start guarding
-        caller.db.guarding = to_guard
+        caller.item_data.guarding = to_guard
         # doing it this way since list/dict methods tend to fail when called directly on attribute object.
         #  assignment works tho
         dlist = to_guard.db.defenders or []

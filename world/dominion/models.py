@@ -130,19 +130,19 @@ class PlayerOrNpc(SharedMemoryModel):
     lifestyle_rating = models.PositiveSmallIntegerField(default=1, blank=1)
     # --- Dominion skills----
     # bonus to population growth
-    population = models.PositiveSmallIntegerField(default=0, blank=0)
+    population = models.PositiveSmallIntegerField(default=0, blank=True)
     # bonus to income sources
-    income = models.PositiveSmallIntegerField(default=0, blank=0)
+    income = models.PositiveSmallIntegerField(default=0, blank=True)
     # bonus to harvests
-    farming = models.PositiveSmallIntegerField(default=0, blank=0)
+    farming = models.PositiveSmallIntegerField(default=0, blank=True)
     # costs for projects/commands
-    productivity = models.PositiveSmallIntegerField(default=0, blank=0)
+    productivity = models.PositiveSmallIntegerField(default=0, blank=True)
     # upkeep costs
-    upkeep = models.PositiveSmallIntegerField(default=0, blank=0)
+    upkeep = models.PositiveSmallIntegerField(default=0, blank=True)
     # loyalty mod of troops/serfs
-    loyalty = models.PositiveSmallIntegerField(default=0, blank=0)
+    loyalty = models.PositiveSmallIntegerField(default=0, blank=True)
     # bonus to all military combat commands
-    warfare = models.PositiveSmallIntegerField(default=0, blank=0)
+    warfare = models.PositiveSmallIntegerField(default=0, blank=True)
 
     def __str__(self):
         if self.player:
@@ -150,7 +150,7 @@ class PlayerOrNpc(SharedMemoryModel):
             if not self.alive:
                 name += "(RIP)"
             return name
-        name = self.npc_name
+        name = self.npc_name or ""
         if not self.alive:
             name += "(RIP)"
         return name
@@ -918,14 +918,14 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
     )
 
     # money stored in the bank
-    vault = models.PositiveIntegerField(default=0, blank=0)
+    vault = models.PositiveIntegerField(default=0, blank=True)
     # prestige we've earned
-    fame = models.IntegerField(default=0, blank=0)
-    legend = models.IntegerField(default=0, blank=0)
+    fame = models.IntegerField(default=0, blank=True)
+    legend = models.IntegerField(default=0, blank=True)
     # resources
-    economic = models.PositiveIntegerField(default=0, blank=0)
-    military = models.PositiveIntegerField(default=0, blank=0)
-    social = models.PositiveIntegerField(default=0, blank=0)
+    economic = models.PositiveIntegerField(default=0, blank=True)
+    military = models.PositiveIntegerField(default=0, blank=True)
+    social = models.PositiveIntegerField(default=0, blank=True)
 
     min_silver_for_inform = models.PositiveIntegerField(default=0)
     min_resources_for_inform = models.PositiveIntegerField(default=0)
@@ -1103,7 +1103,7 @@ class AssetOwner(CachedPropertiesMixin, SharedMemoryModel):
                     else best_adjust.reason
                 )
             char = self.player.player.char_ob
-            gender = char.db.gender or "Male"
+            gender = char.item_data.gender or "Male"
             if gender.lower() == "male":
                 result = best_adjust.category.male_noun
             else:
@@ -1565,7 +1565,7 @@ class PraiseOrCondemn(SharedMemoryModel):
         "AssetOwner", related_name="praises_received", on_delete=models.CASCADE
     )
     message = models.TextField(blank=True)
-    week = models.PositiveSmallIntegerField(default=0, blank=0)
+    week = models.PositiveSmallIntegerField(default=0, blank=True)
     db_date_created = models.DateTimeField(auto_now_add=True)
     value = models.IntegerField(default=0)
     number_used = models.PositiveSmallIntegerField(
@@ -1710,7 +1710,7 @@ class AccountTransaction(SharedMemoryModel):
     # quick description of the type of transaction. taxes between liege/vassal, etc
     category = models.CharField(blank=True, null=True, max_length=255)
 
-    weekly_amount = models.PositiveIntegerField(default=0, blank=0)
+    weekly_amount = models.PositiveIntegerField(default=0, blank=True)
 
     # if this is false, this is a debt that continues to accrue
     do_weekly = models.BooleanField(default=True, blank=True)
@@ -1786,8 +1786,8 @@ class Region(SharedMemoryModel):
 
     name = models.CharField(max_length=80, blank=True, null=True)
     # the Southwest corner of the region
-    origin_x_coord = models.SmallIntegerField(default=0, blank=0)
-    origin_y_coord = models.SmallIntegerField(default=0, blank=0)
+    origin_x_coord = models.SmallIntegerField(default=0, blank=True)
+    origin_y_coord = models.SmallIntegerField(default=0, blank=True)
 
     color_code = models.CharField(max_length=8, blank=True)
 
@@ -1848,8 +1848,8 @@ class Land(SharedMemoryModel):
 
     name = models.CharField(max_length=80, blank=True, null=True)
     desc = models.TextField(blank=True, null=True)
-    x_coord = models.SmallIntegerField(default=0, blank=0)
-    y_coord = models.SmallIntegerField(default=0, blank=0)
+    x_coord = models.SmallIntegerField(default=0, blank=True)
+    y_coord = models.SmallIntegerField(default=0, blank=True)
 
     terrain = models.PositiveSmallIntegerField(choices=TERRAIN_CHOICES, default=PLAINS)
 
@@ -1950,10 +1950,10 @@ class HostileArea(SharedMemoryModel):
     from django.core.validators import MaxValueValidator
 
     area = models.PositiveSmallIntegerField(
-        validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=0
+        validators=[MaxValueValidator(LAND_SIZE)], default=0, blank=True
     )
     # the type of hostiles controlling this area
-    type = models.PositiveSmallIntegerField(default=0, blank=0)
+    type = models.PositiveSmallIntegerField(default=0, blank=True)
     # we'll have HostileArea.units.all() to describe any military forces we have
 
     def _get_units(self):
@@ -2017,7 +2017,7 @@ class OrgRelationship(SharedMemoryModel):
     orgs = models.ManyToManyField(
         "Organization", related_name="relationships", blank=True, db_index=True
     )
-    status = models.SmallIntegerField(default=0, blank=0)
+    status = models.SmallIntegerField(default=0, blank=True)
     history = models.TextField("History of these organizations", blank=True)
 
 
@@ -2043,15 +2043,15 @@ class Reputation(SharedMemoryModel):
         on_delete=models.CASCADE,
     )
     # negative affection is dislike/hatred
-    affection = models.IntegerField(default=0, blank=0)
+    affection = models.IntegerField(default=0)
     # positive respect is respect/fear, negative is contempt/dismissal
-    respect = models.IntegerField(default=0, blank=0)
+    respect = models.IntegerField(default=0)
     favor = models.IntegerField(
         help_text="A percentage of the org's prestige applied to player's propriety.",
         default=0,
     )
     npc_gossip = models.TextField(blank=True)
-    date_gossip_set = models.DateTimeField(null=True)
+    date_gossip_set = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return "%s for %s (%s)" % (self.player, self.organization, self.favor)
@@ -2191,9 +2191,9 @@ class Organization(InformMixin, SharedMemoryModel):
     rank_10_female = models.CharField(
         default="Serf", blank=True, null=True, max_length=255
     )
-    npc_members = models.PositiveIntegerField(default=0, blank=0)
-    income_per_npc = models.PositiveSmallIntegerField(default=0, blank=0)
-    cost_per_npc = models.PositiveSmallIntegerField(default=0, blank=0)
+    npc_members = models.PositiveIntegerField(default=0, blank=True)
+    income_per_npc = models.PositiveSmallIntegerField(default=0, blank=True)
+    cost_per_npc = models.PositiveSmallIntegerField(default=0, blank=True)
     morale = models.PositiveSmallIntegerField(default=100, blank=100)
     # this is used to represent temporary windfalls or crises that must be resolved
     income_modifier = models.PositiveSmallIntegerField(default=100, blank=100)
@@ -2329,7 +2329,7 @@ class Organization(InformMixin, SharedMemoryModel):
                 char = chars[0]
                 name = char_name(char)
                 char = char.player.player.char_ob
-                gender = char.db.gender or "Male"
+                gender = char.item_data.gender or "Male"
                 if gender.lower() == "male":
                     title = male_title
                 else:
@@ -2953,7 +2953,7 @@ class AgentMission(SharedMemoryModel):
         on_delete=models.CASCADE,
     )
     active = models.BooleanField(default=True, blank=True)
-    success_level = models.SmallIntegerField(default=0, blank=0)
+    success_level = models.SmallIntegerField(default=0, blank=True)
     description = models.TextField(blank=True, null=True)
     category = models.CharField(blank=True, null=True, max_length=80)
     mission_details = models.TextField(blank=True, null=True)
@@ -2976,7 +2976,7 @@ class AgentOb(SharedMemoryModel):
     dbobj = models.OneToOneField(
         "objects.ObjectDB", blank=True, null=True, on_delete=models.CASCADE
     )
-    quantity = models.PositiveIntegerField(default=0, blank=0)
+    quantity = models.PositiveIntegerField(default=0, blank=True)
     # whether they're imprisoned, by whom, difficulty to free them, etc
     status_notes = models.TextField(blank=True, null=True)
 
@@ -2985,7 +2985,7 @@ class AgentOb(SharedMemoryModel):
         """Returns who the agent is guarding"""
         if not self.dbobj:
             return None
-        return self.dbobj.db.guarding
+        return self.dbobj.item_data.guarding
 
     def __str__(self):
         return "%s%s" % (
@@ -3165,8 +3165,8 @@ class Member(SharedMemoryModel):
         "Whether they're a coordinator for this org", default=False
     )
     # work they've gained
-    work_this_week = models.PositiveSmallIntegerField(default=0, blank=0)
-    work_total = models.PositiveSmallIntegerField(default=0, blank=0)
+    work_this_week = models.PositiveSmallIntegerField(default=0, blank=True)
+    work_total = models.PositiveSmallIntegerField(default=0, blank=True)
     # amount of org influence they've gained
     investment_this_week = models.SmallIntegerField(default=0)
     investment_total = models.SmallIntegerField(default=0)
@@ -3586,7 +3586,7 @@ class Member(SharedMemoryModel):
     def rank_title(self):
         """Returns title for this member"""
         try:
-            male = self.player.player.char_ob.db.gender.lower().startswith("m")
+            male = self.player.player.char_ob.item_data.gender.lower().startswith("m")
         except (AttributeError, ValueError, TypeError):
             male = False
         if male:
@@ -3609,9 +3609,9 @@ class Task(SharedMemoryModel):
     category = models.CharField(null=True, blank=True, max_length=80)
     room_echo = models.TextField(blank=True, null=True)
     active = models.BooleanField(default=False, blank=False)
-    week = models.PositiveSmallIntegerField(blank=0, default=0, db_index=True)
+    week = models.PositiveSmallIntegerField(blank=True, default=0, db_index=True)
     desc = models.TextField(blank=True, null=True)
-    difficulty = models.PositiveSmallIntegerField(blank=0, default=0)
+    difficulty = models.PositiveSmallIntegerField(blank=True, default=0)
     results = models.TextField(blank=True, null=True)
 
     def __str__(self):
@@ -3645,7 +3645,7 @@ class AssignedTask(SharedMemoryModel):
         on_delete=models.CASCADE,
     )
     finished = models.BooleanField(default=False, blank=False)
-    week = models.PositiveSmallIntegerField(blank=0, default=0, db_index=True)
+    week = models.PositiveSmallIntegerField(blank=True, default=0, db_index=True)
     notes = models.TextField(blank=True, null=True)
     observer_text = models.TextField(blank=True, null=True)
     alt_echo = models.TextField(blank=True, null=True)
@@ -3833,7 +3833,7 @@ class TaskSupporter(SharedMemoryModel):
     )
     observer_text = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
-    additional_points = models.PositiveSmallIntegerField(default=0, blank=0)
+    additional_points = models.PositiveSmallIntegerField(default=0, blank=True)
 
     def __str__(self):
         return "%s supporting %s" % (self.player, self.task) or "Unknown supporter"
@@ -4389,7 +4389,7 @@ class Renown(SharedMemoryModel):
     player = models.ForeignKey(
         "PlayerOrNpc", related_name="renown", db_index=True, on_delete=models.CASCADE
     )
-    rating = models.IntegerField(blank=0, default=0)
+    rating = models.IntegerField(blank=True, default=0)
 
     class Meta:
         verbose_name_plural = "Renown"
@@ -4423,7 +4423,7 @@ class SphereOfInfluence(SharedMemoryModel):
     org = models.ForeignKey(
         "Organization", related_name="spheres", db_index=True, on_delete=models.CASCADE
     )
-    rating = models.IntegerField(blank=0, default=0)
+    rating = models.IntegerField(blank=True, default=0)
 
     class Meta:
         verbose_name_plural = "Spheres of Influence"
@@ -4455,7 +4455,7 @@ class TaskRequirement(SharedMemoryModel):
     task = models.ForeignKey(
         "Task", related_name="requirements", db_index=True, on_delete=models.CASCADE
     )
-    minimum_amount = models.PositiveSmallIntegerField(blank=0, default=0)
+    minimum_amount = models.PositiveSmallIntegerField(blank=True, default=0)
 
     def __str__(self):
         return "%s requirement: %s" % (self.task, self.category)
@@ -4464,7 +4464,7 @@ class TaskRequirement(SharedMemoryModel):
 class SupportUsed(SharedMemoryModel):
     """Support given by a TaskSupporter for a specific task, using an npc group under 'sphere'"""
 
-    week = models.PositiveSmallIntegerField(default=0, blank=0)
+    week = models.PositiveSmallIntegerField(default=0, blank=True)
     supporter = models.ForeignKey(
         "TaskSupporter",
         related_name="allocation",
@@ -4477,7 +4477,7 @@ class SupportUsed(SharedMemoryModel):
         db_index=True,
         on_delete=models.CASCADE,
     )
-    rating = models.PositiveSmallIntegerField(blank=0, default=0)
+    rating = models.PositiveSmallIntegerField(blank=True, default=0)
 
     def __str__(self):
         return "%s using %s of %s" % (self.supporter, self.rating, self.sphere)

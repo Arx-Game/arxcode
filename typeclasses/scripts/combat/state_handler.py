@@ -131,10 +131,9 @@ class CombatantStateHandler(object):
         if self.character.db.defenders:
             for ob in self.character.db.defenders:
                 self.add_defender(ob)
-        if self.character.db.assigned_guards:
-            for ob in self.character.db.assigned_guards:
-                self.add_defender(ob)
-        self.guarding = character.db.guarding  # can only guard 1 character
+        for ob in self.character.guards:
+            self.add_defender(ob)
+        self.guarding = character.item_data.guarding  # can only guard 1 character
         self.initiative = 0
         self.tiebreaker = 0
         self.queued_action = None
@@ -435,7 +434,7 @@ class CombatantStateHandler(object):
         target is in combat and meets our requirements. If can_kill
         is false, we can only attack opponents that are conscious.
         """
-        beneficiary = self.character.db.guarding
+        beneficiary = self.character.item_data.guarding
         if (
             beneficiary
             and beneficiary.combat.combat

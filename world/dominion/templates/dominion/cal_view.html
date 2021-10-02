@@ -14,11 +14,18 @@
   {% if obj.get_absolute_url %}<a href="{{ obj.get_absolute_url }}">{{ obj }}</a>{% else %}{{ obj }}
       {% endif %}{% endfor %}</p>
   {% endif %}
-  {% if object.public_event or user.is_staff or user.Dominion in object.hosts.all or user.Dominion in object.gms.all %}
-  <h2 class="text-center">Participants</h2> <p class="text-center">{% for obj in object.participants.all %}
-      {% if obj.get_absolute_url %}<a href="{{ obj.get_absolute_url }}">{{ obj }}</a>{% else %}{{ obj }}
-      {% endif %}
-  {% endfor %}</p>
+  {% if object.public_event or user.is_staff %}
+      <h2 class="text-center">Participants
+          {% if not object.public_event and user.is_staff %} (Displaying this because you are staff, not a peon)
+          {% endif %}
+      </h2>
+      <p class="text-center">
+          {% for obj in object.participants.all %}
+              {% if obj.get_absolute_url %}<a href="{{ obj.get_absolute_url }}">{{ obj }}</a>
+                  {% else %}{{ obj }}
+              {% endif %}
+          {% endfor %}
+      </p>
   {% endif %}
   <h2 class="text-center">Organizations</h2> <p class="text-center">{% for obj in object.orgs.all %}
       {% if obj.get_absolute_url %}<a href="{{ obj.get_absolute_url }}">{{ obj }}</a>{% else %}{{ obj }}

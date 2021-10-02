@@ -30,7 +30,7 @@ class Place(Object):
             return 6
         base = self.item_data.recipe.base_value
         scaling = self.item_data.recipe.scaling
-        quality = self.item_data.quality
+        quality = self.item_data.quality_level
         return int(base + int(scaling * quality))
 
     def at_object_creation(self):
@@ -101,7 +101,7 @@ class Place(Object):
             )
         elif msg_type == self.TT_EMIT:
             if to_obj.tags.get("emit_label"):
-                emit_label = "{w[{c%s{w]{n " % from_obj.name
+                emit_label = "{w({c%s{w){n " % from_obj.name
             else:
                 emit_label = ""
             place_msg = emit_msg.format(

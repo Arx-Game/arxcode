@@ -77,7 +77,7 @@ from evennia.objects.models import ObjectDB
 
 from commands.base import ArxCommand
 from typeclasses.scripts import gametime
-from typeclasses.mixins import NameMixins, ObjectMixins
+from typeclasses.mixins import ObjectMixins
 from world.magic.mixins import MagicMixins
 from world.msgs.messagehandler import MessageHandler
 
@@ -99,7 +99,7 @@ SHOPCMD = "commands.cmdsets.home.ShopCmdSet"
 # implements the Extended Room
 
 # noinspection PyUnresolvedReferences
-class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
+class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
     """
     This room implements a more advanced look functionality depending on
     time. It also allows for "details", together with a slightly modified
@@ -141,6 +141,9 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
     def get_visible_characters(self, pobject):
         """Returns a list of visible characters in a room."""
         return [char for char in self.player_characters if char.access(pobject, "view")]
+
+    def check_poses_squelched(self):
+        return self.tags.get("poses_squelched")
 
     def return_appearance(
         self, looker, detailed=False, format_desc=True, show_contents=True
@@ -259,23 +262,23 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
 
     homeowners = property(_homeowners)
 
-    def give_key(self, char):
-        keylist = char.db.keylist or []
-        if self not in keylist:
-            keylist.append(self)
-        char.db.keylist = keylist
+    def grant_key(self, char):
+        try:
+            char.item_data.add_room_key(self)
+        except AttributeError:
+            pass
 
-    def remove_key(self, char):
-        keylist = char.db.keylist or []
-        if self in keylist:
-            keylist.remove(self)
-        char.db.keylist = keylist
+    def revoke_key(self, char):
+        try:
+            char.item_data.remove_key(self)
+        except AttributeError:
+            pass
 
     def add_homeowner(self, char, sethomespace=True):
         owners = self.db.owners or []
         if char not in owners:
             owners.append(char)
-            self.give_key(char)
+            self.grant_key(char)
         self.db.owners = owners
         if sethomespace:
             char.home = self
@@ -285,7 +288,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         owners = self.db.owners or []
         if char in owners:
             owners.remove(char)
-            self.remove_key(char)
+            self.revoke_key(char)
             if char.home == self:
                 char.home = ObjectDB.objects.get(id=13)
                 char.save()
@@ -319,7 +322,7 @@ class ArxRoom(NameMixins, ObjectMixins, ExtendedRoom, MagicMixins):
         self.tags.remove("home")
         for ent in self.entrances:
             ent.locks.add("usekey: perm(builders)")
-            ent.db.locked = False
+            ent.item_data.is_locked = False
         if "HomeCmdSet" in [ob.key for ob in self.cmdset.all()]:
             self.cmdset.delete(HOMECMD)
 
@@ -557,14 +560,7 @@ class CmdExtendedLook(default_cmds.CmdLook):
             return
         # get object's appearance
         desc = looking_at_obj.return_appearance(caller, detailed=False)
-        # if it's a written object, we'll paginate the description
-        if looking_at_obj.db.written:
-            from server.utils import arx_more
-
-            desc = desc.replace("%r", "\n")
-            arx_more.msg(caller, desc, pages_by_char=True)
-        else:
-            caller.msg(desc)
+        caller.msg(desc)
         # the object's at_desc() method.
         looking_at_obj.at_desc(looker=caller)
         self.check_detail()

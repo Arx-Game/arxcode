@@ -89,17 +89,16 @@ class CmdManageHome(ArxCommand):
         loc = caller.location
         entrances = loc.entrances
         owners = loc.db.owners or []
-        keylist = loc.db.keylist or []
+        keylist = [obj.character for obj in loc.distributed_keys.all()]
         if caller not in owners and not caller.check_permstring("builders"):
             caller.msg("You are not the owner of this room.")
             return
         if not self.args and not self.switches:
-            locked = "{rlocked{n" if loc.db.locked else "{wunlocked{n"
+            locked = "{rlocked{n" if loc.item_data.is_locked else "{wunlocked{n"
             caller.msg("Your home is currently %s." % locked)
             caller.msg("{wOwners:{n %s" % ", ".join(str(ob) for ob in owners))
             caller.msg(
-                "{wCharacters who have keys:{n %s"
-                % ", ".join(str(ob) for ob in keylist)
+                "{wCharacters who have keys:{n %s" % ", ".join(ob.key for ob in keylist)
             )
             entrance = entrances[0]
             entmsg = entrance.db.success_traverse or ""
@@ -111,11 +110,11 @@ class CmdManageHome(ArxCommand):
             # we only show as locked if -all- entrances are locked
             for ent in entrances:
                 ent.unlock_exit()
-            loc.db.locked = False
+            loc.item_data.is_locked = False
             caller.msg("Your house is now unlocked.")
             return
         if "lock" in self.switches:
-            loc.db.locked = True
+            loc.item_data.is_locked = True
             caller.msg("Your house is now locked.")
             for ent in entrances:
                 ent.lock_exit()
@@ -162,30 +161,19 @@ class CmdManageHome(ArxCommand):
         if not char:
             caller.msg("No character found.")
             return
-        keys = char.db.keylist or []
         if "key" in self.switches:
-            if loc in keys and char in keylist:
+            if char in keylist:
                 caller.msg("They already have a key to here.")
                 return
-            if loc not in keys:
-                keys.append(loc)
-                char.db.keylist = keys
-            if char not in keylist:
-                keylist.append(char)
-                loc.db.keylist = keylist
+            char.item_data.add_room_key(loc)
             char.msg("{c%s{w has granted you a key to %s." % (caller, loc))
             caller.msg("{wYou have granted {c%s{w a key.{n" % char)
             return
         if "rmkey" in self.switches:
-            if loc not in keys and char not in keylist:
+            if char not in keylist:
                 caller.msg("They don't have a key to here.")
                 return
-            if loc in keys:
-                keys.remove(loc)
-                char.db.keylist = keys
-            if char in keylist:
-                keylist.remove(char)
-                loc.db.keylist = keylist
+            char.item_data.remove_key(loc)
             char.msg("{c%s{w has removed your access to %s." % (caller, loc))
             caller.msg("{wYou have removed {c%s{w's key.{n" % char)
             return
@@ -241,12 +229,18 @@ class CmdAllowBuilding(ArxCommand):
                 permits["all"] = cost
                 continue
             try:
-                owner = AssetOwner.objects.get(
-                    Q(organization_owner__name__iexact=name)
-                    | Q(player__player__username__iexact=name)
-                )
+                if name.isdigit():
+                    owner = AssetOwner.objects.get(id=name)
+                else:
+                    owner = AssetOwner.objects.get(
+                        Q(organization_owner__name__iexact=name)
+                        | Q(player__player__username__iexact=name)
+                    )
             except AssetOwner.DoesNotExist:
-                caller.msg("No owner by name of %s." % name)
+                caller.msg("No owner by name/id of %s." % name)
+                continue
+            except AssetOwner.MultipleObjectsReturned:
+                caller.msg("More than one match for %s, use id instead." % name)
                 continue
             permits[owner.id] = cost
         loc.db.permitted_builders = permits
@@ -403,7 +397,7 @@ class CmdBuildRoom(CmdDig):
         loc.db.expansions = expansions
         new_room.name = (
             new_room.name
-        )  # this will setup .db.colored_name and strip ansi from key
+        )  # this will setup item_data.colored_name and strip ansi from key
         if cost_increase and assets.id in permits:
             permits[assets.id] += cost_increase
             loc.db.permitted_builders = permits
@@ -835,9 +829,11 @@ class CmdManageShop(ArxCommand):
             )
             if not obj:
                 return
+            item_prices = loc.db.item_prices or {}
             obj.at_drop(caller)
             obj.location = None
-            loc.db.item_prices[obj.id] = price
+            item_prices[obj.id] = price
+            loc.db.item_prices = item_prices
             obj.tags.add("for_sale")
             obj.db.sale_location = loc
             caller.msg("You put %s for sale for %s silver." % (obj, price))
@@ -1233,8 +1229,8 @@ class CmdBuyFromShop(CmdCraft):
         item.attributes.remove("sale_location")
         del loc.db.item_prices[item.id]
         if hasattr(item, "rmkey"):
-            if item.rmkey(loc.db.shopowner):
-                item.grantkey(self.caller)
+            if item.revoke_key(loc.db.shopowner):
+                item.grant_key(self.caller)
                 self.msg("Good deal! The owner gave you a key for %s." % item)
                 return
             self.msg(

@@ -11,6 +11,7 @@ from datetime import datetime
 
 from django.db.models import Q
 
+import evennia_extensions.object_extensions.validators
 from commands.base import ArxCommand, ArxPlayerCommand
 from commands.base_commands.jobs import get_apps_manager
 from evennia.utils import utils
@@ -135,25 +136,25 @@ def list_characters(
                 ):
                     name += "{w(%s){n" % charob.name
                 if titles:
-                    title = charob.db.longname
+                    title = charob.item_data.longname
                     if title and not hide:
                         name = "{n" + title.replace(char, "{c" + char + "{n")
                 # yes, yes, I know they're not the same thing.
                 # sex is only 3 characters and gender is 5.
-                sex = charob.db.gender
+                sex = charob.item_data.gender
                 if not sex or hide:
                     sex = "-"
                 sex = sex[0].capitalize()
-                age = charob.db.age
+                age = charob.item_data.age
                 if not age or hide:
                     age = "-"
-                house = charob.db.fealty
+                house = str(charob.item_data.fealty)
                 if not house or hide:
                     house = "-"
-                concept = charob.db.concept
+                concept = charob.item_data.concept
                 if not concept or hide:
                     concept = "-"
-                srank = charob.db.social_rank
+                srank = charob.item_data.social_rank
                 if not srank or hide:
                     srank = "-"
                 if not titles or hide:
@@ -351,7 +352,9 @@ class CmdRosterList(ArxPlayerCommand):
             if not apps:
                 caller.msg("Application manager not found! Please inform the admins.")
                 return
-            char_ob = roster.get_character(char_name)
+            char_ob = evennia_extensions.object_extensions.validators.get_character(
+                char_name
+            )
             if not char_ob:
                 caller.msg("No such character on the roster.")
                 return
@@ -438,9 +441,9 @@ class CmdAdminRoster(ArxPlayerCommand):
         altchar = alt.entry.character
         if xp > history.xp_earned:
             xp = history.xp_earned
-        if not altchar.db.xp:
-            altchar.db.xp = 0
-        altchar.db.xp += xp
+        if not altchar.item_data.xp:
+            altchar.item_data.xp = 0
+        altchar.item_data.xp += xp
 
     def func(self):
         caller = self.caller
@@ -539,7 +542,7 @@ class CmdAdminRoster(ArxPlayerCommand):
                 return
             entry.roster = new_roster
             current = entry.current_account
-            xp = entry.character.db.xp or 0
+            xp = entry.character.item_data.xp or 0
             if current:
                 try:
                     history = AccountHistory.objects.get(account=current, entry=entry)
@@ -580,8 +583,8 @@ class CmdAdminRoster(ArxPlayerCommand):
                             % err
                         )
                         traceback.print_exc()
-                    entry.character.db.xp = 0
-                    entry.character.db.total_xp = 0
+                    entry.character.item_data.xp = 0
+                    entry.character.item_data.total_xp = 0
                 except AccountHistory.DoesNotExist:
                     history = AccountHistory.objects.create(
                         account=current, entry=entry
@@ -689,60 +692,60 @@ def display_header(caller, character, show_hidden=False):
     """
     if not caller or not character:
         return
-    longname = character.db.longname
+    longname = character.item_data.longname
     if not longname:
         longname = character.key
         if not longname:
             longname = "Unknown"
     longname.capitalize()
     longname = longname.center(60)
-    quote = character.db.quote
+    quote = character.item_data.quote
     if not quote:
         quote = ""
     else:
         quote = '"' + quote + '"'
         quote = quote.center(60)
-    srank = character.db.social_rank
+    srank = character.item_data.social_rank
     if not srank:
         srank = "Unknown"
-    concept = character.db.concept
+    concept = character.item_data.concept
     if not concept:
         concept = "Unknown"
-    fealty = character.db.fealty
+    fealty = character.item_data.fealty
     if not fealty:
         fealty = "Unknown"
-    fealty = fealty.capitalize()
-    family = character.db.family
+    fealty = str(fealty).capitalize()
+    family = character.item_data.family
     if not family:
         family = "Unknown"
     family = family.capitalize()
-    gender = character.db.gender
+    gender = character.item_data.gender
     if not gender:
         gender = "Unknown"
     gender = gender.capitalize()
-    age = character.db.age
+    age = character.item_data.age
     if not age:
         age = "Unknown"
     else:
         age = str(age)
-    birth = character.db.birthday
+    birth = character.item_data.birthday
     if not birth:
         birth = "Unknown"
     religion = character.db.religion
     if not religion:
         religion = "Unknown"
-    vocation = character.db.vocation
+    vocation = character.item_data.vocation
     if not vocation:
         vocation = "Unknown"
     vocation = vocation.capitalize()
-    height = character.db.height or ""
-    eyecolor = character.db.eyecolor or ""
+    height = character.item_data.height or ""
+    eyecolor = character.item_data.eye_color or ""
     eyecolor = eyecolor.title()
-    haircolor = character.db.haircolor or ""
+    haircolor = character.item_data.hair_color or ""
     haircolor = haircolor.title()
-    skintone = character.db.skintone or ""
+    skintone = character.item_data.skin_tone or ""
     skintone = skintone.title()
-    marital_status = character.db.marital_status or "Single"
+    marital_status = character.item_data.marital_status or "Single"
 
     header = """
 {w%(longname)s{n
@@ -777,14 +780,14 @@ def display_header(caller, character, show_hidden=False):
     full_titles = character.titles
     if full_titles:
         caller.msg("{wFull titles:{n %s" % full_titles)
-    if character.db.obituary:
-        caller.msg("{wObituary{n: %s" % character.db.obituary)
+    if character.item_data.obituary:
+        caller.msg("{wObituary{n: %s" % character.item_data.obituary)
     desc = character.perm_desc
     if not desc:
         desc = "No description set."
     if show_hidden:
-        rconcept = character.db.real_concept
-        rage = character.db.real_age
+        rconcept = character.item_data.real_concept
+        rage = character.item_data.real_age
         if rconcept or rage:
             mssg = ""
             if rconcept:
@@ -1153,7 +1156,7 @@ class CmdPropriety(ArxPlayerCommand):
         if ppl:
 
             def find_longname(owner):
-                longname = owner.player.player.char_ob.db.longname
+                longname = owner.player.player.char_ob.item_data.longname
                 if not longname:
                     longname = owner.player.player.char_ob.key
                 if not longname:
@@ -1249,11 +1252,11 @@ class CmdSheet(ArxPlayerCommand):
                 display_secrets(caller, charob, self.get_num_from_args())
                 self.display_visions(charob)
             display_relationships(caller, charob, show_hidden)
-            bground = charob.db.background
+            bground = charob.item_data.background
             if not bground:
                 bground = "No background written yet."
             caller.msg("\n{wBackground:{n\n" + bground)
-            pers = charob.db.personality
+            pers = charob.item_data.personality
             if not pers:
                 pers = "No personality written yet."
             caller.msg("\n{wPersonality:{n\n " + pers)
@@ -1302,13 +1305,13 @@ class CmdSheet(ArxPlayerCommand):
                 display_relationships(caller, charob, show_hidden)
                 return
             elif "background" in switches:
-                bground = charob.db.background
+                bground = charob.item_data.background
                 if not bground:
                     bground = "No background written yet."
                 caller.msg("{wBackground:{n\n" + bground)
                 return
             elif "personality" in switches:
-                pers = charob.db.personality
+                pers = charob.item_data.personality
                 if not pers:
                     pers = "No personality written yet."
                 caller.msg("{wPersonality:{n\n " + pers)

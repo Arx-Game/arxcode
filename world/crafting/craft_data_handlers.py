@@ -14,7 +14,8 @@ from world.crafting.storage_wrappers import (
     PlaceSpotsOverrideWrapper,
     WeaponOverrideWrapper,
 )
-from world.crafting.validators import get_material, get_recipe, get_character
+from world.crafting.validators import get_material, get_recipe
+from evennia_extensions.object_extensions.validators import get_character
 
 
 class CraftDataHandler(ItemDataHandler):
@@ -88,7 +89,7 @@ class CraftDataHandler(ItemDataHandler):
             ob, _ = self.obj.adorned_materials.get_or_create(type_id=material)
         else:
             ob, _ = self.obj.adorned_materials.get_or_create(type=material)
-        ob.amount = quantity
+        ob.amount += quantity
         ob.save()
         # clear cache
         del self.adorn_objects

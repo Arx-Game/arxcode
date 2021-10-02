@@ -1,9 +1,10 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.forms import ValidationError
 from server.utils.arx_utils import CachedProperty
 from evennia.utils.idmapper.models import SharedMemoryModel
 from jinja2 import Environment, BaseLoader
-from typing import Union, List
+from typing import Union, List, TYPE_CHECKING, Dict
 from random import randint
 
 from server.utils.abstract_models import NameLookupModel, NameIntegerLookupModel
@@ -21,9 +22,17 @@ from world.stat_checks.constants import (
 )
 
 
+if TYPE_CHECKING:
+    from typeclasses.characters import Character
+
+
 class DifficultyRating(NameIntegerLookupModel):
     """Lookup table for difficulty ratings for stat checks, mapping names
-    to minimum values for that range."""
+    to minimum values for that range.
+
+    Deprecated - moving to having a DifficultyTable which is chosen for a given
+    check based on the roller CheckRank vs the Target CheckRank.
+    """
 
     @classmethod
     def get_average_difficulty(cls) -> "DifficultyRating":
@@ -35,7 +44,18 @@ class StatWeight(SharedMemoryModel):
     """Lookup table for the weights attached to different stat/skill/knack levels"""
 
     _cache_set = False
-    SKILL, STAT, ABILITY, KNACK, ONLY_STAT, HEALTH_STA, HEALTH_BOSS, MISC = range(8)
+    (
+        SKILL,
+        STAT,
+        ABILITY,
+        KNACK,
+        ONLY_STAT,
+        HEALTH_STA,
+        HEALTH_BOSS,
+        MISC,
+        TRAIT,
+        ONLY_TRAIT,
+    ) = range(10)
     STAT_CHOICES = (
         (SKILL, "skill"),
         (STAT, "stat"),
@@ -46,6 +66,8 @@ class StatWeight(SharedMemoryModel):
         (HEALTH_STA, "health for stamina"),
         (HEALTH_BOSS, "health for boss rating"),
         (MISC, "miscellaneous values (armor class, etc)"),
+        (TRAIT, "trait in new check system"),
+        (ONLY_TRAIT, "trait as a lone value in new check system"),
     )
     stat_type = models.PositiveSmallIntegerField(choices=STAT_CHOICES, default=SKILL)
     level = models.PositiveSmallIntegerField(
@@ -76,17 +98,24 @@ class StatWeight(SharedMemoryModel):
         return values
 
     @classmethod
-    def get_weighted_value_for_stat(cls, level: int, only_stat: bool) -> int:
-        stat_type = cls.ONLY_STAT if only_stat else cls.STAT
+    def get_weighted_value_for_stat(
+        cls, level: int, only_stat: bool, new_check: bool = False
+    ) -> int:
+        if new_check:
+            stat_type = cls.ONLY_TRAIT if only_stat else cls.TRAIT
+        else:
+            stat_type = cls.ONLY_STAT if only_stat else cls.STAT
         return cls.get_weighted_value_for_type(level, stat_type)
 
     @classmethod
-    def get_weighted_value_for_skill(cls, level: int) -> int:
-        return cls.get_weighted_value_for_type(level, cls.SKILL)
+    def get_weighted_value_for_skill(cls, level: int, new_check: bool = False) -> int:
+        stat_type = cls.TRAIT if new_check else cls.SKILL
+        return cls.get_weighted_value_for_type(level, stat_type)
 
     @classmethod
-    def get_weighted_value_for_ability(cls, level: int) -> int:
-        return cls.get_weighted_value_for_type(level, cls.ABILITY)
+    def get_weighted_value_for_ability(cls, level: int, new_check: bool = False) -> int:
+        stat_type = cls.TRAIT if new_check else cls.ABILITY
+        return cls.get_weighted_value_for_type(level, stat_type)
 
     @classmethod
     def get_weighted_value_for_knack(cls, level: int) -> int:
@@ -145,6 +174,12 @@ class StatWeight(SharedMemoryModel):
 
 
 class NaturalRollType(NameIntegerLookupModel):
+    """
+    Deprecated - moving to a system where outcomes are determined by getting a difficulty
+    table and all outcomes being a natural roll upon that table. Crits/botches will be
+    high/low outcomes on the table.
+    """
+
     LOWER_BOUND, UPPER_BOUND = range(2)
     BOUNDARY_CHOICES = ((LOWER_BOUND, "lower bound"), (UPPER_BOUND, "upper bound"))
     value_type = models.PositiveSmallIntegerField(
@@ -264,7 +299,7 @@ class DamageRating(NameIntegerLookupModel):
         damage = randint(self.value, self.max_value)
         # apply mitigation
         damage = self.mitigate_damage(character, damage)
-        character.take_damage(damage)
+        character.take_damage(damage, quiet=False)
 
     def mitigate_damage(self, character, damage) -> int:
         # resists aren't affected by armor reduction
@@ -293,6 +328,7 @@ class StatCheck(NameLookupModel):
         "StatCombination", on_delete=models.PROTECT, related_name="stat_checks"
     )
     description = models.TextField(blank=True)
+    public = models.BooleanField(default=True)
 
     @CachedProperty
     def cached_difficulty_rules(self):
@@ -368,6 +404,20 @@ class StatCheck(NameLookupModel):
         except IndexError:
             pass
 
+    def get_difficulty_table_for_roller(
+        self, character: "Character", target_rank: "CheckRank"
+    ) -> "DifficultyTable":
+        totals = character.traits.get_totals_for_check(self)
+        value = sum(totals.values())
+        rank = CheckRank.get_base_rank_for_value(value)
+        chance = CheckRank.get_chance_of_higher_rank(value)
+        if randint(1, 100) <= chance:
+            try:
+                rank = CheckRank.objects.get(id=rank.id + 1)
+            except CheckRank.DoesNotExist:
+                pass
+        return DifficultyTable.get_difficulty_for_rank_range(rank, target_rank)
+
 
 class StatCombination(SharedMemoryModel):
     """
@@ -438,12 +488,16 @@ class StatCombination(SharedMemoryModel):
     def cached_stat_checks(self):
         return list(self.stat_checks.all())
 
-    def get_value_for_stat_combinations(self, character) -> int:
+    def get_value_for_stat_combinations(
+        self, character: "Character", new_check: bool = False
+    ) -> int:
         values = []
         for trait in self.cached_traits_in_combination:
-            values.append(trait.get_roll_value_for_character(character))
+            values.append(trait.get_roll_value_for_character(character, new_check))
         for combination in self.cached_child_combinations:
-            values.append(combination.get_value_for_stat_combinations(character))
+            values.append(
+                combination.get_value_for_stat_combinations(character, new_check)
+            )
         # see if we have a flat value to add, which may be random
         if self.random_ceiling is not None:
             values.append(randint(self.flat_value or 0, self.random_ceiling))
@@ -469,14 +523,14 @@ class StatCombination(SharedMemoryModel):
         return [
             trait.name.lower()
             for trait in self.get_all_traits()
-            if trait.trait.trait_type == trait.trait.STAT
+            if trait.trait_type == trait.STAT
         ]
 
     def get_skills_list(self) -> List[str]:
         return [
             trait.name.lower()
             for trait in self.get_all_traits()
-            if trait.trait.trait_type == trait.trait.SKILL
+            if trait.trait_type == trait.SKILL
         ]
 
     def __str__(self):
@@ -533,12 +587,12 @@ class TraitsInCombination(SharedMemoryModel):
     def should_be_stat_only(self):
         return self.stat_combination.should_be_stat_only
 
-    def get_roll_value_for_character(self, character) -> int:
+    def get_roll_value_for_character(self, character, new_check=False) -> int:
         base_value = character.traits.get_value_by_trait(self.trait)
         # if it's a trait type we have weights for, we'll return that
         if self.trait.trait_type == self.trait.STAT:
             return StatWeight.get_weighted_value_for_stat(
-                base_value, self.should_be_stat_only
+                base_value, self.should_be_stat_only, new_check
             )
         if self.trait.trait_type == self.trait.SKILL:
             return StatWeight.get_weighted_value_for_skill(base_value)
@@ -676,3 +730,128 @@ class CheckCondition(SharedMemoryModel):
 
     def __str__(self):
         return f"{self.get_condition_type_display()}: {self.value}"
+
+
+class CheckRank(NameIntegerLookupModel):
+    """
+    Given some total value for stats, skills, and other modifiers for a check,
+    we determine a rank that someone will use when making the check as a
+    measure of their relative power. Ranks are them compared to one another to
+    get a chart that determines the outcomes of a roll.
+    """
+
+    id = models.SmallIntegerField(
+        primary_key=True, help_text="The rank number itself (rank 1, rank 2, etc)."
+    )
+    description = models.TextField()
+    value = models.SmallIntegerField("minimum check value for this rank", unique=True)
+
+    def __str__(self):
+        return self.name
+
+    def __add__(self, other):
+        return self.id + other.id
+
+    def __sub__(self, other):
+        return self.id - other.id
+
+    @classmethod
+    def get_base_rank_for_value(cls, value: int) -> "CheckRank":
+        instances = sorted(cls.get_all_instances(), key=lambda x: x.value)
+        if not instances:
+            raise ValueError(
+                "No CheckRank objects have yet been defined in the database."
+            )
+        # get highest rank that our value is over
+        closest = max(
+            [ob for ob in instances if ob.value <= value],
+            key=lambda x: x.value,
+            default=instances[0],
+        )
+        return closest
+
+    @classmethod
+    def get_chance_of_higher_rank(cls, value: int) -> int:
+        """Given a rank, gives the percentage chance that we get a higher rank than this one"""
+        closest = cls.get_base_rank_for_value(value)
+        # if we're exactly at the value, we have no chance of getting higher
+        progress = value - closest.value
+        if progress <= 0:
+            return 0
+        try:
+            next_value = cls.objects.get(id=closest.id + 1)
+        except cls.DoesNotExist:
+            return 0
+        distance = next_value.value - closest.value
+        # get their percentage chance of getting the next rank
+        chance = (progress / distance) * 100
+        return int(chance)
+
+
+class DifficultyTable(NameIntegerLookupModel):
+    """
+    A DifficultyTable is a chart chosen by its value, which represents the
+    difference between a roller's CheckRank and their target CheckRank. For
+    example, if a roller has a CR of 5 and their target was 2, we would use
+    the DifficultyTable with a value of 3, which might report it's an 'easy'
+    roll. They then make a random() roll on this table, and that maps to
+    different RollResults, with the closest being returned.
+    """
+
+    roll_results = models.ManyToManyField(
+        "RollResult",
+        through="DifficultyTableResultRange",
+        related_name="difficulty_tables",
+    )
+
+    @classmethod
+    def get_difficulty_for_rank_range(
+        cls, roller_rank: "CheckRank", target_rank: "CheckRank"
+    ) -> "DifficultyTable":
+        # the higher the better for the roller
+        value = roller_rank.id - target_rank.id
+        instances = sorted(cls.get_all_instances(), key=lambda x: x.value)
+        if not instances:
+            raise ValueError(
+                "No DifficultyTable objects have yet been defined in the database."
+            )
+        # get highest rank that our value is over
+        closest = max(
+            [ob for ob in instances if ob.value <= value],
+            key=lambda x: x.value,
+            default=instances[0],
+        )
+        return closest
+
+    @CachedProperty
+    def cached_ranges(self) -> List["DifficultyTableResultRange"]:
+        return list(self.result_ranges.all().order_by("value"))
+
+    @property
+    def ranges_dict(self) -> Dict[int, "RollResult"]:
+        return {
+            difficulty_range.value: difficulty_range.result
+            for difficulty_range in self.cached_ranges
+        }
+
+
+class DifficultyTableResultRange(SharedMemoryModel):
+    difficulty_table = models.ForeignKey(
+        "DifficultyTable", related_name="result_ranges", on_delete=models.CASCADE
+    )
+    result = models.ForeignKey(
+        "RollResult", related_name="result_ranges", on_delete=models.CASCADE
+    )
+    value = models.IntegerField(
+        default=1, validators=[MaxValueValidator(100), MinValueValidator(1)]
+    )
+
+    class Meta:
+        unique_together = (
+            ("difficulty_table", "result"),
+            ("difficulty_table", "value"),
+        )
+        verbose_name_plural = "Difficulty Table Result Ranges"
+
+    def __str__(self):
+        return f"{self.value} - {self.result}"

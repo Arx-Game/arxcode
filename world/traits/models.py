@@ -123,3 +123,18 @@ class CharacterTraitValue(SharedMemoryModel):
             self.character.traits.add_trait_value_to_cache(self)
         except AttributeError:
             pass
+
+
+class TraitPurchase(SharedMemoryModel):
+    """
+    Record of buying a skill for a character. Will only support skills initially
+    """
+
+    character = models.ForeignKey(
+        "objects.ObjectDB", on_delete=models.CASCADE, related_name="trait_purchases"
+    )
+    trait = models.ForeignKey(
+        "Trait", on_delete=models.CASCADE, related_name="purchases"
+    )
+    cost = models.SmallIntegerField(default=0)
+    date_bought = models.DateTimeField(auto_now_add=True)

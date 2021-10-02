@@ -26,6 +26,5 @@ class SituationalCmdSet(CmdSet):
         self.add(cmdset_wieldable.WeaponCmdSet())
         self.add(cmdset_places.DefaultCmdSet())
         self.add(cmdset_places.SittingCmdSet())
-        self.add(typeclasses.readable.readable_commands.WriteCmdSet())
         self.add(typeclasses.readable.readable_commands.SignCmdSet())
         self.add(container.CmdChestKey())

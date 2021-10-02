@@ -43,6 +43,8 @@ class DescMixins(object):
     default_size = 1
     default_capacity = 100
     default_quantity = 1
+    default_is_locked = False
+    can_stack = False
 
     @property
     def base_desc(self):
@@ -59,7 +61,7 @@ class DescMixins(object):
         :type self: evennia.objects.models.ObjectDB
         :return:
         """
-        return self.base_desc + self.additional_desc
+        return self.base_desc
 
     @desc.setter
     def desc(self, val):
@@ -112,9 +114,7 @@ class DescMixins(object):
         :type self: ObjectDB
         :return:
         """
-        return (
-            self.db.raw_desc or self.db.general_desc or self.db.desc or ""
-        ) + self.additional_desc
+        return self.db.raw_desc or self.db.general_desc or self.db.desc or ""
 
     def __perm_desc_set(self, val):
         """
@@ -142,37 +142,11 @@ class DescMixins(object):
     def dead(self):
         return False
 
-    @property
-    def additional_desc(self):
-        """
-        :type self: ObjectDB
-        """
-        try:
-            if self.db.additional_desc:
-                return "\n\n" + "{w({n%s{w){n" % self.db.additional_desc
-        except TypeError:
-            return ""
-        return ""
-
-    @additional_desc.setter
-    def additional_desc(self, value):
-        """
-        :type self: ObjectDB
-        """
-        if not value:
-            self.db.additional_desc = ""
-        else:
-            self.db.additional_desc = str(value)
-
-    @additional_desc.deleter
-    def additional_desc(self):
-        """
-        :type self: ObjectDB
-        """
-        self.attributes.remove("additional_desc")
-
 
 class NameMixins(object):
+    default_false_name = None
+    default_colored_name = None
+
     @property
     def is_disguised(self):
         return bool(self.fakename)
@@ -182,7 +156,7 @@ class NameMixins(object):
         """
         :type self: ObjectDB
         """
-        return self.db.false_name
+        return self.item_data.false_name
 
     @fakename.setter
     def fakename(self, val):
@@ -190,8 +164,8 @@ class NameMixins(object):
         :type self: ObjectDB
         :param val: str
         """
-        old = self.db.false_name
-        self.db.false_name = val
+        old = self.item_data.false_name
+        self.item_data.false_name = val
         if old:
             old = parse_ansi(old, strip_ansi=True)
             self.aliases.remove(old)
@@ -204,35 +178,41 @@ class NameMixins(object):
         """
         :type self: ObjectDB
         """
-        old = self.db.false_name
+        old = self.item_data.false_name
         if old:
             old = parse_ansi(old, strip_ansi=True)
             self.aliases.remove(old)
-        self.attributes.remove("false_name")
+        self.item_data.false_name = None
         self.tags.remove("disguised")
 
-    def __name_get(self):
+    @property
+    def name(self):
         """
         :type self: ObjectDB
         """
-        name = self.fakename or self.db.colored_name or self.key or ""
+        name = self.fakename or self.item_data.colored_name or self.key or ""
         name = name.rstrip("{/").rstrip("|/") + (
             "{n" if ("{" in name or "|" in name or "%" in name) else ""
         )
         return name
 
-    def __name_set(self, val):
+    @name.setter
+    def name(self, val):
         """
         :type self: ObjectDB
         """
         # convert color codes
         val = sub_old_ansi(val)
-        self.db.colored_name = val
-        self.key = parse_ansi(val, strip_ansi=True)
+        uncolored_val = parse_ansi(val, strip_ansi=True)
+        if val == uncolored_val:
+            # if our name isn't colored, wipe the colored_name value
+            del self.item_data.colored_name
+        else:
+            # update the colored_name value
+            self.item_data.colored_name = val
+        self.key = uncolored_val
         self.ndb.cached_template_desc = None
         self.save()
-
-    name = property(__name_get, __name_set)
 
     def __str__(self):
         return self.name
@@ -242,6 +222,7 @@ class NameMixins(object):
 class BaseObjectMixins(object):
     default_put_time = 0
     default_deleted_time = None
+    default_pre_offgrid_location = None
 
     @property
     def is_room(self):
@@ -253,6 +234,10 @@ class BaseObjectMixins(object):
 
     @property
     def is_character(self):
+        return False
+
+    @property
+    def is_container(self):
         return False
 
     @property
@@ -347,6 +332,21 @@ class BaseObjectMixins(object):
         except AttributeError:
             raise InvalidTargetError(f"{self} is not a valid target.")
 
+    def leave_grid(self):
+        """Moves an object off the grid, storing the location from which it left"""
+        if self.location:
+            self.item_data.pre_offgrid_location = self.location
+            self.location = None
+
+    def enter_grid(self):
+        """
+        Moves an object back on grid if not already there. Goes to its last
+        known location or its home space.
+        """
+        if not self.location:
+            self.location = self.item_data.pre_offgrid_location or self.home
+            self.location.at_object_receive(self, None)
+
 
 class AppearanceMixins(BaseObjectMixins, TemplateMixins):
     def get_numbered_name(self, count, looker, **kwargs):
@@ -431,7 +431,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
                     lname += "|w (%s)|n" % con.db.room_title
                 elif con == pobject:
                     continue
-                if con.key in lname and not con.db.false_name:
+                if con.key in lname and not con.item_data.false_name:
                     lname = lname.replace(key, "|c%s|n" % key)
                     users.append(lname)
                 else:
@@ -708,7 +708,9 @@ class TriggersMixin(object):
         return TriggerHandler(self)
 
 
-class ObjectMixins(DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin):
+class ObjectMixins(
+    NameMixins, DescMixins, AppearanceMixins, ModifierMixin, TriggersMixin
+):
     item_data_class = ItemDataHandler
 
     @lazy_property
@@ -722,6 +724,8 @@ class CraftingMixins(object):
     default_type_description_name = None
     should_format_desc = False
     default_recipe = None
+    default_quality_level = None
+    default_crafted_by = None
 
     @lazy_property
     def junk_handler(self):
@@ -780,11 +784,8 @@ class MsgMixins(object):
         if not self.sessions.all():
             return
         # compatibility change for Evennia changing text to be either str or tuple
-        if not isinstance(text, str):
-            try:
-                text = text[0]
-            except TypeError:
-                pass
+        if isinstance(text, tuple) and text:
+            text = text[0]
         options = options or {}
         options.update(kwargs.get("options", {}))
         try:
@@ -849,8 +850,8 @@ class MsgMixins(object):
         if options.get("box", False):
             text = text_box(text)
         if options.get("roll", False):
-            if self.attributes.has("dice_string"):
-                text = "{w<" + self.db.dice_string + "> {n" + text
+            if hasattr(self.item_data, "dice_string"):
+                text = "|w<" + self.item_data.dice_string + "> |n" + text
         if options.get("is_magic", False):
             if text[0] == "\n":
                 text = text[1:]
@@ -938,11 +939,11 @@ class LockMixins(object):
         if not self.has_lock_permission(caller):
             return
         self.locks.add("traverse: perm(builders)")
-        if self.db.locked:
+        if self.item_data.is_locked:
             if caller:
                 caller.msg("%s is already locked." % self)
             return
-        self.db.locked = True
+        self.item_data.is_locked = True
         msg = "%s is now locked." % self.key
         if caller:
             caller.msg(msg)
@@ -951,13 +952,15 @@ class LockMixins(object):
         if (
             self.destination
             and hasattr(self.destination, "entrances")
-            and self.destination.db.locked is False
+            and self.destination.item_data.is_locked is False
         ):
             entrances = [
-                ob for ob in self.destination.entrances if ob.db.locked is False
+                ob
+                for ob in self.destination.entrances
+                if ob.item_data.is_locked is False
             ]
             if not entrances:
-                self.destination.db.locked = True
+                self.destination.item_data.is_locked = True
 
     def unlock(self, caller=None):
         """
@@ -968,21 +971,21 @@ class LockMixins(object):
         if not self.has_lock_permission(caller):
             return
         self.locks.add("traverse: all()")
-        if not self.db.locked:
+        if not self.item_data.is_locked:
             if caller:
                 caller.msg("%s is already unlocked." % self)
             return
-        self.db.locked = False
+        self.item_data.is_locked = False
         msg = "%s is now unlocked." % self.key
         if caller:
             caller.msg(msg)
         self.location.msg_contents(msg, exclude=caller)
         if self.destination:
-            self.destination.db.locked = False
+            self.destination.item_data.is_locked = False
 
     @property
     def currently_open(self):
-        return not self.db.locked
+        return not self.item_data.is_locked
 
     @property
     def displayable(self):
@@ -1011,7 +1014,7 @@ class LockMixins(object):
             show_contents=show_contents,
         )
         return base + "\nIt is currently %s." % (
-            "locked" if self.db.locked else "unlocked"
+            "locked" if self.item_data.is_locked else "unlocked"
         )
 
 

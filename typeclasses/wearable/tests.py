@@ -48,7 +48,7 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
 
     def test_wear_cmd(self):
         self.setup_cmd(CmdWear, self.char2)
-        self.char2.additional_desc = "Also Sly is super hot."
+        self.char2.item_data.additional_desc = "Also Sly is super hot."
         self.top1.item_data.recipe = 1
         self.top1.item_data.crafted_by = self.char1
         self.call_cmd("", "What are you trying to wear?")
@@ -81,7 +81,7 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.assertEqual(self.char2.fakename, "Someone wearing A Fox Mask")
         self.assertEqual(self.char2.temp_desc, "A very Slyyyy Fox...")
         self.mask1.tags.add("mirrormask")  # final test re-checks quality level
-        del self.char2.additional_desc
+        del self.char2.item_data.additional_desc
         # test 'wear' on a wielded item:
         self.hairpins1.wield(self.char2)
         self.assertTrue(self.hairpins1.is_wielded)

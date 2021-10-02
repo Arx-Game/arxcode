@@ -134,7 +134,6 @@ class Wieldable(Wearable):
         """
         if self.is_wielded:
             wielder = wielder if wielder else self.location
-            wielder.weapon = None
             self.is_wielded = False
             self.at_post_cease_wield(wielder)
             return True
@@ -152,7 +151,6 @@ class Wieldable(Wearable):
         # Assume fail exceptions are raised at_pre_wield
         self.at_pre_wield(wielder)
         self.is_wielded = True
-        wielder.weapon = self
         self.at_post_wield(wielder)
 
     def at_pre_wield(self, wielder):

@@ -132,14 +132,14 @@ class Wearable(FashionableMixins, Object):
         )
 
     @property
-    def default_penalty(self):
+    def default_armor_penalty(self):
         if self.item_data.recipe:
             return float(self.item_data.recipe.armor_penalty)
         return 0
 
     @property
     def default_armor_resilience(self):
-        return self.item_data.penalty / 3
+        return self.item_data.armor_penalty / 3
 
     def check_fashion_ready(self):
         super(Wearable, self).check_fashion_ready()

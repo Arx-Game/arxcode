@@ -75,9 +75,9 @@ _stage3_fields_ = (
     "quote",
     "birthday",
     "social_rank",
-    "skintone",
-    "eyecolor",
-    "haircolor",
+    "skin_tone",
+    "eye_color",
+    "hair_color",
     "height",
 )
 _valid_fealty_ = (
@@ -295,7 +295,7 @@ def census_of_fealty():
     from typeclasses.characters import Character
 
     for char in Character.objects.filter(roster__roster__name="Active"):
-        fealty = (char.db.fealty or "").capitalize()
+        fealty = (str(char.item_data.fealty) or "").capitalize()
         if fealty in fealties:
             fealties[fealty] += 1
     from collections import OrderedDict
@@ -489,7 +489,7 @@ class CmdGuestPrompt(ArxPlayerCommand):
     auto_help = False
 
     def func(self):
-        """"Execute the command"""
+        """ "Execute the command"""
         caller = self.caller
         caller.msg(
             utils.fill(
@@ -524,7 +524,7 @@ class CmdGuestLook(ArxPlayerCommand):
     help_category = "General"
 
     def func(self):
-        """"implement the ooc look command"""
+        """ "implement the ooc look command"""
         caller = self.caller
         stage = caller.db.tutorial_stage
         if not stage:
@@ -675,7 +675,7 @@ class CmdGuestCharCreate(ArxPlayerCommand):
     help_category = "General"
 
     def func(self):
-        """"create the new character"""
+        """ "create the new character"""
         player = self.caller
         new_character = None
         # see if we've already defined email with @add/email
@@ -786,7 +786,6 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                 new_character.desc = "Description to be set later."
                 new_character.db.unfinished_values = set(_stage3_fields_)
                 # so they don't show up in Arx City Center during character creation
-                new_character.db.prelogout_location = new_character.location
                 new_character.location = None
                 new_character.save()
                 try:
@@ -906,7 +905,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
                     "Selected one of the default vocations. Please use 'vocation' rather than 'newvocation."
                 )
                 return
-            char.db.vocation = args
+            char.item_data.vocation = args
             # set up default stats/skills for a new vocation here
             remove_all_skills()
             for stat in Trait.get_valid_stat_names():
@@ -920,7 +919,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
                     + "vocation, please use the '{w@add/newvocation{n' command."
                 )
                 return
-            char.db.vocation = args
+            char.item_data.vocation = args
             # setup voc will wipe any previous skills, replace em
             setup_voc(char, args)
         caller.msg("\n{cVocation{n set to {w%s{n." % args)
@@ -1029,7 +1028,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             char.desc = args
             char.save()
         else:
-            char.attributes.add(switches, args)
+            char.item_data.set_sheet_value(switches, args)
         caller.msg("\n{c%s{n set to: {w%s{n" % (switches.capitalize(), args))
         # check off the list of stage 4 values left to define
         unfinished_values = char.attributes.get("unfinished_values")
@@ -1248,13 +1247,13 @@ class CmdGuestAddInput(ArxPlayerCommand):
         char.attributes.remove("stat_points")
         char.player_ob.attributes.remove("tutorial_stage")
         # set initial starting xp based on social rank
-        srank = char.db.social_rank or 0
+        srank = char.item_data.social_rank
         # noinspection PyBroadException
         try:
             xp_bonus = XP_BONUS_BY_SRANK.get(srank, 0)
-            xp_bonus += award_bonus_by_fealty(char.db.fealty)
-            xp_bonus += award_bonus_by_age(char.db.age)
-            char.db.xp = xp_bonus
+            xp_bonus += award_bonus_by_fealty(str(char.item_data.fealty))
+            xp_bonus += award_bonus_by_age(char.item_data.age)
+            char.item_data.xp = xp_bonus
         except Exception:
             import traceback
 
@@ -1265,7 +1264,8 @@ class CmdGuestAddInput(ArxPlayerCommand):
             % srank
         )
         xp_msg += (
-            "enter the game with %s xp. You will be able to spend them " % char.db.xp
+            "enter the game with %s xp. You will be able to spend them "
+            % char.item_data.xp
         )
         xp_msg += "with the {wxp/spend{n command."
         caller.msg(xp_msg)
@@ -1319,7 +1319,7 @@ class CmdGuestAddInput(ArxPlayerCommand):
             char.db.currency = 0
 
     def func(self):
-        """"implement the ooc look command"""
+        """ "implement the ooc look command"""
         caller = self.caller
         char = caller.db.char
         stage = caller.db.tutorial_stage

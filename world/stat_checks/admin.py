@@ -11,6 +11,9 @@ from world.stat_checks.models import (
     CheckCondition,
     CheckDifficultyRule,
     TraitsInCombination,
+    CheckRank,
+    DifficultyTable,
+    DifficultyTableResultRange,
 )
 
 
@@ -80,6 +83,21 @@ class StatCombinationAdmin(admin.ModelAdmin):
         return ", ".join(str(ob) for ob in obj.cached_stat_checks)
 
 
+class CheckRankAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "value")
+    ordering = ("value",)
+
+
+class DiffRangeInline(admin.StackedInline):
+    model = DifficultyTableResultRange
+    extra = 0
+
+
+class DifficultyTableAdmin(admin.ModelAdmin):
+    list_display = ("name",)
+    inlines = (DiffRangeInline,)
+
+
 admin.site.register(NaturalRollType, NaturalRollTypeAdmin)
 admin.site.register(RollResult, RollResultadmin)
 admin.site.register(StatWeight, StatWeightAdmin)
@@ -88,3 +106,5 @@ admin.site.register(DamageRating, DamageRatingAdmin)
 admin.site.register(StatCheck, StatCheckAdmin)
 admin.site.register(CheckCondition, CheckConditionAdmin)
 admin.site.register(StatCombination, StatCombinationAdmin)
+admin.site.register(CheckRank, CheckRankAdmin)
+admin.site.register(DifficultyTable, DifficultyTableAdmin)

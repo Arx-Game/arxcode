@@ -190,20 +190,25 @@ class CmdWhere(ArxPlayerCommand):
         )
         msg = "{wList of shops:{n"
         for room in rooms:
+            if room.tags.get("private"):
+                continue
             owner = room.db.shopowner
             if self.args and owner:
                 if self.args.lower() not in owner.traits.abilities:
                     continue
-            name = owner.key
-            if owner and not owner.roster.roster.name == "Active":
-                if "all" not in self.switches:
-                    continue
-                name += " {w(Inactive){n"
+            try:
+                name = owner.key if owner else "Unowned"
+                if owner and not owner.roster.roster.name == "Active":
+                    if "all" not in self.switches:
+                        continue
+                    name += " {w(Inactive){n"
+            except AttributeError:
+                name = "|rInvalid Owner|n"
             msg += "\n%s: %s" % (self.get_room_str(room), name)
         self.msg(msg)
 
     def func(self):
-        """"Execute command."""
+        """ "Execute command."""
         caller = self.caller
         if "shops" in self.switches:
             self.list_shops()
@@ -417,7 +422,7 @@ class CmdFinger(ArxPlayerCommand):
             caller.msg("No character found.")
             return
         viewing_own_character = player == caller
-        name = char.db.longname or char.key
+        name = char.item_data.longname or char.key
         msg = "\n{wName:{n %s\n" % name
         titles = char.titles
         if titles:
@@ -454,8 +459,8 @@ class CmdFinger(ArxPlayerCommand):
         if show_hidden:
             msg += "{wCharID:{n %s, {wPlayerID:{n %s\n" % (char.id, player.id)
             msg += "{wTotal Posecount:{n %s\n" % char.total_posecount
-        if char.db.obituary:
-            msg += "{wObituary:{n %s\n" % char.db.obituary
+        if char.item_data.obituary:
+            msg += "{wObituary:{n %s\n" % char.item_data.obituary
         else:
             session = player.get_all_sessions() and player.get_all_sessions()[0]
             if session and player.show_online(caller):
@@ -469,10 +474,10 @@ class CmdFinger(ArxPlayerCommand):
                     or "Never"
                 )
                 msg += "{wStatus:{n Last logged in: %s\n" % last_online
-        fealty = char.db.fealty or "None"
+        fealty = char.item_data.fealty or "None"
         msg += "{wFealty:{n %s\n" % fealty
 
-        quote = char.db.quote
+        quote = char.item_data.quote
         if quote:
             msg += "{wQuote:{n %s\n" % quote
         msg += "{wCharacter page:{n %s\n" % get_full_url(char.get_absolute_url())
@@ -1247,12 +1252,12 @@ class CmdMessenger(ArxCommand):
                 )
                 return
         if "proof" in self.switches:
-            msg = caller.db.messenger_draft
-            if not msg:
+            draft = caller.messages.messenger_draft
+            if not draft:
                 caller.msg("You have no draft message stored.")
                 return
-            caller.msg("Message for: %s" % ", ".join(ob.key for ob in msg[0]))
-            caller.msg(msg[1])
+            caller.msg("Message for: %s" % ", ".join(ob.key for ob in draft[0]))
+            caller.msg(draft[1])
             return
         if "send" in self.switches:
             if self.check_cannot_use_messengers(self.caller):
@@ -2368,7 +2373,7 @@ class CmdPraise(ArxPlayerCommand):
         """Calculates how many praises character has"""
         char = self.caller.char_ob
         clout = char.social_clout
-        s_rank = char.db.social_rank or 10
+        s_rank = char.item_data.social_rank
         return clout + ((8 - s_rank) // 2)
 
     @property
@@ -3625,9 +3630,9 @@ class CmdTempDesc(RewardRPToolUseMixin, ArxCommand):
         """Sets or removes a temporary desc from the character"""
         if not self.args:
             self.msg("Temporary description cleared.")
-            del self.caller.additional_desc
+            del self.caller.item_data.additional_desc
             return
-        self.caller.additional_desc = self.args
+        self.caller.item_data.additional_desc = self.args
         self.msg("Temporary desc set to: %s" % self.args)
         self.mark_command_used()
 
@@ -4010,6 +4015,12 @@ class CmdFirstImpression(ArxCommand):
         if "here" in self.switches:
             location = "at your location "
             qs = qs.filter(entry__character__db_location=self.caller.location)
+            # filter out masked people
+            qs = [
+                ob
+                for ob in qs
+                if ob.entry.player.username.capitalize() == str(ob.entry.character)
+            ]
         players = sorted(
             set(ob.entry.player for ob in qs), key=lambda x: x.username.capitalize()
         )

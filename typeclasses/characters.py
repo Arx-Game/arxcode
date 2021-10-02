@@ -12,7 +12,7 @@ from django.urls import reverse
 from evennia.objects.objects import DefaultCharacter
 
 from server.utils.exceptions import PayError
-from typeclasses.mixins import MsgMixins, ObjectMixins, NameMixins
+from typeclasses.mixins import MsgMixins, ObjectMixins
 from typeclasses.wearable.mixins import UseEquipmentMixins
 from world.msgs.messagehandler import MessageHandler
 from world.msgs.languagehandler import LanguageHandler
@@ -29,11 +29,13 @@ from world.stat_checks.constants import (
 )
 from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
 from world.traits.traitshandler import Traitshandler
+from evennia_extensions.character_extensions.character_data_handler import (
+    CharacterDataHandler,
+)
 
 
 class Character(
     UseEquipmentMixins,
-    NameMixins,
     MsgMixins,
     ObjectMixins,
     MagicMixins,
@@ -59,20 +61,25 @@ class Character(
 
     """
 
+    item_data_class = CharacterDataHandler
+    default_age = 20
+    default_concept = "None"
+    default_marital_status = "single"
+    default_family = "None"
+    default_brief_mode = False
+    default_dice_string = "Default Dicestring"
+    default_xp = 0
+    default_total_xp = 0
+    default_combat_stance = "balanced"
+    default_autoattack = False
+    default_race = "human"
+    default_social_rank = 10
+    quantity = 1  # overridden by npc groups
+
     def at_object_creation(self):
         """
         Called once, when this object is first created.
         """
-        # setting up custom attributes for ArxMUSH
-        # BriefMode is for toggling brief descriptions from rooms
-        self.db.briefmode = False
-        self.db.gender = "Female"
-        self.db.age = 20
-        self.db.concept = "None"
-        self.db.fealty = "None"
-        self.db.marital_status = "single"
-        self.db.family = "None"
-        self.db.dice_string = "Default Dicestring"
         self.at_init()
         self.locks.add("delete:perm(Immortals);tell:all()")
 
@@ -91,6 +98,14 @@ class Character(
     @lazy_property
     def traits(self):
         return Traitshandler(self)
+
+    @property
+    def base_desc(self):
+        final_desc = super().base_desc
+        add = self.item_data.additional_desc
+        if add and not self.is_disguised:
+            final_desc += "\n\n" + "{w({n%s{w){n" % add
+        return final_desc
 
     @lazy_property
     def health_status(self):
@@ -114,6 +129,10 @@ class Character(
     def dead(self):
         return self.health_status.is_dead
 
+    @property
+    def is_container(self):
+        return self.dead
+
     def at_after_move(self, source_location, **kwargs):
         """
         Hook for after movement. Look around, with brief determining how much detail we get.
@@ -123,7 +142,7 @@ class Character(
         place = self.sitting_at_place
         if place and source_location != self.location:
             place.leave(self)
-        if self.db.briefmode:
+        if self.item_data.briefmode:
             string = ""
             # handle cases of self.location being None or not a Room object
             try:
@@ -207,7 +226,7 @@ class Character(
 
     @property
     def species(self):
-        return self.db.species or "Human"
+        return str(self.item_data.breed or self.item_data.race)
 
     @property
     def appearance_script(self):
@@ -223,13 +242,13 @@ class Character(
         """
         mask = self.db.mask
         if not mask:
-            hair = self.db.haircolor or ""
-            eyes = self.db.eyecolor or ""
-            skin = self.db.skintone or ""
-            height = self.db.height or ""
+            hair = self.item_data.hair_color or ""
+            eyes = self.item_data.eye_color or ""
+            skin = self.item_data.skin_tone or ""
+            height = self.item_data.height or ""
             species = self.species
-            gender = self.db.gender or ""
-            age = self.db.age
+            gender = self.item_data.gender or ""
+            age = self.item_data.age
         else:
             hair = mask.db.haircolor or "--"
             eyes = mask.db.eyecolor or "--"
@@ -243,7 +262,7 @@ class Character(
         skin = skin.capitalize()
         gender = gender.capitalize()
         if pobject.check_permstring("builders"):
-            true_age = self.db.real_age
+            true_age = self.item_data.real_age
             if true_age and true_age != age:
                 pobject.msg("{wThis true age is:{n %s" % true_age)
         string = """
@@ -279,7 +298,6 @@ class Character(
         if self.dead:
             return True
         self.health_status.set_dead()
-        self.db.container = True
         if self.location:
             self.location.msg_contents("{r%s has died.{n" % self.name)
         try:
@@ -306,7 +324,6 @@ class Character(
         Cue 'Bring Me Back to Life' by Evanessence.
         """
         self.health_status.set_alive()
-        self.db.container = False
         if self.location:
             self.location.msg_contents("{w%s has returned to life.{n" % self.name)
         try:
@@ -471,11 +488,11 @@ class Character(
         """
         Returns either an illusioned name, a long_name with titles, or our key.
         """
-        if self.db.false_name and display_mask:
-            return self.db.false_name
-        if not short and self.db.longname:
-            return self.db.longname
-        return self.db.colored_name or self.key
+        if self.item_data.false_name and display_mask:
+            return self.item_data.false_name
+        if not short and self.item_data.longname:
+            return self.item_data.longname
+        return self.item_data.colored_name or self.key
 
     @property
     def max_hp(self):
@@ -538,13 +555,13 @@ class Character(
 
     @property
     def xp(self):
-        if self.db.xp is None:
-            self.db.xp = 0
-        return self.db.xp
+        if self.item_data.xp is None:
+            self.item_data.xp = 0
+        return self.item_data.xp
 
     @xp.setter
     def xp(self, value):
-        self.db.xp = value
+        self.item_data.xp = value
 
     def adjust_xp(self, value):
         """
@@ -553,10 +570,10 @@ class Character(
         xp should be before this takes place, so we'll raise an exception if they
         can't pay the cost.
         """
-        if not self.db.total_xp:
-            self.db.total_xp = 0
+        if not self.item_data.total_xp:
+            self.item_data.total_xp = 0
         if value > 0:
-            self.db.total_xp += value
+            self.item_data.total_xp += value
             try:
                 self.roster.adjust_xp(value)
             except (AttributeError, ValueError, TypeError):
@@ -676,18 +693,23 @@ class Character(
 
     @property
     def guards(self):
-        if self.db.assigned_guards is None:
-            self.db.assigned_guards = []
-        return self.db.assigned_guards
+        """
+        Queries for all objects that have been assigned as guards to this
+        character. ObjectDB queries will automatically be transformed into
+        their typeclasses by the Evennia metaclasses.
+        """
+        from evennia.objects.models import ObjectDB
 
-    def remove_guard(self, guard):
+        return ObjectDB.objects.filter(
+            charactercombatsettings__guarding=self, roster__isnull=True
+        ).distinct()
+
+    def post_remove_guard(self, guard):
         """
         This discontinues anything we were using the guard for.
         Args:
             guard: Previously a guard, possibly a retainer.
         """
-        if guard in self.guards:
-            self.guards.remove(guard)
         if self.messages.custom_messenger == guard:
             self.messages.custom_messenger = None
 
@@ -709,7 +731,7 @@ class Character(
     @property
     def max_guards(self):
         try:
-            return 15 - (self.db.social_rank or 10)
+            return 15 - self.item_data.social_rank
         except TypeError:
             return 5
 
@@ -803,6 +825,19 @@ class Character(
             return "{c" + dest + "{n"
         return "{c" + str(exit_name[0]) + "{n"
 
+    def at_pre_puppet(self, account, session=None, **kwargs):
+        """
+        Return the character from storage in None location in `at_post_unpuppet`.
+        Args:
+            account (Account): This is the connecting account.
+            session (Session): Session controlling the connection.
+        """
+        self.enter_grid()
+        if not self.location:
+            account.msg(
+                "|r%s has no location and no home is set.|n" % self, session=session
+            )  # Note to set home.
+
     def at_post_puppet(self):
         """
         Called just after puppeting has completed.
@@ -822,7 +857,7 @@ class Character(
         for guard in guards:
             if guard.discreet:
                 continue
-            docked_location = guard.db.docked
+            docked_location = guard.item_data.pre_offgrid_location
             if docked_location and docked_location == self.location:
                 guard.summon()
 
@@ -836,8 +871,18 @@ class Character(
         :type player: Player
         :type session: Session
         """
-        super(Character, self).at_post_unpuppet(player, session)
         if not self.sessions.count():
+            # only remove this char from grid if no sessions control it anymore.
+            if self.location:
+
+                def message(obj, from_obj):
+                    obj.msg(
+                        "%s has left the game." % self.get_display_name(obj),
+                        from_obj=from_obj,
+                    )
+
+                self.location.for_contents(message, exclude=[self], from_obj=self)
+                self.leave_grid()
             place = self.sitting_at_place
             if place:
                 place.leave(self)
@@ -890,19 +935,33 @@ class Character(
 
     @property
     def posecount(self):
-        return self.db.pose_count or 0
+        try:
+            return self.roster.pose_count
+        except AttributeError:
+            return 0
 
     @posecount.setter
     def posecount(self, val):
-        self.db.pose_count = val
+        try:
+            self.roster.pose_count = val
+            self.roster.save()
+        except AttributeError:
+            pass
 
     @property
     def previous_posecount(self):
-        return self.db.previous_posecount or 0
+        try:
+            return self.roster.previous_pose_count
+        except AttributeError:
+            return 0
 
     @previous_posecount.setter
     def previous_posecount(self, val):
-        self.db.previous_posecount = val
+        try:
+            self.roster.previous_pose_count = val
+            self.roster.save()
+        except AttributeError:
+            pass
 
     @property
     def total_posecount(self):
@@ -1002,7 +1061,7 @@ class Character(
 
     @property
     def titles(self):
-        full_titles = self.db.titles or []
+        full_titles = self.character_titles.all()
         return ", ".join(str(ob) for ob in full_titles)
 
     @property
@@ -1104,7 +1163,7 @@ class Character(
         results = [
             ob
             for ob in results
-            if not ob.db.false_name or searchdata.lower() != ob.key.lower()
+            if not ob.item_data.false_name or searchdata.lower() != ob.key.lower()
         ]
         # quiet means that messaging is handled elsewhere
         if quiet:
@@ -1301,13 +1360,14 @@ class Character(
         cleaving: bool = False,
         private: bool = False,
         risk: int = 4,
+        quiet: bool = True,
     ):
         # apply AE damage to multinpcs if we're cleaving
         # TODO: move ae_dmg application to subclass
         if cleaving and hasattr(self, "ae_dmg"):
             self.ae_dmg += amount
         self.change_health(
-            -amount, quiet=True, affect_real_dmg=affect_real_damage, wake=False
+            -amount, quiet=quiet, affect_real_dmg=affect_real_damage, wake=False
         )
         # check for death
         if can_kill and affect_real_damage:

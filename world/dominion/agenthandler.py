@@ -37,7 +37,7 @@ class AgentHandler(object):
 
     def find_agentob_by_character(self, character):
         for agent in self.agent.active:
-            if agent.dbobj.db.guarding == character:
+            if agent.dbobj.item_data.guarding == character:
                 return agent
 
     def get_or_create_agentob(self, num):

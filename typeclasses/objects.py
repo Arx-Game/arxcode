@@ -15,9 +15,7 @@ from typeclasses.mixins import ObjectMixins, MsgMixins, NameMixins, CraftingMixi
 from world.magic.mixins import MagicMixins
 
 
-class Object(
-    CraftingMixins, MsgMixins, ObjectMixins, NameMixins, DefaultObject, MagicMixins
-):
+class Object(CraftingMixins, MsgMixins, ObjectMixins, DefaultObject, MagicMixins):
     """
     This is the root typeclass object, implementing an in-game Evennia
     game object, such as having a location, being able to be

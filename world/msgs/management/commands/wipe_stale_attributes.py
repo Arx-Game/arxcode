@@ -52,6 +52,26 @@ def wipe_attributes():
         "sheathed_by",
         "can_be_blocked",
         "ready_phrase",
+        "destroyable",
+        # for Readable
+        "written",
+        "can_stack",
+        "do_not_format_desc",
+        "author",
+        "container",
+        "locked",
+        "docked",
+        "docked_guards",
+        "worn_by",
+        "requested_support",
+        "last_recovery_test",
+        "asked_supporters",
+        "administered_aid",
+        "player_ob",
+        "automate_combat",
+        "portrait",
+        "weapon",
+        "assigned_guards",
     ]
     for attr in attr_names:
         print(

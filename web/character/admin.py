@@ -114,11 +114,16 @@ class AccountAdmin(BaseCharAdmin):
     list_display = ("id", "email", "player_characters")
     search_fields = ("email", "characters__character__db_key")
     inlines = (AccountHistoryInline, AccountEntryInline)
+    readonly_fields = ("ip_addresses",)
 
     @staticmethod
     def player_characters(obj):
         """List names of our characters for list display"""
         return ", ".join([str(ob) for ob in obj.characters.all()])
+
+    @staticmethod
+    def ip_addresses(obj):
+        return ", ".join(ob.address for ob in obj.addresses.all())
 
 
 class EmitInline(admin.TabularInline):
@@ -702,7 +707,7 @@ class FlashbackAdmin(BaseCharAdmin):
     )
     search_fields = ("=id", "title", "participants__player__username")
     inlines = [FBParticipantsInline, PostInline]
-    fieldsets = [(None, {"fields": ["title", "summary"]})]
+    fieldsets = [(None, {"fields": ["title", "summary", "concluded"]})]
 
     @staticmethod
     def owner(obj):

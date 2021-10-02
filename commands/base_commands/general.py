@@ -33,10 +33,10 @@ class CmdBriefMode(ArxCommand):
     help_category = "Settings"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
-        caller.db.briefmode = not caller.db.briefmode
-        if not caller.db.briefmode:
+        caller.item_data.briefmode = not caller.item_data.briefmode
+        if not caller.item_data.briefmode:
             caller.msg("Brief mode is now off.")
         else:
             caller.msg("Brief mode is now on.")
@@ -209,23 +209,25 @@ class CmdGameSettings(ArxPlayerCommand):
             "Invalid switch. Valid switches are: %s" % ", ".join(self.valid_switches)
         )
 
-    def togglesetting(self, char, attr, tag=False):
+    def togglesetting(self, char, attr, tag=False, item_data=False):
         """Toggles a setting for the caller"""
-        caller = self.caller
         if tag:
             if not char.tags.get(attr):
-                self.msg("%s is now on." % attr)
+                result = "on"
                 char.tags.add(attr)
             else:
-                self.msg("%s is now off." % attr)
+                result = "off"
                 char.tags.remove(attr)
                 char.tags.all()  # update cache until there's a fix for that
-            return
-        char.attributes.add(attr, not char.attributes.get(attr))
-        if not char.attributes.get(attr):
-            caller.msg("%s is now off." % attr)
+        elif item_data:
+            new_val = not getattr(char.item_data, attr)
+            result = "on" if new_val else "off"
+            char.item_data.set_sheet_value(attr, new_val)
         else:
-            caller.msg("%s is now on." % attr)
+            new_val = not char.attributes.get(attr)
+            result = "on" if new_val else "off"
+            char.attributes.add(attr, not char.attributes.get(attr))
+        self.msg(f"{attr} is now {result}.")
 
     def set_text_colors(self, char, attr):
         """Sets either pose_quote_color or name_color for the caller"""
@@ -319,7 +321,7 @@ class CmdShout(RewardRPToolUseMixin, ArxCommand):
     help_category = "Social"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         args = self.args
         switches = self.switches
@@ -358,7 +360,7 @@ class CmdFollow(ArxCommand):
     help_category = "Travel"
 
     def func(self):
-        """ Handles followin' """
+        """Handles followin'"""
         caller = self.caller
         args = self.args
         f_targ = caller.ndb.following
@@ -393,7 +395,7 @@ class CmdDitch(ArxCommand):
     help_category = "Travel"
 
     def func(self):
-        """ Handles followin' """
+        """Handles followin'"""
         caller = self.caller
         args = self.args
         followers = caller.ndb.followers
@@ -1306,7 +1308,7 @@ class CmdDirections(ArxCommand):
     locks = "cmd:all()"
 
     def func(self):
-        """ Handles the toggle """
+        """Handles the toggle"""
         caller = self.caller
         if "off" in self.switches or not self.args:
             if caller.ndb.waypoint:
@@ -1401,10 +1403,12 @@ class CmdPut(ArxCommand):
             if obj == dest:
                 caller.msg("You can't put an object inside itself.")
                 continue
-            if not dest.db.container:
+            if not dest.is_container:
                 caller.msg("That is not a container.")
                 return
-            if dest.db.locked and not self.caller.check_permstring("builders"):
+            if dest.item_data.is_locked and not self.caller.check_permstring(
+                "builders"
+            ):
                 caller.msg("You'll have to unlock {} first.".format(dest.name))
                 return
             if dest in obj.contents:
@@ -1804,35 +1808,13 @@ class CmdKeyring(ArxCommand):
     def func(self):
         """Executes keyring command"""
         caller = self.caller
-        room_keys = caller.db.keylist or []
-        # remove any duplicates and ensure only rooms are in keylist
-        room_keys = [
-            ob for ob in set(room_keys) if hasattr(ob, "is_room") and ob.is_room
-        ]
-        caller.db.keylist = room_keys
-        chest_keys = caller.db.chestkeylist or []
-        # remove any deleted objects
-        chest_keys = [
-            ob
-            for ob in chest_keys
-            if hasattr(ob, "item_data") and not ob.item_data.deleted_time
-        ]
-        chest_keys = list(set(chest_keys))
-        caller.db.chestkeylist = chest_keys
+
         if "remove" in self.switches:
-            old = set(room_keys + chest_keys)
-            room_keys = [ob for ob in room_keys if ob.key.lower() != self.args.lower()]
-            chest_keys = [
-                ob for ob in chest_keys if ob.key.lower() != self.args.lower()
-            ]
-            caller.db.keylist = room_keys
-            caller.db.chestkeylist = chest_keys
-            removed = old - set(room_keys + chest_keys)
+            removed = caller.item_data.remove_key_by_name(self.args.lower())
             if removed:
-                self.msg("Removed %s." % ", ".join(str(ob) for ob in removed))
-        key_list = list(room_keys) + list(chest_keys)
-        caller.msg("Keys: %s" % ", ".join(ob.key for ob in key_list if ob))
-        return
+                self.msg("Removed %s." % ", ".join(ob.key for ob in removed))
+        key_list = caller.held_keys.all()
+        caller.msg("Keys: %s" % ", ".join(str(ob) for ob in key_list))
 
 
 class CmdDump(ArxCommand):
@@ -1864,12 +1846,12 @@ class CmdDump(ArxCommand):
         loc = obj.location
 
         # If the object being dumped is not a container or is not dead and therefore lootable then bail out
-        if not (obj.db.container or obj.dead):
+        if not obj.is_container:
             caller.msg("You cannot dump %s as it is not a valid container." % obj)
             return
 
         # Unless the caller is a builder the locked container cannot be dumped
-        if obj.db.locked and not caller.check_permstring("builders"):
+        if obj.item_data.is_locked and not caller.check_permstring("builders"):
             caller.msg("%s is locked. Unlock it first." % obj)
             return
 

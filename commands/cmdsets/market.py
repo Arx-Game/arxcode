@@ -56,7 +56,7 @@ class OtherMaterial(object):
         stacking = [
             ob
             for ob in caller.contents
-            if ob.typeclass_path == self.path and ob.db.can_stack
+            if ob.typeclass_path == self.path and ob.can_stack
         ]
         if stacking:
             obj = stacking[0]
@@ -406,7 +406,7 @@ class HaggledDeal(object):
 
     def noble_discovery_check(self):
         """Checks if a noble loses fame for haggling"""
-        rank = self.caller.db.social_rank or 10
+        rank = self.caller.item_data.social_rank
         if rank > 6:
             return
         msg = "Engaging in crass mercantile haggling is considered beneath those of high social rank."

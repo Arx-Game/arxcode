@@ -3,9 +3,11 @@
 Admin commands
 
 """
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction, DatabaseError
 from django.db.models import Q, Count, Subquery, OuterRef, IntegerField
 
 from evennia.server.sessionhandler import SESSIONS
@@ -15,12 +17,15 @@ from evennia.objects.models import ObjectDB
 from evennia.server.models import ServerConfig
 from evennia.typeclasses.tags import Tag
 from evennia.scripts.models import ScriptDB
+from evennia_extensions.character_extensions.constants import CHEST_KEY, ROOM_KEY
 
 from server.utils.arx_utils import (
     inform_staff,
     broadcast,
     create_gemit_and_post,
     list_to_string,
+    GOT_GMING_TAG,
+    make_staff_post,
 )
 from server.utils.prettytable import PrettyTable
 from server.utils.exceptions import CommandError
@@ -42,7 +47,11 @@ from world.dominion.models import (
     PrestigeCategory,
 )
 from world.dominion.plots.models import Plot, PlotAction
+from typeclasses.accounts import Account
+from typeclasses.rooms import ArxRoom
 from typeclasses.characters import Character
+from typeclasses.wearable.wearable import WearableContainer
+from typeclasses.containers.container import Container
 
 PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
@@ -67,7 +76,7 @@ class CmdHome(ArxCommand):
         home = caller.home
         room = caller.location
         cscript = room.ndb.combat_manager
-        guards = caller.db.assigned_guards or []
+        guards = caller.guards
         if not caller.check_permstring("builders"):
             if cscript:
                 caller.msg(
@@ -95,7 +104,7 @@ class CmdHome(ArxCommand):
                     if "stationary_guard" not in guard.tags.all():
                         guard.summon()
                 else:
-                    guard.db.docked = home
+                    guard.item_data.pre_offgrid_location = home
             caller.messages.messenger_notification(force=True)
 
 
@@ -1091,6 +1100,7 @@ class CmdGMNotes(ArxCommand):
         @gmnotes/create <tag name>
         @gmnotes/delete <tag name>
         @gmnotes/tag/<classtype>[/remove] <name or #ID>=<tag name>
+        @gmnotes/got_gming [<character>]
     View Usage:
         @gmnotes [<tag name>]
         @gmnotes/plot[/old] [<plot name or #ID>]
@@ -1168,6 +1178,8 @@ class CmdGMNotes(ArxCommand):
                 self.hook_secret_to_plot()
             elif "no_gming" in self.switches:
                 self.list_needy_characters()
+            elif "got_gming" in self.switches:
+                self.mark_got_gming()
             elif self.check_switches(("character", "characters", "char", "chars")):
                 self.list_tagged_characters()
             elif self.check_switches(("revelation", "revelations", "rev", "revs")):
@@ -1558,6 +1570,24 @@ class CmdGMNotes(ArxCommand):
         msg += "\n".join(ob.gm_notes for ob in pc.clues.all())
         self.msg(msg)
 
+    def mark_got_gming(self):
+        if not self.args:
+            characters = ", ".join(
+                Character.objects.filter(db_tags__db_key=GOT_GMING_TAG).values_list(
+                    "db_key", flat=True
+                )
+            )
+            self.msg(f"Characters who have received gming this episode: {characters}")
+            return
+        character = self.caller.search(self.args, global_search=True)
+        if not character:
+            return
+        if character.is_npc:
+            self.msg("That character is an npc.")
+            return
+        character.tags.add(GOT_GMING_TAG)
+        self.msg(f"Marking {character} as having received GMing this episode.")
+
 
 class CmdJournalAdminForDummies(ArxPlayerCommand):
     """
@@ -1785,18 +1815,7 @@ class CmdTransferKeys(ArxPlayerCommand):
             return
         source = source.char_ob
         targ = targ.char_ob
-        s_chest_keys = source.db.chestkeylist or []
-        s_chest_keys = list(s_chest_keys)
-        t_chest_keys = targ.db.chestkeylist or []
-        t_chest_keys = list(t_chest_keys)
-        t_chest_keys.extend(s_chest_keys)
-        targ.db.chestkeylist = list(set(t_chest_keys))
-        s_room_keys = source.db.keylist or []
-        s_room_keys = list(s_room_keys)
-        t_room_keys = targ.db.keylist or []
-        t_room_keys = list(t_room_keys)
-        t_room_keys.extend(s_room_keys)
-        targ.db.keylist = list(set(t_room_keys))
+        source.item_data.transfer_keys(targ)
         self.msg("Keys transferred.")
 
 
@@ -1819,63 +1838,41 @@ class CmdAdminKey(ArxCommand):
 
     def display_keys(self, pc):
         """Displays keys for pc"""
-        chest_keys = pc.db.chestkeylist or []
-        room_keys = pc.db.keylist or []
+        chest_keys = pc.held_keys.filter(key_type=CHEST_KEY)
+        room_keys = pc.held_keys.filter(key_type=ROOM_KEY)
         self.msg(
-            "\n{c%s's {wchest keys:{n %s"
+            "\n|c%s's |wchest keys:|n %s"
             % (pc, ", ".join(str(ob) for ob in chest_keys))
         )
         self.msg(
-            "\n{c%s's {wroom keys:{n %s" % (pc, ", ".join(str(ob) for ob in room_keys))
+            "\n|c%s's |wroom keys:|n %s" % (pc, ", ".join(str(ob) for ob in room_keys))
         )
 
     def func(self):
         """Executes admin_key command"""
-        from typeclasses.rooms import ArxRoom
-        from typeclasses.characters import Character
-        from typeclasses.wearable.wearable import WearableContainer
-        from typeclasses.containers.container import Container
 
         pc = self.caller.search(self.lhs, global_search=True, typeclass=Character)
         if not pc:
             return
-        chest_keys = pc.db.chestkeylist or []
-        room_keys = pc.db.keylist or []
         if not self.rhs:
-            self.display_keys(pc)
-            return
+            return self.display_keys(pc)
         if "room" in self.switches:
-            room = self.caller.search(self.rhs, global_search=True, typeclass=ArxRoom)
-            if not room:
-                return
-            if "add" in self.switches:
-                if room not in room_keys:
-                    room_keys.append(room)
-                    pc.db.keylist = room_keys
-                self.msg("{yAdded.")
-                return
-            if room in room_keys:
-                room_keys.remove(room)
-                pc.db.keylist = room_keys
-            self.msg("{rRemoved.")
-            return
+            return self.add_or_remove_key(pc, ArxRoom)
         if "chest" in self.switches:
-            chest = self.caller.search(
-                self.rhs, global_search=True, typeclass=[Container, WearableContainer]
-            )
-            if not chest:
-                return
-            if "add" in self.switches:
-                if chest not in chest_keys:
-                    chest_keys.append(chest)
-                    pc.db.chestkeylist = chest_keys
-                self.msg("{yAdded.")
-                return
-            if chest in chest_keys:
-                chest_keys.remove(chest)
-                pc.db.chestkeylist = chest_keys
-            self.msg("{rRemoved.")
+            return self.add_or_remove_key(pc, [Container, WearableContainer])
+
+    def add_or_remove_key(self, pc, typeclass):
+        keyed_object = self.caller.search(
+            self.rhs, global_search=True, typeclass=typeclass
+        )
+        if not keyed_object:
             return
+        if "add" in self.switches:
+            pc.item_data.add_room_key(keyed_object)
+            self.msg(f"|yAdded {keyed_object}.")
+        else:
+            pc.item_data.remove_key(keyed_object)
+            self.msg(f"|rRemoved {keyed_object}.")
 
 
 class CmdRelocateExit(ArxCommand):
@@ -1896,7 +1893,6 @@ class CmdRelocateExit(ArxCommand):
 
     def func(self):
         """Executes relocate exit command"""
-        from typeclasses.rooms import ArxRoom
 
         exit_obj = self.caller.search(self.lhs)
         if not exit_obj:
@@ -1925,10 +1921,8 @@ class CmdAdminTitles(ArxPlayerCommand):
 
     def display_titles(self, targ):
         """Displays list of titles for targ"""
-        titles = targ.db.titles or []
-        title_list = [
-            "{w%s){n %s" % (ob[0], ob[1]) for ob in enumerate(titles, start=1)
-        ]
+        titles = targ.character_titles.all()
+        title_list = ["{w%s){n %s" % (ob.id, str(ob)) for ob in titles]
         self.msg("%s's titles: %s" % (targ, "; ".join(title_list)))
 
     def func(self):
@@ -1937,26 +1931,20 @@ class CmdAdminTitles(ArxPlayerCommand):
         if not targ:
             return
         targ = targ.char_ob
-        titles = targ.db.titles or []
+        titles = targ.character_titles.all()
         if not self.rhs:
             self.display_titles(targ)
             return
         if "add" in self.switches:
-            if self.rhs not in titles:
-                titles.append(self.rhs)
-                targ.db.titles = titles
+            if not titles.filter(title__iexact=self.rhs).exists():
+                targ.character_titles.create(title=self.rhs)
             self.display_titles(targ)
             return
         if "remove" in self.switches:
             try:
-                titles.pop(int(self.rhs) - 1)
-            except (ValueError, TypeError, IndexError):
+                titles.get(id=self.rhs).delete()
+            except (ValueError, TypeError, ObjectDoesNotExist):
                 self.msg("Must give a number of a current title.")
-            else:
-                if not titles:
-                    targ.attributes.remove("titles")
-                else:
-                    targ.db.titles = titles
             self.display_titles(targ)
 
 
@@ -2360,13 +2348,13 @@ class CmdAdjust(ArxPlayerCommand):
     Adjust a character's precious things.  *gollum*
 
     Usage:
-        @adjust/material <character>=<material>,<amount>[/<inform msg>]
-        @adjust/resource <character>=<res type>,<amount>[/<inform msg>]
-        @adjust/silver <character>=<amount>[/<inform msg>]
+        @adjust/material <char1>,<char2>,etc.=<material>,<amount>[/<inform msg>]
+        @adjust/resource <char1>,<char2>,etc.=<resource>,<amount>[/<inform msg>]
+        @adjust/silver <char1>,<char2>,etc.=<amount>[/<inform msg>]
 
     Players will receive an inform stating what was adjusted and
     how much they were adjusted.  An optional message can be
-    appended to the inform.
+    appended to the inform and will be sent to each player.
 
     Amount values must be integers.
     """
@@ -2389,18 +2377,11 @@ class CmdAdjust(ArxPlayerCommand):
             self.caller.msg(error)
 
     def do_adjust_material(self):
-        syntax_error = (
-            "Usage: @adjust/material <character>=<material>,<amount>[/<inform msg>]"
-        )
+        # Get names and remove empty strings (from comma typos)
+        name_list = self.lhs.split(",")
+        name_list = [name for name in name_list if name]
 
-        account, char = self._get_character()
-
-        # Extract data from rhs.
-        try:
-            mat_qty, inform_msg = self._get_inform_msg()
-            material_name, qty_str = mat_qty.split(",")
-        except ValueError:
-            raise self.error_class(syntax_error)
+        material_name, qty, inform_msg = self._get_material_rhs()
 
         # Validate material.
         try:
@@ -2410,151 +2391,224 @@ class CmdAdjust(ArxPlayerCommand):
                 f"Could not find a material with the name '{material_name}'."
             )
 
-        # Validate quantity.
-        qty = self._validate_quantity(qty_str)
+        success_list: List[str] = []
+        fail_list: List[str] = []
+        inform_list: List[Account] = []
 
-        # If reducing, verify that character has enough,
-        # otherwise notify caller and end.
-        if qty < 0:
-            on_hand = account.get_material_amt(material)
-            if abs(qty) > on_hand:
-                raise self.error_class(
-                    f"{char} only has {on_hand} of {material} on hand."
-                )
+        # For each player we're adjusting:
+        # - get the account and character (if applicable)
+        # - do the adjustment
+        try:
+            with transaction.atomic():
+                for name in name_list:
+                    account, char = self._get_char_account(name)
+                    if not account or not char:
+                        fail_list.append(name)
+                        continue
+                    success = self._adjust_char_material(char, account, material, qty)
+                    if success:
+                        success_list.append(char.key)
+                        inform_list.append(account)
+                    else:
+                        fail_list.append(char.key)
+        except DatabaseError:
+            # If something went wrong, the database should roll back to no changes.
+            raise self.error_class(
+                "A database error occurred. No players were adjusted."
+            )
 
-        # Give qty material to character.
-        awarded = account.gain_materials(material, qty)
-        if not awarded:
-            raise self.error_class(f"Failed to adjust {char}'s {material}.")
+        player_inform_msg = self._build_player_inform_msg(material, qty, inform_msg)
+        for account in inform_list:
+            account.inform(player_inform_msg, category="Material Adjustment")
 
-        # Build the inform message.
-        adjust_msg = self._build_adjust_message(qty, f"{material}")
-        if inform_msg:
-            full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
-            staff_msg = self._build_staff_message(char, qty, f"{material}", inform_msg)
-        else:
-            full_inform_msg = adjust_msg
-            staff_msg = self._build_staff_message(char, qty, f"{material}", None)
+        # Inform staff channel and caller in that order.
+        if success_list:
+            staff_msg = self._build_staff_message(
+                material, qty, inform_msg, success_list
+            )
+            inform_staff(staff_msg)
 
-        # Inform the player they were awarded this material.
-        account.inform(full_inform_msg, category="Material Adjustment")
+            caller_msg = self._build_caller_message(
+                material, qty, inform_msg, success_list
+            )
+            self.caller.msg(caller_msg)
 
-        # Inform staff of the award.
-        caller_msg = self._build_caller_message(char, qty, f"{material}", inform_msg)
-        self.caller.msg(caller_msg)
-        inform_staff(staff_msg)
+        if fail_list:
+            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}.")
 
     def do_adjust_resource(self):
-        syntax_error = (
-            "Usage: @adjust/resource <character>=<res type>,<amount>[/<inform msg>]"
-        )
+        # Get names and remove empty strings (from comma typos)
+        name_list = self.lhs.split(",")
+        name_list = [name for name in name_list if name]
 
-        account, char = self._get_character()
+        resource, qty, inform_msg = self._get_resource_rhs()
 
-        # Extract data from rhs.
-        try:
-            res_qty, inform_msg = self._get_inform_msg()
-            resource, qty_str = res_qty.split(",")
-        except ValueError:
-            raise self.error_class(syntax_error)
-
+        # Validate resource.
         if resource not in self.RESOURCE_TYPES:
             raise self.error_class(f"{resource.title()} is not a valid resource type.")
 
-        # Validate quantity.
-        qty = self._validate_quantity(qty_str)
+        success_list: List[str] = []
+        fail_list: List[str] = []
+        inform_list: List[Account] = []
 
-        # Verify player has enough if reducting.
-        # If not, tell caller what they have and end.
-        if qty < 0:
-            on_hand = account.get_resource_amt(resource)
-            if abs(qty) > on_hand:
-                raise self.error_class(
-                    f"{char} only has {on_hand} {resource} resources on hand."
-                )
-
-        # Adjust player's resources by the requested amount.
-        adjust_amt = account.gain_resources(resource, qty)
-        if not adjust_amt:
-            raise self.error_class(f"Failed to adjust {char}'s {resource} resources.")
-
-        # Build the inform message.
-        adjust_msg = self._build_adjust_message(adjust_amt, f"{resource} resources")
-        if inform_msg:
-            full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
-            staff_msg = self._build_staff_message(
-                char, adjust_amt, f"{resource} resources", inform_msg
-            )
-        else:
-            full_inform_msg = adjust_msg
-            staff_msg = self._build_staff_message(
-                char, adjust_amt, f"{resource} resources", None
+        # For each player we're adjusting:
+        # - get the account and character (if applicable)
+        # - do the adjustment
+        try:
+            with transaction.atomic():
+                for name in name_list:
+                    account, char = self._get_char_account(name)
+                    if not account or not char:
+                        fail_list.append(name)
+                        continue
+                    success = self._adjust_char_resource(char, account, resource, qty)
+                    if success:
+                        success_list.append(char.key)
+                        inform_list.append(account)
+                    else:
+                        fail_list.append(char.key)
+        except DatabaseError:
+            # If something went wrong, the database should roll back to no changes.
+            raise self.error_class(
+                "A database error occurred. No players were adjusted."
             )
 
-        # Inform the player their resource was adjusted.
-        account.inform(full_inform_msg, category="Resource Adjustment")
-
-        # Inform staff of the award.
-        caller_msg = self._build_caller_message(
-            char, adjust_amt, f"{resource} resources", inform_msg
+        player_inform_msg = self._build_player_inform_msg(
+            f"{resource} resources", qty, inform_msg
         )
-        self.caller.msg(caller_msg)
-        inform_staff(staff_msg)
+        for account in inform_list:
+            account.inform(player_inform_msg, category="Resource Adjustment")
+
+        # Inform staff channel and caller in that order.
+        if success_list:
+            staff_msg = self._build_staff_message(
+                f"{resource} resources", qty, inform_msg, success_list
+            )
+            inform_staff(staff_msg)
+
+            caller_msg = self._build_caller_message(
+                f"{resource} resources", qty, inform_msg, success_list
+            )
+            self.caller.msg(caller_msg)
+
+        if fail_list:
+            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}.")
 
     def do_adjust_silver(self):
-        account, char = self._get_character()
+        # Get names and remove empty strings (from comma typos)
+        name_list = self.lhs.split(",")
+        name_list = [name for name in name_list if name]
 
-        # Extract data from self.rhs
-        qty_str, inform_msg = self._get_inform_msg()
+        qty, inform_msg = self._get_silver_rhs()
 
-        qty = self._validate_quantity(qty_str)
+        success_list: List[str] = []
+        fail_list: List[str] = []
+        inform_list: List[Account] = []
 
-        # If reducing, verify player has enough.
-        if qty < 0:
-            on_hand = int(char.db.currency)
-            if abs(qty) > on_hand:
-                raise self.error_class(f"{char} only has {on_hand} silver on hand.")
+        # For each player we're adjusting:
+        # - get the account and character (if applicable)
+        # - do the adjustment
+        try:
+            with transaction.atomic():
+                for name in name_list:
+                    account, char = self._get_char_account(name)
+                    if not account or not char:
+                        fail_list.append(name)
+                        continue
+                    success = self._adjust_char_silver(char, account, qty)
+                    if success:
+                        success_list.append(char.key)
+                        inform_list.append(account)
+                    else:
+                        fail_list.append(char.key)
+        except DatabaseError:
+            # If something went wrong, the database should roll back to no changes.
+            raise self.error_class(
+                "A database error occurred. No players were adjusted."
+            )
 
-        # Adjust player's silver
-        char.db.currency += qty
+        player_inform_msg = self._build_player_inform_msg("silver", qty, inform_msg)
+        for account in inform_list:
+            account.inform(player_inform_msg, category="Silver Adjustment")
 
-        # Build the inform message.
-        adjust_msg = self._build_adjust_message(qty, "silver")
-        if inform_msg:
-            full_inform_msg = f"{adjust_msg}%r%rMessage: {inform_msg}"
-            staff_msg = self._build_staff_message(char, qty, "silver", inform_msg)
-        else:
-            full_inform_msg = adjust_msg
-            staff_msg = self._build_staff_message(char, qty, "silver", None)
+        # Inform staff channel and caller in that order.
+        if success_list:
+            staff_msg = self._build_staff_message(
+                "silver", qty, inform_msg, success_list
+            )
+            inform_staff(staff_msg)
 
-        # Inform the player their silver was adjusted.
-        account.inform(full_inform_msg, category="Silver Adjustment")
+            caller_msg = self._build_caller_message(
+                "silver", qty, inform_msg, success_list
+            )
+            self.caller.msg(caller_msg)
 
-        # Inform caller and staff of the award.
-        caller_msg = self._build_caller_message(char, qty, "silver", inform_msg)
-        self.caller.msg(caller_msg)
-        inform_staff(staff_msg)
+        if fail_list:
+            self.caller.msg(f"Failed to adjust: {', '.join(fail_list)}.")
 
-    def _get_character(self):
-        account = self.caller.search(self.lhs)
+    def _get_material_rhs(self) -> Tuple[str, int, Optional[str]]:
+        syntax_error = "Usage: @adjust/material <char1>,<char2>,etc.=<material>,<amount>[/<inform msg>]"
+
+        # Extract inform msg if it exists.
+        try:
+            base_str, inform_msg = self.rhs.split("/")
+        except ValueError:
+            base_str = self.rhs
+            inform_msg = None
+
+        # Extract material and amount if able.
+        try:
+            material, qty = base_str.split(",")
+        except ValueError:
+            raise self.error_class(syntax_error)
+
+        # Verify qty is an integer and convert it.
+        qty = self._validate_quantity(qty)
+
+        return material, qty, inform_msg
+
+    def _get_resource_rhs(self) -> Tuple[str, int, Optional[str]]:
+        syntax_error = "Usage: @adjust/resource <char1>,<char2>,etc.=<resource>,<amount>[/<inform msg>]"
+
+        # Extract inform msg if it exists.
+        try:
+            base_str, inform_msg = self.rhs.split("/")
+        except ValueError:
+            base_str = self.rhs
+            inform_msg = None
+
+        # Extract material and amount if able.
+        try:
+            resource, qty = base_str.split(",")
+        except ValueError:
+            raise self.error_class(syntax_error)
+
+        # Verify qty is an integer and convert it.
+        qty = self._validate_quantity(qty)
+
+        return resource, qty, inform_msg
+
+    def _get_silver_rhs(self) -> Tuple[int, Optional[str]]:
+        try:
+            qty, inform_msg = self.rhs.split("/")
+        except ValueError:
+            qty = self.rhs
+            inform_msg = None
+
+        qty = self._validate_quantity(qty)
+
+        return qty, inform_msg
+
+    def _get_char_account(self, name: str) -> Tuple[Account, Character]:
+        account = self.caller.search(name)
         if not account:
-            raise self.error_class("Check spelling and try again.")
+            return None, None
 
         char = account.char_ob
         if not char:
-            raise self.error_class("No active character for that player.")
+            self.caller.msg(f"No active character for player {account}.")
 
         return account, char
-
-    def _get_inform_msg(self) -> Tuple[str, Optional[str]]:
-        """Extracts inform msg from self.rhs if it exists."""
-        try:
-            lhs, msg = self.rhs.split("/", 1)
-        except ValueError:
-            lhs = self.rhs
-            msg = None
-
-        return lhs, msg
 
     def _validate_quantity(self, amount: str) -> int:
         if not amount.lstrip("-").isdigit():
@@ -2562,34 +2616,118 @@ class CmdAdjust(ArxPlayerCommand):
 
         return int(amount)
 
-    def _build_adjust_message(self, qty: int, item: str) -> str:
+    def _build_player_inform_msg(self, item: str, qty: int, inform_msg: str) -> str:
         if qty > 0:
-            return f"You have been awarded {qty} {item}."
+            full_msg = f"You have been awarded {qty} {item}."
         else:
-            return f"You have been deducted {abs(qty)} {item}."
-
-    def _build_staff_message(
-        self, char, qty: int, item: str, inform_msg: Optional[str]
-    ) -> str:
-        if qty > 0:
-            staff_msg = f"{self.caller} has awarded {qty} {item} to {char}."
-        else:
-            staff_msg = f"{self.caller} has deducted {abs(qty)} {item} from {char}."
+            full_msg = f"You have been deducted {abs(qty)} {item}."
 
         if inform_msg:
-            staff_msg = f"{staff_msg} Message sent to player: {inform_msg}"
+            full_msg = f"{full_msg}%r%rMessage: {inform_msg}"
 
-        return staff_msg
+        return full_msg
 
     def _build_caller_message(
-        self, char, qty: int, item: str, inform_msg: Optional[str]
+        self, item, qty: int, inform_msg: str, success_list: List[str]
     ) -> str:
         if qty > 0:
-            caller_msg = f"Awarded {qty} {item} to {char}."
+            caller_msg = f"Awarded {qty} {item} to: {', '.join(success_list)}."
         else:
-            caller_msg = f"Deducted {abs(qty)} {item} from {char}."
+            caller_msg = f"Deducted {abs(qty)} {item} from: {', '.join(success_list)}."
 
         if inform_msg:
-            caller_msg = f"{caller_msg} Message sent to player: {inform_msg}"
+            caller_msg = f"{caller_msg}  Message sent to player(s): {inform_msg}"
 
         return caller_msg
+
+    def _build_staff_message(
+        self, adjust_type, qty: int, inform_msg: str, success_list: List[str]
+    ) -> str:
+        if qty > 0:
+            success_msg = f"{self.caller} awarded {qty} {adjust_type} to: {', '.join(success_list)}."
+        else:
+            success_msg = f"{self.caller} deducted {abs(qty)} {adjust_type} from: {', '.join(success_list)}."
+
+        if inform_msg:
+            success_msg = f"{success_msg}  Message sent to player(s): {inform_msg}"
+
+        return success_msg
+
+    def _adjust_char_material(
+        self, char: Character, account: Account, material, qty: int
+    ) -> bool:
+        if not account or not char:
+            return False
+
+        # If reducing, verify that character has enough.
+        if qty < 0:
+            on_hand = account.get_material_amt(material)
+            if abs(qty) > on_hand:
+                self.caller.msg(f"{char} only has {on_hand} of {material} on hand.")
+                return False
+
+        # Give qty material to character.
+        awarded = account.gain_materials(material, qty)
+
+        return awarded
+
+    def _adjust_char_resource(
+        self, char: Character, account: Account, resource, qty: int
+    ) -> bool:
+        if not account or not char:
+            return False
+
+        # Verify player has enough if reducting.
+        # If not, tell caller what they have and end.
+        if qty < 0:
+            on_hand = account.get_resource_amt(resource)
+            if abs(qty) > on_hand:
+                self.caller.msg(
+                    f"{char} only has {on_hand} {resource} resources on hand."
+                )
+                return False
+
+        # Adjust player's resources by the requested amount.
+        adjust_amt = account.gain_resources(resource, qty)
+        if not adjust_amt:
+            self.caller.msg(f"Failed to adjust {char}'s {resource} resources.")
+            return False
+
+        return True
+
+    def _adjust_char_silver(self, char: Character, account: Account, qty: int) -> bool:
+        if not account or not char:
+            return False
+
+        # If reducing, verify that character has enough.
+        if qty < 0:
+            on_hand = char.db.currency
+            if abs(qty) > on_hand:
+                self.caller.msg(f"{char} only has {on_hand} silver on hand.")
+                return False
+
+        # Increment/decrement silver amount.
+        char.db.currency += qty
+
+        return True
+
+
+class CmdStaffPost(ArxCommand):
+    """
+    staffpost <board>/<title>=<message>
+    """
+
+    key = "staffpost"
+    locks = "cmd: perm(builders)"
+
+    def func(self):
+        try:
+            try:
+                board, title = self.lhs.split("/")
+            except (TypeError, ValueError):
+                raise self.error_class("Please give a board and title.")
+            if not self.rhs:
+                raise self.error_class("Please give a post.")
+            make_staff_post(self.rhs, title, board)
+        except (self.error_class, ObjectDoesNotExist) as err:
+            self.msg(err)

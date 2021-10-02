@@ -399,7 +399,7 @@ class AgentObInline(admin.TabularInline):
         """Displays the player their dbobj Character instance is assigned to, if anyone"""
         if not obj.dbobj:
             return None
-        return obj.dbobj.db.guarding
+        return obj.dbobj.item_data.guarding
 
 
 class TaskRequirementsInline(admin.TabularInline):
@@ -856,6 +856,9 @@ class ArmyAdmin(DomAdmin):
         "domain__name",
         "=owner__player__player__username",
         "owner__organization_owner__name",
+        "=temp_owner__player__player__username",
+        "temp_owner__organization_owner__name",
+        "id",
     )
     inlines = (MilitaryUnitInline,)
     list_filter = (ArmyListFilter,)

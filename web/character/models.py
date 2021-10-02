@@ -146,6 +146,8 @@ class RosterEntry(SharedMemoryModel):
     profile_picture = models.ForeignKey(
         "Photo", blank=True, null=True, on_delete=models.SET_NULL
     )
+    portrait_height = models.PositiveSmallIntegerField(default=480)
+    portrait_width = models.PositiveSmallIntegerField(default=320)
     # going to use for determining how our character page appears
     sheet_style = models.TextField(blank=True)
     lock_storage = models.TextField(
@@ -153,6 +155,10 @@ class RosterEntry(SharedMemoryModel):
     )
     action_points = models.SmallIntegerField(default=100, blank=100)
     show_positions = models.BooleanField(default=False)
+    pose_count = models.PositiveSmallIntegerField(default=0)
+    previous_pose_count = models.PositiveSmallIntegerField(default=0)
+    brief_mode = models.BooleanField(default=False)
+    dice_string = models.TextField(blank=True)
 
     def __init__(self, *args, **kwargs):
         super(RosterEntry, self).__init__(*args, **kwargs)
@@ -444,7 +450,7 @@ class Story(SharedMemoryModel):
     )
     name = models.CharField(blank=True, null=True, max_length=255, db_index=True)
     synopsis = models.TextField(blank=True, null=True)
-    season = models.PositiveSmallIntegerField(default=0, blank=0)
+    season = models.PositiveSmallIntegerField(default=0, blank=True)
     start_date = models.DateTimeField(blank=True, null=True)
     end_date = models.DateTimeField(blank=True, null=True)
 
@@ -652,7 +658,7 @@ class Milestone(SharedMemoryModel):
     participants = models.ManyToManyField(
         "RosterEntry", through="Participant", blank=True
     )
-    importance = models.PositiveSmallIntegerField(default=0, blank=0)
+    importance = models.PositiveSmallIntegerField(default=0, blank=True)
 
     def __str__(self):
         return "%s - %s" % (self.protagonist, self.name)
@@ -663,8 +669,8 @@ class Participant(SharedMemoryModel):
 
     milestone = models.ForeignKey("Milestone", on_delete=models.CASCADE)
     character = models.ForeignKey("RosterEntry", on_delete=models.CASCADE)
-    xp_earned = models.PositiveSmallIntegerField(default=0, blank=0)
-    karma_earned = models.PositiveSmallIntegerField(default=0, blank=0)
+    xp_earned = models.PositiveSmallIntegerField(default=0, blank=True)
+    karma_earned = models.PositiveSmallIntegerField(default=0, blank=True)
     gm_notes = models.TextField(blank=True, null=True)
 
 
@@ -703,7 +709,7 @@ class PlayerAccount(SharedMemoryModel):
     """
 
     email = models.EmailField(unique=True)
-    karma = models.PositiveSmallIntegerField(default=0, blank=0)
+    karma = models.PositiveSmallIntegerField(default=0, blank=True)
     gm_notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
@@ -810,7 +816,7 @@ class AccountHistory(SharedMemoryModel):
         "PlayerAccount", db_index=True, on_delete=models.CASCADE
     )
     entry = models.ForeignKey("RosterEntry", db_index=True, on_delete=models.CASCADE)
-    xp_earned = models.SmallIntegerField(default=0, blank=0)
+    xp_earned = models.SmallIntegerField(default=0, blank=True)
     gm_notes = models.TextField(blank=True, null=True)
     start_date = models.DateTimeField(blank=True, null=True, db_index=True)
     end_date = models.DateTimeField(blank=True, null=True, db_index=True)
@@ -957,24 +963,26 @@ class AbstractPlayerAllocations(SharedMemoryModel):
         help_text="The skill the player chose to use",
     )
     silver = models.PositiveSmallIntegerField(
-        default=0, blank=0, help_text="Additional silver added by the player"
+        default=0, blank=True, help_text="Additional silver added by the player"
     )
     economic = models.PositiveSmallIntegerField(
         default=0,
-        blank=0,
+        blank=True,
         help_text="Additional economic resources added by the player",
     )
     military = models.PositiveSmallIntegerField(
         default=0,
-        blank=0,
+        blank=True,
         help_text="Additional military resources added by the player",
     )
     social = models.PositiveSmallIntegerField(
-        default=0, blank=0, help_text="Additional social resources added by the player"
+        default=0,
+        blank=True,
+        help_text="Additional social resources added by the player",
     )
     action_points = models.PositiveSmallIntegerField(
         default=0,
-        blank=0,
+        blank=True,
         help_text="How many action points spent by player/assistants.",
     )
     roll = models.SmallIntegerField(
@@ -1041,7 +1049,7 @@ class Revelation(SharedMemoryModel):
     )
 
     required_clue_value = models.PositiveSmallIntegerField(
-        default=0, blank=0, help_text="The total value of clues to trigger this"
+        default=100, help_text="The total value of clues to trigger this"
     )
 
     red_herring = models.BooleanField(
@@ -1142,7 +1150,10 @@ class Clue(SharedMemoryModel):
         choices=CLUE_TYPE_CHOICES, default=GAME_LORE
     )
     rating = models.PositiveSmallIntegerField(
-        default=0, blank=0, help_text="Value required to get this clue", db_index=True
+        default=0,
+        blank=True,
+        help_text="Value required to get this clue",
+        db_index=True,
     )
     desc = models.TextField(
         "Description",
@@ -1651,7 +1662,7 @@ class ClueForRevelation(SharedMemoryModel):
     )
     tier = models.PositiveSmallIntegerField(
         default=0,
-        blank=0,
+        blank=True,
         help_text="How high in the hierarchy of discoveries this clue is, "
         + "lower number discovered first",
     )

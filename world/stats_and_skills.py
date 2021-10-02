@@ -127,8 +127,8 @@ def get_skill_cost_increase(caller, additional_cost=0):
     from commands.base_commands import guest
 
     skills = caller.traits.skills
-    srank = caller.db.social_rank or 0
-    age = caller.db.age or 0
+    srank = caller.item_data.social_rank
+    age = caller.item_data.age or 0
     total = 0.0
     for skill in skills:
         # get total cost of each skill

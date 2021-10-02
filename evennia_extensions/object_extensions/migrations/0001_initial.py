@@ -125,6 +125,7 @@ class Migration(migrations.Migration):
                     models.DateTimeField(
                         help_text="If set, this timestamp means an object is marked for deletion.",
                         null=True,
+                        blank=True,
                     ),
                 ),
             ],

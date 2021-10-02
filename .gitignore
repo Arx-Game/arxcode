@@ -70,12 +70,16 @@ venv/
 world/dominion/map/arxmap_generated.png
 world/dominion/map/arxmap_imagemap.html
 world/dominion/map/arxmap_imagesize.cfg
+
+# database temp files
 *.db3-shm
 *.db3-wal
 
 # generated fealty graph
 world/dominion/fealty/fealty_graph.png
 world/dominion/fealty/fealty_graph_full.png
+
+# configuration
 config.env
 settings.ini
 

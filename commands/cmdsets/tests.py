@@ -210,13 +210,13 @@ class CombatCommandsTests(ArxCommandTest):
         self.char2.tags.remove("unattackable")
         self.call_cmd("char2", "You start guarding Char2.")
         self.assertTrue(self.char1 in self.char2.db.defenders)
-        self.assertEqual(self.char1.db.guarding, self.char2)
+        self.assertEqual(self.char1.item_data.guarding, self.char2)
         self.call_cmd(
             "foo",
             "You are currently guarding Char2. To guard someone else, first use +protect/stop.",
         )
         self.call_cmd("/stop", "You stop guarding Char2.")
-        self.assertEqual(self.char1.db.guarding, None)
+        self.assertEqual(self.char1.item_data.guarding, None)
         self.assertEqual(self.char2.db.defenders, None)
 
     def test_cmd_combatstats(self, mock_inform_staff):
@@ -477,7 +477,7 @@ class CombatCommandsTests(ArxCommandTest):
         self.char3.account = self.account3
         self.account3.db._last_puppet = self.char3
         self.char1.db.defenders = [self.char3]
-        self.char3.db.guarding = self.char1
+        self.char3.item_data.guarding = self.char1
         self.char3.combat.autoattack = True
         fight = self.start_fight(self.char1)
         self.call_cmd("", "Could not find ''.|Attack who?")
@@ -916,7 +916,7 @@ class TestMarketCommands(ArxCommandTest):
         self.call_cmd("/accept", "You do not have enough testium to sell.")
         mats.amount = 30
         mats.save()
-        self.char1.db.social_rank = 1
+        self.char1.item_data.social_rank = 1
         self.assetowner.fame = 500
         self.assetowner.save()
         self.call_cmd(

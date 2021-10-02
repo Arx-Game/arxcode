@@ -21,13 +21,14 @@ command, it then summons guards for that player character.
 
 """
 from typeclasses.characters import Character
+from typeclasses.npcs.constants import ANIMAL, SMALL_ANIMAL
 
 from world.stats_and_skills import (
     do_dice_check,
     get_stat_cost,
     get_skill_cost,
 )
-import time
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class Npc(Character):
@@ -38,6 +39,7 @@ class Npc(Character):
 
     ATK_MOD = 30
     DEF_MOD = -30
+    default_autoattack = True
     # ------------------------------------------------
     # PC command methods
     # ------------------------------------------------
@@ -98,7 +100,6 @@ class Npc(Character):
         """
         Called once, when this object is first created.
         """
-        self.db.automate_combat = True
         self.at_init()
 
     def sensing_check(self, difficulty=15, invis=False, allow_wake=False):
@@ -197,6 +198,17 @@ class Npc(Character):
         self.traits.set_other_value(
             "bonus_max_hp", get_hp_bonus(self._get_npc_type(), self._get_quality())
         )
+        # set race based on their type
+        self.set_race_for_ntype(ntype)
+
+    def set_race_for_ntype(self, ntype):
+        if ntype == ANIMAL:
+            race = "animal"
+        elif ntype == SMALL_ANIMAL:
+            race = "small animal"
+        else:
+            race = "human"
+        self.item_data.race = race
 
     @property
     def num_armed_guards(self):
@@ -399,6 +411,13 @@ class MultiNpc(Npc):
 # noinspection PyAttributeOutsideInit
 class AgentMixin(object):
     @property
+    def default_colored_name(self):
+        try:
+            return self.agent.colored_name
+        except ObjectDoesNotExist:
+            return None
+
+    @property
     def desc(self):
         return self.agent.desc
 
@@ -413,15 +432,15 @@ class AgentMixin(object):
         return "{w%s Assigned to:{n %s" % (self.agentob.quantity, guarding_name)
 
     def display(self, caller=None):
-        guarding = self.db.guarding
+        guarding = self.item_data.guarding
         if guarding:
-            guarding_name = self.db.guarding.key
+            guarding_name = self.item_data.guarding.key
         else:
             guarding_name = "None"
         msg = self.assignment_string(guarding_name)
         if not guarding or (caller and guarding == caller.char_ob):
             msg += " {wLocation:{n %s" % (
-                self.location or self.db.docked or "Home Barracks"
+                self.location or self.item_data.pre_offgrid_location or "Home Barracks"
             )
         return msg
 
@@ -448,7 +467,7 @@ class AgentMixin(object):
         # base lock - the 'command' lock string
         lockfunc = ["command: %s", "desc: %s"]
         player_owner = None
-        assigned_char = self.guarding
+        assigned_char = self.item_data.guarding
         owner = self.agentob.agent_class.owner
         if owner.player:
             player_owner = owner.player.player
@@ -478,44 +497,24 @@ class AgentMixin(object):
         When given a Character as targ, we add ourselves to their list of
         guards, saved as an Attribute in the character object.
         """
-        guards = targ.db.assigned_guards or []
-        if self not in guards:
-            guards.append(self)
-        targ.db.assigned_guards = guards
-        self.guarding = targ
+        self.item_data.guarding = targ
         self.setup_locks()
         self.setup_name()
         if self.agentob.quantity < 1:
             self.agentob.quantity = 1
             self.agentob.save()
 
-    @property
-    def guarding(
-        self,  # type: Retainer or Agent
-    ):
-        return self.db.guarding
-
-    @guarding.setter
-    def guarding(
-        self,  # type: Retainer or Agent
-        val,
-    ):
-        if not val:
-            self.attributes.remove("guarding")
-            return
-        self.db.guarding = val
-
     def start_guarding(self, val):
-        self.guarding = val
+        self.item_data.guarding = val
 
     def stop_guarding(
         self,  # type: Retainer or Agent
     ):
-        targ = self.guarding
+        targ = self.item_data.guarding
         if targ:
-            targ.remove_guard(self)
-        self.stop_follow(unassigning=True)
-        self.guarding = None
+            targ.post_remove_guard(self)
+        self.stop_follow()
+        self.item_data.guarding = None
         self.assisted_investigations.update(currently_helping=False)
 
     def lose_agents(self, num, death=False):
@@ -553,61 +552,40 @@ class AgentMixin(object):
     def stop_follow(
         self,  # type: Retainer or Agent
         dismiss=True,
-        unassigning=False,
     ):
         super(AgentMixin, self).stop_follow()
         # if we're not being unassigned, we dock them. otherwise, they're gone
         if dismiss:
-            self.dismiss(dock=not unassigning)
+            self.dismiss()
 
     def summon(
         self,  # type: Retainer or Agent
-        summoner=None,
     ):
         """
         Have these guards appear to defend the character. This should generally only be
         called in a location that permits it, such as their house barracks, or in a
         square close to where the guards were docked.
         """
-        if not summoner:
-            summoner = self.db.guarding
-        loc = summoner.location
-        mapping = {"secret": True}
-        self.move_to(loc, mapping=mapping)
-        self.follow(self.db.guarding)
-        docked_loc = self.db.docked
-        if (
-            docked_loc
-            and docked_loc.db.docked_guards
-            and self in docked_loc.db.docked_guards
-        ):
-            docked_loc.db.docked_guards.remove(self)
-        self.db.docked = None
+        if not self.item_data.guarding:
+            return
+        loc = self.item_data.guarding.location
+        if loc:
+            mapping = {"secret": True}
+            self.move_to(loc, mapping=mapping)
+            self.follow(self.item_data.guarding)
+            self.item_data.pre_offgrid_location = None
 
     def dismiss(
         self,  # type: Retainer or Agent
-        dock=True,
     ):
         """
         Dismisses our guards. If they're not being dismissed permanently, then
         we dock them at the location they last occupied, saving it as an attribute.
         """
-        loc = self.location
-        # being dismissed permanently while gone
-        if not loc:
-            docked = self.db.docked
-            if docked and docked.db.docked_guards and self in docked.db.docked_guards:
-                docked.db.docked_guards.remove(self)
-            return
-        self.db.prelogout_location = loc
-        if dock:
-            self.db.docked = loc
-            docked = loc.db.docked_guards or []
-            if self not in docked:
-                docked.append(self)
-            loc.db.docked_guards = docked
-        loc.msg_contents("%s have been dismissed." % self.name)
-        self.location = None
+        prior_location = self.location
+        self.leave_grid()
+        if prior_location:
+            prior_location.msg_contents("%s have been dismissed." % self.name)
         if self.ndb.combat_manager:
             self.ndb.combat_manager.remove_combatant(self)
 
@@ -617,10 +595,10 @@ class AgentMixin(object):
         try:
             if (
                 self.location
-                and self.db.guarding
-                and self.db.guarding.location == self.location
+                and self.item_data.guarding
+                and self.item_data.guarding.location == self.location
             ):
-                self.follow(self.db.guarding)
+                self.follow(self.item_data.guarding)
         except AttributeError:
             import traceback
 
@@ -727,14 +705,11 @@ class AgentMixin(object):
         return "teaching"
 
     @property
-    def species(
-        self,  # type: Retainer or Agent
-    ):
+    def default_race(self):
         if "animal" in self.agent.type_str:
-            default = "animal"
+            return "animal"
         else:
-            default = "human"
-        return self.db.species or default
+            return "human"
 
     @property
     def owner(self):

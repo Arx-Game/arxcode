@@ -45,8 +45,8 @@ class CmdUseXP(ArxCommand):
     def display_traits(self):
         caller = self.caller
         caller.msg("{wCurrent Teacher:{n %s" % caller.db.trainer)
-        caller.msg("{wUnspent XP:{n %s" % caller.db.xp)
-        caller.msg("{wLifetime Earned XP:{n %s" % caller.db.total_xp)
+        caller.msg("{wUnspent XP:{n %s" % caller.item_data.xp)
+        caller.msg("{wLifetime Earned XP:{n %s" % caller.item_data.total_xp)
         all_stats = ", ".join(Trait.get_valid_stat_names())
         caller.msg("\n{wStat names:{n")
         caller.msg(all_stats)
@@ -85,7 +85,7 @@ class CmdUseXP(ArxCommand):
                 "You cannot transfer more xp than you've earned since playing the character."
             )
             return
-        if amt > self.caller.db.xp:
+        if amt > self.caller.item_data.xp:
             self.msg("You do not have enough xp remaining.")
             return
         self.caller.adjust_xp(-amt)
@@ -93,8 +93,8 @@ class CmdUseXP(ArxCommand):
         self.msg("Transferred %s xp to %s." % (amt, alt))
         history.xp_earned -= amt
         history.save()
-        if self.caller.db.total_xp:
-            self.caller.db.total_xp -= amt
+        if self.caller.item_data.total_xp:
+            self.caller.item_data.total_xp -= amt
 
     # noinspection PyUnresolvedReferences
     def func(self):
@@ -235,10 +235,10 @@ class CmdUseXP(ArxCommand):
                     )
                     caller.msg(msg)
                     return
-            elif cost > caller.db.xp:
+            elif cost > caller.item_data.xp:
                 caller.msg(
                     "Unable to raise %s. The cost is %s, and you have %s xp."
-                    % (args, cost, caller.db.xp)
+                    % (args, cost, caller.item_data.xp)
                 )
                 return
             if stype == "stat":
@@ -249,11 +249,7 @@ class CmdUseXP(ArxCommand):
             if stype == "skill":
                 caller.adjust_xp(-cost)
                 caller.traits.adjust_skill(args)
-                skill_history = caller.db.skill_history or {}
-                spent_list = skill_history.get(args, [])
-                spent_list.append(cost)
-                skill_history[args] = spent_list
-                caller.db.skill_history = skill_history
+                caller.traits.record_skill_purchase(args, cost)
                 caller.msg("You have increased your %s to %s." % (args, current + 1))
                 if current + 1 == 6:  # legendary rating
                     inform_staff("%s has bought a rank 6 of %s." % (caller, args))
@@ -596,8 +592,8 @@ class CmdAdjustSkill(ArxPlayerCommand):
             except (AttributeError, ValueError, TypeError):
                 caller.msg("No player by that name.")
                 return
-            if char.db.xp is None:
-                char.db.xp = 0
+            if char.item_data.xp is None:
+                char.item_data.xp = 0
             if "reset" in self.switches:
                 try:
                     from commands.base_commands.guest import (
@@ -607,12 +603,12 @@ class CmdAdjustSkill(ArxPlayerCommand):
 
                     rhs = self.rhs.lower()
                     setup_voc(char, rhs)
-                    char.db.vocation = rhs
-                    total_xp = char.db.total_xp or 0
+                    char.item_data.vocation = rhs
+                    total_xp = char.item_data.total_xp or 0
                     total_xp = int(total_xp)
-                    xp = XP_BONUS_BY_SRANK[char.db.social_rank]
+                    xp = XP_BONUS_BY_SRANK[char.item_data.social_rank]
                     xp += total_xp
-                    char.db.xp = xp
+                    char.item_data.xp = xp
                     caller.msg(
                         "%s has had their skills and stats set up as a %s."
                         % (char, rhs)
@@ -623,25 +619,20 @@ class CmdAdjustSkill(ArxPlayerCommand):
                     return
         if "refund" in self.switches:
             if not ability:
-                skill_history = char.db.skill_history or {}
                 try:
-                    current = len(char.db.skill_history[self.rhs])
-                    skill_list = skill_history[self.rhs]
-                    cost = skill_list.pop()
-                    skill_history[self.rhs] = skill_list
-                    char.db.skill_history = skill_history
-                except (KeyError, IndexError, TypeError):
-                    try:
-                        current = char.traits.get_skill_value(self.rhs)
-                    except KeyError:
-                        caller.msg("No such skill.")
-                        return
-                    cost = stats_and_skills.cost_at_rank(self.rhs, current - 1, current)
+                    current = char.traits.get_skill_value(self.rhs)
+                except KeyError:
+                    caller.msg("No such skill.")
+                    return
                 if current <= 0:
                     caller.msg("That would give them a negative skill.")
                     return
+                try:
+                    cost = char.traits.remove_last_skill_purchase_record(self.rhs)
+                except ValueError:
+                    cost = stats_and_skills.cost_at_rank(self.rhs, current - 1, current)
                 char.traits.set_skill_value(self.rhs, current - 1)
-                char.db.xp += cost
+                char.item_data.xp += cost
             else:
                 ability_history = char.db.ability_history or {}
                 try:
@@ -660,7 +651,7 @@ class CmdAdjustSkill(ArxPlayerCommand):
                     caller.msg("That would give them a negative rating.")
                     return
                 char.traits.set_ability_value(self.rhs, current - 1)
-                char.db.xp += cost
+                char.item_data.xp += cost
             caller.msg(
                 "%s had %s reduced by 1 and was refunded %s xp."
                 % (char, self.rhs, cost)

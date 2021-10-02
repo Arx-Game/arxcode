@@ -33,11 +33,11 @@
     {% for char in object_list %}
 	  <tr class="{% cycle 'success' 'info' %}">
         <td>{% if char.get_absolute_url %}<a href="{{ char.get_absolute_url }}">{{ char.key }}</a>{% else %}{{ char.key }}{% endif %}</td>
-		<td>{{ char.db.gender }}</td>
-		<td>{{ char.db.age }}</td>
-		<td>{{char.db.concept}}</td>
-		<td>{{char.db.fealty}}</td>
-		<td>{{char.db.social_rank}}</td>
+		<td>{{ char.item_data.gender }}</td>
+		<td>{{ char.item_data.age }}</td>
+		<td>{{char.item_data.concept}}</td>
+		<td>{{char.item_data.fealty}}</td>
+		<td>{{char.item_data.social_rank}}</td>
 		{% if show_hidden %}
 		<td>{% for alt in char.roster.alts %}{% if alt.character.get_absolute_url %}<a href="{{ alt.character.get_absolute_url }}">{{alt}}</a>{% else %}{{ alt }}{% endif %}{% endfor %}</td>
 		{% endif %}

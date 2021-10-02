@@ -4,6 +4,7 @@ General Character commands usually available to all characters
 import time
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 from evennia.server.sessionhandler import SESSIONS
 from evennia.commands.default.account import CmdOOC
@@ -47,9 +48,11 @@ from evennia.utils.utils import (
 from server.utils import arx_utils, prettytable
 from server.utils.exceptions import CommandError
 from commands.base import ArxCommand, ArxPlayerCommand
+from world.dominion.models import RPEvent
 
 AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 1))
 _DEFAULT_WIDTH = settings.CLIENT_DEFAULT_WIDTH
+from world.traits.models import Trait
 
 
 def args_are_currency(args):
@@ -174,7 +177,7 @@ class CmdInventory(ArxCommand):
         else:
             volume = "Volume:{n %s/%s" % (char.used_capacity, char.item_data.capacity)
             string = "{w%s carrying (%s{w):%s" % (basemsg, volume, items)
-        xp = char.db.xp or 0
+        xp = char.item_data.xp or 0
         ap = 0
         max_ap = 0
         ap_regen = 0
@@ -284,9 +287,9 @@ class CmdGet(ArxCommand):
             # noinspection PyAttributeOutsideInit
             if not container_obj:
                 raise CommandError("Could not get anything.")
-            elif not (container_obj.db.container or container_obj.dead):
+            elif not container_obj.is_container:
                 raise CommandError("That is not a container.")
-            elif container_obj.db.locked and not self.caller.check_permstring(
+            elif container_obj.item_data.is_locked and not self.caller.check_permstring(
                 "builders"
             ):
                 raise CommandError(
@@ -443,11 +446,13 @@ class CmdEmit(ArxCommand):
       @emit[/switches] [<obj>, <obj>, ... =] <message>
       @remit           [<obj>, <obj>, ... =] <message>
       @pemit           [<obj>, <obj>, ... =] <message>
+      @stemit           <message>
 
     Switches:
       room : limit emits to rooms only (default)
       players : limit emits to players only
       contents : send to the contents of matched objects too
+      stories : send to all current GM events
 
     Emits a message to the selected objects or to
     your immediate surroundings. If the object is a room,
@@ -457,7 +462,7 @@ class CmdEmit(ArxCommand):
     """
 
     key = "@emit"
-    aliases = ["@pemit", "@remit", "\\\\"]
+    aliases = ["@pemit", "@remit", "\\\\", "@stemit"]
     locks = "cmd:all()"
     help_category = "Social"
     perm_for_switches = "Builders"
@@ -499,27 +504,33 @@ class CmdEmit(ArxCommand):
         rooms_only = "rooms" in self.switches
         players_only = "players" in self.switches
         send_to_contents = "contents" in self.switches
+        events_only = "story" in self.switches
         perm = self.perm_for_switches
         normal_emit = False
+        has_perms = caller.check_permstring(perm)
 
         # we check which command was used to force the switches
-        if (
-            self.cmdstring == "@remit" or self.cmdstring == "@pemit"
-        ) and not caller.check_permstring(perm):
+        cmdstring = self.cmdstring.lstrip("@").lstrip("+")
+        if (cmdstring in ("remit", "pemit", "stemit")) and not caller.check_permstring(
+            perm
+        ):
             caller.msg("Those options are restricted to GMs only.")
             return
         self.caller.posecount += 1
-        if self.cmdstring == "@remit":
+        if cmdstring == "remit":
             rooms_only = True
             send_to_contents = True
-        elif self.cmdstring == "@pemit":
+        elif cmdstring == "pemit":
             players_only = True
+        elif cmdstring == "stemit":
+            events_only = True
 
         if not caller.check_permstring(perm):
             rooms_only = False
             players_only = False
+            events_only = False
 
-        if not self.rhs or not caller.check_permstring(perm):
+        if not self.rhs or not has_perms:
             message = args
             normal_emit = True
             objnames = []
@@ -532,9 +543,29 @@ class CmdEmit(ArxCommand):
             else:
                 objnames = [x.key for x in caller.location.contents if x.player]
         if do_global:
-            do_global = caller.check_permstring(perm)
+            do_global = has_perms
+        if events_only:
+            from datetime import datetime
+
+            events = RPEvent.objects.filter(
+                finished=False, gm_event=True, date__lte=datetime.now()
+            )
+            for event in events:
+                obj = event.location
+                if not obj:
+                    continue
+                obj.msg_contents(
+                    message, from_obj=caller, kwargs={"options": {"is_pose": True}}
+                )
+                caller.msg("Emitted to event %s and contents:\n%s" % (event, message))
+            return
         # normal emits by players are just sent to the room
         if normal_emit:
+            if not has_perms and caller.location.check_poses_squelched():
+                caller.msg(
+                    "Poses are currently temporarily squelched by staff. Please try again when permitted."
+                )
+                return
             gms = [
                 ob for ob in caller.location.contents if ob.check_permstring("builders")
             ]
@@ -543,7 +574,7 @@ class CmdEmit(ArxCommand):
                 for ob in caller.location.contents
                 if "emit_label" in ob.tags.all() and ob.player
             ]
-            gm_msg = "{w[{c%s{w]{n %s" % (caller.name, message)
+            gm_msg = "{w({c%s{w){n %s" % (caller.name, message)
             caller.location.msg_contents(
                 gm_msg, from_obj=caller, options={"is_pose": True}, gm_msg=True
             )
@@ -664,6 +695,11 @@ class CmdPose(ArxCommand):
         elif not self.args:
             self.msg("What do you want to do?")
         else:
+            if self.caller.location.check_poses_squelched():
+                self.msg(
+                    "Poses are currently temporarily squelched by staff. Please try again when permitted."
+                )
+                return
             self.caller.location.msg_action(
                 self.caller, self.args, options={"is_pose": True}
             )
@@ -745,7 +781,7 @@ class CmdWho(ArxPlayerCommand):
         if lname and not sparse:
             char = player.char_ob
             if char:
-                base = char.db.longname or base
+                base = char.item_data.longname or base
         if player.db.afk:
             base += " {w(AFK){n"
         if player.db.lookingforrp:
@@ -770,7 +806,7 @@ class CmdWho(ArxPlayerCommand):
             return "(LRP)" in pname
         if self.args.lower() == "staff":
             return "(Staff)" in pname
-        if self.args.lower() == fealty.lower():
+        if self.args.lower() == str(fealty).lower():
             return True
         return base.lower().startswith(self.args.lower())
 
@@ -850,10 +886,10 @@ class CmdWho(ArxPlayerCommand):
                 if "watch" in self.switches and char not in watch_list:
                     already_counted.append(pc)
                     continue
-                if not char or not char.db.fealty:
+                if not char or not char.item_data.fealty:
                     fealty = "---"
                 else:
-                    fealty = char.db.fealty
+                    fealty = char.item_data.fealty
                 if not self.check_filters(pname, base, fealty):
                     already_counted.append(pc)
                     continue
@@ -919,10 +955,10 @@ class CmdWho(ArxPlayerCommand):
                     if "watch" in self.switches and char not in watch_list:
                         already_counted.append(pc)
                         continue
-                    if not char or not char.db.fealty:
+                    if not char or not char.item_data.fealty:
                         fealty = "---"
                     else:
-                        fealty = char.db.fealty
+                        fealty = str(char.item_data.fealty)
                     if not self.check_filters(pname, base, fealty):
                         already_counted.append(pc)
                         continue
@@ -967,67 +1003,68 @@ class CmdArxSetAttribute(CmdSetAttribute):
 
     def func(self):
         """Implement the set attribute - a limited form of @py."""
-
-        caller = self.caller
-        if not self.args:
-            caller.msg("Usage: @set obj/attr = value. Use empty value to clear.")
-            return
-
-        # get values prepared by the parser
-        value = self.rhs
-        objname = self.lhs_objattr[0]["name"]
-        attrs = self.lhs_objattr[0]["attrs"]
-
-        obj = self.search_for_obj(objname)
-        if not obj:
-            return
-
-        if not self.check_obj(obj):
-            return
-
-        result = []
-        if "edit" in self.switches:
-            # edit in the line editor
-            if len(attrs) > 1:
-                caller.msg(
-                    "The Line editor can only be applied " "to one attribute at a time."
-                )
+        try:
+            caller = self.caller
+            if not self.args:
+                caller.msg("Usage: @set obj/attr = value. Use empty value to clear.")
                 return
-            self.edit_handler(obj, attrs[0])
-            return
-        if not value:
-            if self.rhs is None:
-                # no = means we inspect the attribute(s)
-                if not attrs:
-                    attrs = [attr.key for attr in obj.attributes.all()]
-                for attr in attrs:
-                    if not self.check_attr(obj, attr):
-                        continue
-                    result.append(self.view_attr(obj, attr))
-                # we view it without parsing markup.
-                self.msg("".join(result).strip(), options={"raw": True})
+
+            # get values prepared by the parser
+            value = self.rhs
+            objname = self.lhs_objattr[0]["name"]
+            attrs = self.lhs_objattr[0]["attrs"]
+
+            obj = self.search_for_obj(objname)
+            if not obj:
                 return
+
+            if not self.check_obj(obj):
+                return
+
+            result = []
+            if "edit" in self.switches:
+                # edit in the line editor
+                if len(attrs) > 1:
+                    caller.msg(
+                        "The Line editor can only be applied "
+                        "to one attribute at a time."
+                    )
+                    return
+                self.edit_handler(obj, attrs[0])
+                return
+            if not value:
+                if self.rhs is None:
+                    # no = means we inspect the attribute(s)
+                    if not attrs:
+                        attrs = [attr.key for attr in obj.attributes.all()]
+                    for attr in attrs:
+                        if not self.check_attr(obj, attr):
+                            continue
+                        result.append(self.view_attr(obj, attr))
+                    # we view it without parsing markup.
+                    self.msg("".join(result).strip(), options={"raw": True})
+                    return
+                else:
+                    # deleting the attribute(s)
+                    for attr in attrs:
+                        if not self.check_attr(obj, attr):
+                            continue
+                        result.append(self.rm_attr(obj, attr))
             else:
-                # deleting the attribute(s)
+                # setting attribute(s). Make sure to convert to real Python type before saving.
                 for attr in attrs:
                     if not self.check_attr(obj, attr):
                         continue
-                    result.append(self.rm_attr(obj, attr))
-        else:
-            # setting attribute(s). Make sure to convert to real Python type before saving.
-            for attr in attrs:
-                if not self.check_attr(obj, attr):
-                    continue
-                value = _convert_from_string(self, value)
-                result.append(self.set_attr(obj, attr, value))
-        # send feedback
-        msg = "".join(result).strip("\n")
-        caller.msg(msg)
-        arx_utils.inform_staff("Building command by %s: %s" % (caller, msg))
+                    value = _convert_from_string(self, value)
+                    result.append(self.set_attr(obj, attr, value))
+            # send feedback
+            msg = "".join(result).strip("\n")
+            caller.msg(msg)
+            arx_utils.inform_staff("Building command by %s: %s" % (caller, msg))
+        except ValidationError as err:
+            self.msg(err)
 
     def set_attr(self, obj, attr, value):
-        from world.traits.models import Trait
-
         trait = Trait.get_instance_by_name(attr)
         if trait:
             obj.traits.set_trait_value(trait.get_trait_type_display(), attr, value)
@@ -1637,14 +1674,14 @@ class CmdArxExamine(CmdExamine):
                 obj = caller.location
                 if not obj.access(caller, "examine"):
                     # If we don't have special info access, just look at the object instead.
-                    self.msg(caller.at_look(obj))
+                    caller.msg(caller.at_look(obj))
                     return
                 # using callback for printing result whenever function returns.
                 get_and_merge_cmdsets(
-                    obj, self.session, self.player, obj, "object"
+                    obj, self.session, self.account, obj, "object", self.raw_string
                 ).addCallback(get_cmdset_callback)
             else:
-                self.msg("You need to supply a target to examine.")
+                caller.msg("You need to supply a target to examine.")
             return
 
         # we have given a specific target object
@@ -1675,13 +1712,19 @@ class CmdArxExamine(CmdExamine):
             if not obj.access(caller, "examine"):
                 # If we don't have special info access, just look
                 # at the object instead.
-                self.msg(caller.at_look(obj))
+                caller.msg(caller.at_look(obj))
                 continue
 
             if obj_attrs:
                 for attrname in obj_attrs:
                     # we are only interested in specific attributes
-                    caller.msg(self.format_attributes(obj, attrname, crop=False))
+                    ret = "\n".join(
+                        f"{self.header_color}{header}|n:{value}"
+                        for header, value in self.format_attributes(
+                            obj, attrname, crop=False
+                        ).items()
+                    )
+                    caller.msg(ret)
             else:
                 if obj.sessions.count():
                     mergemode = "session"
@@ -1693,6 +1736,19 @@ class CmdArxExamine(CmdExamine):
                 get_and_merge_cmdsets(
                     obj, self.session, self.account, obj, mergemode, self.raw_string
                 ).addCallback(get_cmdset_callback)
+
+    def format_attributes(self, obj, attrname=None, crop=True):
+        if not attrname:
+            return super().format_attributes(obj, attrname, crop)
+        trait = Trait.get_instance_by_name(attrname)
+        if trait:
+            value = obj.traits.get_value_by_trait(trait)
+            return {"Trait": f"\n {attrname} = {value}"}
+        # check for item_data value
+        if hasattr(obj.item_data, attrname):
+            value = getattr(obj.item_data, attrname)
+            return {"Item Data": f"\n {attrname} = {value}"}
+        return super().format_attributes(obj, attrname, crop)
 
 
 class CmdArxDestroy(CmdDestroy):

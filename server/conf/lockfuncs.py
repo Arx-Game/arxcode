@@ -201,29 +201,18 @@ def roomkey(accessing_obj, accessed_obj, *args, **kwargs):
     if not args:
         return False
     roomid = int(args[0])
-    keylist = accessing_obj.db.keylist or []
-    valid = [ob for ob in keylist if hasattr(ob, "tags")]
-    keylist = [room.id for room in valid]
-    if valid:
-        accessing_obj.db.keylist = valid
-    return roomid in keylist
+    try:
+        return accessing_obj.item_data.has_key_by_id(roomid)
+    except AttributeError:
+        return False
 
 
 # noinspection PyUnusedLocal
 def chestkey(accessing_obj, accessed_obj, *args, **kwargs):
     """
-    A key to a chest. Needs to be stored in a different attr than
-    roomkey for display purposes, so separate lockfunc is required.
+    A key to a chest. An alias for roomkey, functionally identical now.
     """
-    if not args:
-        return False
-    chestid = int(args[0])
-    keylist = accessing_obj.db.chestkeylist or []
-    valid = [ob for ob in keylist if hasattr(ob, "tags")]
-    keylist = [chest.id for chest in valid]
-    if valid:
-        accessing_obj.db.chestkeylist = valid
-    return chestid in keylist
+    return roomkey(accessing_obj, accessed_obj, *args, **kwargs)
 
 
 # noinspection PyBroadException
