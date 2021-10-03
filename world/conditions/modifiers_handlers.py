@@ -84,6 +84,6 @@ class ModifierHandler(object):
 
         # get stats and skills for our check
         base = self.get_total_roll_modifiers(
-            check.get_stats_list(), check.get_skills_list()
+            check.get_stats_list(self.obj), check.get_skills_list(self.obj)
         )
         return StatWeight.get_weighted_value_for_knack(base)

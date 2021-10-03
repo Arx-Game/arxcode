@@ -11,6 +11,7 @@ from typing import Dict, List, TYPE_CHECKING
 
 from typeclasses.exceptions import UnknownCheckError
 from world.conditions.constants import SERIOUS_WOUND, PERMANENT_WOUND
+from world.stat_checks.constants import ATTACK_CHECK
 from world.stats_and_skills import (
     _parent_abilities_,
     DOM_SKILLS,

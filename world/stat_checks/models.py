@@ -19,6 +19,7 @@ from world.stat_checks.constants import (
     HEAL_AND_CURE_WOUND,
     HEAL_UNCON_HEALTH,
     AUTO_WAKE,
+    ATTACK_SYSTEM,
 )
 
 
@@ -325,7 +326,9 @@ class StatCheck(NameLookupModel):
 
     # the system used by this stat check
     dice_system = models.ForeignKey(
-        "StatCombination", on_delete=models.PROTECT, related_name="stat_checks"
+        "StatCombination",
+        on_delete=models.PROTECT,
+        related_name="stat_checks",
     )
     description = models.TextField(blank=True)
     public = models.BooleanField(default=True)
@@ -361,11 +364,11 @@ class StatCheck(NameLookupModel):
         rules.sort(key=lambda x: x.situation.value, reverse=True)
         return rules
 
-    def get_stats_list(self) -> List[str]:
-        return self.dice_system.get_stats_list()
+    def get_stats_list(self, character) -> List[str]:
+        return self.dice_system.get_stats_list(character)
 
-    def get_skills_list(self) -> List[str]:
-        return self.dice_system.get_skills_list()
+    def get_skills_list(self, character) -> List[str]:
+        return self.dice_system.get_skills_list(character)
 
     def should_trigger(self, character, **kwargs):
         for rule in self.triggers:
@@ -431,6 +434,10 @@ class StatCombination(SharedMemoryModel):
         (USE_HIGHEST, "Use the Highest Value"),
         (USE_LOWEST, "Use the Lowest Value"),
     )
+    DYNAMIC_SYSTEM_CHOICES = (
+        (NONE, "Not a dynamic system"),
+        (ATTACK_SYSTEM, "Character Attack System"),
+    )
     combined_into = models.ForeignKey(
         "self",
         on_delete=models.PROTECT,
@@ -451,6 +458,10 @@ class StatCombination(SharedMemoryModel):
         null=True,
         help_text="If defined, value is random between flat value and this ceiling.",
         blank=True,
+    )
+    dynamic_system = models.PositiveSmallIntegerField(
+        choices=DYNAMIC_SYSTEM_CHOICES,
+        default=NONE,
     )
 
     def clean(self):
@@ -489,9 +500,14 @@ class StatCombination(SharedMemoryModel):
         return list(self.stat_checks.all())
 
     def get_value_for_stat_combinations(
-        self, character: "Character", new_check: bool = False
+        self,
+        character: "Character",
+        new_check: bool = False,
     ) -> int:
         values = []
+        if self.dynamic_system == ATTACK_SYSTEM:
+            # add total to character from values
+            values.append(character.combat.get_total_for_attack_check())
         for trait in self.cached_traits_in_combination:
             values.append(trait.get_roll_value_for_character(character, new_check))
         for combination in self.cached_child_combinations:
@@ -519,22 +535,40 @@ class StatCombination(SharedMemoryModel):
             traits.extend(child.get_all_traits())
         return traits
 
-    def get_stats_list(self) -> List[str]:
+    def get_stats_list(self, character) -> List[str]:
+        extra_stats = []
+        if self.dynamic_system == ATTACK_SYSTEM:
+            extra_stats = [character.combat.get_system_for_current_attack().attack_stat]
         return [
             trait.name.lower()
             for trait in self.get_all_traits()
             if trait.trait_type == trait.STAT
-        ]
+        ] + extra_stats
 
-    def get_skills_list(self) -> List[str]:
+    def get_skills_list(self, character) -> List[str]:
+        extra_skills = []
+        if self.dynamic_system == ATTACK_SYSTEM:
+            extra_skills = [
+                character.combat.get_system_for_current_attack().attack_skill
+            ]
         return [
             trait.name.lower()
             for trait in self.get_all_traits()
             if trait.trait_type == trait.SKILL
-        ]
+        ] + extra_skills
 
     def __str__(self):
+        return self.display_system_for_character()
+
+    def display_system_for_character(self, character=None):
         children = self.cached_child_combinations + self.cached_traits_in_combination
+        if self.dynamic_system == ATTACK_SYSTEM:
+            if character:
+                children += (
+                    character.combat.get_system_for_current_attack().all_traits()
+                )
+            else:
+                children.append(self.get_dynamic_system_display())
         child_strings = sorted([str(ob) for ob in children])
         base = f"{self.get_combination_type_display()}: [{', '.join(child_strings)}]"
         if self.random_ceiling:
