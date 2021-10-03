@@ -332,6 +332,7 @@ class StatCheck(NameLookupModel):
     )
     description = models.TextField(blank=True)
     public = models.BooleanField(default=True)
+    category = models.CharField(blank=True, max_length=50, default="general")
 
     @CachedProperty
     def cached_difficulty_rules(self):
