@@ -249,7 +249,7 @@ class CmdStatCheck(ArxCommand):
         if chance:
             rank_str += f" ({chance}% for {rank.id + 1})"
         msg = f"|wCheck:|n {check}\n"
-        msg += f"|wSystem:|n |c{check.dice_system}|n\n"
+        msg += f"|wSystem:|n |c{check.dice_system.display_system_for_character(self.caller)}|n\n"
         msg += f"|wTotal:|n {value} |wRank:|n {rank_str}\n"
         breakdown = ", ".join(f"{key}: {val}" for key, val in totals.items())
         msg += f"|wValues: {breakdown}"

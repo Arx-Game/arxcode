@@ -4,6 +4,7 @@ PERMANENT_WOUND_SAVE = "permanent wound save"
 RECOVERY_CHECK = "recovery check"
 RECOVERY_TREATMENT = "recovery treatment"
 REVIVE_TREATMENT = "revive treatment"
+ATTACK_CHECK = "attack check"
 
 (
     NONE,
@@ -19,3 +20,5 @@ REVIVE_TREATMENT = "revive treatment"
 
 HEAL_EFFECTS = (HEAL, HEAL_AND_CURE_WOUND)
 REVIVE_EFFECTS = (HEAL_UNCON_HEALTH, AUTO_WAKE)
+
+ATTACK_SYSTEM = 1

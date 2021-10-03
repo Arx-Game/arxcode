@@ -10,6 +10,7 @@ from world.stat_checks.models import (
     NaturalRollType,
     StatWeight,
     StatCheckOutcome,
+    DifficultyTable,
 )
 from world.stat_checks.utils import get_check_by_name
 from world.traits.models import Trait
@@ -245,6 +246,40 @@ class TestCheckCommands(ArxCommandTest):
         # tie
         roll2.result_value = 15
         self.assertEqual(roll1, roll2)
+
+
+class NewCheckCommands(ArxCommandTest):
+    def test_check_consider(self):
+        self.setup_cmd(check_commands.CmdStatCheck, self.char1)
+        self.call_cmd(
+            "/consider attack check",
+            "Check: attack check\n"
+            "System: Add Values Together: [brawl, dexterity]\n"
+            "Total: 0 Rank: 0\n"
+            "Values: trait_values: 0",
+        )
+        self.char1.traits.set_stat_value("dexterity", 5)
+        self.char1.traits.set_skill_value("brawl", 5)
+        self.call_cmd(
+            "/consider attack check",
+            "Check: attack check\n"
+            "System: Add Values Together: [brawl, dexterity]\n"
+            "Total: 100 Rank: 5\n"
+            "Values: trait_values: 100",
+        )
+        # values empty because other test wipes them
+        self.call_cmd(
+            "/consider attack check=8",
+            "Difficulty Table for attack check vs rank Boss II (8): Challenging + 3\n"
+            "Values:\n"
+            "  [Min Roll: 1 Result: simply outclassed]\n"
+            "  [Min Roll: 3 Result: catastrophically fails]\n"
+            "  [Min Roll: 9 Result: fails]\n"
+            "  [Min Roll: 61 Result: marginally fails]\n"
+            "  [Min Roll: 75 Result: marginally successful]\n"
+            "  [Min Roll: 89 Result: successful]\n"
+            "  [Min Roll: 99 Result: spectacularly successful]",
+        )
 
 
 # This test must be run with migrations.

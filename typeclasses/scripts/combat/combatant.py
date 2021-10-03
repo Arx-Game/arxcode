@@ -6,6 +6,7 @@ by the combat_script when they join a fight.
 from typeclasses.scripts.combat import combat_settings
 from typeclasses.scripts.combat.combat_settings import CombatError
 from world.stats_and_skills import do_dice_check
+from dataclasses import dataclass
 
 
 # noinspection PyAttributeOutsideInit
@@ -521,3 +522,43 @@ class CombatHandler(object):
         self.char.msg("Stance changed to %s." % new_stance)
         self.stance = new_stance
         self.changed_stance = True
+
+    def get_system_for_current_attack(self):
+        """
+        Based on the character's current attack (equipped weapon), generate a system
+        for them.
+        """
+        return AttackProfile(
+            attack_stat=self.attack_stat, attack_skill=self.attack_skill
+        )
+
+    def get_total_for_attack_check(self):
+        from world.stat_checks.models import StatWeight
+
+        value = 0
+        if self.attack_stat:
+            stat_only = not self.attack_skill
+            level = self.char.traits.get_stat_value(self.attack_stat)
+            value += StatWeight.get_weighted_value_for_stat(level, stat_only, True)
+        if self.attack_skill:
+            level = self.char.traits.get_skill_value(self.attack_skill)
+            value += StatWeight.get_weighted_value_for_skill(level, True)
+        return value
+
+
+@dataclass
+class AttackProfile:
+    """
+    Eventually will use this to represent how someone attacks, which can vary
+    based on the weapon they have equipped. Currently used to simulate a DiceSystem
+    generated dynamically from the character's current attack.
+    """
+
+    attack_skill: str
+    attack_stat: str
+
+    def __str__(self):
+        return f"Add Values Together: [{self.attack_stat}, {self.attack_skill}]"
+
+    def all_traits(self):
+        return [self.attack_stat, self.attack_skill]

@@ -252,7 +252,8 @@ class DefinedRoll(SimpleRoll):
         try:
             mods: ModifierHandler = self.character.mods
             base = mods.get_total_roll_modifiers(
-                self.check.get_stats_list(), self.check.get_skills_list()
+                self.check.get_stats_list(self.character),
+                self.check.get_skills_list(self.character),
             )
         except AttributeError:
             return 0
