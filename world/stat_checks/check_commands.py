@@ -1,12 +1,14 @@
 from typing import Dict
 
 from commands.base import ArxCommand
+from evennia.utils.evtable import EvTable
 from typeclasses.exceptions import UnknownCheckError
 from world.stat_checks.models import (
     DifficultyRating,
     DamageRating,
     CheckRank,
     DifficultyTable,
+    StatCheck,
 )
 from world.traits.models import Trait
 from world.stat_checks.check_maker import (
@@ -47,6 +49,7 @@ class CmdStatCheck(ArxCommand):
         @check/retainer <id/name>/<stat> [+ <skill>] at <difficulty rating>
             [=<player1>,<player2>,etc.]
         @check/consider [<check name>]=[<rank>]
+        @check/view <check name>
 
     Normal check is at a difficulty rating. Rating must be one of 
     {difficulty_ratings}.
@@ -68,6 +71,8 @@ class CmdStatCheck(ArxCommand):
                 return self.do_retainer_check()
             if "consider" in self.switches:
                 return self.consider_checks()
+            if "view" in self.switches:
+                return self.view_check()
             if self.rhs:
                 return self.do_private_check()
             return self.do_normal_check()
@@ -249,7 +254,7 @@ class CmdStatCheck(ArxCommand):
         if chance:
             rank_str += f" ({chance}% for {rank.id + 1})"
         msg = f"|wCheck:|n {check}\n"
-        msg += f"|wSystem:|n |c{check.dice_system}|n\n"
+        msg += f"|wSystem:|n |c{check.dice_system.display_system_for_character(self.caller)}|n\n"
         msg += f"|wTotal:|n {value} |wRank:|n {rank_str}\n"
         breakdown = ", ".join(f"{key}: {val}" for key, val in totals.items())
         msg += f"|wValues: {breakdown}"
@@ -276,6 +281,29 @@ class CmdStatCheck(ArxCommand):
         )
         msg += f"|wValues:|n\n{values}"
         self.msg(msg)
+
+    def view_check(self):
+        if not self.args:
+            return self.list_all_checks()
+        check: StatCheck = self.caller.traits.get_check_by_name(self.args)
+        msg = f"|wName|n: {check.name}\n"
+        msg += f"|wDescription|n: {check.description}\n"
+        msg += (
+            f"|wSystem|n: {check.dice_system.display_system_for_character(self.caller)}"
+        )
+        self.msg(msg)
+
+    def list_all_checks(self):
+        checks = self.caller.traits.known_checks
+        self.msg("|wAll checks:|n")
+        table = EvTable("|wName", "|wCategory", "|wSystem", width=78, border="cells")
+        for check in checks:
+            table.add_row(
+                check.name,
+                check.category,
+                check.dice_system.display_system_for_character(self.caller),
+            )
+        self.msg(str(table))
 
 
 class CmdHarm(ArxCommand):
