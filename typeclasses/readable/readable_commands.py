@@ -219,8 +219,6 @@ class CmdRead(ArxCommand):
     def func(self):
         try:
             book = self.search(self.lhs)
-            if not book:
-                return
             try:
                 chapter = book.get_chapter(self.rhs)
             except AttributeError:
@@ -234,5 +232,5 @@ class CmdRead(ArxCommand):
                     "That chapter is written in a language you don't understand."
                 )
             arx_more.msg(self.caller, chapter.get_chapter_text())
-        except ChapterNotFoundError as err:
+        except (ChapterNotFoundError, self.error_class) as err:
             self.msg(err)
