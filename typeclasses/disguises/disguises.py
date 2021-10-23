@@ -4,6 +4,7 @@ Disguises and Masks
 from typeclasses.wearable.wearable import Wearable, EquipError
 from typeclasses.consumable.consumable import Consumable
 from world.crafting.craft_data_handlers import MaskDataHandler
+from evennia.utils.logger import log_file
 
 
 class Mask(Wearable):
@@ -33,23 +34,17 @@ class Mask(Wearable):
 
     def at_post_wear(self, wearer):
         """Hook called after wearing succeeds."""
+        self.log_mask(wearer)
         self.wear_mask(wearer)
-        self.degrade_mask()
         if wearer.item_data.additional_desc:
             wearer.msg(
                 "{yYou currently have a +tempdesc set, which you may want to remove with +tempdesc.{n"
             )
         super(Mask, self).at_post_wear(wearer)
 
-    def degrade_mask(self):
-        """Mirrormasks and GM masks don't need repairs, but others will."""
-        if not self.tags.get("mirrormask"):
-            # set attr if it's not set to avoid errors
-            if self.item_data.quality_level is None:
-                self.item_data.quality_level = 0
-            # Negative quality level or above 10 are infinite-use
-            elif 0 < self.item_data.quality_level < 11:
-                self.item_data.quality_level -= 1
+    def log_mask(self, wearer):
+        """Logging players using masks to keep track of shennigans"""
+        log_file(f"{wearer} ({wearer.id}) put on {self} ({self.id})", "player_masks.log")
 
     def wear_mask(self, wearer):
         """Change the visible identity of our wearer."""
