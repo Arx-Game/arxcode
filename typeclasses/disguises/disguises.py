@@ -44,7 +44,9 @@ class Mask(Wearable):
 
     def log_mask(self, wearer):
         """Logging players using masks to keep track of shennigans"""
-        log_file(f"{wearer} ({wearer.id}) put on {self} ({self.id})", "player_masks.log")
+        log_file(
+            f"{wearer} ({wearer.id}) put on {self} ({self.id})", "player_masks.log"
+        )
 
     def wear_mask(self, wearer):
         """Change the visible identity of our wearer."""
