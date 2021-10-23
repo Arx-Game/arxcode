@@ -77,7 +77,6 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
         )
         # also to prevent ties
         self.mask1.item_data.worn_time += 10
-        self.assertEqual(self.mask1.item_data.quality_level, 7)
         self.assertEqual(self.char2.fakename, "Someone wearing A Fox Mask")
         self.assertEqual(self.char2.temp_desc, "A very Slyyyy Fox...")
         self.mask1.tags.add("mirrormask")  # final test re-checks quality level
@@ -202,4 +201,3 @@ class EquipmentCommandTests(TestEquipmentMixins, ArxCommandTest):
             cmdstring="remove",
         )
         self.assertTrue(self.mask1.is_worn)
-        self.assertEqual(self.mask1.item_data.quality_level, 7)
