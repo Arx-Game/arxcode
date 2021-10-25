@@ -143,6 +143,8 @@ class CmdGemit(ArxPlayerCommand):
                 broadcast(self.args, format_announcement=False)
                 return
             elif "startepisode" in self.switches:
+                if not self.caller.check_permstring("Owner"):
+                    raise CommandError("Only an owner can advance an episode.")
                 msg = self.rhs
                 lhslist = self.lhs.split("/")
                 episode_name = lhslist[0]

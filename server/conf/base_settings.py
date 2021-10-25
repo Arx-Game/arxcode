@@ -48,6 +48,7 @@ PERMISSION_HIERARCHY = [
     "Immortals",
     "Immortal",
     "Developer",
+    "Owner",
 ]
 SERVERNAME = config("SERVERNAME", default="Arx")
 VERBOSE_GAME_NAME = config("VERBOSE_GAME_NAME", default="") or SERVERNAME
