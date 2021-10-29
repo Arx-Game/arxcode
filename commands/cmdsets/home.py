@@ -13,7 +13,7 @@ from world.dominion.models import AssetOwner, Organization
 from commands.base_commands.crafting import CmdCraft
 from commands.base_commands.overrides import CmdDig
 from server.utils.prettytable import PrettyTable
-from server.utils.arx_utils import inform_staff, raw, list_to_string
+from server.utils.arx_utils import inform_staff, raw
 from evennia.utils import utils
 from evennia.utils.evtable import EvTable
 from typeclasses.characters import Character
@@ -738,14 +738,12 @@ class CmdManageRoom(ArxCommand):
             return
 
     def toggle_pets_controls(self, loc):
-        "handles the togglepets switch and returns a string"
+        "Handles the togglepets switch and returns a string."
         msg = ""
         if not self.args:
             loc.pets_allowed = not loc.pets_allowed
-        elif "allowlist" in self.args:  # they're looking for a msg, the final return obliges
-            pass
-        else:
-            characters, failed = [], []
+        elif "allowlist" not in self.args:  # if it is, they just want the return msg
+            characters, failed = [], []  # will this search already report failures?
             argslist = self.args.split(",")  # probably a utility for this
             for targ in argslist:
                 char = self.caller.player.search(targ)
@@ -754,9 +752,9 @@ class CmdManageRoom(ArxCommand):
                 else:
                     failed.append(targ)
             if failed:
-                msg += f"Could not find: {self.list_to_string(failed)}\n"
+                msg += f"Could not find: {failed}\n"
             loc.pets_allow_list(characters)
-        return msg += loc.pets_mandate_msg
+        return f"{msg}{loc.pets_mandate_msg}"
 
 
 class CmdManageShop(ArxCommand):

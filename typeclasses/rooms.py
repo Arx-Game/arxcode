@@ -453,21 +453,21 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
 
     @pets_allowed.setter
     def pets_allowed(self, bool_val):
-        "When toggled True, this wipes the allow list."
+        "Setter. Wipes the allow list when toggled true."
         self.db.pets_allowed = bool_val
         if bool_val:
             self.db.pets_allow_list = []
 
     @property
     def pets_allow_list(self):
-        "Returns a list of players bypassing the pet ban."
+        "A list of players bypassing the pet ban."
         if self.db.pets_allow_list is None:
             self.db.pets_allow_list = []
         return self.db.pets_allow_list
 
     @pets_allow_list.setter
     def pets_allow_list(self, players):
-        "Toggles players on/off the allow list."
+        "Setter toggles players on/off the allow list."
         allowed = self.pets_allow_list
         for player in players:
             if player in allowed:
