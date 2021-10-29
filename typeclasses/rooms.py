@@ -444,6 +444,49 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
 
         return [ob for ob in self.contents if isinstance(ob, Place)]
 
+    @property
+    def pets_allowed(self):
+        "Whether the room allows pets."
+        if self.db.pets_allowed is None:
+            self.db.pets_allowed = True
+        return self.db.pets_allowed
+
+    @pets_allowed.setter
+    def pets_allowed(self, bool_val):
+        "When toggled True, this wipes the allow list."
+        self.db.pets_allowed = bool_val
+        if bool_val:
+            self.db.pets_allow_list = []
+
+    @property
+    def pets_allow_list(self):
+        "Returns a list of players bypassing the pet ban."
+        if self.db.pets_allow_list is None:
+            self.db.pets_allow_list = []
+        return self.db.pets_allow_list
+
+    @pets_allow_list.setter
+    def pets_allow_list(self, players):
+        "Toggles players on/off the allow list."
+        allowed = self.pets_allow_list
+        for player in players:
+            if player in allowed:
+                allowed.remove(player)
+            else:
+                allowed.append(player)
+        self.db.pets_allow_list = allowed
+
+    @property
+    def pets_mandate_msg(self):
+        "Returns a string about the room's pet allowance."
+        allowed = self.pets_allowed
+        mandate = "allows" if allowed else "does not allow"
+        msg = f"{self} {mandate} animal companions."
+        if not allowed and self.pets_allow_list:
+            from server.utils.arx_utils import list_to_string
+            msg += f" Exceptions: {list_to_string(self.pets_allow_list)}."
+        return msg
+
     # noinspection PyMethodMayBeStatic
     # noinspection PyUnusedLocal
     def at_say(
