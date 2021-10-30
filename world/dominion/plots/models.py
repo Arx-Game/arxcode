@@ -612,7 +612,7 @@ class AbstractAction(AbstractPlayerAllocations):
     """Abstract parent class representing a player's participation in an action"""
 
     NOUN = "Action"
-    BASE_AP_COST = 200
+    BASE_AP_COST = 0
     secret_actions = models.TextField("Secret actions the player is taking", blank=True)
     attending = models.BooleanField(default=True)
     traitor = models.BooleanField(default=False)
@@ -752,7 +752,6 @@ class AbstractAction(AbstractPlayerAllocations):
         """If no errors were raised, we mark ourselves as submitted and no longer allow edits."""
         if not self.date_submitted:
             self.date_submitted = datetime.now()
-        self.editable = False
         self.save()
         self.post_edit()
 
@@ -1061,6 +1060,13 @@ class PlotAction(AbstractAction):
         related_name="actions",
         on_delete=models.CASCADE,
     )
+    org = models.ForeignKey(
+        "Organization",
+        blank=True,
+        null=True,
+        related_name="actions",
+        on_delete=models.PROTECT,
+    )
     plot = models.ForeignKey(
         "Plot",
         db_index=True,
@@ -1247,6 +1253,7 @@ class PlotAction(AbstractAction):
             self.status = PlotAction.PUBLISHED
         if not self.gm:
             self.gm = caller
+        self.editable = False
         self.save()
         if not update:
             subject = "Action %s Published by %s" % (self.id, caller)
@@ -1423,24 +1430,20 @@ class PlotAction(AbstractAction):
         self.check_warning_prompt_sent()
 
     def check_action_against_maximum_allowed(self):
-        """Checks if we're over our limit on number of actions"""
+        """Checks if we're over our limit on number of actions
+        Replacing old limit with once per episode"""
+        from web.character.models import Episode
+
         if self.free_action:
             return
-        recent_actions = self.dompc.recent_actions
-        num_actions = len(recent_actions)
-        # we allow them to use unspent actions for assists, but not vice-versa
-        num_assists = self.dompc.recent_assists.count()
-        num_assists -= PlotActionAssistant.MAX_ASSISTS
-        if num_assists >= 0:
-            num_actions += num_assists
-        if num_actions >= self.max_requests:
+        episode = Episode.objects.last()
+        if (
+            self.dompc.player.roster.current_account.episodes.filter(id=episode.id)
+            .exclude(action_per_episodes__plot_action__status=PlotAction.CANCELLED)
+            .exists()
+        ):
             raise ActionSubmissionError(
-                "You are permitted %s action requests every %s days. Recent actions: %s"
-                % (
-                    self.max_requests,
-                    self.num_days,
-                    ", ".join(str(ob.id) for ob in recent_actions),
-                )
+                "You have already taken an action this episode."
             )
 
     def check_warning_prompt_sent(self):
@@ -1518,6 +1521,8 @@ class PlotAction(AbstractAction):
 
     def post_edit(self):
         """Announces that we've finished editing our action and are ready for a GM"""
+        from web.character.models import Episode
+
         if self.status == PlotAction.NEEDS_PLAYER and not self.all_editable:
             self.status = PlotAction.NEEDS_GM
             self.save()
@@ -1526,6 +1531,14 @@ class PlotAction(AbstractAction):
                 self.gm.inform(
                     "Action %s has been updated." % self.id, category="Actions"
                 )
+        # check if we need to create the ActionPerEpisode
+        if not hasattr(self, "action_per_episode"):
+            episode = Episode.objects.last()
+            ActionPerEpisode.objects.get_or_create(
+                plot_action=self,
+                episode=episode,
+                player_account=self.dompc.player.roster.current_account,
+            )
 
     def invite(self, dompc):
         """Invites an assistant, sending them an inform"""
@@ -1667,6 +1680,27 @@ class PlotAction(AbstractAction):
     @property
     def can_submit_during_break(self):
         return self.status == self.NEEDS_PLAYER
+
+
+class ActionPerEpisode(SharedMemoryModel):
+    """
+    Create a many to many relationship between player accounts, episode and actions
+    Track the 1 action per episode maximum and let players refer to actions per episode
+    """
+
+    player_account = models.ForeignKey(
+        "character.PlayerAccount",
+        related_name="action_per_episodes",
+        on_delete=models.CASCADE,
+    )
+    plot_action = models.OneToOneField(
+        PlotAction, related_name="action_per_episode", on_delete=models.CASCADE
+    )
+    episode = models.ForeignKey(
+        "character.Episode",
+        related_name="action_per_episodes",
+        on_delete=models.CASCADE,
+    )
 
 
 class ActionRequirement(SharedMemoryModel):
@@ -1926,7 +1960,6 @@ class PlotActionAssistant(AbstractAction):
     """An assist for a plot action - a player helping them out and writing how."""
 
     NOUN = "Assist"
-    BASE_AP_COST = 100
     MAX_ASSISTS = 4
     plot_action = models.ForeignKey(
         "PlotAction",
@@ -2005,7 +2038,6 @@ class PlotActionAssistant(AbstractAction):
             Raises:
                 ActionSubmissionError if we have not yet paid our AP cost and the player fails to do so here.
         """
-        self.check_max_assists()
         if not self.has_paid_initial_ap_cost:
             self.pay_initial_ap_cost()
         self.actions = story
@@ -2032,23 +2064,6 @@ class PlotActionAssistant(AbstractAction):
             disp_old=disp_old,
             disp_ooc=disp_ooc,
         )
-
-    def check_max_assists(self):
-        """Raises an error if we've assisted too many actions"""
-        # if we haven't spent all our actions, we'll let them use it on assists
-        if self.free_action or self.plot_action.free_action:
-            return
-        num_actions = self.dompc.recent_actions.count() - PlotAction.max_requests
-        num_assists = self.dompc.recent_assists.count()
-        if num_actions < 0:
-            num_assists += num_actions
-        if num_assists >= self.MAX_ASSISTS:
-            raise ActionSubmissionError("You are assisting too many actions.")
-
-    def raise_submission_errors(self):
-        """Raises errors that prevent submission"""
-        super(PlotActionAssistant, self).raise_submission_errors()
-        self.check_max_assists()
 
     @property
     def can_submit_during_break(self):
