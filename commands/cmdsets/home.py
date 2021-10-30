@@ -739,7 +739,6 @@ class CmdManageRoom(ArxCommand):
 
     def toggle_pets_controls(self, loc):
         "Handles the togglepets switch and returns a string."
-        msg = ""
         if not self.args:
             loc.pets_allowed = not loc.pets_allowed
         elif "allowlist" not in self.args:
@@ -749,7 +748,7 @@ class CmdManageRoom(ArxCommand):
                 if account:
                     characters.append(account.char_ob)
             loc.pets_allow_list = characters
-        return f"{msg}{loc.pets_mandate_msg}"
+        return f"{loc.pets_mandate_msg}"
 
 
 class CmdManageShop(ArxCommand):
