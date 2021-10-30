@@ -78,6 +78,7 @@ from evennia.objects.models import ObjectDB
 from commands.base import ArxCommand
 from typeclasses.scripts import gametime
 from typeclasses.mixins import ObjectMixins
+from server.utils.arx_utils import list_to_string
 from world.magic.mixins import MagicMixins
 from world.msgs.messagehandler import MessageHandler
 
@@ -466,14 +467,9 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         return self.db.pets_allow_list
 
     @pets_allow_list.setter
-    def pets_allow_list(self, players):
+    def pets_allow_list(self, characters):
         "Setter toggles players on/off the allow list."
-        allowed = self.pets_allow_list
-        for player in players:
-            if player in allowed:
-                allowed.remove(player)
-            else:
-                allowed.append(player)
+        allowed = [ob for ob in characters if ob not in self.pets_allow_list]
         self.db.pets_allow_list = allowed
 
     @property
@@ -483,8 +479,7 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         mandate = "allows" if allowed else "does not allow"
         msg = f"{self} {mandate} animal companions."
         if not allowed and self.pets_allow_list:
-            from server.utils.arx_utils import list_to_string
-            msg += f" Exceptions: {list_to_string(self.pets_allow_list)}."
+            msg += f" Exceptions: {list_to_string([ob.key for ob in self.pets_allow_list])}."
         return msg
 
     # noinspection PyMethodMayBeStatic
@@ -496,7 +491,7 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         msg_location=None,
         receivers=None,
         msg_receivers=None,
-        **kwargs
+        **kwargs,
     ):
         return message
 
