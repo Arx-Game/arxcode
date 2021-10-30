@@ -743,17 +743,17 @@ class CmdManageRoom(ArxCommand):
         if not self.args:
             loc.pets_allowed = not loc.pets_allowed
         elif "allowlist" not in self.args:  # if it is, they just want the return msg
-            characters, failed = [], []  # will this search already report failures?
-            argslist = self.args.split(",")  # probably a utility for this
+            characters, failed = [], []
+            argslist = self.args.split(",")  # probably a utility for this (lhslist)
             for targ in argslist:
-                char = self.caller.player.search(targ)
+                char = self.caller.player.search(targ)  # is this the right search? global?
                 if char:
-                    characters.append(char)
+                    characters.append(char)  # maybe convert playerobj into character, for list.
                 else:
-                    failed.append(targ)
+                    failed.append(targ)  # will this search already report failures to caller?
             if failed:
                 msg += f"Could not find: {failed}\n"
-            loc.pets_allow_list(characters)
+            loc.pets_allow_list = characters
         return f"{msg}{loc.pets_mandate_msg}"
 
 

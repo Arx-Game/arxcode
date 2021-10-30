@@ -456,7 +456,7 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         "Setter. Wipes the allow list when toggled true."
         self.db.pets_allowed = bool_val
         if bool_val:
-            self.db.pets_allow_list = []
+            self.attributes.remove("pets_allow_list")
 
     @property
     def pets_allow_list(self):
