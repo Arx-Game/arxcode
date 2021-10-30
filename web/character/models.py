@@ -411,23 +411,7 @@ class RosterEntry(SharedMemoryModel):
         # gain 20 AP for not having an investigation
         if not self.investigations.filter(active=True).exists():
             ap_mod += 20
-        # gain 20 AP per unused action, 40 max
-        try:
-            unused_actions = (
-                PlotAction.max_requests - self.player.Dominion.recent_actions.count()
-            )
-            ap_mod += 20 * unused_actions
-        except AttributeError:
-            pass
-        # gain 5 AP per unused assist, 20 max
-        try:
-            unused_assists = (
-                PlotActionAssistant.MAX_ASSISTS
-                - self.player.Dominion.recent_assists.count()
-            )
-            ap_mod += 5 * unused_assists
-        except AttributeError:
-            pass
+
         return ap_mod
 
     @classmethod
@@ -711,6 +695,11 @@ class PlayerAccount(SharedMemoryModel):
     email = models.EmailField(unique=True)
     karma = models.PositiveSmallIntegerField(default=0, blank=True)
     gm_notes = models.TextField(blank=True, null=True)
+    episodes = models.ManyToManyField(
+        "character.Episode",
+        related_name="accounts",
+        through="dominion.ActionPerEpisode",
+    )
 
     def __str__(self):
         return str(self.email)
