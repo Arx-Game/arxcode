@@ -78,6 +78,7 @@ from evennia.objects.models import ObjectDB
 from commands.base import ArxCommand
 from typeclasses.scripts import gametime
 from typeclasses.mixins import ObjectMixins
+from server.utils.arx_utils import list_to_string
 from world.magic.mixins import MagicMixins
 from world.msgs.messagehandler import MessageHandler
 
@@ -444,6 +445,43 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
 
         return [ob for ob in self.contents if isinstance(ob, Place)]
 
+    @property
+    def pets_allowed(self):
+        "Whether the room allows pets."
+        if self.db.pets_allowed is None:
+            self.db.pets_allowed = True
+        return self.db.pets_allowed
+
+    @pets_allowed.setter
+    def pets_allowed(self, bool_val):
+        "Setter. Wipes the allow list when toggled true."
+        self.db.pets_allowed = bool_val
+        if bool_val:
+            self.attributes.remove("pets_allow_list")
+
+    @property
+    def pets_allow_list(self):
+        "A list of players bypassing the pet ban."
+        if self.db.pets_allow_list is None:
+            self.db.pets_allow_list = []
+        return self.db.pets_allow_list
+
+    @pets_allow_list.setter
+    def pets_allow_list(self, characters):
+        "Setter toggles players on/off the allow list."
+        allowed = [ob for ob in characters if ob not in self.pets_allow_list]
+        self.db.pets_allow_list = allowed
+
+    @property
+    def pets_mandate_msg(self):
+        "Returns a string about the room's pet allowance."
+        allowed = self.pets_allowed
+        mandate = "allows" if allowed else "does not allow"
+        msg = f"{self} {mandate} animal companions."
+        if not allowed and self.pets_allow_list:
+            msg += f" Exceptions: {list_to_string([ob.key for ob in self.pets_allow_list])}."
+        return msg
+
     # noinspection PyMethodMayBeStatic
     # noinspection PyUnusedLocal
     def at_say(
@@ -453,7 +491,7 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         msg_location=None,
         receivers=None,
         msg_receivers=None,
-        **kwargs
+        **kwargs,
     ):
         return message
 

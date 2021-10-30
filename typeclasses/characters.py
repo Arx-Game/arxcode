@@ -735,6 +735,15 @@ class Character(
         except TypeError:
             return 5
 
+    @property
+    def has_pets(self):
+        "Animal or small animal retainers"
+        if not self.ndb.followers:
+            return
+        for follower in self.ndb.followers:
+            if "animal" in str(follower.item_data.race):
+                return True
+
     def get_directions(self, room):
         """
         Uses the ObjectDB manager and repeated related_set calls in order

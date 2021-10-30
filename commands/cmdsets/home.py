@@ -431,6 +431,8 @@ class CmdManageRoom(ArxCommand):
         +manageroom/ban <character>
         +manageroom/unban <character>
         +manageroom/boot <character>=<exit>
+        +manageroom/togglepets <"allowlist" or character>
+
 
     Flags your current room as permitting characters to build there.
     Cost is 100 economic resources unless specified otherwise.
@@ -457,8 +459,12 @@ class CmdManageRoom(ArxCommand):
     use commands while not owners.
 
     The ban switch prevents characters from being able to enter the room. The boot
-    switch removes characters from the room. Bouncers are able to use ban and boot.
-    Decorators are permitted to use the desc switches.
+    switch removes characters from the room. Bouncers are able to use ban, unban,
+    and boot. Decorators are permitted to use desc switches.
+
+    Togglepets switch controls entry of characters with animals. Comma-separated
+    names toggle characters on an allowlist. The list is wiped when toggling
+    the room to allow pets again.
     """
 
     key = "+manageroom"
@@ -541,6 +547,9 @@ class CmdManageRoom(ArxCommand):
             if exit_object.destination:
                 exit_object.flush_from_cache()
             caller.msg("%s changed to %s." % (old, exit_object))
+            return
+        if "togglepets" in self.switches:
+            caller.msg(self.toggle_pets_controls(loc))
             return
         if (set(self.switches) & set(self.personnel_switches)) or (
             set(self.switches) & set(self.bouncer_switches)
@@ -727,6 +736,19 @@ class CmdManageRoom(ArxCommand):
             loc.del_shop()
             player.send_or_queue_msg("Your shop at %s has been removed." % loc)
             return
+
+    def toggle_pets_controls(self, loc):
+        "Handles the togglepets switch and returns a string."
+        if not self.args:
+            loc.pets_allowed = not loc.pets_allowed
+        elif "allowlist" not in self.args:
+            characters = []
+            for targ in self.lhslist:
+                account = self.caller.player.search(targ)
+                if account:
+                    characters.append(account.char_ob)
+            loc.pets_allow_list = characters
+        return f"{loc.pets_mandate_msg}"
 
 
 class CmdManageShop(ArxCommand):
