@@ -32,6 +32,7 @@ class Migration(migrations.Migration):
         ("magic", "0001_squashed_magic"),
         # ("exploration", "0003_auto_20181105_1756"),
         ("exploration", "0001_squashed_exploration"),
+        ("character", "0001_squashed_character"),
     ]
 
     operations = [

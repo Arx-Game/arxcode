@@ -1437,9 +1437,11 @@ class PlotAction(AbstractAction):
         if self.free_action:
             return
         episode = Episode.objects.last()
-        if self.dompc.player.roster.current_account.episodes.filter(
-            id=episode.id
-        ).exclude(action_per_episodes__plot_action__status=PlotAction.CANCELLED).exists():
+        if (
+            self.dompc.player.roster.current_account.episodes.filter(id=episode.id)
+            .exclude(action_per_episodes__plot_action__status=PlotAction.CANCELLED)
+            .exists()
+        ):
             raise ActionSubmissionError(
                 "You have already taken an action this episode."
             )
