@@ -17,9 +17,10 @@ from world.dominion.models import RPEvent
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
-from web.character.models import PlayerAccount, Clue, Revelation
+from web.character.models import PlayerAccount, Clue, Revelation, Episode
 
 from typeclasses.readable.readable_commands import CmdWrite
+from world.traits.models import Trait
 
 from . import (
     story_actions,
@@ -210,6 +211,18 @@ class StoryActionTests(ArxCommandTest):
     def tearDown(self):
         ActionRequirement.objects.all().delete()
         super().tearDown()
+
+    @classmethod
+    def setUpTestData(cls):
+        Trait.objects.get_or_create(name="strength", trait_type=Trait.STAT)
+        Trait.objects.get_or_create(name="athletics", trait_type=Trait.SKILL)
+        cls.current_account = PlayerAccount.objects.create(email="asdf@example.com")
+        Episode.objects.create(name="asdf")
+
+    def setUp(self):
+        super().setUp()
+        self.account1.roster.current_account = self.current_account
+        self.account1.roster.save()
 
     @patch("world.dominion.plots.models.inform_staff")
     @patch("world.dominion.plots.models.get_week")
@@ -426,7 +439,7 @@ class StoryActionTests(ArxCommandTest):
         )
         self.call_cmd(
             "/submit 4",
-            "You are permitted 2 action requests every 60 days. Recent actions: 1, 2, 3",
+            "You have already taken an action this episode.",
         )
         self.caller = self.account2
         # unused actions can be used as assists. Try with one slot free to be used as an assist
@@ -451,9 +464,6 @@ class StoryActionTests(ArxCommandTest):
         action_5 = self.dompc.actions.create(
             actions="asdf", status=PlotAction.PUBLISHED, date_submitted=datetime.now()
         )
-        action_4.assisting_actions.create(dompc=self.dompc2)
-        action_5.assisting_actions.create(dompc=self.dompc2)
-        self.call_cmd("/setaction 4=test assist", "You are assisting too many actions.")
         # test making an action free
         action_2.free_action = True
         action_2.save()
@@ -461,10 +471,6 @@ class StoryActionTests(ArxCommandTest):
             "/setaction 4=test assist",
             "Action by Testaccount now has your assistance: test assist",
         )
-        # now test again when it's definitely not free
-        action_2.free_action = False
-        action_2.save()
-        self.call_cmd("/setaction 4=test assist", "You are assisting too many actions.")
         # cancel an action to free a slot
         action_2.status = PlotAction.CANCELLED
         action_2.save()
