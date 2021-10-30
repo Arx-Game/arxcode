@@ -843,7 +843,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd(
             "",
             "You currently have 0 xp and 100 ap.\n"
-            "Maximum AP: 300  Weekly AP Gain: 220\n"
+            "Maximum AP: 300  Weekly AP Gain: 160\n"
             "You are carrying (Volume: 0/100):\n"
             "Money: coins worth a total of 125,446.00 silver pieces\n"
             "Bank Account:           0 silver coins\n"
