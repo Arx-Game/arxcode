@@ -1064,6 +1064,7 @@ class Migration(migrations.Migration):
                             (1, "GM Plot"),
                             (2, "Player-Run Plot"),
                             (3, "Pitch"),
+                            (4, "Personal Story Arc"),
                         ],
                         default=0,
                     ),
