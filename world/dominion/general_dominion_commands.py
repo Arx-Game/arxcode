@@ -2193,6 +2193,7 @@ class CmdOrganization(ArxPlayerCommand):
         "view_petition",
         "recipe",
         "remove_plots",
+        "crisis",
     )
 
     @staticmethod

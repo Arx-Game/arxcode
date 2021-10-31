@@ -807,19 +807,21 @@ class AbstractAction(AbstractPlayerAllocations):
         )
         return attended_actions
 
-    def check_plot_omnipresence(self: Union["PlotAction", "PlotActionAssistant"]):
-        """Raises an ActionSubmissionError if we are already attending for this crisis"""
-        if self.attending:
-            already_attending = [
-                ob for ob in self.plot_attendance if ob.plot == self.plot
-            ]
-            if already_attending:
-                already_attending = already_attending[-1]
-                raise ActionSubmissionError(
-                    "You are marked as physically present at %s. Use @action/toggleattend"
-                    " and also ensure this story reads as a passive role."
-                    % already_attending
-                )
+    def check_org_busy(self: "PlotAction"):
+        """Raises an ActionSubmissionError if the org has already taken a crisis action"""
+        from web.character.models import Episode
+
+        if self.plot.usage == self.plot.CRISIS:
+            if not self.org:
+                raise ActionSubmissionError("No org selected for crisis.")
+            episode = Episode.objects.last()
+            if (
+                self.org.actions.exclude(status=PlotAction.DRAFT)
+                .exclude(status=PlotAction.CANCELLED)
+                .filter(Q(beat__isnull=True) | Q(beat__episode=episode))
+                .exists()
+            ):
+                raise ActionSubmissionError("Org has taken an action.")
 
     def check_plot_overcrowd(self: Union["PlotAction", "PlotActionAssistant"]):
         """Raises an ActionSubmissionError if too many people are attending"""
@@ -840,7 +842,7 @@ class AbstractAction(AbstractPlayerAllocations):
             # don't check submission date/resolved status if editing was mandated by GM
             if self.status != PlotAction.NEEDS_PLAYER:
                 self.plot.raise_submission_errors()
-            self.check_plot_omnipresence()
+            self.check_org_busy()
         self.check_plot_overcrowd()
 
     def mark_attending(self):
