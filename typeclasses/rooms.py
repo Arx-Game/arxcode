@@ -476,10 +476,10 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
     @property
     def pets_mandate_msg(self):
         "Returns a string about the room's pet allowance."
-        allowed = self.pets_banned
-        mandate = "allows" if allowed else "does not allow"
+        banned = self.pets_banned
+        mandate = "does not allow" if banned else "allows"
         msg = f"{self} {mandate} animal companions."
-        if not allowed and self.pets_allow_list:
+        if banned and self.pets_allow_list:
             msg += f" Exceptions: {list_to_string([ob.key for ob in self.pets_allow_list])}."
         return msg
 
