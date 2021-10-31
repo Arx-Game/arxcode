@@ -1470,6 +1470,7 @@ class CmdCalendar(ArxPlayerCommand):
         @cal [<event number>]
         @cal/list
         @cal/old
+        @cal/mine
         @cal/comments <event number>=<comment number>
     Creation:
         @cal/create [<name>]
@@ -1532,7 +1533,7 @@ class CmdCalendar(ArxPlayerCommand):
 
         pass
 
-    display_switches = ("old", "list")
+    display_switches = ("old", "list", "mine")
     target_event_switches = ("comments", "join", "sponsor")
     form_switches = ("create", "abort", "submit")
     attribute_switches = (
@@ -1605,13 +1606,16 @@ class CmdCalendar(ArxPlayerCommand):
         if not self.switches and self.project:
             self.display_project()
             return
-        if self.caller.check_permstring("builders"):
+        if self.caller.check_permstring("builders") and "mine" not in self.switches:
             qs = RPEvent.objects.all()
         else:
             dompc = self.caller.Dominion
-            qs = RPEvent.objects.filter(
-                Q(public_event=True) | Q(dompcs=dompc) | Q(orgs__in=dompc.current_orgs)
-            )
+            # if they use the "mine" switch, we'll only show events they're invited to/hosting/gming
+            query = Q(dompcs=dompc) | Q(orgs__in=dompc.current_orgs)
+            if "mine" not in self.switches:
+                # didn't specify "mine", so we'll add all public events too
+                query |= Q(public_event=True)
+            qs = RPEvent.objects.filter(query)
         if "old" in self.switches:  # display finished events
             finished = qs.filter(finished=True).distinct().order_by("-date")
             from server.utils import arx_more
@@ -1637,7 +1641,7 @@ class CmdCalendar(ArxPlayerCommand):
                 [
                     event.id,
                     event.name[:25],
-                    event.date.strftime("%x %H:%M"),
+                    event.date.strftime("%x %H:%M") if event.date else "No date set",
                     host,
                     public,
                 ]
