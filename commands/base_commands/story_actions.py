@@ -11,6 +11,7 @@ from server.utils import arx_more
 from server.utils.arx_utils import dict_from_choices_field
 from server.utils.exceptions import ActionSubmissionError
 from web.character.models import Clue, Revelation
+from world.dominion.models import Organization
 from world.dominion.plots.models import (
     Plot,
     PlotAction,
@@ -82,6 +83,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         @action/toggletraitor <action #>
         @action/toggleattend <action #>
         @action/noscene <action #>
+        @action/org <action #>=<org name>
 
     Creating /newaction costs Action Points (ap). Requires 'tldr' which is a
     short summary in a few words of the action, a category, stat/skill for
@@ -142,6 +144,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         "toggleattend",
         "ooc_intent",
         "setsecret",
+        "org",
     )
     requires_unpublished_switches = ("question", "cancel", "noscene")
     requires_owner_switches = (
@@ -266,6 +269,8 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return self.submit_action(action)
         elif "setaction" in self.switches:
             return self.set_action(action)
+        elif "org" in self.switches:
+            return self.set_org(action)
         elif "add" in self.switches:
             return self.add_required_value(action)
         elif "toggletraitor" in self.switches:
@@ -365,8 +370,6 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         self.msg(
             "Please note that you cannot invite players to an action once it is submitted."
         )
-        if crisis:
-            self.warn_crisis_omnipresence(action)
 
     def get_action(self, arg):
         """Returns an action we are involved in from ID# args.
@@ -631,16 +634,8 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         except ActionSubmissionError as err:
             self.msg("{yWarning:{n %s" % err)
 
-    def warn_crisis_omnipresence(self, action):
-        """Warns that they're already doing stuff for the crisis"""
-        try:
-            action.check_plot_omnipresence()
-        except ActionSubmissionError as err:
-            self.msg("{yWarning:{n %s" % err)
-
     def do_passive_warnings(self, action):
         """Delivers warnings of what would make submission fail"""
-        self.warn_crisis_omnipresence(action)
         if not action.prefer_offscreen:
             self.warn_crisis_overcrowd(action)
 
@@ -686,6 +681,27 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return
         self.msg(
             "You have marked yourself as physically being present for that action."
+        )
+
+    def set_org(self, action):
+        access_type = "crisis"
+        try:
+            org = Organization.objects.get(name__iexact=self.rhs)
+        except Organization.DoesNotExist:
+            raise self.error_class(f"No org by the name '{self.rhs}'")
+        if access_type not in org.locks.locks.keys():
+            org.locks.add("%s:rank(%s)" % (access_type, 2))
+            org.save()
+        if not org.access("crisis", self.caller):
+            raise self.error_class(
+                f"You do not have permission to start an action for {org}."
+            )
+        if action.plot.usage != action.plot.CRISIS:
+            raise self.error_class("Orgs may only be assigned to crisis actions.")
+        action.org = org
+        action.save()
+        self.msg(
+            f"You have set {org} to be the org for this crisis action. Orgs can only respond to one crisis per episode."
         )
 
 

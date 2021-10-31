@@ -13,7 +13,7 @@ from server.utils.test_utils import (
 )
 from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent
+from world.dominion.models import RPEvent, Organization
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
@@ -330,6 +330,8 @@ class StoryActionTests(ArxCommandTest):
         action.requirements.create(
             requirement_type=ActionRequirement.SILVER, total_required_amount=50
         )
+        action.org = Organization.objects.create(name="foo")
+        action.save()
         self.call_cmd(
             "/submit 1",
             "You have Action Requirements that are not yet satisfied: "
@@ -519,9 +521,11 @@ class StoryActionTests(ArxCommandTest):
             "stat set to strength.|skill set to athletics.",
         )
         self.call_cmd("/submit 9", "Cannot submit an action while staff are on break.")
+        action_9.org = Organization.objects.create(name="foo")
+        action_9.save()
         action_9.status = PlotAction.NEEDS_PLAYER
         action_9.save()
-        self.call_cmd("/submit 9", "You have submitted your action.")
+        self.call_cmd("/submit 9", "Org has taken an action.")
 
     @patch("world.dominion.plots.models.inform_staff")
     @patch("world.dominion.plots.models.get_week")
