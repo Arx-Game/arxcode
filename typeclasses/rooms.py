@@ -446,24 +446,25 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         return [ob for ob in self.contents if isinstance(ob, Place)]
 
     @property
-    def pets_allowed(self):
-        "Whether the room allows pets."
-        if self.db.pets_allowed is None:
-            self.db.pets_allowed = True
-        return self.db.pets_allowed
+    def pets_banned(self):
+        "Whether the room permits animal retainers."
+        if self.db.pets_banned is None:
+            return
+        return self.db.pets_banned
 
-    @pets_allowed.setter
-    def pets_allowed(self, bool_val):
-        "Setter. Wipes the allow list when toggled true."
-        self.db.pets_allowed = bool_val
+    @pets_banned.setter
+    def pets_banned(self, bool_val):
+        "Setter. Wipes the allow list when False."
         if bool_val:
-            self.attributes.remove("pets_allow_list")
+            self.db.pets_banned = True
+        else:
+            self.attributes.remove(["pets_banned", "pets_allow_list"])
 
     @property
     def pets_allow_list(self):
         "A list of players bypassing the pet ban."
         if self.db.pets_allow_list is None:
-            self.db.pets_allow_list = []
+            return []
         return self.db.pets_allow_list
 
     @pets_allow_list.setter
@@ -475,10 +476,10 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
     @property
     def pets_mandate_msg(self):
         "Returns a string about the room's pet allowance."
-        allowed = self.pets_allowed
-        mandate = "allows" if allowed else "does not allow"
+        banned = self.pets_banned
+        mandate = "does not allow" if banned else "allows"
         msg = f"{self} {mandate} animal companions."
-        if not allowed and self.pets_allow_list:
+        if banned and self.pets_allow_list:
             msg += f" Exceptions: {list_to_string([ob.key for ob in self.pets_allow_list])}."
         return msg
 
