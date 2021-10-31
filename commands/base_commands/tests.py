@@ -1736,7 +1736,7 @@ class StaffCommandTests(ArxCommandTest):
         self.setup_cmd(staff_commands.CmdSetServerConfig, self.account)
         self.call_cmd(
             "asdf",
-            "Not a valid key: OC, ap transfers disabled, cg bonus skill points, income, "
+            "Not a valid key: OC, ap regen, ap transfers disabled, cg bonus skill points, income, "
             "material cost multiplier, motd, new clue ap cost",
         )
         self.call_cmd(
@@ -1744,6 +1744,7 @@ class StaffCommandTests(ArxCommandTest):
             "| key                                     | value                            "
             "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n"
             "| OC                                      | None                             "
+            "| ap regen                                | None                             "
             "| ap transfers disabled                   | None                             "
             "| cg bonus skill points                   | None                             "
             "| income                                  | 5.0                              "
@@ -1756,6 +1757,7 @@ class StaffCommandTests(ArxCommandTest):
             "| key                                     | value                            "
             "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n"
             "| OC                                      | None                             "
+            "| ap regen                                | None                             "
             "| ap transfers disabled                   | None                             "
             "| cg bonus skill points                   | 20                               "
             "| income                                  | 5.0                              "

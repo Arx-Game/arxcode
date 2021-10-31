@@ -401,6 +401,7 @@ class RosterEntry(SharedMemoryModel):
     def action_point_regen_modifier(self):
         """AP penalty from our number of fealties"""
         from world.dominion.plots.models import PlotAction, PlotActionAssistant
+        from evennia.server.models import ServerConfig
 
         ap_mod = 0
         # they lose 10 AP per fealty they're in
@@ -411,6 +412,11 @@ class RosterEntry(SharedMemoryModel):
         # gain 20 AP for not having an investigation
         if not self.investigations.filter(active=True).exists():
             ap_mod += 20
+        val = ServerConfig.objects.conf(key="BONUS_AP_REGEN", default=0)
+        try:
+            ap_mod += int(val)
+        except (TypeError, ValueError):
+            pass
 
         return ap_mod
 
