@@ -692,7 +692,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         if access_type not in org.locks.locks.keys():
             org.locks.add("%s:rank(%s)" % (access_type, 2))
             org.save()
-        if not org.access("crisis", self.caller):
+        if not org.access(self.caller, "crisis"):
             raise self.error_class(
                 f"You do not have permission to start an action for {org}."
             )
