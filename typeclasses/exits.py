@@ -44,10 +44,10 @@ class Exit(LockMixins, ObjectMixins, DefaultExit):
         if self.destination.check_banned(character):
             character.msg("You have been banned from entering there.")
             return
-        if not self.destination.pets_allowed and character.has_pets:
+        if self.destination.pets_banned and character.has_pets:
             if character.fakename or character not in self.destination.pets_allow_list:
                 character.msg(
-                    "Your pets are not allowed there. (Try 'guards/dismiss'.)"
+                    "Your pets are not allowed there. (Try 'guards/dismiss' first)"
                 )
                 return
         if self.access(character, "traverse"):

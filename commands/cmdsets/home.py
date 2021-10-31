@@ -740,7 +740,7 @@ class CmdManageRoom(ArxCommand):
     def toggle_pets_controls(self, loc):
         "Handles the togglepets switch and returns a string."
         if not self.args:
-            loc.pets_allowed = not loc.pets_allowed
+            loc.pets_banned = not loc.pets_banned
         elif "allowlist" not in self.args:
             characters = []
             for targ in self.lhslist:
