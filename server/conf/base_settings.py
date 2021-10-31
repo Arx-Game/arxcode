@@ -244,3 +244,4 @@ MIDDLEWARE = [
     "django.contrib.flatpages.middleware.FlatpageFallbackMiddleware",
     "web.middleware.auth.SharedLoginMiddleware",
 ]
+SHELL_PLUS_PRINT_SQL = config("SHELL_PLUS_PRINT_SQL", cast=bool, default=False)
