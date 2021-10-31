@@ -1353,6 +1353,20 @@ class SocialTests(ArxCommandTest):
             "Risk: Normal Risk\nEvent Scale: Grand\nDate: 12/12/30 12:00\nDesc:\ntest description\n"
             "Event Page: http://example.com/dom/cal/detail/1/",
         )
+        RPEvent.objects.create(name="public event", public_event=True)
+        self.call_cmd(
+            "/list",
+            "Upcoming events:\n\n"
+            "ID Name         Date           Host        Public \n"
+            "2  public event No date set    No host     Public "
+            "1  test_event   12/12/30 12:00 Testaccount Public",
+        )
+        self.call_cmd(
+            "/mine",
+            "Upcoming events:\n\n"
+            "ID Name       Date           Host        Public \n"
+            "1  test_event 12/12/30 12:00 Testaccount Public",
+        )
 
     @patch("world.dominion.models.get_week")
     @patch("server.utils.arx_utils.get_week")
