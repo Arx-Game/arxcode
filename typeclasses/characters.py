@@ -1168,11 +1168,12 @@ class Character(
         )
         # filter out objects we can't see:
         results = [ob for ob in results if ob.access(self, "view")]
-        # filter out masked objects unless our search wasn't by their real name:
+        # filter out masked objects unless our search wasn't by their real name
+        # need to check for substring matches based on real name when masked
         results = [
             ob
             for ob in results
-            if not ob.item_data.false_name or searchdata.lower() != ob.key.lower()
+            if not ob.item_data.false_name or searchdata.lower() not in ob.key.lower()
         ]
         # quiet means that messaging is handled elsewhere
         if quiet:
