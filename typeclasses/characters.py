@@ -740,8 +740,9 @@ class Character(
         "Animal or small animal retainers"
         if not self.ndb.followers:
             return
+        loc = self.location
         for follower in self.ndb.followers:
-            if "animal" in str(follower.item_data.race):
+            if loc == follower.location and "animal" in str(follower.item_data.race):
                 return True
 
     def get_directions(self, room):

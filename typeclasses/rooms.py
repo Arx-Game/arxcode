@@ -469,9 +469,11 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
 
     @pets_allow_list.setter
     def pets_allow_list(self, characters):
-        "Setter toggles players on/off the allow list."
-        allowed = [ob for ob in characters if ob not in self.pets_allow_list]
-        self.db.pets_allow_list = allowed
+        "Updates allow list, toggling characters on/off existing list."
+        old_allow = self.db.pets_allow_list or []
+        removals = set([ob for ob in characters if ob in old_allow])
+        both_lists = set(characters + old_allow)
+        self.db.pets_allow_list = [ob for ob in both_lists if ob not in removals]
 
     @property
     def pets_mandate_msg(self):

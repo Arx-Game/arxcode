@@ -464,7 +464,7 @@ class CmdManageRoom(ArxCommand):
 
     Togglepets switch controls entry of characters with animals. Comma-separated
     names toggle characters on an allowlist. The list is wiped when toggling
-    the room to allow pets again.
+    the room to allow pets again. (Allowed characters not recognized in disguise)
     """
 
     key = "+manageroom"
