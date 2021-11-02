@@ -47,9 +47,7 @@ class Exit(LockMixins, ObjectMixins, DefaultExit):
         if self.destination.pets_banned and character.has_pets:
             pet_fail = "Pets are not allowed there. "
             if character not in self.destination.pets_allow_list:
-                character.msg(
-                    f"{pet_fail}(Try 'guards/dismiss' first)"
-                )
+                character.msg(f"{pet_fail}(Try 'guards/dismiss' first)")
                 return
             elif character.fakename:
                 character.msg(
