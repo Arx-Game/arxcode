@@ -23,12 +23,13 @@ class Plot(SharedMemoryModel):
     be focused on smaller groups of players.
     """
 
-    CRISIS, GM_PLOT, PLAYER_RUN_PLOT, PITCH = range(4)
+    CRISIS, GM_PLOT, PLAYER_RUN_PLOT, PITCH, PERSONAL_STORY = range(5)
     USAGE_CHOICES = (
         (CRISIS, "Crisis"),
         (GM_PLOT, "GM Plot"),
         (PLAYER_RUN_PLOT, "Player-Run Plot"),
         (PITCH, "Pitch"),
+        (PERSONAL_STORY, "Personal Story Arc"),
     )
     name = models.CharField(blank=True, null=True, max_length=255, db_index=True)
     usage = models.SmallIntegerField(choices=USAGE_CHOICES, default=CRISIS)
@@ -1550,6 +1551,17 @@ class PlotAction(AbstractAction):
             raise ActionSubmissionError(
                 "The owner of an action cannot be an assistant."
             )
+        if not self.plot:
+            raise ActionSubmissionError("All actions must point to a plot.")
+        if self.plot.usage == Plot.CRISIS:
+            if not self.org:
+                raise ActionSubmissionError(
+                    "You must select an org before inviting players to the action."
+                )
+            if not self.org.members.filter(player=dompc, deguilded=False).exists():
+                raise ActionSubmissionError(
+                    f"They must be an active member of {self.org} to be invited to the action."
+                )
         self.assisting_actions.create(dompc=dompc, stat_used="", skill_used="")
         msg = "You have been invited by %s to assist with action #%s." % (
             self.author,

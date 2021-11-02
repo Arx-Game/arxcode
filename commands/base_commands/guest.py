@@ -17,6 +17,7 @@ import traceback
 from django.conf import settings
 from evennia import syscmdkeys
 from evennia.accounts.models import AccountDB
+from evennia.server.models import ServerConfig
 from evennia.utils import utils, create, search
 from unidecode import unidecode
 
@@ -689,11 +690,10 @@ class CmdGuestCharCreate(ArxPlayerCommand):
                 + "provided."
             )
             return
-        if check_break(player, checking_character_creation=True):
+        if not ServerConfig.objects.conf(key="ALLOW_OC"):
             self.msg(
-                "Staff are currently on break, and making original characters has been disabled until the "
-                "break ends. You can still apply to play roster characters until that time, or wait until "
-                "the break is over."
+                "We are not currently allowing the creation of Original Characters in character creation,"
+                " please select a roster character instead."
             )
             return
         # we check email address to see if it matches an existing unfinished character

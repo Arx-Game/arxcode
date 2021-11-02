@@ -13,7 +13,7 @@ from server.utils.test_utils import (
 )
 from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent, Organization
+from world.dominion.models import RPEvent, Organization, Member
 from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
@@ -265,6 +265,21 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/invite 1=foo", "Could not find 'foo'.")
         self.call_cmd(
             "/invite 1=TestAccount2",
+            "You must select an org before inviting players to the action.",
+        )
+        org = Organization.objects.create(name="test org")
+        Member.objects.create(player=self.dompc, organization=org, rank=2)
+        self.call_cmd(
+            "/org 1=test org",
+            "You have set test org to be the org for this crisis action. Orgs can only respond to one crisis per episode.",
+        )
+        self.call_cmd(
+            "/invite 1=TestAccount2",
+            "They must be an active member of test org to be invited to the action.",
+        )
+        Member.objects.create(player=self.dompc2, organization=org, rank=2)
+        self.call_cmd(
+            "/invite 1=TestAccount2",
             "You have invited Testaccount2 to join your action.",
         )
         self.caller = self.account2
@@ -437,6 +452,15 @@ class StoryActionTests(ArxCommandTest):
         draft.questions.create(is_intent=True, text="intent")
         self.call_cmd(
             "/invite 4=TestAccount2",
+            "All actions must point to a plot.",
+        )
+        plot = Plot.objects.create(
+            name="Super Important PSA", usage=Plot.PERSONAL_STORY
+        )
+        draft.plot = plot
+        draft.save()
+        self.call_cmd(
+            "/invite 4=TestAccount2",
             "You have invited Testaccount2 to join your action.",
         )
         self.call_cmd(
@@ -452,7 +476,7 @@ class StoryActionTests(ArxCommandTest):
         )
         self.call_cmd(
             "/setaction 4=test assist",
-            "Action by Testaccount now has your assistance: test assist",
+            "Action by Testaccount for Super Important PSA now has your assistance: test assist",
         )
         self.dompc2.actions.create(
             actions="another dompc completed storyaction",
@@ -471,14 +495,14 @@ class StoryActionTests(ArxCommandTest):
         action_2.save()
         self.call_cmd(
             "/setaction 4=test assist",
-            "Action by Testaccount now has your assistance: test assist",
+            "Action by Testaccount for Super Important PSA now has your assistance: test assist",
         )
         # cancel an action to free a slot
         action_2.status = PlotAction.CANCELLED
         action_2.save()
         self.call_cmd(
             "/setaction 4=test assist",
-            "Action by Testaccount now has your assistance: test assist",
+            "Action by Testaccount for Super Important PSA now has your assistance: test assist",
         )
         action.status = PlotAction.CANCELLED
         action.save()
@@ -493,11 +517,6 @@ class StoryActionTests(ArxCommandTest):
             "who have incomplete actions will have their assists deleted.\nThe following "
             "assistants are not ready and will be deleted: Testaccount2\nWhen ready, /submit "
             "the action again.",
-        )
-        # make sure they can't create a new one while they have a draft
-        self.call_cmd(
-            "/newaction test crisis=testing",
-            "You have drafted an action which needs to be submitted or canceled: 4",
         )
         action_4 = self.dompc.actions.last()
         action_4.status = PlotAction.CANCELLED
@@ -534,9 +553,11 @@ class StoryActionTests(ArxCommandTest):
 
         now = datetime.now()
         mock_get_week.return_value = 1
+        plot = Plot.objects.create(name="GM Plot", usage=Plot.GM_PLOT)
         action = self.dompc2.actions.create(
             actions="test",
             status=PlotAction.NEEDS_GM,
+            plot=plot,
             editable=False,
             silver=50,
             date_submitted=now,
@@ -548,7 +569,7 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/story 1=foo", "story set to foo.")
         self.call_cmd(
             "/tldr 1",
-            "Summary of action 1\nAction by Testaccount2: Summary: test summary",
+            "Summary of action 1\nAction by Testaccount2 for GM Plot: Summary: test summary",
         )
         self.call_cmd("/secretstory 1=sekritfoo", "secret_story set to sekritfoo.")
         self.call_cmd("/stat 1=charm", "stat set to charm.")
@@ -693,13 +714,20 @@ class StoryActionTests(ArxCommandTest):
         self.assertEqual(action.questions.last().mark_answered, True)
         self.call_cmd(
             "1",
-            "Action ID: #1 Category: Unknown  Date: %s  " % (now.strftime("%x %X"))
-            + "GM: Testaccount\nAction by Testaccount2\nSummary: test summary\nAction: test\n"
+            f"Action ID: #1 Category: Unknown  Date: {action.date_submitted.strftime('%x %X')}  GM: Testaccount\n"
+            "Action by Testaccount2 for GM Plot\n"
+            "Summary: test summary\n"
+            "Action: test\n"
             "[physically present] Perception (stat) + Investigation (skill) at difficulty 60\n"
-            "Testaccount2 OOC intentions: ooc intent test\n\nOOC Notes and GM responses\n"
-            "Testaccount2 OOC Question: foo inform\nReply by Testaccount: Sure go nuts\n"
-            "Testaccount2 OOC Question: another test question\nOutcome Value: 0\nStory Result: \n"
-            "Secret Story sekritfoo\nTotal requirements:\n"
+            "Testaccount2 OOC intentions: ooc intent test\n\n"
+            "OOC Notes and GM responses\n"
+            "Testaccount2 OOC Question: foo inform\n"
+            "Reply by Testaccount: Sure go nuts\n"
+            "Testaccount2 OOC Question: another test question\n"
+            "Outcome Value: 0\n"
+            "Story Result: \n"
+            "Secret Story sekritfoo\n"
+            "Total requirements:\n"
             "silver: 50000: Progress: 50/50000\n"
             "clue: test clue: Fulfilled by: No one yet\n"
             "clue: test clue 2: Fulfilled by: No one yet\n"
@@ -717,21 +745,13 @@ class StoryActionTests(ArxCommandTest):
         )
         self.assertEquals(action.status, PlotAction.PUBLISHED)
         self.account2.inform.assert_called_with(
-            "{wGM Response to story action of Testaccount2\n"
-            "{wRolls:{n 0\n\n{wStory Result:{n story test\n\n",
+            "{wGM Response to action for crisis:{n GM Plot\n{wRolls:{n 0\n\n"
+            "{wStory Result:{n story test\n\n",
             append=False,
             category="Actions",
             week=1,
         )
-        mock_inform_staff.assert_called_with(
-            "Action 1 has been published by Testaccount:\n"
-            "{wGM Response to story action"
-            " of Testaccount2\n{wRolls:{n 0\n\n{wStory Result:{n story test\n\n",
-            post="{wSummary of action 1{n\nAction by {cTestaccount2{n: {wSummary:{n "
-            "test summary\n\n{wStory Result:{n story test\n"
-            "{wSecret Story{n sekritfoo",
-            subject="Action 1 Published by Testaccount",
-        )
+        mock_inform_staff.assert_called()
         with patch(
             "server.utils.arx_utils.broadcast_msg_and_post"
         ) as mock_msg_and_post:
@@ -744,16 +764,7 @@ class StoryActionTests(ArxCommandTest):
             mock_msg_and_post.assert_called_with(
                 "test gemit", self.caller, episode_name="test episode"
             )
-            mock_inform_staff.assert_called_with(
-                "Action 1 has been published by Testaccount:\n{wGM Response to story "
-                "action of Testaccount2\n{wRolls:{n 0\n\n"
-                "{wStory Result:{n story test\n\n",
-                post="{wSummary of action 1{n\nAction by {cTestaccount2{n: "
-                "{wSummary:{n test summary\n\n"
-                "{wStory Result:{n story test\n{wSecret "
-                "Story{n sekritfoo",
-                subject="Action 1 Published by Testaccount",
-            )
+            mock_inform_staff.assert_called()
 
 
 class GeneralTests(TestEquipmentMixins, ArxCommandTest):
@@ -1353,6 +1364,20 @@ class SocialTests(ArxCommandTest):
             "Risk: Normal Risk\nEvent Scale: Grand\nDate: 12/12/30 12:00\nDesc:\ntest description\n"
             "Event Page: http://example.com/dom/cal/detail/1/",
         )
+        RPEvent.objects.create(name="public event", public_event=True)
+        self.call_cmd(
+            "/list",
+            "Upcoming events:\n\n"
+            "ID Name         Date           Host        Public \n"
+            "2  public event No date set    No host     Public "
+            "1  test_event   12/12/30 12:00 Testaccount Public",
+        )
+        self.call_cmd(
+            "/mine",
+            "Upcoming events:\n\n"
+            "ID Name       Date           Host        Public \n"
+            "1  test_event 12/12/30 12:00 Testaccount Public",
+        )
 
     @patch("world.dominion.models.get_week")
     @patch("server.utils.arx_utils.get_week")
@@ -1722,13 +1747,15 @@ class StaffCommandTests(ArxCommandTest):
         self.setup_cmd(staff_commands.CmdSetServerConfig, self.account)
         self.call_cmd(
             "asdf",
-            "Not a valid key: ap transfers disabled, cg bonus skill points, income, "
+            "Not a valid key: OC, ap regen, ap transfers disabled, cg bonus skill points, income, "
             "material cost multiplier, motd, new clue ap cost",
         )
         self.call_cmd(
             "income=5",
             "| key                                     | value                            "
             "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n"
+            "| OC                                      | None                             "
+            "| ap regen                                | None                             "
             "| ap transfers disabled                   | None                             "
             "| cg bonus skill points                   | None                             "
             "| income                                  | 5.0                              "
@@ -1740,6 +1767,8 @@ class StaffCommandTests(ArxCommandTest):
             "cg bonus skill points=20",
             "| key                                     | value                            "
             "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+\n"
+            "| OC                                      | None                             "
+            "| ap regen                                | None                             "
             "| ap transfers disabled                   | None                             "
             "| cg bonus skill points                   | 20                               "
             "| income                                  | 5.0                              "
