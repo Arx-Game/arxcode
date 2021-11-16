@@ -123,7 +123,7 @@ class FashionOutfit(FashionCommonMixins):
     at the same time.
     """
 
-    FAME_CAP = 5000000
+    FAME_CAP = 25000000
     name = models.CharField(max_length=80, db_index=True)
     owner = models.ForeignKey(
         "dominion.PlayerOrNpc", related_name="fashion_outfits", on_delete=models.CASCADE
@@ -445,7 +445,7 @@ class FashionSnapshot(FashionCommonMixins):
     of the fashionpocalypse.
     """
 
-    FAME_CAP = 1500000
+    FAME_CAP = 15000000
     ORG_FAME_DIVISOR = 2
     DESIGNER_FAME_DIVISOR = 4
     db_date_created = models.DateTimeField(auto_now_add=True)
