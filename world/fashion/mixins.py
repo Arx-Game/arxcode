@@ -94,13 +94,13 @@ class FashionableMixins(object):
         if not recipe_base:
             return 3.0
         elif recipe_base <= 2:
-            return 1.0
+            return 2.0
         elif recipe_base == 3:
-            return 0.5
+            return 1.5
         elif recipe_base == 4:
-            return 0.25
+            return 1.25
         else:
-            return 0.1
+            return 1.0
 
     @property
     def fashion_mult_override(self):

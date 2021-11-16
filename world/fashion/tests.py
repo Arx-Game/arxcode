@@ -70,8 +70,8 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd(
             "",
             "Created    Outfit             Appraisal/Buzz \n"
-            "1978/08/27 Friendly Shadows   27,290         "
-            "1978/08/27 Unfriendly Shadows 500",
+            "1978/08/27 Friendly Shadows   29,400         "
+            "1978/08/27 Unfriendly Shadows 1,000",
         )
         self.call_cmd(
             "/archive", "No archived outfits to display! Try regular 'outfits' instead."
@@ -84,7 +84,7 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd(
             "",
             "Created    Outfit             Appraisal/Buzz \n"
-            "1978/08/27 Unfriendly Shadows 500",
+            "1978/08/27 Unfriendly Shadows 1,000",
         )
         self.call_cmd(
             "/archive friendly shadows",
@@ -100,14 +100,14 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd(
             "",
             "Created    Outfit             Appraisal/Buzz \n"
-            "1978/08/27 Friendly Shadows   26,790         "
-            "1978/08/27 Unfriendly Shadows little",
+            "1978/08/27 Friendly Shadows   28,400         "
+            "1978/08/27 Unfriendly Shadows modest",
         )
         self.call_cmd(
             "Unfriendly shadows",
             "Unfriendly Shadows Slot  Location \n"
             "Top2               chest Char2    "
-            "\nModeled by Testaccount2 for Orgtest, generating little buzz on "
+            "\nModeled by Testaccount2 for Orgtest, generating modest buzz on "
             "1978/08/27.",
         )
         self.call_cmd("/delete", "Requires an outfit's name.")
@@ -166,25 +166,25 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         with patch("django.utils.timezone.now", Mock(return_value=fake_dt)):
             self.call_cmd(
                 "Top1=Orgtest",
-                "[Fashion] When Testaccount models 'Top1' on behalf of Orgtest, it gains "
-                "modest attention from admiring onlookers.|For modeling Top1 you earn "
-                "1,000 fame. Your prestige is now 1,005.",
+                "[Fashion] Testaccount models 'Top1' on behalf of Orgtest, gaining a "
+                "decent number of admirers and significant compliments.|For modeling Top1 "
+                "you earn 1,250 fame. Your prestige is now 1,256.",
             )
         self.assertEqual(self.roster_entry.action_points, 100 - ap_cost)
         self.org.assets.inform_owner.assert_called_with(
-            "{315500{n fame awarded from Testaccount modeling Top1.",
+            "{315625{n fame awarded from Testaccount modeling Top1.",
             append=True,
             category="fashion",
         )
         self.account2.assets.inform_owner.assert_called_with(
-            "{315250{n fame awarded from Testaccount modeling " "Top1.",
+            "{315312{n fame awarded from Testaccount modeling " "Top1.",
             append=True,
             category="fashion",
         )
         self.assertEqual(
             self.top1.modeled_by,
             "Modeled by {315Testaccount{n for {125Orgtest{n, generating "
-            "{355modest{n buzz on 1978/08/27.",
+            "{453decent{n buzz on 1978/08/27.",
         )
         # test "model/outfit":
         self.top1.remove(self.char1)
@@ -232,8 +232,8 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
                 "conversation and murmurs throughout the city about the "
                 "fine choices made by Orgtest for sponsoring someone "
                 "with such exceptional taste.|For modeling Friendly "
-                "Shadows you earn 72,016 fame. Your prestige is now "
-                "90,269.",
+                "Shadows you earn 72,482 fame. Your prestige is now "
+                "90,913.",
             )
 
         self.assertEqual(self.roster_entry2.action_points, 200 - (ap_cost * 6))
@@ -287,30 +287,30 @@ class FashionCommandTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd(
             "",
             "Fashion Model   Fame Items Avg Item Fame \n"
-            " TestAccount2 72,016     6        12,002"
-            "   TestAccount  1,000     1         1,000",
+            " TestAccount2 72,482     6        12,080"
+            "   TestAccount  1,250     1         1,250",
         )
         self.call_cmd(
             "/designer",
             "Designer   Fame Items Avg Item Fame \n"
-            "TestAccount2 18,253     7         2,607",
+            "TestAccount2 18,431     7         2,633",
         )
         self.call_cmd(
             "/designer Testaccount2",
             "Testaccount2 Model   Fame Items Avg Item Fame \n"
-            "      TestAccount2 18,003     6         3,000"
-            "        TestAccount    250     1           250",
+            "      TestAccount2 18,119     6         3,019"
+            "        TestAccount    312     1           312",
         )
         self.call_cmd(
             "/orgs",
             "Organization   Fame Items Avg Item Fame \n"
-            "     Orgtest 36,508     7         5,215",
+            "     Orgtest 36,866     7         5,266",
         )
         self.call_cmd(
             "/org Orgtest",
             "Orgtest Model   Fame Items Avg Item Fame \n"
-            " TestAccount2 36,008     6         6,001"
-            "   TestAccount    500     1           500",
+            " TestAccount2 36,241     6         6,040"
+            "   TestAccount    625     1           625",
         )
 
     def test_refund_cmd(self):
