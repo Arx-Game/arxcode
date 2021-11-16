@@ -23,9 +23,9 @@ class CrisisCmdMixin(object):
         for ob in qs:
             date = "--" if not ob.end_date else ob.end_date.strftime("%m/%d")
             table.add_row(ob.id, ob.name, ob.headline, date)
-        table.reformat_column(0, width=7)
+        table.reformat_column(0, width=9)
         table.reformat_column(1, width=20)
-        table.reformat_column(2, width=40)
+        table.reformat_column(2, width=38)
         table.reformat_column(3, width=11)
         self.msg(table)
 

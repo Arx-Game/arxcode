@@ -221,7 +221,7 @@ class CmdStatCheck(ArxCommand):
             raise self.error_class("Must provide two checks.")
         args = [(self.caller, check_strings[0]), (target, check_strings[1])]
         # use first difficulty value as the rating both checks share
-        rating = DifficultyRating.get_all_instances()[0]
+        rating = DifficultyRating.get_all_cached_instances()[0]
         rolls = []
         for arg in args:
             stat, skill = self.get_stat_and_skill_from_args(arg[1])

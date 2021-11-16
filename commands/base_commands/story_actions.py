@@ -63,7 +63,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     A character's story actions that a GM responds to.
 
     Usage:
-        @action/newaction [<crisis #>=]<story of action>
+        @action/newaction <plot #>=<story of action>
         @action/tldr <action #>=<title>
         @action/category <action #>=<category>
         @action/roll <action #>=<stat>,<skill>
@@ -84,6 +84,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         @action/toggleattend <action #>
         @action/noscene <action #>
         @action/org <action #>=<org name>
+        @action/plot <action #>=<plot #>
 
     Creating /newaction costs Action Points (ap). Requires 'tldr' which is a
     short summary in a few words of the action, a category, stat/skill for
@@ -145,6 +146,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
         "ooc_intent",
         "setsecret",
         "org",
+        "plot",
     )
     requires_unpublished_switches = ("question", "cancel", "noscene")
     requires_owner_switches = (
@@ -250,7 +252,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return self.send_too_late_msg()
         elif "invite" in self.switches:
             return self.invite_assistant(action)
-        elif "setcrisis" in self.switches:
+        elif "setcrisis" in self.switches or "plot" in self.switches:
             return self.set_crisis(action)
         elif "readycheck" in self.switches:
             return self.ready_check(action)
@@ -414,7 +416,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
                 return qs.get(id=name_or_id)
             return qs.get(name__iexact=name_or_id)
         except Plot.DoesNotExist:
-            self.msg("No crisis found by that name or ID.")
+            self.msg("No crisis/plot found by that name or ID.")
 
     def can_create(self, crisis=None):
         """Checks criteria for creating a new action."""
@@ -641,10 +643,11 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
 
     def set_crisis(self, action):
         """Sets the crisis for the action"""
+        noun = "plot" if "plot" in self.switches else "crisis"
         if not self.rhs:
             action.plot = None
             action.save()
-            self.msg("Your action no longer targets any crisis.")
+            self.msg(f"Your action no longer targets any {noun}.")
             return
         crisis = self.get_valid_crisis(self.rhs)
         if not crisis:
@@ -653,7 +656,7 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             return
         action.plot = crisis
         action.save()
-        self.msg("You have set the action to be for crisis: %s" % crisis)
+        self.msg(f"You have set the action to be for {noun}: %s" % crisis)
         self.do_passive_warnings(action)
 
     def ready_check(self, action):
