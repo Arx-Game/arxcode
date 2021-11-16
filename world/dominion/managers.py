@@ -33,7 +33,13 @@ class CrisisManager(Manager):
             crises = Q(usage=self.model.CRISIS)
             # crisis is viewable if it's public, or they have the required clue
             crises &= Q(Q(public=True) | Q(required_clue__in=player.roster.clues.all()))
-            plots = Q(usage__in=[self.model.PLAYER_RUN_PLOT, self.model.GM_PLOT])
+            plots = Q(
+                usage__in=[
+                    self.model.PLAYER_RUN_PLOT,
+                    self.model.GM_PLOT,
+                    self.model.PERSONAL_STORY,
+                ]
+            )
             # plots are viewable only if they're a member
             plots &= Q(
                 dompc_involvement__activity_status__lte=PCPlotInvolvement.INVITED

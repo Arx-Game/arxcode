@@ -192,6 +192,8 @@ class Plot(SharedMemoryModel):
 
     def check_taken_action(self, dompc):
         """Whether player has submitted action for the current crisis update."""
+        if self.usage != self.CRISIS:
+            return False
         return self.actions.filter(
             Q(dompc=dompc)
             & Q(beat__isnull=True)
