@@ -275,11 +275,7 @@ class CmdStatCheck(ArxCommand):
             self.caller, rank
         )
         msg = f"|wDifficulty Table for |c{check}|n vs rank |c{rank}|n ({self.rhs}): |c{difficulty_table.name}\n"
-        values = "\n".join(
-            f"  [Min Roll: |c{key}|n Result: |c{value}|n]"
-            for key, value in difficulty_table.ranges_dict.items()
-        )
-        msg += f"|wValues:|n\n{values}"
+        msg += difficulty_table.display_table_values()
         self.msg(msg)
 
     def view_check(self):

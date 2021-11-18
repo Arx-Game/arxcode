@@ -21,6 +21,7 @@ from world.dominion.plots.models import (
     PlotUpdate,
 )
 from world.magic.models import Spell, SkillNode
+from world.stat_checks.models import CheckRank
 from world.traits.models import Trait
 
 
@@ -361,9 +362,8 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
                 return
         if not self.can_create(crisis):
             return
-        diff = PlotAction.NORMAL_DIFFICULTY
         action = self.dompc.actions.create(
-            actions=actions, plot=crisis, stat_used="", skill_used="", difficulty=diff
+            actions=actions, plot=crisis, stat_used="", skill_used=""
         )
         self.msg(
             "You have drafted a new action {w(#%s){n%s: %s"
@@ -723,11 +723,10 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         Commands for modifying an action stats or results:
         @gm/story <action #>=<the IC result of their action, told as a story>
         @gm/secretstory <action #>=<the IC result of their secret actions>
-        @gm/check <action #>=<character>,<stat>/<skill> at <difficulty>
-        @gm/checkall <action #>
+        @gm/check <action #>
         @gm/stat <action #>[,assistant name]=<stat>
         @gm/skill <action #>[,assistant name]=<skill>
-        @gm/diff <action #>=<difficulty # or hard | normal | easy>
+        @gm/diff <action #>=<rank # or daunting | hard | normal | easy>
 
         Commands for answering questions or requiring player response:
         @gm/ooc[/allowedit] <action #>[,assistant name]=<answer to OOC question>
@@ -762,10 +761,8 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
     If you think players need to change something, or want to answer a question,
     use the /ooc switch. /allowedit will mark them in a state where the player
     can change their action/assist, and then they can submit changes again when
-    done. /check allows you to do a roll for an individual, which saves their
-    most recent roll result, while /checkall will roll every character in the
-    action and total their rolls as the outcome value. For adding a requirement
-    that must be satisfied before the action can be resolved, use the
+    done. /check rolls for the action and records the outcome. For adding a
+    requirement that must be satisfied before the action can be resolved, use
     /addrequirement switch. This allows you to specify needing some concrete
     value or knowledge required for success, or you can specify an event
     which can be anything that they submit is satisfied by an RPEvent,
@@ -800,7 +797,6 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         "story",
         "secretstory",
         "check",
-        "checkall",
         "stat",
         "skill",
         "diff",
@@ -821,6 +817,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
         "easy": PlotAction.EASY_DIFFICULTY,
         "normal": PlotAction.NORMAL_DIFFICULTY,
         "hard": PlotAction.HARD_DIFFICULTY,
+        "daunting": PlotAction.DAUNTING_DIFFICULTY,
     }
 
     def func(self):
@@ -846,7 +843,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
                 return self.do_followup(action)
             if self.check_switches(self.admin_switches):
                 return self.do_admin(action)
-        except self.error_class as err:
+        except (self.error_class, ActionSubmissionError) as err:
             return self.msg(err)
         self.msg("Invalid switch.")
 
@@ -937,7 +934,7 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
             return self.set_action_field(action, "story", self.rhs)
         if "secretstory" in self.switches:
             return self.set_action_field(action, "secret_story", self.rhs)
-        if "check" in self.switches or "checkall" in self.switches:
+        if "check" in self.switches:
             return self.do_checks(action)
         if "diff" in self.switches:
             return self.set_difficulty(action)
@@ -952,31 +949,8 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
 
     def do_checks(self, action):
         """Make rolls for the action"""
-        if "checkall" in self.switches:
-            outcome = action.roll_all()
-        else:
-            try:
-                name = self.rhslist[0]
-                args = self.rhslist[1].split(" at ")
-                diff = int(args[1])
-                stat, skill = args[0].split("/")
-            except (TypeError, ValueError, IndexError):
-                self.msg("Invalid syntax.")
-                return
-            else:
-                try:
-                    action = self.replace_action_with_assistant_if_provided(
-                        action, name
-                    )
-                    if not action:
-                        return
-                    result = action.do_roll(stat=stat, skill=skill, difficulty=diff)
-                    self.msg("Roll result was: %s" % result)
-                    outcome = action.outcome_value
-                except ActionSubmissionError as err:
-                    self.msg(err)
-                    return
-        self.msg("The new outcome value for the overall action is: %s" % outcome)
+        outcome = action.roll_all()
+        self.msg("The new outcome for the action is: %s" % outcome)
 
     def set_difficulty(self, action):
         """Sets difficulty of rolls forthe action"""
@@ -991,7 +965,11 @@ class CmdGMAction(ActionCommandMixin, ArxPlayerCommand):
                     % ", ".join(self.difficulties.keys())
                 )
                 return
-        self.set_action_field(action, "difficulty", value)
+        try:
+            rank = CheckRank.objects.get(id=value)
+        except CheckRank.DoesNotExist:
+            raise self.error_class("That is not a valid Check Rank id.")
+        self.set_action_field(action, "target_rank", rank)
 
     def replace_action_with_assistant_if_provided(self, action, name=None):
         """Gets an assisting action instead"""

@@ -82,9 +82,9 @@ class CombatCommandsTests(ArxCommandTest):
             "Char checks 'recovery treatment' at easy. Char is marginally successful.|"
             "You have provided aid to Char2 to help them recover from injury.",
         )
-        self.assertEqual(self.char2.health_status.get_total_healing_for_wound(), 9)
+        self.assertEqual(self.char2.health_status.get_total_healing_for_wound(), 18)
         self.char2.health_status.apply_treatment_to_wounds()
-        self.assertEqual(self.char2.health_status.serious_wounds[0].healing, 9)
+        self.assertEqual(self.char2.health_status.serious_wounds[0].healing, 18)
         self.call_cmd(
             "char2", "Char has attempted to assist with their recovery too recently."
         )

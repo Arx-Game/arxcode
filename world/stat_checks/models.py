@@ -413,14 +413,7 @@ class StatCheck(NameLookupModel):
     ) -> "DifficultyTable":
         totals = character.traits.get_totals_for_check(self)
         value = sum(totals.values())
-        rank = CheckRank.get_base_rank_for_value(value)
-        chance = CheckRank.get_chance_of_higher_rank(value)
-        if randint(1, 100) <= chance:
-            try:
-                rank = CheckRank.objects.get(id=rank.id + 1)
-            except CheckRank.DoesNotExist:
-                pass
-        return DifficultyTable.get_difficulty_for_rank_range(rank, target_rank)
+        return CheckRank.get_table_for_value(value, target_rank)
 
 
 class StatCombination(SharedMemoryModel):
@@ -626,15 +619,22 @@ class TraitsInCombination(SharedMemoryModel):
         base_value = character.traits.get_value_by_trait(self.trait)
         # if it's a trait type we have weights for, we'll return that
         if self.trait.trait_type == self.trait.STAT:
-            return StatWeight.get_weighted_value_for_stat(
+            base_value = StatWeight.get_weighted_value_for_stat(
                 base_value, self.should_be_stat_only, new_check
             )
         if self.trait.trait_type == self.trait.SKILL:
-            return StatWeight.get_weighted_value_for_skill(base_value)
+            base_value = StatWeight.get_weighted_value_for_skill(
+                base_value, new_check=new_check
+            )
         if self.trait.trait_type == self.trait.ABILITY:
-            return StatWeight.get_weighted_value_for_ability(base_value)
+            base_value = StatWeight.get_weighted_value_for_ability(
+                base_value, new_check=new_check
+            )
+        base_value *= self.value_multiplier
+        if self.value_divisor:
+            base_value /= self.value_divisor
         # it's an 'other' trait, it'll be unweighted
-        return base_value
+        return int(base_value)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -822,6 +822,17 @@ class CheckRank(NameIntegerLookupModel):
         chance = (progress / distance) * 100
         return int(chance)
 
+    @classmethod
+    def get_table_for_value(cls, value, target_rank):
+        rank = cls.get_base_rank_for_value(value)
+        chance = cls.get_chance_of_higher_rank(value)
+        if randint(1, 100) <= chance:
+            try:
+                rank = cls.objects.get(id=rank.id + 1)
+            except cls.DoesNotExist:
+                pass
+        return DifficultyTable.get_difficulty_for_rank_range(rank, target_rank)
+
 
 class DifficultyTable(NameIntegerLookupModel):
     """
@@ -868,6 +879,25 @@ class DifficultyTable(NameIntegerLookupModel):
             difficulty_range.value: difficulty_range.result
             for difficulty_range in self.cached_ranges
         }
+
+    def get_result_for_roll(self) -> "RollResult":
+        roll = randint(1, 100)
+        instances = self.cached_ranges
+        if not instances:
+            raise ValueError(f"No results found for {self}.")
+        closest = max(
+            [ob for ob in instances if ob.value <= roll],
+            key=lambda x: x.value,
+            default=instances[0],
+        )
+        return closest
+
+    def display_table_values(self):
+        values = "\n".join(
+            f"  [Min Roll: |c{key}|n Result: |c{value}|n]"
+            for key, value in self.ranges_dict.items()
+        )
+        return f"|wValues:|n\n{values}"
 
 
 class DifficultyTableResultRange(SharedMemoryModel):

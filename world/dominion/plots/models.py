@@ -1,8 +1,10 @@
+import math
 from typing import Union, List
 
 from datetime import datetime
 
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
 
@@ -99,10 +101,7 @@ class Plot(SharedMemoryModel):
     def rating(self):
         """Returns how much rating is left in our crisis"""
         if self.escalation_points:
-            return self.escalation_points - sum(
-                ob.outcome_value
-                for ob in self.actions.filter(status=PlotAction.PUBLISHED)
-            )
+            return self.escalation_points
 
     @property
     def beats(self):
@@ -974,40 +973,30 @@ class AbstractAction(AbstractPlayerAllocations):
         if not orders:
             raise ActionSubmissionError("Failed to send orders to the army.")
 
-    def do_roll(
-        self: Union["PlotAction", "PlotActionAssistant"],
-        stat=None,
-        skill=None,
-        difficulty=None,
-        reset_total=True,
-    ):
+    @property
+    def roll_value(self):
         """
-        Does a roll for this action
-        Args:
-            stat: stat to override stat currently set in the action
-            skill: skill to override skill currently set in the action
-            difficulty: difficulty to override difficulty currently set in the action
-            reset_total: Whether to recalculate the outcome value
-
-        Returns:
-            An integer result of the roll.
+        Gets the v3 check system roll value for a stat/skill combination. The roll field is
+        deprecated and will be removed eventually.
         """
-        from world.stats_and_skills import do_dice_check
+        from world.stat_checks.models import StatWeight
 
-        self.stat_used = stat or self.stat_used
-        self.skill_used = skill or self.skill_used
-        if difficulty is not None:
-            self.difficulty = difficulty
-        self.roll = do_dice_check(
-            self.dompc.player.char_ob,
-            stat=self.stat_used,
-            skill=self.skill_used,
-            difficulty=self.difficulty,
+        total = 0
+        character = self.dompc.player.char_ob
+        # get stat value
+        stat_value = character.traits.get_stat_value(self.stat_used)
+        total += StatWeight.get_weighted_value_for_stat(
+            stat_value, only_stat=False, new_check=True
         )
-        self.save()
-        if reset_total:
-            self.calculate_outcome_value()
-        return self.roll
+        # get skill value
+        skill_value = character.traits.get_skill_value(self.skill_used)
+        total += StatWeight.get_weighted_value_for_skill(skill_value, new_check=True)
+        # get mods
+        knack_level = character.mods.get_total_roll_modifiers(
+            [self.stat_used], [self.skill_used]
+        )
+        total += StatWeight.get_weighted_value_for_knack(knack_level)
+        return total
 
     def display_followups(self: Union["PlotAction", "PlotActionAssistant"]):
         """Returns string of the display of all of our questions."""
@@ -1053,9 +1042,10 @@ class PlotAction(AbstractAction):
     """
 
     NOUN = "Action"
-    EASY_DIFFICULTY = 15
-    NORMAL_DIFFICULTY = 30
-    HARD_DIFFICULTY = 60
+    EASY_DIFFICULTY = 1
+    NORMAL_DIFFICULTY = 4
+    HARD_DIFFICULTY = 7
+    DAUNTING_DIFFICULTY = 10
     week = models.PositiveSmallIntegerField(default=0, blank=True, db_index=True)
     dompc = models.ForeignKey(
         "PlayerOrNpc",
@@ -1094,8 +1084,12 @@ class PlotAction(AbstractAction):
     secret_story = models.TextField(
         "Any secret story written for the player", blank=True
     )
-    difficulty = models.SmallIntegerField(default=0, blank=True)
-    outcome_value = models.SmallIntegerField(default=0, blank=True)
+    target_rank = models.ForeignKey(
+        "stat_checks.CheckRank", blank=True, null=True, on_delete=models.SET_NULL
+    )
+    roll_result = models.ForeignKey(
+        "stat_checks.RollResult", blank=True, null=True, on_delete=models.SET_NULL
+    )
     assistants = models.ManyToManyField(
         "PlayerOrNpc",
         blank=True,
@@ -1154,6 +1148,61 @@ class PlotAction(AbstractAction):
         (PUBLISHED, "Resolved"),
     )
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=DRAFT)
+    max_points_silver = models.PositiveSmallIntegerField(
+        help_text="Maximum points they can add to roll total from silver", default=0
+    )
+    max_points_social = models.PositiveSmallIntegerField(
+        help_text="Maximum points they can add to roll total from social resources",
+        default=0,
+    )
+    max_points_economic = models.PositiveSmallIntegerField(
+        help_text="Maximum points they can add to roll total from economic resources",
+        default=0,
+    )
+    max_points_military = models.PositiveSmallIntegerField(
+        help_text="Maximum points they can add to roll total from military resources",
+        default=0,
+    )
+    max_points_ap = models.PositiveSmallIntegerField(
+        help_text="Maximum modifier to roll total from action points", default=0
+    )
+    max_points_assists = models.PositiveSmallIntegerField(
+        help_text="Maximum modifier to roll total from assists", default=300
+    )
+    silver_divisor = models.PositiveIntegerField(
+        help_text="Silver required per point.",
+        default=100000,
+        validators=[MinValueValidator(1)],
+    )
+    social_divisor = models.PositiveIntegerField(
+        help_text="Social resources required per point.",
+        default=1000,
+        validators=[MinValueValidator(1)],
+    )
+    economic_divisor = models.PositiveIntegerField(
+        help_text="Economic resources required per point.",
+        default=1000,
+        validators=[MinValueValidator(1)],
+    )
+    military_divisor = models.PositiveIntegerField(
+        help_text="Military resources required per point.",
+        default=1000,
+        validators=[MinValueValidator(1)],
+    )
+    ap_divisor = models.PositiveIntegerField(
+        help_text="Action Points required per point. 0 means it's disabled",
+        default=100,
+        validators=[MinValueValidator(1)],
+    )
+    assist_divisor = models.PositiveSmallIntegerField(
+        help_text="Divisor applied to assists",
+        default=3,
+        validators=[MinValueValidator(1)],
+    )
+    additional_modifiers = models.IntegerField(
+        default=0,
+        help_text="Any additional modifiers to their roll total based on GM discretion.",
+    )
     max_requests = 2
     num_days = 60
     attending_limit = 5
@@ -1243,7 +1292,7 @@ class PlotAction(AbstractAction):
             msg = "{wGM Response to action for crisis:{n %s" % self.plot
         else:
             msg = "{wGM Response to story action of %s" % self.author
-        msg += "\n{wRolls:{n %s" % self.outcome_value
+        msg += "\n{wCheck Result:{n %s" % self.roll_result
         msg += "\n\n{wStory Result:{n %s\n\n" % self.story
         self.week = get_week()
         if update:
@@ -1319,19 +1368,14 @@ class PlotAction(AbstractAction):
                     "physically present" if ob.attending else "offscreen"
                 )
                 msg += (
-                    "\n{w%s{n {w%s{n (stat) + {w%s{n (skill) at difficulty {w%s{n"
+                    "\n{w%s{n {w%s{n (stat) + {w%s{n (skill) at target rank {w%s{n"
                     % (
                         attending,
                         ob.stat_used.capitalize() or "No stat set",
                         ob.skill_used.capitalize() or "No skill set",
-                        self.difficulty,
+                        self.target_rank,
                     )
                 )
-                if self.sent or (ob.roll_is_set and staff_viewer):
-                    msg += "{w [Dice Roll: %s%s{w]{n " % (
-                        self.roll_color(ob.roll),
-                        ob.roll_string,
-                    )
                 if ob.ooc_intent:
                     msg += "\n%s" % ob.ooc_intent.display()
             msg += "\n"
@@ -1355,8 +1399,8 @@ class PlotAction(AbstractAction):
         if self.sent or staff_viewer:
             if disp_ooc:
                 msg += "\n{wOutcome Value:{n %s%s{n" % (
-                    self.roll_color(self.outcome_value),
-                    self.outcome_value,
+                    self.roll_color(self.roll_result),
+                    self.roll_result,
                 )
             msg += "\n{wStory Result:{n %s" % self.story
             if self.secret_story and view_main_secrets:
@@ -1380,9 +1424,9 @@ class PlotAction(AbstractAction):
         return msg
 
     @staticmethod
-    def roll_color(val):
+    def roll_color(roll_result):
         """Returns a color string based on positive or negative value."""
-        return "{r" if (val < 0) else "{g"
+        return "|g" if roll_result and roll_result.is_success else "|r"
 
     def view_tldr(self):
         """Returns summary message of the action and assists"""
@@ -1584,17 +1628,52 @@ class PlotAction(AbstractAction):
         dompc.inform(msg, category="Action Invitation")
 
     def roll_all(self):
-        """Rolls for every action and assist, changing outcome value"""
-        for ob in self.action_and_assists:
-            ob.do_roll(reset_total=False)
-        return self.calculate_outcome_value()
+        """Rolls for our action, changing outcome value"""
+        from world.stat_checks.models import CheckRank
 
-    def calculate_outcome_value(self):
-        """Calculates total value of the action"""
-        value = sum(ob.roll for ob in self.action_and_assists)
-        self.outcome_value = value
+        if not self.target_rank:
+            raise ActionSubmissionError(
+                "No difficulty has been set for this action. Set with gm/diff."
+            )
+        # get rank for us based on our roll
+        difficulty_table = CheckRank.get_table_for_value(
+            self.total_roll_value, self.target_rank
+        )
+        self.outcome = difficulty_table.get_result_for_roll()
         self.save()
-        return self.outcome_value
+        return self.outcome
+
+    @property
+    def total_roll_value(self):
+        base = self.roll_value + self.additional_modifiers
+        assists = list(self.assisting_actions.all())
+
+        def get_value_from_assists(attr, divisor, maximum, base_value=0):
+            if maximum <= 0:
+                return 0
+            val = sum([getattr(ob, attr) for ob in assists])
+            val = int(math.ceil(val / divisor))
+            base_value += min(maximum, val)
+            return base_value
+
+        # add all assists, rounded up
+        base += get_value_from_assists(
+            "roll_value", self.assist_divisor, self.max_points_assists
+        )
+        # add different resource types
+        base += get_value_from_assists(
+            "silver", self.silver_divisor, self.max_points_silver, self.silver
+        )
+        base += get_value_from_assists(
+            "economic", self.economic_divisor, self.max_points_economic, self.economic
+        )
+        base += get_value_from_assists(
+            "social", self.social_divisor, self.max_points_social, self.social
+        )
+        base += get_value_from_assists(
+            "military", self.military_divisor, self.max_points_military, self.military
+        )
+        return base
 
     def get_questions_and_answers_display(
         self, answered=False, staff=False, caller=None
@@ -1964,7 +2043,6 @@ NAMES_OF_PROPERTIES_TO_PASS_THROUGH = [
     "prefer_offscreen",
     "attendees",
     "all_editable",
-    "outcome_value",
     "difficulty",
     "gm",
     "attending_limit",
@@ -2010,10 +2088,6 @@ class PlotActionAssistant(AbstractAction):
     def view_total_requirements_msg(self):
         """Passthrough method to return total resources msg"""
         return self.plot_action.view_total_requirements_msg()
-
-    def calculate_outcome_value(self):
-        """Passthrough method to calculate outcome value"""
-        return self.plot_action.calculate_outcome_value()
 
     def submit_or_refund(self):
         """Submits our assist if we're ready, or refunds us"""

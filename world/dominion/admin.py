@@ -611,7 +611,7 @@ class PlotActionAssistantInline(admin.StackedInline):
         (
             "Roll",
             {
-                "fields": [("stat_used", "skill_used", "roll")],
+                "fields": [("stat_used", "skill_used")],
                 "description": "Stuff for roll and result",
                 "classes": ["collapse"],
             },
@@ -709,8 +709,25 @@ class PlotActionAdmin(DomAdmin):
             "Roll",
             {
                 "fields": [
-                    ("stat_used", "skill_used", "roll", "difficulty"),
-                    "outcome_value",
+                    ("stat_used", "skill_used", "target_rank"),
+                    (
+                        "max_points_silver",
+                        "max_points_social",
+                        "max_points_economic",
+                        "max_points_military",
+                        "max_points_ap",
+                        "max_points_assists",
+                    ),
+                    (
+                        "silver_divisor",
+                        "social_divisor",
+                        "economic_divisor",
+                        "military_divisor",
+                        "ap_divisor",
+                        "assist_divisor",
+                        "additional_modifiers",
+                    ),
+                    "roll_result",
                 ],
                 "description": "Stuff for roll and result",
                 "classes": ["collapse"],

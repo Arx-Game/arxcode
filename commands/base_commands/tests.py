@@ -574,10 +574,8 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/secretstory 1=sekritfoo", "secret_story set to sekritfoo.")
         self.call_cmd("/stat 1=charm", "stat set to charm.")
         self.call_cmd("/skill 1=seduction", "skill set to seduction.")
-        self.call_cmd("/diff 1=25", "difficulty set to 25.")
-        self.call_cmd(
-            "/diff 1=hard", "difficulty set to %s." % PlotAction.HARD_DIFFICULTY
-        )
+        self.call_cmd("/diff 1=25", "target_rank set to God I.")
+        self.call_cmd("/diff 1=hard", "target_rank set to Boss I.")
         self.call_cmd(
             "/assign 1=Testaccount",
             "gm set to Testaccount.|GM for the action set to Testaccount",
@@ -718,13 +716,13 @@ class StoryActionTests(ArxCommandTest):
             "Action by Testaccount2 for GM Plot\n"
             "Summary: test summary\n"
             "Action: test\n"
-            "[physically present] Perception (stat) + Investigation (skill) at difficulty 60\n"
+            "[physically present] Perception (stat) + Investigation (skill) at target rank Boss I\n"
             "Testaccount2 OOC intentions: ooc intent test\n\n"
             "OOC Notes and GM responses\n"
             "Testaccount2 OOC Question: foo inform\n"
             "Reply by Testaccount: Sure go nuts\n"
             "Testaccount2 OOC Question: another test question\n"
-            "Outcome Value: 0\n"
+            "Outcome Value: None\n"
             "Story Result: \n"
             "Secret Story sekritfoo\n"
             "Total requirements:\n"
@@ -745,7 +743,8 @@ class StoryActionTests(ArxCommandTest):
         )
         self.assertEquals(action.status, PlotAction.PUBLISHED)
         self.account2.inform.assert_called_with(
-            "{wGM Response to action for crisis:{n GM Plot\n{wRolls:{n 0\n\n"
+            "{wGM Response to action for crisis:{n GM Plot\n"
+            "{wCheck Result:{n None\n\n"
             "{wStory Result:{n story test\n\n",
             append=False,
             category="Actions",

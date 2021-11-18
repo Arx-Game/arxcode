@@ -55,7 +55,6 @@ class TestCrisisCommands(ArxCommandTest):
         self.action = self.crisis.actions.create(
             dompc=self.dompc2,
             actions="test action",
-            outcome_value=50,
             status=PlotAction.PENDING_PUBLISH,
         )
 
@@ -94,7 +93,7 @@ class TestCrisisCommands(ArxCommandTest):
             )
             self.call_cmd(
                 "1",
-                "[test crisis] (50 Rating)\nNone\n"
+                "[test crisis] (100 Rating)\nNone\n"
                 "[Update #1 for test crisis] Date 08/27/78 12:08:00\ntest gemit\n"
                 "Actions: Action by Testaccount2 for test crisis (#1)\nOOC for Staff: test note",
             )
