@@ -48,6 +48,7 @@ from django.db.models import (
 )
 from django.shortcuts import reverse
 from django.utils.html import escape
+from world.dominion.plots.models import ActionPerEpisode
 
 
 class BaseCharAdmin(admin.ModelAdmin):
@@ -108,12 +109,20 @@ class AccountEntryInline(admin.TabularInline):
     extra = 0
 
 
+class ActionPerEpisodeInline(admin.TabularInline):
+    """Inline for ActionPerEpisode"""
+
+    model = ActionPerEpisode
+    raw_id_fields = ("episode", "plot_action")
+    extra = 0
+
+
 class AccountAdmin(BaseCharAdmin):
     """Admin for AccountHistory"""
 
     list_display = ("id", "email", "player_characters")
     search_fields = ("email", "characters__character__db_key")
-    inlines = (AccountHistoryInline, AccountEntryInline)
+    inlines = (AccountHistoryInline, AccountEntryInline, ActionPerEpisodeInline)
     readonly_fields = ("ip_addresses",)
 
     @staticmethod

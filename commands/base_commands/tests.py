@@ -14,7 +14,12 @@ from server.utils.test_utils import (
 from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from world.dominion.domain.models import Army
 from world.dominion.models import RPEvent, Organization, Member
-from world.dominion.plots.models import PlotAction, Plot, ActionRequirement
+from world.dominion.plots.models import (
+    PlotAction,
+    Plot,
+    ActionRequirement,
+    ActionPerEpisode,
+)
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
 from web.character.models import PlayerAccount, Clue, Revelation, Episode
@@ -217,7 +222,7 @@ class StoryActionTests(ArxCommandTest):
         Trait.objects.get_or_create(name="strength", trait_type=Trait.STAT)
         Trait.objects.get_or_create(name="athletics", trait_type=Trait.SKILL)
         cls.current_account = PlayerAccount.objects.create(email="asdf@example.com")
-        Episode.objects.create(name="asdf")
+        cls.episode = Episode.objects.create(name="asdf")
 
     def setUp(self):
         super().setUp()
@@ -290,7 +295,7 @@ class StoryActionTests(ArxCommandTest):
         self.caller.pay_action_points = Mock(return_value=True)
         self.call_cmd(
             "/setaction 1=test assist",
-            "Action by Testaccount for Test Crisis now has your assistance: test assist",
+            "Action by test org for Test Crisis now has your assistance: test assist",
         )
         Army.objects.create(name="test army", owner=self.assetowner)
         # check for adding things to meet requirements
@@ -413,6 +418,8 @@ class StoryActionTests(ArxCommandTest):
         mock_inform_staff.assert_called_with(
             "Testaccount submitted action #1. {wSummary:{n summary"
         )
+        # ensure ActionPerEpisode does not affect org actions
+        self.assertFalse(ActionPerEpisode.objects.all().exists())
         self.call_cmd(
             "/makepublic 1",
             "The action must be finished before you can make details of it public.",
@@ -424,10 +431,6 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/makepublic 1", "That action has already been made public.")
         self.call_cmd(
             "/question 1=test question", "You have submitted a question: test question"
-        )
-        self.call_cmd(
-            "/newaction test crisis=testing",
-            "You have already submitted an action for this stage of the crisis.",
         )
         action_2 = self.dompc.actions.create(
             actions="completed storyaction",
@@ -448,6 +451,7 @@ class StoryActionTests(ArxCommandTest):
             topic="test summary",
             stat_used="stat",
             skill_used="skill",
+            org=action.org,
         )
         draft.questions.create(is_intent=True, text="intent")
         self.call_cmd(
@@ -465,7 +469,18 @@ class StoryActionTests(ArxCommandTest):
         )
         self.call_cmd(
             "/submit 4",
-            "You have already taken an action this episode.",
+            f"{action.org} has already taken an action this episode: 1.",
+        )
+        draft.org = None
+        draft.save()
+        ActionPerEpisode.objects.create(
+            player_account=self.current_account,
+            plot_action=action,
+            episode=self.episode,
+        )
+        self.call_cmd(
+            "/submit 4",
+            f"You have already taken an action this episode: 1.",
         )
         self.caller = self.account2
         # unused actions can be used as assists. Try with one slot free to be used as an assist

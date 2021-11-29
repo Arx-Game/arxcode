@@ -665,17 +665,36 @@ class ActionOOCQuestionInline(admin.StackedInline):
     fieldsets = [(None, {"fields": [("action", "action_assist"), "text_of_answers"]})]
 
 
+class CrisisListFilter(admin.SimpleListFilter):
+    """List filter for separating PC and NPC orgs"""
+
+    title = "Crisis"
+    parameter_name = "crisis"
+
+    def lookups(self, request, model_admin):
+        """Defines lookup display for list filter"""
+        return (
+            Plot.objects.filter(usage=Plot.CRISIS)
+            .order_by("-pk")
+            .values_list("pk", "name")
+        )
+
+    def queryset(self, request, queryset):
+        """Specifies queryset we get based on selected options"""
+        return queryset.filter(plot_id=self.value())
+
+
 class PlotActionAdmin(DomAdmin):
     """Admin for @actions that players are taking, one of their primary ways of participating in the game's plot."""
 
-    list_display = ("id", "dompc", "plot", "player_action", "week", "status")
-    search_fields = ("plot__name", "=dompc__player__username", "=id")
-    list_filter = ("plot", "status")
-    raw_id_fields = ("dompc", "gemit", "gm", "plot", "beat")
+    list_display = ("id", "dompc", "org", "plot", "player_action", "week", "status")
+    search_fields = ("plot__name", "=dompc__player__username", "=id", "org__name")
+    list_filter = (CrisisListFilter, "status")
+    raw_id_fields = ("dompc", "gemit", "gm", "plot", "beat", "org")
     readonly_fields = ("ooc_intent",)
     filter_horizontal = ("search_tags",)
     fieldsets = [
-        (None, {"fields": [("dompc", "topic"), ("search_tags",)]}),
+        (None, {"fields": [("dompc", "topic"), ("org",), ("search_tags",)]}),
         (
             "Status",
             {

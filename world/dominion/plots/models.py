@@ -189,16 +189,6 @@ class Plot(SharedMemoryModel):
         )
         return msg
 
-    def check_taken_action(self, dompc):
-        """Whether player has submitted action for the current crisis update."""
-        if self.usage != self.CRISIS:
-            return False
-        return self.actions.filter(
-            Q(dompc=dompc)
-            & Q(beat__isnull=True)
-            & ~Q(status__in=(PlotAction.DRAFT, PlotAction.CANCELLED))
-        ).exists()
-
     def raise_submission_errors(self):
         """Raises errors if it's not valid to submit an action for this crisis"""
         if self.resolved:
@@ -209,10 +199,6 @@ class Plot(SharedMemoryModel):
     def raise_creation_errors(self, dompc):
         """Raise errors if dompc shouldn't be allowed to submit an action for this crisis"""
         self.raise_submission_errors()
-        if self.check_taken_action(dompc=dompc):
-            raise ActionSubmissionError(
-                "You have already submitted an action for this stage of the crisis."
-            )
 
     def create_update(
         self,
@@ -1212,7 +1198,7 @@ class PlotAction(AbstractAction):
             plot = " for %s" % self.plot
         else:
             plot = ""
-        return "%s by %s%s" % (self.NOUN, self.author, plot)
+        return "%s by %s%s" % (self.NOUN, self.org or self.author, plot)
 
     @property
     def authors(self):
@@ -1234,10 +1220,10 @@ class PlotAction(AbstractAction):
     def pretty_str(self):
         """Returns formatted display of this action"""
         if self.plot:
-            plot = " for {m%s{n" % self.plot
+            plot = " for |m%s|n" % self.plot
         else:
             plot = ""
-        return "%s by {c%s{n%s" % (self.NOUN, self.author, plot)
+        return "%s by |c%s|n%s" % (self.NOUN, self.org or self.author, plot)
 
     @property
     def sent(self):
@@ -1486,13 +1472,27 @@ class PlotAction(AbstractAction):
         if self.free_action:
             return
         episode = Episode.objects.last()
-        if (
-            self.dompc.player.roster.current_account.episodes.filter(id=episode.id)
-            .exclude(action_per_episodes__plot_action__status=PlotAction.CANCELLED)
-            .exists()
-        ):
+        if self.org:
+            action_ids = (
+                self.org.actions.exclude(id=self.id)
+                .filter(Q(beat__isnull=True) | Q(beat__episode=episode))
+                .values_list("id", flat=True)
+            )
+            noun = f"{self.org} has"
+        else:
+            action_ids = (
+                ActionPerEpisode.objects.filter(
+                    player_account=self.dompc.player.roster.current_account,
+                    episode=episode,
+                )
+                .exclude(plot_action__status=PlotAction.CANCELLED)
+                .values_list("plot_action_id", flat=True)
+            )
+            noun = "You have"
+        if action_ids:
+            id_str = ", ".join(str(action_id) for action_id in action_ids)
             raise ActionSubmissionError(
-                "You have already taken an action this episode."
+                f"{noun} already taken an action this episode: {id_str}."
             )
 
     def check_warning_prompt_sent(self):
@@ -1581,7 +1581,7 @@ class PlotAction(AbstractAction):
                     "Action %s has been updated." % self.id, category="Actions"
                 )
         # check if we need to create the ActionPerEpisode
-        if not hasattr(self, "action_per_episode"):
+        if not self.org and not hasattr(self, "action_per_episode"):
             episode = Episode.objects.last()
             ActionPerEpisode.objects.get_or_create(
                 plot_action=self,
