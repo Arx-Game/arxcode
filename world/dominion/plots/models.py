@@ -1639,9 +1639,9 @@ class PlotAction(AbstractAction):
         difficulty_table = CheckRank.get_table_for_value(
             self.total_roll_value, self.target_rank
         )
-        self.outcome = difficulty_table.get_result_for_roll()
+        self.roll_result = difficulty_table.get_result_for_roll()
         self.save()
-        return self.outcome
+        return self.roll_result
 
     @property
     def total_roll_value(self):

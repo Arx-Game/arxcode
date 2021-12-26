@@ -885,12 +885,12 @@ class DifficultyTable(NameIntegerLookupModel):
         instances = self.cached_ranges
         if not instances:
             raise ValueError(f"No results found for {self}.")
-        closest = max(
+        closest: DifficultyTableResultRange = max(
             [ob for ob in instances if ob.value <= roll],
             key=lambda x: x.value,
             default=instances[0],
         )
-        return closest
+        return closest.result
 
     def display_table_values(self):
         values = "\n".join(

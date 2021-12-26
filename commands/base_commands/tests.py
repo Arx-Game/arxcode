@@ -480,7 +480,7 @@ class StoryActionTests(ArxCommandTest):
         )
         self.call_cmd(
             "/submit 4",
-            f"You have already taken an action this episode: 1.",
+            "You have already taken an action this episode: 1.",
         )
         self.caller = self.account2
         # unused actions can be used as assists. Try with one slot free to be used as an assist
@@ -561,13 +561,15 @@ class StoryActionTests(ArxCommandTest):
         action_9.save()
         self.call_cmd("/submit 9", "Org has taken an action.")
 
+    @patch("world.stat_checks.models.randint")
     @patch("world.dominion.plots.models.inform_staff")
     @patch("world.dominion.plots.models.get_week")
-    def test_cmd_gm_action(self, mock_get_week, mock_inform_staff):
+    def test_cmd_gm_action(self, mock_get_week, mock_inform_staff, mock_randint):
         from datetime import datetime
 
         now = datetime.now()
         mock_get_week.return_value = 1
+        mock_randint.return_value = 0
         plot = Plot.objects.create(name="GM Plot", usage=Plot.GM_PLOT)
         action = self.dompc2.actions.create(
             actions="test",
@@ -716,6 +718,9 @@ class StoryActionTests(ArxCommandTest):
         self.call_cmd("/markpending 1", "status set to Pending Resolution.")
         self.assertEquals(action.status, PlotAction.PENDING_PUBLISH)
         self.call_cmd(
+            "/check 1", "The new outcome for the action is: simply outclassed"
+        )
+        self.call_cmd(
             "/publish 1=story test",
             "That story already has an action written. "
             "To prevent accidental overwrites, please change "
@@ -737,7 +742,7 @@ class StoryActionTests(ArxCommandTest):
             "Testaccount2 OOC Question: foo inform\n"
             "Reply by Testaccount: Sure go nuts\n"
             "Testaccount2 OOC Question: another test question\n"
-            "Outcome Value: None\n"
+            "Outcome Value: simply outclassed\n"
             "Story Result: \n"
             "Secret Story sekritfoo\n"
             "Total requirements:\n"
@@ -759,7 +764,7 @@ class StoryActionTests(ArxCommandTest):
         self.assertEquals(action.status, PlotAction.PUBLISHED)
         self.account2.inform.assert_called_with(
             "{wGM Response to action for crisis:{n GM Plot\n"
-            "{wCheck Result:{n None\n\n"
+            "{wCheck Result:{n simply outclassed\n\n"
             "{wStory Result:{n story test\n\n",
             append=False,
             category="Actions",
