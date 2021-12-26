@@ -2656,14 +2656,18 @@ class CmdOrganization(ArxPlayerCommand):
                 caller.msg("You must supply a rank number.")
                 return
             if len(myorgs) < 2:
+                if not myorgs:
+                    caller.msg("You are not a member of any organizations.")
+                    return
                 # if they supplied the org even though they don't have to
                 rhs = self.rhs
                 if len(self.rhslist) > 1:
                     rhs = self.rhslist[0]
-                if not self.rhs.isdigit():
+                try:
+                    rank = int(rhs)
+                except (TypeError, ValueError):
                     caller.msg("Rank must be a number.")
                     return
-                rank = int(rhs)
                 org = myorgs[0]
                 member = caller.Dominion.memberships.get(organization=org)
             else:
