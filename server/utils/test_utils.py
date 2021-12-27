@@ -27,7 +27,7 @@ from world.stat_checks.models import (
     TraitsInCombination,
     CheckCondition,
     CheckDifficultyRule,
-    NaturalRollType,
+    NaturalRollType, CheckRank, DifficultyTable,
 )
 from world.traits.models import Trait
 
@@ -84,6 +84,8 @@ class ArxTestConfigMixin(object):
         DamageRating._cache_set = False
         DifficultyRating._cache_set = False
         NaturalRollType._cache_set = False
+        CheckRank._cache_set = False
+        DifficultyTable._cache_set = False
 
     def setup_arx_characters(self):
         """
