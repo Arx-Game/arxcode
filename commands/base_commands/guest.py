@@ -286,9 +286,9 @@ def census_of_fealty():
     """Returns dict of fealty name to number of active players"""
     fealties = {
         "Valardin": 0,
-        "Velenosa": 0,
+        "Lyceum": 0,
         "Grayson": 0,
-        "Crownsworn": 0,
+        "Crown": 0,
         "Thrax": 0,
         "Redrain": 0,
         "Pravus": 0,
