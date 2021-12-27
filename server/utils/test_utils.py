@@ -27,7 +27,9 @@ from world.stat_checks.models import (
     TraitsInCombination,
     CheckCondition,
     CheckDifficultyRule,
-    NaturalRollType, CheckRank, DifficultyTable,
+    NaturalRollType,
+    CheckRank,
+    DifficultyTable,
 )
 from world.traits.models import Trait
 
