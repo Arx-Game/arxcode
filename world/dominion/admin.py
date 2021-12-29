@@ -681,7 +681,10 @@ class CrisisListFilter(admin.SimpleListFilter):
 
     def queryset(self, request, queryset):
         """Specifies queryset we get based on selected options"""
-        return queryset.filter(plot_id=self.value())
+        value = self.value()
+        if not value:
+            return queryset.all()
+        return queryset.filter(plot_id=value)
 
 
 class PlotActionAdmin(DomAdmin):
