@@ -116,8 +116,7 @@ class CmdMarket(ArxCommand):
         market/military <amount>
 
     Used to buy and sell materials at the market. Materials can be
-    sold to the market for 5% of the cost. Economic resources are worth
-    250 silver for buying materials. Resources cost 500 silver each.
+    sold to the market for 5% of the cost. Resources cost 500 silver each.
     """
 
     key = "market"
