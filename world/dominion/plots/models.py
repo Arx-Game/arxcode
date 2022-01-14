@@ -1486,7 +1486,9 @@ class PlotAction(AbstractAction):
                     episode=episode,
                 )
                 .exclude(plot_action__status=PlotAction.CANCELLED)
+                .exclude(plot_action__status=PlotAction.DRAFT)
                 .values_list("plot_action_id", flat=True)
+                .exclude(plot_action=self)
             )
             noun = "You have"
         if action_ids:
