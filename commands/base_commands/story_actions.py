@@ -123,6 +123,10 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
     economic, military, ap, clue, revelation, spell, skillnode, item, army,
     or rfr. You then specify either the amount of resource to add or the ID
     of the entity required which your character has access to.
+
+    A player is permitted one personal action per episode (not one per
+    character), and orgs separately are allowed one crisis action per
+    episode.
     """
 
     key = "@action"
@@ -172,26 +176,6 @@ class CmdAction(ActionCommandMixin, ArxPlayerCommand):
             .exclude(status=PlotAction.CANCELLED)
             .distinct()
         )
-
-    # noinspection PyUnusedLocal
-    def get_help(self, caller, cmdset):
-        """Overrides basic help, which defaults to the __doc__ string"""
-        msg = self.__doc__
-        recent_actions = caller.recent_actions
-        max_actions = PlotAction.max_requests
-        max_assists = PlotActionAssistant.MAX_ASSISTS
-        recent_assists = caller.recent_assists
-        msg += """
-    You are permitted {w%s{n actions and {w%s{n assists every 60 days, and have currently
-    taken {w%s{n actions and {w%s{n assists. Assists can be made instead of actions, and
-    assists over %s count toward the action cap.""" % (
-            max_actions,
-            max_assists,
-            recent_actions.count(),
-            recent_assists.count(),
-            max_assists,
-        )
-        return msg
 
     def func(self):
         """Executes @action command"""
