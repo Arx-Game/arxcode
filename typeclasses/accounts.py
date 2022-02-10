@@ -645,7 +645,9 @@ class Account(InformMixin, MsgMixins, DefaultAccount):
     def check_petitions(self):
         """Checks if we have any unread petition posts"""
         try:
-            unread = self.Dominion.petitionparticipation_set.filter(unread_posts=True)
+            unread = self.Dominion.petitionparticipation_set.filter(
+                unread_posts=True, petition__closed=False, signed_up=True
+            )
             if unread:
                 unread_ids = [str(ob.petition.id) for ob in unread]
                 self.msg(
