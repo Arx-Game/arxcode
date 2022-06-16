@@ -55,7 +55,7 @@ class Migration(DataMigration):
                 "django.db.models.fields.related.ManyToManyField",
                 [],
                 {
-                    "to": u"orm['auth.Permission']",
+                    "to": "orm['auth.Permission']",
                     "symmetrical": "False",
                     "blank": "True",
                 },
@@ -75,12 +75,12 @@ class Migration(DataMigration):
             "content_type": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['contenttypes.ContentType']"},
+                {"to": "orm['contenttypes.ContentType']"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "name": ("django.db.models.fields.CharField", [], {"max_length": "50"}),
         },
-        u"auth.user": {
+        "auth.user": {
             "Meta": {"object_name": "User"},
             "date_joined": (
                 "django.db.models.fields.DateTimeField",
@@ -104,10 +104,10 @@ class Migration(DataMigration):
                     "symmetrical": "False",
                     "related_name": "u'user_set'",
                     "blank": "True",
-                    "to": u"orm['auth.Group']",
+                    "to": "orm['auth.Group']",
                 },
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "is_active": (
                 "django.db.models.fields.BooleanField",
                 [],
@@ -145,7 +145,7 @@ class Migration(DataMigration):
                     "symmetrical": "False",
                     "related_name": "u'user_set'",
                     "blank": "True",
-                    "to": u"orm['auth.Permission']",
+                    "to": "orm['auth.Permission']",
                 },
             ),
             "username": (
@@ -154,7 +154,7 @@ class Migration(DataMigration):
                 {"unique": "True", "max_length": "30"},
             ),
         },
-        u"contenttypes.contenttype": {
+        "contenttypes.contenttype": {
             "Meta": {
                 "ordering": "('name',)",
                 "unique_together": "(('app_label', 'model'),)",
@@ -166,13 +166,13 @@ class Migration(DataMigration):
                 [],
                 {"max_length": "100"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "model": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
             "name": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
         },
-        u"helpdesk.usersettings": {
+        "helpdesk.usersettings": {
             "Meta": {"object_name": "UserSettings"},
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "settings_pickled": (
                 "django.db.models.fields.TextField",
                 [],
@@ -181,7 +181,7 @@ class Migration(DataMigration):
             "user": (
                 "django.db.models.fields.related.OneToOneField",
                 [],
-                {"to": u"orm['auth.User']", "unique": "True"},
+                {"to": "orm['auth.User']", "unique": "True"},
             ),
         },
     }

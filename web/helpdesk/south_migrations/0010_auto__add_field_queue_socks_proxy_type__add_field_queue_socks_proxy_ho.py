@@ -9,7 +9,7 @@ class Migration(SchemaMigration):
     def forwards(self, orm):
         # Adding field 'Queue.socks_proxy_type'
         db.add_column(
-            u"helpdesk_queue",
+            "helpdesk_queue",
             "socks_proxy_type",
             self.gf("django.db.models.fields.CharField")(
                 max_length=8, null=True, blank=True
@@ -19,7 +19,7 @@ class Migration(SchemaMigration):
 
         # Adding field 'Queue.socks_proxy_host'
         db.add_column(
-            u"helpdesk_queue",
+            "helpdesk_queue",
             "socks_proxy_host",
             self.gf("django.db.models.fields.GenericIPAddressField")(
                 max_length=39, null=True, blank=True
@@ -29,7 +29,7 @@ class Migration(SchemaMigration):
 
         # Adding field 'Queue.socks_proxy_port'
         db.add_column(
-            u"helpdesk_queue",
+            "helpdesk_queue",
             "socks_proxy_port",
             self.gf("django.db.models.fields.IntegerField")(null=True, blank=True),
             keep_default=False,
@@ -37,18 +37,18 @@ class Migration(SchemaMigration):
 
     def backwards(self, orm):
         # Deleting field 'Queue.socks_proxy_type'
-        db.delete_column(u"helpdesk_queue", "socks_proxy_type")
+        db.delete_column("helpdesk_queue", "socks_proxy_type")
 
         # Deleting field 'Queue.socks_proxy_host'
-        db.delete_column(u"helpdesk_queue", "socks_proxy_host")
+        db.delete_column("helpdesk_queue", "socks_proxy_host")
 
         # Deleting field 'Queue.socks_proxy_port'
-        db.delete_column(u"helpdesk_queue", "socks_proxy_port")
+        db.delete_column("helpdesk_queue", "socks_proxy_port")
 
     models = {
-        u"auth.group": {
+        "auth.group": {
             "Meta": {"object_name": "Group"},
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "name": (
                 "django.db.models.fields.CharField",
                 [],
@@ -58,13 +58,13 @@ class Migration(SchemaMigration):
                 "django.db.models.fields.related.ManyToManyField",
                 [],
                 {
-                    "to": u"orm['auth.Permission']",
+                    "to": "orm['auth.Permission']",
                     "symmetrical": "False",
                     "blank": "True",
                 },
             ),
         },
-        u"auth.permission": {
+        "auth.permission": {
             "Meta": {
                 "ordering": "(u'content_type__app_label', u'content_type__model', u'codename')",
                 "unique_together": "((u'content_type', u'codename'),)",
@@ -78,12 +78,12 @@ class Migration(SchemaMigration):
             "content_type": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['contenttypes.ContentType']"},
+                {"to": "orm['contenttypes.ContentType']"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "name": ("django.db.models.fields.CharField", [], {"max_length": "50"}),
         },
-        u"auth.user": {
+        "auth.user": {
             "Meta": {"object_name": "User"},
             "date_joined": (
                 "django.db.models.fields.DateTimeField",
@@ -107,10 +107,10 @@ class Migration(SchemaMigration):
                     "symmetrical": "False",
                     "related_name": "u'user_set'",
                     "blank": "True",
-                    "to": u"orm['auth.Group']",
+                    "to": "orm['auth.Group']",
                 },
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "is_active": (
                 "django.db.models.fields.BooleanField",
                 [],
@@ -148,7 +148,7 @@ class Migration(SchemaMigration):
                     "symmetrical": "False",
                     "related_name": "u'user_set'",
                     "blank": "True",
-                    "to": u"orm['auth.Permission']",
+                    "to": "orm['auth.Permission']",
                 },
             ),
             "username": (
@@ -157,7 +157,7 @@ class Migration(SchemaMigration):
                 {"unique": "True", "max_length": "30"},
             ),
         },
-        u"contenttypes.contenttype": {
+        "contenttypes.contenttype": {
             "Meta": {
                 "ordering": "('name',)",
                 "unique_together": "(('app_label', 'model'),)",
@@ -169,11 +169,11 @@ class Migration(SchemaMigration):
                 [],
                 {"max_length": "100"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "model": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
             "name": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
         },
-        u"helpdesk.attachment": {
+        "helpdesk.attachment": {
             "Meta": {"ordering": "['filename']", "object_name": "Attachment"},
             "file": (
                 "django.db.models.fields.files.FileField",
@@ -188,9 +188,9 @@ class Migration(SchemaMigration):
             "followup": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['helpdesk.FollowUp']"},
+                {"to": "orm['helpdesk.FollowUp']"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "mime_type": (
                 "django.db.models.fields.CharField",
                 [],
@@ -198,7 +198,7 @@ class Migration(SchemaMigration):
             ),
             "size": ("django.db.models.fields.IntegerField", [], {}),
         },
-        u"helpdesk.customfield": {
+        "helpdesk.customfield": {
             "Meta": {"object_name": "CustomField"},
             "data_type": (
                 "django.db.models.fields.CharField",
@@ -220,7 +220,7 @@ class Migration(SchemaMigration):
                 [],
                 {"null": "True", "blank": "True"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "label": ("django.db.models.fields.CharField", [], {"max_length": "'30'"}),
             "list_values": (
                 "django.db.models.fields.TextField",
@@ -253,14 +253,14 @@ class Migration(SchemaMigration):
                 {"default": "False"},
             ),
         },
-        u"helpdesk.emailtemplate": {
+        "helpdesk.emailtemplate": {
             "Meta": {
                 "ordering": "['template_name', 'locale']",
                 "object_name": "EmailTemplate",
             },
             "heading": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
             "html": ("django.db.models.fields.TextField", [], {}),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "locale": (
                 "django.db.models.fields.CharField",
                 [],
@@ -274,23 +274,23 @@ class Migration(SchemaMigration):
                 {"max_length": "100"},
             ),
         },
-        u"helpdesk.escalationexclusion": {
+        "helpdesk.escalationexclusion": {
             "Meta": {"object_name": "EscalationExclusion"},
             "date": ("django.db.models.fields.DateField", [], {}),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "name": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
             "queues": (
                 "django.db.models.fields.related.ManyToManyField",
                 [],
                 {
                     "symmetrical": "False",
-                    "to": u"orm['helpdesk.Queue']",
+                    "to": "orm['helpdesk.Queue']",
                     "null": "True",
                     "blank": "True",
                 },
             ),
         },
-        u"helpdesk.followup": {
+        "helpdesk.followup": {
             "Meta": {"ordering": "['date']", "object_name": "FollowUp"},
             "comment": (
                 "django.db.models.fields.TextField",
@@ -302,7 +302,7 @@ class Migration(SchemaMigration):
                 [],
                 {"default": "datetime.datetime.now"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "new_status": (
                 "django.db.models.fields.IntegerField",
                 [],
@@ -316,7 +316,7 @@ class Migration(SchemaMigration):
             "ticket": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['helpdesk.Ticket']"},
+                {"to": "orm['helpdesk.Ticket']"},
             ),
             "title": (
                 "django.db.models.fields.CharField",
@@ -326,10 +326,10 @@ class Migration(SchemaMigration):
             "user": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['auth.User']", "null": "True", "blank": "True"},
+                {"to": "orm['auth.User']", "null": "True", "blank": "True"},
             ),
         },
-        u"helpdesk.ignoreemail": {
+        "helpdesk.ignoreemail": {
             "Meta": {"object_name": "IgnoreEmail"},
             "date": ("django.db.models.fields.DateField", [], {"blank": "True"}),
             "email_address": (
@@ -337,7 +337,7 @@ class Migration(SchemaMigration):
                 [],
                 {"max_length": "150"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "keep_in_mailbox": (
                 "django.db.models.fields.BooleanField",
                 [],
@@ -349,28 +349,28 @@ class Migration(SchemaMigration):
                 [],
                 {
                     "symmetrical": "False",
-                    "to": u"orm['helpdesk.Queue']",
+                    "to": "orm['helpdesk.Queue']",
                     "null": "True",
                     "blank": "True",
                 },
             ),
         },
-        u"helpdesk.kbcategory": {
+        "helpdesk.kbcategory": {
             "Meta": {"ordering": "['title']", "object_name": "KBCategory"},
             "description": ("django.db.models.fields.TextField", [], {}),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "slug": ("django.db.models.fields.SlugField", [], {"max_length": "50"}),
             "title": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
         },
-        u"helpdesk.kbitem": {
+        "helpdesk.kbitem": {
             "Meta": {"ordering": "['title']", "object_name": "KBItem"},
             "answer": ("django.db.models.fields.TextField", [], {}),
             "category": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['helpdesk.KBCategory']"},
+                {"to": "orm['helpdesk.KBCategory']"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "last_updated": (
                 "django.db.models.fields.DateTimeField",
                 [],
@@ -385,23 +385,23 @@ class Migration(SchemaMigration):
             "title": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
             "votes": ("django.db.models.fields.IntegerField", [], {"default": "0"}),
         },
-        u"helpdesk.presetreply": {
+        "helpdesk.presetreply": {
             "Meta": {"ordering": "['name']", "object_name": "PreSetReply"},
             "body": ("django.db.models.fields.TextField", [], {}),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "name": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
             "queues": (
                 "django.db.models.fields.related.ManyToManyField",
                 [],
                 {
                     "symmetrical": "False",
-                    "to": u"orm['helpdesk.Queue']",
+                    "to": "orm['helpdesk.Queue']",
                     "null": "True",
                     "blank": "True",
                 },
             ),
         },
-        u"helpdesk.queue": {
+        "helpdesk.queue": {
             "Meta": {"ordering": "('title',)", "object_name": "Queue"},
             "allow_email_submission": (
                 "django.db.models.fields.BooleanField",
@@ -468,7 +468,7 @@ class Migration(SchemaMigration):
                 [],
                 {"null": "True", "blank": "True"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "locale": (
                 "django.db.models.fields.CharField",
                 [],
@@ -502,9 +502,9 @@ class Migration(SchemaMigration):
                 {"max_length": "200", "null": "True", "blank": "True"},
             ),
         },
-        u"helpdesk.savedsearch": {
+        "helpdesk.savedsearch": {
             "Meta": {"object_name": "SavedSearch"},
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "query": ("django.db.models.fields.TextField", [], {}),
             "shared": (
                 "django.db.models.fields.BooleanField",
@@ -515,10 +515,10 @@ class Migration(SchemaMigration):
             "user": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['auth.User']"},
+                {"to": "orm['auth.User']"},
             ),
         },
-        u"helpdesk.ticket": {
+        "helpdesk.ticket": {
             "Meta": {"ordering": "('id',)", "object_name": "Ticket"},
             "assigned_to": (
                 "django.db.models.fields.related.ForeignKey",
@@ -527,7 +527,7 @@ class Migration(SchemaMigration):
                     "blank": "True",
                     "related_name": "'assigned_to'",
                     "null": "True",
-                    "to": u"orm['auth.User']",
+                    "to": "orm['auth.User']",
                 },
             ),
             "created": ("django.db.models.fields.DateTimeField", [], {"blank": "True"}),
@@ -541,7 +541,7 @@ class Migration(SchemaMigration):
                 [],
                 {"null": "True", "blank": "True"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "last_escalation": (
                 "django.db.models.fields.DateTimeField",
                 [],
@@ -565,7 +565,7 @@ class Migration(SchemaMigration):
             "queue": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['helpdesk.Queue']"},
+                {"to": "orm['helpdesk.Queue']"},
             ),
             "resolution": (
                 "django.db.models.fields.TextField",
@@ -580,7 +580,7 @@ class Migration(SchemaMigration):
             ),
             "title": ("django.db.models.fields.CharField", [], {"max_length": "200"}),
         },
-        u"helpdesk.ticketcc": {
+        "helpdesk.ticketcc": {
             "Meta": {"object_name": "TicketCC"},
             "can_update": (
                 "django.db.models.fields.BooleanField",
@@ -597,27 +597,27 @@ class Migration(SchemaMigration):
                 [],
                 {"max_length": "75", "null": "True", "blank": "True"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "ticket": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['helpdesk.Ticket']"},
+                {"to": "orm['helpdesk.Ticket']"},
             ),
             "user": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['auth.User']", "null": "True", "blank": "True"},
+                {"to": "orm['auth.User']", "null": "True", "blank": "True"},
             ),
         },
-        u"helpdesk.ticketchange": {
+        "helpdesk.ticketchange": {
             "Meta": {"object_name": "TicketChange"},
             "field": ("django.db.models.fields.CharField", [], {"max_length": "100"}),
             "followup": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['helpdesk.FollowUp']"},
+                {"to": "orm['helpdesk.FollowUp']"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "new_value": (
                 "django.db.models.fields.TextField",
                 [],
@@ -629,18 +629,18 @@ class Migration(SchemaMigration):
                 {"null": "True", "blank": "True"},
             ),
         },
-        u"helpdesk.ticketcustomfieldvalue": {
+        "helpdesk.ticketcustomfieldvalue": {
             "Meta": {"object_name": "TicketCustomFieldValue"},
             "field": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['helpdesk.CustomField']"},
+                {"to": "orm['helpdesk.CustomField']"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "ticket": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"to": u"orm['helpdesk.Ticket']"},
+                {"to": "orm['helpdesk.Ticket']"},
             ),
             "value": (
                 "django.db.models.fields.TextField",
@@ -648,7 +648,7 @@ class Migration(SchemaMigration):
                 {"null": "True", "blank": "True"},
             ),
         },
-        u"helpdesk.ticketdependency": {
+        "helpdesk.ticketdependency": {
             "Meta": {
                 "unique_together": "(('ticket', 'depends_on'),)",
                 "object_name": "TicketDependency",
@@ -656,18 +656,18 @@ class Migration(SchemaMigration):
             "depends_on": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"related_name": "'depends_on'", "to": u"orm['helpdesk.Ticket']"},
+                {"related_name": "'depends_on'", "to": "orm['helpdesk.Ticket']"},
             ),
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "ticket": (
                 "django.db.models.fields.related.ForeignKey",
                 [],
-                {"related_name": "'ticketdependency'", "to": u"orm['helpdesk.Ticket']"},
+                {"related_name": "'ticketdependency'", "to": "orm['helpdesk.Ticket']"},
             ),
         },
-        u"helpdesk.usersettings": {
+        "helpdesk.usersettings": {
             "Meta": {"object_name": "UserSettings"},
-            u"id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
+            "id": ("django.db.models.fields.AutoField", [], {"primary_key": "True"}),
             "settings_pickled": (
                 "django.db.models.fields.TextField",
                 [],
@@ -676,7 +676,7 @@ class Migration(SchemaMigration):
             "user": (
                 "django.db.models.fields.related.OneToOneField",
                 [],
-                {"to": u"orm['auth.User']", "unique": "True"},
+                {"to": "orm['auth.User']", "unique": "True"},
             ),
         },
     }

@@ -12,5 +12,4 @@ jobs:
           python-version: '3.8'
       - uses: psf/black@stable
         with:
-          version: "21.4b2"
-          options: "--check --diff --version"
+          version: "22.3.0"
