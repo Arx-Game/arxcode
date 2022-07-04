@@ -20,7 +20,7 @@ def ProgressBar(percent, prefix=None, notches=50, numericalpercent=True, unicode
     and empty portions, respectively; [unicode] can be set to True to use full and empty
     blocks from the Unicode character set instead, which are not defined in all fonts."""
 
-    outString = u""  # Unicode string.
+    outString = ""  # Unicode string.
     if prefix:
         prefix = "{} ".format(prefix)
         outString = outString + prefix
