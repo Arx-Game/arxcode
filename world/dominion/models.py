@@ -692,7 +692,7 @@ class PrestigeAdjustment(SharedMemoryModel):
 
         now = datetime.now()
         weeks = (now - self.adjusted_on).days // 7
-        decay_multiplier = PRESTIGE_DECAY_AMOUNT ** weeks
+        decay_multiplier = PRESTIGE_DECAY_AMOUNT**weeks
         return int(round(self.adjusted_by * decay_multiplier))
 
 
