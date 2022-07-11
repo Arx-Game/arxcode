@@ -3030,6 +3030,86 @@ class CmdThink(ArxCommand):
         caller.msg("You think: %s" % self.args)
 
 
+class CmdCoinFlip(ArxCommand):
+    """
+    Flips a coin, calling heads or tails or without a call.
+
+    Usage:
+        +coinflip <heads or tails>
+            or
+        +coinflip
+    """
+
+    key = "coinflip"
+    locks = "cmd:all()"
+    help_category = "Social"
+
+    def func(self):
+        """Execute command."""
+        caller = self.caller
+        args = self.args
+        from random import randint
+
+        result = randint(0, 1)
+        flip = "coin flip result"
+        if result == 1:
+            flip = "heads"
+
+        if result == 0:
+            flip = "tails"
+
+        if not args:
+
+            caller.msg("You flip a coin and it lands on " + flip + ".")
+            txt = self.caller.name + " flips a coin and it lands on " + flip + "."
+            caller.location.msg_contents(txt, exclude=caller)
+            return
+        if args == "heads":
+            if flip == "heads":
+                caller.msg(
+                    "You flip a coin calling heads, and it lands on heads. You win!"
+                )
+                txt = (
+                    self.caller.name
+                    + " flips a coin calling heads, and it lands on heads. They win!"
+                )
+                caller.location.msg_contents(txt, exclude=caller)
+                return
+            if flip == "tails":
+                caller.msg(
+                    "You flip a coin calling heads, but it lands on tails. You lose. Aw."
+                )
+                txt = (
+                    self.caller.name
+                    + " flips a coin calling heads, but it lands on tails. They lose. Aw."
+                )
+                caller.location.msg_contents(txt, exclude=caller)
+                return
+        if args == "tails":
+            if flip == "tails":
+                caller.msg(
+                    "You flip a coin calling tails, and it lands on tails. You win!"
+                )
+                txt = (
+                    self.caller.name
+                    + " flips a coin calling tails, and it lands on tails. They win!"
+                )
+                caller.location.msg_contents(txt, exclude=caller)
+                return
+            if flip == "heads":
+                caller.msg(
+                    "You flip a coin calling tails, but it lands on heads. You lose. Aw."
+                )
+                txt = (
+                    self.caller.name
+                    + " flips a coin calling tails, but it lands on heads. They lose. Aw."
+                )
+                caller.location.msg_contents(txt, exclude=caller)
+                return
+
+        caller.msg("If you call your coin flip, you need to call heads or tails.")
+
+
 class CmdFeel(ArxCommand):
     """
     State what your character is feeling
