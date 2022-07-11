@@ -98,6 +98,7 @@ if urllib_request is None:
             "Could not fetch Akismet URL: %s Response code: %s" % (url, req.status_code)
         )
 
+
 else:
 
     def _fetch_url(url, data, headers):

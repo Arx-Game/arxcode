@@ -296,6 +296,7 @@ class MobileCmdSet(CmdSet):
         self.add(social.CmdThink())
         self.add(social.CmdFeel())
         self.add(social.CmdDonate())
+        self.add(social.CmdCoinFlip())
         self.add(social.CmdFirstImpression())
         self.add(social.CmdGetInLine())
         self.add(investigation.CmdInvestigate())

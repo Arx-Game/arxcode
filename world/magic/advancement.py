@@ -62,7 +62,7 @@ class MagicAdvancementScript(Script, RunDateMixin):
         potential_factor = int(practitioner.potential ** (1 / 10.0))
 
         max_spend = min(
-            practitioner.potential / ((potential_factor**2) * 10),
+            practitioner.potential / ((potential_factor ** 2) * 10),
             practitioner.unspent_resonance,
         )
         nodes = practitioner.node_resonances.filter(practicing=True)

@@ -179,3 +179,9 @@ class CmdNoFighting(SleepCommand):
 
     key = "fight"
     aliases = ["train"]
+
+
+class CmdCoinFlip(SleepCommand):
+    """You are unconscious. Many character commands will no longer function."""
+
+    key = "coinflip"
