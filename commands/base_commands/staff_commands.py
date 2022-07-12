@@ -2106,7 +2106,7 @@ class CmdSetServerConfig(ArxPlayerCommand):
         "cg bonus skill points": "CHARGEN_BONUS_SKILL_POINTS",
         "new clue ap cost": "NEW_CLUE_AP_COST",
         "material cost multiplier": "MATERIAL_COST_MULTIPLIER",
-        "OC": "ALLOW_OC",
+        "oc": "ALLOW_OC",
         "ap regen": "BONUS_AP_REGEN",
     }
     valid_keys = sorted(shorthand_to_real_keys.keys())
@@ -2167,7 +2167,7 @@ class CmdSetServerConfig(ArxPlayerCommand):
                     val = self.validate_income_value(self.rhs)
                 elif key == "motd":
                     broadcast("|yServer Message of the Day:|n %s" % val)
-                elif key in ("ap transfers disabled", "OC"):
+                elif key in ("ap transfers disabled", "oc"):
                     val = bool(self.rhs)
                 elif key in ("cg bonus skill points", "new clue ap cost", "ap regen"):
                     if not val.isdigit():
