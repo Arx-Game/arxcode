@@ -2183,7 +2183,9 @@ class CmdSetServerConfig(ArxPlayerCommand):
                 ServerConfig.objects.conf(key=real_key, value=val)
             self.list_config_values()
         except KeyError:
-            raise CommandError("Not a valid key: %s" % ", ".join(self.valid_keys))
+            raise CommandError(
+                "Not a valid key: %s" % ", ".join(sorted(self.valid_keys))
+            )
 
 
 class CmdAdminPropriety(ArxPlayerCommand):
