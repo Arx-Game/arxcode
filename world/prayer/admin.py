@@ -1,5 +1,11 @@
 from django.contrib import admin
-from world.prayer.models import Prayer, PrayerAnswer, InvocableEntity, EntityAlias
+from world.prayer.models import (
+    Prayer,
+    PrayerAnswer,
+    InvocableEntity,
+    EntityAlias,
+    Religion,
+)
 from django.shortcuts import reverse
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
@@ -86,5 +92,10 @@ class InvocableEntityAdmin(admin.ModelAdmin):
     inlines = (EntityAliasInline,)
 
 
+class ReligionAdmin(admin.ModelAdmin):
+    list_display = ("name",)
+
+
 admin.site.register(Prayer, PrayerAdmin)
 admin.site.register(InvocableEntity, InvocableEntityAdmin)
+admin.site.register(Religion, ReligionAdmin)

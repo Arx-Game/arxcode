@@ -731,7 +731,7 @@ def display_header(caller, character, show_hidden=False):
     birth = character.item_data.birthday
     if not birth:
         birth = "Unknown"
-    religion = character.db.religion
+    religion = character.item_data.religion
     if not religion:
         religion = "Unknown"
     vocation = character.item_data.vocation

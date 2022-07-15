@@ -197,6 +197,13 @@ class CharacterSheet(CharacterExtensionModel):
     background = models.TextField(blank=True)
     obituary = models.TextField(blank=True)
     additional_desc = models.TextField(blank=True)
+    religion = models.ForeignKey(
+        "prayer.Religion",
+        related_name="character_sheets",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     @CachedProperty
     def cached_values(self):
