@@ -11,3 +11,9 @@ def fealty_validator(value):
     from world.dominion.models import Fealty
 
     return get_model_by_id_or_name(Fealty, value)
+
+
+def religion_validator(value):
+    from world.prayer.models import Religion
+
+    return get_model_by_id_or_name(Religion, value)

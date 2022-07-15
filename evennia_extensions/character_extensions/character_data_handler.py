@@ -8,6 +8,7 @@ from evennia_extensions.character_extensions.storage_wrappers import (
 from evennia_extensions.character_extensions.validators import (
     fealty_validator,
     race_validator,
+    religion_validator,
 )
 from evennia_extensions.object_extensions.item_data_handler import ItemDataHandler
 from evennia_extensions.object_extensions.storage_wrappers import DisplayNamesWrapper
@@ -44,6 +45,9 @@ class CharacterDataHandler(ItemDataHandler):
     skin_tone = CharacterSheetWrapper(default_is_none=True)
     skintone = skin_tone  # alias for original attribute name
     concept = CharacterSheetWrapper()
+    religion = CharacterSheetWrapper(
+        validator_func=religion_validator, default_is_none=True
+    )
     real_concept = CharacterSheetWrapper(default_is_none=True)
     marital_status = CharacterSheetWrapper()
     family = CharacterSheetWrapper()

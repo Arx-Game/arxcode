@@ -73,6 +73,7 @@ class Character(
     default_combat_stance = "balanced"
     default_autoattack = False
     default_race = "human"
+    default_religion = "Pantheon"
     default_social_rank = 10
     quantity = 1  # overridden by npc groups
 

@@ -100,3 +100,14 @@ class PrayerAnswer(SharedMemoryModel):
         if self.miracle:
             return f"Miracle: {self.miracle}"
         return "GM forgot to fill out details, make a request"
+
+
+class Religion(SharedMemoryModel):
+    """The different religions PCs or NPCs can have"""
+
+    name = models.CharField(
+        blank=True, unique=True, null=True, max_length=25, db_index=True
+    )
+
+    def __str__(self):
+        return self.name or "Not Known"
