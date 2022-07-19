@@ -90,6 +90,41 @@ _valid_fealty_ = (
     "Valardin",
     "Velenosa",
 )
+_valid_religion_ = (
+    "Pantheon",
+    "Shamanism",
+    "Pantheon/Shamanism",
+)
+_valid_hair_color_ = (
+    "Red",
+    "Brown",
+    "Black",
+    "Blonde",
+    "Gray",
+    "White",
+    "Bald",
+)
+_valid_skin_tone_ = (
+    "Pale",
+    "Fair",
+    "Tan",
+    "Black",
+    "Bronzed",
+    "Brown",
+    "Porcelain",
+    "Smoke",
+    "Sunkissed",
+    "Olive",
+    "Dusky",
+)
+_valid_eye_color_ = (
+    "Brown",
+    "Blue",
+    "Green",
+    "Hazel",
+    "Gray",
+)
+
 _stage3_optional_ = ("real_concept", "real_age")
 # Minimum and maximum ages players can set for starting characters
 _min_age_ = 18
@@ -993,6 +1028,38 @@ class CmdGuestAddInput(ArxPlayerCommand):
             msg = "For having the fealty of %s, you will receive %s " % (args, bonus)
             msg += "bonus xp after character creation."
             caller.msg(msg)
+        if "religion" in switches:
+            if args not in _valid_religion_:
+                religions = ", ".join(_valid_religion_)
+                caller.msg(
+                    "Religion must be one of the following exactly, case sensitive: {w%s{n"
+                    % religions
+                )
+                return
+        if "hair_color" in switches:
+            args = args.capitalize()
+            if args not in _valid_hair_color_:
+                hair_colors = ", ".join(_valid_hair_color_)
+                caller.msg(
+                    "Hair Color must be one of the following: {w%s{n" % hair_colors
+                )
+                return
+        if "skin_tone" in switches:
+            args = args.capitalize()
+            if args not in _valid_skin_tone_:
+                skin_tones = ", ".join(_valid_skin_tone_)
+                caller.msg(
+                    "Skin Tone must be one of the following: {w%s{n" % skin_tones
+                )
+                return
+        if "eye_color" in switches:
+            args = args.capitalize()
+            if args not in _valid_eye_color_:
+                eye_colors = ", ".join(_valid_eye_color_)
+                caller.msg(
+                    "Eye Color must be one of the following: {w%s{n" % eye_colors
+                )
+                return
         if "social_rank" in switches:
             args = args.strip()
             if not args.isdigit():
