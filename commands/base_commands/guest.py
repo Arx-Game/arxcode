@@ -105,17 +105,12 @@ _valid_hair_color_ = (
     "Bald",
 )
 _valid_skin_tone_ = (
-    "Pale",
+    "Very Fair",
     "Fair",
-    "Tan",
-    "Black",
-    "Bronzed",
-    "Brown",
-    "Porcelain",
-    "Smoke",
-    "Sunkissed",
-    "Olive",
-    "Dusky",
+    "Light",
+    "Medium",
+    "Dark",
+    "Very Dark",
 )
 _valid_eye_color_ = (
     "Brown",
