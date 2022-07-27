@@ -12,4 +12,4 @@ pillow==8.3.2
 python-decouple==3.3
 requests==2.22.0
 Unidecode==1.1.1
-sendgrid==6.9.7
+django-sendgrid-v5==1.2.1
