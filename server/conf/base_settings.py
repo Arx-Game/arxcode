@@ -216,16 +216,15 @@ cloudinary.config(
     api_secret=config("CLOUDINARY_API_SECRET", default="SOME_KEY"),
 )
 
-EMAIL_BACKEND = config(
-    "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
-)
+EMAIL_BACKEND = "sendgrid_backend.SendgridBackend"
+SENDGRID_API_KEY = config("SENDGRID_API_KEY", default="MISSING_KEY")
 EMAIL_HOST = config("EMAIL_HOST", default="localhost")
 EMAIL_PORT = config("EMAIL_PORT", cast=int, default=25)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="")
-ADMIN_NAME = config("ADMIN_NAME", default="")
-ADMIN_EMAIL = config("ADMIN_EMAIL", default="")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="admin@arxmush.org")
+ADMIN_NAME = config("ADMIN_NAME", default="Arx Admin")
+ADMIN_EMAIL = config("ADMIN_EMAIL", default="admin@arxmush.org")
 if ADMIN_NAME and ADMIN_EMAIL:
     ADMINS = (ADMIN_NAME, ADMIN_EMAIL)
 else:
