@@ -131,7 +131,7 @@ class AppsManager(Object):
                 msg_success = send_mail(
                     "ArxMUSH Character Application",
                     message,
-                    "arxmush@gmail.com",
+                    "admin@arxmush.org",
                     [email],
                     fail_silently=False,
                 )
