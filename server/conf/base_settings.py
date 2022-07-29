@@ -225,10 +225,12 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="admin@arxmush.org")
 ADMIN_NAME = config("ADMIN_NAME", default="Arx Admin")
 ADMIN_EMAIL = config("ADMIN_EMAIL", default="admin@arxmush.org")
-if ADMIN_NAME and ADMIN_EMAIL:
+SEND_ADMIN_EMAILS = config("SEND_ADMIN_EMAILS", default=False, cast=bool)
+if ADMIN_NAME and ADMIN_EMAIL and SEND_ADMIN_EMAILS:
     ADMINS = (ADMIN_NAME, ADMIN_EMAIL)
 else:
     ADMINS = []
+MANAGERS = ADMINS
 GAME_INDEX_ENABLED = config("SEND_GAME_INDEX", cast=bool, default=False)
 ISSUES_URL = config("ISSUES_URL", default="")
 # Evennia's base settings screw up current account creation
