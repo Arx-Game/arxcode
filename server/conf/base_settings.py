@@ -227,7 +227,7 @@ ADMIN_NAME = config("ADMIN_NAME", default="Arx Admin")
 ADMIN_EMAIL = config("ADMIN_EMAIL", default="admin@arxmush.org")
 SEND_ADMIN_EMAILS = config("SEND_ADMIN_EMAILS", default=False, cast=bool)
 if ADMIN_NAME and ADMIN_EMAIL and SEND_ADMIN_EMAILS:
-    ADMINS = (ADMIN_NAME, ADMIN_EMAIL)
+    ADMINS = [(ADMIN_NAME, ADMIN_EMAIL)]
 else:
     ADMINS = []
 MANAGERS = ADMINS
