@@ -200,7 +200,7 @@ class CmdWall(ArxCommand):
         if not self.args:
             self.msg("Usage: @wall <message>")
             return
-        message = '%s shouts "%s"' % (self.caller.name, self.args)
+        message = '%s broadcasts to the game "%s"' % (self.caller.name, self.args)
         self.msg("Announcing to all connected players ...")
         SESSIONS.announce_all(message)
 
