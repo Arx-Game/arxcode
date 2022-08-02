@@ -315,9 +315,13 @@ XP_BONUS_BY_POP = 1
 def census_of_fealty():
     """Returns dict of fealty name to number of active players"""
     from collections import defaultdict, OrderedDict
+
     fealties = defaultdict(int)
     from typeclasses.characters import Character
-    for char in Character.objects.filter(roster__roster__name="Active", charactersheet__fealty__isnull=False):
+
+    for char in Character.objects.filter(
+        roster__roster__name="Active", charactersheet__fealty__isnull=False
+    ):
         fealties[str(char.item_data.fealty)] += 1
     # return an OrderedDict of lowest to highest population of fealites
     return OrderedDict(sorted(fealties.items(), key=lambda k: k[1]))
