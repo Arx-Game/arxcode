@@ -8,7 +8,6 @@ views/staff.py - The bulk of the application - provides most business logic and
 """
 
 from datetime import datetime, timedelta
-import sys
 
 from django.conf import settings
 
@@ -18,8 +17,7 @@ try:
     User = get_user_model()
 except ImportError:
     from django.contrib.auth.models import User
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.core.files.base import ContentFile
+from django.contrib.auth.decorators import user_passes_test
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.core import paginator
@@ -29,10 +27,9 @@ from django.http import (
     HttpResponseRedirect,
     Http404,
     HttpResponse,
-    HttpResponseForbidden,
 )
-from django.shortcuts import render_to_response, get_object_or_404, render
-from django.template import engines, Context, RequestContext
+from django.shortcuts import get_object_or_404, render
+from django.template import RequestContext
 from django.utils.dates import MONTHS_3
 from django.utils.translation import ugettext as _
 from django.utils.html import escape
@@ -45,7 +42,6 @@ except ImportError:
 
 from web.helpdesk.forms import (
     TicketForm,
-    UserSettingsForm,
     EmailIgnoreForm,
     EditTicketForm,
     TicketCCForm,
@@ -514,7 +510,7 @@ def update_ticket(request, ticket_id, public=False):
 
     files = []
     if request.FILES:
-        import mimetypes, os
+        import mimetypes
 
         for file in request.FILES.getlist("attachment"):
             filename = file.name.encode("ascii", "ignore")
