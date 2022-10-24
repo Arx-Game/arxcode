@@ -11,7 +11,7 @@ from django.http import HttpResponseRedirect
 from django import forms
 from django.db.models import Q
 
-from .models import NewsEntry
+from web.news.models import NewsEntry
 
 # The sidebar text to be included as a variable on each page. There's got to
 # be a better, cleaner way to include this on every page.

@@ -1,4 +1,4 @@
-from .models import (
+from web.character.models import (
     PlayerAccount,
     PlayerInfoEntry,
     PlayerSiteEntry,

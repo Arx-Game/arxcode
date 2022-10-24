@@ -16,8 +16,8 @@ else:
     from django.conf.urls import *
 from django.contrib.auth.decorators import login_required
 
-from . import settings as helpdesk_settings
-from .views import feeds, staff, public, kb, api
+from web.helpdesk import settings as helpdesk_settings
+from web.helpdesk.views import feeds, staff, public, kb, api
 
 from django.views.generic import TemplateView
 

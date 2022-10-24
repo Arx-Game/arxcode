@@ -21,7 +21,7 @@ from cloudinary.models import CloudinaryField
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.idmapper.models import SharedMemoryModel
 
-from .managers import ArxRosterManager, AccountHistoryManager
+from web.character.managers import ArxRosterManager, AccountHistoryManager
 from server.utils.arx_utils import CachedProperty
 from server.utils.picker import WeightedPicker
 from world.stats_and_skills import do_dice_check
@@ -2112,7 +2112,7 @@ class Investigation(AbstractPlayerAllocations):
         Finds a target clue based on our topic and our investigation history.
         We'll choose the lowest rating out of 3 random choices.
         """
-        from .investigation import CmdInvestigate
+        from web.character.investigation import CmdInvestigate
 
         cmd = CmdInvestigate()
         cmd.args = self.topic

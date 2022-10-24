@@ -4,7 +4,7 @@ It is imported from the root handler, game.web.urls.py.
 """
 
 from django.conf.urls import url
-from . import views
+from web.news import views
 
 urlpatterns = [
     url(r"^show/(?P<entry_id>\d+)/$", views.show_news),

@@ -7,7 +7,7 @@
 #
 
 from django.conf.urls import url
-from .views import (
+from web.help_topics.views import (
     topic,
     list_commands,
     list_topics,

@@ -4,7 +4,7 @@ webpage 'application'.
 """
 
 from django.conf.urls import url
-from .views import page_index
+from web.website.views import page_index
 
 urlpatterns = [
     url(r"^$", page_index),

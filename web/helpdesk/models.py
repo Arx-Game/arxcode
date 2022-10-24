@@ -1185,7 +1185,7 @@ def create_usersettings(sender, instance, created, **kwargs):
     If we end up with users with no UserSettings, then we get horrible
     'DoesNotExist: UserSettings matching query does not exist.' errors.
     """
-    from .settings import DEFAULT_USER_SETTINGS
+    from web.helpdesk.settings import DEFAULT_USER_SETTINGS
 
     if created:
         UserSettings.objects.create(user=instance, settings=DEFAULT_USER_SETTINGS)

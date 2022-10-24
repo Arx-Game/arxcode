@@ -26,8 +26,8 @@ try:
 except ImportError:
     from datetime import datetime as timezone
 
-from .lib import send_templated_mail, safe_template_context
-from .models import (
+from web.helpdesk.lib import send_templated_mail, safe_template_context
+from web.helpdesk.models import (
     Ticket,
     Queue,
     FollowUp,
@@ -38,7 +38,7 @@ from .models import (
     TicketCustomFieldValue,
     TicketDependency,
 )
-from . import settings as helpdesk_settings
+from web.helpdesk import settings as helpdesk_settings
 
 
 class CustomFieldMixin(object):
