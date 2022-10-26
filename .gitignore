@@ -86,3 +86,7 @@ settings.ini
 # emacs backup files
 \#*\#
 .\#*
+
+# pyenv files
+.python-version
+install-pyenv-win.ps1
