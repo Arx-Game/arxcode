@@ -6,7 +6,7 @@ work, I'm just going to build and change the fucking models by hand
 here.
 """
 from django.conf import settings
-from .arx_utils import inform_staff
+from server.utils.arx_utils import inform_staff
 from datetime import datetime
 from web.helpdesk.models import Ticket, Queue, FollowUp, KBItem
 

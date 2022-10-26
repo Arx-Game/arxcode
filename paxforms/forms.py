@@ -1,4 +1,4 @@
-from .fields import Paxfield
+from paxforms.fields import Paxfield
 import django
 
 

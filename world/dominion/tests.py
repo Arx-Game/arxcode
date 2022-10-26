@@ -2,10 +2,11 @@
 Tests for dominion stuff. Crisis commands, etc.
 """
 from unittest.mock import patch, Mock
+from django.urls import reverse
 
 from server.utils.test_utils import ArxCommandTest, TestTicketMixins
 
-from . import crisis_commands, general_dominion_commands
+from world.dominion import crisis_commands, general_dominion_commands
 from world.dominion.plots import plot_commands
 from web.character.models import (
     StoryEmit,
@@ -29,7 +30,6 @@ from world.dominion.plots.models import (
     PlotUpdate,
     OrgPlotInvolvement,
 )
-from django.urls import reverse
 
 
 class TestCraftingCommands(ArxCommandTest):

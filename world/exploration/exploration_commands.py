@@ -1,6 +1,6 @@
 from commands.base import ArxCommand
-from . import builder
-from .loot import LootGenerator
+from world.exploration import builder
+from world.exploration.loot import LootGenerator
 from world.exploration.models import (
     Shardhaven,
     ShardhavenLayout,

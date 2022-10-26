@@ -11,7 +11,7 @@ respectively. So while you can do
 char.traits.strength, you would have to access
 a skill by char.traits.get_skill_value('brawl'), for example.
 """
-from .roll import Roll
+from world.roll import Roll
 from math import ceil
 
 

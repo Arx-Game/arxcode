@@ -3658,7 +3658,7 @@ class CmdCensus(ArxPlayerCommand):
 
     def func(self):
         """Displays the census information"""
-        from .guest import census_of_fealty
+        from commands.base_commands.guest import census_of_fealty
 
         fealties = census_of_fealty()
         table = PrettyTable(["{wFealty{n", "{w#{n"])

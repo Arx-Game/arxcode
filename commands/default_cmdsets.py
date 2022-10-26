@@ -22,7 +22,7 @@ from evennia.commands.default import (
     cmdset_unloggedin,
 )
 
-from .cmdsets import standard
+from commands.cmdsets import standard
 from typeclasses.wearable import cmdset_wearable
 from world.dominion import agent_commands
 
@@ -148,7 +148,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_overridden_commands(self):
         """Add arx overrides of Evennia commands"""
-        from .base_commands import help, overrides
+        from commands.base_commands import help, overrides
 
         self.add(help.CmdHelp())
         self.add(overrides.CmdWho())
@@ -166,7 +166,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_general_commands(self):
         """Add general/misc commands"""
-        from .base_commands import general
+        from commands.base_commands import general
 
         self.add(general.CmdPage())
         self.add(general.CmdMail())
@@ -177,7 +177,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_bboard_commands(self):
         """Add commands for bulletin boards"""
-        from .base_commands import bboards
+        from commands.base_commands import bboards
 
         self.add(bboards.CmdBBReadOrPost())
         self.add(bboards.CmdBBSub())
@@ -189,7 +189,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_roster_commands(self):
         """Add commands around roster viewing or management"""
-        from .base_commands import roster
+        from commands.base_commands import roster
 
         self.add(roster.CmdRosterList())
         self.add(roster.CmdAdminRoster())
@@ -201,7 +201,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_jobs_commands(self):
         """Add commands for interacting with helpdesk"""
-        from .base_commands import jobs
+        from commands.base_commands import jobs
 
         self.add(jobs.CmdJob())
         self.add(jobs.CmdRequest())
@@ -229,7 +229,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_social_commands(self):
         """Add commands for social RP"""
-        from .base_commands import social
+        from commands.base_commands import social
 
         self.add(social.CmdFinger())
         self.add(social.CmdWatch())
@@ -243,7 +243,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_staff_commands(self):
         """Add commands for staff players"""
-        from .base_commands import staff_commands
+        from commands.base_commands import staff_commands
 
         # more recently implemented staff commands
         self.add(staff_commands.CmdRestore())
@@ -261,7 +261,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
         self.add(staff_commands.CmdAdminWrit())
         self.add(staff_commands.CmdAdminBreak())
         self.add(staff_commands.CmdSetServerConfig())
-        from .cmdsets import starting_gear
+        from commands.cmdsets import starting_gear
 
         self.add(starting_gear.CmdSetupGear())
         from world.fashion import fashion_commands
@@ -297,7 +297,7 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
 
         self.add(crisis_commands.CmdViewCrisis())
         self.add(crisis_commands.CmdGMCrisis())
-        from .base_commands import story_actions
+        from commands.base_commands import story_actions
 
         self.add(story_actions.CmdGMAction)
 
@@ -334,7 +334,7 @@ class UnloggedinCmdSet(cmdset_unloggedin.UnloggedinCmdSet):
             self.add(default_unloggedin.CmdUnconnectedLook())
             self.add(default_unloggedin.CmdUnconnectedEncoding())
             self.add(default_unloggedin.CmdUnconnectedScreenreader())
-            from .base_commands import unloggedin
+            from commands.base_commands import unloggedin
 
             self.add(unloggedin.CmdGuestConnect())
             self.add(unloggedin.CmdUnconnectedHelp())

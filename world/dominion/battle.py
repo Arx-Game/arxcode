@@ -8,8 +8,8 @@ will fight until they rout, and will often lose quite a few troops who
 desert during the retreat, while others are killed in retreating.
 """
 from django.conf import settings
-from .combat_grid import CombatGrid
-from .reports import BattleReport
+from world.dominion.combat_grid import CombatGrid
+from world.dominion.reports import BattleReport
 import operator
 import traceback
 from server.utils.arx_utils import setup_log

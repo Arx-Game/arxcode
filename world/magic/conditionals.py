@@ -1,6 +1,6 @@
 from world.weather import utils as weather_utils
 from world.weather.models import WeatherType
-from .models import Alignment, Affinity
+from world.magic.models import Alignment, Affinity
 
 
 def weather(caster, target, weather_type):

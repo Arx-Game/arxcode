@@ -1,7 +1,7 @@
 from commands.base import ArxCommand
 from evennia.commands.cmdset import CmdSet
 from evennia.utils import evtable
-from .models import (
+from world.magic.models import (
     SkillNode,
     SkillNodeResonance,
     Working,

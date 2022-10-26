@@ -492,7 +492,7 @@ class CombatantStateHandler(object):
 
     def npc_target_choice(self, targ):
         """Checks who the npc will target"""
-        from .utils import npc_target_choice
+        from typeclasses.scripts.combat.utils import npc_target_choice
 
         return npc_target_choice(
             targ, self.targets, self.prev_targ, self.combat_handler.switch_chance

@@ -27,7 +27,7 @@ from web.character.models import PlayerAccount, Clue, Revelation, Episode
 from typeclasses.readable.readable_commands import CmdWrite
 from world.traits.models import Trait
 
-from . import (
+from commands.base_commands import (
     story_actions,
     overrides,
     social,
@@ -2230,7 +2230,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
 class XPCommandTests(ArxCommandTest):
     def test_cmd_use_xp(self):
         from evennia.server.models import ServerConfig
-        from .guest import setup_voc
+        from commands.base_commands.guest import setup_voc
         from world import stats_and_skills
 
         self.setup_cmd(xp.CmdUseXP, self.char2)

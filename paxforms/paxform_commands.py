@@ -1,4 +1,4 @@
-from .forms import Paxform
+from paxforms.forms import Paxform
 from commands.base import ArxCommand
 
 

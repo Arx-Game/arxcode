@@ -1,7 +1,7 @@
-from .conditional_parser import ConditionalHandler
+from world.magic.conditional_parser import ConditionalHandler
 from web.character.models import Clue
 from evennia.objects.models import ObjectDB
-from .models import (
+from world.magic.models import (
     ClueCollection,
     MagicBucket,
     Effect,

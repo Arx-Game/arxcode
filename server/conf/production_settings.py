@@ -1,7 +1,7 @@
 """
 Settings we use for production. Some of these could eventually be moved into a settings.ini file
 """
-from .base_settings import *
+from server.conf.base_settings import *
 
 from decouple import config, Csv
 

@@ -2,8 +2,8 @@
 Handler for Journals
 """
 
-from .msg_utils import get_initial_queryset, lazy_import_from_str
-from .handler_base import MsgHandlerBase
+from world.msgs.handler_mixins.msg_utils import get_initial_queryset, lazy_import_from_str
+from world.msgs.handler_mixins.handler_base import MsgHandlerBase
 from world.msgs.managers import (
     WHITE_TAG,
     BLACK_TAG,

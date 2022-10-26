@@ -578,7 +578,7 @@ class CmdListStaff(ArxPlayerCommand):
         staff = AccountDB.objects.filter(db_is_connected=True, is_staff=True)
         table = evtable.EvTable("{wName{n", "{wRole{n", "{wIdle{n", width=78)
         for ob in staff:
-            from .overrides import CmdWho
+            from commands.base_commands.overrides import CmdWho
 
             if ob.tags.get("hidden_staff") or ob.db.hide_from_watch:
                 continue

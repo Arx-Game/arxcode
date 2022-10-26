@@ -870,7 +870,7 @@ class Practitioner(SharedMemoryModel):
 
     @property
     def anima_rituals_this_week(self):
-        from .advancement import MagicAdvancementScript
+        from world.magic.advancement import MagicAdvancementScript
 
         script = MagicAdvancementScript.objects.first()
         try:

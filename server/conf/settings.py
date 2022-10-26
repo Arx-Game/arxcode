@@ -20,4 +20,4 @@ folder (typeclasses.foo) whereas paths within the Evennia library
 needs to be given explicitly (evennia.foo).
 
 """
-from .production_settings import *
+from server.conf.production_settings import *

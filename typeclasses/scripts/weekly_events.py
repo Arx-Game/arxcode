@@ -20,8 +20,8 @@ from world.dominion.plots.models import ActionRequirement
 from world.msgs.models import Inform
 from typeclasses.bulletin_board.bboard import BBoard
 from typeclasses.accounts import Account
-from .scripts import Script
-from .script_mixins import RunDateMixin
+from typeclasses.scripts.scripts import Script
+from typeclasses.scripts.script_mixins import RunDateMixin
 from server.utils.arx_utils import inform_staff, cache_safe_update
 from web.character.models import Investigation, RosterEntry
 
