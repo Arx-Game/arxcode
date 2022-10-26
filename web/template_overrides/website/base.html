@@ -20,13 +20,13 @@
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
 	
     {% if sidebar %}
-    <link rel="stylesheet" type="text/css" href="/static/css/prosimii-screen-alt.css" media="screen" title="Prosimii (Sidebar)" />
+    <link rel="stylesheet" type="text/css" href="{% static 'website/css/prosimii-screen-alt.css' %}" media="screen" title="Prosimii (Sidebar)" />
     {% else %}
-    <link rel="stylesheet" type="text/css" href="/static/css/prosimii-screen.css" media="screen" title="Prosimii" />
+    <link rel="stylesheet" type="text/css" href="{% static 'website/css/prosimii-screen.css' %}" media="screen" title="Prosimii" />
     
     {% endif %}
-    <link rel="stylesheet alternative" type="text/css" href="/static/css/prosimii-print.css" media="screen" title="Print Preview" />
-    <link rel="stylesheet" type="text/css" href="/static/css/prosimii-print.css" media="print" />
+    <link rel="stylesheet alternative" type="text/css" href="{% static 'website/css/prosimii-print.css' %}" media="screen" title="Print Preview" />
+    <link rel="stylesheet" type="text/css" href="{% static 'website/css/prosimii-print.css' %}" media="print" />
 
     {% block header_ext %}
     {% endblock %}
@@ -47,7 +47,7 @@
       </div>
 
       <div class="midHeader">
-        <img src="/static/images/arx_badge.png" height='100' width='100' align='left'/> <h1 class="headerTitle" lang="la">Arx, After the Reckoning</h1>
+        <img src="{% static 'website/images/arx_badge.png' %}" height='100' width='100' align='left'/> <h1 class="headerTitle" lang="la">Arx, After the Reckoning</h1>
         <div class="headerSubTitle" title="Slogan">
         <!-- Insert a slogan here if you want -->
         {{game_slogan}}			&nbsp;
