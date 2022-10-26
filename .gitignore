@@ -76,6 +76,7 @@ world/dominion/map/arxmap_imagesize.cfg
 *.db3-wal
 
 # generated fealty graph
+world/dominion/fealty/fealty_graph
 world/dominion/fealty/fealty_graph.png
 world/dominion/fealty/fealty_graph_full.png
 
