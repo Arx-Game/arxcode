@@ -490,7 +490,7 @@ class Ticket(SharedMemoryModel):
         if self.on_hold:
             held_msg = _(" - On Hold")
         dep_msg = ""
-        if self.can_be_resolved == False:
+        if self.can_be_resolved is False:
             dep_msg = _(" - Open dependencies")
         return "%s%s%s" % (self.get_status_display(), held_msg, dep_msg)
 

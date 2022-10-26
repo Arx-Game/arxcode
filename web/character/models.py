@@ -2464,7 +2464,7 @@ class Flashback(SharedMemoryModel):
         timeline example:
         [{'readable': False, 'posts': [p1, p2]}, {'readable': True, 'post': p3}]
         """
-        if is_staff == None:
+        if is_staff is None:
             is_staff = bool(player.is_staff or player.check_permstring("builders"))
         try:
             roster = player.roster
@@ -2536,7 +2536,7 @@ class Flashback(SharedMemoryModel):
         """
         posts = self.posts.all()
         readable = posts.filter(Q(readable_by=roster_entry) | Q(poster=roster_entry))
-        if amount != None:
+        if amount is not None:
             start = len(posts) - amount
             if start > 0:
                 posts = posts[start : amount + start]

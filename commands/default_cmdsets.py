@@ -148,9 +148,9 @@ class AccountCmdSet(cmdset_account.AccountCmdSet):
     @check_errors
     def add_overridden_commands(self):
         """Add arx overrides of Evennia commands"""
-        from commands.base_commands import help, overrides
+        from commands.base_commands import help as cmd_help, overrides
 
-        self.add(help.CmdHelp())
+        self.add(cmd_help.CmdHelp())
         self.add(overrides.CmdWho())
         self.add(overrides.CmdArxSetAttribute())
         self.add(overrides.CmdArxCdestroy())

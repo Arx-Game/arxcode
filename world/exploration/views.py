@@ -1,6 +1,11 @@
 from django.http import JsonResponse
 
-from world.exploration.models import Shardhaven, ShardhavenObstacle, ShardhavenPuzzle, Monster
+from world.exploration.models import (
+    Shardhaven,
+    ShardhavenObstacle,
+    ShardhavenPuzzle,
+    Monster,
+)
 
 JSON_ERROR_AUTHORIZATION = -1
 JSON_ERROR_BADPARAM = -2

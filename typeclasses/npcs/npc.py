@@ -25,7 +25,11 @@ from typeclasses.npcs.constants import ANIMAL, SMALL_ANIMAL
 from typeclasses.npcs.npc_types import (
     get_npc_plural_name,
     get_npc_singular_name,
-    get_npc_weapon
+    get_npc_weapon,
+    get_npc_stats,
+    get_npc_skills,
+    get_armor_bonus,
+    get_hp_bonus,
 )
 
 from world.stats_and_skills import (
@@ -179,14 +183,6 @@ class Npc(Character):
         return True
 
     def setup_stats(self, ntype, threat):
-        from typeclasses.npcs.npc_types import (
-            get_npc_weapon,
-            get_npc_stats,
-            get_npc_skills,
-            get_armor_bonus,
-            get_hp_bonus,
-        )
-
         self.db.npc_quality = threat
         for stat, value in get_npc_stats(ntype).items():
             self.traits.set_stat_value(stat, value)
@@ -630,7 +626,11 @@ class AgentMixin(object):
         Get the cost of a skill based on our current rating and the
         type of agent that we are.
         """
-        from typeclasses.npcs.npc_types import get_npc_skills, spy_skills, assistant_skills
+        from typeclasses.npcs.npc_types import (
+            get_npc_skills,
+            spy_skills,
+            assistant_skills,
+        )
 
         restype = "military"
         atype = self.agent.type

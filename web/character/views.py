@@ -41,7 +41,14 @@ from web.character.forms import (
     FlashbackPostForm,
     FlashbackCreateForm,
 )
-from web.character.models import Photo, Story, Episode, Chapter, Flashback, ClueDiscovery
+from web.character.models import (
+    Photo,
+    Story,
+    Episode,
+    Chapter,
+    Flashback,
+    ClueDiscovery,
+)
 
 
 def get_character_from_ob(object_id):

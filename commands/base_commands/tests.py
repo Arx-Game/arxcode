@@ -36,7 +36,7 @@ from commands.base_commands import (
     crafting,
     jobs,
     xp,
-    help,
+    help as cmd_help,
     general,
     exchanges,
 )
@@ -2301,7 +2301,7 @@ class HelpCommandTests(ArxCommandTest):
 
         entry = HelpEntry.objects.create(db_key="test entry")
         entry.tags.add("plots")
-        self.setup_cmd(help.CmdHelp, self.char1)
+        self.setup_cmd(cmd_help.CmdHelp, self.char1)
         expected_return = "Help topic for +plots (aliases: +plot)\n"
         expected_return += dedent(CmdPlots.__doc__.rstrip())
         expected_return += "\n\nRelated help entries: test entry\n\n"
