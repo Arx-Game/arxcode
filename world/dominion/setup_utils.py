@@ -6,7 +6,7 @@ social rank.
 """
 from world.dominion.models import Land, PlayerOrNpc, AssetOwner, Organization
 from world.dominion.domain.models import Domain, Ruler
-from . import unit_constants
+from world.dominion import unit_constants
 from django.core.exceptions import ObjectDoesNotExist
 import random
 

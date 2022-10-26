@@ -1,4 +1,4 @@
-from .base_settings import *
+from server.conf.base_settings import *
 from decouple import config, Csv
 
 MAX_COMMAND_RATE = 1

@@ -1,5 +1,5 @@
 from typeclasses.scripts.scripts import Script
-from . import utils
+from world.weather import utils
 from evennia.utils import create
 
 

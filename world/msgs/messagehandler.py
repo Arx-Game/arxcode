@@ -9,7 +9,7 @@ header field will be a list of key:value pairs, separated by
 semicolons.
 """
 
-from .handler_mixins import messengerhandler, journalhandler, msg_utils
+from world.msgs.handler_mixins import messengerhandler, journalhandler, msg_utils
 from web.character.models import Clue
 
 

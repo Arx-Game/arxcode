@@ -31,7 +31,7 @@ from typeclasses.characters import Character
 from world.dominion.models import Organization
 from world.dominion.plots.models import PlotAction, ActionSubmissionError
 
-from .forms import (
+from web.character.forms import (
     PhotoForm,
     PhotoDirectForm,
     PhotoUnsignedDirectForm,
@@ -41,7 +41,14 @@ from .forms import (
     FlashbackPostForm,
     FlashbackCreateForm,
 )
-from .models import Photo, Story, Episode, Chapter, Flashback, ClueDiscovery
+from web.character.models import (
+    Photo,
+    Story,
+    Episode,
+    Chapter,
+    Flashback,
+    ClueDiscovery,
+)
 
 
 def get_character_from_ob(object_id):

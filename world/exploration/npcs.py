@@ -1,5 +1,5 @@
 from typeclasses.npcs.npc import Npc, MultiNpc
-from .models import Monster
+from world.exploration.models import Monster
 
 
 class MonsterMixin(object):

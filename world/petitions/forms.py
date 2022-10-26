@@ -2,7 +2,7 @@
 Forms for petitions app
 """
 from django.forms import ModelForm
-from .models import Petition
+from world.petitions.models import Petition
 
 
 class PetitionForm(ModelForm):

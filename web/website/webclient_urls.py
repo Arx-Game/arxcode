@@ -1,4 +1,4 @@
 from django.conf.urls import url
-from .views import webclient
+from web.website.views import webclient
 
 urlpatterns = [url(r"^$", webclient, name="index")]

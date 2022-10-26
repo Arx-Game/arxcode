@@ -56,7 +56,6 @@ from datetime import datetime, timedelta
 from random import randint, choice as random_choice
 from typing import List
 
-import typeclasses.npcs.constants
 from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils import create
@@ -66,10 +65,14 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
 
+import typeclasses.npcs.constants
+from typeclasses.mixins import InformMixin
 from world.dominion.domain.models import LAND_SIZE, LAND_COORDS
-from .reports import WeeklyReport
-from .agenthandler import AgentHandler
-from .managers import OrganizationManager, LandManager, RPEventQuerySet
+from world.dominion.reports import WeeklyReport
+from world.dominion.agenthandler import AgentHandler
+from world.dominion.managers import OrganizationManager, LandManager, RPEventQuerySet
+from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement
+from world.stats_and_skills import do_dice_check
 from server.utils.arx_utils import (
     get_week,
     inform_staff,
@@ -82,9 +85,6 @@ from server.utils.arx_utils import (
     get_full_url,
 )
 from server.utils.exceptions import PayError
-from typeclasses.mixins import InformMixin
-from world.dominion.plots.models import Plot, PlotAction, PCPlotInvolvement
-from world.stats_and_skills import do_dice_check
 
 LIFESTYLES = {
     0: (-100, -1000),

@@ -1,6 +1,6 @@
 import typeclasses.readable.readable_commands
 from evennia.commands.cmdset import CmdSet
-from . import bank, combat, home, market, rumor, starting_gear
+from commands.cmdsets import bank, combat, home, market, rumor, starting_gear
 from typeclasses.wearable import cmdset_wearable, cmdset_wieldable
 from typeclasses.places import cmdset_places
 from typeclasses.containers import container

@@ -11,8 +11,8 @@ any arbitrary text into a format that can be injected into any 'desc' in order t
 from django.db import models
 from evennia.typeclasses.models import SharedMemoryModel
 from server.utils.arx_utils import CachedProperty
-from .exceptions import AlreadySignedError
-from .template_manager import TemplateManager
+from world.templates.exceptions import AlreadySignedError
+from world.templates.template_manager import TemplateManager
 
 
 class Template(SharedMemoryModel):

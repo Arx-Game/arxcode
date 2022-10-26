@@ -9,7 +9,7 @@ from django.db import models
 from evennia.utils.idmapper.models import SharedMemoryModel
 
 from server.utils.exceptions import PayError
-from .exceptions import PetitionError
+from world.petitions.exceptions import PetitionError
 from world.dominion.models import Organization
 
 

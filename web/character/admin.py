@@ -4,7 +4,7 @@ Admin models for Character app
 from django.contrib import admin
 from django.forms import ModelForm
 from django.utils.safestring import mark_safe
-from .models import (
+from web.character.models import (
     Roster,
     RosterEntry,
     Photo,

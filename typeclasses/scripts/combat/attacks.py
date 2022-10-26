@@ -38,7 +38,7 @@ Flow of how a typical attack goes, from the intial call to assigning damage:
         remove_combatant()
 """
 
-from . import combat_settings
+from typeclasses.scripts.combat import combat_settings
 from collections import defaultdict
 from server.utils.exceptions import WalrusJudgement
 from server.utils.arx_utils import list_to_string
@@ -368,7 +368,7 @@ class Attack(object):
             and self.switch_chance
             and (self.remaining_attacks - 1) > 0
         ):
-            from .utils import npc_target_choice
+            from typeclasses.scripts.combat.utils import npc_target_choice
 
             for _ in range(self.remaining_attacks - 1):
                 attack_list.append(

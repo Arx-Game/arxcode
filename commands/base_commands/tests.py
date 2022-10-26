@@ -27,7 +27,7 @@ from web.character.models import PlayerAccount, Clue, Revelation, Episode
 from typeclasses.readable.readable_commands import CmdWrite
 from world.traits.models import Trait
 
-from . import (
+from commands.base_commands import (
     story_actions,
     overrides,
     social,
@@ -36,7 +36,7 @@ from . import (
     crafting,
     jobs,
     xp,
-    help,
+    help as cmd_help,
     general,
     exchanges,
 )
@@ -2230,7 +2230,7 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
 class XPCommandTests(ArxCommandTest):
     def test_cmd_use_xp(self):
         from evennia.server.models import ServerConfig
-        from .guest import setup_voc
+        from commands.base_commands.guest import setup_voc
         from world import stats_and_skills
 
         self.setup_cmd(xp.CmdUseXP, self.char2)
@@ -2301,7 +2301,7 @@ class HelpCommandTests(ArxCommandTest):
 
         entry = HelpEntry.objects.create(db_key="test entry")
         entry.tags.add("plots")
-        self.setup_cmd(help.CmdHelp, self.char1)
+        self.setup_cmd(cmd_help.CmdHelp, self.char1)
         expected_return = "Help topic for +plots (aliases: +plot)\n"
         expected_return += dedent(CmdPlots.__doc__.rstrip())
         expected_return += "\n\nRelated help entries: test entry\n\n"

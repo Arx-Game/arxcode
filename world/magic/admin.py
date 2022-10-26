@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import *
+from world.magic.models import *
 
 
 class AffinityAdmin(admin.ModelAdmin):

@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import traceback
 
 from server.utils.arx_utils import inform_staff, get_week
-from .scripts import Script
-from .script_mixins import RunDateMixin
+from typeclasses.scripts.scripts import Script
+from typeclasses.scripts.script_mixins import RunDateMixin
 
 
 class DatabaseCleanup(RunDateMixin, Script):

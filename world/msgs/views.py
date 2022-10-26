@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 from evennia.utils import ansi
 
 from commands.base_commands.bboards import get_boards
-from .forms import (
+from world.msgs.forms import (
     JournalMarkAllReadForm,
     JournalWriteForm,
     JournalMarkOneReadForm,

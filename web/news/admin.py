@@ -4,7 +4,7 @@
 #
 
 from django.contrib import admin
-from .models import NewsTopic, NewsEntry
+from web.news.models import NewsTopic, NewsEntry
 from evennia.accounts.models import AccountDB
 
 

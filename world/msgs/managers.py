@@ -148,7 +148,7 @@ def reload_model_as_proxy(msg):
     """
     global _get_model_from_tags
     if _get_model_from_tags is None:
-        from .models import get_model_from_tags as _get_model_from_tags
+        from world.msgs.models import get_model_from_tags as _get_model_from_tags
     # check if we're already a proxy. If so, no reason to reload it
     if msg._meta.proxy:
         return msg

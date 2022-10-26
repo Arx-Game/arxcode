@@ -1,3 +1,3 @@
-from .test_settings import *
+from server.conf.test_settings import *
 
 DATABASES["default"]["TEST"] = {"NAME": "myapp_test"}

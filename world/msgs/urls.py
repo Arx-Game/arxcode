@@ -7,7 +7,7 @@
 #
 
 from django.conf.urls import url
-from . import views
+from world.msgs import views
 
 
 urlpatterns = [

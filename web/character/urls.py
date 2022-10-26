@@ -7,7 +7,7 @@
 #
 
 from django.conf.urls import url
-from . import views
+from web.character import views
 
 urlpatterns = [
     url(r"^active/$", views.ActiveRosterListView.as_view(), name="active_roster"),

@@ -5,7 +5,7 @@ from evennia.utils.evtable import EvTable
 
 from commands.base import ArxCommand
 from commands.mixins import CommandError, RewardRPToolUseMixin
-from .models import Goal, GoalUpdate
+from web.character.models import Goal, GoalUpdate
 from server.utils.helpdesk_api import create_ticket, resolve_ticket
 from web.helpdesk.models import Ticket
 from world.dominion.plots.models import Plot, PlotUpdate

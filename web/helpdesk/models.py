@@ -490,7 +490,7 @@ class Ticket(SharedMemoryModel):
         if self.on_hold:
             held_msg = _(" - On Hold")
         dep_msg = ""
-        if self.can_be_resolved == False:
+        if self.can_be_resolved is False:
             dep_msg = _(" - Open dependencies")
         return "%s%s%s" % (self.get_status_display(), held_msg, dep_msg)
 
@@ -1185,7 +1185,7 @@ def create_usersettings(sender, instance, created, **kwargs):
     If we end up with users with no UserSettings, then we get horrible
     'DoesNotExist: UserSettings matching query does not exist.' errors.
     """
-    from .settings import DEFAULT_USER_SETTINGS
+    from web.helpdesk.settings import DEFAULT_USER_SETTINGS
 
     if created:
         UserSettings.objects.create(user=instance, settings=DEFAULT_USER_SETTINGS)

@@ -5,7 +5,7 @@ from world.stats_and_skills import do_dice_check
 from evennia.utils.idmapper.models import SharedMemoryModel
 from evennia.utils import create
 from django.db import models
-from . import builder
+from world.exploration import builder
 from server.utils.arx_utils import inform_staff
 import random
 from server.utils.picker import WeightedPicker
@@ -175,7 +175,7 @@ class Monster(SharedMemoryModel):
         if result:
             final_loot = None
             if isinstance(result, str):
-                from .loot import LootGenerator
+                from world.exploration.loot import LootGenerator
 
                 if result == "weapon":
                     final_loot = LootGenerator.create_weapon(haven)
@@ -934,7 +934,7 @@ class ShardhavenPuzzle(SharedMemoryModel):
             if result:
                 final_loot = None
                 if isinstance(result, str):
-                    from .loot import LootGenerator
+                    from world.exploration.loot import LootGenerator
 
                     if result == "weapon":
                         final_loot = LootGenerator.create_weapon(haven)

@@ -7,7 +7,7 @@ from django.conf import settings
 
 from evennia.utils import create
 
-from .accounts import Account
+from typeclasses.accounts import Account
 
 CMDSET_GUEST = "commands.cmdsets.cmdset_guest.GuestCmdSet"
 

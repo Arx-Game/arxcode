@@ -1,6 +1,6 @@
 from server.utils import arx_more
 from server.utils.prettytable import PrettyTable
-from .models import Template, TemplateGrantee
+from world.templates.models import Template, TemplateGrantee
 from typeclasses.characters import Character
 
 from paxforms.paxform_commands import PaxformCommand

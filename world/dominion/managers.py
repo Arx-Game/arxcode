@@ -28,7 +28,7 @@ class CrisisManager(Manager):
         if player.check_permstring("builders") or player.is_staff:
             qs = self.all()
         else:
-            from .models import PCPlotInvolvement
+            from world.dominion.models import PCPlotInvolvement
 
             crises = Q(usage=self.model.CRISIS)
             # crisis is viewable if it's public, or they have the required clue
@@ -64,7 +64,7 @@ class CrisisManager(Manager):
 
             qs = qs.filter(tickets__status=Ticket.OPEN_STATUS)
         if only_recruiting:
-            from .models import PCPlotInvolvement
+            from world.dominion.plots.models import PCPlotInvolvement
 
             qs = qs.filter(
                 Q(dompc_involvement__activity_status=PCPlotInvolvement.ACTIVE)

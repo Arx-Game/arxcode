@@ -2,7 +2,7 @@
 Base commands used for Arx
 """
 from evennia.commands.default.muxcommand import MuxCommand, MuxAccountCommand
-from .mixins import ArxCommmandMixin
+from commands.mixins import ArxCommmandMixin
 
 
 class ArxCommand(ArxCommmandMixin, MuxCommand):

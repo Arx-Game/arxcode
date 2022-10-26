@@ -2,7 +2,7 @@
 Utilities to make the weather system a little more friendly to write.
 """
 
-from .models import WeatherType, WeatherEmit
+from world.weather.models import WeatherType, WeatherEmit
 from typeclasses.scripts import gametime
 from evennia.server.models import ServerConfig
 from evennia.server.sessionhandler import SESSION_HANDLER

@@ -1,9 +1,8 @@
-from evennia.server.models import ServerConfig
-from evennia import ScriptDB
 from commands.base import ArxCommand
-from . import utils
-from .models import WeatherType
-from typeclasses.scripts import gametime
+from evennia import ScriptDB
+from evennia.server.models import ServerConfig
+from world.weather import utils
+from world.weather.models import WeatherType
 
 
 class CmdAdminWeather(ArxCommand):
@@ -124,7 +123,7 @@ class CmdAdminWeather(ArxCommand):
                 if weather:
                     self.msg("The weather system appears to already be running!")
             except ScriptDB.DoesNotExist:
-                from . import weather_script
+                from world.weather import weather_script
 
                 weather_script.init_weather()
                 self.msg("The weather system is now running.")

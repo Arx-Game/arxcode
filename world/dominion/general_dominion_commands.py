@@ -17,7 +17,7 @@ from server.utils.arx_utils import caller_change_field, inform_staff
 from commands.base import ArxCommand, ArxPlayerCommand
 from server.utils.exceptions import CommandError
 from server.utils.prettytable import PrettyTable
-from . import setup_utils
+from world.dominion import setup_utils
 from web.character.models import Clue
 from world.dominion.models import (
     Region,
@@ -44,7 +44,7 @@ from world.dominion.domain.models import (
     Minister,
 )
 
-from .unit_types import type_from_str
+from world.dominion.unit_types import type_from_str
 from world.stats_and_skills import do_dice_check
 
 # Constants for Dominion projects
@@ -1000,7 +1000,7 @@ class CmdAdmOrganization(ArxPlayerCommand):
                     raise CommandError(
                         "Organization name must be a name, not a number."
                     )
-                from .setup_utils import org_lockstring
+                from world.dominion.setup_utils import org_lockstring
 
                 org = Organization.objects.create(
                     name=self.lhs, lock_storage=org_lockstring
@@ -1841,7 +1841,7 @@ class CmdArmy(ArxPlayerCommand):
         """
         Views stats for a unit class determined from our args.
         """
-        from .unit_types import cls_from_str, print_unit_names
+        from world.dominion.unit_types import cls_from_str, print_unit_names
 
         cls = cls_from_str(self.args)
         if not cls:
