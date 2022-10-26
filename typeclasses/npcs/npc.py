@@ -30,6 +30,8 @@ from typeclasses.npcs.npc_types import (
     get_npc_skills,
     get_armor_bonus,
     get_hp_bonus,
+    spy_skills,
+    assistant_skills,
 )
 
 from world.stats_and_skills import (
@@ -626,12 +628,6 @@ class AgentMixin(object):
         Get the cost of a skill based on our current rating and the
         type of agent that we are.
         """
-        from typeclasses.npcs.npc_types import (
-            get_npc_skills,
-            spy_skills,
-            assistant_skills,
-        )
-
         restype = "military"
         atype = self.agent.type
         primary_skills = get_npc_skills(atype)
@@ -670,8 +666,6 @@ class AgentMixin(object):
         Get the current max for a skill based on the type
         of agent we are
         """
-        from typeclasses.npcs.npc_types import get_npc_skills
-
         atype = self.agent.type
         primary_skills = get_npc_skills(atype)
         if attr in primary_skills:
