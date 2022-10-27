@@ -1,4 +1,4 @@
-from django.conf.urls import url
+from django.urls import re_path
 from web.admintools.views import admin_search
 
-urlpatterns = [url(r"^search/$", admin_search, name="search")]
+urlpatterns = [re_path(r"^search/$", admin_search, name="search")]

@@ -1,4 +1,4 @@
-from django.conf.urls import url
+from django.urls import re_path
 from web.website.views import webclient
 
-urlpatterns = [url(r"^$", webclient, name="index")]
+urlpatterns = [re_path(r"^$", webclient, name="index")]
