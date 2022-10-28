@@ -10,7 +10,7 @@ urls.py - Mapping of URL's to our various views. Note we always used NAMED
 from django.conf import settings
 import django
 
-from django.urls import *
+from django.urls import re_path
 from django.contrib.auth.decorators import login_required
 
 from web.helpdesk import settings as helpdesk_settings
