@@ -6,7 +6,7 @@
 # http://diveintopython.org/regular_expressions/street_addresses.html#re.matching.2.3
 #
 
-from django.conf.urls import url
+from django.urls import re_path
 from web.help_topics.views import (
     topic,
     list_commands,
@@ -18,11 +18,13 @@ from web.help_topics.views import (
 )
 
 urlpatterns = [
-    url(r"^recipes/", list_recipes, name="list_recipes"),
-    url(r"^org/(?P<object_id>[\w\s]+)/$", display_org, name="display_org"),
-    url(r"^commands/(?P<cmd_key>[\+@\_\w\s]+)/$", command_help, name="command_help"),
-    url(r"^commands/$", list_commands, name="list_commands"),
-    url(r"^(?P<object_key>[\w\s]+)/$", topic, name="topic"),
-    url(r"^$", list_topics, name="list_topics"),
-    url(r"^lore/(?P<object_id>[\w\s]+)/$", lore_categories, name="lore"),
+    re_path(r"^recipes/", list_recipes, name="list_recipes"),
+    re_path(r"^org/(?P<object_id>[\w\s]+)/$", display_org, name="display_org"),
+    re_path(
+        r"^commands/(?P<cmd_key>[\+@\_\w\s]+)/$", command_help, name="command_help"
+    ),
+    re_path(r"^commands/$", list_commands, name="list_commands"),
+    re_path(r"^(?P<object_key>[\w\s]+)/$", topic, name="topic"),
+    re_path(r"^$", list_topics, name="list_topics"),
+    re_path(r"^lore/(?P<object_id>[\w\s]+)/$", lore_categories, name="lore"),
 ]
