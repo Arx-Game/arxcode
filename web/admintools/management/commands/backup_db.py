@@ -10,10 +10,11 @@ class Command(BaseCommand):
     Usage:
         evennia backup_db
     """
+
     default_name = "evennia_backup.db3"
 
     def add_arguments(self, parser):
-        parser.add_argument('--db_name', type=str)
+        parser.add_argument("--db_name", type=str)
 
     def handle(self, *args, **options):
         if options["db_name"]:
@@ -36,5 +37,5 @@ class Command(BaseCommand):
         sqlite_cmd = f".backup '{backup_name}'"
         db_name = settings.DATABASES["default"]["NAME"]
         self.stdout.write(f"Copying database {db_name} to {backup_name}.")
-        subprocess.run(["sqlite3", db_name, f'{sqlite_cmd}'], shell=True)
+        subprocess.run(["sqlite3", db_name, f"{sqlite_cmd}"], shell=True)
         self.stdout.write("Copy complete.")
