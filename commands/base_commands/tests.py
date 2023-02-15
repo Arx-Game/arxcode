@@ -559,7 +559,7 @@ class StoryActionTests(ArxCommandTest):
         action_9.save()
         action_9.status = PlotAction.NEEDS_PLAYER
         action_9.save()
-        self.call_cmd("/submit 9", "Org has taken an action.")
+        self.call_cmd("/submit 9", "You have submitted your action.")
 
     @patch("world.stat_checks.models.randint")
     @patch("world.dominion.plots.models.inform_staff")
