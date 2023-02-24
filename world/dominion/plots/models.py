@@ -1066,7 +1066,6 @@ class PlotAction(AbstractAction):
     )
     episode = models.ForeignKey(
         "character.Episode",
-        db_index=True,
         blank=True,
         null=True,
         related_name="episode",
@@ -1446,6 +1445,8 @@ class PlotAction(AbstractAction):
             action.cancel()
         self.refund()
         if not self.date_submitted:
+            self.episode = None
+            self.save()
             self.delete()
         else:
             self.status = PlotAction.CANCELLED
@@ -1483,7 +1484,7 @@ class PlotAction(AbstractAction):
         if self.org:
             action_ids = (
                 self.org.actions.exclude(id=self.id)
-                .filter(Q(episode=episode))
+                .filter(Q(episode=episode) | Q(beat__episode=episode))
                 .values_list("id", flat=True)
             )
             noun = f"{self.org} has"

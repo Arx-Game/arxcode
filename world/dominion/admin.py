@@ -702,7 +702,7 @@ class PlotActionAdmin(DomAdmin):
     )
     search_fields = ("plot__name", "=dompc__player__username", "=id", "org__name")
     list_filter = (CrisisListFilter, "status")
-    raw_id_fields = ("dompc", "gemit", "gm", "plot", "beat", "org")
+    raw_id_fields = ("dompc", "gemit", "gm", "plot", "beat", "org", "episode")
     readonly_fields = ("ooc_intent",)
     filter_horizontal = ("search_tags",)
     fieldsets = [
