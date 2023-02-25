@@ -706,7 +706,7 @@ class PlotActionAdmin(DomAdmin):
     readonly_fields = ("ooc_intent",)
     filter_horizontal = ("search_tags",)
     fieldsets = [
-        (None, {"fields": [("dompc", "topic"), ("org",), "episode", ("search_tags",)]}),
+        (None, {"fields": [("dompc", "topic"), ("org",), ("episode",), ("search_tags",)]}),
         (
             "Status",
             {

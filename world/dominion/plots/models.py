@@ -806,7 +806,7 @@ class AbstractAction(AbstractPlayerAllocations):
             if (
                 self.org.actions.exclude(status=PlotAction.DRAFT)
                 .exclude(status=PlotAction.CANCELLED)
-                .filter(Q(episode=episode))
+                .filter(episode=episode)
                 .exists()
             ):
                 raise ActionSubmissionError("Org has taken an action.")
@@ -1068,7 +1068,7 @@ class PlotAction(AbstractAction):
         "character.Episode",
         blank=True,
         null=True,
-        related_name="episode",
+        related_name="actions",
         on_delete=models.SET_NULL,
     )
     public = models.BooleanField(default=False, blank=True)
