@@ -1368,7 +1368,7 @@ class CmdPut(ArxCommand):
 
     def func(self):
         """Executes Put command"""
-        from .overrides import args_are_currency
+        from commands.base_commands.overrides import args_are_currency
 
         caller = self.caller
 
@@ -1444,7 +1444,7 @@ class CmdPut(ArxCommand):
                 args(str): String we'll get values from
                 destination (ObjectDB): What we're putting money in
         """
-        from .overrides import money_from_args
+        from commands.base_commands.overrides import money_from_args
 
         val, currency = money_from_args(args, self.caller)
         if val > currency:

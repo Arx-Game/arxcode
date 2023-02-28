@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Queue, Ticket, KBCategory, KBItem, FollowUp
+from web.helpdesk.models import Queue, Ticket, KBCategory, KBItem, FollowUp
 
 
 class QueueAdmin(admin.ModelAdmin):

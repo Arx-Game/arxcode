@@ -431,7 +431,7 @@ class CombatHandler(object):
         are positive numbers as they increase the difficulty of checks. Bonuses
         are negative values, as they reduce difficulties to 0 or less.
         """
-        from .attacks import Attack
+        from typeclasses.scripts.combat.attacks import Attack
 
         if self.combat:
             kwargs["risk"] = self.combat.ndb.risk

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import *
+from world.exploration.models import *
 from world.dominion.admin import RegionFilter
 
 

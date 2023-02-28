@@ -1,12 +1,12 @@
 from typeclasses.scripts.scripts import Script
-from .models import Monster, Shardhaven
+from world.exploration.models import Monster, Shardhaven
 from server.utils.picker import WeightedPicker
 
 
 class SpawnMobScript(Script):
     def at_script_creation(self):
         """
-        Setup the script
+        Set up the script
         """
         self.desc = "Spawn in monsters"
         self.interval = 1

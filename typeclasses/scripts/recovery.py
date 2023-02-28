@@ -2,7 +2,7 @@
 Script for characters healing.
 """
 
-from .scripts import Script
+from typeclasses.scripts.scripts import Script
 from server.utils.arx_utils import CachedProperty
 from datetime import datetime
 

@@ -5,7 +5,7 @@ from unittest.mock import patch, Mock
 from unittest import skip
 
 from server.utils.test_utils import ArxCommandTest
-from . import combat, market, home
+from commands.cmdsets import combat, market, home
 
 from web.character.models import PlayerAccount
 from world.crafting.models import CraftingRecipe, CraftingMaterialType

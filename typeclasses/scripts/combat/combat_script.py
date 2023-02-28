@@ -851,7 +851,7 @@ class CombatManager(BaseScript):
 
     def add_special_action(self, name, stat="", skill="", difficulty=15):
         """Adds a new special action recognized by the combat that players can choose to do"""
-        from .special_actions import ActionByGM
+        from typeclasses.scripts.combat.special_actions import ActionByGM
 
         self.special_actions.append(
             ActionByGM(

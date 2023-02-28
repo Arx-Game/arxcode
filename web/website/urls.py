@@ -3,9 +3,9 @@ This structures the (simple) structure of the
 webpage 'application'.
 """
 
-from django.conf.urls import url
-from .views import page_index
+from django.urls import re_path
+from web.website.views import page_index
 
 urlpatterns = [
-    url(r"^$", page_index),
+    re_path(r"^$", page_index),
 ]

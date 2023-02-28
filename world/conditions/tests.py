@@ -5,7 +5,7 @@ Tests for Conditions app
 from mock import Mock
 
 from server.utils.test_utils import ArxCommandTest, ArxTest
-from . import condition_commands
+from world.conditions import condition_commands
 from world.conditions.models import EffectTrigger
 
 

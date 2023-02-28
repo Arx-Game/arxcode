@@ -4,7 +4,7 @@ A basic inform, as well as other in-game messages.
 from django.conf import settings
 from django.db import models
 from evennia.comms.models import Msg
-from .managers import (
+from world.msgs.managers import (
     JournalManager,
     WhiteJournalManager,
     BlackJournalManager,

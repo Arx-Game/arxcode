@@ -2,10 +2,10 @@
 Perfume
 """
 
-from .consumable import Consumable
 from evennia.scripts.models import ScriptDB
 from evennia.utils import create
-from .appearance_script import AppearanceScript
+from typeclasses.consumable.consumable import Consumable
+from typeclasses.consumable.appearance_script import AppearanceScript
 
 
 class Perfume(Consumable):

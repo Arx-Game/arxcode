@@ -4,7 +4,7 @@ Admin for Quests
 from django import forms
 from django.contrib import admin
 
-from .models import Quest, QuestStep, QuestStatus, QuestEffort
+from world.quests.models import Quest, QuestStep, QuestStatus, QuestEffort
 
 
 class StatusDateMixin:

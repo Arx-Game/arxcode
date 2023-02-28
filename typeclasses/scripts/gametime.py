@@ -3,7 +3,7 @@ import datetime
 
 from evennia.utils.create import create_script
 
-from .scripts import Script
+from typeclasses.scripts.scripts import Script
 from server.conf import settings
 from evennia.server.models import ServerConfig
 

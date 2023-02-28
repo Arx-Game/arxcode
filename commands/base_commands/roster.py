@@ -478,8 +478,6 @@ class CmdAdminRoster(ArxPlayerCommand):
             except RosterEntry.DoesNotExist:
                 self.msg("Could not find a character by that name.")
             # try to delete any apps
-            from .jobs import get_apps_manager
-
             apps = get_apps_manager()
             if not apps:
                 return

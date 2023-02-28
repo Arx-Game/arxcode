@@ -7,7 +7,7 @@ from django.shortcuts import reverse
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
-from .models import (
+from world.dominion.models import (
     PlayerOrNpc,
     Organization,
     Agent,

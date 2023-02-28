@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from mock import Mock
 from evennia.commands.default.tests import CommandTest
-from . import paxform_commands, forms, fields
+from paxforms import paxform_commands, forms, fields
 
 
 class TestForm(forms.Paxform):

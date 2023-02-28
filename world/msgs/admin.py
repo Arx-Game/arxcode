@@ -10,7 +10,7 @@ from evennia.typeclasses.admin import TagInline
 from evennia.help.admin import HelpEntryAdmin
 from evennia.help.models import HelpEntry
 
-from .models import Inform, Messenger, Post, Journal, Rumor
+from world.msgs.models import Inform, Messenger, Post, Journal, Rumor
 
 
 class InformFilter(admin.SimpleListFilter):
