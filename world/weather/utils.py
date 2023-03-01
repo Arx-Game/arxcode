@@ -290,9 +290,13 @@ def choose_current_weather():
 
     weather_type = get_weather_type()
     weather_intensity = get_weather_intensity()
+    max_attempts = 10
+    # There wasn't any limitation in the original code
+    # Had an infinite loop as a result
 
     emit = pick_emit(weather_type, intensity=weather_intensity)
-    while not emit:
+    attempt_count = 0
+    while not emit and attempt_count < max_attempts:
         # Just in case there's no available weather for a given
         # target intensity of during our current season/time;
         # we'll advance the weather until we do have something.
@@ -304,7 +308,7 @@ def choose_current_weather():
         )
         weather_type, weather_intensity = advance_weather()
         emit = pick_emit(weather_type, intensity=weather_intensity)
-
+        attempt_count += 1
     ServerConfig.objects.conf(key="weather_last_emit", value=emit)
     return emit
 
