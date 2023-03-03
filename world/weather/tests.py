@@ -49,3 +49,25 @@ class TestWeatherCommands(ArxCommandTest):
     def test_weather_utils(self):
         new_weather, new_intensity = utils.advance_weather()
         assert new_intensity < 5
+
+    def test_choose_current_weather_max_attempts(self):
+        # Set automated flag to False for all existing weather types
+        for wt in WeatherType.objects.all():
+            wt.automated = False
+            wt.save()
+
+        # Create a new weather type with no emits and automated flag set to False
+        self.weather3 = WeatherType.objects.create(
+            name="Test3", gm_notes="Test weather", automated=False
+        )
+
+        # Set the weather type current to the new weather type ID and a high intensity
+        ServerConfig.objects.conf(key="weather_type_current", value=self.weather3.id)
+        ServerConfig.objects.conf(key="weather_intensity_current", value=999)
+
+        # Set max_attempts to 2 to force an exception to be raised
+        utils.MAX_ATTEMPTS = 2
+
+        # Call choose_current_weather() and expect a WeatherSelectionError to be raised
+        with self.assertRaises(utils.WeatherSelectionError):
+            utils.choose_current_weather()

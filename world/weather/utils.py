@@ -282,6 +282,10 @@ def advance_weather():
     return current_weather, current_intensity
 
 
+class WeatherSelectionError(Exception):
+    pass
+
+
 def choose_current_weather():
     """
     Picks a new emit for the current weather conditions, and locks it in.
@@ -309,6 +313,13 @@ def choose_current_weather():
         weather_type, weather_intensity = advance_weather()
         emit = pick_emit(weather_type, intensity=weather_intensity)
         attempt_count += 1
+    if not emit:
+        logger.log_err(
+            "Maximum number of attempts reached without finding a weather emit"
+        )
+        raise WeatherSelectionError(
+            "Maximum number of attempts reached without finding a weather emit"
+        )
     ServerConfig.objects.conf(key="weather_last_emit", value=emit)
     return emit
 
