@@ -4,7 +4,6 @@ from world.weather.models import WeatherType, WeatherEmit
 from server.utils.test_utils import ArxCommandTest
 from world.weather import weather_commands, weather_script, utils
 from evennia.server.models import ServerConfig
-from unittest.mock import patch
 
 
 class TestWeatherCommands(ArxCommandTest):
