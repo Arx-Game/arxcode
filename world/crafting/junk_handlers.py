@@ -40,6 +40,8 @@ class BaseJunkHandler:
     def is_plot_related(self):
         if (
             "plot" in self.obj.tags.all()
+            or "heirloom" in self.obj.tags.all()
+            or "legacy" in self.obj.tags.all()
             or self.obj.search_tags.all().exists()
             or self.obj.clues.all().exists()
         ):
