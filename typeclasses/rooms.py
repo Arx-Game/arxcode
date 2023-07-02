@@ -69,9 +69,10 @@ Installation/testing:
 import time
 from django.conf import settings
 
+from base_commands.general import CmdLook
+from evennia.commands.default.building import CmdDesc
 from evennia.contrib.extended_room import ExtendedRoom
-from evennia import default_cmds
-from evennia import utils
+from evennia.utils import utils
 from evennia.utils.utils import lazy_property
 from evennia.objects.models import ObjectDB
 
@@ -521,7 +522,7 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         )
 
 
-class CmdExtendedLook(default_cmds.CmdLook):
+class CmdExtendedLook(CmdLook):
     """
     look
 
@@ -642,7 +643,7 @@ class CmdStudyRawAnsi(ArxCommand):
 # and detailing extended rooms.
 
 
-class CmdExtendedDesc(default_cmds.CmdDesc):
+class CmdExtendedDesc(CmdDesc):
     """
     @desc - describe an object or room
 
