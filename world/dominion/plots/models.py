@@ -806,7 +806,7 @@ class AbstractAction(AbstractPlayerAllocations):
             if (
                 self.org.actions.exclude(status=PlotAction.DRAFT)
                 .exclude(status=PlotAction.CANCELLED)
-                .filter(Q(beat__isnull=True) | Q(beat__episode=episode))
+                .filter(episode=episode)
                 .exists()
             ):
                 raise ActionSubmissionError("Org has taken an action.")
@@ -1059,6 +1059,13 @@ class PlotAction(AbstractAction):
     beat = models.ForeignKey(
         "PlotUpdate",
         db_index=True,
+        blank=True,
+        null=True,
+        related_name="actions",
+        on_delete=models.SET_NULL,
+    )
+    episode = models.ForeignKey(
+        "character.Episode",
         blank=True,
         null=True,
         related_name="actions",
@@ -1438,6 +1445,8 @@ class PlotAction(AbstractAction):
             action.cancel()
         self.refund()
         if not self.date_submitted:
+            self.episode = None
+            self.save()
             self.delete()
         else:
             self.status = PlotAction.CANCELLED
@@ -1475,7 +1484,7 @@ class PlotAction(AbstractAction):
         if self.org:
             action_ids = (
                 self.org.actions.exclude(id=self.id)
-                .filter(Q(beat__isnull=True) | Q(beat__episode=episode))
+                .filter(Q(episode=episode) | Q(beat__episode=episode))
                 .values_list("id", flat=True)
             )
             noun = f"{self.org} has"
@@ -1557,6 +1566,8 @@ class PlotAction(AbstractAction):
 
     def on_submit_success(self):
         """Announces us after successful submission. refunds any assistants who weren't ready"""
+        from web.character.models import Episode
+
         if self.status == PlotAction.DRAFT:
             self.status = PlotAction.NEEDS_GM
             for assist in self.assisting_actions.filter(date_submitted__isnull=True):
@@ -1569,6 +1580,9 @@ class PlotAction(AbstractAction):
         # clear cached AP regen
         for dompc in self.authors:
             del dompc.player.roster.action_point_regen_modifier
+        # Setting the current episode on the action after submit
+        if not self.episode:
+            self.episode = Episode.objects.last()
 
     def post_edit(self):
         """Announces that we've finished editing our action and are ready for a GM"""

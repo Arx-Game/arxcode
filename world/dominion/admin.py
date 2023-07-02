@@ -690,14 +690,26 @@ class CrisisListFilter(admin.SimpleListFilter):
 class PlotActionAdmin(DomAdmin):
     """Admin for @actions that players are taking, one of their primary ways of participating in the game's plot."""
 
-    list_display = ("id", "dompc", "org", "plot", "player_action", "week", "status")
+    list_display = (
+        "id",
+        "dompc",
+        "org",
+        "plot",
+        "player_action",
+        "week",
+        "status",
+        "episode",
+    )
     search_fields = ("plot__name", "=dompc__player__username", "=id", "org__name")
     list_filter = (CrisisListFilter, "status")
-    raw_id_fields = ("dompc", "gemit", "gm", "plot", "beat", "org")
+    raw_id_fields = ("dompc", "gemit", "gm", "plot", "beat", "org", "episode")
     readonly_fields = ("ooc_intent",)
     filter_horizontal = ("search_tags",)
     fieldsets = [
-        (None, {"fields": [("dompc", "topic"), ("org",), ("search_tags",)]}),
+        (
+            None,
+            {"fields": [("dompc", "topic"), ("org",), ("episode",), ("search_tags",)]},
+        ),
         (
             "Status",
             {
