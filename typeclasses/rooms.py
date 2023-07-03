@@ -69,7 +69,7 @@ Installation/testing:
 import time
 from django.conf import settings
 
-from base_commands.general import CmdLook
+from commands.base_commands.general import CmdLook
 from evennia.commands.default.building import CmdDesc
 from evennia.contrib.extended_room import ExtendedRoom
 from evennia.utils import utils
