@@ -147,3 +147,14 @@ class ObjectDBFieldWrapper(StorageWrapper):
 
     def create_new_storage(self, instance):
         return instance.obj
+
+
+class DescriptionWrapper(StorageWrapper):
+    """Managed attribute for getting/retrieving data about object descriptions"""
+
+    def get_storage(self, instance):
+        return instance.obj.descriptions
+
+    def create_new_storage(self, instance):
+        from evennia_extensions.object_extensions.models import Descriptions
+        return Descriptions.objects.create(objectdb=instance.obj)

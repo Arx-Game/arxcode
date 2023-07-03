@@ -72,6 +72,7 @@ def wipe_attributes():
         "portrait",
         "weapon",
         "assigned_guards",
+        "altered_desc",
     ]
     for attr in attr_names:
         print(

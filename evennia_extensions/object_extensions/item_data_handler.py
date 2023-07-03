@@ -10,6 +10,7 @@ from evennia_extensions.object_extensions.storage_wrappers import (
     PermanenceWrapper,
     DisplayNamesWrapper,
     ObjectDBFieldWrapper,
+    DescriptionWrapper,
 )
 from evennia_extensions.object_extensions.validators import get_objectdb, get_room
 from server.utils.arx_utils import CachedProperty
@@ -44,6 +45,10 @@ class ItemDataHandler:
 
     # properties that will be overridden, but we want sensible defaults
     currently_worn = False
+
+    # properties for object description
+    permanent_description = DescriptionWrapper(allow_null=False, deleted_value="")
+    temporary_description = DescriptionWrapper(default_is_none=True, allow_null=False, deleted_value="")
 
     @CachedProperty
     def translation(self):
