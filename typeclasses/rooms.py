@@ -108,6 +108,12 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
     look command.
     """
 
+    default_spring_description = ""
+    default_summer_description = ""
+    default_autumn_description = ""
+    default_winter_description = ""
+    default_room_mood = ""
+
     def get_time_and_season(self):
         """
         Calculate the current time and season ids.
@@ -127,6 +133,10 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         super(ArxRoom, self).undelete(move=move)
         for entrance in self.entrances:
             entrance.undelete(move)
+
+    def at_perm_desc_change(self):
+        self.ndb.last_season = None
+        self.ndb.last_timeslot = None
 
     @lazy_property
     def messages(self):
@@ -248,15 +258,14 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
     @property
     def mood_string(self):
         msg = ""
-        mood = self.db.room_mood
-        try:
-            created = mood[1]
-            if time.time() - created > 86400:
-                self.attributes.remove("room_mood")
-            else:
-                msg = "\n{wCurrent Room Mood:{n " + mood[2]
-        except (IndexError, ValueError, TypeError):
-            msg = ""
+        mood = self.item_data.room_mood
+        if not mood:
+            return msg
+        mood_date = self.room_descriptions.mood_set_at
+        if not mood_date:
+            return msg
+        if datetime.now() - mood_date < timedelta(days=1):
+            msg = "\n{wCurrent Room Mood:{n " + mood
         return msg
 
     def _homeowners(self):
@@ -683,12 +692,6 @@ class CmdExtendedDesc(CmdDesc):
 
     aliases = ["@describe", "@detail"]
 
-    @staticmethod
-    def reset_times(obj):
-        """By deleteting the caches we force a re-load."""
-        obj.ndb.last_season = None
-        obj.ndb.last_timeslot = None
-
     def func(self):
         """Define extended command"""
         caller = self.caller
@@ -716,7 +719,6 @@ class CmdExtendedDesc(CmdDesc):
                 if self.lhs in location.db.details:
                     del location.db.details[self.lhs]
                     caller.msg("Detail %s deleted, if it existed." % self.lhs)
-                self.reset_times(location)
                 return
             if self.switches and self.switches[0] in "fix":
                 if not self.lhs or not self.rhs:
@@ -748,18 +750,25 @@ class CmdExtendedDesc(CmdDesc):
             # setting a detail
             location.db.details[self.lhs] = self.rhs
             caller.msg("{wSet Detail %s to {n'%s'." % (self.lhs, self.rhs))
-            self.reset_times(location)
             return
         else:
             # we are doing a @desc call
             if not self.args:
                 if location:
                     string = "{wDescriptions on %s{n:\n" % location.key
-                    string += " {wspring:{n %s\n" % location.db.spring_desc
-                    string += " {wsummer:{n %s\n" % location.db.summer_desc
-                    string += " {wautumn:{n %s\n" % location.db.autumn_desc
-                    string += " {wwinter:{n %s\n" % location.db.winter_desc
-                    string += " {wgeneral:{n %s" % location.db.general_desc
+                    string += (
+                        " {wspring:{n %s\n" % location.item_data.spring_description
+                    )
+                    string += (
+                        " {wsummer:{n %s\n" % location.item_data.summer_description
+                    )
+                    string += (
+                        " {wautumn:{n %s\n" % location.item_data.autumn_description
+                    )
+                    string += (
+                        " {wwinter:{n %s\n" % location.item_data.winter_description
+                    )
+                    string += " {wgeneral:{n %s" % location.perm_desc
                     caller.msg(string)
                     return
             if self.switches and self.switches[0] in (
@@ -780,15 +789,15 @@ class CmdExtendedDesc(CmdDesc):
                     caller.msg("You do not have permission to @desc here.")
                     return
                 if switch == "spring":
-                    location.db.spring_desc = self.args
+                    location.item_data.spring_description = self.args
                 elif switch == "summer":
-                    location.db.summer_desc = self.args
+                    location.item_data.summer_description = self.args
                 elif switch == "autumn":
-                    location.db.autumn_desc = self.args
+                    location.item_data.autumn_description = self.args
                 elif switch == "winter":
-                    location.db.winter_desc = self.args
+                    location.item_data.winter_description = self.args
                 # clear flag to force an update
-                self.reset_times(location)
+                location.at_perm_desc_change()
                 caller.msg("Seasonal description was set on %s." % location.key)
             else:
                 # Not seasonal desc set, maybe this is not an extended room
@@ -817,14 +826,7 @@ class CmdExtendedDesc(CmdDesc):
                     )
                     return
                 obj.desc = self.rhs  # a compatability fallback
-                if utils.inherits_from(obj, ExtendedRoom):
-                    # this is an extendedroom, we need to reset
-                    # times and set general_desc
-                    obj.db.general_desc = text
-                    self.reset_times(obj)
-                    caller.msg("General description was set on %s." % obj.key)
-                else:
-                    caller.msg("The description was set on %s." % obj.key)
+                caller.msg("The description was set on %s." % obj.key)
 
 
 # Simple command to view the current time and season

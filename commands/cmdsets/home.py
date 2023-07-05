@@ -618,13 +618,13 @@ class CmdManageRoom(ArxCommand):
                 if "desc" in self.switches:
                     caller.msg(loc.desc)
                 elif "springdesc" in self.switches:
-                    caller.msg(loc.db.spring_desc)
+                    caller.msg(loc.item_data.spring_description)
                 elif "summerdesc" in self.switches:
-                    caller.msg(loc.db.summer_desc)
+                    caller.msg(loc.item_data.summer_description)
                 elif "winterdesc" in self.switches:
-                    caller.msg(loc.db.winter_desc)
+                    caller.msg(loc.item_data.winter_description)
                 elif "falldesc" in self.switches:
-                    caller.msg(loc.db.autumn_desc)
+                    caller.msg(loc.item_data.autumn_description)
                 caller.msg("{wCost of changing desc:{n %s economic resources" % cost)
                 if self.args:
                     caller.msg("New desc:")
@@ -646,18 +646,14 @@ class CmdManageRoom(ArxCommand):
                 owner.save()
             if "desc" in self.switches:
                 loc.desc = self.args
-                if not loc.db.raw_desc:
-                    loc.db.raw_desc = self.args
-                if not loc.db.general_desc:
-                    loc.db.general_desc = self.args
             elif "winterdesc" in self.switches:
-                loc.db.winter_desc = self.args
+                loc.item_data.winter_description = self.args
             elif "summerdesc" in self.switches:
-                loc.db.summer_desc = self.args
+                loc.item_data.summer_description = self.args
             elif "springdesc" in self.switches:
-                loc.db.spring_desc = self.args
+                loc.item_data.spring_description = self.args
             elif "falldesc" in self.switches:
-                loc.db.autumn_desc = self.args
+                loc.item_data.autumn_description = self.args
             loc.ndb.confirm_desc_change = None
             # force raw_desc to update and parse our descs
             loc.ndb.last_season = None

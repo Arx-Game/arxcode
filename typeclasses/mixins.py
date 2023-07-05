@@ -59,6 +59,10 @@ class DescMixins(object):
         if self.temp_desc:
             del self.temp_desc
         self.item_data.permanent_description = val
+        self.at_perm_desc_change()
+
+    def at_perm_desc_change(self):
+        pass
 
     @property
     def temp_desc(self):

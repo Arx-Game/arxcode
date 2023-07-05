@@ -2521,16 +2521,21 @@ class CmdRoomMood(RewardRPToolUseMixin, ArxCommand):
     def func(self):
         """Execute command."""
         caller = self.caller
-        mood = caller.location.db.room_mood or (None, 0, "")
-        self.msg("Old mood was: %s" % mood[2])
+        try:
+            mood = caller.location.item_data.room_mood
+        except AttributeError:
+            self.msg("You are not in a room.")
+            return
+        self.msg("Old mood was: %s" % mood)
         if not self.args:
-            caller.location.attributes.remove("room_mood")
+            del caller.location.item_data.room_mood
             self.msg("Mood erased.")
             return
-        mood = (caller, time.time(), self.args)
-        caller.location.db.room_mood = mood
+        mood = self.args
+        caller.location.item_data.room_mood = mood
+        caller.location.item_data.room_mood_set_by = caller
         self.caller.location.msg_contents(
-            "{w(OOC)The scene set/room mood is now set to:{n %s" % mood[2]
+            "{w(OOC)The scene set/room mood is now set to:{n %s" % mood
         )
         self.mark_command_used()
 

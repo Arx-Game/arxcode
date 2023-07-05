@@ -102,6 +102,7 @@ class Descriptions(SharedMemoryModel):
     description and a temporary description, the latter of which is used
     for things like masks or illusions.
     """
+
     permanent_description = models.TextField(blank=True)
     temporary_description = models.TextField(blank=True)
     objectdb = models.OneToOneField(

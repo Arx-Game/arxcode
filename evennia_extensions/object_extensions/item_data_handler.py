@@ -48,7 +48,9 @@ class ItemDataHandler:
 
     # properties for object description
     permanent_description = DescriptionWrapper(allow_null=False, deleted_value="")
-    temporary_description = DescriptionWrapper(default_is_none=True, allow_null=False, deleted_value="")
+    temporary_description = DescriptionWrapper(
+        default_is_none=True, allow_null=False, deleted_value=""
+    )
 
     @CachedProperty
     def translation(self):
