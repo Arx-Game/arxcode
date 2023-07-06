@@ -655,9 +655,6 @@ class CmdManageRoom(ArxCommand):
             elif "falldesc" in self.switches:
                 loc.item_data.autumn_description = self.args
             loc.ndb.confirm_desc_change = None
-            # force raw_desc to update and parse our descs
-            loc.ndb.last_season = None
-            loc.ndb.last_timeslot = None
             caller.msg("%s changed to:" % self.switches[0])
             caller.msg(self.args)
             return

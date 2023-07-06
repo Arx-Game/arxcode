@@ -71,7 +71,7 @@ from django.conf import settings
 
 from commands.base_commands.general import CmdLook
 from evennia.commands.default.building import CmdDesc
-from evennia.contrib.extended_room import ExtendedRoom
+from evennia.objects.objects import DefaultRoom
 from evennia.utils import utils
 from evennia.utils.utils import lazy_property
 from evennia.objects.models import ObjectDB
@@ -101,7 +101,7 @@ SHOPCMD = "commands.cmdsets.home.ShopCmdSet"
 # implements the Extended Room
 
 # noinspection PyUnresolvedReferences
-class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
+class ArxRoom(ObjectMixins, DefaultRoom, MagicMixins):
     """
     This room implements a more advanced look functionality depending on
     time. It also allows for "details", together with a slightly modified
@@ -121,6 +121,33 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         return gametime.get_time_and_season()
 
     @property
+    def base_desc(self):
+        """Override to return proper seasonal and time description"""
+        # get current time and season
+        season, timeslot = self.get_time_and_season()
+        # use either the seasonal description or our permanent description
+        seasonal_desc = getattr(self.item_data, f"{season}_description")
+        raw_desc = seasonal_desc or self.perm_desc
+        # parse that description out for time-of-day tags
+        return gametime.replace_timeslots(raw_desc, timeslot)
+
+    def return_detail(self, key):
+        """
+        Temporarily added until we refactor details to have their own data storage,
+        not an evennia Attribute
+        """
+        try:
+            detail = self.db.details.get(key.lower(), None)
+        except AttributeError:
+            # this happens if no attribute details is set at all
+            return None
+        if detail:
+            season, timeslot = self.get_time_and_season()
+            detail = gametime.replace_timeslots(detail, timeslot)
+            return detail
+        return None
+
+    @property
     def is_room(self):
         return True
 
@@ -133,10 +160,6 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         super(ArxRoom, self).undelete(move=move)
         for entrance in self.entrances:
             entrance.undelete(move)
-
-    def at_perm_desc_change(self):
-        self.ndb.last_season = None
-        self.ndb.last_timeslot = None
 
     @lazy_property
     def messages(self):
@@ -796,13 +819,10 @@ class CmdExtendedDesc(CmdDesc):
                     location.item_data.autumn_description = self.args
                 elif switch == "winter":
                     location.item_data.winter_description = self.args
-                # clear flag to force an update
-                location.at_perm_desc_change()
                 caller.msg("Seasonal description was set on %s." % location.key)
             else:
                 # Not seasonal desc set, maybe this is not an extended room
                 if self.rhs:
-                    text = self.rhs
                     if "char" in self.switches:
                         # if we're looking for a character, find them by player
                         # so we can @desc someone not in the room
