@@ -93,7 +93,7 @@ class ArxRoom(ObjectMixins, DefaultRoom, MagicMixins):
             # this happens if no attribute details is set at all
             return None
         if detail:
-            season, timeslot = self.get_time_and_season()
+            _, timeslot = self.get_time_and_season()
             detail = gametime.replace_timeslots(detail, timeslot)
             return detail
         return None

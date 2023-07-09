@@ -107,11 +107,9 @@ class StorageWrapper(ABC):
 
     def on_pre_save(self, storage, value):
         """Hook for any other processing before calling save on the storage object."""
-        pass
 
     def on_pre_delete(self, storage):
         """Hook for any other processing before deleting a field on the storage object."""
-        pass
 
 
 class DimensionsWrapper(StorageWrapper):
