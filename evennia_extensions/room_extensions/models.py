@@ -22,9 +22,12 @@ class RoomDescriptions(SharedMemoryModel):
         on_delete=models.SET_NULL,
         related_name="set_moods",
     )
-    objectdb = models.OneToOneField(
+    room = models.OneToOneField(
         to="objects.ObjectDB",
         on_delete=models.CASCADE,
         primary_key=True,
         related_name="room_descriptions",
     )
+
+    class Meta:
+        verbose_name_plural = "Room Extra Descriptions"

@@ -27,12 +27,14 @@ def convert_seasonal_descs(apps, schema_editor):
                     attr.delete()
                     continue
                 room_desc = descriptions_dict[objdb.pk]
-                room_desc.objectdb = objdb
+                room_desc.room = objdb
                 setattr(room_desc, f"{season}_description", attr.db_value)
                 room_desc.save()
                 attr.delete()
             except IndexError:
                 pass
+        if total:
+            print("\n")
 
 
 class Migration(migrations.Migration):
@@ -54,7 +56,7 @@ class Migration(migrations.Migration):
                 ("room_mood", models.TextField(blank=True)),
                 ("mood_set_at", models.DateTimeField(blank=True, null=True)),
                 (
-                    "objectdb",
+                    "room",
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
                         primary_key=True,
@@ -76,6 +78,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 "abstract": False,
+                "verbose_name_plural": "Room Extra Descriptions",
             },
         ),
         migrations.RunPython(

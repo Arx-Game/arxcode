@@ -96,6 +96,8 @@ def convert_descs(apps, schema_editor):
             attr.delete()
         except IndexError:
             pass
+    if total:
+        print("\n")
 
 
 class Migration(migrations.Migration):

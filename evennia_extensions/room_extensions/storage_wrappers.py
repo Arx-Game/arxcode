@@ -10,7 +10,7 @@ class RoomDescriptionWrapper(StorageWrapper):
     def create_new_storage(self, instance):
         from evennia_extensions.room_extensions.models import RoomDescriptions
 
-        return RoomDescriptions.objects.create(objectdb=instance.obj)
+        return RoomDescriptions.objects.create(room=instance.obj)
 
     def on_pre_save(self, storage, value):
         """If our self.attr_name is room_mood, then we set the timestamp. We
