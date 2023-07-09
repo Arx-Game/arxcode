@@ -4,8 +4,8 @@ that stores data specific to rooms. It has properties that wrap various models
 to allow for the @set command to be used to set the values of those models.
 """
 from evennia_extensions.object_extensions.item_data_handler import ItemDataHandler
-from evennia_extensions.object_extensions.storage_wrappers import RoomDescriptionWrapper
-from object_extensions.validators import get_character
+from evennia_extensions.room_extensions.storage_wrappers import RoomDescriptionWrapper
+from evennia_extensions.object_extensions.validators import get_character
 
 
 class RoomDataHandler(ItemDataHandler):

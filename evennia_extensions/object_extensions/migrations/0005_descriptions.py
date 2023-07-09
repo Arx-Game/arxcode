@@ -13,7 +13,8 @@ def convert_descs(apps, schema_editor):
     descriptions_dict = {}
     num = 0
     total = len(qs)
-    print(f"\nConverting raw_desc: {total} records.")
+    if total:
+        print(f"\nConverting raw_desc: {total} records.")
     for attr in qs:
         try:
             num += 1
@@ -35,7 +36,8 @@ def convert_descs(apps, schema_editor):
     qs = Attribute.objects.filter(db_key="general_desc")
     num = 0
     total = len(qs)
-    print(f"\nConverting general_desc: {total} records.")
+    if total:
+        print(f"\nConverting general_desc: {total} records.")
     for attr in qs:
         try:
             num += 1
@@ -69,7 +71,8 @@ def convert_descs(apps, schema_editor):
     qs = Attribute.objects.filter(db_key="desc")
     num = 0
     total = len(qs)
-    print(f"\nConverting desc: {total} records.")
+    if total:
+        print(f"\nConverting desc: {total} records.")
     # if desc is set, we set it to temporary_description if they already have
     # a permanent_description. Otherwise, it's the permanent_description
     for attr in qs:

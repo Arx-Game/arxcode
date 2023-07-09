@@ -1,72 +1,21 @@
 """
-Extended Room
+An ArxRoom is based on the extended_room contrib from Evennia.
 
-Evennia Contribution - Griatch 2012
+Evennia's implementation uses multiple attributes to dynamically change the desc
+attribute, which is then used by their return_appearance. This approach is simple
+and doesn't require overriding return appearance, but is a bit wasteful from the
+standpoint of data storage, memory, and processing database queries.
 
-This is an extended Room typeclass for Evennia. It is supported
-by an extended Look command and an extended @desc command, also
-in this module.
-
-
-Features:
-
-1) Time-changing description slots
-
-This allows to change the full description text the room shows
-depending on larger time variations. Four seasons - spring, summer,
-autumn and winter are used by default). The season is calculated
-on-demand (no Script or timer needed) and updates the full text block.
-
-There is also a general description which is used as fallback if
-one or more of the seasonal descriptions are not set when their
-time comes.
-
-An updated @desc command allows for setting seasonal descriptions.
-
-The room uses the src.utils.gametime.GameTime global script. This is
-started by default, but if you have deactivated it, you need to
-supply your own time keeping mechanism.
-
-
-2) In-description changing tags
-
-Within each seasonal (or general) description text, you can also embed
-time-of-day dependent sections. Text inside such a tag will only show
-during that particular time of day. The tags looks like <timeslot> ...
-</timeslot>. By default there are four timeslots per day - morning,
-afternoon, evening and night.
-
-
-3) Details
-
-The Extended Room can be "detailed" with special keywords. This makes
-use of a special Look command. Details are "virtual" targets to look
-at, without there having to be a database object created for it. The
-Details are simply stored in a dictionary on the room and if the look
-command cannot find an object match for a "look <target>" command it
-will also look through the available details at the current location
-if applicable. An extended @desc command is used to set details.
-
-
-4) Extra commands
-
-  CmdExtendedLook - look command supporting room details
-  CmdExtendedDesc - @desc command allowing to add seasonal descs and details,
-                    as well as listing them
-  CmdGameTime     - A simple "time" command, displaying the current
-                    time and season.
-
-
-Installation/testing:
-
-1) Add CmdExtendedLook, CmdExtendedDesc and CmdGameTime to the default cmdset
-   (see wiki how to do this).
-2) @dig a room of type contrib.extended_room.ExtendedRoom (or make it the
-   default room type)
-3) Use @desc and @detail to customize the room, then play around!
+Instead, we dynamically determine which seasonal desc to use based on the current
+in-game season. We also parse out time-of-day descriptions contained within tags
+of the desc used. The permanent_description field is used as a fallback if there
+is no seasonal description used. Any set temporary_description will override the
+seasonal or permanent description.
 
 """
 import time
+from datetime import datetime, timedelta
+
 from django.conf import settings
 
 from commands.base_commands.general import CmdLook
@@ -77,6 +26,7 @@ from evennia.utils.utils import lazy_property
 from evennia.objects.models import ObjectDB
 
 from commands.base import ArxCommand
+from evennia_extensions.room_extensions.room_data_handler import RoomDataHandler
 from typeclasses.scripts import gametime
 from typeclasses.mixins import ObjectMixins
 from server.utils.arx_utils import list_to_string
@@ -100,7 +50,7 @@ SHOPCMD = "commands.cmdsets.home.ShopCmdSet"
 
 # implements the Extended Room
 
-# noinspection PyUnresolvedReferences
+
 class ArxRoom(ObjectMixins, DefaultRoom, MagicMixins):
     """
     This room implements a more advanced look functionality depending on
@@ -108,6 +58,7 @@ class ArxRoom(ObjectMixins, DefaultRoom, MagicMixins):
     look command.
     """
 
+    item_data_class = RoomDataHandler
     default_spring_description = ""
     default_summer_description = ""
     default_autumn_description = ""
@@ -184,11 +135,9 @@ class ArxRoom(ObjectMixins, DefaultRoom, MagicMixins):
         self, looker, detailed=False, format_desc=True, show_contents=True
     ):
         """This is called when e.g. the look command wants to retrieve the description of this object."""
-        # update desc
-        ExtendedRoom.return_appearance(self, looker)
         # return updated desc plus other stuff
         return (
-            ObjectMixins.return_appearance(self, looker, detailed, format_desc)
+            super().return_appearance(self, looker, detailed, format_desc)
             + self.command_string()
             + self.mood_string
             + self.event_string()
