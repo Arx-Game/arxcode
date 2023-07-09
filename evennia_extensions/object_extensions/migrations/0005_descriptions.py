@@ -3,7 +3,7 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
-from utils.progress_bar import ProgressBar
+from server.utils.progress_bar import ProgressBar
 
 
 def convert_descs(apps, schema_editor):
