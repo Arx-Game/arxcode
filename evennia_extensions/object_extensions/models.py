@@ -94,3 +94,20 @@ class DisplayNames(SharedMemoryModel):
 
     class Meta:
         verbose_name_plural = "Display Names"
+
+
+class Descriptions(SharedMemoryModel):
+    """
+    Model for displaying the description of an object. It defines a permanent
+    description and a temporary description, the latter of which is used
+    for things like masks or illusions.
+    """
+
+    permanent_description = models.TextField(blank=True)
+    temporary_description = models.TextField(blank=True)
+    objectdb = models.OneToOneField(
+        to="objects.ObjectDB",
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="descriptions",
+    )

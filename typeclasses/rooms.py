@@ -1,81 +1,32 @@
 """
-Extended Room
+An ArxRoom is based on the extended_room contrib from Evennia.
 
-Evennia Contribution - Griatch 2012
+Evennia's implementation uses multiple attributes to dynamically change the desc
+attribute, which is then used by their return_appearance. This approach is simple
+and doesn't require overriding return appearance, but is a bit wasteful from the
+standpoint of data storage, memory, and processing database queries.
 
-This is an extended Room typeclass for Evennia. It is supported
-by an extended Look command and an extended @desc command, also
-in this module.
-
-
-Features:
-
-1) Time-changing description slots
-
-This allows to change the full description text the room shows
-depending on larger time variations. Four seasons - spring, summer,
-autumn and winter are used by default). The season is calculated
-on-demand (no Script or timer needed) and updates the full text block.
-
-There is also a general description which is used as fallback if
-one or more of the seasonal descriptions are not set when their
-time comes.
-
-An updated @desc command allows for setting seasonal descriptions.
-
-The room uses the src.utils.gametime.GameTime global script. This is
-started by default, but if you have deactivated it, you need to
-supply your own time keeping mechanism.
-
-
-2) In-description changing tags
-
-Within each seasonal (or general) description text, you can also embed
-time-of-day dependent sections. Text inside such a tag will only show
-during that particular time of day. The tags looks like <timeslot> ...
-</timeslot>. By default there are four timeslots per day - morning,
-afternoon, evening and night.
-
-
-3) Details
-
-The Extended Room can be "detailed" with special keywords. This makes
-use of a special Look command. Details are "virtual" targets to look
-at, without there having to be a database object created for it. The
-Details are simply stored in a dictionary on the room and if the look
-command cannot find an object match for a "look <target>" command it
-will also look through the available details at the current location
-if applicable. An extended @desc command is used to set details.
-
-
-4) Extra commands
-
-  CmdExtendedLook - look command supporting room details
-  CmdExtendedDesc - @desc command allowing to add seasonal descs and details,
-                    as well as listing them
-  CmdGameTime     - A simple "time" command, displaying the current
-                    time and season.
-
-
-Installation/testing:
-
-1) Add CmdExtendedLook, CmdExtendedDesc and CmdGameTime to the default cmdset
-   (see wiki how to do this).
-2) @dig a room of type contrib.extended_room.ExtendedRoom (or make it the
-   default room type)
-3) Use @desc and @detail to customize the room, then play around!
+Instead, we dynamically determine which seasonal desc to use based on the current
+in-game season. We also parse out time-of-day descriptions contained within tags
+of the desc used. The permanent_description field is used as a fallback if there
+is no seasonal description used. Any set temporary_description will override the
+seasonal or permanent description.
 
 """
 import time
+from datetime import datetime, timedelta
+
 from django.conf import settings
 
-from evennia.contrib.extended_room import ExtendedRoom
-from evennia import default_cmds
-from evennia import utils
+from commands.base_commands.general import CmdLook
+from evennia.commands.default.building import CmdDesc
+from evennia.objects.objects import DefaultRoom
+from evennia.utils import utils
 from evennia.utils.utils import lazy_property
 from evennia.objects.models import ObjectDB
 
 from commands.base import ArxCommand
+from evennia_extensions.room_extensions.room_data_handler import RoomDataHandler
 from typeclasses.scripts import gametime
 from typeclasses.mixins import ObjectMixins
 from server.utils.arx_utils import list_to_string
@@ -99,19 +50,53 @@ SHOPCMD = "commands.cmdsets.home.ShopCmdSet"
 
 # implements the Extended Room
 
-# noinspection PyUnresolvedReferences
-class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
+
+class ArxRoom(ObjectMixins, DefaultRoom, MagicMixins):
     """
     This room implements a more advanced look functionality depending on
     time. It also allows for "details", together with a slightly modified
     look command.
     """
 
+    item_data_class = RoomDataHandler
+    default_spring_description = ""
+    default_summer_description = ""
+    default_autumn_description = ""
+    default_winter_description = ""
+    default_room_mood = ""
+
     def get_time_and_season(self):
         """
         Calculate the current time and season ids.
         """
         return gametime.get_time_and_season()
+
+    @property
+    def base_desc(self):
+        """Override to return proper seasonal and time description"""
+        # get current time and season
+        season, timeslot = self.get_time_and_season()
+        # use either the seasonal description or our permanent description
+        seasonal_desc = getattr(self.item_data, f"{season}_description")
+        raw_desc = seasonal_desc or self.perm_desc
+        # parse that description out for time-of-day tags
+        return gametime.replace_timeslots(raw_desc, timeslot)
+
+    def return_detail(self, key):
+        """
+        Temporarily added until we refactor details to have their own data storage,
+        not an evennia Attribute
+        """
+        try:
+            detail = self.db.details.get(key.lower(), None)
+        except AttributeError:
+            # this happens if no attribute details is set at all
+            return None
+        if detail:
+            _, timeslot = self.get_time_and_season()
+            detail = gametime.replace_timeslots(detail, timeslot)
+            return detail
+        return None
 
     @property
     def is_room(self):
@@ -150,11 +135,9 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         self, looker, detailed=False, format_desc=True, show_contents=True
     ):
         """This is called when e.g. the look command wants to retrieve the description of this object."""
-        # update desc
-        ExtendedRoom.return_appearance(self, looker)
         # return updated desc plus other stuff
         return (
-            ObjectMixins.return_appearance(self, looker, detailed, format_desc)
+            super().return_appearance(self, looker, detailed, format_desc)
             + self.command_string()
             + self.mood_string
             + self.event_string()
@@ -247,15 +230,14 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
     @property
     def mood_string(self):
         msg = ""
-        mood = self.db.room_mood
-        try:
-            created = mood[1]
-            if time.time() - created > 86400:
-                self.attributes.remove("room_mood")
-            else:
-                msg = "\n{wCurrent Room Mood:{n " + mood[2]
-        except (IndexError, ValueError, TypeError):
-            msg = ""
+        mood = self.item_data.room_mood
+        if not mood:
+            return msg
+        mood_date = self.room_descriptions.mood_set_at
+        if not mood_date:
+            return msg
+        if datetime.now() - mood_date < timedelta(days=1):
+            msg = "\n{wCurrent Room Mood:{n " + mood
         return msg
 
     def _homeowners(self):
@@ -521,7 +503,7 @@ class ArxRoom(ObjectMixins, ExtendedRoom, MagicMixins):
         )
 
 
-class CmdExtendedLook(default_cmds.CmdLook):
+class CmdExtendedLook(CmdLook):
     """
     look
 
@@ -642,7 +624,7 @@ class CmdStudyRawAnsi(ArxCommand):
 # and detailing extended rooms.
 
 
-class CmdExtendedDesc(default_cmds.CmdDesc):
+class CmdExtendedDesc(CmdDesc):
     """
     @desc - describe an object or room
 
@@ -682,12 +664,6 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
 
     aliases = ["@describe", "@detail"]
 
-    @staticmethod
-    def reset_times(obj):
-        """By deleteting the caches we force a re-load."""
-        obj.ndb.last_season = None
-        obj.ndb.last_timeslot = None
-
     def func(self):
         """Define extended command"""
         caller = self.caller
@@ -715,7 +691,6 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
                 if self.lhs in location.db.details:
                     del location.db.details[self.lhs]
                     caller.msg("Detail %s deleted, if it existed." % self.lhs)
-                self.reset_times(location)
                 return
             if self.switches and self.switches[0] in "fix":
                 if not self.lhs or not self.rhs:
@@ -747,18 +722,25 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
             # setting a detail
             location.db.details[self.lhs] = self.rhs
             caller.msg("{wSet Detail %s to {n'%s'." % (self.lhs, self.rhs))
-            self.reset_times(location)
             return
         else:
             # we are doing a @desc call
             if not self.args:
                 if location:
                     string = "{wDescriptions on %s{n:\n" % location.key
-                    string += " {wspring:{n %s\n" % location.db.spring_desc
-                    string += " {wsummer:{n %s\n" % location.db.summer_desc
-                    string += " {wautumn:{n %s\n" % location.db.autumn_desc
-                    string += " {wwinter:{n %s\n" % location.db.winter_desc
-                    string += " {wgeneral:{n %s" % location.db.general_desc
+                    string += (
+                        " {wspring:{n %s\n" % location.item_data.spring_description
+                    )
+                    string += (
+                        " {wsummer:{n %s\n" % location.item_data.summer_description
+                    )
+                    string += (
+                        " {wautumn:{n %s\n" % location.item_data.autumn_description
+                    )
+                    string += (
+                        " {wwinter:{n %s\n" % location.item_data.winter_description
+                    )
+                    string += " {wgeneral:{n %s" % location.perm_desc
                     caller.msg(string)
                     return
             if self.switches and self.switches[0] in (
@@ -779,20 +761,17 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
                     caller.msg("You do not have permission to @desc here.")
                     return
                 if switch == "spring":
-                    location.db.spring_desc = self.args
+                    location.item_data.spring_description = self.args
                 elif switch == "summer":
-                    location.db.summer_desc = self.args
+                    location.item_data.summer_description = self.args
                 elif switch == "autumn":
-                    location.db.autumn_desc = self.args
+                    location.item_data.autumn_description = self.args
                 elif switch == "winter":
-                    location.db.winter_desc = self.args
-                # clear flag to force an update
-                self.reset_times(location)
+                    location.item_data.winter_description = self.args
                 caller.msg("Seasonal description was set on %s." % location.key)
             else:
                 # Not seasonal desc set, maybe this is not an extended room
                 if self.rhs:
-                    text = self.rhs
                     if "char" in self.switches:
                         # if we're looking for a character, find them by player
                         # so we can @desc someone not in the room
@@ -816,14 +795,7 @@ class CmdExtendedDesc(default_cmds.CmdDesc):
                     )
                     return
                 obj.desc = self.rhs  # a compatability fallback
-                if utils.inherits_from(obj, ExtendedRoom):
-                    # this is an extendedroom, we need to reset
-                    # times and set general_desc
-                    obj.db.general_desc = text
-                    self.reset_times(obj)
-                    caller.msg("General description was set on %s." % obj.key)
-                else:
-                    caller.msg("The description was set on %s." % obj.key)
+                caller.msg("The description was set on %s." % obj.key)
 
 
 # Simple command to view the current time and season

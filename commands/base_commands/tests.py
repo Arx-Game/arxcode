@@ -1479,9 +1479,9 @@ class SocialTests(ArxCommandTest):
             "Old mood was: |"
             "(OOC)The scene set/room mood is now set to: this is a test mood",
         )
-        self.assertEqual(self.room1.db.room_mood[2], "this is a test mood")
+        self.assertEqual(self.room1.item_data.room_mood, "this is a test mood")
         self.call_cmd("", "Old mood was: this is a test mood|Mood erased.")
-        self.assertEqual(self.room1.db.room_mood, None)
+        self.assertEqual(self.room1.item_data.room_mood, "")
 
     @patch.object(social, "inform_staff")
     def test_cmd_favor(self, mock_inform_staff):

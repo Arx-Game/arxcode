@@ -51,6 +51,7 @@ class StorageWrapper(ABC):
         try:
             storage = self.get_storage(instance)
             setattr(storage, self.attr_name, self.deleted_value)
+            self.on_pre_delete(storage)
             if self.call_save:
                 storage.save()
         except ObjectDoesNotExist:
@@ -104,6 +105,12 @@ class StorageWrapper(ABC):
     def __delete__(self, instance):
         self.delete_attribute(instance)
 
+    def on_pre_save(self, storage, value):
+        """Hook for any other processing before calling save on the storage object."""
+
+    def on_pre_delete(self, storage):
+        """Hook for any other processing before deleting a field on the storage object."""
+
 
 class DimensionsWrapper(StorageWrapper):
     """Managed attribute for getting/retrieving data about object dimensions."""
@@ -147,3 +154,15 @@ class ObjectDBFieldWrapper(StorageWrapper):
 
     def create_new_storage(self, instance):
         return instance.obj
+
+
+class DescriptionWrapper(StorageWrapper):
+    """Managed attribute for getting/retrieving data about object descriptions"""
+
+    def get_storage(self, instance):
+        return instance.obj.descriptions
+
+    def create_new_storage(self, instance):
+        from evennia_extensions.object_extensions.models import Descriptions
+
+        return Descriptions.objects.create(objectdb=instance.obj)

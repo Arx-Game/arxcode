@@ -1,5 +1,6 @@
 import time
 import datetime
+import re
 
 from evennia.utils.create import create_script
 
@@ -410,6 +411,43 @@ def get_time_and_season():
     else:
         curr_timeslot = "evening"
     return curr_season, curr_timeslot
+
+
+# regexes for in-desc replacements
+RE_MORNING = re.compile(r"<morning>(.*?)</morning>", re.IGNORECASE)
+RE_AFTERNOON = re.compile(r"<afternoon>(.*?)</afternoon>", re.IGNORECASE)
+RE_EVENING = re.compile(r"<evening>(.*?)</evening>", re.IGNORECASE)
+RE_NIGHT = re.compile(r"<night>(.*?)</night>", re.IGNORECASE)
+# this map is just a faster way to select the right regexes (the first
+# regex in each tuple will be parsed, the following will always be weeded out)
+REGEXMAP = {
+    "morning": (RE_MORNING, RE_AFTERNOON, RE_EVENING, RE_NIGHT),
+    "afternoon": (RE_AFTERNOON, RE_MORNING, RE_EVENING, RE_NIGHT),
+    "evening": (RE_EVENING, RE_MORNING, RE_AFTERNOON, RE_NIGHT),
+    "night": (RE_NIGHT, RE_MORNING, RE_AFTERNOON, RE_EVENING),
+}
+
+
+def replace_timeslots(raw_desc, curr_time):
+    """
+    Filter so that only time markers `<timeslot>...</timeslot>` of
+    the correct timeslot remains in the description.
+
+    Args:
+        raw_desc (str): The unmodified description.
+        curr_time (str): A timeslot identifier.
+
+    Returns:
+        description (str): A possibly modified description.
+
+    """
+    if raw_desc:
+        regextuple = REGEXMAP[curr_time]
+        raw_desc = regextuple[0].sub(r"\1", raw_desc)
+        raw_desc = regextuple[1].sub("", raw_desc)
+        raw_desc = regextuple[2].sub("", raw_desc)
+        return regextuple[3].sub("", raw_desc)
+    return raw_desc
 
 
 def init_gametime():

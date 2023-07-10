@@ -15,31 +15,21 @@ from world.templates.mixins import TemplateMixins
 
 class DescMixins(object):
     """
-    Handles descriptions for objects, which is controlled by three
-    Evennia Attributes: desc, raw_desc, and general_desc. desc is
-    the current description that is used/seen when looking at an
-    object. raw_desc is a permanent desc that might be elaborated
-    upon with other things, such as additional strings from other
-    methods or properties. general_desc is a fallback that can be
-    used if raw_desc is unavailable or unused.
-
-    These are accessed by three properties: desc, temp_desc, and
-    perm_desc. desc returns the temporary desc first if it exists,
-    then the raw_desc, then the fallback general_desc, the the desc
-    setter will set all three of these to the same value, intended
-    to be a universal change. temp_desc will return the same value
-    as desc, but its setter only modifies the temporary desc, and
-    it has a deleter that sets the temporary desc to an empty string.
-    perm_desc returns the raw_desc first or its fallback, only returning
-    the temporary desc if neither exist. Its setter sets the general_desc
-    and raw_desc, but not the temporary desc.
+    Handles descriptions for objects, which is controlled by two storage values:
+    item_data.permanent_description and item_data.temporary_description.
+    These are wrapped by three properties: desc, perm_desc, and temp_desc.
+    perm_desc is the permanent description, temp_desc is the temporary one.
+    desc is the one that is actually displayed, and is the one that should be
+    set by the user. It will return temp_desc if it is set, otherwise it will
+    return perm_desc. If perm_desc is not set, it will return the default
+    permanent description, which is set by the item typeclass.
 
     So for a temporary disguise, use .temp_desc. For a permanent change
     that won't override any current disguise, use .perm_desc. For a change
     that will change everything right now, disguise or not, use .desc.
     """
 
-    default_desc = ""
+    default_permanent_description = ""
     default_size = 1
     default_capacity = 100
     default_quantity = 1
@@ -48,12 +38,7 @@ class DescMixins(object):
 
     @property
     def base_desc(self):
-        return (
-            self.db.desc
-            or self.db.raw_desc
-            or self.db.general_desc
-            or self.default_desc
-        )
+        return self.item_data.permanent_description
 
     @property
     def desc(self):
@@ -61,6 +46,9 @@ class DescMixins(object):
         :type self: evennia.objects.models.ObjectDB
         :return:
         """
+        temp_desc = self.temp_desc
+        if temp_desc:
+            return temp_desc
         return self.base_desc
 
     @desc.setter
@@ -68,63 +56,41 @@ class DescMixins(object):
         """
         :type self: ObjectDB
         """
-        # desc may be changed dynamically
-        self.db.desc = val
-        if self.db.raw_desc:
-            self.db.raw_desc = val
-        if self.db.general_desc:
-            # general desc is our fallback
-            self.db.general_desc = val
-        self.ndb.cached_template_desc = None
+        if self.temp_desc:
+            del self.temp_desc
+        self.item_data.permanent_description = val
 
-    def __temp_desc_get(self):
+    @property
+    def temp_desc(self):
         """
         :type self: ObjectDB
         """
-        return self.base_desc
+        return self.item_data.temporary_description
 
-    def __temp_desc_set(self, val):
+    @temp_desc.setter
+    def temp_desc(self, val):
+        """
+        :type self: ObjectDB
+        :type val: str
+        """
+        self.item_data.temporary_description = val
+        self.ndb.cached_template_desc = None
+
+    @temp_desc.deleter
+    def temp_desc(self):
         """
         :type self: ObjectDB
         """
-        # Make sure we're not using db.desc as our permanent desc before wiping it
-        if not self.db.raw_desc:
-            self.db.raw_desc = self.db.desc
-        if not self.db.general_desc:
-            self.db.desc = self.db.desc
-        self.ndb.cached_template_desc = None
-        self.db.desc = val
-
-    def __temp_desc_del(self):
-        """
-        :type self: ObjectDB
-        """
-        # Make sure we're not using db.desc as our permanent desc before wiping it
-        if not self.db.raw_desc:
-            self.db.raw_desc = self.db.desc
-        if not self.db.general_desc:
-            self.db.general_desc = self.db.desc
-        self.db.desc = ""
+        del self.item_data.temporary_description
         self.ndb.cached_template_desc = None
 
-    temp_desc = property(__temp_desc_get, __temp_desc_set, __temp_desc_del)
-
-    def __perm_desc_get(self):
+    @property
+    def perm_desc(self):
         """
         :type self: ObjectDB
         :return:
         """
-        return self.db.raw_desc or self.db.general_desc or self.db.desc or ""
-
-    def __perm_desc_set(self, val):
-        """
-        :type self: ObjectDB
-        """
-        self.db.general_desc = val
-        self.db.raw_desc = val
-        self.ndb.cached_template_desc = None
-
-    perm_desc = property(__perm_desc_get, __perm_desc_set)
+        return self.item_data.permanent_description
 
     @property
     def used_capacity(self):
@@ -546,13 +512,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         contents = self.return_contents(pobject, strip_ansi=strip_ansi)
         # get description, build string
         string = "{c%s{n" % self.name
-        # if altered_desc is true, we use the alternate desc set by an attribute.
-        # usually this is some dynamic description set at runtime, such as based
-        # on an illusion, wearing a mask, change of seasons, etc.
-        if self.db.altered_desc:
-            desc = self.db.desc
-        else:
-            desc = self.desc
+        desc = self.desc
         if strip_ansi:
             try:
                 desc = parse_ansi(desc, strip_ansi=True)

@@ -6,6 +6,7 @@ from evennia_extensions.object_extensions.models import (
     Dimensions,
     Permanence,
     DisplayNames,
+    Descriptions,
 )
 from evennia_extensions.character_extensions.models import (
     CharacterSheet,
@@ -14,6 +15,7 @@ from evennia_extensions.character_extensions.models import (
     CharacterTitle,
     HeldKey,
 )
+from evennia_extensions.room_extensions.models import RoomDescriptions
 
 from web.character.models import Clue
 from world.traits.models import CharacterTraitValue, Trait
@@ -99,6 +101,13 @@ class KeyedCharactersInline(CharacterHeldKeysInline):
     fk_name = "keyed_object"
 
 
+class RoomDescriptionsInline(admin.TabularInline):
+    model = RoomDescriptions
+    extra = 0
+    raw_id_fields = ("room", "mood_set_by")
+    fk_name = "room"
+
+
 class PermanenceInline(admin.TabularInline):
     model = Permanence
     extra = 0
@@ -163,10 +172,16 @@ class DisplayNamesInline(admin.TabularInline):
     extra = 0
 
 
+class DescriptionsInline(admin.TabularInline):
+    model = Descriptions
+    extra = 0
+
+
 class ArxObjectDBAdmin(ObjectDBAdmin):
     search_fields = ["=id", "db_key"]
     inlines = list(ObjectDBAdmin.inlines) + [
         DisplayNamesInline,
+        DescriptionsInline,
         DimensionsInline,
         PermanenceInline,
         SecretsInline,
@@ -188,7 +203,7 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
     wearable_inlines = [ArmorOverrideInline]
     wieldable_inlines = [WeaponOverrideInline]
     container_inlines = [KeyedCharactersInline]
-    room_inlines = [KeyedCharactersInline]
+    room_inlines = [RoomDescriptionsInline, KeyedCharactersInline]
 
     def get_inline_instances(self, request, obj=None):
         from typeclasses.characters import Character
