@@ -919,7 +919,6 @@ class CmdSetGameTimescale(ArxCommand):
             return
 
         elif "history" in self.switches:
-            from datetime import datetime
             from evennia.utils.evtable import EvTable
 
             table = EvTable("Real Time", "Game Date", "Multiplier")
