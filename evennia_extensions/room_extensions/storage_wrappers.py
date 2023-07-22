@@ -17,12 +17,12 @@ class RoomDescriptionWrapper(StorageWrapper):
         don't need to save - that's handled after this hook is called."""
 
         if self.attr_name == "room_mood":
-            storage.room_mood_set_at = datetime.now()
+            storage.mood_set_at = datetime.now()
 
     def on_pre_delete(self, storage):
         """If our self.attr_name is room_mood, then we clear the timestamp
-        and our room_mood_set_by."""
+        and our mood_set_by."""
 
         if self.attr_name == "room_mood":
-            storage.room_mood_set_at = None
-            storage.room_mood_set_by = None
+            storage.mood_set_at = None
+            storage.mood_set_by = None

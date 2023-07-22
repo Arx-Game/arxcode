@@ -2533,7 +2533,7 @@ class CmdRoomMood(RewardRPToolUseMixin, ArxCommand):
             return
         mood = self.args
         caller.location.item_data.room_mood = mood
-        caller.location.item_data.room_mood_set_by = caller
+        caller.location.item_data.mood_set_by = caller
         self.caller.location.msg_contents(
             "{w(OOC)The scene set/room mood is now set to:{n %s" % mood
         )

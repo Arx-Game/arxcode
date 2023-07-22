@@ -145,6 +145,13 @@ class ArxRoom(ObjectMixins, DefaultRoom, MagicMixins):
             + self.combat_string(looker)
         )
 
+    def modify_string_by_templates(self, string):
+        _, current_time = self.get_time_and_season()
+        if current_time != self.ndb.old_gametime:
+            self.ndb.old_gametime = current_time
+            self.ndb.cached_template_desc = None
+        return super().modify_string_by_templates(string)
+
     def _current_event(self):
         if not self.db.current_event:
             return None

@@ -100,6 +100,7 @@ class StorageWrapper(ABC):
             storage = self.create_new_storage(instance)
         setattr(storage, self.attr_name, value)
         if self.call_save:
+            self.on_pre_save(storage, value)
             storage.save()
 
     def __delete__(self, instance):

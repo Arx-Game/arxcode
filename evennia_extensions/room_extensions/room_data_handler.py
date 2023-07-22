@@ -16,6 +16,6 @@ class RoomDataHandler(ItemDataHandler):
     autumn_description = RoomDescriptionWrapper(allow_null=False, deleted_value="")
     winter_description = RoomDescriptionWrapper(allow_null=False, deleted_value="")
     room_mood = RoomDescriptionWrapper(allow_null=False, deleted_value="")
-    room_mood_set_by = RoomDescriptionWrapper(
+    mood_set_by = RoomDescriptionWrapper(
         validator_func=get_character, default_is_none=True
     )
