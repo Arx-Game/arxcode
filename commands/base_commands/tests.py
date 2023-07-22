@@ -13,7 +13,7 @@ from server.utils.test_utils import (
 )
 from world.crafting.models import CraftingRecipe, CraftingMaterialType
 from world.dominion.domain.models import Army
-from world.dominion.models import RPEvent, Organization, Member
+from world.dominion.models import RPEvent, Organization, Member, AssetOwner
 from world.dominion.plots.models import (
     PlotAction,
     Plot,
@@ -22,7 +22,14 @@ from world.dominion.plots.models import (
 )
 from world.magic.models import SkillNode, Spell
 from world.templates.models import Template
-from web.character.models import PlayerAccount, Clue, Revelation, Episode
+from web.character.models import (
+    PlayerAccount,
+    Clue,
+    Revelation,
+    Episode,
+    Story,
+    Chapter,
+)
 
 from typeclasses.readable.readable_commands import CmdWrite
 from world.traits.models import Trait
@@ -119,7 +126,8 @@ class CraftingTests(TestEquipmentMixins, ArxCommandTest):
         self.call_cmd("/name object", None)
         self.call_cmd(
             "/desc [[TEMPLATE_1]] and [[TEMPLATE_2]]",
-            "You attempted to add the following templates that you do not have access to: [[TEMPLATE_1]], [[TEMPLATE_2]] to your desc.",
+            "You attempted to add the following templates that you do not have "
+            "access to: [[TEMPLATE_1]], [[TEMPLATE_2]] to your desc.",
         )
 
         self.template1.save()
@@ -565,7 +573,6 @@ class StoryActionTests(ArxCommandTest):
     @patch("world.dominion.plots.models.inform_staff")
     @patch("world.dominion.plots.models.get_week")
     def test_cmd_gm_action(self, mock_get_week, mock_inform_staff, mock_randint):
-        from datetime import datetime
 
         now = datetime.now()
         mock_get_week.return_value = 1
@@ -774,7 +781,6 @@ class StoryActionTests(ArxCommandTest):
         with patch(
             "server.utils.arx_utils.broadcast_msg_and_post"
         ) as mock_msg_and_post:
-            from web.character.models import Story, Chapter, Episode
 
             chapter = Chapter.objects.create(name="test chapter")
             Episode.objects.create(name="test episode", chapter=chapter)
@@ -933,7 +939,7 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
 
     def test_cmd_set(self):
         self.setup_cmd(overrides.CmdArxSetAttribute, self.char)
-        self.call_cmd(f" here/capacity=200", "Set item data Room/capacity = 200")
+        self.call_cmd(" here/capacity=200", "Set item data Room/capacity = 200")
         self.assertEqual(self.room.item_data.capacity, 200)
         self.call_cmd(
             f"/char {self.char2}/strength=10", "Set trait Char2/strength = 10"
@@ -1096,7 +1102,6 @@ class RosterTests(ArxCommandTest):
 
     @patch.object(roster, "inform_staff")
     def test_cmd_admin_roster(self, mock_inform_staff):
-        from world.dominion.models import Organization
 
         self.org = Organization.objects.create(name="testorg")
         self.member = self.org.members.create(player=self.dompc2, rank=2)
@@ -1190,7 +1195,6 @@ class SocialTests(ArxCommandTest):
         )
 
     def test_cmd_iamhelping(self):
-        from web.character.models import PlayerAccount
 
         self.setup_cmd(social.CmdIAmHelping, self.account)
         paccount1 = PlayerAccount.objects.create(email="foo@foo.com")
@@ -1251,7 +1255,6 @@ class SocialTests(ArxCommandTest):
     def test_cmd_rpevent(self, mock_datetime, mock_inform_staff, mock_get_week):
         from evennia.utils.create import create_script
         from typeclasses.scripts.event_manager import EventManager
-        from world.dominion.models import Organization, AssetOwner
 
         script = create_script(typeclass=EventManager, key="Event Manager")
         script.post_event = Mock()
@@ -1402,8 +1405,6 @@ class SocialTests(ArxCommandTest):
     @patch("server.utils.arx_utils.get_week")
     @patch.object(social, "do_dice_check")
     def test_cmd_praise(self, mock_dice_check, mock_get_week, mock_dom_get_week):
-        from web.character.models import PlayerAccount
-        from world.dominion.models import Organization, AssetOwner, RPEvent
 
         self.roster_entry.current_account = PlayerAccount.objects.create(
             email="asdf@asdf.com"
@@ -1711,8 +1712,6 @@ class StaffCommandTests(ArxCommandTest):
 
     @patch("world.dominion.models.get_week")
     def test_cmd_gemit(self, mock_get_week):
-        from world.dominion.models import Organization
-        from web.character.models import Story, Episode
         from typeclasses.bulletin_board.bboard import BBoard
         from evennia.utils.create import create_object
 
@@ -2233,7 +2232,6 @@ class JobCommandTests(TestTicketMixins, ArxCommandTest):
 
 class XPCommandTests(ArxCommandTest):
     def test_cmd_use_xp(self):
-        from evennia.server.models import ServerConfig
         from commands.base_commands.guest import setup_voc
         from world import stats_and_skills
 
