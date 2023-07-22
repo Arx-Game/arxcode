@@ -1480,6 +1480,10 @@ class SocialTests(ArxCommandTest):
             "(OOC)The scene set/room mood is now set to: this is a test mood",
         )
         self.assertEqual(self.room1.item_data.room_mood, "this is a test mood")
+        self.assertEqual(self.room1.item_data.mood_set_by, self.char)
+        self.assertIsNotNone(self.room1.room_descriptions.mood_set_at)
+        ten_minutes_ago = datetime.now() - timedelta(minutes=10)
+        self.assertGreater(self.room1.room_descriptions.mood_set_at, ten_minutes_ago)
         self.call_cmd("", "Old mood was: this is a test mood|Mood erased.")
         self.assertEqual(self.room1.item_data.room_mood, "")
 

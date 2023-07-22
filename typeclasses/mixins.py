@@ -58,6 +58,8 @@ class DescMixins(object):
         """
         if self.temp_desc:
             del self.temp_desc
+        if self.ndb.cached_template_desc:
+            del self.ndb.cached_template_desc
         self.item_data.permanent_description = val
 
     @property
@@ -526,17 +528,21 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         else:  # for crafted objects, respect formatting
             string += "\n%s{n" % desc
 
-            if self.ndb.cached_template_desc:
-                string = self.ndb.cached_template_desc
-            else:
-                templates = Template.objects.in_list(self.find_template_ids(string))
-                if templates.exists():
-                    string = self.replace_template_values(string, templates)
-                self.ndb.cached_template_desc = string
+            string = self.modify_string_by_templates(string)
 
         if contents and show_contents:
             string += contents
         return string
+
+    def modify_string_by_templates(self, string):
+        if self.ndb.cached_template_desc:
+            return self.ndb.cached_template_desc
+        else:
+            templates = Template.objects.in_list(self.find_template_ids(string))
+            if templates.exists():
+                string = self.replace_template_values(string, templates)
+            self.ndb.cached_template_desc = string
+            return string
 
     def transfer_all(self, destination, caller=None):
         self.pay_money(self.currency, destination)

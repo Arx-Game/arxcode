@@ -26,6 +26,8 @@ class ArxRoomTests(ArxCommandTest):
         # give room a permanent description with no time of day tags
         desc = "This is a test room."
         self.room1.desc = desc
+        # player made rooms have special caching, we'll make sure that is stripped
+        self.room1.tags.add("player_made_room")
         mock_get_time_and_season.return_value = ("spring", "morning")
 
         def get_full_desc(base_desc):

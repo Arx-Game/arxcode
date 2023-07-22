@@ -31,3 +31,9 @@ class RoomDescriptions(SharedMemoryModel):
 
     class Meta:
         verbose_name_plural = "Room Extra Descriptions"
+
+    def save(self, *args, **kwargs):
+        """Clears out room.ndb.cached_template_desc after save if it is truthy."""
+        super().save(*args, **kwargs)
+        if self.room.ndb.cached_template_desc:
+            del self.room.ndb.cached_template_desc
