@@ -830,14 +830,14 @@ class GeneralTests(TestEquipmentMixins, ArxCommandTest):
         self.purse1.item_data.is_locked = True
         self.caller = self.char1  # staff
         self.call_cmd("5 silver in purse1", "You do not have enough money.")
-        self.char1.db.currency = 30.0
+        self.char1.item_data.currency = 30.0
         self.hairpins1.move_to(self.room1)
         self.mask1.move_to(self.room1)
         self.obj1.move_to(self.char1)
         self.call_cmd("5 silver in purse1", "You put 5.0 silver in Purse1.")
-        self.assertEqual(self.purse1.db.currency, 5.0)
+        self.assertEqual(self.purse1.item_data.currency, 5.0)
         self.call_cmd("all in purse1", "You put Obj in Purse1.")
-        self.assertEqual(self.char1.db.currency, 25.0)
+        self.assertEqual(self.char1.item_data.currency, 25.0)
         self.assertEqual(self.obj1.location, self.purse1)
 
 
@@ -858,11 +858,11 @@ class OverridesTests(TestEquipmentMixins, ArxCommandTest):
             "5 silver from purse1",
             "Not enough money. You tried to get 5.0, but can only get 0.0.",
         )
-        self.purse1.db.currency = 30.0
+        self.purse1.item_data.currency = 30.0
         self.call_cmd("5 silver from purse1", "You get 5 silver from Purse1.")
         self.assertEqual(self.obj1.location, self.char2)
-        self.assertEqual(self.char2.db.currency, 5.0)
-        self.assertEqual(self.purse1.db.currency, 25.0)
+        self.assertEqual(self.char2.item_data.currency, 5.0)
+        self.assertEqual(self.purse1.item_data.currency, 25.0)
         self.mask1.item_data.quality_level = 11
         self.catsuit1.wear(self.char2)
         self.mask1.wear(self.char2)
@@ -1314,9 +1314,9 @@ class SocialTests(ArxCommandTest):
             "player-run plot. Tagging a social event as a PRP is strictly prohibited. "
             "If you tagged this as a PRP in error, use gm on them again to remove them.",
         )
-        self.char1.db.currency = -1.0
-        self.call_cmd("/largesse grand", "That requires 10000 to buy. You have -1.0.")
-        self.char1.db.currency = 10000
+        self.char1.item_data.currency = -1.0
+        self.call_cmd("/largesse grand", "That requires 10000 to buy. You have -1.")
+        self.char1.item_data.currency = 10000
         self.call_cmd("/largesse grand", "Largesse level set to grand for 10000.")
         org = Organization.objects.create(name="test org")
         org.members.create(player=self.dompc2, rank=10)
@@ -1333,7 +1333,7 @@ class SocialTests(ArxCommandTest):
             "You pay 10000 coins for the event.|"
             "New event created: test_event at 12/12/30 12:00:00.",
         )
-        self.assertEqual(self.char1.db.currency, 0)
+        self.assertEqual(self.char1.item_data.currency, 0)
         event = RPEvent.objects.get(name="test_event")
         self.assertTrue(event.gm_event)
         self.assertEqual(org.events.first(), event)
@@ -2444,7 +2444,7 @@ class AdjustCommandTests(ArxCommandTest):
         )
 
     def test_adjust_silver(self):
-        self.char2.db.currency = 0
+        self.char2.item_data.currency = 0
 
         # Test increase.
         adjust_msg = "Awarded 50 silver to: Char2."
@@ -2454,7 +2454,7 @@ class AdjustCommandTests(ArxCommandTest):
             inform_msg, category="Silver Adjustment"
         )
 
-        self.assertEqual(self.char2.db.currency, 50)
+        self.assertEqual(self.char2.item_data.currency, 50)
 
         # Test with message this time.
         self.call_cmd(
@@ -2465,7 +2465,7 @@ class AdjustCommandTests(ArxCommandTest):
             f"{inform_msg}%r%rMessage: Here is 50 silver.",
             category="Silver Adjustment",
         )
-        self.assertEqual(self.char2.db.currency, 100)
+        self.assertEqual(self.char2.item_data.currency, 100)
 
         # Test reduction failure.
         mny_adjust_fail = "Char2 only has 100 silver on hand.|Failed to adjust: Char2."
@@ -2478,7 +2478,7 @@ class AdjustCommandTests(ArxCommandTest):
         self.char2.player.inform.assert_called_with(
             inform_msg, category="Silver Adjustment"
         )
-        self.assertEqual(self.char2.db.currency, 0)
+        self.assertEqual(self.char2.item_data.currency, 0)
 
     def test_adjust_multi(self):
         self.assetowner2.economic = 0
@@ -2511,23 +2511,23 @@ class AdjustCommandTests(ArxCommandTest):
         self.assertEqual(mat4.amount, 50)
 
         # Test /silver with multiple characters.
-        self.char2.db.currency = 0
-        self.char3.db.currency = 0
-        self.char4.db.currency = 0
+        self.char2.item_data.currency = 0
+        self.char3.item_data.currency = 0
+        self.char4.item_data.currency = 0
 
         adjust_msg = "Awarded 50 silver to: Char2, Char3, Char4."
         self.call_cmd("/silver Testaccount2,Testaccount3,Testaccount4=50", adjust_msg)
 
-        self.assertEqual(self.char2.db.currency, 50)
-        self.assertEqual(self.char3.db.currency, 50)
-        self.assertEqual(self.char4.db.currency, 50)
+        self.assertEqual(self.char2.item_data.currency, 50)
+        self.assertEqual(self.char3.item_data.currency, 50)
+        self.assertEqual(self.char4.item_data.currency, 50)
 
         # Test failure with one not-right character.
         result_msg = "Could not find 'foo'.|Awarded 50 silver to: Char2, Char4.|Failed to adjust: foo."
         self.call_cmd("/silver Testaccount2,foo,Testaccount4=50", result_msg)
 
-        self.assertEqual(self.char2.db.currency, 100)
-        self.assertEqual(self.char4.db.currency, 100)
+        self.assertEqual(self.char2.item_data.currency, 100)
+        self.assertEqual(self.char4.item_data.currency, 100)
 
         # Test typo with commas in character names.
         result_msg = "Deducted 50 silver from: Char2, Char3, Char4."
@@ -2535,9 +2535,9 @@ class AdjustCommandTests(ArxCommandTest):
             "/silver Testaccount2,,Testaccount3,,,Testaccount4=-50", result_msg
         )
 
-        self.assertEqual(self.char2.db.currency, 50)
-        self.assertEqual(self.char3.db.currency, 0)
-        self.assertEqual(self.char4.db.currency, 50)
+        self.assertEqual(self.char2.item_data.currency, 50)
+        self.assertEqual(self.char3.item_data.currency, 0)
+        self.assertEqual(self.char4.item_data.currency, 50)
 
         # Test more typos with commas in character names.
         result_msg = "Could not find 'Testaccount2.Testaccount3'.|Failed to adjust: Testaccount2.Testaccount3."

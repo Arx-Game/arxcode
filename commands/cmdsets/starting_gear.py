@@ -317,11 +317,11 @@ class CmdStartingGear(ArxCommand):
             caller.attributes.remove("startgear_project")
             return
         if "refundremainder" in self.switches:
-            money = caller.db.currency or 0.0
+            money = caller.item_data.currency
             refund = caller.db.startgear_val
             money += refund
             caller.attributes.remove("startgear_val")
-            caller.db.currency = money
+            caller.item_data.currency = money
             caller.msg("You receive %s silver coins." % refund)
             caller.cmdset.delete(StartingGearCmdSet)
             return

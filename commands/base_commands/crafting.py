@@ -538,10 +538,10 @@ class CmdCraft(ArxCommand, TemplateMixins):
                         % cost
                     )
                     return
-                if cost > caller.db.currency:
+                if cost > caller.item_data.currency:
                     caller.msg(
                         "This would cost %s, and you only have %s."
-                        % (cost, caller.db.currency)
+                        % (cost, caller.item_data.currency)
                     )
                     return
                 if action_points and not caller.player_ob.pay_action_points(
@@ -754,7 +754,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                 )
                 raise ValueError(errmsg)
             if not caller.check_permstring("builders"):
-                if caller.db.currency < cost:
+                if caller.item_data.currency < cost:
                     caller.msg(
                         "The recipe costs %s on its own, and you are trying to spend an additional %s."
                         % (recipe.additional_cost, invest)
@@ -766,7 +766,7 @@ class CmdCraft(ArxCommand, TemplateMixins):
                         )
                     caller.msg(
                         "You need %s silver total, and have only %s."
-                        % (cost, caller.db.currency)
+                        % (cost, caller.item_data.currency)
                     )
                     return
                 pmats = caller.player.Dominion.assets.owned_materials

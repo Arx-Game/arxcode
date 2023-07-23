@@ -44,7 +44,7 @@ class TestPetitionCommands(ArxCommandTest):
         )
         self.call_cmd(
             "/reprice 2=500000000",
-            "You cannot afford to pay 499999900 when you only have 19900.0 silver.",
+            "You cannot afford to pay 499999900 when you only have 19900.00 silver.",
         )
         self.assertEqual(self.char1.currency, 19900)
         self.call_cmd("/reprice 2=5000", "You have changed the price to 5000.")
@@ -58,7 +58,7 @@ class TestPetitionCommands(ArxCommandTest):
         self.roster_entry.save()
         self.call_cmd(
             "/buy ap=1,100",
-            "You cannot afford to pay 100 when you only have 0.0 silver.",
+            "You cannot afford to pay 100 when you only have 0 silver.",
         )
         self.char1.currency += 20000
         self.assertEqual(self.char1.currency, 20000)

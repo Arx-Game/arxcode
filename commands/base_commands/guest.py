@@ -1365,12 +1365,12 @@ class CmdGuestAddInput(ArxPlayerCommand):
             from world.dominion.setup_utils import starting_money
 
             money = starting_money(srank) or 0
-            char.db.currency = money / 10
+            char.item_data.currency = money / 10
         except (ValueError, TypeError, AttributeError):
             import traceback
 
             traceback.print_exc()
-            char.db.currency = 0
+            char.item_data.currency = 0
 
     def func(self):
         """ "implement the ooc look command"""

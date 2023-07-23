@@ -400,7 +400,7 @@ class CmdBank(ArxCommand):
             if not account:
                 return
         if "deposit" in self.switches:
-            cash = caller.db.currency or 0.0
+            cash = caller.item_data.currency
             if not cash:
                 caller.msg("You have no money to deposit.")
                 return
@@ -412,7 +412,7 @@ class CmdBank(ArxCommand):
                 )
                 return
             account.vault += amount
-            caller.db.currency = cash - amount
+            caller.item_data.currency = cash - amount
             account.save()
             if account.can_be_viewed_by(caller):
                 caller.msg(
@@ -428,7 +428,7 @@ class CmdBank(ArxCommand):
             if not account.access(caller, "withdraw"):
                 caller.msg("You do not have permission to withdraw from that account.")
                 return
-            cash = caller.db.currency or 0.0
+            cash = caller.item_data.currency
             check = self.check_money(account, amount)
             if check < 0:
                 caller.msg(
@@ -446,7 +446,7 @@ class CmdBank(ArxCommand):
                     return
                 return
             account.vault -= amount
-            caller.db.currency = cash + amount
+            caller.item_data.currency = cash + amount
             account.save()
             caller.msg(
                 "You have withdrawn {:,}. New balance is {:,}.".format(

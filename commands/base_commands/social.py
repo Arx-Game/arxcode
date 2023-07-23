@@ -3182,7 +3182,7 @@ class CmdDonate(ArxCommand):
                 return
             try:
                 val = int(self.rhs)
-                if val > caller.db.currency:
+                if val > caller.item_data.currency:
                     raise CommandError("Not enough money.")
                 if val <= 0:
                     raise ValueError

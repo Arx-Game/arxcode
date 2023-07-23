@@ -1,6 +1,7 @@
 """
 Tests for different command sets.
 """
+from decimal import Decimal
 from unittest.mock import patch, Mock
 from unittest import skip
 
@@ -861,7 +862,7 @@ class TestMarketCommands(ArxCommandTest):
         self.assertEqual(self.char1.db.haggling_deal, None)
         self.char1.db.haggling_deal = deal
         self.call_cmd("/accept", "You cannot afford the silver cost of 35000.0.")
-        self.char1.db.currency = 40000.0
+        self.char1.item_data.currency = 40000.0
         self.call_cmd(
             "/accept", "You have bought 100 economic resources for 35000.0 silver."
         )
@@ -884,7 +885,7 @@ class TestMarketCommands(ArxCommandTest):
             "/accept", "You have sold 100 economic resources and gained 14771.9 silver."
         )
         self.assertEqual(self.assetowner.economic, 0)
-        self.assertEqual(self.char1.currency, 19771.9)
+        self.assertAlmostEqual(self.char1.currency, Decimal(19771.9), places=2)
         material = CraftingMaterialType.objects.create(name="testium", value=50000000)
         self.call_cmd(
             "/findseller testium=10",
@@ -938,7 +939,7 @@ class TestMarketCommands(ArxCommandTest):
         self.call_cmd("/accept", "You have sold 30 testium and gained 35201.2 silver.")
         self.assertEqual(self.assetowner.fame, 495)
         self.assertEqual(mats.amount, 0)
-        self.assertEqual(self.char1.currency, 37473.1)
+        self.assertAlmostEqual(self.char1.currency, Decimal(37473.1), places=2)
         mock_dice_check.return_value = 10
         self.call_cmd(
             "/findseller testium,testaccount2=50,bar",

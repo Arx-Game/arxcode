@@ -203,10 +203,10 @@ class CmdMarket(ArxCommand):
             except AttributeError:
                 dompc = setup_utils.setup_dom_for_char(caller)
             # use silver
-            if cost > caller.db.currency:
+            if cost > caller.item_data.currency:
                 caller.msg(
                     "That would cost %s silver coins, and you only have %s."
-                    % (cost, caller.db.currency)
+                    % (cost, caller.item_data.currency)
                 )
                 return
             caller.pay_money(cost)
@@ -251,10 +251,10 @@ class CmdMarket(ArxCommand):
                 return
             mat.amount -= amt
             mat.save()
-            money = caller.db.currency or 0.0
+            money = caller.item_data.currency
             sale = amt * material.value / 20
             money += sale
-            caller.db.currency = money
+            caller.item_data.currency = money
             caller.msg(
                 "You have sold %s %s for %s silver coins." % (amt, material.name, sale)
             )
@@ -283,9 +283,10 @@ class CmdMarket(ArxCommand):
                 caller.msg("Must specify a positive number.")
                 return
             cost = 500 * amt * get_cost_multipler()
-            if cost > caller.db.currency:
+            if cost > caller.item_data.currency:
                 caller.msg(
-                    "That would cost %s and you have %s." % (cost, caller.db.currency)
+                    "That would cost %s and you have %s."
+                    % (cost, caller.item_data.currency)
                 )
                 return
             caller.pay_money(cost)

@@ -443,7 +443,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
     def currency(self):
         """
         :type self: ObjectDB
-        :return: float
+        :return: Decimal
         """
         return self.item_data.currency
 
@@ -451,9 +451,9 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
     def currency(self, val):
         """
         :type self: ObjectDB
-        :param val: float
+        :param val: Decimal
         """
-        self.item_data.currency = val
+        self.item_data.currency = round(val, 2)
 
     def pay_money(self, amount, receiver=None):
         """
@@ -465,7 +465,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         :param receiver: ObjectDB
         """
         currency = self.currency
-        amount = round(amount, 2)
+        amount = Decimal(round(amount, 2))
         if amount > currency:
             from server.utils.exceptions import PayError
 

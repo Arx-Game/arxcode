@@ -58,6 +58,9 @@ def get_int(value):
 def get_decimal(value):
     """Converts value to a decimal, or raises a ValidationError."""
     try:
-        return Decimal(value or 0)
+        new_value = Decimal(value or 0)
+        if new_value > 100000000000000:
+            raise ValidationError("Value is too large")
+        return new_value
     except (TypeError, ValueError):
         raise ValidationError("Value must be a decimal")

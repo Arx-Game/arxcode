@@ -36,7 +36,7 @@ class Dimensions(SharedMemoryModel):
     is_locked = models.BooleanField(
         default=False, help_text="If this is a container or exit, whether it's locked."
     )
-    currency = models.DecimalField(max_digits=21, decimal_places=2, default=0)
+    currency = models.DecimalField(max_digits=16, decimal_places=2, default=0)
 
     class Meta:
         verbose_name_plural = "Dimensions"

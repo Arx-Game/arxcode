@@ -366,7 +366,7 @@ class CmdGive(ArxCommand):
             if val <= 0:
                 self.msg("Amount must be positive.")
                 return
-            currency = round(float(caller.db.currency or 0), 2)
+            currency = caller.item_data.currency
             if val > currency:
                 caller.msg("You do not have that much money to give.")
                 return
