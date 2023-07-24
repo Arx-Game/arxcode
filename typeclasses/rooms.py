@@ -87,11 +87,7 @@ class ArxRoom(ObjectMixins, DefaultRoom, MagicMixins):
         Temporarily added until we refactor details to have their own data storage,
         not an evennia Attribute
         """
-        try:
-            detail = self.db.details.get(key.lower(), None)
-        except AttributeError:
-            # this happens if no attribute details is set at all
-            return None
+        detail = self.item_data.details.get(key.lower(), None)
         if detail:
             _, timeslot = self.get_time_and_season()
             detail = gametime.replace_timeslots(detail, timeslot)
@@ -640,7 +636,6 @@ class CmdExtendedDesc(CmdDesc):
       @desc/char <character>=<description>
       @desc[/switch] <description>
       @detail[/del] [<key> = <description>]
-      @detail/fix <key>=<string to replace>,<new string to replace it>
 
 
     Switches for @desc:
@@ -689,45 +684,24 @@ class CmdExtendedDesc(CmdDesc):
                 string = "{wDetails on %s{n:\n" % location
                 string += "\n".join(
                     " {w%s{n: %s" % (key, utils.crop(text))
-                    for key, text in location.db.details.items()
+                    for key, text in location.item_data.details.items()
                 )
                 caller.msg(string)
                 return
             if self.switches and self.switches[0] in "del":
                 # removing a detail.
-                if self.lhs in location.db.details:
-                    del location.db.details[self.lhs]
-                    caller.msg("Detail %s deleted, if it existed." % self.lhs)
-                return
-            if self.switches and self.switches[0] in "fix":
-                if not self.lhs or not self.rhs:
-                    caller.msg("Syntax: @detail/fix key=old,new")
-                fixlist = self.rhs.split(",")
-                if len(fixlist) != 2:
-                    caller.msg("Syntax: @detail/fix key=old,new")
-                    return
-                key = self.lhs
-                try:
-                    location.db.details[key] = location.db.details[key].replace(
-                        fixlist[0], fixlist[1]
-                    )
-                except (KeyError, AttributeError):
-                    caller.msg("No such detail found.")
-                    return
-                caller.msg(
-                    "Detail %s has had text changed to: %s"
-                    % (key, location.db.details[key])
-                )
+                location.item_data.remove_detail(self.lhs)
+                caller.msg("Detail %s deleted, if it existed." % self.lhs)
                 return
             if not self.rhs:
                 # no '=' used - list content of given detail
-                if self.args in location.db.details:
+                if self.args in location.item_data.details:
                     string = "{wDetail '%s' on %s:\n{n" % (self.args, location)
-                    string += location.db.details[self.args]
+                    string += location.item_data.details[self.args]
                     caller.msg(string)
                     return
             # setting a detail
-            location.db.details[self.lhs] = self.rhs
+            location.item_data.add_detail(self.lhs, self.rhs)
             caller.msg("{wSet Detail %s to {n'%s'." % (self.lhs, self.rhs))
             return
         else:

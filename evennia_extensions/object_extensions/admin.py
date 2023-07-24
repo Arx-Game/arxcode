@@ -15,7 +15,7 @@ from evennia_extensions.character_extensions.models import (
     CharacterTitle,
     HeldKey,
 )
-from evennia_extensions.room_extensions.models import RoomDescriptions
+from evennia_extensions.room_extensions.models import RoomDescriptions, RoomDetail
 
 from web.character.models import Clue
 from world.traits.models import CharacterTraitValue, Trait
@@ -177,6 +177,12 @@ class DescriptionsInline(admin.TabularInline):
     extra = 0
 
 
+class RoomDetailInline(admin.TabularInline):
+    model = RoomDetail
+    extra = 0
+    raw_id_fields = ("room",)
+
+
 class ArxObjectDBAdmin(ObjectDBAdmin):
     search_fields = ["=id", "db_key"]
     inlines = list(ObjectDBAdmin.inlines) + [
@@ -203,7 +209,7 @@ class ArxObjectDBAdmin(ObjectDBAdmin):
     wearable_inlines = [ArmorOverrideInline]
     wieldable_inlines = [WeaponOverrideInline]
     container_inlines = [KeyedCharactersInline]
-    room_inlines = [RoomDescriptionsInline, KeyedCharactersInline]
+    room_inlines = [RoomDescriptionsInline, KeyedCharactersInline, RoomDetailInline]
 
     def get_inline_instances(self, request, obj=None):
         from typeclasses.characters import Character

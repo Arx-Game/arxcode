@@ -20,6 +20,8 @@ def convert_currency(apps, schema_editor):
     qs = Attribute.objects.filter(db_key="currency")
     num = 0
     total = len(qs)
+    fails = 0
+    success = 0
     if total:
         print(f"\nConverting currency: {total} records.")
     for attr in qs:
@@ -41,9 +43,15 @@ def convert_currency(apps, schema_editor):
                 objectdb=objdb,
                 defaults={"currency": currency},
             )
+            success += 1
             attr.delete()
         except (IndexError, TypeError, ValueError):
+            fails += 1
             attr.delete()
+    if total:
+        print("\n")
+        print(f"Success: {success}")
+        print(f"Fails: {fails}")
 
 
 class Migration(migrations.Migration):
@@ -56,7 +64,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="dimensions",
             name="currency",
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=21),
+            field=models.DecimalField(decimal_places=2, default=0, max_digits=17),
         ),
         migrations.RunPython(
             convert_currency, migrations.RunPython.noop, elidable=True

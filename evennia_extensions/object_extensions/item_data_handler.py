@@ -71,7 +71,9 @@ class ItemDataHandler:
             language (str): The name of the language
             description (str): The translated text
         """
-        # get or create will prevent an exact duplicate from occurring
-        self.obj.translations.get_or_create(language=language, description=description)
+        # update or create will prevent an exact duplicate from occurring
+        self.obj.translations.update_or_create(
+            language=language, defaults=dict(description=description)
+        )
         # clear the cache
         del self.translation
