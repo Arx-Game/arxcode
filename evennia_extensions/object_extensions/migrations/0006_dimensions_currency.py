@@ -3,7 +3,7 @@
 from django.db import migrations, models
 from decimal import Decimal
 
-from utils.progress_bar import ProgressBar
+from server.utils.progress_bar import ProgressBar
 
 
 def convert_currency(apps, schema_editor):
