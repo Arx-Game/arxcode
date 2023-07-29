@@ -2707,13 +2707,13 @@ class CmdAdjust(ArxPlayerCommand):
 
         # If reducing, verify that character has enough.
         if qty < 0:
-            on_hand = char.db.currency
+            on_hand = char.item_data.currency
             if abs(qty) > on_hand:
                 self.caller.msg(f"{char} only has {on_hand} silver on hand.")
                 return False
 
         # Increment/decrement silver amount.
-        char.db.currency += qty
+        char.item_data.currency += qty
 
         return True
 

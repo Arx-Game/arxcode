@@ -12,7 +12,11 @@ from evennia_extensions.object_extensions.storage_wrappers import (
     ObjectDBFieldWrapper,
     DescriptionWrapper,
 )
-from evennia_extensions.object_extensions.validators import get_objectdb, get_room
+from evennia_extensions.object_extensions.validators import (
+    get_objectdb,
+    get_room,
+    get_decimal,
+)
 from server.utils.arx_utils import CachedProperty
 
 
@@ -29,6 +33,7 @@ class ItemDataHandler:
     home = ObjectDBFieldWrapper(validator_func=get_objectdb)
     location = ObjectDBFieldWrapper(validator_func=get_objectdb)
     destination = ObjectDBFieldWrapper(validator_func=get_room)
+    currency = DimensionsWrapper(validator_func=get_decimal)
 
     @property
     def total_size(self):
@@ -66,7 +71,9 @@ class ItemDataHandler:
             language (str): The name of the language
             description (str): The translated text
         """
-        # get or create will prevent an exact duplicate from occurring
-        self.obj.translations.get_or_create(language=language, description=description)
+        # update or create will prevent an exact duplicate from occurring
+        self.obj.translations.update_or_create(
+            language=language, defaults=dict(description=description)
+        )
         # clear the cache
         del self.translation

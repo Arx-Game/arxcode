@@ -3,6 +3,7 @@ from django.core.exceptions import (
     ObjectDoesNotExist,
     ValidationError,
 )
+from decimal import Decimal
 
 
 def get_model_by_id_or_name(model, value, name_attr="name"):
@@ -52,3 +53,14 @@ def get_int(value):
         return int(value or 0)
     except (TypeError, ValueError):
         raise ValidationError("Value must be an integer")
+
+
+def get_decimal(value):
+    """Converts value to a decimal, or raises a ValidationError."""
+    try:
+        new_value = Decimal(value or 0)
+        if new_value > 100000000000000:
+            raise ValidationError("Value is too large")
+        return new_value
+    except (TypeError, ValueError):
+        raise ValidationError("Value must be a decimal")

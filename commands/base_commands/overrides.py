@@ -93,7 +93,7 @@ def money_from_args(args, fromobj):
             vals (tuple): (Value we're trying to get and available money)
     """
     allcoins = ("coins", "coin", "silver", "money", "pieces", "all")
-    currency = fromobj.db.currency or 0
+    currency = fromobj.item_data.currency
     currency = float(currency)
     currency = round(currency, 2)
     if args in allcoins:
@@ -392,8 +392,8 @@ class CmdDrop(ArxCommand):
             try:
                 val = round(float(arglist[0]), 2)
             except ValueError:
-                val = round(float(caller.db.currency or 0), 2)
-            currency = round(float(caller.db.currency or 0), 2)
+                val = caller.item_data.currency
+            currency = caller.item_data.currency
             if val > currency:
                 caller.msg("You don't have enough money.")
                 return

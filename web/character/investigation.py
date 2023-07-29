@@ -816,7 +816,7 @@ class CmdAssistInvestigation(InvestigationFormCommand):
                     field = "skill"
                 elif "silver" in self.switches:
                     ob = ob.investigation
-                    amt = self.caller.db.currency or 0.0
+                    amt = self.caller.item_data.currency
                     try:
                         val = int(self.rhs)
                         amt -= val
@@ -1266,7 +1266,7 @@ class CmdInvestigate(InvestigationFormCommand):
             if "silver" in self.switches:
                 if not self.check_enough_time_left():
                     return
-                amt = caller.db.currency or 0.0
+                amt = caller.item_data.currency
                 try:
                     val = int(self.rhs)
                     amt -= val

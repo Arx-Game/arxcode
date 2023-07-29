@@ -704,7 +704,7 @@ class WeeklyEvents(RunDateMixin, Script):
         self.db.recorded_votes = dict(self.ndb.recorded_votes)
         self.db.vote_history = self.ndb.vote_history
         # storing how much xp each player gets to post after
-        self.item_data.xp = dict(self.ndb.xp)
+        self.db.xp_awarded = dict(self.ndb.xp)
         self.db.xptypes = self.ndb.xptypes
         self.db.requested_support = self.ndb.requested_support
         self.db.scenes = dict(self.ndb.scenes)

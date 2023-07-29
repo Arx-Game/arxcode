@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from evennia_extensions.object_extensions.item_data_handler import ItemDataHandler
 from server.utils.arx_utils import sub_old_ansi, text_box, lowercase_kwargs
 import re
@@ -317,6 +319,8 @@ class BaseObjectMixins(object):
 
 
 class AppearanceMixins(BaseObjectMixins, TemplateMixins):
+    default_currency = Decimal(0.00)
+
     def get_numbered_name(self, count, looker, **kwargs):
         """
         Evennia's default get_numbered_name method uses the Inflect library, which is
@@ -439,17 +443,17 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
     def currency(self):
         """
         :type self: ObjectDB
-        :return: float
+        :return: Decimal
         """
-        return round(self.db.currency or 0.0, 2)
+        return self.item_data.currency
 
     @currency.setter
     def currency(self, val):
         """
         :type self: ObjectDB
-        :param val: float
+        :param val: Decimal
         """
-        self.db.currency = val
+        self.item_data.currency = round(val, 2)
 
     def pay_money(self, amount, receiver=None):
         """
@@ -461,7 +465,7 @@ class AppearanceMixins(BaseObjectMixins, TemplateMixins):
         :param receiver: ObjectDB
         """
         currency = self.currency
-        amount = round(amount, 2)
+        amount = Decimal(round(amount, 2))
         if amount > currency:
             from server.utils.exceptions import PayError
 
