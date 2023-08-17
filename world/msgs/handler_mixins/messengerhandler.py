@@ -14,6 +14,7 @@ from world.msgs.managers import (
     reload_model_as_proxy,
 )
 from server.utils.arx_utils import get_date, create_arx_message, inform_staff
+from decimal import Decimal
 
 
 class MessengerHandler(MsgHandlerBase):
@@ -217,7 +218,7 @@ class MessengerHandler(MsgHandlerBase):
             self.msg("{wYou receive{n %s." % obj)
             obj.tags.remove("in transit")
         if money and money > 0:
-            self.obj.currency += money
+            self.obj.currency += Decimal(money)
             self.msg("{wYou receive %s silver coins.{n" % money)
         if mats:
             material, amt = mats
